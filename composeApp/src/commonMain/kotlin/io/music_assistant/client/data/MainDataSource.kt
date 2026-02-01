@@ -354,9 +354,10 @@ class MainDataSource(
             enabled = true,
             bufferCapacityMicros = 500_000, // 500ms
             codecPreference = settings.sendspinCodecPreference.value,
-            serverHost = serverHost,
+            serverHost = settings.sendspinHost.value.takeIf { it.isNotEmpty() } ?: serverHost,
             serverPort = settings.sendspinPort.value,
-            serverPath = settings.sendspinPath.value
+            serverPath = settings.sendspinPath.value,
+            useTls = settings.sendspinUseTls.value
         )
 
         log.i { "Initializing Sendspin client: $serverHost:${config.serverPort}" }

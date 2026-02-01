@@ -140,4 +140,24 @@ class SettingsRepository(
         settings.putString("sendspin_codec_preference", codec.name)
         _sendspinCodecPreference.update { codec }
     }
+
+    private val _sendspinHost = MutableStateFlow(
+        settings.getString("sendspin_host", "")
+    )
+    val sendspinHost = _sendspinHost.asStateFlow()
+
+    fun setSendspinHost(host: String) {
+        settings.putString("sendspin_host", host)
+        _sendspinHost.update { host }
+    }
+
+    private val _sendspinUseTls = MutableStateFlow(
+        settings.getBoolean("sendspin_use_tls", false)
+    )
+    val sendspinUseTls = _sendspinUseTls.asStateFlow()
+
+    fun setSendspinUseTls(enabled: Boolean) {
+        settings.putBoolean("sendspin_use_tls", enabled)
+        _sendspinUseTls.update { enabled }
+    }
 }

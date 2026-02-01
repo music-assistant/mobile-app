@@ -433,15 +433,16 @@ private fun SendspinSection(
             )
         )
 
+        val sendspinHost by viewModel.sendspinHost.collectAsStateWithLifecycle()
+        val sendspinUseTls by viewModel.sendspinUseTls.collectAsStateWithLifecycle()
+
         TextField(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
-            value = sendspinPort.toString(),
-            onValueChange = {
-                it.toIntOrNull()?.let { port -> viewModel.setSendspinPort(port) }
-            },
-            label = { Text("Port (8927 by default)") },
+            value = sendspinHost,
+            onValueChange = { viewModel.setSendspinHost(it) },
+            label = { Text("Custom Host (leave empty for default)") },
             singleLine = true,
             enabled = !sendspinEnabled,
             colors = TextFieldDefaults.colors(
@@ -451,21 +452,64 @@ private fun SendspinSection(
             )
         )
 
-        TextField(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextField(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 12.dp),
+                value = sendspinPort.toString(),
+                onValueChange = {
+                    it.toIntOrNull()?.let { port -> viewModel.setSendspinPort(port) }
+                },
+                label = { Text("Port (8927 by default)") },
+                singleLine = true,
+                enabled = !sendspinEnabled,
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                )
+            )
+
+            TextField(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 12.dp),
+                value = sendspinPath,
+                onValueChange = { viewModel.setSendspinPath(it) },
+                label = { Text("Path") },
+                singleLine = true,
+                enabled = !sendspinEnabled,
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                )
+            )
+        }
+
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            value = sendspinPath,
-            onValueChange = { viewModel.setSendspinPath(it) },
-            label = { Text("Path (/sendspin by default)") },
-            singleLine = true,
-            enabled = !sendspinEnabled,
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                .padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = sendspinUseTls,
+                onCheckedChange = { viewModel.setSendspinUseTls(it) },
+                enabled = !sendspinEnabled
             )
-        )
+            Text(
+                text = "Use secure connection (WSS/TLS)",
+                color = if (sendspinEnabled)
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                else
+                    MaterialTheme.colorScheme.onBackground
+            )
+        }
 
         // Codec selection
         Row(
@@ -475,14 +519,21 @@ private fun SendspinSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = sendspinCodecPreference.uiTitle(),
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (sendspinEnabled)
-                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                else
-                    MaterialTheme.colorScheme.onBackground
-            )
+            Column {
+                Text(
+                    text = "Codec preference",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = sendspinCodecPreference.uiTitle(),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (sendspinEnabled)
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    else
+                        MaterialTheme.colorScheme.onBackground
+                )
+            }
 
             OverflowMenu(
                 modifier = Modifier,

@@ -12,13 +12,15 @@ data class SendspinConfig(
     val codecPreference: Codec,
 
     // Server connection settings
-    val serverHost: String = "", // Will use MA server IP from general settings
-    val serverPort: Int = 8927, // Default Sendspin port for Music Assistant
-    val serverPath: String = "/sendspin" // WebSocket endpoint path
+    val serverHost: String = "", 
+    val serverPort: Int = 8927, 
+    val serverPath: String = "/sendspin",
+    val useTls: Boolean = false
 ) {
     fun buildServerUrl(): String {
         return if (serverHost.isNotEmpty()) {
-            "ws://$serverHost:$serverPort$serverPath"
+            val protocol = if (useTls) "wss" else "ws"
+            "$protocol://$serverHost:$serverPort$serverPath"
         } else {
             ""
         }
