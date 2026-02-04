@@ -115,7 +115,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                var ipAddress by remember { mutableStateOf("") }
+                var ipAddress by remember { mutableStateOf("homeassistant.local") }
                 var port by remember { mutableStateOf("8095") }
                 var isTls by remember { mutableStateOf(false) }
 
