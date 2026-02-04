@@ -3,7 +3,6 @@ package io.music_assistant.client.api
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
-import io.music_assistant.client.utils.createPlatformHttpClient
 import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.ws
@@ -16,6 +15,7 @@ import io.music_assistant.client.data.model.server.LoginResponse
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
+import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.resultAs
