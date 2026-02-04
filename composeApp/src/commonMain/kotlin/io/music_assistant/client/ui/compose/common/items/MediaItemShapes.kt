@@ -140,7 +140,7 @@ class WavyHexagonShape : Shape {
 
             // Calculate 6 points of hexagon
             val points = List(6) { i ->
-                val angle = (i * 60f - 30f) * (Math.PI / 180f).toFloat()
+                val angle = (i * 60f - 30f) * (kotlin.math.PI / 180f).toFloat()
                 Offset(
                     centerX + radius * kotlin.math.cos(angle),
                     centerY + radius * kotlin.math.sin(angle)
@@ -169,8 +169,8 @@ class WavyHexagonShape : Shape {
 
                     // Calculate perpendicular offset for sine wave
                     val edgeAngle = kotlin.math.atan2(next.y - current.y, next.x - current.x)
-                    val perpAngle = edgeAngle + Math.PI.toFloat() / 2f
-                    val waveOffset = amplitude * kotlin.math.sin((t * frequency * 2.0 * Math.PI).toFloat())
+                    val perpAngle = edgeAngle + kotlin.math.PI.toFloat() / 2f
+                    val waveOffset = amplitude * kotlin.math.sin((t * frequency * 2.0 * kotlin.math.PI).toFloat())
 
                     val x = baseX + waveOffset * kotlin.math.cos(perpAngle)
                     val y = baseY + waveOffset * kotlin.math.sin(perpAngle)
