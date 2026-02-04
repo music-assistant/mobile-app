@@ -2,8 +2,8 @@ package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
+import io.music_assistant.client.utils.createPlatformHttpClient
 import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.ws
@@ -45,7 +45,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope {
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
-    private val client = HttpClient(CIO) {
+    private val client = createPlatformHttpClient {
         install(WebSockets) { contentConverter = KotlinxWebsocketSerializationConverter(myJson) }
     }
     private var listeningJob: Job? = null
