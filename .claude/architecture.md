@@ -113,22 +113,43 @@ When implementing new features or integrations:
 ### Sendspin Integration
 
 The built-in player functionality uses the Sendspin multi-room audio protocol:
-- **Management**: `MainDataSource` singleton manages Sendspin lifecycle (not individual services)
-- **Integration point**: `HomeScreenViewModel` interacts with Sendspin via MainDataSource
-- **Configuration**: Sendspin settings in `SettingsRepository` and `SettingsScreen` (see `.claude/settings-screen.md` for detailed UI documentation)
-- **Connection Modes**:
-  - **Proxy mode (default)**: Uses main connection (host/port/TLS) + path `/sendspin`
-    - Requires authentication with token before protocol handshake
-    - Port 8095 by default (same as main API)
-  - **Custom mode**: Separate host/port configuration
-    - Supports direct connection to standalone Sendspin server (port 8927)
-    - Auto-detects proxy mode if port matches main connection
-- **Authentication**: When using proxy mode, sends `auth` message with token before `client/hello`
-- **Platform-specific**: `MediaPlayerController` has expect/actual for raw PCM streaming
-  - Android: Uses `AudioTrack` for low-latency playback
-  - iOS: Uses MPV (libmpv) for all audio codecs
 
-See `.claude/settings-screen.md` for complete Settings screen documentation including authentication flows, local player configuration, and state management.
+**Lifecycle Management:**
+- `MainDataSource` singleton manages Sendspin lifecycle via `SendspinClientFactory`
+- Factory pattern for client creation (validates settings, builds config, returns `Result<SendspinClient>`)
+- Integration point: `HomeScreenViewModel` interacts with Sendspin via MainDataSource
+
+**Architecture Components:**
+- **SendspinClient**: Protocol orchestrator (reduced to ~280 lines after refactoring)
+  - Delegates to specialized components following Single Responsibility Principle
+- **SendspinClientFactory**: Client creation and validation logic
+- **StateReporter**: Periodic state reporting (every 2 seconds) with volume/mute
+- **ReconnectionCoordinator**: Recovery management with StreamRecoveryState machine
+- **AudioPipeline** (interface): Abstraction for audio playback
+  - Implementation: `AudioStreamManager` with multi-threaded architecture
+  - Default dispatcher: Decoding (producer)
+  - audioDispatcher: Playback (high-priority consumer)
+  - Default dispatcher: Adaptation (every 5s)
+- **MessageDispatcher**: Protocol state machine with `MessageDispatcherConfig`
+- **SendspinError**: Categorized errors (Transient/Permanent/Degraded)
+
+**Connection Modes:**
+- **Proxy mode (default)**: Uses main connection (host/port/TLS) + path `/sendspin`
+  - Requires authentication with token before protocol handshake
+  - Port 8095 by default (same as main API)
+- **Custom mode**: Separate host/port configuration
+  - Supports direct connection to standalone Sendspin server (port 8927)
+  - Auto-detects proxy mode if port matches main connection
+
+**Platform-specific:**
+- `MediaPlayerController` has expect/actual for audio output
+- `AudioDecoder` has expect/actual for codec handling
+  - Android: Decoders output PCM (Concentus for Opus, MediaCodec for FLAC)
+  - iOS: Decoders passthrough to MPV (returns original codec)
+- Android: Uses `AudioTrack` for low-latency PCM playback
+- iOS: Uses MPV (libmpv via MPVKit) for all audio codecs
+
+See `.claude/sendspin-status.md` for complete architecture documentation and `.claude/settings-screen.md` for Settings UI details.
 
 ### Android Services Integration
 
