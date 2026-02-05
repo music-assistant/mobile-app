@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -94,33 +95,40 @@ internal fun PlayersPager(
     }
 
     Column(modifier = modifier) {
-        Row(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-            Icon(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .size(20.dp)
-                    .clickable(onClick = onPlayersRefreshClick),
-                imageVector = Icons.Default.Refresh,
-                tint = MaterialTheme.colorScheme.primary,
-                contentDescription = null,
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onPlayersRefreshClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+
             HorizontalPagerIndicator(
                 modifier = Modifier.weight(1f),
                 pagerState = playerPagerState,
                 onItemMoved = onItemMoved,
             )
+
             OverflowMenu(
                 modifier = Modifier,
                 buttonContent = { onClick ->
-                    Icon(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .size(20.dp)
-                            .clickable { onClick() },
-                        imageVector = Icons.AutoMirrored.Filled.List,
-                        tint = MaterialTheme.colorScheme.primary,
-                        contentDescription = null,
-                    )
+                    IconButton(
+                        onClick = onClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.List,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 },
                 options = playerDataList.map { data ->
                     val isLocalPlayer = data.playerId == playersState.localPlayerId
@@ -130,6 +138,7 @@ internal fun PlayersPager(
                 }
             )
         }
+
         HorizontalPager(
             modifier = Modifier.wrapContentHeight(),
             state = playerPagerState,
