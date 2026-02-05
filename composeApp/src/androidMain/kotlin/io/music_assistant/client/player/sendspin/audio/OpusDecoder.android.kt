@@ -1,6 +1,7 @@
 package io.music_assistant.client.player.sendspin.audio
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
 import io.github.jaredmdobson.concentus.OpusDecoder as ConcentusOpusDecoder
 import io.github.jaredmdobson.concentus.OpusException
@@ -214,4 +215,6 @@ actual class OpusDecoder : AudioDecoder {
             pcmBuffer = null
         }
     }
+
+    actual override fun getOutputCodec(): AudioCodec = AudioCodec.PCM
 }

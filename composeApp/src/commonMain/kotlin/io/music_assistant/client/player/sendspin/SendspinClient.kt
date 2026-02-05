@@ -2,6 +2,7 @@ package io.music_assistant.client.player.sendspin
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.MediaPlayerController
+import io.music_assistant.client.player.sendspin.audio.AudioPipeline
 import io.music_assistant.client.player.sendspin.audio.AudioStreamManager
 import io.music_assistant.client.player.sendspin.connection.SendspinWsHandler
 import io.music_assistant.client.player.sendspin.model.CommandValue
@@ -10,6 +11,7 @@ import io.music_assistant.client.player.sendspin.model.PlayerStateValue
 import io.music_assistant.client.player.sendspin.model.ServerCommandMessage
 import io.music_assistant.client.player.sendspin.model.StreamMetadataPayload
 import io.music_assistant.client.player.sendspin.protocol.MessageDispatcher
+import io.music_assistant.client.player.sendspin.protocol.MessageDispatcherConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +42,7 @@ class SendspinClient(
     private var sendspinWsHandler: SendspinWsHandler? = null
     private var messageDispatcher: MessageDispatcher? = null
     private val clockSynchronizer = ClockSynchronizer()
-    private val audioStreamManager = AudioStreamManager(clockSynchronizer, mediaPlayerController)
+    private val audioPipeline: AudioPipeline = AudioStreamManager(clockSynchronizer, mediaPlayerController)
 
     // State flows
     private val _connectionState =
@@ -101,13 +103,16 @@ class SendspinClient(
 
             // Create message dispatcher
             val capabilities = SendspinCapabilities.buildClientHello(config, config.codecPreference)
-            val dispatcher = MessageDispatcher(
-                sendspinWsHandler = wsHandler,
-                clockSynchronizer = clockSynchronizer,
+            val dispatcherConfig = MessageDispatcherConfig(
                 clientCapabilities = capabilities,
                 initialVolume = currentVolume,
                 authToken = config.authToken,
                 requiresAuth = config.requiresAuth
+            )
+            val dispatcher = MessageDispatcher(
+                sendspinWsHandler = wsHandler,
+                clockSynchronizer = clockSynchronizer,
+                config = dispatcherConfig
             )
             messageDispatcher = dispatcher
 
@@ -178,7 +183,7 @@ class SendspinClient(
                         if (wasStreamingBeforeDisconnect) {
                             Logger.withTag("SendspinClient").e { "🔄 WS RECONNECTING: attempt=${wsState.attempt}, playbackState=${_playbackState.value}, preserving buffer" }
                             // DON'T call stopStream()!
-                            // AudioStreamManager will keep playing from buffer
+                            // Audio pipeline will keep playing from buffer
                             // Update connection state to show we're reconnecting
                             _connectionState.update {
                                 SendspinConnectionState.Error(
@@ -195,7 +200,7 @@ class SendspinClient(
                         // Only stop if this is a permanent error (max reconnect attempts exceeded)
                         if (wsState.error.message?.contains("Failed to reconnect") == true) {
                             logger.e { "Connection failed permanently after max attempts" }
-                            audioStreamManager.stopStream()
+                            audioPipeline.stopStream()
                             _playbackState.update { SendspinPlaybackState.Idle }
                             wasStreamingBeforeDisconnect = false
                         }
@@ -263,7 +268,7 @@ class SendspinClient(
             messageDispatcher?.streamStartEvent?.collect { event ->
                 Logger.withTag("SendspinClient").e { "🎵 STREAM START received" }
                 event.payload.player?.let { playerConfig ->
-                    audioStreamManager.startStream(playerConfig)
+                    audioPipeline.startStream(playerConfig)
                     _playbackState.update { SendspinPlaybackState.Buffering }
                     // Start periodic state reporting
                     startStateReporting()
@@ -274,7 +279,7 @@ class SendspinClient(
         launch {
             messageDispatcher?.streamEndEvent?.collect {
                 Logger.withTag("SendspinClient").e { "⛔ STREAM END received from server - stopping playback" }
-                audioStreamManager.stopStream()
+                audioPipeline.stopStream()
                 _playbackState.update { SendspinPlaybackState.Idle }
                 // Stop periodic state reporting
                 stopStateReporting()
@@ -286,14 +291,14 @@ class SendspinClient(
         launch {
             messageDispatcher?.streamClearEvent?.collect {
                 Logger.withTag("SendspinClient").e { "🗑️ STREAM CLEAR received from server" }
-                audioStreamManager.clearStream()
+                audioPipeline.clearStream()
             }
         }
 
-        // Monitor AudioStreamManager for errors (e.g., audio output disconnected)
+        // Monitor audio pipeline for errors (e.g., audio output disconnected)
         launch {
-            audioStreamManager.streamError.filterNotNull().collect { error ->
-                logger.w(error) { "AudioStreamManager error - stopping playback" }
+            audioPipeline.streamError.filterNotNull().collect { error ->
+                logger.w(error) { "Audio pipeline error - stopping playback" }
                 // Update playback state to Idle so UI reflects stopped state
                 _playbackState.update { SendspinPlaybackState.Idle }
                 // Stop periodic state reporting
@@ -310,7 +315,7 @@ class SendspinClient(
     private fun monitorBinaryMessages() {
         launch {
             sendspinWsHandler?.binaryMessages?.collect { data ->
-                audioStreamManager.processBinaryMessage(data)
+                audioPipeline.processBinaryMessage(data)
 
                 // Update playback state based on sync quality
                 if (clockSynchronizer.currentQuality == SyncQuality.GOOD) {
@@ -432,7 +437,7 @@ class SendspinClient(
     }
 
     private suspend fun disconnectFromServer() {
-        audioStreamManager.stopStream()
+        audioPipeline.stopStream()
         messageDispatcher?.stop()
         messageDispatcher?.close()
         messageDispatcher = null
@@ -448,7 +453,7 @@ class SendspinClient(
         logger.i { "Closing Sendspin client" }
         // Note: stop() should be called before close() to properly clean up connections
         // close() only performs synchronous cleanup
-        audioStreamManager.close()
+        audioPipeline.close()
         supervisorJob.cancel()
     }
 }

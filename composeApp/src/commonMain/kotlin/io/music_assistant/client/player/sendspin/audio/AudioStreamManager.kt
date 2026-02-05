@@ -29,7 +29,7 @@ import kotlin.coroutines.CoroutineContext
 class AudioStreamManager(
     private val clockSynchronizer: ClockSynchronizer,
     private val mediaPlayerController: MediaPlayerController
-) : CoroutineScope {
+) : AudioPipeline, CoroutineScope {
 
     private val logger = Logger.withTag("AudioStreamManager")
     private val supervisorJob = SupervisorJob()
@@ -57,14 +57,14 @@ class AudioStreamManager(
             dropRate = 0.0
         )
     )
-    val bufferState: StateFlow<BufferState> = _bufferState.asStateFlow()
+    override val bufferState: StateFlow<BufferState> = _bufferState.asStateFlow()
 
     private val _playbackPosition = MutableStateFlow(0L)
-    val playbackPosition: StateFlow<Long> = _playbackPosition.asStateFlow()
+    override val playbackPosition: StateFlow<Long> = _playbackPosition.asStateFlow()
 
     // Error state - emits when stream encounters an error
     private val _streamError = MutableStateFlow<Throwable?>(null)
-    val streamError: StateFlow<Throwable?> = _streamError.asStateFlow()
+    override val streamError: StateFlow<Throwable?> = _streamError.asStateFlow()
 
     private var streamConfig: StreamStartPlayer? = null
     private var isStreaming = false
@@ -74,7 +74,7 @@ class AudioStreamManager(
     private var lastBufferStateUpdate = 0L
     private val bufferStateUpdateInterval = 100_000L // Update max every 100ms
 
-    suspend fun startStream(config: StreamStartPlayer) {
+    override suspend fun startStream(config: StreamStartPlayer) {
         logger.i { "Starting stream: ${config.codec}, ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
 
         streamConfig = config
@@ -95,16 +95,10 @@ class AudioStreamManager(
         audioDecoder?.configure(formatSpec, config.codecHeader)
 
         // Determine output codec for MediaPlayerController
-        // iOS decoders are passthrough (return raw encoded data for MPV to handle)
-        // Android/Desktop decode to PCM
-        val decoder = audioDecoder
-        val outputCodec = if (decoder is PassthroughDecoder) {
-            // Passthrough decoder means native player handles codec decoding
-            AudioCodec.valueOf(config.codec.uppercase())
-        } else {
-            // After decoding, data is PCM
-            AudioCodec.PCM
-        }
+        // Decoder tells us what format it outputs:
+        // - iOS decoders: passthrough encoded data (OPUS, FLAC, etc) for MPV to handle
+        // - Android/Desktop decoders: convert to PCM
+        val outputCodec = audioDecoder?.getOutputCodec() ?: AudioCodec.PCM
 
         // Prepare MediaPlayerController
         mediaPlayerController.prepareStream(
@@ -145,7 +139,7 @@ class AudioStreamManager(
         return codec?.decoderInitializer?.invoke() ?: PcmDecoder()
     }
 
-    suspend fun processBinaryMessage(data: ByteArray) {
+    override suspend fun processBinaryMessage(data: ByteArray) {
         if (!isStreaming) {
             // Server is still sending chunks after we stopped - this is normal
             // (server doesn't know we stopped until timeout or explicit notification)
@@ -429,7 +423,7 @@ class AudioStreamManager(
         }
     }
 
-    suspend fun clearStream() {
+    override suspend fun clearStream() {
         logger.i { "Clearing stream" }
         audioBuffer.clear()
         _playbackPosition.update { 0L }
@@ -459,7 +453,7 @@ class AudioStreamManager(
         // NOTE: isStreaming stays TRUE so we can receive new chunks
     }
 
-    suspend fun stopStream() {
+    override suspend fun stopStream() {
         logger.i { "Stopping stream" }
         isStreaming = false
         playbackJob?.cancel()
@@ -505,7 +499,7 @@ class AudioStreamManager(
         return startMark.elapsedNow().inWholeMicroseconds
     }
 
-    fun close() {
+    override fun close() {
         logger.i { "Closing AudioStreamManager" }
         playbackJob?.cancel()
         audioDecoder?.release()
@@ -513,8 +507,3 @@ class AudioStreamManager(
     }
 }
 
-/**
- * Marker interface for passthrough decoders that don't actually decode.
- * Used by iOS where MPV handles the decoding.
- */
-interface PassthroughDecoder

@@ -3,6 +3,7 @@ package io.music_assistant.client.player.sendspin.audio
 import android.media.MediaCodec
 import android.media.MediaFormat
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -294,4 +295,6 @@ actual class FlacDecoder : AudioDecoder {
             codec = null
         }
     }
+
+    actual override fun getOutputCodec(): AudioCodec = AudioCodec.PCM
 }

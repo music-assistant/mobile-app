@@ -19,7 +19,6 @@ import io.music_assistant.client.player.sendspin.model.GoodbyePayload
 import io.music_assistant.client.player.sendspin.model.GroupUpdateMessage
 import io.music_assistant.client.player.sendspin.model.PlayerStateObject
 import io.music_assistant.client.player.sendspin.model.PlayerStateValue
-import io.music_assistant.client.player.sendspin.model.ServerAuthOkMessage
 import io.music_assistant.client.player.sendspin.model.ServerCommandMessage
 import io.music_assistant.client.player.sendspin.model.ServerHelloMessage
 import io.music_assistant.client.player.sendspin.model.ServerHelloPayload
@@ -56,11 +55,14 @@ import kotlin.time.Duration.Companion.seconds
 class MessageDispatcher(
     private val sendspinWsHandler: SendspinWsHandler,
     private val clockSynchronizer: ClockSynchronizer,
-    private val clientCapabilities: ClientHelloPayload,
-    private val initialVolume: Int = 100,
-    private val authToken: String? = null,
-    private val requiresAuth: Boolean = false
+    private val config: MessageDispatcherConfig
 ) : CoroutineScope {
+
+    // Convenience accessors for config properties
+    private val clientCapabilities: ClientHelloPayload get() = config.clientCapabilities
+    private val initialVolume: Int get() = config.initialVolume
+    private val authToken: String? get() = config.authToken
+    private val requiresAuth: Boolean get() = config.requiresAuth
 
     private val logger = Logger.withTag("MessageDispatcher")
     private val supervisorJob = SupervisorJob()
@@ -99,7 +101,8 @@ class MessageDispatcher(
     }
 
     fun stop() {
-        Logger.withTag("MessageDispatcher").e { "🛑 STOP called - setting protocolState to Disconnected" }
+        Logger.withTag("MessageDispatcher")
+            .e { "🛑 STOP called - setting protocolState to Disconnected" }
         messageListenerJob?.cancel()
         clockSyncJob?.cancel()
         _protocolState.value = ProtocolState.Disconnected
@@ -138,8 +141,7 @@ class MessageDispatcher(
 
             when (type) {
                 "auth_ok" -> {
-                    val message = myJson.decodeFromJsonElement<ServerAuthOkMessage>(json)
-                    handleAuthOk(message)
+                    handleAuthOk()
                 }
 
                 "server/hello" -> {
@@ -204,7 +206,8 @@ class MessageDispatcher(
     // Outgoing messages
 
     suspend fun sendAuth() {
-        if (!requiresAuth || authToken == null) {
+        val token = authToken
+        if (!requiresAuth || token == null) {
             logger.w { "sendAuth called but auth not required or token missing" }
             return
         }
@@ -213,7 +216,7 @@ class MessageDispatcher(
         _protocolState.value = ProtocolState.AwaitingAuth
 
         val message = ClientAuthMessage(
-            token = authToken,
+            token = token,
             clientId = clientCapabilities.clientId
         )
         val json = myJson.encodeToString(message)
@@ -267,7 +270,7 @@ class MessageDispatcher(
 
     // Message handlers
 
-    private suspend fun handleAuthOk(message: ServerAuthOkMessage) {
+    private suspend fun handleAuthOk() {
         logger.i { "Received auth_ok - authentication successful" }
         // Auth successful, now send hello
         sendHello()

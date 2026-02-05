@@ -1,8 +1,9 @@
 package io.music_assistant.client.player.sendspin.audio
 
+import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
 
-actual class OpusDecoder : AudioDecoder, PassthroughDecoder {
+actual class OpusDecoder : AudioDecoder {
     actual override fun configure(config: AudioFormatSpec, codecHeader: String?) {
         // Pass-through: No configuration needed for raw stream passing
     }
@@ -19,4 +20,6 @@ actual class OpusDecoder : AudioDecoder, PassthroughDecoder {
     actual override fun release() {
         // Nothing to release
     }
+
+    actual override fun getOutputCodec(): AudioCodec = AudioCodec.OPUS
 }
