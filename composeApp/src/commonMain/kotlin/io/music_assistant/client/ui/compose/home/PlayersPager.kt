@@ -23,13 +23,10 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -52,9 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.ui.compose.common.HorizontalPagerIndicator
-import io.music_assistant.client.ui.compose.common.OverflowMenu
-import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.conditional
@@ -95,49 +89,13 @@ internal fun PlayersPager(
     }
 
     Column(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onPlayersRefreshClick
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            HorizontalPagerIndicator(
-                modifier = Modifier.weight(1f),
-                pagerState = playerPagerState,
-                onItemMoved = onItemMoved,
-            )
-
-            OverflowMenu(
-                modifier = Modifier,
-                buttonContent = { onClick ->
-                    IconButton(
-                        onClick = onClick
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.List,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                options = playerDataList.map { data ->
-                    val isLocalPlayer = data.playerId == playersState.localPlayerId
-                    OverflowMenuOption(
-                        title = data.player.displayName + (if (isLocalPlayer) " (local)" else "")
-                    ) { moveToPlayer(data.player.id) }
-                }
-            )
-        }
+        PlayersTopBar(
+            playerDataList = playerDataList,
+            playersState = playersState,
+            playerPagerState = playerPagerState,
+            onPlayersRefreshClick = onPlayersRefreshClick,
+            onItemMoved = onItemMoved
+        ) { moveToPlayer(it) }
 
         HorizontalPager(
             modifier = Modifier.wrapContentHeight(),
