@@ -41,6 +41,7 @@ class SendspinClient(
     // Components
     private var sendspinWsHandler: SendspinWsHandler? = null
     private var messageDispatcher: MessageDispatcher? = null
+    private var stateReporter: StateReporter? = null
     private val clockSynchronizer = ClockSynchronizer()
     private val audioPipeline: AudioPipeline = AudioStreamManager(clockSynchronizer, mediaPlayerController)
 
@@ -60,9 +61,6 @@ class SendspinClient(
     // Initialize with current system volume (not hardcoded 100)
     private var currentVolume: Int = mediaPlayerController.getCurrentSystemVolume()
     private var currentMuted: Boolean = false
-
-    // State reporting
-    private var stateReportingJob: Job? = null
 
     val metadata: StateFlow<StreamMetadataPayload?>
         get() = messageDispatcher?.streamMetadata ?: MutableStateFlow(null)
@@ -115,6 +113,15 @@ class SendspinClient(
                 config = dispatcherConfig
             )
             messageDispatcher = dispatcher
+
+            // Create state reporter
+            val reporter = StateReporter(
+                messageDispatcher = dispatcher,
+                volumeProvider = { currentVolume },
+                mutedProvider = { currentMuted },
+                playbackStateProvider = { _playbackState.value }
+            )
+            stateReporter = reporter
 
             // Connect WebSocket
             wsHandler.connect()
@@ -271,7 +278,7 @@ class SendspinClient(
                     audioPipeline.startStream(playerConfig)
                     _playbackState.update { SendspinPlaybackState.Buffering }
                     // Start periodic state reporting
-                    startStateReporting()
+                    stateReporter?.start()
                 }
             }
         }
@@ -282,7 +289,7 @@ class SendspinClient(
                 audioPipeline.stopStream()
                 _playbackState.update { SendspinPlaybackState.Idle }
                 // Stop periodic state reporting
-                stopStateReporting()
+                stateReporter?.stop()
                 // Clear Now Playing from Control Center / Lock Screen
                 // mediaPlayerController.clearNowPlaying() // DISABLED: Keep metadata visible so user can resume
             }
@@ -302,7 +309,7 @@ class SendspinClient(
                 // Update playback state to Idle so UI reflects stopped state
                 _playbackState.update { SendspinPlaybackState.Idle }
                 // Stop periodic state reporting
-                stopStateReporting()
+                stateReporter?.stop()
                 // Notify that playback stopped due to error (so MainDataSource can pause the MA server)
                 _playbackStoppedDueToError.update { error }
                 // Clear the error after handling
@@ -321,7 +328,7 @@ class SendspinClient(
                 if (clockSynchronizer.currentQuality == SyncQuality.GOOD) {
                     if (_playbackState.value != SendspinPlaybackState.Synchronized) {
                         _playbackState.update { SendspinPlaybackState.Synchronized }
-                        reportState(PlayerStateValue.SYNCHRONIZED)
+                        stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
                     }
                 }
             }
@@ -346,7 +353,7 @@ class SendspinClient(
                     logger.i { "Setting volume to $volume" }
                     currentVolume = volume
                     mediaPlayerController.setVolume(volume)
-                    reportState(PlayerStateValue.SYNCHRONIZED)
+                    stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
                 }
             }
 
@@ -355,7 +362,7 @@ class SendspinClient(
                     logger.i { "Setting mute to $muted" }
                     currentMuted = muted
                     mediaPlayerController.setMuted(muted)
-                    reportState(PlayerStateValue.SYNCHRONIZED)
+                    stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
                 }
             }
 
@@ -369,56 +376,11 @@ class SendspinClient(
         messageDispatcher?.sendCommand(command, value)
     }
 
-    private suspend fun reportState(state: PlayerStateValue) {
-        val playerState = PlayerStateObject(
-            state = state,
-            volume = currentVolume,
-            muted = currentMuted
-        )
-        logger.d { "Reporting state: state=$state, volume=$currentVolume, muted=$currentMuted" }
-        messageDispatcher?.sendState(playerState)
-    }
-
-    private fun startStateReporting() {
-        logger.i { "Starting periodic state reporting" }
-        stateReportingJob?.cancel()
-        stateReportingJob = launch {
-            while (isActive) {
-                try {
-                    // Wait before reporting (report every 2 seconds)
-                    delay(2000)
-
-                    // Only report if we're still streaming and synchronized
-                    if (_playbackState.value == SendspinPlaybackState.Synchronized ||
-                        _playbackState.value is SendspinPlaybackState.Playing
-                    ) {
-
-                        logger.d { "Periodic state report: SYNCHRONIZED" }
-                        reportState(PlayerStateValue.SYNCHRONIZED)
-                    } else if (_playbackState.value == SendspinPlaybackState.Buffering) {
-                        logger.d { "Periodic state report: SYNCHRONIZED (buffering)" }
-                        reportState(PlayerStateValue.SYNCHRONIZED)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.e(e) { "Error in state reporting" }
-                }
-            }
-        }
-    }
-
-    private fun stopStateReporting() {
-        logger.i { "Stopping periodic state reporting" }
-        stateReportingJob?.cancel()
-        stateReportingJob = null
-    }
-
     suspend fun stop() {
         logger.i { "Stopping Sendspin client" }
 
         // Stop state reporting
-        stopStateReporting()
+        stateReporter?.stop()
 
         // Send goodbye if connected
         if (_connectionState.value is SendspinConnectionState.Connected) {
@@ -438,6 +400,8 @@ class SendspinClient(
 
     private suspend fun disconnectFromServer() {
         audioPipeline.stopStream()
+        stateReporter?.close()
+        stateReporter = null
         messageDispatcher?.stop()
         messageDispatcher?.close()
         messageDispatcher = null
