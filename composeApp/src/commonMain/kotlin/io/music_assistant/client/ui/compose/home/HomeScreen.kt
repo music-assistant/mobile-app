@@ -219,8 +219,7 @@ fun HomeScreen(
                                 .wrapContentHeight()
                                 .defaultMinSize(minHeight = 100.dp)
                                 .clickable { showPlayersView = true }
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                .padding(top = 8.dp),
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             contentAlignment = Alignment.Center
                         ) {
                             when (val state = playersState) {

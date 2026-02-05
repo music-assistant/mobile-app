@@ -3,7 +3,6 @@ package io.music_assistant.client.ui.compose.common
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoveDown
 import androidx.compose.material.icons.filled.MoveUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -92,16 +92,19 @@ fun HorizontalPagerIndicator(
         verticalAlignment = Alignment.CenterVertically
     ) {
         onItemMoved?.let {
-            Icon(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .size(20.dp)
-                    .clickable(pagerState.currentPage > 0) { moveWithAnimation(-1) },
-                imageVector = Icons.Default.MoveUp,
-                tint = MaterialTheme.colorScheme.primary
-                    .copy(alpha = if (pagerState.currentPage > 0) 1f else 0.4f),
-                contentDescription = null,
-            )
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                enabled = pagerState.currentPage > 0,
+                onClick = { moveWithAnimation(-1) }
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    imageVector = Icons.Default.MoveUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                        .copy(alpha = if (pagerState.currentPage > 0) 1f else 0.4f),
+                )
+            }
         }
 
         if (pageCount <= 15) {
@@ -152,16 +155,19 @@ fun HorizontalPagerIndicator(
             )
         }
         onItemMoved?.let {
-            Icon(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .size(20.dp)
-                    .clickable(pagerState.currentPage < pageCount - 1) { moveWithAnimation(1) },
-                imageVector = Icons.Default.MoveDown,
-                tint = MaterialTheme.colorScheme.primary
-                    .copy(alpha = if (pagerState.currentPage < pageCount - 1) 1f else 0.4f),
-                contentDescription = null,
-            )
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                enabled = pagerState.currentPage < pageCount - 1,
+                onClick = { moveWithAnimation(1) }
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    imageVector = Icons.Default.MoveDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                        .copy(alpha = if (pagerState.currentPage < pageCount - 1) 1f else 0.4f),
+                )
+            }
         }
     }
 }

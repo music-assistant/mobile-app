@@ -4,7 +4,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.ui.graphics.Color
 import co.touchlab.kermit.Logger
-import io.ktor.http.Url
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItem
@@ -33,7 +32,7 @@ import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClient
-import io.music_assistant.client.player.sendspin.SendspinConfig
+import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.player.sendspin.SendspinConnectionState
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -71,6 +70,7 @@ class MainDataSource(
     private val settings: SettingsRepository,
     val apiClient: ServiceClient,
     private val mediaPlayerController: MediaPlayerController,
+    private val sendspinClientFactory: SendspinClientFactory
 ) : CoroutineScope {
 
     private val log = Logger.withTag("MainDataSource")
@@ -540,52 +540,30 @@ class MainDataSource(
      * Safe for background: MainDataSource is singleton held by foreground service.
      */
     private suspend fun initSendspinIfEnabled() {
-        if (!settings.sendspinEnabled.value) {
-            log.i { "Sendspin disabled in settings, skipping initialization" }
-            return
-        }
-
-        // Check if user is authorized (required for Sendspin)
-        val authToken = settings.token.value
-        if (authToken == null) {
-            log.w { "No auth token available, cannot initialize Sendspin" }
-            return
-        }
-
-        // Get main connection info
-        val mainConnectionInfo = settings.connectionInfo.value
-        if (mainConnectionInfo == null) {
+        // Get prerequisites
+        val mainConnectionInfo = settings.connectionInfo.value ?: run {
             log.w { "No main connection info available, cannot initialize Sendspin" }
             return
         }
 
-        val serverHost = try {
-            Url(mainConnectionInfo.webUrl).host
-        } catch (e: Exception) {
-            log.e(e) { "Failed to parse server URL: ${mainConnectionInfo.webUrl}" }
-            return
-        }
+        val authToken = settings.token.value
 
         // Stop existing client if any (but preserve if it's reconnecting)
         sendspinClient?.let { existing ->
             when (val state = existing.connectionState.value) {
                 is SendspinConnectionState.Connected -> {
-                    // Already connected, don't reconnect
                     log.d { "Sendspin already connected - skipping reinitialization" }
                     return
                 }
                 is SendspinConnectionState.Error -> {
-                    // Check if it's actually reconnecting (error message contains "Reconnecting")
                     if (state.error.message?.contains("Reconnecting", ignoreCase = true) == true) {
                         log.d { "Sendspin is reconnecting - skipping reinitialization" }
                         return
                     }
-                    // Otherwise, it's a real error - stop and recreate
                     log.i { "Sendspin has error: ${state.error.message} - reinitializing" }
                 }
                 is SendspinConnectionState.Advertising,
                 SendspinConnectionState.Idle -> {
-                    // Not fully initialized yet, will recreate
                     log.i { "Sendspin in ${state::class.simpleName} state - reinitializing" }
                 }
             }
@@ -593,44 +571,18 @@ class MainDataSource(
             existing.close()
         }
 
-        // Build Sendspin config
-        val useCustomConnection = settings.sendspinUseCustomConnection.value
+        // Create client using factory
+        val createResult = sendspinClientFactory.createIfEnabled(
+            mainConnection = mainConnectionInfo,
+            authToken = authToken
+        )
 
-        val config = if (useCustomConnection) {
-            // Custom connection mode: use separate Sendspin settings
-            SendspinConfig(
-                clientId = settings.sendspinClientId.value,
-                deviceName = settings.sendspinDeviceName.value,
-                enabled = true,
-                bufferCapacityMicros = 500_000, // 500ms
-                codecPreference = settings.sendspinCodecPreference.value,
-                serverHost = settings.sendspinHost.value.takeIf { it.isNotEmpty() } ?: serverHost,
-                serverPort = settings.sendspinPort.value,
-                serverPath = settings.sendspinPath.value,
-                useTls = settings.sendspinUseTls.value,
-                useCustomConnection = true,
-                authToken = authToken,
-                mainConnectionPort = mainConnectionInfo.port
-            )
-        } else {
-            // Proxy mode: use main connection settings with /sendspin path
-            SendspinConfig(
-                clientId = settings.sendspinClientId.value,
-                deviceName = settings.sendspinDeviceName.value,
-                enabled = true,
-                bufferCapacityMicros = 500_000, // 500ms
-                codecPreference = settings.sendspinCodecPreference.value,
-                serverHost = serverHost,
-                serverPort = mainConnectionInfo.port,
-                serverPath = "/sendspin",
-                useTls = mainConnectionInfo.isTls,
-                useCustomConnection = false,
-                authToken = authToken,
-                mainConnectionPort = mainConnectionInfo.port
-            )
+        createResult.onFailure { error ->
+            log.w { "Cannot create Sendspin client: ${error.message}" }
+            return
         }
 
-        log.i { "Initializing Sendspin client: $serverHost:${config.serverPort}" }
+        val client = createResult.getOrNull() ?: return
 
         // Set up remote command handler for Control Center/Lock Screen commands
         // Commands go directly through MainDataSource via REST API
@@ -658,40 +610,48 @@ class MainDataSource(
             } ?: log.w { "No local player available for remote command: $command" }
         }
 
+        // Monitor client lifecycle
+        sendspinClient = client
+        monitorSendspinClient(client)
+
+        // Start client
         try {
-            sendspinClient = SendspinClient(config, mediaPlayerController).also { client ->
-                launch {
-                    // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
-                    // and pause the MA server player when they occur
-                    client.playbackStoppedDueToError.filterNotNull().collect { error ->
-                        log.w(error) { "Sendspin playback stopped due to error - pausing MA server player" }
-                        // Pause the local sendspin player on the MA server
-                        localPlayer.value?.let { playerData ->
-                            if (playerData.player.isPlaying) {
-                                log.i { "Sending pause command to MA server for player ${playerData.player.name}" }
-                                playerAction(playerData, PlayerAction.TogglePlayPause)
-                            }
-                        }
-                    }
-                }
-
-                launch {
-                    // Monitor connection state and refresh player list when Sendspin connects
-                    // This ensures the local player appears immediately in the UI
-                    client.connectionState.collect { state ->
-                        if (state is SendspinConnectionState.Connected) {
-                            log.i { "Sendspin connected - refreshing player list" }
-                            delay(1000) // Give server a moment to register the player
-                            updatePlayersAndQueues()
-                        }
-                    }
-                }
-
-                client.start()
-            }
-
+            client.start()
         } catch (e: Exception) {
-            log.e(e) { "Failed to initialize Sendspin client" }
+            log.e(e) { "Failed to start Sendspin client" }
+            sendspinClient = null
+        }
+    }
+
+    /**
+     * Monitor Sendspin client for errors and state changes.
+     */
+    private fun monitorSendspinClient(client: SendspinClient) {
+        launch {
+            // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
+            // and pause the MA server player when they occur
+            client.playbackStoppedDueToError.filterNotNull().collect { error ->
+                log.w(error) { "Sendspin playback stopped due to error - pausing MA server player" }
+                // Pause the local sendspin player on the MA server
+                localPlayer.value?.let { playerData ->
+                    if (playerData.player.isPlaying) {
+                        log.i { "Sending pause command to MA server for player ${playerData.player.name}" }
+                        playerAction(playerData, PlayerAction.TogglePlayPause)
+                    }
+                }
+            }
+        }
+
+        launch {
+            // Monitor connection state and refresh player list when Sendspin connects
+            // This ensures the local player appears immediately in the UI
+            client.connectionState.collect { state ->
+                if (state is SendspinConnectionState.Connected) {
+                    log.i { "Sendspin connected - refreshing player list" }
+                    delay(1000) // Give server a moment to register the player
+                    updatePlayersAndQueues()
+                }
+            }
         }
     }
 
