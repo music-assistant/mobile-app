@@ -34,6 +34,7 @@ import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClient
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.player.sendspin.SendspinConnectionState
+import io.music_assistant.client.player.sendspin.SendspinError
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.StaleReason
@@ -556,11 +557,18 @@ class MainDataSource(
                     return
                 }
                 is SendspinConnectionState.Error -> {
-                    if (state.error.message?.contains("Reconnecting", ignoreCase = true) == true) {
+                    // Check if it's a transient error with auto-retry in progress
+                    if (state.error is SendspinError.Transient && state.error.willRetry) {
                         log.d { "Sendspin is reconnecting - skipping reinitialization" }
                         return
                     }
-                    log.i { "Sendspin has error: ${state.error.message} - reinitializing" }
+                    // Otherwise, it's a real error - stop and recreate
+                    val errorMsg = when (val err = state.error) {
+                        is SendspinError.Permanent -> err.userAction
+                        is SendspinError.Transient -> err.cause.message
+                        is SendspinError.Degraded -> err.reason
+                    }
+                    log.i { "Sendspin has error: $errorMsg - reinitializing" }
                 }
                 is SendspinConnectionState.Advertising,
                 SendspinConnectionState.Idle -> {

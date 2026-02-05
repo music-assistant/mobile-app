@@ -12,7 +12,11 @@ sealed class SendspinConnectionState {
         val connectionReason: ConnectionReason
     ) : SendspinConnectionState()
 
-    data class Error(val error: Throwable) : SendspinConnectionState()
+    /**
+     * Error state with categorized error information.
+     * Use SendspinError to distinguish transient, permanent, and degraded states.
+     */
+    data class Error(val error: SendspinError) : SendspinConnectionState()
 }
 
 sealed class SendspinPlaybackState {
@@ -52,10 +56,3 @@ data class BufferState(
     val jitter: Double = 0.0, // Jitter (RTT std dev) in microseconds
     val dropRate: Double = 0.0 // Recent chunk drop rate [0.0, 1.0]
 )
-
-sealed class SendspinError {
-    data class NetworkError(val cause: Throwable) : SendspinError()
-    data class ProtocolError(val message: String) : SendspinError()
-    data class AudioError(val cause: Throwable) : SendspinError()
-    object ClockSyncLost : SendspinError()
-}

@@ -26,6 +26,71 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * Manages the complete audio playback pipeline for Sendspin streaming.
+ *
+ * ## Architecture Overview
+ *
+ * This component implements a producer-consumer pattern with precise timestamp-based
+ * playback scheduling. Audio chunks arrive with server-assigned timestamps and are
+ * played back at the correct local time after clock synchronization.
+ *
+ * ## Multi-Threaded Architecture
+ *
+ * AudioStreamManager uses **three separate dispatcher contexts** for optimal performance:
+ *
+ * ### 1. Default Dispatcher (Producer)
+ * - **Purpose**: Binary message reception and audio decoding
+ * - **Why**: Decoding is CPU-intensive but not time-critical
+ * - **Operations**:
+ *   - Receive binary messages from WebSocket
+ *   - Parse chunk headers (timestamp, codec, payload)
+ *   - Decode audio (Opus/FLAC → PCM or passthrough)
+ *   - Add decoded chunks to timestamp-ordered buffer
+ * - **Characteristics**: Can run ahead of playback, preparing data in advance
+ *
+ * ### 2. audioDispatcher (High-Priority Consumer)
+ * - **Purpose**: Precise playback timing and audio output
+ * - **Why**: Requires low-latency, deterministic scheduling
+ * - **Operations**:
+ *   - Poll buffer for next chunk
+ *   - Check chunk timestamp vs current time
+ *   - Wait if too early, drop if too late, play if on-time
+ *   - Write PCM data to MediaPlayerController (AudioTrack/MPV)
+ * - **Characteristics**: High priority thread, minimal jitter, tight timing loop
+ *
+ * ### 3. Default Dispatcher (Adaptation)
+ * - **Purpose**: Periodic buffer threshold adjustment
+ * - **Why**: Network conditions change over time, buffer must adapt
+ * - **Operations**:
+ *   - Monitor RTT, jitter, drop rate every 5 seconds
+ *   - Calculate optimal prebuffer threshold
+ *   - Update adaptive buffer manager
+ * - **Characteristics**: Low priority, infrequent (5s interval)
+ *
+ * ## Threading Rationale
+ *
+ * The separation of decoding (Default) from playback (audioDispatcher) is critical:
+ * - **Decoding** can be slow (especially FLAC) and should not block playback
+ * - **Playback** must be fast and deterministic to avoid audio glitches
+ * - Producer can build buffer ahead of time, consumer drains at playback rate
+ *
+ * ## Synchronization
+ *
+ * - **TimestampOrderedBuffer**: Thread-safe queue (synchronized methods)
+ * - **StateFlows**: Reactive state updates (thread-safe by design)
+ * - **No shared mutable state** between producer and consumer
+ *
+ * ## Error Handling
+ *
+ * - Decoding errors: Return silence, log error, continue playback
+ * - Playback errors: Emit via `streamError` StateFlow, stop stream
+ * - Network errors: Auto-reconnect handled by SendspinWsHandler
+ *
+ * @see AudioPipeline for public interface
+ * @see AdaptiveBufferManager for buffer adaptation algorithm
+ * @see ClockSynchronizer for time synchronization
+ */
 class AudioStreamManager(
     private val clockSynchronizer: ClockSynchronizer,
     private val mediaPlayerController: MediaPlayerController
@@ -350,9 +415,15 @@ class AudioStreamManager(
         logger.i { "Prebuffer complete: ${bufferMs}ms (threshold=${thresholdMs}ms)" }
     }
 
+    /**
+     * Starts the buffer adaptation thread.
+     * Runs on Default dispatcher (not audioDispatcher) to avoid interfering with playback.
+     * Updates buffer thresholds every 5 seconds based on network conditions (RTT, jitter, drops).
+     */
     private fun startAdaptationThread() {
         adaptationJob?.cancel()
-        // Use Default dispatcher to avoid consuming high-priority audio threads
+        // Use Default dispatcher - this is low-priority periodic work that shouldn't
+        // consume cycles from the high-priority audioDispatcher playback thread
         adaptationJob = CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
             logger.i { "Starting adaptation thread" }
             while (isActive && isStreaming) {

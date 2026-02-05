@@ -79,7 +79,14 @@ class SendspinClient(
 
         } catch (e: Exception) {
             logger.e(e) { "Failed to start Sendspin client" }
-            _connectionState.update { SendspinConnectionState.Error(e) }
+            _connectionState.update {
+                SendspinConnectionState.Error(
+                    SendspinError.Permanent(
+                        cause = e,
+                        userAction = "Check Sendspin settings and server connection"
+                    )
+                )
+            }
         }
     }
 
@@ -155,7 +162,14 @@ class SendspinClient(
 
         } catch (e: Exception) {
             logger.e(e) { "Failed to connect to server" }
-            _connectionState.update { SendspinConnectionState.Error(e) }
+            _connectionState.update {
+                SendspinConnectionState.Error(
+                    SendspinError.Permanent(
+                        cause = e,
+                        userAction = "Verify server is running and accessible"
+                    )
+                )
+            }
         }
     }
 
@@ -194,7 +208,10 @@ class SendspinClient(
                             // Update connection state to show we're reconnecting
                             _connectionState.update {
                                 SendspinConnectionState.Error(
-                                    Exception("Reconnecting (attempt ${wsState.attempt})...")
+                                    SendspinError.Transient(
+                                        cause = Exception("Network reconnection in progress (attempt ${wsState.attempt})"),
+                                        willRetry = true
+                                    )
                                 )
                             }
                         } else {
@@ -204,14 +221,32 @@ class SendspinClient(
 
                     is WebSocketState.Error -> {
                         logger.e { "WebSocket error: ${wsState.error.message}" }
-                        // Only stop if this is a permanent error (max reconnect attempts exceeded)
-                        if (wsState.error.message?.contains("Failed to reconnect") == true) {
+                        // Categorize error based on whether reconnect attempts exceeded
+                        val isPermanent = wsState.error.message?.contains("Failed to reconnect") == true
+
+                        if (isPermanent) {
                             logger.e { "Connection failed permanently after max attempts" }
                             audioPipeline.stopStream()
                             _playbackState.update { SendspinPlaybackState.Idle }
                             wasStreamingBeforeDisconnect = false
+                            _connectionState.update {
+                                SendspinConnectionState.Error(
+                                    SendspinError.Permanent(
+                                        cause = wsState.error,
+                                        userAction = "Check network connection and server availability"
+                                    )
+                                )
+                            }
+                        } else {
+                            _connectionState.update {
+                                SendspinConnectionState.Error(
+                                    SendspinError.Transient(
+                                        cause = wsState.error,
+                                        willRetry = false
+                                    )
+                                )
+                            }
                         }
-                        _connectionState.update { SendspinConnectionState.Error(wsState.error) }
                     }
 
                     WebSocketState.Disconnected -> {
