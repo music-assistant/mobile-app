@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.13.2" type="baseline" client="gradle" dependencies="false" name="AGP (8.13.2)" variant="all" version="8.13.2">
+
+    <issue
+        id="MissingIntentFilterForMediaSearch"
+        message="Missing `intent-filter` for action `android.media.action.MEDIA_PLAY_FROM_SEARCH`."
+        errorLine1="    &lt;application"
+        errorLine2="    ^">
+        <location
+            file="src/androidMain/AndroidManifest.xml"
+            line="8"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="MissingOnPlayFromSearch"
+        message="This class does not override `onPlayFromSearch` from `MediaSession.Callback` The method should be overridden and implemented to support Voice search on Android Auto."
+        errorLine1="        object : MediaSessionCompat.Callback() {"
+        errorLine2="        ~~~~~~">
+        <location
+            file="src/androidMain/kotlin/io/music_assistant/client/services/AndroidAutoPlaybackService.kt"
+            line="101"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingOnPlayFromSearch"
+        message="This class does not override `onPlayFromSearch` from `MediaSession.Callback` The method should be overridden and implemented to support Voice search on Android Auto."
+        errorLine1="        object : MediaSessionCompat.Callback() {"
+        errorLine2="        ~~~~~~">
+        <location
+            file="src/androidMain/kotlin/io/music_assistant/client/services/MainMediaPlaybackService.kt"
+            line="143"
+            column="9"/>
+    </issue>
+
+</issues>
