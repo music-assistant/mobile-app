@@ -1,6 +1,10 @@
 package io.music_assistant.client.utils
 
 import androidx.compose.ui.Modifier
+import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.network.sockets.InetSocketAddress
+import io.ktor.util.network.NetworkAddress
 import io.music_assistant.client.api.Answer
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
@@ -24,6 +28,7 @@ fun Duration?.formatDuration() =
     } ?: "--:--"
 
 fun String.isValidHost(): Boolean {
+    val ipLikePattern = Regex("^(-?\\d{1,3}\\.)+-?\\d{1,3}$")
     val ipv4Pattern = Regex(
         """^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.
            (25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.
@@ -34,7 +39,12 @@ fun String.isValidHost(): Boolean {
         """^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*
         (?<!\.)$""".replace(Regex("\\s"), "")
     )
-    return this.matches(ipv4Pattern) || this.matches(hostnamePattern)
+
+    return if (this.matches(ipLikePattern)) {
+        this.matches(ipv4Pattern)
+    } else {
+        this.matches(hostnamePattern)
+    }
 }
 
 fun String.isIpPort(): Boolean {
@@ -57,4 +67,3 @@ fun Modifier.conditional(
 }
 
 inline fun <reified T : Any> Result<Answer>.resultAs(): T? = getOrNull()?.resultAs()
-

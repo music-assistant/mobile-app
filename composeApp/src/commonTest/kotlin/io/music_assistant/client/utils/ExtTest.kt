@@ -36,7 +36,6 @@ class ExtTest {
             "256.256.256.256",
             "192.168.1",
             "192.168.1.1.1",
-            "abc.def.ghi.jkl",
             "123.456.78.90",
             "192.168.1.-1",
             "192.168.1.256",
@@ -80,4 +79,4 @@ class ExtTest {
         assertEquals("--:--", (null as Duration?).formatDuration())
         assertEquals("10:00", Duration.parse("600s").formatDuration())
     }
-} 
+}
