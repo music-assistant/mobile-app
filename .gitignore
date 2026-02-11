@@ -27,6 +27,7 @@ gen/
 
 # Local configuration file (sdk path, etc)
 local.properties
+.envrc
 
 # Windows thumbnail db
 Thumbs.db

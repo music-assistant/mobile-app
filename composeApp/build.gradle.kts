@@ -43,6 +43,12 @@ kotlin {
             implementation(libs.coil)
             implementation(libs.concentus)
         }
+
+        androidUnitTest.dependencies {
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.robolectric)
+        }
+
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -118,6 +124,10 @@ android {
             isMinifyEnabled = false
         }
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -132,4 +142,5 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
