@@ -1,7 +1,6 @@
-package blah
+package io.music_assistant.client.ui.compose.search
 
-import androidx.compose.material3.Text
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -10,17 +9,17 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class BlahTest {
+class SearchInputTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
     @Test
-    fun blah() {
+    fun `requests focus`() {
         composeTestRule.setContent {
-            Text("Blah")
+            SearchInput(query = "", onQueryChanged = {})
         }
 
-        composeTestRule.onNodeWithText("Blah").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Type at least 3 characters to search").assertIsFocused()
     }
 }
