@@ -31,8 +31,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.input.ImeAction
@@ -126,6 +129,11 @@ private fun SearchContent(
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
 ) {
     val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(focusRequester) {
+        focusRequester.requestFocus()
+    }
+
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -135,7 +143,10 @@ private fun SearchContent(
                 }
                 // Search input
                 OutlinedTextField(
-                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
                     value = state.searchState.query,
                     onValueChange = onQueryChanged,
                     maxLines = 1,
