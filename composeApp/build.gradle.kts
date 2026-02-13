@@ -84,6 +84,7 @@ kotlin {
             // WebRTC for remote access
             implementation(libs.webrtc.kmp)
 
+            implementation(libs.easyqrscan)
         }
 
         commonTest.dependencies {

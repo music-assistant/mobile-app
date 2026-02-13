@@ -10,25 +10,32 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -61,6 +68,9 @@ import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
 import org.koin.compose.viewmodel.koinViewModel
+import org.publicvalue.multiplatform.qrcode.CameraPosition
+import org.publicvalue.multiplatform.qrcode.CodeType
+import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
 @Composable
 fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
@@ -194,7 +204,13 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onIpAddressChange = { ipAddress = it },
                             onPortChange = { port = it },
                             onTlsChange = { isTls = it },
-                            onDirectConnect = { viewModel.attemptConnection(ipAddress, port, isTls) },
+                            onDirectConnect = {
+                                viewModel.attemptConnection(
+                                    ipAddress,
+                                    port,
+                                    isTls
+                                )
+                            },
                             directConnectEnabled = ipAddress.isValidHost() && port.isIpPort(),
                             sessionState = sessionState
                         )
@@ -296,7 +312,7 @@ private fun ConnectionMethodTabs(
         SectionTitle("Connection Method")
 
         // Tabs
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -331,6 +347,7 @@ private fun ConnectionMethodTabs(
                     enabled = directConnectEnabled
                 )
             }
+
             1 -> {
                 // WebRTC connection tab
                 WebRTCConnectionContent(
@@ -433,6 +450,7 @@ private fun WebRTCConnectionContent(
     val isInvalidRemoteId = remoteId.isNotBlank() && !RemoteId.isValid(remoteId)
     val isConnected = sessionState is SessionState.Connected.WebRTC
     val isConnecting = sessionState is SessionState.Connecting
+    var showQrDialog by remember { mutableStateOf(false) }
 
     Text(
         text = "Connect from anywhere without port forwarding",
@@ -441,29 +459,39 @@ private fun WebRTCConnectionContent(
         modifier = Modifier.padding(bottom = 12.dp)
     )
 
-    // Remote ID input field
-    TextField(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        value = remoteId,
-        onValueChange = onRemoteIdChange,
-        label = { Text("Remote ID") },
-        placeholder = { Text("XXXXXXXX-XXXXX-XXXXX-XXXXXXXX") },
-        singleLine = true,
-        colors = TextFieldDefaults.colors(
-            focusedTextColor = MaterialTheme.colorScheme.onBackground,
-            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-        ),
-        supportingText = {
-            Text(
-                text = "Enter the Remote ID from your Music Assistant server settings",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Remote ID input field
+        TextField(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = 8.dp),
+            value = remoteId,
+            onValueChange = onRemoteIdChange,
+            label = { Text("Remote ID") },
+            placeholder = { Text("XXXXXXXX-XXXXX-XXXXX-XXXXXXXX") },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+            ),
+            supportingText = {
+                Text(
+                    text = "Enter the Remote ID from your Music Assistant server settings",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            isError = isInvalidRemoteId
+        )
+
+        IconButton(onClick = { showQrDialog = true }) {
+            Icon(
+                imageVector = Icons.Default.QrCodeScanner,
+                contentDescription = "Scan QR code",
+                tint = MaterialTheme.colorScheme.primary
             )
-        },
-        isError = isInvalidRemoteId
-    )
+        }
+    }
 
     // Validation message
     if (isInvalidRemoteId) {
@@ -497,6 +525,64 @@ private fun WebRTCConnectionContent(
             }
         )
     }
+
+    if (showQrDialog) {
+        QrScanDialog(
+            onDismiss = { showQrDialog = false },
+            onScanned = { scannedText ->
+                onRemoteIdChange(
+                    (scannedText.indexOf(webRtcUrlPrefix) + webRtcUrlPrefix.length)
+                        .takeIf { it < scannedText.length }
+                        ?.let { scannedText.substring(it) }
+                        ?: scannedText)
+                showQrDialog = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QrScanDialog(
+    onDismiss: () -> Unit,
+    onScanned: (String) -> Unit,
+) {
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        content = {
+
+            Column(
+                modifier = Modifier.fillMaxWidth().wrapContentHeight()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainer,
+                        RoundedCornerShape(corner = CornerSize(12.dp))
+                    )
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    style = MaterialTheme.typography.bodyLarge,
+                    text = "Scan QR code"
+                )
+                ScannerWithPermissions(
+                    modifier = Modifier.heightIn(120.dp, 360.dp),
+                    onScanned = { text ->
+                        onScanned(text)
+                        true // return true to disable the scanner
+                    },
+                    types = listOf(CodeType.QR),
+                    cameraPosition = CameraPosition.BACK,
+                    enableTorch = false
+                )
+                OutlinedButton(
+                    modifier = Modifier.align(Alignment.End),
+                    onClick = onDismiss
+                ) {
+                    Text("Cancel")
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -770,3 +856,5 @@ private fun SendspinSection(
         }
     }
 }
+
+const val webRtcUrlPrefix = "https://app.music-assistant.io/?remote_id="
