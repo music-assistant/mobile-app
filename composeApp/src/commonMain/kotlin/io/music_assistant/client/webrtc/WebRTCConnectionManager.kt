@@ -73,6 +73,7 @@ class WebRTCConnectionManager(
 
     private var peerConnection: PeerConnectionWrapper? = null
     private var dataChannel: DataChannelWrapper? = null
+    private var sendspinDataChannelInternal: DataChannelWrapper? = null
     private var signalingMessageListenerJob: Job? = null
     private var iceCandidateJob: Job? = null
     private var dataChannelListenerJob: Job? = null
@@ -89,6 +90,14 @@ class WebRTCConnectionManager(
 
     private val _incomingMessages = MutableSharedFlow<String>(extraBufferCapacity = 100)
     val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
+
+    /**
+     * Sendspin data channel for audio streaming.
+     * Created during WebRTC peer connection setup, available when connected.
+     * Returns null when not connected via WebRTC.
+     */
+    val sendspinDataChannel: DataChannelWrapper?
+        get() = sendspinDataChannelInternal
 
     /**
      * Connect to Music Assistant server via WebRTC.
@@ -302,10 +311,14 @@ class WebRTCConnectionManager(
                 }
             }
 
-            // Create data channel BEFORE offer (required: adds m=application to SDP)
+            // Create data channels BEFORE offer (required: adds m=application to SDP)
             logger.d { "Creating ma-api data channel" }
             val channel = pc.createDataChannel("ma-api")
             setupDataChannel(channel, message.sessionId ?: "")
+
+            logger.d { "Creating sendspin data channel" }
+            val sendspinChannel = pc.createDataChannel("sendspin")
+            setupSendspinDataChannel(sendspinChannel)
 
             // Create SDP offer (now includes m=application section)
             logger.d { "Creating SDP offer" }
@@ -438,6 +451,37 @@ class WebRTCConnectionManager(
     }
 
     /**
+     * Set up the sendspin data channel.
+     *
+     * The channel is stored and monitored, but message handling is delegated to SendspinClient
+     * via the SendspinTransport abstraction. This method just ensures the channel is available
+     * and logs its state changes.
+     */
+    private fun setupSendspinDataChannel(channel: DataChannelWrapper) {
+        // Close previous sendspin channel if exists (reconnection edge case)
+        val oldChannel = sendspinDataChannelInternal
+        if (oldChannel != null) {
+            scope.launch { oldChannel.close() }
+        }
+
+        sendspinDataChannelInternal = channel
+
+        // Monitor state changes for logging
+        scope.launch {
+            try {
+                channel.state.collect { state ->
+                    logger.d { "Sendspin data channel state: $state" }
+                    if (state == DataChannelState.Open) {
+                        logger.i { "Sendspin data channel ready for use" }
+                    }
+                }
+            } catch (e: Exception) {
+                logger.e(e) { "Error monitoring sendspin data channel state" }
+            }
+        }
+    }
+
+    /**
      * Cleanup resources.
      */
     private suspend fun cleanup() {
@@ -464,6 +508,9 @@ class WebRTCConnectionManager(
 
         dataChannel?.close()
         dataChannel = null
+
+        sendspinDataChannelInternal?.close()
+        sendspinDataChannelInternal = null
 
         peerConnection?.close()
         peerConnection = null

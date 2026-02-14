@@ -3,16 +3,20 @@ package io.music_assistant.client.player.sendspin
 import co.touchlab.kermit.Logger
 import io.ktor.http.Url
 import io.music_assistant.client.api.ConnectionInfo
+import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.player.MediaPlayerController
+import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTransport
 import io.music_assistant.client.settings.SettingsRepository
 
 /**
  * Factory for creating SendspinClient instances with proper configuration.
  * Separates client creation logic from lifecycle management.
+ * Automatically detects WebRTC vs WebSocket connection and uses appropriate transport.
  */
 class SendspinClientFactory(
     private val settings: SettingsRepository,
-    private val mediaPlayerController: MediaPlayerController
+    private val mediaPlayerController: MediaPlayerController,
+    private val serviceClient: ServiceClient
 ) {
     private val log = Logger.withTag("SendspinClientFactory")
 
@@ -65,14 +69,36 @@ class SendspinClientFactory(
             )
         }
 
-        log.i { "Creating Sendspin client: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode)" }
+        // Detect connection type: WebRTC or WebSocket
+        val webrtcChannel = serviceClient.webrtcSendspinChannel
 
-        // Create client
         return try {
-            val client = SendspinClient(config, mediaPlayerController)
-            Result.success(client)
+            if (webrtcChannel != null) {
+                // WebRTC mode: create config WITHOUT auth requirement (auth inherited from main channel)
+                log.i { "Creating Sendspin client over WebRTC data channel" }
+
+                val webrtcConfig = config.copy(
+                    // Override auth settings for WebRTC - auth is inherited from main channel
+                    serverPort = 0,  // Not used for WebRTC
+                    mainConnectionPort = null,  // This makes requiresAuth = false
+                    authToken = null  // Not needed, auth already done on ma-api channel
+                )
+
+                val client = SendspinClient(webrtcConfig, mediaPlayerController)
+                val transport = WebRTCDataChannelTransport(webrtcChannel)
+                client.connectWithTransport(transport)
+                log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello)" }
+                Result.success(client)
+            } else {
+                // WebSocket mode: use standard WebSocket transport
+                log.i { "Creating Sendspin client over WebSocket: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode)" }
+                val client = SendspinClient(config, mediaPlayerController)
+                client.start()
+                log.i { "Sendspin client started via WebSocket" }
+                Result.success(client)
+            }
         } catch (e: Exception) {
-            log.e(e) { "Failed to create Sendspin client" }
+            log.e(e) { "Failed to create and start Sendspin client" }
             Result.failure(e)
         }
     }

@@ -70,6 +70,14 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private val _eventsFlow = MutableSharedFlow<Event<out Any>>(extraBufferCapacity = 10)
     val events: Flow<Event<out Any>> = _eventsFlow.asSharedFlow()
 
+    /**
+     * WebRTC Sendspin data channel.
+     * Available when connected via WebRTC, null otherwise.
+     * Used by SendspinClientFactory to create WebRTC transport for Sendspin.
+     */
+    val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
+        get() = webrtcManager?.sendspinDataChannel
+
     private val pendingResponses = mutableMapOf<String, (Answer) -> Unit>()
 
     init {

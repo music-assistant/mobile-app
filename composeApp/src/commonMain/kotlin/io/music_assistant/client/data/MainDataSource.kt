@@ -622,13 +622,8 @@ class MainDataSource(
         sendspinClient = client
         monitorSendspinClient(client)
 
-        // Start client
-        try {
-            client.start()
-        } catch (e: Exception) {
-            log.e(e) { "Failed to start Sendspin client" }
-            sendspinClient = null
-        }
+        // Client is already started by factory (detects WebRTC vs WebSocket automatically)
+        log.i { "Sendspin client initialized and started" }
     }
 
     /**
