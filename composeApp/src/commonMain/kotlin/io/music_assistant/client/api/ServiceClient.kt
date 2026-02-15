@@ -63,6 +63,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private var webrtcManager: WebRTCConnectionManager? = null
     private var webrtcListeningJob: Job? = null
     private var webrtcStateMonitorJob: Job? = null
+    private var webrtcInitialMonitorJob: Job? = null  // Temp monitor during connection, cancelled when message listener starts
 
     // Cache last successful WebRTC connection for reconnection
     // Needed because state may transition to Error before monitor can extract info (race with MainDataSource)
@@ -281,7 +282,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         manager.connect(remoteId)
 
                         // Wait for connection to establish
-                        launch {
+                        webrtcInitialMonitorJob = launch {
                             manager.connectionState.collect { state ->
                                 when (state) {
                                     is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Connected -> {
@@ -340,7 +341,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
                         // Monitor initial connection attempt only
                         // Once connected, startWebRTCMessageListener() takes over state monitoring
-                        launch {
+                        webrtcInitialMonitorJob = launch {
                             manager.connectionState.collect { managerState ->
                                 when (managerState) {
                                     is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Connected -> {
@@ -388,6 +389,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             webrtcListeningJob = null
             webrtcStateMonitorJob?.cancel()
             webrtcStateMonitorJob = null
+            webrtcInitialMonitorJob?.cancel()
+            webrtcInitialMonitorJob = null
             oldManager.disconnect()
         }
 
@@ -399,9 +402,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     }
 
     private fun startWebRTCMessageListener(manager: WebRTCConnectionManager) {
-        // Cancel previous jobs to prevent leaks
+        // Cancel previous jobs to prevent leaks and race conditions
         webrtcListeningJob?.cancel()
         webrtcStateMonitorJob?.cancel()
+        webrtcInitialMonitorJob?.cancel()  // Critical: stop initial monitor that sets Disconnected.Error
 
         webrtcListeningJob = launch {
             try {
