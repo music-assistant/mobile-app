@@ -45,16 +45,53 @@ class SettingsRepository(
         }
     }
 
+    // DEPRECATED: Legacy global token (kept for migration)
     private val _token = MutableStateFlow(
         settings.getStringOrNull("token")?.takeIf { it.isNotBlank() }
     )
     val token = _token.asStateFlow()
 
+    @Deprecated("Use getTokenForServer/setTokenForServer instead")
     fun updateToken(token: String?) {
         if (token != this._token.value) {
             settings.putString("token", token ?: "")
             _token.update { token }
         }
+    }
+
+    /**
+     * Get authentication token for a specific server.
+     * @param serverIdentifier "direct:host:port" or "webrtc:remoteId"
+     */
+    fun getTokenForServer(serverIdentifier: String): String? {
+        return settings.getStringOrNull("token_$serverIdentifier")?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Save authentication token for a specific server.
+     * @param serverIdentifier "direct:host:port" or "webrtc:remoteId"
+     * @param token Authentication token (null to clear)
+     */
+    fun setTokenForServer(serverIdentifier: String, token: String?) {
+        if (token.isNullOrBlank()) {
+            settings.remove("token_$serverIdentifier")
+        } else {
+            settings.putString("token_$serverIdentifier", token)
+        }
+    }
+
+    /**
+     * Get server identifier for Direct connection.
+     */
+    fun getDirectServerIdentifier(host: String, port: Int): String {
+        return "direct:$host:$port"
+    }
+
+    /**
+     * Get server identifier for WebRTC connection.
+     */
+    fun getWebRTCServerIdentifier(remoteId: String): String {
+        return "webrtc:$remoteId"
     }
 
     @OptIn(ExperimentalUuidApi::class)

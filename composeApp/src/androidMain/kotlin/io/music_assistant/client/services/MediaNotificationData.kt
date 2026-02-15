@@ -14,7 +14,7 @@ data class MediaNotificationData(
     val isPlaying: Boolean,
     val imageUrl: String?,
     val elapsedTime: Long?,
-    val playerName: String,
+    val playerName: String?,
     val duration: Long?
 ) {
 
@@ -31,7 +31,7 @@ data class MediaNotificationData(
                 isPlaying = playerData.player.isPlaying,
                 imageUrl = playerData.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl),
                 elapsedTime = playerData.queueInfo?.elapsedTime?.toLong()?.let { it * 1000 },
-                playerName = playerData.player.displayName,
+                playerName = playerData.player.displayName.takeIf { !playerData.isLocal },
                 duration = playerData.queueInfo?.currentItem?.track?.duration?.toLong()
                     ?.let { it * 1000 }
             )

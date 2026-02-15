@@ -243,7 +243,8 @@ class MainDataSource(
                                                     )
                                                 } ?: DataState.NoData(),
                                             groupChildren = playersState.data
-                                                .mapNotNull { it.asBindFor(player) }
+                                                .mapNotNull { it.asBindFor(player) },
+                                            isLocal = player.id == settings.sendspinClientId.value
 
                                         )
                                         (oldValues as? DataState.Data)?.data
@@ -274,7 +275,8 @@ class MainDataSource(
                                                     )
                                                 } ?: DataState.NoData(),
                                             groupChildren = playersState.data
-                                                .mapNotNull { it.asBindFor(player) }
+                                                .mapNotNull { it.asBindFor(player) },
+                                            isLocal = player.id == settings.sendspinClientId.value
 
                                         )
                                         (oldValues as? DataState.Data)?.data
@@ -318,10 +320,28 @@ class MainDataSource(
                                             // CRITICAL: Re-authenticate the server session
                                             // New WebSocket connection needs auth command sent
                                             launch {
-                                                settings.token.value?.let { token ->
-                                                    log.i { "Re-authenticating after reconnection with saved token" }
+                                                // Get token for current server
+                                                val serverIdentifier = when (val state = apiClient.sessionState.value) {
+                                                    is SessionState.Connected.Direct -> {
+                                                        state.connectionInfo?.let { connInfo ->
+                                                            settings.getDirectServerIdentifier(connInfo.host, connInfo.port)
+                                                        }
+                                                    }
+                                                    is SessionState.Connected.WebRTC -> {
+                                                        settings.getWebRTCServerIdentifier(state.remoteId.rawId)
+                                                    }
+                                                    else -> null
+                                                }
+
+                                                val token = serverIdentifier?.let { settings.getTokenForServer(it) }
+                                                    ?: settings.token.value // Fallback to legacy global token
+
+                                                if (token != null) {
+                                                    log.i { "Re-authenticating after reconnection with saved token for server: $serverIdentifier" }
                                                     apiClient.authorize(token, isAutoLogin = true)
-                                                } ?: log.w { "No saved token to re-authenticate with" }
+                                                } else {
+                                                    log.w { "No saved token to re-authenticate with for server: $serverIdentifier" }
+                                                }
                                             }
 
                                             // Sendspin is still running, will reconnect on its own
@@ -1289,7 +1309,8 @@ class MainDataSource(
                                                     ?: DataState.Error()
                                             )
                                         ),
-                                        groupChildren = playerData.groupChildren
+                                        groupChildren = playerData.groupChildren,
+                                        isLocal = playerData.player.id == settings.sendspinClientId.value
                                     )
 
                                 } else playerData

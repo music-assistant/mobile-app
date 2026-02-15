@@ -281,14 +281,12 @@ class WebRTCConnectionManager(
 
                             PeerConnectionStateValue.DISCONNECTED -> {
                                 logger.w { "ICE connection disconnected" }
-                                // Note: "disconnected" can be temporary during network switches
-                                // Only fail if we're not already connected (i.e., first connection attempt)
-                                if (_connectionState.value !is WebRTCConnectionState.Connected) {
-                                    _connectionState.value = WebRTCConnectionState.Error(
-                                        WebRTCError.ConnectionError("ICE connection disconnected during setup")
-                                    )
-                                    cleanup()
-                                }
+                                // Treat disconnected as immediate failure to enable fast reconnection
+                                // Even if temporary, reconnection will succeed quickly
+                                _connectionState.value = WebRTCConnectionState.Error(
+                                    WebRTCError.ConnectionError("ICE connection disconnected")
+                                )
+                                cleanup()
                             }
 
                             PeerConnectionStateValue.CLOSED -> {

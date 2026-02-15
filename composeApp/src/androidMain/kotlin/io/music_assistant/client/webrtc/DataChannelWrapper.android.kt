@@ -37,7 +37,11 @@ actual class DataChannelWrapper(
     private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 50)
     actual val messages: Flow<String> = _textMessages.asSharedFlow()
 
-    private val _binaryMessages = MutableSharedFlow<ByteArray>(extraBufferCapacity = 100)
+    // CRITICAL: Binary messages (audio chunks) arrive at real-time streaming rate (~50-100/sec).
+    // Large buffer prevents backpressure blocking WebRTC native callbacks during consumer lag.
+    // Without sufficient buffering, emit() suspends → native callbacks block → audio starves.
+    // 2000 messages ≈ 20-40 seconds of headroom depending on chunk size.
+    private val _binaryMessages = MutableSharedFlow<ByteArray>(extraBufferCapacity = 2000)
     actual val binaryMessages: Flow<ByteArray> = _binaryMessages.asSharedFlow()
 
     init {
