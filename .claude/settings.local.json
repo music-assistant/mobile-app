@@ -21,7 +21,8 @@
       "WebFetch(domain:www.music-assistant.io)",
       "WebFetch(domain:app.music-assistant.io)",
       "Bash(gh search:*)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(unzip:*)"
     ]
   }
 }

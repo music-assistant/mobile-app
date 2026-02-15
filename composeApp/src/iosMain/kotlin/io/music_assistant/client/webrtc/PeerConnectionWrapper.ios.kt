@@ -43,7 +43,11 @@ actual class PeerConnectionWrapper actual constructor() {
         throw NotImplementedError("iOS WebRTC support not yet implemented")
     }
 
-    actual fun createDataChannel(label: String): DataChannelWrapper {
+    actual fun createDataChannel(
+        label: String,
+        ordered: Boolean,
+        maxRetransmits: Int
+    ): DataChannelWrapper {
         throw NotImplementedError("iOS WebRTC support not yet implemented")
     }
 

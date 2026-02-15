@@ -311,11 +311,22 @@ class WebRTCConnectionManager(
 
             // Create data channels BEFORE offer (required: adds m=application to SDP)
             logger.d { "Creating ma-api data channel" }
-            val channel = pc.createDataChannel("ma-api")
+            // ma-api: reliable ordered delivery for JSON commands
+            val channel = pc.createDataChannel(
+                label = "ma-api",
+                ordered = true,
+                maxRetransmits = -1  // unlimited retransmits for reliability
+            )
             setupDataChannel(channel, message.sessionId ?: "")
 
             logger.d { "Creating sendspin data channel" }
-            val sendspinChannel = pc.createDataChannel("sendspin")
+            // sendspin: unreliable unordered delivery for real-time audio streaming
+            // Better to skip a lost chunk than stall the entire stream on cellular networks
+            val sendspinChannel = pc.createDataChannel(
+                label = "sendspin",
+                ordered = false,       // don't wait for lost packets
+                maxRetransmits = 0     // don't retransmit - move on
+            )
             setupSendspinDataChannel(sendspinChannel)
 
             // Create SDP offer (now includes m=application section)

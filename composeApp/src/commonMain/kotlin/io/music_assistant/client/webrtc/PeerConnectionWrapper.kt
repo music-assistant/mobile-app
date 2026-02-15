@@ -99,9 +99,15 @@ expect class PeerConnectionWrapper() {
      * Note: For Music Assistant, server creates the channel, so this is rarely used.
      *
      * @param label Channel label (e.g., "ma-api", "sendspin")
+     * @param ordered If true, messages arrive in order (reliable). If false, unreliable delivery (better for real-time audio)
+     * @param maxRetransmits Max retransmission attempts (-1 = unlimited). Use 0 for real-time streams to avoid stalls.
      * @return DataChannelWrapper for the created channel
      */
-    fun createDataChannel(label: String): DataChannelWrapper
+    fun createDataChannel(
+        label: String,
+        ordered: Boolean = true,
+        maxRetransmits: Int = -1
+    ): DataChannelWrapper
 
     /**
      * Close peer connection and cleanup resources.
