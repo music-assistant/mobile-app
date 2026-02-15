@@ -384,20 +384,22 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private suspend fun getOrCreateWebRTCManager(): WebRTCConnectionManager {
         // Clean up old manager completely before creating new one
         webrtcManager?.let { oldManager ->
-            Logger.withTag("ServiceClient").d { "Cleaning up old WebRTC manager" }
+            Logger.withTag("ServiceClient").d { "🧹 Cleaning up old WebRTC manager [${oldManager.hashCode()}]" }
             webrtcListeningJob?.cancel()
             webrtcListeningJob = null
             webrtcStateMonitorJob?.cancel()
             webrtcStateMonitorJob = null
             webrtcInitialMonitorJob?.cancel()
             webrtcInitialMonitorJob = null
+            Logger.withTag("ServiceClient").d { "🧹 Disconnecting old manager [${oldManager.hashCode()}]" }
             oldManager.disconnect()
+            Logger.withTag("ServiceClient").d { "🧹 Old manager [${oldManager.hashCode()}] cleaned up" }
         }
 
         val signalingClient = SignalingClient(webrtcHttpClient, this)
         val manager = WebRTCConnectionManager(signalingClient, this)
         webrtcManager = manager
-        Logger.withTag("ServiceClient").d { "Created new WebRTC manager" }
+        Logger.withTag("ServiceClient").d { "✨ Created new WebRTC manager [${manager.hashCode()}]" }
         return manager
     }
 
@@ -431,9 +433,11 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         webrtcStateMonitorJob = launch {
             manager.connectionState.collect { connectionState ->
                 Logger.withTag("ServiceClient")
-                    .w { "🔍 STATE: ${connectionState::class.simpleName}" }
+                    .w { "🔍 MONITOR[${manager.hashCode()}]: ${connectionState::class.simpleName}" }
                 when (connectionState) {
                     is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
+                        Logger.withTag("ServiceClient")
+                            .w { "🚨 MONITOR[${manager.hashCode()}] triggering reconnection for error: ${connectionState.error}" }
                         Logger.withTag("ServiceClient")
                             .w { "🚨 ERROR: ${connectionState.error}" }
                         val currentState = _sessionState.value
@@ -485,9 +489,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                 )
                             }
 
-                            // Launch reconnection in separate coroutine to survive monitor cancellation
-                            // (getOrCreateWebRTCManager cancels webrtcStateMonitorJob - this job)
-                            launch {
+                            // Launch reconnection in ServiceClient scope to survive monitor cancellation
+                            // (getOrCreateWebRTCManager cancels webrtcStateMonitorJob)
+                            // CRITICAL: Use this@ServiceClient.launch, NOT launch (which would create child of monitor job)
+                            this@ServiceClient.launch {
                                 autoReconnectWebRTC(
                                     info.remoteId,
                                     info.serverInfo,
@@ -771,9 +776,17 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             delay(delay)
 
             // Check again after delay
-            if (_sessionState.value is SessionState.Disconnected.ByUser) {
+            val stateAfterDelay = _sessionState.value
+            if (stateAfterDelay is SessionState.Disconnected.ByUser) {
                 Logger.withTag("ServiceClient")
                     .i { "User manually disconnected during delay - stopping WebRTC reconnection loop" }
+                return
+            }
+
+            // CRITICAL: Stop if already connected (another attempt succeeded while we were delaying)
+            if (stateAfterDelay is SessionState.Connected.WebRTC) {
+                Logger.withTag("ServiceClient")
+                    .i { "✅ Already connected (another attempt succeeded) - stopping reconnection loop" }
                 return
             }
 
@@ -804,7 +817,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 while (System.currentTimeMillis() - startTime < timeoutMs) {
                     when (val state = _sessionState.value) {
                         is SessionState.Connected.WebRTC -> {
-                            Logger.withTag("ServiceClient").i { "WebRTC reconnection successful!" }
+                            Logger.withTag("ServiceClient").i { "✅ WebRTC reconnection successful! Exiting reconnection loop." }
 
                             // Re-authenticate with saved token
                             launch {
@@ -814,13 +827,14 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
                                 if (token != null) {
                                     Logger.withTag("ServiceClient")
-                                        .i { "Re-authenticating after WebRTC reconnection with saved token" }
+                                        .i { "🔐 Re-authenticating after WebRTC reconnection with saved token" }
                                     authorize(token, isAutoLogin = true)
                                 } else {
                                     Logger.withTag("ServiceClient")
-                                        .w { "No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
+                                        .w { "⚠️ No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
                                 }
                             }
+                            Logger.withTag("ServiceClient").i { "🏁 autoReconnectWebRTC() returning" }
                             return
                         }
                         is SessionState.Disconnected.ByUser -> {
