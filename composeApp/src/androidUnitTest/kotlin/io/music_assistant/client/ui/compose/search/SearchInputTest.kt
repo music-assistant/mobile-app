@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.search
 
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -15,11 +16,20 @@ class SearchInputTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun `requests focus`() {
+    fun `requests focus when query is empty`() {
         composeTestRule.setContent {
             SearchInput(query = "", onQueryChanged = {})
         }
 
         composeTestRule.onNodeWithText("Type at least 3 characters to search").assertIsFocused()
+    }
+
+    @Test
+    fun `does not request focus when query is not empty`() {
+        composeTestRule.setContent {
+            SearchInput(query = "con", onQueryChanged = {})
+        }
+
+        composeTestRule.onNodeWithText("con").assertIsNotFocused()
     }
 }

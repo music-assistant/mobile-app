@@ -24,8 +24,10 @@ fun SearchInput(
     focusManager: FocusManager = LocalFocusManager.current
 ) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(focusRequester) {
-        focusRequester.requestFocus()
+    LaunchedEffect(Unit) {
+        if (query.isEmpty()) {
+            focusRequester.requestFocus()
+        }
     }
 
     OutlinedTextField(
