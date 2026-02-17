@@ -64,6 +64,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private var webrtcListeningJob: Job? = null
     private var webrtcStateMonitorJob: Job? = null
     private var webrtcInitialMonitorJob: Job? = null  // Temp monitor during connection, cancelled when message listener starts
+    private var webrtcReconnectJob: Job? = null  // Active reconnection job, cancelled when connection succeeds or user disconnects
 
     // Cache last successful WebRTC connection for reconnection
     // Needed because state may transition to Error before monitor can extract info (race with MainDataSource)
@@ -471,6 +472,13 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         }
 
                         if (info != null) {
+                            // Check if reconnection already running
+                            if (webrtcReconnectJob?.isActive == true) {
+                                Logger.withTag("ServiceClient")
+                                    .w { "🛑 SKIP: Reconnection already in progress" }
+                                return@collect
+                            }
+
                             val source = if (currentState is SessionState.Connected.WebRTC) "current state" else "cache"
                             Logger.withTag("ServiceClient")
                                 .w { "🔄 RECONNECT: Starting (from $source)" }
@@ -489,10 +497,13 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                 )
                             }
 
+                            // Cancel any stale reconnection job (defensive)
+                            webrtcReconnectJob?.cancel()
+
                             // Launch reconnection in ServiceClient scope to survive monitor cancellation
                             // (getOrCreateWebRTCManager cancels webrtcStateMonitorJob)
                             // CRITICAL: Use this@ServiceClient.launch, NOT launch (which would create child of monitor job)
-                            this@ServiceClient.launch {
+                            webrtcReconnectJob = this@ServiceClient.launch {
                                 autoReconnectWebRTC(
                                     info.remoteId,
                                     info.serverInfo,
@@ -810,8 +821,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             try {
                 connectWebRTC(remoteId)
 
-                // Wait for connection state to change (max 5 seconds)
-                val timeoutMs = 5000L
+                // Wait for connection state to change
+                // WebRTC connection can take time on cellular: signaling + ICE + STUN/TURN + peer connection
+                val timeoutMs = 30000L  // 30 seconds
                 val startTime = System.currentTimeMillis()
 
                 while (System.currentTimeMillis() - startTime < timeoutMs) {
@@ -1085,6 +1097,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 is SessionState.Connected.WebRTC -> {
                     webrtcListeningJob?.cancel()
                     webrtcListeningJob = null
+                    webrtcInitialMonitorJob?.cancel()
+                    webrtcInitialMonitorJob = null
+                    webrtcReconnectJob?.cancel()
+                    webrtcReconnectJob = null
                     currentState.manager.disconnect()
                     _sessionState.update { newState }
 
@@ -1095,12 +1111,19 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 }
 
                 is SessionState.Reconnecting -> {
-                    // Already disconnected, just update state
+                    // Cancel any active reconnection attempt
+                    webrtcReconnectJob?.cancel()
+                    webrtcReconnectJob = null
                     _sessionState.update { newState }
                 }
 
                 else -> {
-                    // Already disconnected or in some other state
+                    // Already disconnected or in some other state (including Connecting)
+                    // Cancel any active WebRTC jobs
+                    webrtcInitialMonitorJob?.cancel()
+                    webrtcInitialMonitorJob = null
+                    webrtcReconnectJob?.cancel()
+                    webrtcReconnectJob = null
                     _sessionState.update { newState }
                 }
             }

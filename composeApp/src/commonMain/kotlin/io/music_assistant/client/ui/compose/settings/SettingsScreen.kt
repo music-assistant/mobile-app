@@ -217,11 +217,21 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
 
                     SessionState.Connecting -> {
-                        ConnectingSection(ipAddress, port, preferredMethod)
+                        ConnectingSection(
+                            ipAddress = ipAddress,
+                            port = port,
+                            preferredMethod = preferredMethod,
+                            onCancel = { viewModel.disconnect() }
+                        )
                     }
 
                     is SessionState.Reconnecting -> {
-                        ConnectingSection(ipAddress, port, preferredMethod)
+                        ConnectingSection(
+                            ipAddress = ipAddress,
+                            port = port,
+                            preferredMethod = preferredMethod,
+                            onCancel = { viewModel.disconnect() }
+                        )
                     }
 
                     is SessionState.Connected -> {
@@ -586,20 +596,36 @@ private fun QrScanDialog(
 }
 
 @Composable
-private fun ConnectingSection(ipAddress: String, port: String, preferredMethod: String?) {
+private fun ConnectingSection(
+    ipAddress: String,
+    port: String,
+    preferredMethod: String?,
+    onCancel: () -> Unit
+) {
     val text = if (preferredMethod == "webrtc") {
         "Connecting to remote server..."
     } else {
         "Connecting to $ipAddress:$port..."
     }
     SectionCard {
-        Text(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center
-        )
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancel")
+            }
+        }
     }
 }
 

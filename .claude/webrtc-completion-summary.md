@@ -1,8 +1,8 @@
 # WebRTC Remote Access - Completion Summary
 
 **Status**: ✅ **PRODUCTION READY** (Android)
-**Date Completed**: 2026-02-14
-**Functionality**: Fully working WebRTC remote access with auto-reconnection
+**Date Completed**: 2026-02-15
+**Functionality**: Fully working WebRTC remote access with robust auto-reconnection and smooth audio streaming over cellular
 
 ---
 
@@ -17,19 +17,21 @@
 - Full authentication flow over WebRTC
 - All API commands work identically to Direct mode
 
-### Auto-Reconnection (✅ Complete - 2026-02-14)
+### Auto-Reconnection (✅ Complete - 2026-02-15)
 - **Exponential backoff**: 500ms, 1s, 2s, 3s, 5s
 - **Network change detection**: WiFi ↔ 4G transitions
 - **Connection info caching**: Survives state race conditions
 - **Per-server credentials**: Separate tokens for each server
 - **Initial monitor cleanup**: Prevents race conditions on error
+- **Overlap prevention**: Stops duplicate attempts from fighting each other
 
-### Sendspin over WebRTC (✅ Complete - 2026-02-13)
+### Sendspin over WebRTC (✅ Complete - 2026-02-15)
 - Binary audio streaming via dedicated `sendspin` data channel
+- **Unreliable delivery** (`ordered=false, maxRetransmits=0`) for real-time streaming
 - Transport abstraction (`WebRTCDataChannelTransport`)
 - Auto-detection in `SendspinClientFactory`
 - Full protocol handshake (skips redundant auth)
-- Playback functional (tested and working)
+- Smooth playback over cellular networks (tested in car)
 
 ### Platform Support
 - **Android**: ✅ Fully implemented and tested
@@ -80,6 +82,46 @@
 **Result**: Only ONE monitor active at a time, reconnection works reliably
 **Files**: `ServiceClient.kt` (added tracking variable, cancellation logic)
 
+### 8. Audio Hiccups Over Cellular (2026-02-15) - **PRODUCTION BLOCKER**
+**Problem**: Huge repeating hiccups, cranks, jumps, complete audio stops while driving on cellular network
+**Root Cause**: `ordered=true` on sendspin data channel → packet loss causes retransmission queue → buffering cascade → audio stalls
+**Impact**: Unusable on cellular/poor WiFi conditions (car environment)
+**Fix**: Changed sendspin channel to `ordered=false, maxRetransmits=0` (unreliable delivery, like UDP)
+**Trade-off**: Lost audio chunk = minor glitch (barely noticeable at 50-100 chunks/sec) vs stalled stream = major failure
+**Files**:
+- `PeerConnectionWrapper.kt` - added `ordered` and `maxRetransmits` parameters
+- `PeerConnectionWrapper.android.kt` - pass parameters to webrtc-kmp
+- `PeerConnectionWrapper.ios.kt` - updated stub signature
+- `WebRTCConnectionManager.kt` - different configs: ma-api (reliable), sendspin (unreliable)
+**Result**: Smooth playback over cellular, tested in car
+
+### 9. Self-Cancelling Reconnection v2 (2026-02-15)
+**Problem**: Reconnection still self-cancelling despite 2026-02-14 fix
+**Root Cause**: `launch { autoReconnectWebRTC() }` without explicit scope creates child of monitor job
+**Impact**: Reconnection aborts with `JobCancellationException`
+**Fix**: Changed to `this@ServiceClient.launch { }` to explicitly use ServiceClient scope, not monitor scope
+**File**: `ServiceClient.kt:490`
+**Result**: Reconnection survives monitor cancellation
+
+### 10. Overlapping Reconnection Attempts (2026-02-15) - **CRITICAL**
+**Problem**: Multiple reconnection attempts running simultaneously, each creating new managers
+**Symptom**: Connection succeeds but immediately replaced by next attempt (seen in logs as different manager hash codes)
+**Root Cause**: Attempts scheduled with exponential delays but 5-second connection timeout causes overlap
+**Timeline Example**:
+  - 11:42:05 - Attempt 3 fails
+  - 11:42:07 - Attempt 3 actually succeeds (creates manager [100109782])
+  - 11:42:08 - Attempt 4 starts (scheduled before attempt 3 succeeded), creates manager [192041205], destroys [100109782]
+  - 11:42:15 - Attempt 4 succeeds, but attempt 5 already starting...
+**Fix**: Check if already connected after delay, before creating new manager:
+```kotlin
+if (stateAfterDelay is SessionState.Connected.WebRTC) {
+    Logger.i { "Already connected (another attempt succeeded) - stopping" }
+    return
+}
+```
+**File**: `ServiceClient.kt:773`
+**Result**: Only ONE successful connection, no more fighting managers
+
 ---
 
 ## Architecture
@@ -105,11 +147,14 @@ ServiceClient (dual-mode: Direct + WebRTC)
 1. **ma-api** (label: "ma-api")
    - Purpose: JSON API commands
    - Format: TEXT messages
+   - Config: `ordered=true, maxRetransmits=-1` (reliable, like TCP)
    - Usage: All Music Assistant API calls
 
 2. **sendspin** (label: "sendspin")
    - Purpose: Real-time audio streaming
    - Format: BINARY messages (Sendspin protocol)
+   - Config: `ordered=false, maxRetransmits=0` (unreliable, like UDP)
+   - Rationale: Better to skip lost chunk than stall entire stream on poor networks
    - Usage: Built-in player audio delivery
 
 ---
@@ -151,8 +196,8 @@ ServiceClient (dual-mode: Direct + WebRTC)
 **Application**: Cache critical data before state transitions, use cached values for recovery.
 
 ### 3. Self-Cancelling Coroutines
-**Lesson**: If reconnection logic is inside a job that gets cancelled during reconnection, it aborts.
-**Application**: Launch reconnection in separate coroutine scope: `launch { autoReconnect() }`
+**Lesson**: If reconnection logic is inside a job that gets cancelled during reconnection, it aborts. `launch { }` without explicit scope creates child of current job.
+**Application**: Launch in ServiceClient scope explicitly: `this@ServiceClient.launch { autoReconnect() }`
 
 ### 4. Platform API Limitations
 **Lesson**: webrtc-kmp doesn't expose TEXT vs BINARY flag for data channel messages.
@@ -165,6 +210,18 @@ ServiceClient (dual-mode: Direct + WebRTC)
 ### 6. Data Class Cohesion
 **Lesson**: 5 nullable fields that are always set/cleared together = code smell.
 **Application**: Consolidate into single `WebRTCConnectionCache` data class.
+
+### 7. Ordered vs Unordered Delivery
+**Lesson**: `ordered=true` on WebRTC data channels is catastrophic for real-time streams over unreliable networks.
+**Problem**: Lost packet → entire stream stalls waiting for retransmission → buffering cascade → audio glitches
+**Application**: Use `ordered=false, maxRetransmits=0` for real-time audio (UDP-like), `ordered=true` for commands (TCP-like)
+**Trade-off**: Minor glitch from lost chunk << major stall from retransmission queue
+
+### 8. Overlapping Async Operations
+**Lesson**: Exponential backoff reconnection can create overlapping attempts if connection takes longer than delay.
+**Problem**: Attempt N connecting while attempts N+1, N+2 already scheduled → parallel managers destroying each other
+**Application**: Check if already connected after delay, before starting new operation
+**Pattern**: `if (stateAfterDelay is Connected) { return /* another attempt succeeded */ }`
 
 ---
 
@@ -183,8 +240,10 @@ ServiceClient (dual-mode: Direct + WebRTC)
 
 ### Audio Streaming Quality
 - **Latency**: <100ms (comparable to Direct mode)
-- **Dropout rate**: <0.1% (network-dependent)
+- **Dropout rate**: <0.1% with unreliable delivery (minor glitches vs major stalls)
 - **Buffer stability**: No overflows with 2000-message buffer
+- **Cellular performance**: Smooth playback in car (4G/5G), tested while driving
+- **Network transitions**: WiFi ↔ cellular handoffs handled gracefully with auto-reconnect
 
 ---
 

@@ -53,6 +53,7 @@ fun ConnectionStatusBanner(
         bannerState?.let { state ->
             ReconnectingBanner(
                 attempt = state.attempt,
+                onCancel = { serviceClient.disconnectByUser() },
                 modifier = modifier
             )
         }
@@ -66,6 +67,7 @@ private sealed interface BannerState {
 @Composable
 private fun ReconnectingBanner(
     attempt: Int,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -76,19 +78,33 @@ private fun ReconnectingBanner(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.padding(end = 8.dp).size(16.dp),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                text = "Reconnecting... (attempt $attempt)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(end = 8.dp).size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = "Reconnecting... (attempt $attempt)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            androidx.compose.material3.TextButton(
+                onClick = onCancel
+            ) {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
         }
     }
 }

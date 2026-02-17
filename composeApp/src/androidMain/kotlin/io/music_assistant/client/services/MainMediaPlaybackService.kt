@@ -6,11 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.widget.Toast
+import co.touchlab.kermit.Logger
 import androidx.media.MediaBrowserServiceCompat
 import coil3.BitmapImage
 import coil3.ImageLoader
@@ -24,6 +28,7 @@ import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,10 +49,12 @@ import kotlin.math.max
 @OptIn(FlowPreview::class)
 class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val logger = Logger.withTag("MainMediaPlaybackService")
 
     private lateinit var mediaSessionHelper: MediaSessionHelper
     private lateinit var mediaNotificationManager: MediaNotificationManager
     private lateinit var imageLoader: ImageLoader
+    private lateinit var audioManager: AudioManager
 
     private val dataSource: MainDataSource by inject()
 
@@ -79,6 +86,49 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         .stateIn(scope, SharingStarted.WhileSubscribed(), null)
         .filterNotNull()
 
+    // Debounce job to prevent double-pause when multiple BT devices are removed simultaneously
+    // (e.g., wireless Android Auto disconnects both TYPE_BLUETOOTH_A2DP and TYPE_BLUETOOTH_SCO)
+    private var audioRoutingPauseJob: Job? = null
+
+    // Audio routing callback - pauses playback when external audio output disconnects
+    // (Android Auto, Bluetooth headphones, wired headphones, USB audio, etc.)
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+            val hasExternalOutputRemoved = removedDevices?.any { device ->
+                device.isSink && when (device.type) {
+                    AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,      // Bluetooth audio (includes Android Auto)
+                    AudioDeviceInfo.TYPE_BLUETOOTH_SCO,       // Bluetooth phone audio
+                    AudioDeviceInfo.TYPE_WIRED_HEADPHONES,    // 3.5mm headphones
+                    AudioDeviceInfo.TYPE_WIRED_HEADSET,       // 3.5mm headset
+                    AudioDeviceInfo.TYPE_USB_DEVICE,          // USB audio
+                    AudioDeviceInfo.TYPE_USB_HEADSET,         // USB headset
+                    AudioDeviceInfo.TYPE_USB_ACCESSORY -> true
+                    else -> false
+                }
+            } ?: false
+
+            if (hasExternalOutputRemoved) {
+                val names = removedDevices?.filter { it.isSink }?.map { it.productName } ?: emptyList()
+                logger.w { "External audio output(s) disconnected: $names" }
+
+                // Debounce: cancel pending job and reschedule, so multiple simultaneous
+                // device removals (e.g., BT A2DP + SCO at once) only trigger ONE pause
+                audioRoutingPauseJob?.cancel()
+                audioRoutingPauseJob = scope.launch {
+                    kotlinx.coroutines.delay(300)
+                    currentPlayerData.value?.let { playerData ->
+                        if (playerData.player.isPlaying) {
+                            logger.i { "Pausing player ${playerData.player.id} due to audio output disconnection" }
+                            dataSource.playerAction(playerData, PlayerAction.TogglePlayPause)
+                        } else {
+                            logger.d { "Player already paused, no action needed" }
+                        }
+                    } ?: logger.w { "No active player found to pause" }
+                }
+            }
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return START_STICKY
     }
@@ -98,6 +148,12 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         )
         sessionToken = mediaSessionHelper.getSessionToken()
         imageLoader = ImageLoader(this)
+
+        // Register audio device callback to detect when external outputs disconnect
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
+        logger.i { "Registered audio device callback for routing change detection" }
+
         scope.launch {
             mediaNotificationData.debounce(200).collect { updatePlaybackState(it) }
         }
@@ -216,6 +272,8 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onDestroy() {
         unregisterReceiver(notificationDismissReceiver)
+        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+        logger.i { "Unregistered audio device callback" }
         mediaSessionHelper.release()
         scope.cancel()
         super.onDestroy()
