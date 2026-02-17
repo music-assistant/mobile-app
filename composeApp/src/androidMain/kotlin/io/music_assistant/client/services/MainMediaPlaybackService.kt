@@ -14,8 +14,8 @@ import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.widget.Toast
-import co.touchlab.kermit.Logger
 import androidx.media.MediaBrowserServiceCompat
+import co.touchlab.kermit.Logger
 import coil3.BitmapImage
 import coil3.ImageLoader
 import coil3.request.CachePolicy
@@ -105,10 +105,10 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                     AudioDeviceInfo.TYPE_USB_ACCESSORY -> true
                     else -> false
                 }
-            } ?: false
+            } == true
 
             if (hasExternalOutputRemoved) {
-                val names = removedDevices?.filter { it.isSink }?.map { it.productName } ?: emptyList()
+                val names = removedDevices.filter { it.isSink }.map { it.productName }
                 logger.w { "External audio output(s) disconnected: $names" }
 
                 // Debounce: cancel pending job and reschedule, so multiple simultaneous
@@ -150,7 +150,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         imageLoader = ImageLoader(this)
 
         // Register audio device callback to detect when external outputs disconnect
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
         logger.i { "Registered audio device callback for routing change detection" }
 

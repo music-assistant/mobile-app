@@ -46,36 +46,38 @@ fun PlayersTopBar(
             )
         }
 
-        HorizontalPagerIndicator(
-            modifier = Modifier.weight(1f),
-            pagerState = playerPagerState,
-            onItemMoved = onItemMoved,
-        )
+        if (playerDataList.size > 1) {
+            HorizontalPagerIndicator(
+                modifier = Modifier.weight(1f),
+                pagerState = playerPagerState,
+                onItemMoved = onItemMoved,
+            )
 
-        OverflowMenu(
-            modifier = Modifier,
-            buttonContent = { onClick ->
-                IconButton(
-                    modifier = Modifier.size(32.dp),
-                    onClick = onClick
-                ) {
-                    Icon(
-                        modifier = Modifier.size(20.dp),
-                        imageVector = Icons.Filled.Speaker,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+            OverflowMenu(
+                modifier = Modifier,
+                buttonContent = { onClick ->
+                    IconButton(
+                        modifier = Modifier.size(32.dp),
+                        onClick = onClick
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(20.dp),
+                            imageVector = Icons.Filled.Speaker,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+                options = playerDataList.map { data ->
+                    val isLocalPlayer = data.playerId == playersState.localPlayerId
+                    OverflowMenuOption(
+                        title = data.player.displayName + (if (isLocalPlayer) " (local)" else ""),
+                        icon = Icons.Filled.Speaker,
+                    ) {
+                        onMoveToPlayer(data.player.id)
+                    }
                 }
-            },
-            options = playerDataList.map { data ->
-                val isLocalPlayer = data.playerId == playersState.localPlayerId
-                OverflowMenuOption(
-                    title = data.player.displayName + (if (isLocalPlayer) " (local)" else ""),
-                    icon = Icons.Filled.Speaker,
-                ) {
-                    onMoveToPlayer(data.player.id)
-                }
-            }
-        )
+            )
+        }
     }
 }
