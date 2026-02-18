@@ -501,7 +501,11 @@ private fun GroupButton(player: PlayerData, isLocalPlayer: Boolean, onShowGroup:
     ) {
         val playerName: @Composable (Color) -> Unit = { textColor ->
             Text(
+                modifier = Modifier.align(Alignment.Center),
                 text = player.player.displayName + (if (isLocalPlayer) " (local)" else ""),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Medium,
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
