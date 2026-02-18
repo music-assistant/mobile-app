@@ -148,63 +148,12 @@ internal fun PlayersPager(
                 )
             ) {
 
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val playerName: @Composable (Color) -> Unit = { textColor ->
-                        Text(
-                            modifier = Modifier.align(Alignment.Center),
-                            text = player.player.displayName + (if (isLocalPlayer) " (local)" else ""),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Medium,
-                            color = textColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    when {
-                        player.groupChildren.isEmpty() ->
-                            Box(
-                                modifier = Modifier.height(32.dp).align(Alignment.Center)
-                            ) {
-                                playerName(MaterialTheme.colorScheme.onSurface)
-                            }
+                GroupButton(
+                    player = player,
+                    isLocalPlayer = isLocalPlayer,
+                    onShowGroup = { showGroupDialog = true }
+                )
 
-                        player.groupChildren.none { it.isBound } ->
-                            OutlinedButton(
-                                modifier = Modifier.height(32.dp).align(Alignment.Center),
-                                enabled = true,
-                                onClick = { showGroupDialog = true }
-                            ) {
-                                playerName(MaterialTheme.colorScheme.onSurface)
-                            }
-
-                        else ->
-                            Button(
-                                modifier = Modifier.height(32.dp).align(Alignment.Center),
-                                enabled = true,
-                                onClick = { showGroupDialog = true }) {
-                                playerName(MaterialTheme.colorScheme.onPrimary)
-                            }
-                    }
-
-//                    // Overflow menu on the right TODO re-enable when settings are fixed in MA
-//                    OverflowMenuThreeDots(
-//                        modifier = Modifier.align(Alignment.CenterEnd)
-//                            .padding(end = 8.dp),
-//                        options = listOf(
-//                            OverflowMenuOption(
-//                                title = "Settings",
-//                                onClick = { settingsAction(player.player.id) }
-//                            ),
-//                            OverflowMenuOption(
-//                                title = "DSP settings",
-//                                onClick = { dspSettingsAction(player.player.id) }
-//                            ),
-//                        )
-//                    )
-                }
                 AnimatedVisibility(
                     visible = isQueueExpanded.takeIf { showQueue } != false,
                     enter = fadeIn(tween(300)) + expandVertically(tween(300)),
@@ -541,5 +490,66 @@ private fun GroupPlayerVolumeItem(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun GroupButton(player: PlayerData, isLocalPlayer: Boolean, onShowGroup: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        val playerName: @Composable (Color) -> Unit = { textColor ->
+            Text(
+                modifier = Modifier.align(Alignment.Center),
+                text = player.player.displayName + (if (isLocalPlayer) " (local)" else ""),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Medium,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        when {
+            player.groupChildren.isEmpty() ->
+                Box(
+                    modifier = Modifier.height(32.dp).align(Alignment.Center)
+                ) {
+                    playerName(MaterialTheme.colorScheme.onSurface)
+                }
+
+            player.groupChildren.none { it.isBound } ->
+                OutlinedButton(
+                    modifier = Modifier.height(32.dp).align(Alignment.Center),
+                    enabled = true,
+                    onClick = { onShowGroup() }
+                ) {
+                    playerName(MaterialTheme.colorScheme.onSurface)
+                }
+
+            else ->
+                Button(
+                    modifier = Modifier.height(32.dp).align(Alignment.Center),
+                    enabled = true,
+                    onClick = { onShowGroup() }) {
+                    playerName(MaterialTheme.colorScheme.onPrimary)
+                }
+        }
+
+//                    // Overflow menu on the right TODO re-enable when settings are fixed in MA
+//                    OverflowMenuThreeDots(
+//                        modifier = Modifier.align(Alignment.CenterEnd)
+//                            .padding(end = 8.dp),
+//                        options = listOf(
+//                            OverflowMenuOption(
+//                                title = "Settings",
+//                                onClick = { settingsAction(player.player.id) }
+//                            ),
+//                            OverflowMenuOption(
+//                                title = "DSP settings",
+//                                onClick = { dspSettingsAction(player.player.id) }
+//                            ),
+//                        )
+//                    )
     }
 }
