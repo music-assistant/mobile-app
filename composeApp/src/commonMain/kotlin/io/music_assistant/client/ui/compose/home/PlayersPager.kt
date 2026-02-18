@@ -8,6 +8,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -500,27 +501,27 @@ private fun GroupButton(player: PlayerData, isLocalPlayer: Boolean, onShowGroup:
     ) {
         val playerName: @Composable (Color) -> Unit = { textColor ->
             Text(
-                modifier = Modifier.align(Alignment.Center),
                 text = player.player.displayName + (if (isLocalPlayer) " (local)" else ""),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Medium,
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
+
         when {
             player.groupChildren.isEmpty() ->
-                Box(
-                    modifier = Modifier.height(32.dp).align(Alignment.Center)
+                OutlinedButton(
+                    modifier = Modifier.align(Alignment.Center),
+                    enabled = false,
+                    border = BorderStroke(0.dp, Color.Transparent),
+                    onClick = {}
                 ) {
                     playerName(MaterialTheme.colorScheme.onSurface)
                 }
 
             player.groupChildren.none { it.isBound } ->
                 OutlinedButton(
-                    modifier = Modifier.height(32.dp).align(Alignment.Center),
+                    modifier = Modifier.align(Alignment.Center),
                     enabled = true,
                     onClick = { onShowGroup() }
                 ) {
@@ -529,7 +530,7 @@ private fun GroupButton(player: PlayerData, isLocalPlayer: Boolean, onShowGroup:
 
             else ->
                 Button(
-                    modifier = Modifier.height(32.dp).align(Alignment.Center),
+                    modifier = Modifier.align(Alignment.Center),
                     enabled = true,
                     onClick = { onShowGroup() }) {
                     playerName(MaterialTheme.colorScheme.onPrimary)
