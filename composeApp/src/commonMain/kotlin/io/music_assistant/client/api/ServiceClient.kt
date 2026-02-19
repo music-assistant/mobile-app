@@ -37,9 +37,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -96,6 +100,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         get() = webrtcManager?.sendspinDataChannel
 
     private val pendingResponses = mutableMapOf<String, (Answer) -> Unit>()
+    // Accumulated partial results: message_id -> list of result items received so far.
+    // The MA server sends large result sets in 500-item batches with "partial": true.
+    private val partialResults = mutableMapOf<String, MutableList<JsonElement>>()
 
     init {
         launch {
@@ -935,8 +942,41 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private suspend fun handleIncomingMessage(message: JsonObject) {
         when {
             message.containsKey("message_id") -> {
-                val commandAnswer = Answer(message)
-                pendingResponses.remove(commandAnswer.messageId)?.invoke(commandAnswer)
+                val messageId = message["message_id"]?.jsonPrimitive?.content ?: return
+                val isPartial = message["partial"]?.jsonPrimitive?.boolean == true
+
+                if (isPartial) {
+                    // Accumulate partial batch — don't resolve the callback yet.
+                    // The MA server sends large result sets in 500-item batches.
+                    val resultArray = message["result"]?.jsonArray
+                    if (resultArray != null && resultArray.isNotEmpty()
+                        && pendingResponses.containsKey(messageId)
+                    ) {
+                        val list = partialResults.getOrPut(messageId) { mutableListOf() }
+                        list.addAll(resultArray)
+                    }
+                    return
+                }
+
+                // Final response — remove callback and any accumulated partials
+                val callback = pendingResponses.remove(messageId) ?: return
+                val accumulated = partialResults.remove(messageId)
+
+                val finalMessage = if (accumulated != null) {
+                    // Merge accumulated partials with this final batch's result
+                    val finalArray = message["result"]?.jsonArray
+                    if (finalArray != null) {
+                        accumulated.addAll(finalArray)
+                    }
+                    val mergedResult = JsonArray(accumulated)
+                    JsonObject(message.toMutableMap().apply {
+                        put("result", mergedResult)
+                    })
+                } else {
+                    message
+                }
+
+                callback.invoke(Answer(finalMessage))
             }
 
             message.containsKey("server_id") -> {
@@ -1155,6 +1195,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     _sessionState.update { newState }
                 }
             }
+            // Clear pending requests and partial result accumulations to prevent leaks
+            pendingResponses.clear()
+            partialResults.clear()
         }
     }
 
