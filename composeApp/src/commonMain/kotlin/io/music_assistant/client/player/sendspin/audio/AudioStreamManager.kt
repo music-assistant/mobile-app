@@ -79,7 +79,7 @@ import kotlin.coroutines.CoroutineContext
  *
  * - **TimestampOrderedBuffer**: Thread-safe queue (synchronized methods)
  * - **StateFlows**: Reactive state updates (thread-safe by design)
- * - **No shared mutable state** between producer and consumer
+ * - **decoderLock**: Protects audioDecoder access across startStream/processBinaryMessage/stopStream
  *
  * ## Error Handling
  *
@@ -103,7 +103,13 @@ class AudioStreamManager(
         get() = Dispatchers.Default + supervisorJob
 
     private val audioBuffer = TimestampOrderedBuffer()
+
+    // Lock protecting audioDecoder lifecycle (startStream/stopStream/processBinaryMessage/close)
+    // This prevents the race where processBinaryMessage() calls decode() on a decoder
+    // that startStream() or close() has already released.
+    private val decoderLock = Any()
     private var audioDecoder: AudioDecoder? = null
+
     private var playbackJob: Job? = null
     private var adaptationJob: Job? = null
 
@@ -146,24 +152,34 @@ class AudioStreamManager(
         isStreaming = true
         droppedChunksCount = 0
 
-        // Create appropriate decoder
-        audioDecoder?.release()
-        audioDecoder = createDecoder(config)
+        // Create and configure decoder atomically under lock to prevent race with
+        // processBinaryMessage() calling decode() on a released decoder.
+        val outputCodec = synchronized(decoderLock) {
+            // Release old decoder before creating new one
+            audioDecoder?.release()
+            audioDecoder = null
 
-        // Configure decoder
-        val formatSpec = AudioFormatSpec(
-            codec = AudioCodec.valueOf(config.codec.uppercase()),
-            channels = config.channels,
-            sampleRate = config.sampleRate,
-            bitDepth = config.bitDepth
-        )
-        audioDecoder?.configure(formatSpec, config.codecHeader)
+            // Create appropriate decoder
+            val newDecoder = createDecoder(config)
 
-        // Determine output codec for MediaPlayerController
-        // Decoder tells us what format it outputs:
-        // - iOS decoders: passthrough encoded data (OPUS, FLAC, etc) for MPV to handle
-        // - Android/Desktop decoders: convert to PCM
-        val outputCodec = audioDecoder?.getOutputCodec() ?: AudioCodec.PCM
+            // Configure decoder
+            val formatSpec = AudioFormatSpec(
+                codec = AudioCodec.valueOf(config.codec.uppercase()),
+                channels = config.channels,
+                sampleRate = config.sampleRate,
+                bitDepth = config.bitDepth
+            )
+            newDecoder.configure(formatSpec, config.codecHeader)
+
+            // Only make decoder visible after successful configure
+            audioDecoder = newDecoder
+
+            // Determine output codec for MediaPlayerController
+            // Decoder tells us what format it outputs:
+            // - iOS decoders: passthrough encoded data (OPUS, FLAC, etc) for MPV to handle
+            // - Android/Desktop decoders: convert to PCM
+            newDecoder.getOutputCodec()
+        }
 
         // Prepare MediaPlayerController
         mediaPlayerController.prepareStream(
@@ -231,16 +247,19 @@ class AudioStreamManager(
 
         // DECODE IMMEDIATELY (producer pattern - prepare data ahead of time)
         // This runs on Default dispatcher with buffer headroom - not time-critical
-        val decoder = audioDecoder ?: run {
-            logger.w { "No decoder available" }
-            return
-        }
+        // Lock ensures we don't call decode() on a decoder being released by startStream/stopStream
+        val decodedPcm = synchronized(decoderLock) {
+            val decoder = audioDecoder ?: run {
+                logger.w { "No decoder available" }
+                return
+            }
 
-        val decodedPcm = try {
-            decoder.decode(binaryMessage.data)
-        } catch (e: Exception) {
-            logger.e(e) { "Error decoding audio chunk" }
-            return
+            try {
+                decoder.decode(binaryMessage.data)
+            } catch (e: Exception) {
+                logger.e(e) { "Error decoding audio chunk" }
+                return
+            }
         }
 
         logger.d { "Decoded chunk: ${binaryMessage.data.size} -> ${decodedPcm.size} PCM bytes" }
@@ -512,8 +531,10 @@ class AudioStreamManager(
         logger.i { "Flushing for track change (keeping stream active)" }
         // Clear the audio buffer
         audioBuffer.clear()
-        // Reset decoder for new track
-        audioDecoder?.reset()
+        // Reset decoder for new track (under lock to prevent race with processBinaryMessage)
+        synchronized(decoderLock) {
+            audioDecoder?.reset()
+        }
         // Stop native audio playback immediately (for responsiveness)
         mediaPlayerController.stopRawPcmStream()
         // Reset playback position
@@ -534,7 +555,9 @@ class AudioStreamManager(
         adaptationJob = null
 
         audioBuffer.clear()
-        audioDecoder?.reset()
+        synchronized(decoderLock) {
+            audioDecoder?.reset()
+        }
 
         // Reset adaptive buffer manager
         adaptiveBufferManager.reset()
@@ -574,7 +597,10 @@ class AudioStreamManager(
     override fun close() {
         logger.i { "Closing AudioStreamManager" }
         playbackJob?.cancel()
-        audioDecoder?.release()
+        synchronized(decoderLock) {
+            audioDecoder?.release()
+            audioDecoder = null
+        }
         supervisorJob.cancel()
     }
 }
