@@ -37,6 +37,8 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Replay
 
 @Composable
 fun AlbumWithMenu(
@@ -165,6 +167,50 @@ fun PlaylistWithMenu(
 }
 
 @Composable
+fun AudiobookWithMenu(
+    item: AppMediaItem.Audiobook,
+    showSubtitle: Boolean,
+    rowMode: Boolean = false,
+    onNavigateClick: (AppMediaItem.Audiobook) -> Unit,
+    onPlayOption: ((AppMediaItem.Audiobook, QueueOption, Boolean) -> Unit),
+    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
+    serverUrl: String?
+) {
+    BrowsableItemWithMenu(
+        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        item = item,
+        onNavigateClick = onNavigateClick,
+        onPlayOption = onPlayOption,
+        playlistActions = playlistActions,
+        libraryActions = libraryActions,
+        progressActions = progressActions,
+    ) { mod, onClick, onLongClick ->
+        if (rowMode) {
+            AudiobookRowItem(
+                modifier = mod,
+                item = item,
+                serverUrl = serverUrl,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                providerIconFetcher = providerIconFetcher
+            )
+        } else {
+            AudiobookGridItem(
+                item = item,
+                showSubtitle = showSubtitle,
+                serverUrl = serverUrl,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                providerIconFetcher = providerIconFetcher
+            )
+        }
+    }
+}
+
+@Composable
 fun PodcastWithMenu(
     item: AppMediaItem.Podcast,
     showSubtitle: Boolean,
@@ -215,6 +261,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -360,6 +407,28 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
                             contentDescription = "Add to playlist"
+                        )
+                    }
+                )
+            }
+
+            // Mark played/unplayed (audiobooks)
+            if (progressActions != null && item is AppMediaItem.Audiobook) {
+                val isPlayed = item.fullyPlayed == true
+                DropdownMenuItem(
+                    text = { Text(if (isPlayed) "Mark as unplayed" else "Mark as played") },
+                    onClick = {
+                        if (isPlayed) {
+                            progressActions.onMarkUnplayed(item)
+                        } else {
+                            progressActions.onMarkPlayed(item)
+                        }
+                        expandedItemId = null
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (isPlayed) Icons.Default.Replay else Icons.Default.Check,
+                            contentDescription = if (isPlayed) "Mark as unplayed" else "Mark as played"
                         )
                     }
                 )

@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FeaturedPlayList
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
@@ -56,6 +57,7 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
@@ -80,6 +82,7 @@ fun LandingPage(
     onLibraryItemClick: (MediaType?) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     navigateTo: (NavScreen) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)
 ) {
@@ -91,6 +94,7 @@ fun LandingPage(
                             || item is AppMediaItem.Artist
                             || item is AppMediaItem.Album
                             || item is AppMediaItem.Playlist
+                            || item is AppMediaItem.Audiobook
                             || item is AppMediaItem.Podcast
                             || item is AppMediaItem.PodcastEpisode
                             || item is AppMediaItem.RadioStation
@@ -138,6 +142,7 @@ fun LandingPage(
                         mediaItems = row.items.orEmpty(),
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
+                        progressActions = progressActions,
                         providerIconFetcher = providerIconFetcher,
                     )
                 }
@@ -201,6 +206,7 @@ fun LibraryRow(
                 Icons.AutoMirrored.Filled.FeaturedPlayList,
                 MediaType.PLAYLIST
             ),
+            LibraryItem("Audiobooks", Icons.AutoMirrored.Filled.MenuBook, MediaType.AUDIOBOOK),
             LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
             LibraryItem("Radio", Icons.Default.Radio, MediaType.RADIO),
             LibraryItem("Global search", Icons.Default.Search, null),
@@ -311,6 +317,7 @@ fun CategoryRow(
     mediaItems: List<AppMediaItem>,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)
 ) {
     val isHomogenous = remember(mediaItems) {
@@ -355,6 +362,7 @@ fun CategoryRow(
                         is AppMediaItem.Artist,
                         is AppMediaItem.Album,
                         is AppMediaItem.Playlist,
+                        is AppMediaItem.Audiobook,
                         is AppMediaItem.Podcast,
                         is AppMediaItem.PodcastEpisode,
                         is AppMediaItem.RadioStation -> "${item::class.simpleName}_${item.itemId}"
@@ -368,6 +376,7 @@ fun CategoryRow(
                         is AppMediaItem.Artist -> "Artist"
                         is AppMediaItem.Album -> "Album"
                         is AppMediaItem.Playlist -> "Playlist"
+                        is AppMediaItem.Audiobook -> "Audiobook"
                         is AppMediaItem.Podcast -> "Podcast"
                         is AppMediaItem.PodcastEpisode -> "Episode"
                         is AppMediaItem.RadioStation -> "RadioStation"
@@ -431,6 +440,18 @@ fun CategoryRow(
                         onPlayOption = onPlayClick,
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
+                        progressActions = progressActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Audiobook -> AudiobookWithMenu(
+                        item = item,
+                        showSubtitle = !isHomogenous,
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        progressActions = progressActions,
                         providerIconFetcher = providerIconFetcher
                     )
 
@@ -455,6 +476,7 @@ fun allItemsTitle(type: MediaType) = when (type) {
     MediaType.ALBUM -> "All albums"
     MediaType.ARTIST -> "All artists"
     MediaType.PLAYLIST -> "All playlists"
+    MediaType.AUDIOBOOK -> "All audiobooks"
     MediaType.PODCAST -> "All podcasts"
     MediaType.RADIO -> "All radio stations"
     else -> null

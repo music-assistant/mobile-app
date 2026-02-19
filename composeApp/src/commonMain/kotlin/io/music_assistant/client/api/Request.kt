@@ -312,6 +312,31 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
     }
 
+    data object Audiobook {
+
+        fun get(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.get("audiobooks", itemId, providerInstanceIdOrDomain)
+
+        fun listLibrary(
+            favorite: Boolean? = null,
+            search: String? = null,
+            limit: Int = Int.MAX_VALUE,
+            offset: Int = 0,
+            orderBy: String? = null,
+        ) = Request(
+            command = "music/audiobooks/library_items",
+            args = buildJsonObject {
+                favorite?.let { put("favorite", JsonPrimitive(it)) }
+                search?.let { put("search", JsonPrimitive(it)) }
+                put("limit", JsonPrimitive(limit))
+                put("offset", JsonPrimitive(offset))
+                orderBy?.let { put("order_by", JsonPrimitive(it)) }
+            }
+        )
+    }
+
     data object Artist {
 
         fun get(
@@ -450,6 +475,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             queueOrPlayerId: String,
             option: QueueOption,
             radioMode: Boolean,
+            startItem: String? = null,
         ) = Request(
             command = "player_queues/play_media",
             args = buildJsonObject {
@@ -457,6 +483,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("option", JsonPrimitive(option.name.lowercase()))
                 put("radio_mode", JsonPrimitive(radioMode))
                 put("queue_id", JsonPrimitive(queueOrPlayerId))
+                startItem?.let { put("start_item", JsonPrimitive(it)) }
             }
         )
 
@@ -478,6 +505,24 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("library_item_id", JsonPrimitive(itemId))
                 put("media_type", JsonPrimitive(mediaType.name.lowercase()))
             })
+
+        fun markPlayed(
+            itemUri: String,
+        ) = Request(
+            command = "music/mark_item_played",
+            args = buildJsonObject {
+                put("media_item", JsonPrimitive(itemUri))
+            }
+        )
+
+        fun markUnplayed(
+            itemUri: String,
+        ) = Request(
+            command = "music/mark_item_unplayed",
+            args = buildJsonObject {
+                put("media_item", JsonPrimitive(itemUri))
+            }
+        )
 
         fun search(
             query: String,

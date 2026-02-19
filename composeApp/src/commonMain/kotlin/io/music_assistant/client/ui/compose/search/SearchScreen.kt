@@ -44,6 +44,7 @@ import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
@@ -86,7 +87,9 @@ fun SearchScreen(
                 when (item) {
                     is AppMediaItem.Artist,
                     is AppMediaItem.Album,
-                    is AppMediaItem.Playlist -> {
+                    is AppMediaItem.Playlist,
+                    is AppMediaItem.Podcast,
+                    is AppMediaItem.Audiobook -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -101,6 +104,10 @@ fun SearchScreen(
             libraryActions = ActionsViewModel.LibraryActions(
                 onLibraryClick = actionsViewModel::onLibraryClick,
                 onFavoriteClick = actionsViewModel::onFavoriteClick
+            ),
+            progressActions = ActionsViewModel.ProgressActions(
+                onMarkPlayed = actionsViewModel::onMarkPlayed,
+                onMarkUnplayed = actionsViewModel::onMarkUnplayed
             ),
             providerIconFetcher = { modifier, provider ->
                 actionsViewModel.getProviderIcon(provider)
@@ -148,6 +155,7 @@ private fun SearchContent(
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
 ) {
     Box(Modifier.fillMaxSize()) {
@@ -197,6 +205,7 @@ private fun SearchContent(
                             results.albums.isNotEmpty() ||
                             results.tracks.isNotEmpty() ||
                             results.playlists.isNotEmpty() ||
+                            results.audiobooks.isNotEmpty() ||
                             results.podcasts.isNotEmpty() ||
                             results.radios.isNotEmpty()
 
@@ -300,6 +309,25 @@ private fun SearchContent(
                                         onPlayOption = onPlayClick,
                                         libraryActions = libraryActions,
                                         providerIconFetcher = providerIconFetcher
+                                    )
+                                }
+                            }
+
+                            // Audiobooks section
+                            if (results.audiobooks.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    SectionHeader("Audiobooks")
+                                }
+                                items(results.audiobooks) { audiobook ->
+                                    AudiobookWithMenu(
+                                        item = audiobook,
+                                        showSubtitle = true,
+                                        serverUrl = serverUrl,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        progressActions = progressActions,
+                                        providerIconFetcher = providerIconFetcher,
                                     )
                                 }
                             }

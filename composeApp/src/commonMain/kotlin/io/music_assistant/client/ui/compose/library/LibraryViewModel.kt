@@ -39,7 +39,7 @@ class LibraryViewModel(
     }
 
     enum class Tab {
-        ARTISTS, ALBUMS, TRACKS, PLAYLISTS, PODCASTS, RADIOS
+        ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS
     }
 
     data class TabState(
@@ -94,6 +94,7 @@ class LibraryViewModel(
                     loadAlbums()
                     loadTracks()
                     loadPlaylists()
+                    loadAudiobooks()
                     loadPodcasts()
                     loadRadios()
                     // Tracks tab stays as NoData since there's no API
@@ -141,6 +142,7 @@ class LibraryViewModel(
                             Tab.ALBUMS -> loadAlbums()
                             Tab.TRACKS -> loadTracks()
                             Tab.PLAYLISTS -> loadPlaylists()
+                            Tab.AUDIOBOOKS -> loadAudiobooks()
                             Tab.PODCASTS -> loadPodcasts()
                             Tab.RADIOS -> loadRadios()
                         }
@@ -366,6 +368,37 @@ class LibraryViewModel(
         }
     }
 
+    private fun loadAudiobooks() {
+        viewModelScope.launch {
+            val tabState = _state.value.tabs.find { it.tab == Tab.AUDIOBOOKS }
+            val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
+            val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            updateTabState(Tab.AUDIOBOOKS, DataState.Loading())
+            val result = apiClient.sendRequest(
+                Request.Audiobook.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = 0,
+                    search = searchQuery,
+                    favorite = favoritesOnly
+                )
+            )
+            result.resultAs<List<ServerMediaItem>>()
+                ?.toAppMediaItemList()
+                ?.filterIsInstance<AppMediaItem.Audiobook>()
+                ?.let { audiobooks ->
+                    updateTabStateWithData(
+                        tab = Tab.AUDIOBOOKS,
+                        items = audiobooks,
+                        offset = PAGE_SIZE,
+                        hasMore = audiobooks.size >= PAGE_SIZE
+                    )
+                } ?: run {
+                Logger.e("Error loading audiobooks:", result.exceptionOrNull())
+                updateTabState(Tab.AUDIOBOOKS, DataState.Error())
+            }
+        }
+    }
+
     private fun loadRadios() {
         viewModelScope.launch {
             val tabState = _state.value.tabs.find { it.tab == Tab.RADIOS }
@@ -442,6 +475,14 @@ class LibraryViewModel(
 
                 Tab.PLAYLISTS -> apiClient.sendRequest(
                     Request.Playlist.listLibrary(
+                        limit = PAGE_SIZE,
+                        offset = tabState.offset,
+                        search = searchQuery
+                    )
+                )
+
+                Tab.AUDIOBOOKS -> apiClient.sendRequest(
+                    Request.Audiobook.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
                         search = searchQuery
@@ -530,6 +571,7 @@ class LibraryViewModel(
                     is AppMediaItem.Album -> tabState.tab == Tab.ALBUMS
                     is AppMediaItem.Track -> tabState.tab == Tab.TRACKS
                     is AppMediaItem.Playlist -> tabState.tab == Tab.PLAYLISTS
+                    is AppMediaItem.Audiobook -> tabState.tab == Tab.AUDIOBOOKS
                     is AppMediaItem.Podcast -> tabState.tab == Tab.PODCASTS
                     is AppMediaItem.RadioStation -> tabState.tab == Tab.RADIOS
                     else -> false

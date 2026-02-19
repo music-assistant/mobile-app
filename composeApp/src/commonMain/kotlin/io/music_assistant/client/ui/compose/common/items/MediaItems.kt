@@ -21,8 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FeaturedPlayList
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
@@ -559,6 +562,10 @@ internal fun PodcastEpisodeGridItem(
                 item = item,
                 providerIconFetcher = providerIconFetcher
             )
+            ProgressBadge(
+                fullyPlayed = item.fullyPlayed,
+                resumePositionMs = item.resumePositionMs
+            )
         }
         GridPlayableItemLabels(item, 96.dp, showSubtitle)
     }
@@ -681,6 +688,115 @@ private fun RadioImage(
     }
 }
 
+/**
+ * Audiobook media item with book spine design.
+ *
+ * @param item The audiobook item to display
+ * @param serverUrl Server URL for image loading
+ * @param onClick Click handler
+ * @param showSubtitle Whether to show subtitle (default true)
+ */
+@Composable
+internal fun AudiobookGridItem(
+    modifier: Modifier = Modifier,
+    item: AppMediaItem.Audiobook,
+    serverUrl: String?,
+    onClick: (AppMediaItem.Audiobook) -> Unit,
+    onLongClick: (AppMediaItem.Audiobook) -> Unit,
+    showSubtitle: Boolean = true,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
+) {
+    GridItem(
+        modifier = modifier,
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) },
+    ) {
+        Box {
+            AudiobookImage(96.dp, item, serverUrl)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher
+            )
+            ProgressBadge(
+                fullyPlayed = item.fullyPlayed,
+                resumePositionMs = item.resumePositionMs
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            modifier = Modifier.width(96.dp),
+            text = item.name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        if (showSubtitle) {
+            Text(
+                modifier = Modifier.width(96.dp),
+                text = item.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudiobookImage(
+    itemSize: Dp,
+    item: AppMediaItem.Audiobook,
+    serverUrl: String?
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
+    Box(
+        modifier = Modifier
+            .size(itemSize)
+            .clip(RoundedCornerShape(8.dp))
+    ) {
+        val spineWidth = 8.dp
+        val bookSpineShape = remember(spineWidth) { BookSpineShape(spineWidth) }
+
+        // Draw book cover background (clipped)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(bookSpineShape)
+                .background(primaryContainer)
+        )
+
+        // Draw spine strip on the left
+        Box(
+            modifier = Modifier
+                .width(spineWidth)
+                .height(itemSize)
+                .background(primary)
+        )
+
+        // Draw artwork (clipped to exclude spine)
+        val placeholder = rememberPlaceholderPainter(
+            backgroundColor = primaryContainer,
+            iconColor = onPrimaryContainer,
+            icon = Icons.AutoMirrored.Filled.MenuBook
+        )
+        AsyncImage(
+            placeholder = placeholder,
+            fallback = placeholder,
+            model = item.imageInfo?.url(serverUrl),
+            contentDescription = item.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(bookSpineShape)
+        )
+    }
+}
+
 @Composable
 private fun GridPlayableItemLabels(
     item: PlayableItem,
@@ -747,6 +863,50 @@ fun BoxScope.Badges(
         )
     } else {
         providerIconFetcher?.invoke(modifier.background(Color.Gray, CircleShape), item.provider)
+    }
+}
+
+/**
+ * Progress indicator badge for audiobooks and podcast episodes.
+ * Shows a checkmark for fully played items, or a clock for in-progress items.
+ * Positioned at top-end of the image Box (bottom-end is used by Badges).
+ */
+@Composable
+fun BoxScope.ProgressBadge(
+    fullyPlayed: Boolean?,
+    resumePositionMs: Long?,
+) {
+    when {
+        fullyPlayed == true -> {
+            Icon(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(18.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                        CircleShape
+                    )
+                    .padding(2.dp),
+                imageVector = Icons.Default.Check,
+                contentDescription = "Fully played",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        resumePositionMs != null && resumePositionMs > 0 -> {
+            Icon(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(18.dp)
+                    .background(
+                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
+                        CircleShape
+                    )
+                    .padding(2.dp),
+                imageVector = Icons.Default.Schedule,
+                contentDescription = "In progress",
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+        }
     }
 }
 
@@ -886,6 +1046,10 @@ internal fun PodcastEpisodeRowItem(
                 item = item,
                 providerIconFetcher = providerIconFetcher
             )
+            ProgressBadge(
+                fullyPlayed = item.fullyPlayed,
+                resumePositionMs = item.resumePositionMs
+            )
         },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) }
@@ -910,6 +1074,35 @@ internal fun RadioRowItem(
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher
+            )
+        },
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) }
+    )
+}
+
+@Composable
+internal fun AudiobookRowItem(
+    modifier: Modifier = Modifier,
+    item: AppMediaItem.Audiobook,
+    serverUrl: String?,
+    onClick: (AppMediaItem.Audiobook) -> Unit,
+    onLongClick: (AppMediaItem.Audiobook) -> Unit,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
+) {
+    RowItem(
+        modifier = modifier,
+        name = item.name,
+        subtitle = item.subtitle,
+        imageContent = {
+            AudiobookImage(ROW_IMAGE_SIZE, item, serverUrl)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher
+            )
+            ProgressBadge(
+                fullyPlayed = item.fullyPlayed,
+                resumePositionMs = item.resumePositionMs
             )
         },
         onClick = { onClick(item) },

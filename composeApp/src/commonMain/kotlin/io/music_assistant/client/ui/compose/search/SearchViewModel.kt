@@ -52,6 +52,7 @@ class SearchViewModel(
                     MediaTypeSelect(MediaType.ALBUM, false),
                     MediaTypeSelect(MediaType.TRACK, false),
                     MediaTypeSelect(MediaType.PLAYLIST, false),
+                    MediaTypeSelect(MediaType.AUDIOBOOK, false),
                     MediaTypeSelect(MediaType.PODCAST, false),
                     MediaTypeSelect(MediaType.RADIO, false),
                 ),
@@ -172,6 +173,7 @@ class SearchViewModel(
                                 albums = items.filterIsInstance<AppMediaItem.Album>(),
                                 tracks = items.filterIsInstance<AppMediaItem.Track>(),
                                 playlists = items.filterIsInstance<AppMediaItem.Playlist>(),
+                                audiobooks = items.filterIsInstance<AppMediaItem.Audiobook>(),
                                 podcasts = items.filterIsInstance<AppMediaItem.Podcast>(),
                                 radios = items.filterIsInstance<AppMediaItem.RadioStation>()
                             )
@@ -209,6 +211,7 @@ class SearchViewModel(
         val albums: List<AppMediaItem.Album>,
         val tracks: List<AppMediaItem.Track>,
         val playlists: List<AppMediaItem.Playlist>,
+        val audiobooks: List<AppMediaItem.Audiobook>,
         val podcasts: List<AppMediaItem.Podcast>,
         val radios: List<AppMediaItem.RadioStation>
     )

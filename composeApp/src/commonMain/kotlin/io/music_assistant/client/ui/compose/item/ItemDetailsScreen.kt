@@ -108,6 +108,10 @@ fun ItemDetailsScreen(
             onLibraryClick = actionsViewModel::onLibraryClick,
             onFavoriteClick = actionsViewModel::onFavoriteClick
         )
+        val progressActions = ActionsViewModel.ProgressActions(
+            onMarkPlayed = actionsViewModel::onMarkPlayed,
+            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+        )
         ItemDetailsTopBar(
             onBack = onBack,
             onPlayClick = viewModel::onPlayClick,
@@ -128,7 +132,8 @@ fun ItemDetailsScreen(
                     is AppMediaItem.Artist,
                     is AppMediaItem.Album,
                     is AppMediaItem.Playlist,
-                    is AppMediaItem.Podcast -> {
+                    is AppMediaItem.Podcast,
+                    is AppMediaItem.Audiobook -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -136,7 +141,9 @@ fun ItemDetailsScreen(
                 }
             },
             onPlayClick = viewModel::onPlayClick,
+            onChapterClick = viewModel::onChapterClick,
             playlistActions = playlistActions,
+            progressActions = progressActions,
             onRemoveFromPlaylist = { id, pos ->
                 actionsViewModel.removeFromPlaylist(
                     id,
@@ -355,7 +362,9 @@ private fun ItemDetailsContent(
     isRowMode: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onChapterClick: (Int) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
@@ -442,6 +451,26 @@ private fun ItemDetailsContent(
                         }
                     }
 
+                    // For Audiobook: Chapters section (from metadata, not a separate API)
+                    if (item is AppMediaItem.Audiobook) {
+                        val chapters = item.chapters
+                        if (!chapters.isNullOrEmpty()) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                SectionHeader("Chapters")
+                            }
+                            chapters.forEach { chapter ->
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    ChapterRow(
+                                        chapter = chapter,
+                                        onClick = {
+                                            onChapterClick(chapter.position)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Tracks section (all types)
                     when (val tracksState = state.playableItemsState) {
                         is DataState.Data -> {
@@ -482,6 +511,7 @@ private fun ItemDetailsContent(
                                                 onPlayOption = onPlayClick,
                                                 playlistActions = null, // No playlist actions for podcast episodes
                                                 libraryActions = libraryActions,
+                                                progressActions = progressActions,
                                                 providerIconFetcher = providerIconFetcher,
                                             )
                                         }
@@ -533,4 +563,36 @@ private fun SectionHeader(title: String) {
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.padding(16.dp, 8.dp)
     )
+}
+
+@Composable
+private fun ChapterRow(
+    chapter: io.music_assistant.client.data.model.server.MediaItemChapter,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = chapter.name,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        val durationMinutes = (chapter.duration / 60).toInt()
+        if (durationMinutes > 0) {
+            Text(
+                text = "${durationMinutes}m",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+    }
 }

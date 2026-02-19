@@ -154,6 +154,10 @@ fun HomeScreen(
                                 onLibraryClick = actionsViewModel::onLibraryClick,
                                 onFavoriteClick = actionsViewModel::onFavoriteClick
                             ),
+                            progressActions = ActionsViewModel.ProgressActions(
+                                onMarkPlayed = actionsViewModel::onMarkPlayed,
+                                onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                            ),
                             navigateTo = navigateTo
                         ) { modifier, provider ->
                             actionsViewModel.getProviderIcon(provider)
@@ -326,6 +330,7 @@ private fun HomeContent(
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions,
     navigateTo: (NavScreen) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)
 ) {
@@ -360,7 +365,8 @@ private fun HomeContent(
                             is AppMediaItem.Artist,
                             is AppMediaItem.Album,
                             is AppMediaItem.Playlist,
-                            is AppMediaItem.Podcast -> {
+                            is AppMediaItem.Podcast,
+                            is AppMediaItem.Audiobook -> {
                                 typedBackStack.add(
                                     HomeNavScreen.ItemDetails(
                                         itemId = item.itemId,
@@ -383,6 +389,7 @@ private fun HomeContent(
                     },
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
+                    progressActions = progressActions,
                     navigateTo = navigateTo,
                     providerIconFetcher = providerIconFetcher
                 )
@@ -397,7 +404,8 @@ private fun HomeContent(
                             is AppMediaItem.Artist,
                             is AppMediaItem.Album,
                             is AppMediaItem.Playlist,
-                            is AppMediaItem.Podcast -> {
+                            is AppMediaItem.Podcast,
+                            is AppMediaItem.Audiobook -> {
                                 typedBackStack.add(
                                     HomeNavScreen.ItemDetails(
                                         itemId = item.itemId,

@@ -39,6 +39,8 @@ import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Replay
 
 @Composable
 fun TrackWithMenu(
@@ -91,6 +93,7 @@ fun PodcastEpisodeWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
     serverUrl: String?,
 ) {
@@ -101,6 +104,7 @@ fun PodcastEpisodeWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
+        progressActions = progressActions,
         itemComposable = { mod, onClick, onLongClick ->
             if (rowMode) {
                 PodcastEpisodeRowItem(
@@ -183,6 +187,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -342,6 +347,28 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Remove from playlist"
+                        )
+                    }
+                )
+            }
+
+            // Mark played/unplayed (podcast episodes)
+            if (progressActions != null && item is AppMediaItem.PodcastEpisode) {
+                val isPlayed = item.fullyPlayed == true
+                DropdownMenuItem(
+                    text = { Text(if (isPlayed) "Mark as unplayed" else "Mark as played") },
+                    onClick = {
+                        if (isPlayed) {
+                            progressActions.onMarkUnplayed(item as AppMediaItem)
+                        } else {
+                            progressActions.onMarkPlayed(item as AppMediaItem)
+                        }
+                        expandedItemId = null
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (isPlayed) Icons.Default.Replay else Icons.Default.Check,
+                            contentDescription = if (isPlayed) "Mark as unplayed" else "Mark as played"
                         )
                     }
                 )

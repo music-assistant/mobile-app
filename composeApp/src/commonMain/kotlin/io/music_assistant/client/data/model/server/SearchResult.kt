@@ -10,5 +10,6 @@ data class SearchResult(
     @SerialName("tracks") val tracks: List<ServerMediaItem>,
     @SerialName("playlists") val playlists: List<ServerMediaItem>,
     @SerialName("podcasts") val podcasts: List<ServerMediaItem>,
+    @SerialName("audiobooks") val audiobooks: List<ServerMediaItem> = emptyList(),
     @SerialName("radios") val radios: List<ServerMediaItem> = emptyList(),
 )

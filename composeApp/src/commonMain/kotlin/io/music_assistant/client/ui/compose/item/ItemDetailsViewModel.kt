@@ -168,6 +168,7 @@ class ItemDetailsViewModel(
             MediaType.ALBUM -> Request.Album.get(itemId, providerId)
             MediaType.PLAYLIST -> Request.Playlist.get(itemId, providerId)
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)
+            MediaType.AUDIOBOOK -> Request.Audiobook.get(itemId, providerId)
             else -> return null
         }
 
@@ -197,6 +198,14 @@ class ItemDetailsViewModel(
             is AppMediaItem.Podcast -> {
                 _state.update { it.copy(albumsState = DataState.NoData()) }
                 loadPodcastEpisodes(item.itemId, item.provider)
+            }
+
+            is AppMediaItem.Audiobook -> {
+                _state.update { it.copy(albumsState = DataState.NoData()) }
+                // Chapters come from the audiobook's metadata, not a separate API call
+                _state.update {
+                    it.copy(playableItemsState = DataState.NoData())
+                }
             }
 
             else -> {
@@ -348,6 +357,26 @@ class ItemDetailsViewModel(
                             radioMode = radio
                         )
                     )
+                }
+            }
+        }
+    }
+
+    fun onChapterClick(chapterPosition: Int) {
+        (_state.value.itemState as? DataState.Data)?.data?.let { item ->
+            viewModelScope.launch {
+                item.uri?.let { uri ->
+                    mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
+                        apiClient.sendRequest(
+                            Request.Library.play(
+                                media = listOf(uri),
+                                queueOrPlayerId = queueId,
+                                option = QueueOption.REPLACE,
+                                radioMode = false,
+                                startItem = chapterPosition.toString()
+                            )
+                        )
+                    }
                 }
             }
         }

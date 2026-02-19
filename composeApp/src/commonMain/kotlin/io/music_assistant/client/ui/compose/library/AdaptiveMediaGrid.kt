@@ -24,6 +24,7 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
@@ -45,6 +46,7 @@ fun AdaptiveMediaGrid(
     gridState: LazyGridState = rememberLazyGridState(),
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
 ) {
     // Detect when we're near the end and trigger load more
     val shouldLoadMore by remember {
@@ -142,6 +144,19 @@ fun AdaptiveMediaGrid(
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
+                    progressActions = progressActions,
+                    providerIconFetcher = null
+                )
+
+                is AppMediaItem.Audiobook -> AudiobookWithMenu(
+                    item = item,
+                    rowMode = isRowMode,
+                    showSubtitle = true,
+                    serverUrl = serverUrl,
+                    onNavigateClick = onNavigateClick,
+                    onPlayOption = onPlayClick,
+                    libraryActions = libraryActions,
+                    progressActions = progressActions,
                     providerIconFetcher = null
                 )
 

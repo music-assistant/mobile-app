@@ -112,6 +112,32 @@ class ActionsViewModel(
         }
     }
 
+    /**
+     * Mark an audiobook or podcast episode as fully played.
+     */
+    fun onMarkPlayed(item: AppMediaItem) {
+        viewModelScope.launch {
+            item.uri?.let { uri ->
+                apiClient.sendRequest(Request.Library.markPlayed(uri))
+                    .onSuccess { _toasts.emit("Marked as played") }
+                    .onFailure { _toasts.emit("Error marking as played") }
+            }
+        }
+    }
+
+    /**
+     * Mark an audiobook or podcast episode as unplayed (resets progress).
+     */
+    fun onMarkUnplayed(item: AppMediaItem) {
+        viewModelScope.launch {
+            item.uri?.let { uri ->
+                apiClient.sendRequest(Request.Library.markUnplayed(uri))
+                    .onSuccess { _toasts.emit("Marked as unplayed") }
+                    .onFailure { _toasts.emit("Error marking as unplayed") }
+            }
+        }
+    }
+
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
 
     data class PlaylistActions(
@@ -122,6 +148,11 @@ class ActionsViewModel(
     data class LibraryActions(
         val onLibraryClick: ((AppMediaItem) -> Unit),
         val onFavoriteClick: ((AppMediaItem) -> Unit),
+    )
+
+    data class ProgressActions(
+        val onMarkPlayed: ((AppMediaItem) -> Unit),
+        val onMarkUnplayed: ((AppMediaItem) -> Unit),
     )
 
 }

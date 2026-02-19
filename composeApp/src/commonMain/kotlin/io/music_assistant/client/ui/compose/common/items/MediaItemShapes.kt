@@ -126,6 +126,30 @@ class CornerCutShape(private val cutSize: Dp) : Shape {
 }
 
 /**
+ * Shape that cuts a vertical strip from the left with a rounded spine.
+ * Used for audiobook items to resemble a book cover.
+ */
+class BookSpineShape(private val spineWidth: Dp) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        return Outline.Generic(Path().apply {
+            val spinePx = with(density) { spineWidth.toPx() }
+            val cornerRadius = spinePx / 2f
+
+            // Content area excluding the spine strip on the left
+            moveTo(spinePx, 0f)
+            lineTo(size.width, 0f)
+            lineTo(size.width, size.height)
+            lineTo(spinePx, size.height)
+            close()
+        })
+    }
+}
+
+/**
  * Wavy hexagon shape with sinusoidal sides.
  * Used for radio station items.
  */

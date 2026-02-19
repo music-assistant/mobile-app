@@ -73,6 +73,7 @@ fun LibraryScreen(
         MediaType.ALBUM -> LibraryViewModel.Tab.ALBUMS
         MediaType.TRACK -> LibraryViewModel.Tab.TRACKS
         MediaType.PLAYLIST -> LibraryViewModel.Tab.PLAYLISTS
+        MediaType.AUDIOBOOK -> LibraryViewModel.Tab.AUDIOBOOKS
         MediaType.PODCAST -> LibraryViewModel.Tab.PODCASTS
         MediaType.RADIO -> LibraryViewModel.Tab.RADIOS
         null -> LibraryViewModel.Tab.ARTISTS
@@ -120,6 +121,10 @@ fun LibraryScreen(
                 onLibraryClick = actionsViewModel::onLibraryClick,
                 onFavoriteClick = actionsViewModel::onFavoriteClick
             ),
+            progressActions = ActionsViewModel.ProgressActions(
+                onMarkPlayed = actionsViewModel::onMarkPlayed,
+                onMarkUnplayed = actionsViewModel::onMarkUnplayed
+            ),
         )
     }
 }
@@ -164,6 +169,7 @@ private fun LibraryTopBar(
                                     LibraryViewModel.Tab.ALBUMS -> "Albums"
                                     LibraryViewModel.Tab.TRACKS -> "Tracks"
                                     LibraryViewModel.Tab.PLAYLISTS -> "Playlists"
+                                    LibraryViewModel.Tab.AUDIOBOOKS -> "Audiobooks"
                                     LibraryViewModel.Tab.PODCASTS -> "Podcasts"
                                     LibraryViewModel.Tab.RADIOS -> "Radio"
                                 }
@@ -198,6 +204,7 @@ private fun Library(
     onCreatePlaylist: (String) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
 ) {
     val selectedTab = state.tabs.find { it.isSelected } ?: state.tabs.first()
 
@@ -239,6 +246,7 @@ private fun Library(
                     onLoadMore = { onLoadMore(selectedTab.tab) },
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
+                    progressActions = progressActions,
                 )
             }
         }
@@ -310,12 +318,14 @@ private fun TabContent(
     onLoadMore: () -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
 ) {
     // Create separate grid states for each tab to preserve scroll position
     val artistsGridState = rememberLazyGridState()
     val albumsGridState = rememberLazyGridState()
     val tracksGridState = rememberLazyGridState()
     val playlistsGridState = rememberLazyGridState()
+    val audiobooksGridState = rememberLazyGridState()
     val podcastsGridState = rememberLazyGridState()
     val radiosGridState = rememberLazyGridState()
 
@@ -325,6 +335,7 @@ private fun TabContent(
             albumsGridState,
             tracksGridState,
             playlistsGridState,
+            audiobooksGridState,
             podcastsGridState,
             radiosGridState
         ) {
@@ -333,6 +344,7 @@ private fun TabContent(
                 LibraryViewModel.Tab.ALBUMS to albumsGridState,
                 LibraryViewModel.Tab.TRACKS to tracksGridState,
                 LibraryViewModel.Tab.PLAYLISTS to playlistsGridState,
+                LibraryViewModel.Tab.AUDIOBOOKS to audiobooksGridState,
                 LibraryViewModel.Tab.PODCASTS to podcastsGridState,
                 LibraryViewModel.Tab.RADIOS to radiosGridState
             )
@@ -381,6 +393,7 @@ private fun TabContent(
                                 gridState = it,
                                 playlistActions = playlistActions,
                                 libraryActions = libraryActions,
+                                progressActions = progressActions,
                             )
                         }
 

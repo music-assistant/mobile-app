@@ -39,6 +39,13 @@ data class ServerMediaItem(
     //@SerialName("track_number") val trackNumber: Int? = null,
     // podcast episode only
     @SerialName("podcast") val podcast: ServerMediaItem? = null,
+    // Audiobook only
+    @SerialName("authors") val authors: List<String>? = null,
+    @SerialName("narrators") val narrators: List<String>? = null,
+    @SerialName("publisher") val publisher: String? = null,
+    // Progress tracking (audiobooks, podcast episodes)
+    @SerialName("fully_played") val fullyPlayed: Boolean? = null,
+    @SerialName("resume_position_ms") val resumePositionMs: Long? = null,
     // Folder only
     @SerialName("items") val items: List<ServerMediaItem>? = null,
 )
@@ -61,7 +68,7 @@ data class Metadata(
     @SerialName("popularity") val popularity: Int? = null,
     @SerialName("release_date") val releaseDate: String? = null,
     //@SerialName("languages") val languages: List<String>? = null,
-    //@SerialName("chapters") val chapters: List<String>? = null,
+    @SerialName("chapters") val chapters: List<MediaItemChapter>? = null,
     @SerialName("last_refresh") val lastRefresh: Long?
 )
 
@@ -83,6 +90,16 @@ data class ProviderMapping(
 //    @SerialName("url") val url: String? = null,
 //    @SerialName("details") val details: String?
 )
+
+@Serializable
+data class MediaItemChapter(
+    @SerialName("position") val position: Int,
+    @SerialName("name") val name: String,
+    @SerialName("start") val start: Double,
+    @SerialName("end") val end: Double? = null,
+) {
+    val duration: Double get() = if (end != null) end - start else 0.0
+}
 
 @Serializable
 data class AudioFormat(
