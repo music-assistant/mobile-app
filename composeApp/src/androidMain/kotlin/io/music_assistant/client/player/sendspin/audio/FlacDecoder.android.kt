@@ -5,9 +5,12 @@ import android.media.MediaFormat
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * Android implementation of FLAC audio decoder using MediaCodec.
@@ -18,13 +21,17 @@ import java.nio.ByteOrder
  * Note: MediaCodec FLAC decoder always outputs 16-bit PCM samples. Conversion
  * to 24/32-bit formats is performed but doesn't increase audio quality.
  *
- * Thread safety: Not thread-safe. Caller must ensure sequential access.
+ * Thread safety: All public methods are synchronized via decoderLock to prevent
+ * concurrent access between decode() and release()/reset() from different coroutines.
  */
+@OptIn(ExperimentalEncodingApi::class)
 actual class FlacDecoder : AudioDecoder {
     private val logger = Logger.withTag("FlacDecoder")
 
-    // MediaCodec instance
-    @Volatile
+    // Lock to prevent concurrent access (decode vs release/reset race condition)
+    private val decoderLock = Any()
+
+    // MediaCodec instance - access must be synchronized via decoderLock
     private var codec: MediaCodec? = null
 
     // Configuration
@@ -33,173 +40,220 @@ actual class FlacDecoder : AudioDecoder {
     private var bitDepth: Int = 0
 
     // Timeout for MediaCodec operations (microseconds)
-    private val TIMEOUT_US = 10000L // 10ms
+    private val TIMEOUT_US = 10_000L // 10ms
+
+    /**
+     * Maximum number of retry attempts when no input buffer is available.
+     * Each retry waits TIMEOUT_US (10ms), so 3 retries = up to 40ms total.
+     * Between retries we drain output to free slots.
+     */
+    private val MAX_INPUT_RETRIES = 3
 
     actual override fun configure(config: AudioFormatSpec, codecHeader: String?) {
-        logger.i { "Configuring FLAC decoder: ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
+        synchronized(decoderLock) {
+            logger.i { "Configuring FLAC decoder: ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
 
-        // Validate constraints
-        require(config.channels in 1..8) {
-            "FLAC supports 1-8 channels, got ${config.channels}"
-        }
-        require(config.sampleRate in 1..655350) {
-            "Invalid sample rate: ${config.sampleRate}"
-        }
-
-        // Store configuration
-        sampleRate = config.sampleRate
-        channels = config.channels
-        bitDepth = config.bitDepth
-
-        try {
-            // Create MediaCodec for FLAC
-            codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_FLAC)
-
-            // Create MediaFormat
-            val format = MediaFormat.createAudioFormat(
-                MediaFormat.MIMETYPE_AUDIO_FLAC,
-                sampleRate,
-                channels
-            ).apply {
-                // Set max input size (conservative estimate for FLAC frames)
-                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
-
-                // If codec header provided, add as CSD-0 (codec-specific data)
-                codecHeader?.let { header ->
-                    try {
-                        val csd = ByteBuffer.wrap(header.toByteArray(Charsets.ISO_8859_1))
-                        setByteBuffer("csd-0", csd)
-                        logger.d { "Added codec-specific data: ${header.length} bytes" }
-                    } catch (e: Exception) {
-                        logger.w(e) { "Failed to set codec header, continuing without it" }
-                    }
-                }
+            // Validate constraints
+            require(config.channels in 1..8) {
+                "FLAC supports 1-8 channels, got ${config.channels}"
+            }
+            require(config.sampleRate in 1..655350) {
+                "Invalid sample rate: ${config.sampleRate}"
             }
 
-            // Configure codec (no surface, no crypto, decoder mode)
-            codec?.configure(format, null, null, 0)
-            codec?.start()
+            // Release any existing codec before reconfiguring
+            codec?.let { existing ->
+                try {
+                    existing.stop()
+                    existing.release()
+                    logger.d { "Released existing codec before reconfigure" }
+                } catch (e: Exception) {
+                    logger.w(e) { "Error releasing existing codec during reconfigure" }
+                }
+                codec = null
+            }
 
-            logger.i { "FLAC decoder initialized successfully" }
+            // Store configuration
+            sampleRate = config.sampleRate
+            channels = config.channels
+            bitDepth = config.bitDepth
 
-        } catch (e: IOException) {
-            logger.e(e) { "Failed to create FLAC decoder - codec not available" }
-            throw IllegalStateException(
-                "FLAC decoder not available on this device. " +
-                        "This is unexpected on Android API 26+. " +
-                        "Please report this device model.",
-                e
-            )
-        } catch (e: IllegalStateException) {
-            logger.e(e) { "Failed to configure FLAC decoder" }
-            throw IllegalStateException("FLAC decoder configuration failed", e)
-        } catch (e: Exception) {
-            logger.e(e) { "Unexpected error during FLAC decoder initialization" }
-            throw IllegalStateException("FLAC decoder initialization failed", e)
+            try {
+                // Create MediaCodec for FLAC
+                val newCodec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_FLAC)
+
+                // Create MediaFormat
+                val format = MediaFormat.createAudioFormat(
+                    MediaFormat.MIMETYPE_AUDIO_FLAC,
+                    sampleRate,
+                    channels
+                ).apply {
+                    // Set max input size (conservative estimate for FLAC frames)
+                    setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
+
+                    // FLAC requires the STREAMINFO metadata block as CSD-0.
+                    // The server sends codec_header as a base64-encoded string containing
+                    // the 34-byte STREAMINFO block (min/max block size, frame size,
+                    // sample rate, channels, bits per sample, total samples, MD5).
+                    if (!codecHeader.isNullOrEmpty()) {
+                        try {
+                            val headerBytes = Base64.decode(codecHeader)
+                            val csd = ByteBuffer.wrap(headerBytes)
+                            setByteBuffer("csd-0", csd)
+                            logger.i { "Set FLAC STREAMINFO from codec_header (${headerBytes.size} bytes)" }
+                        } catch (e: Exception) {
+                            logger.w(e) { "Failed to base64-decode codec header, continuing without it" }
+                        }
+                    } else {
+                        logger.w { "No codec_header provided for FLAC - decoder may fail" }
+                    }
+                }
+
+                // Configure codec (no surface, no crypto, decoder mode)
+                newCodec.configure(format, null, null, 0)
+                newCodec.start()
+
+                // Only assign after successful start - ensures codec is always in
+                // Executing state when visible to other threads
+                codec = newCodec
+
+                logger.i { "FLAC decoder initialized successfully" }
+
+            } catch (e: IOException) {
+                logger.e(e) { "Failed to create FLAC decoder - codec not available" }
+                throw IllegalStateException(
+                    "FLAC decoder not available on this device. " +
+                            "This is unexpected on Android API 26+. " +
+                            "Please report this device model.",
+                    e
+                )
+            } catch (e: IllegalStateException) {
+                logger.e(e) { "Failed to configure FLAC decoder" }
+                throw IllegalStateException("FLAC decoder configuration failed", e)
+            } catch (e: Exception) {
+                logger.e(e) { "Unexpected error during FLAC decoder initialization" }
+                throw IllegalStateException("FLAC decoder initialization failed", e)
+            }
         }
     }
 
     actual override fun decode(encodedData: ByteArray): ByteArray {
-        val currentCodec = codec
-            ?: throw IllegalStateException("Decoder not configured. Call configure() first.")
+        return synchronized(decoderLock) {
+            val currentCodec = codec
+                ?: run {
+                    logger.w { "Decoder not available (released or not configured)" }
+                    return@synchronized ByteArray(0)
+                }
 
-        if (encodedData.isEmpty()) {
-            logger.w { "Received empty encoded data" }
-            return ByteArray(0)
-        }
-
-        try {
-            logger.d { "Decoding FLAC packet: ${encodedData.size} bytes" }
-
-            // 1. Queue input buffer
-            val inputIndex = currentCodec.dequeueInputBuffer(TIMEOUT_US)
-            if (inputIndex < 0) {
-                logger.w { "No input buffer available (timeout)" }
-                return ByteArray(0) // Graceful degradation
+            if (encodedData.isEmpty()) {
+                logger.w { "Received empty encoded data" }
+                return@synchronized ByteArray(0)
             }
 
-            val inputBuffer = currentCodec.getInputBuffer(inputIndex)
-                ?: throw IllegalStateException("Input buffer is null")
+            try {
+                logger.d { "Decoding FLAC packet: ${encodedData.size} bytes" }
 
-            inputBuffer.clear()
-            inputBuffer.put(encodedData)
+                val outputStream = ByteArrayOutputStream()
 
-            currentCodec.queueInputBuffer(
-                inputIndex,
-                0,                          // offset
-                encodedData.size,          // size
-                0,                          // presentation time (not used for audio streaming)
-                0                           // flags
-            )
+                // 1. Submit input with retry.
+                // When all input buffers are occupied (codec backpressure), we drain
+                // output to free slots, then retry. This prevents silent frame drops.
+                var submitted = false
+                for (attempt in 0..MAX_INPUT_RETRIES) {
+                    val inputIndex = currentCodec.dequeueInputBuffer(TIMEOUT_US)
+                    if (inputIndex >= 0) {
+                        val inputBuffer = currentCodec.getInputBuffer(inputIndex)
+                            ?: throw IllegalStateException("Input buffer is null")
 
-            // 2. Dequeue output buffer(s)
-            val info = MediaCodec.BufferInfo()
-            val outputIndex = currentCodec.dequeueOutputBuffer(info, TIMEOUT_US)
+                        inputBuffer.clear()
+                        inputBuffer.put(encodedData)
 
-            return when {
+                        currentCodec.queueInputBuffer(
+                            inputIndex,
+                            0,                     // offset
+                            encodedData.size,      // size
+                            0,                     // presentation time
+                            0                      // flags
+                        )
+                        submitted = true
+                        break
+                    }
+
+                    // No input buffer available — drain output to free a slot, then retry
+                    if (attempt < MAX_INPUT_RETRIES) {
+                        drainOutput(currentCodec, outputStream)
+                    }
+                }
+
+                if (!submitted) {
+                    logger.e { "Failed to submit input after ${MAX_INPUT_RETRIES + 1} attempts, frame dropped (${encodedData.size} bytes)" }
+                }
+
+                // 2. Drain all available output buffers
+                drainOutput(currentCodec, outputStream)
+
+                val pcm16bit = outputStream.toByteArray()
+                logger.d { "Decoded ${pcm16bit.size} PCM bytes (16-bit)" }
+
+                // Convert to target bit depth if needed
+                if (pcm16bit.isNotEmpty()) {
+                    convertPcmBitDepth(pcm16bit)
+                } else {
+                    pcm16bit
+                }
+
+            } catch (e: IllegalStateException) {
+                logger.e(e) { "MediaCodec error during decode" }
+                ByteArray(0)
+            } catch (e: Exception) {
+                logger.e(e) { "Unexpected error during decode" }
+                ByteArray(0)
+            }
+        }
+    }
+
+    /**
+     * Drain all available output buffers from the codec.
+     *
+     * MediaCodec is asynchronous: queuing input doesn't immediately produce output.
+     * This method loops to collect all available decoded PCM data, handling format
+     * changes and deprecated status codes along the way.
+     */
+    private fun drainOutput(codec: MediaCodec, outputStream: ByteArrayOutputStream) {
+        val bufferInfo = MediaCodec.BufferInfo()
+
+        while (true) {
+            val outputIndex = codec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US)
+
+            when {
                 outputIndex >= 0 -> {
-                    // Got decoded data
-                    val outputBuffer = currentCodec.getOutputBuffer(outputIndex)
-                        ?: throw IllegalStateException("Output buffer is null")
-
-                    // Extract PCM data
-                    outputBuffer.position(info.offset)
-                    outputBuffer.limit(info.offset + info.size)
-
-                    val pcmData = ByteArray(info.size)
-                    outputBuffer.get(pcmData)
-
-                    // Release output buffer
-                    currentCodec.releaseOutputBuffer(outputIndex, false)
-
-                    logger.d { "Decoded ${info.size} PCM bytes (16-bit)" }
-
-                    // Convert to target bit depth if needed
-                    convertPcmBitDepth(pcmData)
+                    val outBuffer = codec.getOutputBuffer(outputIndex)
+                    if (outBuffer != null && bufferInfo.size > 0) {
+                        val pcmData = ByteArray(bufferInfo.size)
+                        outBuffer.position(bufferInfo.offset)
+                        outBuffer.get(pcmData, 0, bufferInfo.size)
+                        outputStream.write(pcmData)
+                    }
+                    codec.releaseOutputBuffer(outputIndex, false)
                 }
 
                 outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    // Output format changed (happens on first decode)
-                    val format = currentCodec.outputFormat
+                    val format = codec.outputFormat
                     logger.i { "Output format changed: $format" }
-
-                    // Verify format matches expectations
-                    val outChannels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                    val outSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-
-                    if (outChannels != channels || outSampleRate != sampleRate) {
-                        logger.w { "Format mismatch: expected ${sampleRate}Hz/${channels}ch, got ${outSampleRate}Hz/${outChannels}ch" }
-                    }
-
-                    // Return empty, caller will retry with next chunk
-                    ByteArray(0)
+                    // Continue draining — there may be more output buffers
                 }
 
-                outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    // Codec is buffering, no output yet
-                    logger.d { "Codec buffering, no output available" }
-                    ByteArray(0)
-                }
-
+                @Suppress("DEPRECATION")
                 outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
-                    // Deprecated in API 21+, ignore
-                    logger.d { "Output buffers changed (ignored)" }
-                    ByteArray(0)
+                    // Deprecated since API 21, but some devices still return it
+                    // Continue draining
                 }
 
                 else -> {
-                    logger.w { "Unexpected output index: $outputIndex" }
-                    ByteArray(0)
+                    // INFO_TRY_AGAIN_LATER or unknown: no more output available
+                    break
                 }
             }
-
-        } catch (e: IllegalStateException) {
-            logger.e(e) { "MediaCodec error during decode" }
-            // Graceful degradation: return silence
-            return ByteArray(0)
-        } catch (e: Exception) {
-            logger.e(e) { "Unexpected error during decode" }
-            return ByteArray(0)
         }
     }
 
@@ -261,38 +315,53 @@ actual class FlacDecoder : AudioDecoder {
     }
 
     actual override fun reset() {
-        logger.i { "Resetting FLAC decoder" }
-        try {
-            codec?.let { c ->
-                // Flush codec buffers (clears input/output queues)
-                c.flush()
-                logger.d { "Codec flushed successfully" }
+        synchronized(decoderLock) {
+            logger.i { "Resetting FLAC decoder" }
+            val currentCodec = codec ?: run {
+                logger.w { "No codec to reset (already released)" }
+                return
             }
-        } catch (e: IllegalStateException) {
-            logger.e(e) { "Error flushing codec during reset" }
-            // If flush fails, try stop/start cycle
             try {
-                codec?.stop()
-                codec?.start()
-                logger.w { "Codec restarted after flush failure" }
-            } catch (e2: Exception) {
-                logger.e(e2) { "Failed to restart codec" }
+                // Flush codec buffers (clears input/output queues)
+                currentCodec.flush()
+                logger.d { "Codec flushed successfully" }
+            } catch (e: IllegalStateException) {
+                logger.e(e) { "Error flushing codec during reset" }
+                // If flush fails, try stop/start cycle to recover
+                try {
+                    currentCodec.stop()
+                    currentCodec.start()
+                    logger.w { "Codec restarted after flush failure" }
+                } catch (e2: Exception) {
+                    logger.e(e2) { "Failed to restart codec, releasing it" }
+                    // If stop/start also fails, codec is in an unrecoverable state.
+                    // Release it and null the reference so decode() returns silence
+                    // instead of crashing on a Released-state MediaCodec.
+                    try {
+                        currentCodec.release()
+                    } catch (e3: Exception) {
+                        logger.e(e3) { "Error releasing codec after failed restart" }
+                    }
+                    codec = null
+                }
             }
         }
     }
 
     actual override fun release() {
-        logger.i { "Releasing FLAC decoder resources" }
-        try {
-            codec?.let { c ->
-                c.stop()
-                c.release()
-                logger.d { "Codec released successfully" }
+        synchronized(decoderLock) {
+            logger.i { "Releasing FLAC decoder resources" }
+            try {
+                codec?.let { c ->
+                    c.stop()
+                    c.release()
+                    logger.d { "Codec released successfully" }
+                }
+            } catch (e: Exception) {
+                logger.e(e) { "Error releasing codec" }
+            } finally {
+                codec = null
             }
-        } catch (e: Exception) {
-            logger.e(e) { "Error releasing codec" }
-        } finally {
-            codec = null
         }
     }
 
