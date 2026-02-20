@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -216,6 +217,9 @@ private fun Library(
                 label = {
                     Text(text = "Quick search")
                 },
+                trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
+                    { IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) { Icon(Icons.Default.Clear, contentDescription = "Clear") } }
+                } else null,
                 singleLine = true
             )
             FilterChip(

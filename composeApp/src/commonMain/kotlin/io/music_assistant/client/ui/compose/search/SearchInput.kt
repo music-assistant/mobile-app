@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +43,9 @@ fun SearchInput(
         onValueChange = onQueryChanged,
         maxLines = 1,
         label = { Text(if (query.trim().length < 3) "Type at least 3 characters to search" else "Search query") },
+        trailingIcon = if (query.isNotEmpty()) {
+            { IconButton(onClick = { onQueryChanged("") }) { Icon(Icons.Default.Clear, contentDescription = "Clear") } }
+        } else null,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {
             onQueryChanged(query)
