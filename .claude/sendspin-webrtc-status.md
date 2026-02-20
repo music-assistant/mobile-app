@@ -1,10 +1,10 @@
 # Sendspin over WebRTC - Implementation Status
 
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-20
 
-## Status: ✅ WORKING (with known bugs)
+## Status: ✅ WORKING (playback bug fixed — pending end-to-end test)
 
-Player registration works, playback starts over WebRTC data channel. Some bugs present in playback.
+Player registration works, playback starts over WebRTC data channel. Root cause of playback bug identified and fixed (see Testing Status below).
 
 ---
 
@@ -241,9 +241,8 @@ MediaPlayerController
 - Player registration on server
 - Playback start
 
-### ⚠️ Known Issues (Needs Debugging)
-- Playback has bugs (details TBD)
-- Nature of bugs unknown (glitches? stops? latency?)
+### ✅ Resolved (Pending End-to-End Test)
+- **Playback bug: no audio** — Root cause was a time-base mismatch. `MessageDispatcher` and `AudioStreamManager` each had their own `TimeSource.Monotonic.markNow()` epoch. `ClockSynchronizer.serverLoopOriginLocal` was calibrated in MessageDispatcher's domain, but `AudioStreamManager.getCurrentTimeMicros()` used a different epoch, making all chunk timestamps appear perpetually early. Fixed 2026-02-20: `ClockSynchronizer` now owns the shared `startMark`; both classes call `clockSynchronizer.getCurrentTimeMicros()`.
 
 ### ❌ Not Tested
 - Switching Direct → WebRTC while Sendspin running
@@ -324,30 +323,12 @@ MediaPlayerController
 
 ---
 
-## Next Steps (Debugging)
+## Next Steps
 
-1. **Identify playback bugs:**
-   - Audio glitches?
-   - Buffering issues?
-   - Sync problems?
-   - Drops/skips?
-
-2. **Check logs for errors:**
-   - WebRTC channel state
-   - Binary message flow
-   - AudioStreamManager
-   - Buffer state
-
-3. **Compare WebSocket vs WebRTC playback:**
-   - Same codec?
-   - Same buffer settings?
-   - Same clock sync?
-
-4. **Potential issues to investigate:**
-   - Binary message ordering (WebRTC unreliable mode?)
-   - MTU fragmentation
-   - Congestion control
-   - Clock sync over WebRTC
+1. **End-to-end test** — Validate audio playback over WebRTC on a real device with the time-base fix applied
+2. **Switching scenarios** — Test Direct → WebRTC and WebRTC → Direct while Sendspin is running
+3. **Long session testing** — Extended playback over WebRTC (30+ min) to check for drift or buffer issues
+4. **Network transition testing** — WiFi → cellular with Sendspin over WebRTC active
 
 ---
 

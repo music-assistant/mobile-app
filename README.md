@@ -12,11 +12,35 @@ By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant
 
 - All platforms:
   - managing MA players queues and playback;
-  - local playback on device from MA library;
+  - local playback on device from MA library (Sendspin streaming protocol over WebRTC or WebSocket);
   - comprehensive Settings screen with section-based UI for server connection, authentication (builtin/OAuth), and local player configuration.
 - Android-specific:
   - media service (background playback) and media notification in system area for quick access to players controls;
   - Android Auto support for built-in player.
+- iOS-specific:
+  - native audio playback via AudioQueue (CoreAudio) with support for FLAC, Opus, and PCM;
+  - Lock Screen and Control Center integration (Now Playing info, play/pause/next/prev remote commands);
+  - background audio playback with automatic resume after phone call or Siri interruptions;
+  - WebRTC data channel transport for low-latency Sendspin streaming.
+
+## Building from source
+
+### iOS
+
+See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-step guide covering:
+
+- Required tools and JDK version (JDK 21 LTS required — JDK 25 is not supported)
+- WebRTC framework setup
+- Signing and provisioning configuration
+- Build commands for simulator and physical device
+- Known limitations and troubleshooting
+
+### Android
+
+```bash
+./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:installDebug
+```
 
 ## Contributing
 

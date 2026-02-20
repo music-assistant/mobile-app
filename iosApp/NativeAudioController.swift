@@ -36,6 +36,62 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     override init() {
         super.init()
         print("🎵 NativeAudioController: Initialized")
+
+        // Handle audio session interruptions (phone calls, Siri, alarms)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+        // Handle route changes (headphones unplugged, Bluetooth disconnects)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioRouteChange(_:)),
+            name: AVAudioSession.routeChangeNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        switch type {
+        case .began:
+            // System has paused AudioQueue automatically
+            print("🎵 NativeAudioController: Audio session interrupted")
+        case .ended:
+            let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) && isPlaying, let queue = audioQueue {
+                do {
+                    try AVAudioSession.sharedInstance().setActive(true)
+                    AudioQueueStart(queue, nil)
+                    print("🎵 NativeAudioController: ✅ Resumed after interruption")
+                } catch {
+                    print("🎵 NativeAudioController: ❌ Failed to resume after interruption: \(error)")
+                }
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    @objc private func handleAudioRouteChange(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
+
+        if reason == .oldDeviceUnavailable {
+            // Headphones or Bluetooth device disconnected — standard iOS behaviour pauses audio
+            print("🎵 NativeAudioController: Audio output device disconnected")
+        }
     }
     
     // MARK: - PlatformAudioPlayer Protocol
@@ -85,42 +141,41 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         listener.onReady()
     }
     
+    /// Called from Kotlin via efficient NSData bulk-copy path (avoids per-byte Swift interop).
+    func writeRawPcmNSData(data: NSData) {
+        processAudioData(data as Data)
+    }
+
+    /// Legacy path: still satisfies the PlatformAudioPlayer protocol but is no longer
+    /// called from Kotlin (Kotlin always uses writeRawPcmNSData now).
     func writeRawPcm(data: KotlinByteArray) {
         let size = Int(data.size)
-        
-        // Convert KotlinByteArray to Data
         var swiftData = Data(count: size)
         for i in 0..<size {
             swiftData[i] = UInt8(bitPattern: data.get(index: Int32(i)))
         }
-        
+        processAudioData(swiftData)
+    }
+
+    private func processAudioData(_ swiftData: Data) {
         // Start audio queue on first data
         if !streamStarted {
             streamStarted = true
-            print("🎵 NativeAudioController: First data received (\(size) bytes)")
-            
-            // Activate Now Playing
+            print("🎵 NativeAudioController: First data received (\(swiftData.count) bytes)")
             NowPlayingManager.shared.activatePlayback()
-            
-            // Start audio queue
             startAudioQueue()
         }
-        
-        // Decode data to PCM
+
         guard let decoder = decoder else {
             print("🎵 NativeAudioController: ❌ No decoder available")
             return
         }
-        
+
         do {
             let pcmData = try decoder.decode(swiftData)
-            
-            // Add to PCM buffer
             bufferLock.lock()
             pcmBuffer.append(pcmData)
             bufferLock.unlock()
-            
-            print("🎵 NativeAudioController: Decoded \(size) → \(pcmData.count) bytes PCM")
         } catch {
             print("🎵 NativeAudioController: ❌ Decode error: \(error)")
         }

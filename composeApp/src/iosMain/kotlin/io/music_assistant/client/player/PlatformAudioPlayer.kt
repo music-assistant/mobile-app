@@ -1,5 +1,7 @@
 package io.music_assistant.client.player
 
+import platform.Foundation.NSData
+
 /**
  * Interface for platform-specific audio player implementation.
  * This allows Swift (or other iOS logic) to provide the actual player.
@@ -14,6 +16,11 @@ interface PlatformAudioPlayer {
         listener: MediaPlayerListener
     )
     fun writeRawPcm(data: ByteArray)
+    /**
+     * Efficient variant called from Kotlin: data is already converted to NSData using
+     * usePinned bulk-copy, avoiding a byte-by-byte Swift interop loop.
+     */
+    fun writeRawPcmNSData(data: NSData)
     fun stopRawPcmStream()
     fun setVolume(volume: Int)
     fun setMuted(muted: Boolean)

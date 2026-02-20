@@ -5,6 +5,7 @@ package io.music_assistant.client.player.sendspin
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import kotlin.time.TimeSource
 
 enum class SyncQuality {
     GOOD,
@@ -19,6 +20,13 @@ data class ClockStats(
 )
 
 class ClockSynchronizer {
+    // Shared monotonic time base — created once so MessageDispatcher and AudioStreamManager
+    // both read from the same epoch, keeping serverLoopOriginLocal and currentLocalTime
+    // in the same time domain.
+    private val startMark = TimeSource.Monotonic.markNow()
+
+    fun getCurrentTimeMicros(): Long = startMark.elapsedNow().inWholeMicroseconds
+
     // Clock synchronization state
     private var offset: Long = 0 // μs (server - client)
     private var drift: Double = 0.0 // μs/μs

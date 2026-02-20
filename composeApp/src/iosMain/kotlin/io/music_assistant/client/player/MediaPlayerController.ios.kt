@@ -3,12 +3,19 @@
 package io.music_assistant.client.player
 
 import io.music_assistant.client.player.sendspin.model.AudioCodec
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import platform.AVFAudio.AVAudioSession
+import platform.Foundation.NSData
+import platform.Foundation.NSMutableData
 
 /**
- * MediaPlayerController - iOS stub for Sendspin
+ * MediaPlayerController - iOS implementation for Sendspin
  *
- * Handles raw PCM audio streaming for Sendspin protocol.
- * TODO: Implement using AVAudioEngine or AudioQueue
+ * Delegates to NativeAudioController (Swift) via PlatformPlayerProvider.
+ * NativeAudioController uses AudioQueue for playback and supports FLAC/Opus/PCM
+ * via libFLAC, swift-opus, and PCM passthrough.
  */
 actual class MediaPlayerController actual constructor(platformContext: PlatformContext) {
     private var isPrepared: Boolean = false
@@ -43,13 +50,21 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
 
+    @OptIn(ExperimentalForeignApi::class)
     actual fun writeRawPcm(data: ByteArray): Int {
-        val player = PlatformPlayerProvider.player
-        if (player != null) {
-            player.writeRawPcm(data)
-            return data.size
+        val player = PlatformPlayerProvider.player ?: return 0
+        // Bulk-copy ByteArray → NSData via usePinned, avoiding a per-byte Swift interop loop
+        val nsData: NSData = if (data.isEmpty()) {
+            NSData()
+        } else {
+            val mutableData = NSMutableData()
+            data.usePinned { pinned ->
+                mutableData.appendBytes(pinned.addressOf(0), data.size.toULong())
+            }
+            mutableData
         }
-        return 0
+        player.writeRawPcmNSData(nsData)
+        return data.size
     }
 
     actual fun pauseSink() { /* no-op on iOS */ }
@@ -75,8 +90,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     }
 
     actual fun getCurrentSystemVolume(): Int {
-        // TODO: Add getVolume to interface if needed, for now return dummy
-        return 100
+        return (AVAudioSession.sharedInstance().outputVolume * 100).toInt()
     }
     
     // Now Playing (Control Center / Lock Screen)

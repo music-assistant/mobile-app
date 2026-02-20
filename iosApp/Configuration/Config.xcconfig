@@ -1,4 +1,4 @@
 TEAM_ID=
-BUNDLE_ID=io.music_assistant.client.MusicAssistantClient
+PRODUCT_BUNDLE_IDENTIFIER=io.music_assistant.client.MusicAssistantClient
 APP_NAME=MusicAssistantClient
 IPHONEOS_DEPLOYMENT_TARGET = 15.0

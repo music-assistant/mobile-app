@@ -417,15 +417,8 @@ class MessageDispatcher(
     }
 
     // Use monotonic time for clock sync instead of wall clock time
-    // This matches the server's relative time base
-    // Use monotonic time for clock sync instead of wall clock time
-    // This matches the server's relative time base
-    private val startMark = kotlin.time.TimeSource.Monotonic.markNow()
-
-    private fun getCurrentTimeMicros(): Long {
-        // Use relative time since client start, not Unix epoch time
-        return startMark.elapsedNow().inWholeMicroseconds
-    }
+    // Delegate to ClockSynchronizer so all timestamps share the same monotonic epoch.
+    private fun getCurrentTimeMicros(): Long = clockSynchronizer.getCurrentTimeMicros()
 
     fun close() {
         logger.i { "Closing MessageDispatcher" }

@@ -5,9 +5,7 @@ import AVFoundation
 /// Manages iOS Now Playing info (Control Center, Lock Screen)
 /// and remote command handling (play/pause/next/prev buttons)
 ///
-/// IMPORTANT: This app uses MPV (libmpv) for audio playback, not AVPlayer.
-/// MPV uses its own AudioUnit output which may have different integration
-/// characteristics with iOS's Now Playing system.
+/// Audio playback is handled by NativeAudioController via AudioQueue.
 class NowPlayingManager {
     
     typealias CommandHandler = (String) -> Void

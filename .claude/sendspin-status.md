@@ -32,13 +32,13 @@
 - **Android Auto**: ✅ Supported via AndroidAutoPlaybackService
 
 #### iOS
-- **Audio Output**: MPV (libmpv via MPVKit) with custom stream protocol
-- **PCM Streaming**: ✅ Working (demuxer=rawaudio)
-- **Opus Decoding**: ✅ Working (MPV/FFmpeg)
-- **FLAC Decoding**: ✅ Working (MPV/FFmpeg)
-- **Volume Control**: ⚠️ Basic support, needs platform integration
-- **Background Playback**: ⚠️ Needs implementation
-- **Implementation**: Full rewrite completed 2026-01-14 (see ios_audio_pipeline.md)
+- **Audio Output**: AudioQueue (CoreAudio) — native, MPV removed
+- **PCM Streaming**: ✅ Working
+- **Opus Decoding**: ✅ Working (swift-opus / libopus)
+- **FLAC Decoding**: ✅ Working (libFLAC)
+- **Volume Control**: ✅ Completed (reads real system volume via `AVAudioSession.outputVolume`) — pending tests
+- **Background Playback**: ✅ Completed (`AVAudioSession` interruption + route-change handlers; resumes after phone calls/Siri) — pending tests
+- **Implementation**: AudioQueue rewrite completed 2026-01-23, interruption handling added 2026-02-20 (see ios_audio_pipeline.md)
 
 ### ⚠️ Partially Implemented
 
@@ -263,16 +263,20 @@ SendspinClient (Orchestrator)
 ## Known Issues & Bugs
 
 ### High Priority
-1. **No volume UI** - Can't control volume from app (receives server commands)
-2. **Error handling incomplete** - Some edge cases not handled gracefully
+1. **Error handling incomplete** - Some edge cases not handled gracefully
 
 ### Medium Priority
-3. **No codec negotiation** - Server chooses codec, client accepts
-4. **Opus header parsing** - Pre-skip samples not handled (may cause click at start)
+2. **No codec negotiation** - Server chooses codec, client accepts
+3. **Opus header parsing** - Pre-skip samples not handled (may cause click at start)
 
 ### Low Priority
-5. **No logging controls** - Can't adjust log verbosity at runtime
-6. **Thread priority not set** - Playback thread should be high priority
+4. **No logging controls** - Can't adjust log verbosity at runtime
+5. **Thread priority not set** - Playback thread should be high priority
+
+### Resolved (Pending Tests)
+- ~~**iOS volume control**~~ — Reads real system volume via `AVAudioSession.outputVolume` (fixed 2026-02-20)
+- ~~**iOS background playback**~~ — `AVAudioSession` interruption + route-change handlers added; auto-resumes after phone calls, Siri, or headphone disconnect (fixed 2026-02-20)
+- ~~**No audio on iOS (time-base mismatch)**~~ — `MessageDispatcher` and `AudioStreamManager` were using separate `TimeSource.Monotonic.markNow()` instances; `ClockSynchronizer.serverLoopOriginLocal` was calibrated in MessageDispatcher's domain but compared with AudioStreamManager's independent epoch, causing all chunks to appear perpetually early. Fixed by adding a shared `startMark` + `getCurrentTimeMicros()` to `ClockSynchronizer` and having both classes delegate to it (fixed 2026-02-20)
 
 ---
 
@@ -337,8 +341,6 @@ SendspinClient (Orchestrator)
 ### Medium Term
 6. Add codec preference settings
 7. Optimize memory usage
-8. Improve iOS background playback
-9. Enhance iOS volume control integration
 
 ### Long Term
 10. Artwork display
@@ -476,6 +478,16 @@ SendspinClient (Orchestrator)
 
 ## Changelog
 
+### 2026-02-20 - iOS Bug Fixes & Audio Playback (Pending Tests)
+- ✅ **iOS volume control** — `getCurrentSystemVolume()` now reads real system volume via `AVAudioSession.outputVolume` instead of returning hardcoded 100
+- ✅ **iOS background audio** — Added `AVAudioSession` interruption + route-change `NotificationCenter` observers to `NativeAudioController`; auto-resumes after phone calls, Siri interruptions, or headphone disconnect
+- ✅ **Efficient Kotlin→Swift PCM transfer** — Added `writeRawPcmNSData(NSData)` on `NativeAudioController`; Kotlin side uses `usePinned`/`addressOf` bulk copy instead of per-byte Swift interop loop
+- ✅ **DataChannelWrapper binary fast path** — First-byte check (`{`/`[`) instead of full `decodeToString()` on every binary audio message at 50-100/sec
+- ✅ **iOS no-audio bug fixed** — Root cause: `MessageDispatcher` and `AudioStreamManager` each had their own `TimeSource.Monotonic.markNow()` start mark; `ClockSynchronizer.serverLoopOriginLocal` was set in MessageDispatcher's time domain but compared against AudioStreamManager's independent epoch in the playback loop. Fix: `ClockSynchronizer` now owns the shared `startMark` and exposes `getCurrentTimeMicros()`; both classes delegate to it
+- ✅ **OAuthHandler** — Opens OAuth URLs in Safari via `UIApplication.openURL` (was throwing `UnsupportedOperationException`)
+- ✅ **SystemAppearance** — Sets `overrideUserInterfaceStyle` on all windows for dark/light mode support
+- 📊 Status: All known iOS playback blockers resolved — awaiting device/simulator validation
+
 ### 2026-02-05 - Architecture Refactoring & Maintainability
 - ✅ **SendspinClientFactory** - Extracted client creation logic from MainDataSource
   - Uses Kotlin Result<T> for error handling
@@ -565,4 +577,4 @@ SendspinClient (Orchestrator)
 
 **Platform Summary:**
 - **Android**: ✅ PCM, Opus (Concentus), FLAC (MediaCodec) - Full background playback & Android Auto
-- **iOS**: ✅ PCM, Opus, FLAC (all via MPV/FFmpeg) - Full streaming support
+- **iOS**: ✅ PCM, Opus (swift-opus), FLAC (libFLAC) via AudioQueue - Background playback + Control Center integration (pending end-to-end test)

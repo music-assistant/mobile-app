@@ -93,19 +93,22 @@ The `NativeAudioController` manages an `AudioQueueRef` directly:
 | `composeApp/.../MediaPlayerController.ios.kt` | Kotlin stub that delegates to `PlatformPlayerProvider`. |
 | `composeApp/.../utils/Codecs.ios.kt` | Supported codecs: FLAC, Opus, PCM. |
 
-## Status: ✅ Working (2026-01-23)
+## Status: ✅ Working (updated 2026-02-20)
 
 - [x] FLAC streaming playback (via libFLAC)
 - [x] Opus streaming playback (via swift-opus)
 - [x] PCM streaming playback (16/24/32 bit)
 - [x] Proper codec header handling
-- [x] Native AudioQueue implementation (Replacing MPV)
+- [x] Native AudioQueue implementation (replacing MPV)
+- [x] Background audio: `AVAudioSession` interruption + route-change handlers — resumes after phone calls, Siri, headphone disconnect (completed 2026-02-20, pending tests)
+- [x] Efficient Kotlin→Swift data transfer via `writeRawPcmNSData(NSData)` using `usePinned` bulk copy (completed 2026-02-20)
+- [x] Lock Screen / Control Center: Now Playing info + remote commands via `NowPlayingManager`
 
 ## Known Issues
 
-1.  **Seek/Scrub**: Similar to previous implementation, scrubbing might trigger issues in the API layer if not handled gracefully.
-2.  **Resumption**: Stream resumption during network changes relies on the existing sendspin resilience strategy (buffer preservation).
+1. **Seek/Scrub**: Scrubbing might trigger issues in the API layer if not handled gracefully.
+2. **Resumption**: Stream resumption during network changes relies on the existing Sendspin resilience strategy (buffer preservation).
 
 ## Future Work
 
-1.  **Sample-Accurate Sync**: Direct access to `AudioQueue` callbacks provides better timing info than MPV. We could implement precise synchronized playback by using the `mSampleTime` from `AudioQueueTimeline`.
+1. **Sample-Accurate Sync**: Direct access to `AudioQueue` callbacks provides better timing info than MPV. Could implement precise synchronized playback using `mSampleTime` from `AudioQueueTimeline`.

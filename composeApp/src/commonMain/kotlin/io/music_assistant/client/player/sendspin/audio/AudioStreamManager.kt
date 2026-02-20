@@ -644,16 +644,10 @@ class AudioStreamManager(
         }
     }
 
-    // Use monotonic time for playback timing instead of wall clock time
-    // This matches the server's relative time base
-    // Use monotonic time for playback timing instead of wall clock time
-    // This matches the server's relative time base
-    private val startMark = kotlin.time.TimeSource.Monotonic.markNow()
-
-    private fun getCurrentTimeMicros(): Long {
-        // Use relative time since stream start, not Unix epoch time
-        return startMark.elapsedNow().inWholeMicroseconds
-    }
+    // Delegate to ClockSynchronizer so all timestamps share the same monotonic epoch
+    // as MessageDispatcher. This ensures serverLoopOriginLocal (set using MD's time)
+    // and currentLocalTime (used here for playback decisions) are in the same domain.
+    private fun getCurrentTimeMicros(): Long = clockSynchronizer.getCurrentTimeMicros()
 
     override fun close() {
         logger.i { "Closing AudioStreamManager" }

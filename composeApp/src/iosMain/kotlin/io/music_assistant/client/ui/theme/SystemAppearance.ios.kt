@@ -1,7 +1,22 @@
 package io.music_assistant.client.ui.theme
 
-@androidx.compose.runtime.Composable
-actual fun SystemAppearance(isDarkTheme: Boolean) {
-}
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import platform.UIKit.UIApplication
+import platform.UIKit.UIUserInterfaceStyleDark
+import platform.UIKit.UIUserInterfaceStyleLight
+import platform.UIKit.UIWindow
+import platform.UIKit.UIWindowScene
 
+@Composable
+actual fun SystemAppearance(isDarkTheme: Boolean) {
+    LaunchedEffect(isDarkTheme) {
+        val style = if (isDarkTheme) UIUserInterfaceStyleDark else UIUserInterfaceStyleLight
+        UIApplication.sharedApplication.connectedScenes.forEach { scene ->
+            (scene as? UIWindowScene)?.windows?.forEach { window ->
+                (window as? UIWindow)?.overrideUserInterfaceStyle = style
+            }
+        }
+    }
+}
 
