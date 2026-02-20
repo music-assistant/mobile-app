@@ -8,8 +8,6 @@ This client interfaces with the [Music Assistant Server](https://github.com/musi
 
 By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant Kmp Client offers a consistent and efficient user experience across different platforms, simplifying the development process and ensuring feature parity.
 
-## The project is on early stage of development. Any help (especially from designers and iOS developers) is appreciated.
-
 ## Current set of features:
 
 - All platforms:
@@ -20,9 +18,17 @@ By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant
   - media service (background playback) and media notification in system area for quick access to players controls;
   - Android Auto support for built-in player.
 
-## Building from source
+## Contributing
 
-### iOS
+The project is in an early stage of development. Any help (especially from designers and iOS developers) is appreciated. To contribute:
+
+1. [Find an issue](https://github.com/music-assistant/mobile-app/issues) to work on - if you've noticed something wrong or missing, please file an issue about it
+2. Ask in the issue if you can work on it - this prevents multiple people from working on an issue at the same time
+3. Submit a PR with "Closes #<issue number>" at the top of the description
+
+### Building from source
+
+#### iOS
 
 See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-step guide covering:
 
@@ -32,7 +38,7 @@ See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-st
 - Build commands for simulator and physical device
 - Known limitations and troubleshooting
 
-### Android
+#### Android
 
 ```bash
 ./gradlew :composeApp:assembleDebug
