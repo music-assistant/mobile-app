@@ -90,7 +90,7 @@ internal fun PlayersPager(
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
     val coroutineScope = rememberCoroutineScope()
-    var showGroupDialog by remember { mutableStateOf(false) }
+    var groupDialogPlayer by remember { mutableStateOf<PlayerData?>(null) }
 
     fun moveToPlayer(playerId: String) {
         val targetIndex =
@@ -120,14 +120,6 @@ internal fun PlayersPager(
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
             val isLocalPlayer = player.playerId == playersState.localPlayerId
 
-            if (showGroupDialog) {
-                GroupDialog(
-                    item = player,
-                    simplePlayerAction = simplePlayerAction,
-                    onDismiss = { showGroupDialog = false }
-                )
-            }
-
             Column(
                 Modifier.background(
                     brush = if (isLocalPlayer) {
@@ -148,10 +140,12 @@ internal fun PlayersPager(
                 )
             ) {
 
-                GroupButton(
-                    player = player,
+                PlayerNameRow(
+                    playerName = player.player.displayName,
+                    hasNoChildren = player.groupChildren.isEmpty(),
+                    hasNoBoundChildren = player.groupChildren.none { it.isBound },
                     isLocalPlayer = isLocalPlayer,
-                    onShowGroup = { showGroupDialog = true }
+                    onShowGroup = { groupDialogPlayer = player }
                 )
 
                 AnimatedVisibility(
@@ -307,6 +301,13 @@ internal fun PlayersPager(
             }
         }
 
+        groupDialogPlayer?.let { player ->
+            GroupDialog(
+                item = player,
+                simplePlayerAction = simplePlayerAction,
+                onDismiss = { groupDialogPlayer = null }
+            )
+        }
     }
 }
 
@@ -495,14 +496,20 @@ private fun GroupPlayerItem(
 }
 
 @Composable
-private fun GroupButton(player: PlayerData, isLocalPlayer: Boolean, onShowGroup: () -> Unit) {
+private fun PlayerNameRow(
+    playerName: String,
+    hasNoChildren: Boolean,
+    hasNoBoundChildren: Boolean,
+    isLocalPlayer: Boolean,
+    onShowGroup: () -> Unit
+) {
     Box(
         modifier = Modifier.fillMaxWidth()
     ) {
         val playerName: @Composable (Color) -> Unit = { textColor ->
             Text(
                 modifier = Modifier.align(Alignment.Center),
-                text = player.player.displayName + (if (isLocalPlayer) " (local)" else ""),
+                text = playerName + (if (isLocalPlayer) " (local)" else ""),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Medium,
@@ -513,14 +520,14 @@ private fun GroupButton(player: PlayerData, isLocalPlayer: Boolean, onShowGroup:
         }
 
         when {
-            player.groupChildren.isEmpty() ->
+            hasNoChildren ->
                 Box(
                     modifier = Modifier.height(48.dp).align(Alignment.Center)
                 ) {
                     playerName(MaterialTheme.colorScheme.onSurface)
                 }
 
-            player.groupChildren.none { it.isBound } ->
+            hasNoBoundChildren ->
                 OutlinedButton(
                     modifier = Modifier.align(Alignment.Center),
                     enabled = true,
