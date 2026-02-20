@@ -199,7 +199,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\n\n# Use JDK 21 — JDK 25 is incompatible with Gradle 8.13/Kotlin 2.3.0\nexport JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home\nexport PATH=\"$JAVA_HOME/bin:$PATH\"\n\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n\n# Copy WebRTC.framework slice into the KMP output directory so the linker can find it\nWEBRTC_XCFW=\"$SRCROOT/Frameworks/WebRTC.xcframework\"\nOUTPUT_DIR=\"$SRCROOT/../composeApp/build/xcode-frameworks/$CONFIGURATION/$SDK_NAME\"\nif [[ \"$PLATFORM_NAME\" == *simulator* ]]; then\n  cp -Rf \"$WEBRTC_XCFW/ios-arm64_x86_64-simulator/WebRTC.framework\" \"$OUTPUT_DIR/\"\nelse\n  cp -Rf \"$WEBRTC_XCFW/ios-arm64/WebRTC.framework\" \"$OUTPUT_DIR/\"\nfi\n\n# Embed WebRTC.framework into the app bundle so dyld can find it at runtime\nBUNDLE_FRAMEWORKS=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks\"\nmkdir -p \"$BUNDLE_FRAMEWORKS\"\ncp -Rf \"$OUTPUT_DIR/WebRTC.framework\" \"$BUNDLE_FRAMEWORKS/\"\n\n# Sign WebRTC.framework with the same identity Xcode is using for this build.\n# EXPANDED_CODE_SIGN_IDENTITY is the cert hash for device builds and '-' (or empty) for simulator/ad-hoc.\n# Fall back to '-' (ad-hoc) if empty so simulator CLI builds still work.\ncodesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" \"$BUNDLE_FRAMEWORKS/WebRTC.framework\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -351,6 +351,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/Frameworks",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
@@ -358,7 +359,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourname.musicassistant;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID)";
 				PRODUCT_NAME = "${APP_NAME}";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
@@ -378,6 +379,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/Frameworks",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
@@ -385,7 +387,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourname.musicassistant;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID)";
 				PRODUCT_NAME = "${APP_NAME}";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;

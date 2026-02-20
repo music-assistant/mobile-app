@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -112,7 +115,7 @@ class AudioStreamManager(
     // Lock protecting audioDecoder lifecycle (startStream/stopStream/processBinaryMessage/close)
     // This prevents the race where processBinaryMessage() calls decode() on a decoder
     // that startStream() or close() has already released.
-    private val decoderLock = Any()
+    private val decoderLock = Mutex()
     private var audioDecoder: AudioDecoder? = null
 
     private var playbackJob: Job? = null
@@ -179,7 +182,7 @@ class AudioStreamManager(
 
         // Create and configure decoder atomically under lock to prevent race with
         // processBinaryMessage() calling decode() on a released decoder.
-        val outputCodec = synchronized(decoderLock) {
+        val outputCodec = decoderLock.withLock {
             // Release old decoder before creating new one
             audioDecoder?.release()
             audioDecoder = null
@@ -284,19 +287,19 @@ class AudioStreamManager(
         // DECODE IMMEDIATELY (producer pattern - prepare data ahead of time)
         // This runs on Default dispatcher with buffer headroom - not time-critical
         // Lock ensures we don't call decode() on a decoder being released by startStream/stopStream
-        val decodedPcm = synchronized(decoderLock) {
+        val decodedPcm = decoderLock.withLock {
             val decoder = audioDecoder ?: run {
                 logger.w { "No decoder available" }
-                return
+                return@withLock null
             }
 
             try {
                 decoder.decode(binaryMessage.data)
             } catch (e: Exception) {
                 logger.e(e) { "Error decoding audio chunk" }
-                return
+                return@withLock null
             }
-        }
+        } ?: return
 
         logger.d { "Decoded chunk: ${binaryMessage.data.size} -> ${decodedPcm.size} PCM bytes" }
 
@@ -588,7 +591,7 @@ class AudioStreamManager(
         // Clear the audio buffer
         audioBuffer.clear()
         // Reset decoder for new track (under lock to prevent race with processBinaryMessage)
-        synchronized(decoderLock) {
+        decoderLock.withLock {
             audioDecoder?.reset()
         }
         // Stop native audio playback immediately (for responsiveness)
@@ -612,7 +615,7 @@ class AudioStreamManager(
         adaptationJob = null
 
         audioBuffer.clear()
-        synchronized(decoderLock) {
+        decoderLock.withLock {
             audioDecoder?.reset()
         }
 
@@ -655,9 +658,11 @@ class AudioStreamManager(
     override fun close() {
         logger.i { "Closing AudioStreamManager" }
         playbackJob?.cancel()
-        synchronized(decoderLock) {
-            audioDecoder?.release()
-            audioDecoder = null
+        runBlocking {
+            decoderLock.withLock {
+                audioDecoder?.release()
+                audioDecoder = null
+            }
         }
         supervisorJob.cancel()
     }

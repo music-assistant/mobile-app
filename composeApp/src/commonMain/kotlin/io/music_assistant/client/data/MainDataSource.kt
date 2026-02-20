@@ -572,6 +572,27 @@ class MainDataSource(
                 }
             }
         }
+        // Keep Now Playing (iOS Control Center / Lock Screen) in sync with local player state.
+        // Runs every ~500 ms driven by the position calculation loop above.
+        launch {
+            localPlayer.collect { playerData ->
+                val track = playerData?.queueInfo?.currentItem?.track
+                val serverUrl = (apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
+                if (track != null) {
+                    mediaPlayerController.updateNowPlaying(
+                        title = track.name,
+                        artist = track.subtitle,
+                        album = track.parentName,
+                        artworkUrl = track.imageInfo?.url(serverUrl),
+                        duration = track.duration ?: 0.0,
+                        elapsedTime = playerData.queueInfo?.elapsedTime ?: 0.0,
+                        playbackRate = if (playerData.player.isPlaying) 1.0 else 0.0
+                    )
+                } else {
+                    mediaPlayerController.clearNowPlaying()
+                }
+            }
+        }
     }
 
     /**
