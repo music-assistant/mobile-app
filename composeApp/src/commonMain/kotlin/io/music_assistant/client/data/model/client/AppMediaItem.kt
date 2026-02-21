@@ -399,7 +399,7 @@ abstract class AppMediaItem(
         favorite: Boolean?,
         uri: String?,
         image: MediaItemImage?,
-        val duration: Double?,
+        override val duration: Double?,
         val authors: List<String>?,
         val narrators: List<String>?,
         val chapters: List<io.music_assistant.client.data.model.server.MediaItemChapter>?,
@@ -415,8 +415,10 @@ abstract class AppMediaItem(
         mediaType = MediaType.AUDIOBOOK,
         uri = uri,
         image = image,
-    ) {
+    ), PlayableItem {
         override val subtitle = authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
+        override val parentName: String? = authors?.firstOrNull()
+        override val defaultIcon = Icons.AutoMirrored.Filled.MenuBook
     }
 
     companion object {
