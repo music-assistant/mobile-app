@@ -57,11 +57,19 @@ class AuthenticationManager(
                                 AuthProcessState.NotStarted -> {
                                     // Try auto-login with saved token (unless we're intentionally logging out)
                                     val loggingOut = isLoggingOut
-                                    val tokenValue = settings.token.value
                                     if (!loggingOut) {
-                                        tokenValue?.let { token ->
-                                            authorizeWithSavedToken(token)
+                                        val serverIdentifier = when (state) {
+                                            is SessionState.Connected.Direct ->
+                                                settings.getDirectServerIdentifier(
+                                                    state.connectionInfo.host,
+                                                    state.connectionInfo.port,
+                                                    state.connectionInfo.isTls
+                                                )
+                                            is SessionState.Connected.WebRTC ->
+                                                settings.getWebRTCServerIdentifier(state.remoteId.rawId)
                                         }
+                                        val token = settings.getTokenForServer(serverIdentifier)
+                                        token?.let { authorizeWithSavedToken(it) }
                                     }
                                 }
 
@@ -235,8 +243,20 @@ class AuthenticationManager(
             // Set flag FIRST, before any async operations
             _isLoggingOut.value = true
             Logger.e(">>> LOGOUT - Clearing token from settings")
-            // Clear token to prevent re-authentication
-            settings.updateToken(null)
+            val currentState = serviceClient.sessionState.value
+            if (currentState is SessionState.Connected) {
+                val serverIdentifier = when (currentState) {
+                    is SessionState.Connected.Direct ->
+                        settings.getDirectServerIdentifier(
+                            currentState.connectionInfo.host,
+                            currentState.connectionInfo.port,
+                            currentState.connectionInfo.isTls
+                        )
+                    is SessionState.Connected.WebRTC ->
+                        settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
+                }
+                settings.setTokenForServer(serverIdentifier, null)
+            }
             Logger.e(">>> LOGOUT - Sending logout command to server")
             // Now send logout command to server
             serviceClient.logout()

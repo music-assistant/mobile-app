@@ -18,14 +18,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 
 class SendspinClient(
     private val config: SendspinConfig,
-    private val mediaPlayerController: MediaPlayerController
+    private val mediaPlayerController: MediaPlayerController,
+    private val externalPipeline: AudioPipeline? = null,
+    private val externalClockSynchronizer: ClockSynchronizer? = null
 ) : CoroutineScope {
 
     private val logger = Logger.withTag("SendspinClient")
@@ -34,14 +35,17 @@ class SendspinClient(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisorJob
 
+    // If external pipeline/clock provided, use them; otherwise own them
+    private val ownsAudioPipeline = externalPipeline == null
+    private val clockSynchronizer = externalClockSynchronizer ?: ClockSynchronizer()
+    private val audioPipeline: AudioPipeline =
+        externalPipeline ?: AudioStreamManager(clockSynchronizer, mediaPlayerController)
+
     // Components
     private var transport: SendspinTransport? = null
     private var messageDispatcher: MessageDispatcher? = null
     private var stateReporter: StateReporter? = null
     private var reconnectionCoordinator: ReconnectionCoordinator? = null
-    private val clockSynchronizer = ClockSynchronizer()
-    private val audioPipeline: AudioPipeline =
-        AudioStreamManager(clockSynchronizer, mediaPlayerController)
 
     // State flows
     private val _connectionState =
@@ -416,7 +420,7 @@ class SendspinClient(
 
         // Monitor audio pipeline for errors (e.g., audio output disconnected)
         launch {
-            audioPipeline.streamError.filterNotNull().collect { error ->
+            audioPipeline.streamError.collect { error ->
                 logger.w(error) { "Audio pipeline error - stopping playback" }
                 // Update playback state to Idle so UI reflects stopped state
                 _playbackState.update { SendspinPlaybackState.Idle }
@@ -511,7 +515,11 @@ class SendspinClient(
     }
 
     private suspend fun disconnectFromServer() {
-        audioPipeline.stopStream()
+        // Only stop the audio pipeline if we own it.
+        // External (shared) pipelines keep playing from their buffer during reconnection.
+        if (ownsAudioPipeline) {
+            audioPipeline.stopStream()
+        }
         reconnectionCoordinator?.stop()
         reconnectionCoordinator = null
         stateReporter?.close()
@@ -524,14 +532,25 @@ class SendspinClient(
         transport?.close()
         transport = null
 
-        clockSynchronizer.reset()
+        // Only reset clock sync if we own it.
+        // Shared clock synchronizer keeps its calibration across the reconnect window —
+        // the server's sync messages on the new connection will re-calibrate anyway.
+        // Resetting the shared one causes sampleCount=0, serverTimeToLocal() returns 0
+        // for all chunks → getBufferedDuration() stays 0 → waitForPrebuffer() times out
+        // → stopStream() destroys the AudioTrack → no sound.
+        if (ownsAudioPipeline) {
+            clockSynchronizer.reset()
+        }
     }
 
     fun close() {
         logger.i { "Closing Sendspin client" }
         // Note: stop() should be called before close() to properly clean up connections
-        // close() only performs synchronous cleanup
-        audioPipeline.close()
+        // close() only performs synchronous cleanup.
+        // Only close the audio pipeline if we own it — external pipelines are managed by the factory.
+        if (ownsAudioPipeline) {
+            audioPipeline.close()
+        }
         supervisorJob.cancel()
     }
 }

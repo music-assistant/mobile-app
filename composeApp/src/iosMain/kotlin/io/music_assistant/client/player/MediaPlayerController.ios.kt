@@ -52,6 +52,10 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         return 0
     }
 
+    actual fun pauseSink() { /* no-op on iOS */ }
+    actual fun resumeSink() { /* no-op on iOS */ }
+    actual fun flush() { /* no-op on iOS */ }
+
     actual fun stopRawPcmStream() {
         PlatformPlayerProvider.player?.stopRawPcmStream()
         isPrepared = false

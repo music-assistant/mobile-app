@@ -49,24 +49,23 @@ actual class DataChannelWrapper(
         eventScope.launch {
             try {
                 dataChannel.onMessage.collect { data ->
-                    // Access native DataChannel to check binary flag
-                    val nativeChannel = dataChannel.android
-                    // We need to check if this is binary or text by examining the buffer
-                    // The webrtc-kmp library doesn't expose this, so we'll use a heuristic:
-                    // Try to decode as UTF-8 text, if it fails or looks like binary, treat as binary
-                    // However, for proper discrimination, we need to access the native Buffer's binary flag
-
-                    // For now, we'll collect raw messages and check later
-                    // The proper approach is to handle this in the native callback
-
-                    // Try to decode as UTF-8 text
+                    // Try to decode as UTF-8 text; binary audio data will fail or not start with JSON
                     try {
                         val text = data.decodeToString()
-                        // Check if it's valid JSON (text messages start with '{' or '[')
                         if (text.isNotEmpty() && (text.first() == '{' || text.first() == '[')) {
-                            _textMessages.emit(text)
+                            // SCTP may deliver multiple messages concatenated in one callback.
+                            // Split into individual JSON objects and emit each one separately.
+                            var remaining = text
+                            while (remaining.isNotEmpty()) {
+                                val end = findJsonEnd(remaining)
+                                if (end < 0) {
+                                    _textMessages.emit(remaining) // incomplete — emit as-is, let parser fail
+                                    break
+                                }
+                                _textMessages.emit(remaining.substring(0, end + 1))
+                                remaining = remaining.substring(end + 1).trimStart()
+                            }
                         } else {
-                            // Likely binary data
                             _binaryMessages.emit(data)
                         }
                     } catch (e: Exception) {
@@ -100,6 +99,31 @@ actual class DataChannelWrapper(
                 logger.e(e) { "Error in onClose flow" }
             }
         }
+    }
+
+    /**
+     * Finds the index of the closing character of the first top-level JSON value in [s].
+     * Handles nested objects/arrays and string literals (including escaped chars).
+     * Returns -1 if no complete value is found.
+     */
+    private fun findJsonEnd(s: String): Int {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (i in s.indices) {
+            val c = s[i]
+            when {
+                escaped -> escaped = false
+                inString && c == '\\' -> escaped = true
+                c == '"' -> inString = !inString
+                !inString && (c == '{' || c == '[') -> depth++
+                !inString && (c == '}' || c == ']') -> {
+                    depth--
+                    if (depth == 0) return i
+                }
+            }
+        }
+        return -1
     }
 
     actual fun send(message: String) {

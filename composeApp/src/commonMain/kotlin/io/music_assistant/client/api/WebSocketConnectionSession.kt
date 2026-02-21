@@ -4,7 +4,6 @@ import co.touchlab.kermit.Logger
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.sendSerialized
-import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.flow.Flow
@@ -24,18 +23,7 @@ class WebSocketConnectionSession(
 
     override val messages: Flow<JsonObject> = flow {
         try {
-            for (frame in session.incoming) {
-                when (frame) {
-                    is Frame.Text -> {
-                        val message = session.receiveDeserialized<JsonObject>()
-                        emit(message)
-                    }
-
-                    else -> {
-                        // Ignore non-text frames (ping/pong/close)
-                    }
-                }
-            }
+            while (true) emit(session.receiveDeserialized())
         } catch (e: ClosedReceiveChannelException) {
             logger.d { "WebSocket connection closed" }
         } catch (e: Exception) {

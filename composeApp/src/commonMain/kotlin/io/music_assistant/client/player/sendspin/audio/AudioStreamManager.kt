@@ -18,13 +18,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 /**
  * Manages the complete audio playback pipeline for Sendspin streaming.
@@ -133,13 +138,30 @@ class AudioStreamManager(
     private val _playbackPosition = MutableStateFlow(0L)
     override val playbackPosition: StateFlow<Long> = _playbackPosition.asStateFlow()
 
-    // Error state - emits when stream encounters an error
-    private val _streamError = MutableStateFlow<Throwable?>(null)
-    override val streamError: StateFlow<Throwable?> = _streamError.asStateFlow()
+    // Error events — SharedFlow(replay=0) so new subscribers never see stale errors
+    private val _streamError = MutableSharedFlow<Throwable>(replay = 0, extraBufferCapacity = 1)
+    override val streamError: Flow<Throwable> = _streamError.asSharedFlow()
 
     private var streamConfig: StreamStartPlayer? = null
     private var isStreaming = false
     private var droppedChunksCount = 0
+
+    // Network disconnection tracking for starvation handling
+    @Volatile private var isNetworkDisconnected = false
+
+    // Tracks current AudioTrack format to enable reuse across reconnections
+    private data class SinkConfig(val outputCodec: AudioCodec, val sampleRate: Int, val channels: Int, val bitDepth: Int)
+    private var currentSinkConfig: SinkConfig? = null
+
+    /**
+     * Signal that the network transport has dropped.
+     * The playback loop will drain the buffer, then pause the sink and start a 30s starvation timer.
+     * Cleared automatically when startStream() is called on reconnect.
+     */
+    fun onNetworkDisconnected() {
+        logger.i { "Network disconnected - will pause sink when buffer empties" }
+        isNetworkDisconnected = true
+    }
 
     // Buffer state update throttling (performance optimization)
     private var lastBufferStateUpdate = 0L
@@ -147,6 +169,9 @@ class AudioStreamManager(
 
     override suspend fun startStream(config: StreamStartPlayer) {
         logger.i { "Starting stream: ${config.codec}, ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
+
+        // Reconnect signal: clear network disconnection flag so starvation timer is cancelled
+        isNetworkDisconnected = false
 
         streamConfig = config
         isStreaming = true
@@ -181,33 +206,44 @@ class AudioStreamManager(
             newDecoder.getOutputCodec()
         }
 
-        // Prepare MediaPlayerController
-        mediaPlayerController.prepareStream(
-            codec = outputCodec,
-            sampleRate = config.sampleRate,
-            channels = config.channels,
-            bitDepth = config.bitDepth,
-            codecHeader = config.codecHeader,
-            listener = object : MediaPlayerListener {
-                override fun onReady() {
-                    logger.i { "MediaPlayer ready for stream ($outputCodec)" }
-                }
+        // Check if we can reuse the existing AudioTrack (same format = no click, no recreation)
+        val newSinkConfig = SinkConfig(outputCodec, config.sampleRate, config.channels, config.bitDepth)
+        if (newSinkConfig == currentSinkConfig) {
+            // Same format — flush stale data and resume playback without destroying AudioTrack
+            logger.i { "Reusing existing AudioTrack (same format: $newSinkConfig)" }
+            mediaPlayerController.flush()
+            mediaPlayerController.resumeSink()
+        } else {
+            // Different format or first time — full AudioTrack initialization
+            logger.i { "Creating new AudioTrack (format changed or first start): $newSinkConfig" }
+            mediaPlayerController.prepareStream(
+                codec = outputCodec,
+                sampleRate = config.sampleRate,
+                channels = config.channels,
+                bitDepth = config.bitDepth,
+                codecHeader = config.codecHeader,
+                listener = object : MediaPlayerListener {
+                    override fun onReady() {
+                        logger.i { "MediaPlayer ready for stream ($outputCodec)" }
+                    }
 
-                override fun onAudioCompleted() {
-                    logger.i { "Audio completed" }
-                }
+                    override fun onAudioCompleted() {
+                        logger.i { "Audio completed" }
+                    }
 
-                override fun onError(error: Throwable?) {
-                    logger.e(error) { "MediaPlayer error - stopping stream" }
-                    // When MediaPlayer encounters an error (e.g., audio output disconnected),
-                    // emit the error and stop the stream to prevent zombie playback
-                    launch {
-                        _streamError.update { error }
-                        stopStream()
+                    override fun onError(error: Throwable?) {
+                        logger.e(error) { "MediaPlayer error - stopping stream" }
+                        // When MediaPlayer encounters an error (e.g., audio output disconnected),
+                        // emit the error and stop the stream to prevent zombie playback
+                        launch {
+                            _streamError.emit(error ?: Exception("Unknown MediaPlayer error"))
+                            stopStream()
+                        }
                     }
                 }
-            }
-        )
+            )
+            currentSinkConfig = newSinkConfig
+        }
 
         // Clear buffer and start playback thread
         audioBuffer.clear()
@@ -317,20 +353,42 @@ class AudioStreamManager(
 
             var chunksPlayed = 0
             var lastLogTime = getCurrentTimeMicros()
+            var starvedAt: TimeSource.Monotonic.ValueTimeMark? = null
 
             while (isActive && isStreaming) {
                 try {
                     val chunk = audioBuffer.peek()
 
                     if (chunk == null) {
-                        // Buffer underrun
-                        if (!_bufferState.value.isUnderrun) {
-                            logger.w { "Buffer underrun" }
-                            adaptiveBufferManager.recordUnderrun(getCurrentTimeMicros())
-                            _bufferState.update { it.copy(isUnderrun = true) }
+                        if (isNetworkDisconnected) {
+                            // Network is down — pause sink when buffer empties and start starvation timer
+                            if (starvedAt == null) {
+                                starvedAt = TimeSource.Monotonic.markNow()
+                                logger.w { "Buffer empty + network disconnected: pausing sink, starting 30s starvation timer" }
+                                mediaPlayerController.pauseSink()
+                            } else if (starvedAt.elapsedNow() > 30.seconds) {
+                                logger.e { "Starvation timeout: no audio data for 30s, stopping stream" }
+                                _streamError.emit(Exception("Starvation timeout: no audio for 30s"))
+                                break
+                            }
+                            delay(100)
+                        } else {
+                            // Normal underrun — network is connected, data will arrive soon
+                            if (!_bufferState.value.isUnderrun) {
+                                logger.w { "Buffer underrun" }
+                                adaptiveBufferManager.recordUnderrun(getCurrentTimeMicros())
+                                _bufferState.update { it.copy(isUnderrun = true) }
+                            }
+                            delay(2) // Wait for more data (was 10ms, reduced for faster recovery)
                         }
-                        delay(2) // Wait for more data (was 10ms, reduced for faster recovery)
                         continue
+                    }
+
+                    // Chunk arrived — cancel starvation if active
+                    if (starvedAt != null) {
+                        starvedAt = null
+                        logger.i { "Buffer refilled after starvation, resuming sink" }
+                        mediaPlayerController.resumeSink()
                     }
 
                     // Check sync quality
@@ -410,9 +468,7 @@ class AudioStreamManager(
                 logger.w { "Prebuffer timeout after 5s (buffered=${bufferMs}ms, threshold=${threshold / 1000}ms)" }
 
                 // Emit error state for UI
-                _streamError.update {
-                    Exception("Prebuffer timeout - check network connection")
-                }
+                _streamError.emit(Exception("Prebuffer timeout - check network connection"))
 
                 // Start playback with whatever we have (graceful degradation)
                 if (audioBuffer.getBufferedDuration() > 0) {
@@ -549,6 +605,7 @@ class AudioStreamManager(
     override suspend fun stopStream() {
         logger.i { "Stopping stream" }
         isStreaming = false
+        isNetworkDisconnected = false
         playbackJob?.cancel()
         playbackJob = null
         adaptationJob?.cancel()
@@ -562,8 +619,11 @@ class AudioStreamManager(
         // Reset adaptive buffer manager
         adaptiveBufferManager.reset()
 
-        // Stop raw PCM stream on MediaPlayerController
+        // Stop raw PCM stream on MediaPlayerController (destroys AudioTrack)
         mediaPlayerController.stopRawPcmStream()
+
+        // Clear sink config so next startStream() recreates the AudioTrack
+        currentSinkConfig = null
 
         _playbackPosition.update { 0L }
         droppedChunksCount = 0
@@ -579,8 +639,6 @@ class AudioStreamManager(
                 dropRate = 0.0
             )
         }
-        // Clear any error state
-        _streamError.update { null }
     }
 
     // Use monotonic time for playback timing instead of wall clock time

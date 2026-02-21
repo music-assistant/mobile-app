@@ -5,9 +5,11 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.ui.theme.ThemeSetting
+import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.encodeToString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -45,23 +47,9 @@ class SettingsRepository(
         }
     }
 
-    // DEPRECATED: Legacy global token (kept for migration)
-    private val _token = MutableStateFlow(
-        settings.getStringOrNull("token")?.takeIf { it.isNotBlank() }
-    )
-    val token = _token.asStateFlow()
-
-    @Deprecated("Use getTokenForServer/setTokenForServer instead")
-    fun updateToken(token: String?) {
-        if (token != this._token.value) {
-            settings.putString("token", token ?: "")
-            _token.update { token }
-        }
-    }
-
     /**
      * Get authentication token for a specific server.
-     * @param serverIdentifier "direct:host:port" or "webrtc:remoteId"
+     * @param serverIdentifier "direct:ws://host:port" / "direct:wss://host:port" or "webrtc:remoteId"
      */
     fun getTokenForServer(serverIdentifier: String): String? {
         return settings.getStringOrNull("token_$serverIdentifier")?.takeIf { it.isNotBlank() }
@@ -69,7 +57,7 @@ class SettingsRepository(
 
     /**
      * Save authentication token for a specific server.
-     * @param serverIdentifier "direct:host:port" or "webrtc:remoteId"
+     * @param serverIdentifier "direct:ws://host:port" / "direct:wss://host:port" or "webrtc:remoteId"
      * @param token Authentication token (null to clear)
      */
     fun setTokenForServer(serverIdentifier: String, token: String?) {
@@ -83,8 +71,8 @@ class SettingsRepository(
     /**
      * Get server identifier for Direct connection.
      */
-    fun getDirectServerIdentifier(host: String, port: Int): String {
-        return "direct:$host:$port"
+    fun getDirectServerIdentifier(host: String, port: Int, isTls: Boolean): String {
+        return "direct:${if (isTls) "wss" else "ws"}://$host:$port"
     }
 
     /**
@@ -247,6 +235,48 @@ class SettingsRepository(
     fun setLastConnectionMode(mode: String) {
         settings.putString("last_connection_mode", mode)
         _lastConnectionMode.update { mode }
+    }
+
+    // Connection history (most-recent-first, max 10 entries)
+    private val _connectionHistory = MutableStateFlow(loadConnectionHistory())
+    val connectionHistory = _connectionHistory.asStateFlow()
+
+    private fun loadConnectionHistory(): List<ConnectionHistoryEntry> {
+        val json = settings.getStringOrNull("connection_history")
+        if (json != null) {
+            return try { myJson.decodeFromString(json) } catch (_: Exception) { emptyList() }
+        }
+        // Migration: build history from legacy single-server keys (runs once on first upgrade)
+        return when (settings.getStringOrNull("last_connection_mode")) {
+            "webrtc" -> {
+                val id = settings.getString("webrtc_remote_id", "").takeIf { it.isNotBlank() }
+                    ?: return emptyList()
+                listOf(ConnectionHistoryEntry(type = ConnectionType.WEBRTC, remoteId = id))
+            }
+            else -> {
+                val host = settings.getStringOrNull("host")?.takeIf { it.isNotBlank() } ?: return emptyList()
+                val port = settings.getIntOrNull("port")?.takeIf { it > 0 } ?: return emptyList()
+                listOf(ConnectionHistoryEntry(
+                    type = ConnectionType.DIRECT, host = host, port = port,
+                    isTls = settings.getBoolean("isTls", false)
+                ))
+            }
+        }
+    }
+
+    fun addOrUpdateHistoryEntry(entry: ConnectionHistoryEntry) {
+        val updated = _connectionHistory.value
+            .filter { it.serverIdentifier != entry.serverIdentifier }
+            .let { listOf(entry) + it }
+            .take(10)
+        settings.putString("connection_history", myJson.encodeToString(updated))
+        _connectionHistory.update { updated }
+    }
+
+    fun removeHistoryEntry(serverIdentifier: String) {
+        val updated = _connectionHistory.value.filter { it.serverIdentifier != serverIdentifier }
+        settings.putString("connection_history", myJson.encodeToString(updated))
+        _connectionHistory.update { updated }
     }
 
     // UI preferences

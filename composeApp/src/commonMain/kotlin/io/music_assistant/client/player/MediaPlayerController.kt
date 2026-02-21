@@ -30,6 +30,11 @@ expect class MediaPlayerController(platformContext: PlatformContext) {
 
     fun stopRawPcmStream()
 
+    // Lightweight sink control (no AudioTrack destruction) — used for network starvation pausing
+    fun pauseSink()
+    fun resumeSink()
+    fun flush()
+
     // Volume control (0-100)
     fun setVolume(volume: Int)
 

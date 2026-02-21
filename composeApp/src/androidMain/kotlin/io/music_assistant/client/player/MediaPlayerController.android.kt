@@ -327,6 +327,18 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
 
+    actual fun pauseSink() {
+        audioTrack?.pause()
+    }
+
+    actual fun resumeSink() {
+        if (shouldPlayAudio) audioTrack?.play()
+    }
+
+    actual fun flush() {
+        audioTrack?.flush()
+    }
+
     actual fun stopRawPcmStream() {
         logger.i { "Stopping raw PCM stream" }
 

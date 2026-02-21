@@ -224,9 +224,12 @@ class MainDataSource(
                             is DataState.Loading -> DataState.Loading()
                             is DataState.NoData -> DataState.NoData()
                             is DataState.Data -> {
+                                val localPlayerId = settings.sendspinClientId.value
                                 val groupedPlayersToHide = playersState.data
                                     .map { (it.groupChildren ?: emptyList()) - it.id }
-                                    .flatten().toSet()
+                                    .flatten()
+                                    .filter { it != localPlayerId } // Local player always shown directly
+                                    .toSet()
                                 val filteredPlayers = playersState.data
                                     .filter { it.id !in groupedPlayersToHide }
                                 DataState.Data(
@@ -257,9 +260,12 @@ class MainDataSource(
 
                             is DataState.Stale -> {
                                 // Handle stale state - preserve data structure with stale marker
+                                val localPlayerId = settings.sendspinClientId.value
                                 val groupedPlayersToHide = playersState.data
                                     .map { (it.groupChildren ?: emptyList()) - it.id }
-                                    .flatten().toSet()
+                                    .flatten()
+                                    .filter { it != localPlayerId } // Local player always shown directly
+                                    .toSet()
                                 val filteredPlayers = playersState.data
                                     .filter { it.id !in groupedPlayersToHide }
                                 DataState.Stale(
@@ -328,7 +334,8 @@ class MainDataSource(
                                                         state.connectionInfo?.let { connInfo ->
                                                             settings.getDirectServerIdentifier(
                                                                 connInfo.host,
-                                                                connInfo.port
+                                                                connInfo.port,
+                                                                connInfo.isTls
                                                             )
                                                         }
                                                     }
@@ -343,7 +350,6 @@ class MainDataSource(
                                                 val token = serverIdentifier?.let {
                                                     settings.getTokenForServer(it)
                                                 }
-                                                    ?: settings.token.value // Fallback to legacy global token
 
                                                 if (token != null) {
                                                     log.i { "Re-authenticating after reconnection with saved token for server: $serverIdentifier" }
@@ -353,8 +359,14 @@ class MainDataSource(
                                                 }
                                             }
 
-                                            // Sendspin is still running, will reconnect on its own
-                                            // Server events will keep data fresh after auth succeeds
+                                            // Reinit Sendspin — safe because initSendspinIfEnabled()
+                                            // returns early if already Connected or actively retrying.
+                                            // Needed because:
+                                            //  - WebRTC: new data channels were created on reconnect;
+                                            //    old SendspinClient holds a dead channel (Idle state).
+                                            //  - WebSocket: ReconnectionCoordinator may have given up;
+                                            //    server removes the player when the socket closes.
+                                            launch { initSendspinIfEnabled() }
                                         }
 
                                         StaleReason.PERSISTENT_ERROR -> {
@@ -584,7 +596,13 @@ class MainDataSource(
             return
         }
 
-        val authToken = settings.token.value
+        val authToken = when (val state = apiClient.sessionState.value) {
+            is SessionState.Connected.Direct ->
+                settings.getTokenForServer(settings.getDirectServerIdentifier(state.connectionInfo.host, state.connectionInfo.port, state.connectionInfo.isTls))
+            is SessionState.Connected.WebRTC ->
+                settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
+            else -> null
+        }
 
         // Stop existing client if any (but preserve if it's reconnecting)
         sendspinClient?.let { existing ->
@@ -685,13 +703,22 @@ class MainDataSource(
         }
 
         launch {
-            // Monitor connection state and refresh player list when Sendspin connects
-            // This ensures the local player appears immediately in the UI
             client.connectionState.collect { state ->
-                if (state is SendspinConnectionState.Connected) {
-                    log.i { "Sendspin connected - refreshing player list" }
-                    delay(1000) // Give server a moment to register the player
-                    updatePlayersAndQueues()
+                when (state) {
+                    is SendspinConnectionState.Connected -> {
+                        // Refresh player list so the local player appears in the UI
+                        log.i { "Sendspin connected - refreshing player list" }
+                        delay(1000) // Give server a moment to register the player
+                        updatePlayersAndQueues()
+                    }
+                    is SendspinConnectionState.Error,
+                    SendspinConnectionState.Idle -> {
+                        // Transport dropped (Error = WebSocket retry path, Idle = WebRTC channel closed).
+                        // Signal the shared pipeline so it pauses the sink when the buffer empties.
+                        log.i { "Sendspin not connected ($state) - signalling pipeline network disconnect" }
+                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+                    }
+                    else -> {}
                 }
             }
         }
@@ -699,6 +726,7 @@ class MainDataSource(
 
     /**
      * Stop Sendspin player if running.
+     * Destroys the shared audio pipeline so the AudioTrack is fully released.
      */
     private suspend fun stopSendspin() {
         sendspinClient?.let { client ->
@@ -711,6 +739,9 @@ class MainDataSource(
             }
             sendspinClient = null
         }
+        // Fully release the shared audio pipeline (AudioTrack, decoder, etc.)
+        // A fresh pipeline will be created on the next initSendspinIfEnabled()
+        sendspinClientFactory.destroyPipeline()
     }
 
 
@@ -1053,11 +1084,13 @@ class MainDataSource(
                                         }
                                         // State update
                                         val players = oldState.data
-                                        if (players.isEmpty()) {
-                                            oldState
-                                        } else DataState.Data(
+                                        DataState.Data(
                                             if (data.shouldBeShown) {
-                                                players.map { if (it.id == data.id) data else it }
+                                                if (players.any { it.id == data.id }) {
+                                                    players.map { if (it.id == data.id) data else it }
+                                                } else {
+                                                    players + data // Player just became visible
+                                                }
                                             } else {
                                                 players.filter { it.id != data.id }
                                             })

@@ -266,11 +266,19 @@ class HomeScreenViewModel(
     fun queueAction(action: QueueAction) = dataSource.queueAction(action)
     fun onPlayersSortChanged(newSort: List<String>) = dataSource.onPlayersSortChanged(newSort)
     fun openPlayerSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
-        onOpenExternalLink("$url/?code=${settings.token.value}#/settings/editplayer/$id")
+        onOpenExternalLink("$url/?code=${currentServerToken() ?: ""}#/settings/editplayer/$id")
     }
 
     fun openPlayerDspSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
-        onOpenExternalLink("$url/?code=${settings.token.value}#/settings/editplayer/$id/dsp")
+        onOpenExternalLink("$url/?code=${currentServerToken() ?: ""}#/settings/editplayer/$id/dsp")
+    }
+
+    private fun currentServerToken(): String? = when (val state = apiClient.sessionState.value) {
+        is SessionState.Connected.Direct ->
+            settings.getTokenForServer(settings.getDirectServerIdentifier(state.connectionInfo.host, state.connectionInfo.port, state.connectionInfo.isTls))
+        is SessionState.Connected.WebRTC ->
+            settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
+        else -> null
     }
 
     private fun onOpenExternalLink(url: String) = viewModelScope.launch { _links.emit(url) }

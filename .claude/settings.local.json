@@ -22,7 +22,11 @@
       "WebFetch(domain:app.music-assistant.io)",
       "Bash(gh search:*)",
       "Bash(git clone:*)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(echo:*)",
+      "Bash(tee:*)",
+      "Bash(/Users/amitnovych/Documents/Personal/Git/MusicAssistantClient/gradlew --version)",
+      "Bash(/Users/amitnovych/Documents/Personal/Git/MusicAssistantClient/gradlew:*)"
     ]
   }
 }

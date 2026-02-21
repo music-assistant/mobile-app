@@ -2,6 +2,7 @@ package io.music_assistant.client.player.sendspin.audio
 
 import io.music_assistant.client.player.sendspin.BufferState
 import io.music_assistant.client.player.sendspin.model.StreamStartPlayer
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -53,8 +54,8 @@ interface AudioPipeline {
     val playbackPosition: StateFlow<Long>
 
     /**
-     * Stream errors (e.g., audio output disconnected).
-     * Emits non-null when error occurs, then resets to null.
+     * Stream error events (e.g., audio output disconnected, starvation timeout).
+     * Hot shared flow — new subscribers do NOT receive past errors.
      */
-    val streamError: StateFlow<Throwable?>
+    val streamError: Flow<Throwable>
 }

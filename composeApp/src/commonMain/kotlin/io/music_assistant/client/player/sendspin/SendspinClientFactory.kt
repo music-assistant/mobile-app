@@ -5,6 +5,7 @@ import io.ktor.http.Url
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.player.MediaPlayerController
+import io.music_assistant.client.player.sendspin.audio.AudioStreamManager
 import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTransport
 import io.music_assistant.client.settings.SettingsRepository
 
@@ -12,6 +13,9 @@ import io.music_assistant.client.settings.SettingsRepository
  * Factory for creating SendspinClient instances with proper configuration.
  * Separates client creation logic from lifecycle management.
  * Automatically detects WebRTC vs WebSocket connection and uses appropriate transport.
+ *
+ * Owns a shared [AudioStreamManager] + [ClockSynchronizer] that persist across reconnections,
+ * so the audio sink keeps playing from its buffer while the protocol layer reconnects.
  */
 class SendspinClientFactory(
     private val settings: SettingsRepository,
@@ -19,6 +23,32 @@ class SendspinClientFactory(
     private val serviceClient: ServiceClient
 ) {
     private val log = Logger.withTag("SendspinClientFactory")
+
+    // Shared audio pipeline — persists across SendspinClient reconnections
+    private var sharedClockSynchronizer: ClockSynchronizer? = null
+    private var sharedPipeline: AudioStreamManager? = null
+
+    /**
+     * Returns the shared pipeline (and its clock synchronizer), creating them if needed.
+     * Both are passed to new SendspinClient instances so the audio sink persists across reconnects.
+     */
+    fun getOrCreatePipeline(): Pair<AudioStreamManager, ClockSynchronizer> {
+        val cs = sharedClockSynchronizer ?: ClockSynchronizer().also { sharedClockSynchronizer = it }
+        val pipeline = sharedPipeline ?: AudioStreamManager(cs, mediaPlayerController).also { sharedPipeline = it }
+        return Pair(pipeline, cs)
+    }
+
+    /**
+     * Fully destroys the shared pipeline (called on user logout or persistent error).
+     * Next createIfEnabled() will allocate a fresh pipeline.
+     */
+    suspend fun destroyPipeline() {
+        log.i { "Destroying shared audio pipeline" }
+        sharedPipeline?.stopStream()
+        sharedPipeline?.close()
+        sharedPipeline = null
+        sharedClockSynchronizer = null
+    }
 
     /**
      * Creates a SendspinClient if enabled and all prerequisites are met.
@@ -72,6 +102,9 @@ class SendspinClientFactory(
         // Detect connection type: WebRTC or WebSocket
         val webrtcChannel = serviceClient.webrtcSendspinChannel
 
+        // Get or create shared pipeline — persists across reconnections
+        val (pipeline, clockSync) = getOrCreatePipeline()
+
         return try {
             if (webrtcChannel != null) {
                 // WebRTC mode: create config WITHOUT auth requirement (auth inherited from main channel)
@@ -84,15 +117,25 @@ class SendspinClientFactory(
                     authToken = null  // Not needed, auth already done on ma-api channel
                 )
 
-                val client = SendspinClient(webrtcConfig, mediaPlayerController)
+                val client = SendspinClient(
+                    config = webrtcConfig,
+                    mediaPlayerController = mediaPlayerController,
+                    externalPipeline = pipeline,
+                    externalClockSynchronizer = clockSync
+                )
                 val transport = WebRTCDataChannelTransport(webrtcChannel)
                 client.connectWithTransport(transport)
-                log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello)" }
+                log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello, shared pipeline)" }
                 Result.success(client)
             } else {
                 // WebSocket mode: use standard WebSocket transport
-                log.i { "Creating Sendspin client over WebSocket: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode)" }
-                val client = SendspinClient(config, mediaPlayerController)
+                log.i { "Creating Sendspin client over WebSocket: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
+                val client = SendspinClient(
+                    config = config,
+                    mediaPlayerController = mediaPlayerController,
+                    externalPipeline = pipeline,
+                    externalClockSynchronizer = clockSync
+                )
                 client.start()
                 log.i { "Sendspin client started via WebSocket" }
                 Result.success(client)
