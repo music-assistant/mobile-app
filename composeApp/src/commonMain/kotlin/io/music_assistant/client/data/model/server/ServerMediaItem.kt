@@ -1,7 +1,17 @@
 package io.music_assistant.client.data.model.server
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.intOrNull
 
 @Serializable
 data class ServerMediaItem(
@@ -44,6 +54,8 @@ data class ServerMediaItem(
     @SerialName("narrators") val narrators: List<String>? = null,
     @SerialName("publisher") val publisher: String? = null,
     // Progress tracking (audiobooks, podcast episodes)
+    // Server sends Boolean for audiobooks and Int 0/1 for podcast episodes
+    @Serializable(with = FlexibleBooleanSerializer::class)
     @SerialName("fully_played") val fullyPlayed: Boolean? = null,
     @SerialName("resume_position_ms") val resumePositionMs: Long? = null,
     // Folder only
@@ -99,6 +111,18 @@ data class MediaItemChapter(
     @SerialName("end") val end: Double? = null,
 ) {
     val duration: Double get() = if (end != null) end - start else 0.0
+}
+
+// Server inconsistency: audiobooks send Boolean, podcast episodes send Int 0/1
+private object FlexibleBooleanSerializer : KSerializer<Boolean> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FlexibleBoolean", PrimitiveKind.BOOLEAN)
+
+    override fun deserialize(decoder: Decoder): Boolean =
+        (decoder as? JsonDecoder)?.decodeJsonElement()?.let { element ->
+            (element as? JsonPrimitive)?.let { it.booleanOrNull ?: it.intOrNull?.let { n -> n != 0 } } ?: false
+        } ?: decoder.decodeBoolean()
+
+    override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
 }
 
 @Serializable
