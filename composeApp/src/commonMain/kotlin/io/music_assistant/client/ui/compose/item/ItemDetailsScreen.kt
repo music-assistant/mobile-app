@@ -207,11 +207,13 @@ private fun ItemDetailsTopBar(
                 }
             }
             item?.let {
-                IconButton(onClick = onToggleViewMode) {
-                    Icon(
-                        imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                        contentDescription = "Toggle view mode"
-                    )
+                if (it !is AppMediaItem.Audiobook) {
+                    IconButton(onClick = onToggleViewMode) {
+                        Icon(
+                            imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
+                            contentDescription = "Toggle view mode"
+                        )
+                    }
                 }
                 IconButton(
                     onClick = { onPlayClick(QueueOption.REPLACE, false) },

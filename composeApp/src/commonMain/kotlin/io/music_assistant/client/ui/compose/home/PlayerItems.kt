@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -292,14 +294,33 @@ fun FullPlayerItem(
                     }
                 },
                 track = { sliderState ->
-                    SliderDefaults.Track(
-                        sliderState = sliderState,
-                        thumbTrackGapSize = 0.dp,
-                        trackInsideCornerSize = 0.dp,
-                        drawStopIndicator = null,
-                        enabled = track != null && !item.player.isAnnouncing,
-                        modifier = Modifier.height(8.dp)
-                    )
+                    val audiobook = track as? AppMediaItem.Audiobook
+                    val chapters = audiobook?.chapters
+                    Box {
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            thumbTrackGapSize = 0.dp,
+                            trackInsideCornerSize = 0.dp,
+                            drawStopIndicator = null,
+                            enabled = track != null && !item.player.isAnnouncing,
+                            modifier = Modifier.height(8.dp)
+                        )
+                        if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
+                            val tickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
+                                chapters.drop(1).forEach { chapter ->
+                                    val fraction = (chapter.start.toFloat() / duration).coerceIn(0f, 1f)
+                                    val x = fraction * size.width
+                                    drawLine(
+                                        color = tickColor,
+                                        start = Offset(x, 0f),
+                                        end = Offset(x, size.height),
+                                        strokeWidth = 2.dp.toPx()
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             )
 

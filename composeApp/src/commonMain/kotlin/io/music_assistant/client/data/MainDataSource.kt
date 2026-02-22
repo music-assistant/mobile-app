@@ -859,18 +859,23 @@ class MainDataSource(
                 }
 
                 PlayerAction.Next -> {
-                    apiClient.sendRequest(
-                        Request.Player.simpleCommand(playerId = data.playerId, command = "next")
-                    )
+                    val currentPos = data.queueInfo?.elapsedTime ?: 0.0
+                    (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
+                        ?.chapters?.firstOrNull { it.start > currentPos }?.start
+                        ?.let { apiClient.sendRequest(Request.Player.seek(queueId = data.playerId, position = it.toLong())) }
+                        ?: apiClient.sendRequest(Request.Player.simpleCommand(playerId = data.playerId, command = "next"))
                 }
 
                 PlayerAction.Previous -> {
-                    apiClient.sendRequest(
-                        Request.Player.simpleCommand(
-                            playerId = data.playerId,
-                            command = "previous"
-                        )
-                    )
+                    val currentPos = data.queueInfo?.elapsedTime ?: 0.0
+                    (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
+                        ?.chapters?.takeIf { it.isNotEmpty() }
+                        ?.let { chapters ->
+                            val currentChapterStart = chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
+                            val prevStart = if (currentPos - currentChapterStart > 5) currentChapterStart
+                                           else chapters.lastOrNull { it.start < currentChapterStart }?.start ?: 0.0
+                            apiClient.sendRequest(Request.Player.seek(queueId = data.playerId, position = prevStart.toLong()))
+                        } ?: apiClient.sendRequest(Request.Player.simpleCommand(playerId = data.playerId, command = "previous"))
                 }
 
                 is PlayerAction.SeekTo -> {
