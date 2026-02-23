@@ -15,7 +15,7 @@ object AppMediaItemFixtures {
         )
     }
 
-    private fun artist(name: String): AppMediaItem.Artist {
+    fun artist(name: String): AppMediaItem.Artist {
         return AppMediaItem.Artist(
             itemId = "blah",
             provider = "blah",

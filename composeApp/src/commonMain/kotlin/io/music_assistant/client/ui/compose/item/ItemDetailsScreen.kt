@@ -652,6 +652,28 @@ private fun ChapterRow(
 
 @Preview
 @Composable
+fun PreviewArtist() {
+    AppTheme(darkTheme = false) {
+        Scaffold {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    SessionState.Disconnected.NoServerData,
+                    DataState.Data(AppMediaItemFixtures.artist("Artist")),
+                    DataState.Data(
+                        listOf(
+                            AppMediaItemFixtures.album("Album 1", "Artist"),
+                            AppMediaItemFixtures.album("Album 2", "Artist")
+                        )
+                    ),
+                    DataState.NoData()
+                ),
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
 fun PreviewAlbum() {
     AppTheme(darkTheme = false) {
         Scaffold {
