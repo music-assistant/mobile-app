@@ -150,7 +150,7 @@ class AudioStreamManager(
     private var droppedChunksCount = 0
 
     // Network disconnection tracking for starvation handling
-    @Volatile private var isNetworkDisconnected = false
+    private var isNetworkDisconnected = false
 
     // Tracks current AudioTrack format to enable reuse across reconnections
     private data class SinkConfig(val outputCodec: AudioCodec, val sampleRate: Int, val channels: Int, val bitDepth: Int)

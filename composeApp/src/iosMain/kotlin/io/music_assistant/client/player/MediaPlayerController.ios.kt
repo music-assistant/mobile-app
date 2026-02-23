@@ -3,7 +3,9 @@
 package io.music_assistant.client.player
 
 import io.music_assistant.client.player.sendspin.model.AudioCodec
+import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import platform.AVFAudio.AVAudioSession
@@ -50,20 +52,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
 
-    @OptIn(ExperimentalForeignApi::class)
     actual fun writeRawPcm(data: ByteArray): Int {
         val player = PlatformPlayerProvider.player ?: return 0
-        // Bulk-copy ByteArray → NSData via usePinned, avoiding a per-byte Swift interop loop
-        val nsData: NSData = if (data.isEmpty()) {
-            NSData()
-        } else {
-            val mutableData = NSMutableData()
-            data.usePinned { pinned ->
-                mutableData.appendBytes(pinned.addressOf(0), data.size.toULong())
-            }
-            mutableData
+        if (data.isNotEmpty()) {
+            player.writeRawPcm(data)
         }
-        player.writeRawPcmNSData(nsData)
         return data.size
     }
 
@@ -90,7 +83,8 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     }
 
     actual fun getCurrentSystemVolume(): Int {
-        return (AVAudioSession.sharedInstance().outputVolume.toFloat() * 100).toInt()
+        // Return a default volume value - actual system volume control is managed by iOS
+        return 100
     }
     
     // Now Playing (Control Center / Lock Screen)

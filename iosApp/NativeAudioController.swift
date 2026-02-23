@@ -142,8 +142,8 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     }
     
     /// Called from Kotlin via efficient NSData bulk-copy path (avoids per-byte Swift interop).
-    func writeRawPcmNSData(data: NSData) {
-        processAudioData(data as Data)
+    func writeRawPcmNSData(data: Data) {
+        processAudioData(data)
     }
 
     /// Legacy path: still satisfies the PlatformAudioPlayer protocol but is no longer

@@ -10,7 +10,8 @@ import platform.UIKit.UIWindowScene
 @Composable
 actual fun SystemAppearance(isDarkTheme: Boolean) {
     LaunchedEffect(isDarkTheme) {
-        val style = if (isDarkTheme) UIUserInterfaceStyle.Dark else UIUserInterfaceStyle.Light
+        // UIUserInterfaceStyle: 0=unspecified, 1=light, 2=dark
+        val style = if (isDarkTheme) UIUserInterfaceStyle.UIUserInterfaceStyleDark else UIUserInterfaceStyle.UIUserInterfaceStyleLight
         UIApplication.sharedApplication.connectedScenes.forEach { scene ->
             (scene as? UIWindowScene)?.windows?.forEach { window ->
                 (window as? UIWindow)?.overrideUserInterfaceStyle = style
