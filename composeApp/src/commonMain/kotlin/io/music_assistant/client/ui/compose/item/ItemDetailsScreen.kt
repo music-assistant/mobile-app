@@ -652,7 +652,7 @@ private fun ChapterRow(
 
 @Preview
 @Composable
-fun PreviewArtist(isRowMode: Boolean = true) {
+private fun PreviewArtist(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
@@ -675,13 +675,13 @@ fun PreviewArtist(isRowMode: Boolean = true) {
 
 @Preview
 @Composable
-fun PreviewArtistGrid() {
+private fun PreviewArtistGrid() {
     PreviewArtist(isRowMode = false)
 }
 
 @Preview
 @Composable
-fun PreviewAlbum(isRowMode: Boolean = true) {
+private fun PreviewAlbum(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
@@ -699,13 +699,13 @@ fun PreviewAlbum(isRowMode: Boolean = true) {
 
 @Preview
 @Composable
-fun PreviewAlbumGrid() {
+private fun PreviewAlbumGrid() {
     PreviewAlbum(isRowMode = false)
 }
 
 @Preview
 @Composable
-fun PreviewPlaylist(isRowMode: Boolean = true) {
+private fun PreviewPlaylist(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
@@ -723,13 +723,13 @@ fun PreviewPlaylist(isRowMode: Boolean = true) {
 
 @Preview
 @Composable
-fun PreviewPlaylistGrid() {
+private fun PreviewPlaylistGrid() {
     PreviewPlaylist(isRowMode = false)
 }
 
 @Preview
 @Composable
-fun PreviewPodcast(isRowMode: Boolean = true) {
+private fun PreviewPodcast(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
@@ -747,6 +747,30 @@ fun PreviewPodcast(isRowMode: Boolean = true) {
 
 @Preview
 @Composable
-fun PreviewPodcastGrid() {
+private fun PreviewPodcastGrid() {
     PreviewPodcast(isRowMode = false)
+}
+
+@Preview
+@Composable
+private fun PreviewAudiobook(isRowMode: Boolean = true) {
+    AppTheme(darkTheme = false) {
+        Scaffold {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    SessionState.Disconnected.NoServerData,
+                    DataState.Data(AppMediaItemFixtures.audiobook("Title")),
+                    DataState.NoData(),
+                    DataState.NoData()
+                ),
+                isRowMode = isRowMode
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewAudiobookGrid() {
+    PreviewAudiobook(isRowMode = false)
 }

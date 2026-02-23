@@ -91,4 +91,23 @@ object AppMediaItemFixtures {
             )
         }
     }
+
+    fun audiobook(name: String): AppMediaItem.Audiobook {
+        return AppMediaItem.Audiobook(
+            itemId = "blah",
+            provider = "blah",
+            name = name,
+            providerMappings = emptyList(),
+            metadata = null,
+            favorite = null,
+            uri = null,
+            image = null,
+            duration = null,
+            authors = null,
+            narrators = null,
+            chapters = null,
+            fullyPlayed = null,
+            resumePositionMs = null
+        )
+    }
 }
