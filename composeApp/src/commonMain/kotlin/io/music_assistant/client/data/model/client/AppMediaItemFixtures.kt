@@ -1,5 +1,7 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.server.MediaItemChapter
+
 object AppMediaItemFixtures {
     fun album(name: String, artist: String): AppMediaItem.Album {
         return AppMediaItem.Album(
@@ -92,7 +94,7 @@ object AppMediaItemFixtures {
         }
     }
 
-    fun audiobook(name: String): AppMediaItem.Audiobook {
+    fun audiobook(name: String, chapters: List<String>): AppMediaItem.Audiobook {
         return AppMediaItem.Audiobook(
             itemId = "blah",
             provider = "blah",
@@ -105,9 +107,20 @@ object AppMediaItemFixtures {
             duration = null,
             authors = null,
             narrators = null,
-            chapters = null,
+            chapters = chapters(chapters),
             fullyPlayed = null,
             resumePositionMs = null
         )
+    }
+
+    private fun chapters(chapters: List<String>): List<MediaItemChapter> {
+        return chapters.mapIndexed { index, chapter ->
+            MediaItemChapter(
+                position = index,
+                chapter,
+                start = index.toDouble(),
+                end = (index + 1).toDouble()
+            )
+        }
     }
 }

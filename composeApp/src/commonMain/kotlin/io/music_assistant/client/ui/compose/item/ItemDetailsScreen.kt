@@ -753,24 +753,20 @@ private fun PreviewPodcastGrid() {
 
 @Preview
 @Composable
-private fun PreviewAudiobook(isRowMode: Boolean = true) {
+private fun PreviewAudiobook() {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     SessionState.Disconnected.NoServerData,
-                    DataState.Data(AppMediaItemFixtures.audiobook("Title")),
+                    DataState.Data(AppMediaItemFixtures.audiobook(
+                        "Title",
+                        listOf("Chapter 1", "Chapter 2")
+                    )),
                     DataState.NoData(),
                     DataState.NoData()
-                ),
-                isRowMode = isRowMode
+                )
             )
         }
     }
-}
-
-@Preview
-@Composable
-private fun PreviewAudiobookGrid() {
-    PreviewAudiobook(isRowMode = false)
 }
