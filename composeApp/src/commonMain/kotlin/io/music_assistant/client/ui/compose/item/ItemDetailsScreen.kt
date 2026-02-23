@@ -702,3 +702,27 @@ fun PreviewAlbum(isRowMode: Boolean = true) {
 fun PreviewAlbumGrid() {
     PreviewAlbum(isRowMode = false)
 }
+
+@Preview
+@Composable
+fun PreviewPlaylist(isRowMode: Boolean = true) {
+    AppTheme(darkTheme = false) {
+        Scaffold {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    SessionState.Disconnected.NoServerData,
+                    DataState.Data(AppMediaItemFixtures.playlist("Title")),
+                    DataState.NoData(),
+                    DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2")))
+                ),
+                isRowMode = isRowMode
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun PreviewPlaylistGrid() {
+    PreviewPlaylist(isRowMode = false)
+}

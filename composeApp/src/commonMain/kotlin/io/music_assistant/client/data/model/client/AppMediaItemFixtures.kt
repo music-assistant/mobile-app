@@ -45,4 +45,18 @@ object AppMediaItemFixtures {
             )
         }
     }
+
+    fun playlist(name: String): AppMediaItem {
+        return AppMediaItem.Playlist(
+            itemId = "blah",
+            provider = "blah",
+            name = name,
+            providerMappings = emptyList(),
+            metadata = null,
+            favorite = null,
+            uri = null,
+            isEditable = null,
+            image = null
+        )
+    }
 }
