@@ -90,7 +90,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     }
 
     actual fun getCurrentSystemVolume(): Int {
-        return (AVAudioSession.sharedInstance().outputVolume * 100).toInt()
+        return (AVAudioSession.sharedInstance().outputVolume.toFloat() * 100).toInt()
     }
     
     // Now Playing (Control Center / Lock Screen)
