@@ -46,7 +46,7 @@ object AppMediaItemFixtures {
         }
     }
 
-    fun playlist(name: String): AppMediaItem {
+    fun playlist(name: String): AppMediaItem.Playlist {
         return AppMediaItem.Playlist(
             itemId = "blah",
             provider = "blah",
@@ -58,5 +58,37 @@ object AppMediaItemFixtures {
             isEditable = null,
             image = null
         )
+    }
+
+    fun podcast(name: String): AppMediaItem.Podcast {
+        return AppMediaItem.Podcast(
+            itemId = "blah",
+            provider = "blah",
+            name = name,
+            providerMappings = emptyList(),
+            metadata = null,
+            favorite = null,
+            uri = null,
+            image = null
+        )
+    }
+
+    fun episodes(episodes: List<String>): List<AppMediaItem.PodcastEpisode> {
+        return episodes.map {
+            AppMediaItem.PodcastEpisode(
+                itemId = "blah",
+                provider = "blah",
+                name = it,
+                providerMappings = emptyList(),
+                metadata = null,
+                favorite = null,
+                uri = null,
+                image = null,
+                duration = null,
+                podcast = null,
+                fullyPlayed = null,
+                resumePositionMs = null
+            )
+        }
     }
 }

@@ -726,3 +726,27 @@ fun PreviewPlaylist(isRowMode: Boolean = true) {
 fun PreviewPlaylistGrid() {
     PreviewPlaylist(isRowMode = false)
 }
+
+@Preview
+@Composable
+fun PreviewPodcast(isRowMode: Boolean = true) {
+    AppTheme(darkTheme = false) {
+        Scaffold {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    SessionState.Disconnected.NoServerData,
+                    DataState.Data(AppMediaItemFixtures.podcast("Title")),
+                    DataState.NoData(),
+                    DataState.Data(AppMediaItemFixtures.episodes(listOf("Episode 1", "Episode 2")))
+                ),
+                isRowMode = isRowMode
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun PreviewPodcastGrid() {
+    PreviewPodcast(isRowMode = false)
+}
