@@ -652,7 +652,7 @@ private fun ChapterRow(
 
 @Preview
 @Composable
-fun PreviewArtist() {
+fun PreviewArtist(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
@@ -667,6 +667,7 @@ fun PreviewArtist() {
                     ),
                     DataState.NoData()
                 ),
+                isRowMode = isRowMode
             )
         }
     }
@@ -674,7 +675,13 @@ fun PreviewArtist() {
 
 @Preview
 @Composable
-fun PreviewAlbum() {
+fun PreviewArtistGrid() {
+    PreviewArtist(isRowMode = false)
+}
+
+@Preview
+@Composable
+fun PreviewAlbum(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
@@ -684,7 +691,14 @@ fun PreviewAlbum() {
                     DataState.NoData(),
                     DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2")))
                 ),
+                isRowMode = isRowMode
             )
         }
     }
+}
+
+@Preview
+@Composable
+fun PreviewAlbumGrid() {
+    PreviewAlbum(isRowMode = false)
 }
