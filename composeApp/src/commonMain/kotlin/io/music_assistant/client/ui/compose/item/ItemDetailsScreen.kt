@@ -55,6 +55,7 @@ import compose.icons.tablericons.FolderPlus
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.server.MediaItemChapter
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
@@ -68,7 +69,10 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.theme.AppTheme
+import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -99,9 +103,9 @@ fun ItemDetailsScreen(
 
     ItemDetails(
         state,
+        serverUrl,
         onBack,
         isRowMode,
-        serverUrl,
         toastState,
         onNavigateToItem,
         actionsViewModel::getEditablePlaylists,
@@ -131,24 +135,24 @@ fun ItemDetailsScreen(
 @Composable
 private fun ItemDetails(
     state: ItemDetailsViewModel.State,
-    onBack: () -> Unit,
-    isRowMode: Boolean,
-    serverUrl: String?,
-    toastState: ToastState,
-    onNavigateToItem: (String, MediaType, String) -> Unit,
-    geEditablePlaylists: suspend () -> List<AppMediaItem.Playlist>,
-    addToPlaylist: (AppMediaItem, AppMediaItem.Playlist) -> Unit,
-    onLibraryClick: (AppMediaItem) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit,
-    onMarkPlayed: (AppMediaItem) -> Unit,
-    onMarkUnplayed: (AppMediaItem) -> Unit,
-    onRemoveFromPlaylist: (String, Int) -> Unit,
-    providerIconFetcher: @Composable (Modifier, String) -> Unit,
-    onPlayClick: (QueueOption, Boolean) -> Unit,
-    onToggleViewMode: () -> Unit,
-    onChapterClick: (Int) -> Unit,
-    onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit
-    ) {
+    serverUrl: String? = null,
+    onBack: () -> Unit = {},
+    isRowMode: Boolean = true,
+    toastState: ToastState = rememberToastState(),
+    onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
+    geEditablePlaylists: suspend () -> List<AppMediaItem.Playlist> = suspend { emptyList() },
+    addToPlaylist: (AppMediaItem, AppMediaItem.Playlist) -> Unit = { _, _ -> },
+    onLibraryClick: (AppMediaItem) -> Unit = {},
+    onFavoriteClick: (AppMediaItem) -> Unit = {},
+    onMarkPlayed: (AppMediaItem) -> Unit = {},
+    onMarkUnplayed: (AppMediaItem) -> Unit = {},
+    onRemoveFromPlaylist: (String, Int) -> Unit = { _, _ -> },
+    providerIconFetcher: @Composable (Modifier, String) -> Unit = { _, _ -> },
+    onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
+    onToggleViewMode: () -> Unit = {},
+    onChapterClick: (Int) -> Unit = {},
+    onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit = { _, _, _ -> }
+) {
     Column {
         val item = (state.itemState as? DataState.Data)?.data
         val playlistActions = ActionsViewModel.PlaylistActions(
@@ -614,7 +618,7 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun ChapterRow(
-    chapter: io.music_assistant.client.data.model.server.MediaItemChapter,
+    chapter: MediaItemChapter,
     onClick: () -> Unit,
 ) {
     Row(
@@ -641,5 +645,32 @@ private fun ChapterRow(
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
+    }
+}
+
+@Preview
+@Composable
+fun PreviewAlbum() {
+    val album = AppMediaItem.Album(
+        itemId = "blah",
+        provider = "blah",
+        name = "blah",
+        providerMappings = emptyList(),
+        metadata = null,
+        favorite = null,
+        uri = null,
+        image = null,
+        artists = null
+    )
+
+    AppTheme {
+        ItemDetails(
+            state = ItemDetailsViewModel.State(
+                SessionState.Disconnected.NoServerData,
+                DataState.Data(album),
+                DataState.NoData(),
+                DataState.Data(emptyList())
+            ),
+        )
     }
 }
