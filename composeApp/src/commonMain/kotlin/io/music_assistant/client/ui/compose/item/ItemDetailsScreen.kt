@@ -97,29 +97,83 @@ fun ItemDetailsScreen(
         }
     }
 
-    Column {
+    ItemDetails(
+        state,
+        onBack,
+        isRowMode,
+        serverUrl,
+        toastState,
+        onNavigateToItem,
+        actionsViewModel::getEditablePlaylists,
+        actionsViewModel::addToPlaylist,
+        actionsViewModel::onLibraryClick,
+        actionsViewModel::onFavoriteClick,
+        actionsViewModel::onMarkPlayed,
+        actionsViewModel::onMarkUnplayed,
+        { id, pos ->
+            actionsViewModel.removeFromPlaylist(
+                id,
+                pos,
+                viewModel::reload
+            )
+        },
+        { modifier, provider ->
+            actionsViewModel.getProviderIcon(provider)
+                ?.let { ProviderIcon(modifier, it) }
+        },
+        viewModel::onPlayClick,
+        viewModel::toggleItemsRowMode,
+        viewModel::onChapterClick,
+        viewModel::onPlayClick
+    )
+}
 
+@Composable
+private fun ItemDetails(
+    state: ItemDetailsViewModel.State,
+    onBack: () -> Unit,
+    isRowMode: Boolean,
+    serverUrl: String?,
+    toastState: ToastState,
+    onNavigateToItem: (String, MediaType, String) -> Unit,
+    geEditablePlaylists: suspend () -> List<AppMediaItem.Playlist>,
+    addToPlaylist: (AppMediaItem, AppMediaItem.Playlist) -> Unit,
+    onLibraryClick: (AppMediaItem) -> Unit,
+    onFavoriteClick: (AppMediaItem) -> Unit,
+    onMarkPlayed: (AppMediaItem) -> Unit,
+    onMarkUnplayed: (AppMediaItem) -> Unit,
+    onRemoveFromPlaylist: (String, Int) -> Unit,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    onPlayClick: (QueueOption, Boolean) -> Unit,
+    onToggleViewMode: () -> Unit,
+    onChapterClick: (Int) -> Unit,
+    onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit
+    ) {
+    Column {
         val item = (state.itemState as? DataState.Data)?.data
         val playlistActions = ActionsViewModel.PlaylistActions(
-            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-            onAddToPlaylist = actionsViewModel::addToPlaylist
+            onLoadPlaylists = geEditablePlaylists,
+            onAddToPlaylist = addToPlaylist
         )
+
         val libraryActions = ActionsViewModel.LibraryActions(
-            onLibraryClick = actionsViewModel::onLibraryClick,
-            onFavoriteClick = actionsViewModel::onFavoriteClick
+            onLibraryClick = onLibraryClick,
+            onFavoriteClick = onFavoriteClick
         )
+
         val progressActions = ActionsViewModel.ProgressActions(
-            onMarkPlayed = actionsViewModel::onMarkPlayed,
-            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+            onMarkPlayed = onMarkPlayed,
+            onMarkUnplayed = onMarkUnplayed
         )
+
         ItemDetailsTopBar(
             onBack = onBack,
-            onPlayClick = viewModel::onPlayClick,
+            onPlayClick = onPlayClick,
             item = item,
             playlistActions = playlistActions.takeIf { item is AppMediaItem.Track || item is AppMediaItem.Album },
             libraryActions = libraryActions,
             isRowMode = isRowMode,
-            onToggleViewMode = viewModel::toggleItemsRowMode,
+            onToggleViewMode = onToggleViewMode,
         )
 
         ItemDetailsContent(
@@ -140,22 +194,13 @@ fun ItemDetailsScreen(
                     else -> Unit
                 }
             },
-            onPlayClick = viewModel::onPlayClick,
-            onChapterClick = viewModel::onChapterClick,
+            onPlayClick = onChildPlayClick,
+            onChapterClick = onChapterClick,
             playlistActions = playlistActions,
             progressActions = progressActions,
-            onRemoveFromPlaylist = { id, pos ->
-                actionsViewModel.removeFromPlaylist(
-                    id,
-                    pos,
-                    viewModel::reload
-                )
-            },
+            onRemoveFromPlaylist = onRemoveFromPlaylist,
             libraryActions = libraryActions,
-            providerIconFetcher = { modifier, provider ->
-                actionsViewModel.getProviderIcon(provider)
-                    ?.let { ProviderIcon(modifier, it) }
-            }
+            providerIconFetcher = providerIconFetcher
         )
     }
 }
