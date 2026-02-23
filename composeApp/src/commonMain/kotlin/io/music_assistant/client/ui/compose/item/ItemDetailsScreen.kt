@@ -33,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,6 +56,7 @@ import compose.icons.tablericons.FolderPlus
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.MediaItemChapter
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
@@ -651,26 +653,16 @@ private fun ChapterRow(
 @Preview
 @Composable
 fun PreviewAlbum() {
-    val album = AppMediaItem.Album(
-        itemId = "blah",
-        provider = "blah",
-        name = "blah",
-        providerMappings = emptyList(),
-        metadata = null,
-        favorite = null,
-        uri = null,
-        image = null,
-        artists = null
-    )
-
-    AppTheme {
-        ItemDetails(
-            state = ItemDetailsViewModel.State(
-                SessionState.Disconnected.NoServerData,
-                DataState.Data(album),
-                DataState.NoData(),
-                DataState.Data(emptyList())
-            ),
-        )
+    AppTheme(darkTheme = false) {
+        Scaffold {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    SessionState.Disconnected.NoServerData,
+                    DataState.Data(AppMediaItemFixtures.album("Title", "Artist")),
+                    DataState.NoData(),
+                    DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2")))
+                ),
+            )
+        }
     }
 }
