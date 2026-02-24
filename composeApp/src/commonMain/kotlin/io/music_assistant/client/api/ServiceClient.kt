@@ -4,7 +4,6 @@ import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.ws
 import io.ktor.client.plugins.websocket.wss
 import io.ktor.http.HttpMethod
@@ -13,11 +12,12 @@ import io.ktor.websocket.close
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.settings.ConnectionHistoryEntry
+import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.connectionInfo
-import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.resultAs
 import io.music_assistant.client.utils.sendMessage
@@ -30,7 +30,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,13 +37,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -100,10 +94,14 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
         get() = webrtcManager?.sendspinDataChannel
 
-    private val pendingResponses = mutableMapOf<String, (Answer) -> Unit>()
-    // Accumulated partial results: message_id -> list of result items received so far.
-    // The MA server sends large result sets in 500-item batches with "partial": true.
-    private val partialResults = mutableMapOf<String, MutableList<JsonElement>>()
+    private val rpcEngine = RpcEngine {
+        _sessionState.update {
+            (it as? SessionState.Connected)?.update(
+                user = null,
+                authProcessState = AuthProcessState.NotStarted
+            ) ?: it
+        }
+    }
 
     init {
         launch {
@@ -135,32 +133,29 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                             is SessionState.Disconnected.Error -> Unit
 
                             SessionState.Disconnected.Initial -> {
-                                // Auto-connect based on last successful connection mode
-                                when (settings.lastConnectionMode.value) {
-                                    "webrtc" -> {
-                                        val remoteIdStr = settings.webrtcRemoteId.value
-                                        val remoteId = remoteIdStr
-                                            .takeIf { s -> s.isNotBlank() }
-                                            ?.let { s -> RemoteId.parse(s) }
-                                        if (remoteId != null) {
-                                            connectWebRTC(remoteId)
+                                // Auto-connect using the most recent history entry
+                                val mostRecent = settings.connectionHistory.value.firstOrNull()
+                                when (mostRecent?.type) {
+                                    ConnectionType.DIRECT -> {
+                                        val connInfo = mostRecent.connectionInfo
+                                        if (connInfo != null) {
+                                            connect(connInfo)
                                         } else {
-                                            // WebRTC selected but no valid remoteId - don't auto-connect
                                             _sessionState.update { SessionState.Disconnected.NoServerData }
                                         }
                                     }
-
-                                    "direct", null -> {
-                                        // Default to Direct for existing users (null) or explicit "direct"
-                                        settings.connectionInfo.value?.let { connectionInfo ->
-                                            connect(connectionInfo)
+                                    ConnectionType.WEBRTC -> {
+                                        val remoteId = mostRecent.remoteId?.let { RemoteId.parse(it) }
+                                        if (remoteId != null) {
+                                            connectWebRTC(remoteId)
+                                        } else {
+                                            _sessionState.update { SessionState.Disconnected.NoServerData }
                                         }
-                                            ?: _sessionState.update { SessionState.Disconnected.NoServerData }
                                     }
-
                                     else -> {
-                                        // Unknown mode - no auto-connect
-                                        _sessionState.update { SessionState.Disconnected.NoServerData }
+                                        // No history - fall back to legacy connection info
+                                        settings.connectionInfo.value?.let { connect(it) }
+                                            ?: _sessionState.update { SessionState.Disconnected.NoServerData }
                                     }
                                 }
                             }
@@ -203,7 +198,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                         wasAutoLogin = currentState.wasAutoLogin
                                     )
                                 }
-                                listenForMessages()
+                                listenForMessages(WebSocketConnectionSession(this))
                             }
                         } else {
                             client.ws(
@@ -223,7 +218,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                         wasAutoLogin = currentState.wasAutoLogin
                                     )
                                 }
-                                listenForMessages()
+                                listenForMessages(WebSocketConnectionSession(this))
                             }
                         }
                     } catch (e: Exception) {
@@ -259,7 +254,13 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                     )
                                 }
                                 settings.setLastConnectionMode("direct")
-                                listenForMessages()
+                                settings.addOrUpdateHistoryEntry(ConnectionHistoryEntry(
+                                    type = ConnectionType.DIRECT,
+                                    host = connection.host,
+                                    port = connection.port,
+                                    isTls = connection.isTls,
+                                ))
+                                listenForMessages(WebSocketConnectionSession(this))
                             }
                         } else {
                             client.ws(
@@ -275,7 +276,13 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                     )
                                 }
                                 settings.setLastConnectionMode("direct")
-                                listenForMessages()
+                                settings.addOrUpdateHistoryEntry(ConnectionHistoryEntry(
+                                    type = ConnectionType.DIRECT,
+                                    host = connection.host,
+                                    port = connection.port,
+                                    isTls = connection.isTls,
+                                ))
+                                listenForMessages(WebSocketConnectionSession(this))
                             }
                         }
                     } catch (e: Exception) {
@@ -373,6 +380,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                         }
                                         startWebRTCMessageListener(manager)
                                         settings.setLastConnectionMode("webrtc")
+                                        settings.addOrUpdateHistoryEntry(ConnectionHistoryEntry(
+                                            type = ConnectionType.WEBRTC,
+                                            remoteId = remoteId.rawId,
+                                        ))
                                         // Stop this monitor - message listener will take over
                                         return@collect
                                     }
@@ -434,21 +445,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
         webrtcListeningJob = launch {
             try {
-                manager.incomingMessages.collect { jsonString ->
-                    Logger.withTag("ServiceClient")
-                        .d { "WebRTC received: ${jsonString.take(200)}..." }
-                    try {
-                        val message = myJson.decodeFromString<JsonObject>(jsonString)
-                        Logger.withTag("ServiceClient").d { "WebRTC parsed, keys: ${message.keys}" }
-                        handleIncomingMessage(message)
-                    } catch (e: Exception) {
-                        Logger.withTag("ServiceClient")
-                            .e(e) { "Failed to parse WebRTC message: $jsonString" }
-                    }
-                }
+                listenOnSession(WebRTCConnectionSession(manager))
             } catch (e: Exception) {
                 // Don't trigger reconnection here - the state monitor will handle it
-                // This prevents duplicate reconnection loops
                 Logger.withTag("ServiceClient")
                     .d { "WebRTC message listener ended: ${e.message}" }
             }
@@ -478,15 +477,15 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
                         // Extract connection info: try current state first, fall back to cache
                         // Cache handles race condition where state transitions to Error before we check
-                        val info: WebRTCConnectionCache? = when (val state = currentState) {
+                        val info: WebRTCConnectionCache? = when (currentState) {
                             is SessionState.Connected.WebRTC -> {
                                 // State still Connected - extract info directly
                                 WebRTCConnectionCache(
-                                    remoteId = state.remoteId,
-                                    serverInfo = state.serverInfo,
-                                    user = state.user,
-                                    authProcessState = state.authProcessState,
-                                    wasAutoLogin = state.wasAutoLogin
+                                    remoteId = currentState.remoteId,
+                                    serverInfo = currentState.serverInfo,
+                                    user = currentState.user,
+                                    authProcessState = currentState.authProcessState,
+                                    wasAutoLogin = currentState.wasAutoLogin
                                 )
                             }
 
@@ -650,19 +649,19 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         if (currentState is SessionState.Connected) {
             val serverIdentifier = when (currentState) {
                 is SessionState.Connected.Direct -> {
-                    currentState.connectionInfo?.let { connInfo ->
-                        settings.getDirectServerIdentifier(connInfo.host, connInfo.port, connInfo.isTls)
-                    }
+                    settings.getDirectServerIdentifier(
+                        currentState.connectionInfo.host,
+                        currentState.connectionInfo.port,
+                        currentState.connectionInfo.isTls
+                    )
                 }
 
                 is SessionState.Connected.WebRTC -> {
                     settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                 }
             }
-            serverIdentifier?.let { id ->
-                settings.setTokenForServer(id, null)
-                Logger.withTag("ServiceClient").d { "Cleared token for server: $id" }
-            }
+            settings.setTokenForServer(serverIdentifier, null)
+            Logger.withTag("ServiceClient").d { "Cleared token for server: $serverIdentifier" }
         }
 
         if (_sessionState.value !is SessionState.Connected) {
@@ -725,19 +724,20 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 if (currentState is SessionState.Connected) {
                     val serverIdentifier = when (currentState) {
                         is SessionState.Connected.Direct -> {
-                            currentState.connectionInfo?.let { connInfo ->
-                                settings.getDirectServerIdentifier(connInfo.host, connInfo.port, connInfo.isTls)
-                            }
+                            settings.getDirectServerIdentifier(
+                                currentState.connectionInfo.host,
+                                currentState.connectionInfo.port,
+                                currentState.connectionInfo.isTls
+                            )
                         }
 
                         is SessionState.Connected.WebRTC -> {
                             settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                         }
                     }
-                    serverIdentifier?.let { id ->
-                        settings.setTokenForServer(id, token)
-                        Logger.withTag("ServiceClient").d { "Saved token for server: $id" }
-                    }
+                    settings.setTokenForServer(serverIdentifier, token)
+                    Logger.withTag("ServiceClient")
+                        .d { "Saved token for server: $serverIdentifier" }
                 }
 
                 _sessionState.update {
@@ -771,7 +771,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     /**
      * Auto-reconnect WebRTC connection with exponential backoff.
-     * Matches the reconnection behavior of Direct connections.
+     * Matches the reconnection behaviour of Direct connections.
      */
     private suspend fun autoReconnectWebRTC(
         remoteId: RemoteId,
@@ -782,129 +782,59 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     ) {
         Logger.withTag("ServiceClient")
             .i { "🔄 AUTO-RECONNECT WebRTC started for ${remoteId.rawId}" }
-        var reconnectAttempt = 0
-        val maxAttempts = 10
 
-        while (reconnectAttempt < maxAttempts) {
-            // Check if user manually disconnected
-            val currentState = _sessionState.value
-            if (currentState is SessionState.Disconnected.ByUser) {
-                Logger.withTag("ServiceClient")
-                    .i { "User manually disconnected - stopping WebRTC reconnection loop" }
-                return
-            }
-            if (currentState !is SessionState.Reconnecting.WebRTC) {
-                Logger.withTag("ServiceClient")
-                    .i { "Session state changed to ${currentState::class.simpleName} - stopping WebRTC reconnection loop" }
-                return
-            }
-
-            val delay = when (reconnectAttempt) {
-                0 -> 500L
-                1 -> 1000L
-                2 -> 2000L
-                3 -> 3000L
-                else -> 5000L
-            }
-
-            Logger.withTag("ServiceClient")
-                .i { "WebRTC reconnect attempt ${reconnectAttempt + 1}/$maxAttempts in ${delay}ms" }
-            delay(delay)
-
-            // Check again after delay
-            val stateAfterDelay = _sessionState.value
-            if (stateAfterDelay is SessionState.Disconnected.ByUser) {
-                Logger.withTag("ServiceClient")
-                    .i { "User manually disconnected during delay - stopping WebRTC reconnection loop" }
-                return
-            }
-
-            // CRITICAL: Stop if already connected (another attempt succeeded while we were delaying)
-            if (stateAfterDelay is SessionState.Connected.WebRTC) {
-                Logger.withTag("ServiceClient")
-                    .i { "✅ Already connected (another attempt succeeded) - stopping reconnection loop" }
-                return
-            }
-
-            _sessionState.update {
-                SessionState.Reconnecting.WebRTC(
-                    attempt = reconnectAttempt + 1,
-                    remoteId = remoteId,
-                    serverInfo = serverInfo,
-                    user = user,
-                    authProcessState = authProcessState,
-                    wasAutoLogin = wasAutoLogin
-                )
-            }
-
-            reconnectAttempt++
-
-            // Trigger connection attempt
-            Logger.withTag("ServiceClient")
-                .i { "Attempting WebRTC reconnection to Remote ID: ${remoteId.rawId}..." }
-
-            try {
-                connectWebRTC(remoteId)
-
-                // Wait for connection state to change
-                // WebRTC connection can take time on cellular: signaling + ICE + STUN/TURN + peer connection
-                val timeoutMs = 30000L  // 30 seconds
-                val startTime = currentTimeMillis()
-
-                while (currentTimeMillis() - startTime < timeoutMs) {
-                    when (val state = _sessionState.value) {
-                        is SessionState.Connected.WebRTC -> {
-                            Logger.withTag("ServiceClient")
-                                .i { "✅ WebRTC reconnection successful! Exiting reconnection loop." }
-
-                            // Re-authenticate with saved token
-                            launch {
-                                val serverIdentifier =
-                                    settings.getWebRTCServerIdentifier(remoteId.rawId)
-                                val token = settings.getTokenForServer(serverIdentifier)
-
-                                if (token != null) {
-                                    Logger.withTag("ServiceClient")
-                                        .i { "🔐 Re-authenticating after WebRTC reconnection with saved token" }
-                                    authorize(token, isAutoLogin = true)
-                                } else {
-                                    Logger.withTag("ServiceClient")
-                                        .w { "⚠️ No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
-                                }
-                            }
-                            Logger.withTag("ServiceClient")
-                                .i { "🏁 autoReconnectWebRTC() returning" }
-                            return
-                        }
-
-                        is SessionState.Disconnected.ByUser -> {
-                            Logger.withTag("ServiceClient")
-                                .i { "User disconnected during reconnect attempt" }
-                            return
-                        }
-
-                        else -> {
-                            // Still connecting or reconnecting, wait a bit
-                            delay(100L)
-                        }
-                    }
+        runReconnectionLoop(
+            tag = "WebRTC",
+            maxAttempts = 10,
+            waitAfterConnectMs = 30_000L,
+            shouldStop = {
+                _sessionState.value.let {
+                    it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting.WebRTC
                 }
-            } catch (e: Exception) {
-                Logger.withTag("ServiceClient")
-                    .w(e) { "WebRTC reconnect attempt $reconnectAttempt threw exception" }
+            },
+            isConnected = { _sessionState.value is SessionState.Connected.WebRTC },
+            onAttempt = { attempt ->
+                _sessionState.update {
+                    SessionState.Reconnecting.WebRTC(
+                        attempt = attempt + 1,
+                        remoteId = remoteId,
+                        serverInfo = serverInfo,
+                        user = user,
+                        authProcessState = authProcessState,
+                        wasAutoLogin = wasAutoLogin
+                    )
+                }
+                try {
+                    connectWebRTC(remoteId)
+                } catch (e: Exception) {
+                    Logger.withTag("ServiceClient")
+                        .w(e) { "WebRTC reconnect attempt ${attempt + 1} threw exception" }
+                }
+            },
+            onGiveUp = {
+                disconnect(SessionState.Disconnected.Error(Exception("Max WebRTC reconnect attempts reached")))
             }
+        )
 
-            // Still reconnecting - continue loop
+        // WebRTC-specific: re-authenticate with saved token after successful reconnection
+        if (_sessionState.value is SessionState.Connected.WebRTC) {
             Logger.withTag("ServiceClient")
-                .w { "WebRTC reconnect attempt $reconnectAttempt failed, will retry..." }
+                .i { "✅ WebRTC reconnection successful! Re-authenticating..." }
+            launch {
+                val serverIdentifier = settings.getWebRTCServerIdentifier(remoteId.rawId)
+                val token = settings.getTokenForServer(serverIdentifier)
 
-            if (reconnectAttempt >= maxAttempts) {
-                Logger.withTag("ServiceClient")
-                    .e { "Max WebRTC reconnect attempts reached, giving up" }
-                disconnect(SessionState.Disconnected.Error(Exception("Failed to reconnect WebRTC after $maxAttempts attempts")))
-                return
+                if (token != null) {
+                    Logger.withTag("ServiceClient")
+                        .i { "🔐 Re-authenticating after WebRTC reconnection with saved token" }
+                    authorize(token, isAutoLogin = true)
+                } else {
+                    Logger.withTag("ServiceClient")
+                        .w { "⚠️ No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
+                }
             }
         }
+        Logger.withTag("ServiceClient").i { "🏁 autoReconnectWebRTC() returning" }
     }
 
     /**
@@ -916,62 +846,26 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         if (currentState is SessionState.Connected) {
             val serverIdentifier = when (currentState) {
                 is SessionState.Connected.Direct -> {
-                    currentState.connectionInfo?.let { connInfo ->
-                        settings.getDirectServerIdentifier(connInfo.host, connInfo.port, connInfo.isTls)
-                    }
+                    settings.getDirectServerIdentifier(
+                        currentState.connectionInfo.host,
+                        currentState.connectionInfo.port,
+                        currentState.connectionInfo.isTls
+                    )
                 }
 
                 is SessionState.Connected.WebRTC -> {
                     settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                 }
             }
-            serverIdentifier?.let { id ->
-                settings.setTokenForServer(id, null)
-                Logger.withTag("ServiceClient")
-                    .d { "Cleared token for server: $id due to auth failure" }
-            }
+            settings.setTokenForServer(serverIdentifier, null)
+            Logger.withTag("ServiceClient")
+                .d { "Cleared token for server: $serverIdentifier due to auth failure" }
         }
     }
 
     private suspend fun handleIncomingMessage(message: JsonObject) {
         when {
-            message.containsKey("message_id") -> {
-                val messageId = message["message_id"]?.jsonPrimitive?.content ?: return
-                val isPartial = message["partial"]?.jsonPrimitive?.boolean == true
-
-                if (isPartial) {
-                    // Accumulate partial batch — don't resolve the callback yet.
-                    // The MA server sends large result sets in 500-item batches.
-                    val resultArray = message["result"]?.jsonArray
-                    if (resultArray != null && resultArray.isNotEmpty()
-                        && pendingResponses.containsKey(messageId)
-                    ) {
-                        val list = partialResults.getOrPut(messageId) { mutableListOf() }
-                        list.addAll(resultArray)
-                    }
-                    return
-                }
-
-                // Final response — remove callback and any accumulated partials
-                val callback = pendingResponses.remove(messageId) ?: return
-                val accumulated = partialResults.remove(messageId)
-
-                val finalMessage = if (accumulated != null) {
-                    // Merge accumulated partials with this final batch's result
-                    val finalArray = message["result"]?.jsonArray
-                    if (finalArray != null) {
-                        accumulated.addAll(finalArray)
-                    }
-                    val mergedResult = JsonArray(accumulated)
-                    JsonObject(message.toMutableMap().apply {
-                        put("result", mergedResult)
-                    })
-                } else {
-                    message
-                }
-
-                callback.invoke(Answer(finalMessage))
-            }
+            rpcEngine.handleResponse(message) -> return
 
             message.containsKey("server_id") -> {
                 _sessionState.update {
@@ -989,145 +883,84 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         }
     }
 
-    private suspend fun listenForMessages() {
-        try {
-            while (true) {
-                val state = _sessionState.value
-                if (state !is SessionState.Connected.Direct) {
-                    continue
-                }
-                val message = state.session.receiveDeserialized<JsonObject>()
-                handleIncomingMessage(message)
-            }
-        } catch (e: Exception) {
-            val state = _sessionState.value
-            if (state is SessionState.Disconnected.ByUser) {
-                return
-            }
-            if (state is SessionState.Connected.Direct) {
-                Logger.withTag("ServiceClient")
-                    .w { "Connection lost: ${e.message}. Will auto-reconnect..." }
-                val connectionInfo = state.connectionInfo
-                val serverInfo = state.serverInfo
-                val user = state.user
-                val authProcessState = state.authProcessState
-                val wasAutoLogin = state.wasAutoLogin
+    /** Collect messages from a [ConnectionSession] and dispatch each to [handleIncomingMessage]. */
+    private suspend fun listenOnSession(session: ConnectionSession) {
+        session.messages.collect { handleIncomingMessage(it) }
+    }
 
-                // Enter Reconnecting state (preserves server/user/auth state - no UI reload!)
+    /**
+     * Listen on a Direct WebSocket session. When the connection drops, enters the
+     * Reconnecting state and retries with exponential backoff.
+     */
+    private suspend fun listenForMessages(session: ConnectionSession) {
+        try {
+            listenOnSession(session)
+        } catch (e: Exception) {
+            Logger.withTag("ServiceClient").w { "WebSocket error: ${e.message}" }
+        }
+
+        // Connection ended (normal close or error) - check if reconnection is needed.
+        val state = _sessionState.value
+        if (state is SessionState.Disconnected.ByUser) return
+        if (state !is SessionState.Connected.Direct) return
+
+        Logger.withTag("ServiceClient").w { "Connection lost. Will auto-reconnect..." }
+        val connectionInfo = state.connectionInfo
+        val serverInfo = state.serverInfo
+        val user = state.user
+        val authProcessState = state.authProcessState
+        val wasAutoLogin = state.wasAutoLogin
+
+        // Enter Reconnecting state (preserves server/user/auth state - no UI reload!)
+        _sessionState.update {
+            SessionState.Reconnecting.Direct(
+                attempt = 0,
+                connectionInfo = connectionInfo,
+                serverInfo = serverInfo,
+                user = user,
+                authProcessState = authProcessState,
+                wasAutoLogin = wasAutoLogin
+            )
+        }
+
+        runReconnectionLoop(
+            tag = "Direct",
+            waitAfterConnectMs = 2000L,
+            shouldStop = {
+                _sessionState.value.let {
+                    it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting
+                }
+            },
+            isConnected = { _sessionState.value is SessionState.Connected },
+            onAttempt = { attempt ->
+                // Read current connection info from settings to allow IP changes during reconnection
+                val info = settings.connectionInfo.value ?: connectionInfo
                 _sessionState.update {
                     SessionState.Reconnecting.Direct(
-                        attempt = 0,
-                        connectionInfo = connectionInfo,
+                        attempt = attempt + 1,
+                        connectionInfo = info,
                         serverInfo = serverInfo,
                         user = user,
                         authProcessState = authProcessState,
                         wasAutoLogin = wasAutoLogin
                     )
                 }
-
-                // Auto-reconnect with custom backoff schedule
-                var reconnectAttempt = 0
-                val maxAttempts = 10
-                while (reconnectAttempt < maxAttempts) {
-                    // Check if user manually disconnected - if so, stop reconnection loop
-                    val currentState = _sessionState.value
-                    if (currentState is SessionState.Disconnected.ByUser) {
-                        Logger.withTag("ServiceClient")
-                            .i { "User manually disconnected - stopping reconnection loop" }
-                        return
-                    }
-                    if (currentState !is SessionState.Reconnecting) {
-                        Logger.withTag("ServiceClient")
-                            .i { "Session state changed to ${currentState::class.simpleName} - stopping reconnection loop" }
-                        return
-                    }
-
-                    val delay = when (reconnectAttempt) {
-                        0 -> 500L
-                        1 -> 1000L
-                        2 -> 2000L
-                        3 -> 3000L
-                        else -> 5000L
-                    }
-
-                    Logger.withTag("ServiceClient")
-                        .i { "Reconnect attempt ${reconnectAttempt + 1}/$maxAttempts in ${delay}ms" }
-                    delay(delay)
-
-                    // Check again after delay in case user disconnected during sleep
-                    if (_sessionState.value is SessionState.Disconnected.ByUser) {
-                        Logger.withTag("ServiceClient")
-                            .i { "User manually disconnected during delay - stopping reconnection loop" }
-                        return
-                    }
-
-                    // CRITICAL: Read current connection info from settings
-                    // This allows user to change server IP during reconnection
-                    val currentConnectionInfo = settings.connectionInfo.value ?: connectionInfo
-
-                    _sessionState.update {
-                        SessionState.Reconnecting.Direct(
-                            attempt = reconnectAttempt + 1,
-                            connectionInfo = currentConnectionInfo,
-                            serverInfo = serverInfo,
-                            user = user,
-                            authProcessState = authProcessState,
-                            wasAutoLogin = wasAutoLogin
-                        )
-                    }
-
-                    reconnectAttempt++
-
-                    // Trigger connection attempt (async)
-                    Logger.withTag("ServiceClient")
-                        .i { "Attempting reconnection to ${currentConnectionInfo.host}:${currentConnectionInfo.port}..." }
-                    connect(currentConnectionInfo)
-
-                    // Wait a bit for connection to establish (or fail)
-                    // The connect() method launches async, so we give it time to complete
-                    delay(2000L)
-
-                    // Check if we successfully connected
-                    if (_sessionState.value is SessionState.Connected) {
-                        Logger.withTag("ServiceClient").i { "Reconnection successful!" }
-                        return
-                    }
-
-                    // Still in Reconnecting state - connection attempt failed, continue loop
-                    Logger.withTag("ServiceClient")
-                        .w { "Reconnect attempt $reconnectAttempt failed, will retry..." }
-
-                    if (reconnectAttempt >= maxAttempts) {
-                        Logger.withTag("ServiceClient")
-                            .e { "Max reconnect attempts reached, giving up" }
-                        disconnect(SessionState.Disconnected.Error(Exception("Failed to reconnect after $maxAttempts attempts")))
-                        return
-                    }
-                }
+                connect(info)
+            },
+            onGiveUp = {
+                disconnect(SessionState.Disconnected.Error(Exception("Failed to reconnect after 10 attempts")))
             }
-        }
+        )
     }
 
     suspend fun sendRequest(request: Request): Result<Answer> = suspendCoroutine { continuation ->
-        pendingResponses[request.messageId] = { response ->
-            if (response.json.contains("error_code")) {
-                Logger.withTag("ServiceClient")
-                    .e { "Error response for command ${request.command}: $response" }
-                if (response.json["error_code"]?.jsonPrimitive?.int == 20) {
-                    _sessionState.update {
-                        (it as? SessionState.Connected)?.update(
-                            user = null,
-                            authProcessState = AuthProcessState.NotStarted
-                        ) ?: it
-                    }
-                }
-            }
+        rpcEngine.registerCallback(request.messageId) { response ->
             continuation.resume(Result.success(response))
         }
         launch {
             val state = _sessionState.value as? SessionState.Connected
                 ?: run {
-                    pendingResponses.remove(request.messageId)
+                    rpcEngine.removeCallback(request.messageId)
                     continuation.resume(Result.failure(IllegalStateException("Not connected")))
                     return@launch
                 }
@@ -1136,7 +969,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
                 state.sendMessage(jsonObject)
             } catch (e: Exception) {
-                pendingResponses.remove(request.messageId)
+                rpcEngine.removeCallback(request.messageId)
                 continuation.resume(Result.failure(e))
                 disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
             }
@@ -1190,8 +1023,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 }
             }
             // Clear pending requests and partial result accumulations to prevent leaks
-            pendingResponses.clear()
-            partialResults.clear()
+            rpcEngine.clear()
         }
     }
 
