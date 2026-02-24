@@ -90,7 +90,7 @@ internal fun PlayersPager(
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
     val coroutineScope = rememberCoroutineScope()
-    var groupDialogPlayer by remember { mutableStateOf<PlayerData?>(null) }
+    var groupDialogPlayerId by remember { mutableStateOf<String?>(null) }
 
     fun moveToPlayer(playerId: String) {
         val targetIndex =
@@ -145,7 +145,7 @@ internal fun PlayersPager(
                     hasNoChildren = player.groupChildren.isEmpty(),
                     hasNoBoundChildren = player.groupChildren.none { it.isBound },
                     isLocalPlayer = isLocalPlayer,
-                    onShowGroup = { groupDialogPlayer = player }
+                    onShowGroup = { groupDialogPlayerId = player.player.id }
                 )
 
                 AnimatedVisibility(
@@ -301,12 +301,14 @@ internal fun PlayersPager(
             }
         }
 
-        groupDialogPlayer?.let { player ->
-            GroupDialog(
-                item = player,
-                simplePlayerAction = simplePlayerAction,
-                onDismiss = { groupDialogPlayer = null }
-            )
+        groupDialogPlayerId?.let { playerId ->
+            playerDataList.find { it.player.id == playerId }?.let { player ->
+                GroupDialog(
+                    item = player,
+                    simplePlayerAction = simplePlayerAction,
+                    onDismiss = { groupDialogPlayerId = null }
+                )
+            }
         }
     }
 }

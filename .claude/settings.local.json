@@ -26,7 +26,10 @@
       "Bash(echo:*)",
       "Bash(tee:*)",
       "Bash(/Users/amitnovych/Documents/Personal/Git/MusicAssistantClient/gradlew --version)",
-      "Bash(/Users/amitnovych/Documents/Personal/Git/MusicAssistantClient/gradlew:*)"
+      "Bash(/Users/amitnovych/Documents/Personal/Git/MusicAssistantClient/gradlew:*)",
+      "Bash(echo adb not found in PATH:*)",
+      "Bash(head:*)",
+      "WebFetch(domain:developers.google.com)"
     ]
   }
 }
