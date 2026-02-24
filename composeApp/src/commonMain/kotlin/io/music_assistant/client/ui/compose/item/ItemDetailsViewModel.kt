@@ -35,13 +35,10 @@ class ItemDetailsViewModel(
 ) : ViewModel() {
 
     data class State(
-        val connectionState: SessionState,
         val itemState: DataState<AppMediaItem>,
         val albumsState: DataState<List<AppMediaItem.Album>>,
         val playableItemsState: DataState<List<PlayableItem>>,
     )
-
-    private val connectionState = apiClient.sessionState
 
     val serverUrl =
         apiClient.sessionState.map { (it as? SessionState.Connected)?.serverInfo?.baseUrl }
@@ -57,7 +54,6 @@ class ItemDetailsViewModel(
 
     private val _state = MutableStateFlow(
         State(
-            connectionState = SessionState.Disconnected.Initial,
             itemState = DataState.Loading(),
             albumsState = DataState.Loading(),
             playableItemsState = DataState.Loading(),
@@ -66,12 +62,6 @@ class ItemDetailsViewModel(
     val state = _state.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            connectionState.collect { connection ->
-                _state.update { it.copy(connectionState = connection) }
-            }
-        }
-
         // Listen to real-time events for favorite updates
         viewModelScope.launch {
             apiClient.events.collect { event ->

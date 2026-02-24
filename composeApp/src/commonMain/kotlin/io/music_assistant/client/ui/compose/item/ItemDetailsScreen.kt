@@ -72,7 +72,6 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.theme.AppTheme
-import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
@@ -135,7 +134,7 @@ fun ItemDetailsScreen(
 }
 
 @Composable
-private fun ItemDetails(
+fun ItemDetails(
     state: ItemDetailsViewModel.State,
     serverUrl: String? = null,
     onBack: () -> Unit = {},
@@ -182,7 +181,7 @@ private fun ItemDetails(
             onToggleViewMode = onToggleViewMode,
         )
 
-        ItemDetailsContent(
+        ItemChildren(
             state = state,
             serverUrl = serverUrl,
             toastState = toastState,
@@ -408,7 +407,7 @@ private fun ItemDetailsTopBar(
 }
 
 @Composable
-private fun ItemDetailsContent(
+private fun ItemChildren(
     state: ItemDetailsViewModel.State,
     serverUrl: String?,
     toastState: ToastState,
@@ -653,16 +652,17 @@ private fun ChapterRow(
 @Preview
 @Composable
 private fun PreviewArtist(isRowMode: Boolean = true) {
+    val artist = AppMediaItemFixtures.artist("Artist")
+
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    SessionState.Disconnected.NoServerData,
-                    DataState.Data(AppMediaItemFixtures.artist("Artist")),
+                    DataState.Data(artist),
                     DataState.Data(
                         listOf(
-                            AppMediaItemFixtures.album("Album 1", "Artist"),
-                            AppMediaItemFixtures.album("Album 2", "Artist")
+                            AppMediaItemFixtures.album("Album 1", artist),
+                            AppMediaItemFixtures.album("Album 2", artist)
                         )
                     ),
                     DataState.NoData()
@@ -682,14 +682,21 @@ private fun PreviewArtistGrid() {
 @Preview
 @Composable
 private fun PreviewAlbum(isRowMode: Boolean = true) {
+    val artist = AppMediaItemFixtures.artist("Artist")
+    val album = AppMediaItemFixtures.album("Title", artist)
+
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    SessionState.Disconnected.NoServerData,
-                    DataState.Data(AppMediaItemFixtures.album("Title", "Artist")),
+                    DataState.Data(album),
                     DataState.NoData(),
-                    DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2")))
+                    DataState.Data(
+                        AppMediaItemFixtures.tracks(
+                            listOf("Track 1", "Track 2"),
+                            album = album
+                        )
+                    )
                 ),
                 isRowMode = isRowMode
             )
@@ -710,7 +717,6 @@ private fun PreviewPlaylist(isRowMode: Boolean = true) {
         Scaffold {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    SessionState.Disconnected.NoServerData,
                     DataState.Data(AppMediaItemFixtures.playlist("Title")),
                     DataState.NoData(),
                     DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2")))
@@ -730,14 +736,19 @@ private fun PreviewPlaylistGrid() {
 @Preview
 @Composable
 private fun PreviewPodcast(isRowMode: Boolean = true) {
+    val podcast = AppMediaItemFixtures.podcast()
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    SessionState.Disconnected.NoServerData,
-                    DataState.Data(AppMediaItemFixtures.podcast("Title")),
+                    DataState.Data(podcast),
                     DataState.NoData(),
-                    DataState.Data(AppMediaItemFixtures.episodes(listOf("Episode 1", "Episode 2")))
+                    DataState.Data(
+                        AppMediaItemFixtures.episodes(
+                            listOf("Episode 1", "Episode 2"),
+                            podcast = podcast
+                        )
+                    )
                 ),
                 isRowMode = isRowMode
             )
@@ -753,20 +764,28 @@ private fun PreviewPodcastGrid() {
 
 @Preview
 @Composable
-private fun PreviewAudiobook() {
+private fun PreviewAudiobook(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         Scaffold {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    SessionState.Disconnected.NoServerData,
-                    DataState.Data(AppMediaItemFixtures.audiobook(
-                        "Title",
-                        listOf("Chapter 1", "Chapter 2")
-                    )),
+                    DataState.Data(
+                        AppMediaItemFixtures.audiobook(
+                            "Title",
+                            listOf("Chapter 1", "Chapter 2")
+                        )
+                    ),
                     DataState.NoData(),
                     DataState.NoData()
-                )
+                ),
+                isRowMode = isRowMode
             )
         }
     }
+}
+
+@Preview
+@Composable
+private fun PreviewAudiobookGrid() {
+    PreviewAudiobook(isRowMode = false)
 }
