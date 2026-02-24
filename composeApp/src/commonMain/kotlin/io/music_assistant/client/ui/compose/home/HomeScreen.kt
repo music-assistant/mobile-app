@@ -104,10 +104,17 @@ fun HomeScreen(
         showPlayersView = false
     }
 
-    // Update selected player when pager changes to load queue items
+    // Bidirectional pager <-> selection sync
+    // Selection→pager runs first (data layer priority), then pager→selection watches user swipes
     LaunchedEffect(playerPagerState, playersState) {
+        val currentData = playersState as? HomeScreenViewModel.PlayersState.Data
+            ?: return@LaunchedEffect
+        val target = currentData.selectedPlayerIndex ?: return@LaunchedEffect
+        if (playerPagerState.currentPage != target) {
+            playerPagerState.scrollToPage(target)
+        }
         snapshotFlow { playerPagerState.currentPage }.collect { currentPage ->
-            data?.playerData?.getOrNull(currentPage)?.let { playerData ->
+            currentData.playerData.getOrNull(currentPage)?.let { playerData ->
                 viewModel.selectPlayer(playerData.player)
             }
         }

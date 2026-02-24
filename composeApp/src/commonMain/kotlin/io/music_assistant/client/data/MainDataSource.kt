@@ -331,7 +331,7 @@ class MainDataSource(
                                                 val serverIdentifier = when (val state =
                                                     apiClient.sessionState.value) {
                                                     is SessionState.Connected.Direct -> {
-                                                        state.connectionInfo?.let { connInfo ->
+                                                        state.connectionInfo.let { connInfo ->
                                                             settings.getDirectServerIdentifier(
                                                                 connInfo.host,
                                                                 connInfo.port,
@@ -531,6 +531,7 @@ class MainDataSource(
             }
         }
         launch {
+            var wasLocalPlayerInList = false
             playersData.mapNotNull { (it as? DataState.Data)?.data }.collect { playersList ->
                 // Auto-select first player if no player is selected
                 if (playersList.isNotEmpty()
@@ -538,6 +539,12 @@ class MainDataSource(
                 ) {
                     _selectedPlayerId.update { playersList.getOrNull(0)?.playerId }
                 }
+                // When local player first appears at first position, select it
+                val localId = settings.sendspinClientId.value
+                if (playersList.firstOrNull()?.playerId == localId && !wasLocalPlayerInList) {
+                    _selectedPlayerId.update { localId }
+                }
+                wasLocalPlayerInList = playersList.any { it.playerId == localId }
                 // Don't call updatePlayersAndQueues() here - it creates a reactive loop!
                 // Updates are triggered by sessionState changes and API events.
             }
@@ -619,9 +626,17 @@ class MainDataSource(
 
         val authToken = when (val state = apiClient.sessionState.value) {
             is SessionState.Connected.Direct ->
-                settings.getTokenForServer(settings.getDirectServerIdentifier(state.connectionInfo.host, state.connectionInfo.port, state.connectionInfo.isTls))
+                settings.getTokenForServer(
+                    settings.getDirectServerIdentifier(
+                        state.connectionInfo.host,
+                        state.connectionInfo.port,
+                        state.connectionInfo.isTls
+                    )
+                )
+
             is SessionState.Connected.WebRTC ->
                 settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
+
             else -> null
         }
 
@@ -732,6 +747,7 @@ class MainDataSource(
                         delay(1000) // Give server a moment to register the player
                         updatePlayersAndQueues()
                     }
+
                     is SendspinConnectionState.Error,
                     SendspinConnectionState.Idle -> {
                         // Transport dropped (Error = WebSocket retry path, Idle = WebRTC channel closed).
@@ -739,6 +755,7 @@ class MainDataSource(
                         log.i { "Sendspin not connected ($state) - signalling pipeline network disconnect" }
                         sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
                     }
+
                     else -> {}
                 }
             }
@@ -883,8 +900,20 @@ class MainDataSource(
                     val currentPos = data.queueInfo?.elapsedTime ?: 0.0
                     (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
                         ?.chapters?.firstOrNull { it.start > currentPos }?.start
-                        ?.let { apiClient.sendRequest(Request.Player.seek(queueId = data.playerId, position = it.toLong())) }
-                        ?: apiClient.sendRequest(Request.Player.simpleCommand(playerId = data.playerId, command = "next"))
+                        ?.let {
+                            apiClient.sendRequest(
+                                Request.Player.seek(
+                                    queueId = data.playerId,
+                                    position = it.toLong()
+                                )
+                            )
+                        }
+                        ?: apiClient.sendRequest(
+                            Request.Player.simpleCommand(
+                                playerId = data.playerId,
+                                command = "next"
+                            )
+                        )
                 }
 
                 PlayerAction.Previous -> {
@@ -892,11 +921,24 @@ class MainDataSource(
                     (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
                         ?.chapters?.takeIf { it.isNotEmpty() }
                         ?.let { chapters ->
-                            val currentChapterStart = chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
-                            val prevStart = if (currentPos - currentChapterStart > 5) currentChapterStart
-                                           else chapters.lastOrNull { it.start < currentChapterStart }?.start ?: 0.0
-                            apiClient.sendRequest(Request.Player.seek(queueId = data.playerId, position = prevStart.toLong()))
-                        } ?: apiClient.sendRequest(Request.Player.simpleCommand(playerId = data.playerId, command = "previous"))
+                            val currentChapterStart =
+                                chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
+                            val prevStart =
+                                if (currentPos - currentChapterStart > 5) currentChapterStart
+                                else chapters.lastOrNull { it.start < currentChapterStart }?.start
+                                    ?: 0.0
+                            apiClient.sendRequest(
+                                Request.Player.seek(
+                                    queueId = data.playerId,
+                                    position = prevStart.toLong()
+                                )
+                            )
+                        } ?: apiClient.sendRequest(
+                        Request.Player.simpleCommand(
+                            playerId = data.playerId,
+                            command = "previous"
+                        )
+                    )
                 }
 
                 is PlayerAction.SeekTo -> {
