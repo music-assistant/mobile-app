@@ -1,10 +1,13 @@
 package io.music_assistant.client.services
 
+import android.app.PendingIntent
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.MediaSessionCompat.QueueItem
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
 import coil3.BitmapImage
@@ -22,12 +25,15 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -95,6 +101,8 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 }
             }
         }
+        observeSessionState()
+        observeLocalPlayer()
     }
 
     private fun createCallback(): MediaSessionCompat.Callback =
@@ -187,8 +195,17 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
 
     override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
-        val extras = Bundle()
-        extras.putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
+        val extras = Bundle().apply {
+            putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
+            putInt(
+                MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+            )
+            putInt(
+                MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+            )
+        }
         return BrowserRoot(MediaIds.ROOT, extras)
     }
 
@@ -203,6 +220,82 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         extras: Bundle?,
         result: Result<List<MediaBrowserCompat.MediaItem>>
     ) = library.search(query, result)
+
+    private fun observeSessionState() {
+        scope.launch {
+            var wasAuthenticated = false
+            dataSource.apiClient.sessionState.collect { state ->
+                when (state) {
+                    is SessionState.Connected -> {
+                        if (state.dataConnectionState is DataConnectionState.Authenticated) {
+                            mediaSessionHelper.clearErrorState()
+                            if (!wasAuthenticated) {
+                                wasAuthenticated = true
+                                notifyChildrenChanged(MediaIds.ROOT)
+                                notifyChildrenChanged(MediaIds.TAB_ARTISTS)
+                                notifyChildrenChanged(MediaIds.TAB_ALBUMS)
+                                notifyChildrenChanged(MediaIds.TAB_PLAYLISTS)
+                                notifyChildrenChanged(MediaIds.TAB_PODCASTS)
+                                notifyChildrenChanged(MediaIds.TAB_RADIO)
+                                notifyChildrenChanged(MediaIds.TAB_AUDIOBOOKS)
+                            }
+                        }
+                    }
+                    is SessionState.Reconnecting -> {
+                        wasAuthenticated = false
+                        mediaSessionHelper.setErrorState(
+                            PlaybackStateCompat.ERROR_CODE_APP_ERROR,
+                            "Reconnecting..."
+                        )
+                    }
+                    is SessionState.Disconnected.Error -> {
+                        wasAuthenticated = false
+                        mediaSessionHelper.setErrorState(
+                            PlaybackStateCompat.ERROR_CODE_APP_ERROR,
+                            "Connection lost"
+                        )
+                    }
+                    is SessionState.Disconnected -> {
+                        wasAuthenticated = false
+                    }
+                    is SessionState.Connecting -> {}
+                }
+            }
+        }
+    }
+
+    private fun observeLocalPlayer() {
+        scope.launch {
+            combine(
+                dataSource.apiClient.sessionState,
+                currentPlayerData
+            ) { sessionState, playerData ->
+                val isAuthenticated = (sessionState as? SessionState.Connected)
+                    ?.dataConnectionState is DataConnectionState.Authenticated
+                isAuthenticated to playerData
+            }.collect { (isAuthenticated, playerData) ->
+                if (isAuthenticated && playerData == null) {
+                    delay(2000)
+                    // Re-check after debounce
+                    if (currentPlayerData.value == null) {
+                        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                            ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+                        val pendingIntent = launchIntent?.let {
+                            PendingIntent.getActivity(
+                                this@AndroidAutoPlaybackService, 0, it,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            )
+                        }
+                        mediaSessionHelper.setErrorState(
+                            PlaybackStateCompat.ERROR_CODE_APP_ERROR,
+                            "Local player is not enabled",
+                            pendingIntent
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     override fun onDestroy() {
         mediaSessionHelper.release()

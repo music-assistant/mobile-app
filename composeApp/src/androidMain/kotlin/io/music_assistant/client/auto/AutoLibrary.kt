@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 
 @OptIn(FlowPreview::class)
@@ -61,6 +62,7 @@ class AutoLibrary(
                                 MediaType.ALBUM,
                                 MediaType.TRACK,
                                 MediaType.PLAYLIST,
+                                MediaType.AUDIOBOOK,
                                 MediaType.PODCAST,
                                 MediaType.RADIO
                             ),
@@ -92,7 +94,8 @@ class AutoLibrary(
                         rootTabItem("Albums", MediaIds.TAB_ALBUMS),
                         rootTabItem("Playlists", MediaIds.TAB_PLAYLISTS),
                         rootTabItem("Podcasts", MediaIds.TAB_PODCASTS),
-                        rootTabItem("Radio", MediaIds.TAB_RADIO)
+                        rootTabItem("Radio", MediaIds.TAB_RADIO),
+                        rootTabItem("Audiobooks", MediaIds.TAB_AUDIOBOOKS),
                     )
                 )
             }
@@ -100,7 +103,7 @@ class AutoLibrary(
             MediaIds.TAB_ARTISTS -> {
                 result.detach()
                 scope.launch {
-                    waitForCorrectState()
+                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
                     result.sendResult(loadItems(Request.Artist.listLibrary()))
                 }
             }
@@ -108,7 +111,7 @@ class AutoLibrary(
             MediaIds.TAB_ALBUMS -> {
                 result.detach()
                 scope.launch {
-                    waitForCorrectState()
+                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
                     result.sendResult(loadItems(Request.Album.listLibrary()))
                 }
             }
@@ -116,7 +119,7 @@ class AutoLibrary(
             MediaIds.TAB_PLAYLISTS -> {
                 result.detach()
                 scope.launch {
-                    waitForCorrectState()
+                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
                     result.sendResult(loadItems(Request.Playlist.listLibrary()))
                 }
             }
@@ -124,7 +127,7 @@ class AutoLibrary(
             MediaIds.TAB_PODCASTS -> {
                 result.detach()
                 scope.launch {
-                    waitForCorrectState()
+                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
                     result.sendResult(loadItems(Request.Podcast.listLibrary()))
                 }
             }
@@ -132,11 +135,18 @@ class AutoLibrary(
             MediaIds.TAB_RADIO -> {
                 result.detach()
                 scope.launch {
-                    waitForCorrectState()
+                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
                     result.sendResult(loadItems(Request.RadioStation.listLibrary()))
                 }
             }
 
+            MediaIds.TAB_AUDIOBOOKS -> {
+                result.detach()
+                scope.launch {
+                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    result.sendResult(loadItems(Request.Audiobook.listLibrary()))
+                }
+            }
 
             else -> {
                 val parts = id.split("__")
@@ -164,15 +174,15 @@ class AutoLibrary(
         }
     }
 
-    private suspend fun waitForCorrectState() {
-        // Block until authenticated, then proceed.
-        apiClient.sessionState
-            .mapNotNull { it as? SessionState.Connected }
-            .mapNotNull { it.dataConnectionState as? DataConnectionState.Authenticated }
-            .first()
-    }
+    private suspend fun waitForCorrectState(): Boolean =
+        withTimeoutOrNull(30_000) {
+            apiClient.sessionState
+                .mapNotNull { it as? SessionState.Connected }
+                .mapNotNull { it.dataConnectionState as? DataConnectionState.Authenticated }
+                .first()
+        } != null
 
-    private suspend fun loadItems(request: Request): List<MediaItem>? =
+    private suspend fun loadItems(request: Request, groupTitle: String? = null): List<MediaItem>? =
         apiClient.sendRequest(request)
             .resultAs<List<ServerMediaItem>>()
             ?.toAppMediaItemList()
@@ -181,7 +191,8 @@ class AutoLibrary(
                 it.toAutoMediaItem(
                     baseUrl,
                     true,
-                    defaultIconUri
+                    defaultIconUri,
+                    groupTitle
                 )
             }
 
@@ -270,6 +281,7 @@ internal object MediaIds {
     const val TAB_PLAYLISTS = "auto_lib_playlists"
     const val TAB_PODCASTS = "auto_lib_podcasts"
     const val TAB_RADIO = "auto_lib_radio"
+    const val TAB_AUDIOBOOKS = "auto_lib_audiobooks"
     const val QUEUE_OPTION_KEY = "auto_queue_option"
 }
 
@@ -282,6 +294,7 @@ private fun SearchResult.toAutoMediaItems(
         albums to "Albums",
         artists to "Artists",
         playlists to "Playlists",
+        audiobooks to "Audiobooks",
         podcasts to "Podcasts",
         radios to "Radio stations"
     ).forEach { (items, category) ->

@@ -1,12 +1,15 @@
 package io.music_assistant.client.services
 
+import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.session.PlaybackState
+import android.os.Bundle
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import androidx.media.utils.MediaConstants
 import io.music_assistant.client.R
 import io.music_assistant.client.data.model.server.RepeatMode
 
@@ -122,6 +125,34 @@ class MediaSessionHelper(
     fun updateQueue(queue: List<MediaSessionCompat.QueueItem>) {
         mediaSession.setQueue(queue)
         mediaSession.setQueueTitle("Now playing")
+    }
+
+    fun setErrorState(errorCode: Int, errorMessage: String, resolution: PendingIntent? = null) {
+        val extras = resolution?.let { intent ->
+            Bundle().apply {
+                putParcelable(
+                    MediaConstants.PLAYBACK_STATE_EXTRAS_KEY_ERROR_RESOLUTION_ACTION_INTENT,
+                    intent
+                )
+                putString(
+                    MediaConstants.PLAYBACK_STATE_EXTRAS_KEY_ERROR_RESOLUTION_ACTION_LABEL,
+                    "Open app"
+                )
+            }
+        }
+        val playbackState = PlaybackStateCompat.Builder()
+            .setState(PlaybackStateCompat.STATE_ERROR, 0, 0f)
+            .setErrorMessage(errorCode, errorMessage)
+            .also { builder -> extras?.let { builder.setExtras(it) } }
+            .build()
+        mediaSession.setPlaybackState(playbackState)
+    }
+
+    fun clearErrorState() {
+        val playbackState = PlaybackStateCompat.Builder()
+            .setState(PlaybackStateCompat.STATE_NONE, 0, 0f)
+            .build()
+        mediaSession.setPlaybackState(playbackState)
     }
 
     private fun getRepeatModeIcon(repeatMode: RepeatMode): Int = when (repeatMode) {
