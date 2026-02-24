@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,6 +48,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -171,15 +174,20 @@ fun ItemDetails(
             onMarkUnplayed = onMarkUnplayed
         )
 
-        ItemDetailsTopBar(
-            onBack = onBack,
-            onPlayClick = onPlayClick,
-            item = item,
-            playlistActions = playlistActions.takeIf { item is AppMediaItem.Track || item is AppMediaItem.Album },
-            libraryActions = libraryActions,
-            isRowMode = isRowMode,
-            onToggleViewMode = onToggleViewMode,
-        )
+        if (item is AppMediaItem.Album) {
+
+        } else {
+            ItemDetailsTopBar(
+                onBack = onBack,
+                onPlayClick = onPlayClick,
+                item = item,
+                playlistActions = playlistActions.takeIf { item is AppMediaItem.Track || item is AppMediaItem.Album },
+                libraryActions = libraryActions,
+                isRowMode = isRowMode,
+                onToggleViewMode = onToggleViewMode,
+            )
+        }
+
 
         ItemChildren(
             state = state,
@@ -199,13 +207,15 @@ fun ItemDetails(
                     else -> Unit
                 }
             },
-            onPlayClick = onChildPlayClick,
+            onPlayItemClick = { onPlayClick(QueueOption.REPLACE, false) },
+            onPlayChildClick = onChildPlayClick,
             onChapterClick = onChapterClick,
             playlistActions = playlistActions,
             progressActions = progressActions,
             onRemoveFromPlaylist = onRemoveFromPlaylist,
             libraryActions = libraryActions,
-            providerIconFetcher = providerIconFetcher
+            providerIconFetcher = providerIconFetcher,
+            onBack = onBack
         )
     }
 }
@@ -413,13 +423,15 @@ private fun ItemChildren(
     toastState: ToastState,
     isRowMode: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayItemClick: () -> Unit,
+    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onChapterClick: (Int) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    onBack: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (val itemState = state.itemState) {
@@ -460,6 +472,33 @@ private fun ItemChildren(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (item is AppMediaItem.Album) {
+                        item {
+                            Column {
+                                IconButton(onClick = onBack) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                                }
+
+                                Text(item.name)
+
+                                item.subtitle?.let {
+                                    Text(item.subtitle)
+                                }
+
+                                Button(
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Play now"
+                                    },
+                                    onClick = {
+                                        onPlayItemClick()
+                                    }
+                                ) {
+                                    Text("Play")
+                                }
+                            }
+                        }
+                    }
+
                     // For Artist: Albums section
                     if (item is AppMediaItem.Artist) {
                         when (val albumsState = state.albumsState) {
@@ -480,7 +519,7 @@ private fun ItemChildren(
                                             showSubtitle = true,
                                             serverUrl = serverUrl,
                                             onNavigateClick = onNavigateClick,
-                                            onPlayOption = onPlayClick,
+                                            onPlayOption = onPlayChildClick,
                                             libraryActions = libraryActions,
                                             providerIconFetcher = providerIconFetcher
                                         )
@@ -546,7 +585,7 @@ private fun ItemChildren(
                                                 item = track,
                                                 serverUrl = serverUrl,
                                                 rowMode = isRowMode,
-                                                onPlayOption = onPlayClick,
+                                                onPlayOption = onPlayChildClick,
                                                 playlistActions = playlistActions,
                                                 // Show "remove from playlist" only for playlist items
                                                 onRemoveFromPlaylist = if (item is AppMediaItem.Playlist && item.isEditable == true) {
@@ -560,7 +599,7 @@ private fun ItemChildren(
                                                 item = track,
                                                 serverUrl = serverUrl,
                                                 rowMode = isRowMode,
-                                                onPlayOption = onPlayClick,
+                                                onPlayOption = onPlayChildClick,
                                                 playlistActions = null, // No playlist actions for podcast episodes
                                                 libraryActions = libraryActions,
                                                 progressActions = progressActions,
