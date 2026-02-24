@@ -1,16 +1,21 @@
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
 class ItemDetailsTest {
@@ -123,5 +128,51 @@ class ItemDetailsTest {
         composeTestRule.onNodeWithText(audiobook.name).assertIsDisplayed()
         composeTestRule.onNodeWithText(audiobook.chapters!![0].name).assertIsDisplayed()
         composeTestRule.onNodeWithText(audiobook.chapters[1].name).assertIsDisplayed()
+    }
+
+    @Test
+    fun `can play any item`() {
+        var calledQueueOption: QueueOption?
+        var calledRadio: Boolean?
+        val onPlayClick: (QueueOption, Boolean) -> Unit = { queueOption, radio ->
+            calledQueueOption = queueOption
+            calledRadio = radio
+        }
+
+        val state = mutableStateOf(
+            ItemDetailsViewModel.State(
+                itemState = DataState.Loading(),
+                albumsState = DataState.Loading(),
+                playableItemsState = DataState.Loading()
+            )
+        )
+
+        composeTestRule.setContent {
+            ItemDetails(
+                state = state.value,
+                onPlayClick = onPlayClick
+            )
+        }
+
+        listOf(
+            AppMediaItemFixtures.artist(),
+            AppMediaItemFixtures.album(),
+            AppMediaItemFixtures.playlist(),
+            AppMediaItemFixtures.podcast(),
+            AppMediaItemFixtures.audiobook()
+        ).forEach {
+            calledQueueOption = null
+            calledRadio = null
+
+            state.value = ItemDetailsViewModel.State(
+                itemState = DataState.Data(it),
+                albumsState = DataState.NoData(),
+                playableItemsState = DataState.NoData()
+            )
+
+            composeTestRule.onNodeWithContentDescription("Play now").performClick()
+            assertEquals(calledQueueOption, QueueOption.REPLACE)
+            assertEquals(calledRadio, false)
+        }
     }
 }

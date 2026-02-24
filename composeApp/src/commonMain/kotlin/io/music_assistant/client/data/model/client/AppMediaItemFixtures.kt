@@ -112,7 +112,7 @@ object AppMediaItemFixtures {
 
     fun audiobook(
         name: String = "Audiobook ${uniqueIdGenerator.nextInt()}",
-        chapters: List<String>
+        chapters: List<String> = emptyList()
     ): AppMediaItem.Audiobook {
         return AppMediaItem.Audiobook(
             itemId = "blah",
