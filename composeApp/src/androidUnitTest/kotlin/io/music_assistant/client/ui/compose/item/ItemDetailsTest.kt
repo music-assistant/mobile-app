@@ -175,4 +175,46 @@ class ItemDetailsTest {
             assertEquals(calledRadio, false)
         }
     }
+
+    @Test
+    fun `can return from any item`() {
+        var onBackCalled = false
+        val onBack: () -> Unit = {
+            onBackCalled = true
+        }
+
+        val state = mutableStateOf(
+            ItemDetailsViewModel.State(
+                itemState = DataState.Loading(),
+                albumsState = DataState.Loading(),
+                playableItemsState = DataState.Loading()
+            )
+        )
+
+        composeTestRule.setContent {
+            ItemDetails(
+                state = state.value,
+                onBack = onBack
+            )
+        }
+
+        listOf(
+            AppMediaItemFixtures.artist(),
+            AppMediaItemFixtures.album(),
+            AppMediaItemFixtures.playlist(),
+            AppMediaItemFixtures.podcast(),
+            AppMediaItemFixtures.audiobook()
+        ).forEach {
+            onBackCalled = false
+
+            state.value = ItemDetailsViewModel.State(
+                itemState = DataState.Data(it),
+                albumsState = DataState.NoData(),
+                playableItemsState = DataState.NoData()
+            )
+
+            composeTestRule.onNodeWithContentDescription("Back").performClick()
+            assertEquals(onBackCalled, true)
+        }
+    }
 }
