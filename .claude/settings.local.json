@@ -30,7 +30,8 @@
       "WebFetch(domain:www.music-assistant.io)",
       "WebFetch(domain:app.music-assistant.io)",
       "WebFetch(domain:developers.google.com)",
-      "WebFetch(domain:hyperb1iss.github.io)"
+      "WebFetch(domain:hyperb1iss.github.io)",
+      "Bash(adb devices:*)"
     ]
   }
 }

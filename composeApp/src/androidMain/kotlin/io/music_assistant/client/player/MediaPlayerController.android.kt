@@ -234,7 +234,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
 
         // Calculate buffer size
         val minBufferSize = AudioTrack.getMinBufferSize(sampleRate, channelConfig, encoding)
-        val bufferSize = minBufferSize * 4 // Use 4x min buffer for smoother playback
+        val bufferSize = minBufferSize * 16 // Large buffer to absorb decode/scheduling jitter
 
         logger.i { "AudioTrack config: sampleRate=$sampleRate, channels=$channels, bitDepth=$bitDepth" }
         logger.i { "AudioTrack buffer: $bufferSize bytes (min: $minBufferSize)" }

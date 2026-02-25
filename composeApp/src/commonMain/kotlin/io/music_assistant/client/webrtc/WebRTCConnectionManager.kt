@@ -316,12 +316,14 @@ class WebRTCConnectionManager(
             setupDataChannel(channel, message.sessionId ?: "")
 
             logger.d { "Creating sendspin data channel" }
-            // sendspin: unreliable unordered delivery for real-time audio streaming
-            // Better to skip a lost chunk than stall the entire stream on cellular networks
+            // sendspin: fully reliable + ordered (same as ma-api)
+            // Previously used maxRetransmits=0 which caused 15% packet loss and constant
+            // audio distortion. SIGSEGV with retransmission was likely caused by native
+            // SCTP buffer reuse while SharedFlow held a reference — fixed by copying
+            // ByteArray in DataChannelWrapper before emitting.
             val sendspinChannel = pc.createDataChannel(
                 label = "sendspin",
-                ordered = false,       // don't wait for lost packets
-                maxRetransmits = 0     // don't retransmit - move on
+                ordered = true
             )
             setupSendspinDataChannel(sendspinChannel)
 

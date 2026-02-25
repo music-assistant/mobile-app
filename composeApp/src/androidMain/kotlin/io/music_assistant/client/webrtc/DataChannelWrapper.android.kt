@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -45,45 +45,41 @@ actual class DataChannelWrapper(
     actual val binaryMessages: Flow<ByteArray> = _binaryMessages.asSharedFlow()
 
     init {
-        // Discriminate between text and binary messages by first byte.
-        // JSON text starts with '{' (0x7B) or '[' (0x5B).
-        // Binary audio chunks start with a timestamp header (never 0x7B/0x5B).
-        // Checking first byte avoids decodeToString() on binary data (50-100 chunks/sec).
-        eventScope.launch {
-            try {
-                dataChannel.onMessage.collect { data ->
-                    if (data.isNotEmpty() && (data[0] == 0x7B.toByte() || data[0] == 0x5B.toByte())) {
-                        _textMessages.emit(data.decodeToString())
-                    } else {
-                        _binaryMessages.emit(data)
+        // CRITICAL: Bypass webrtc-kmp's onMessage/onOpen/onClose flows entirely.
+        // webrtc-kmp uses filterNotNull internally which SIGSEGV-crashes when the native
+        // SCTP layer frees memory during flow emission. Instead, register a native
+        // DataChannel.Observer directly — same bypass strategy we use for send().
+        dataChannel.android.registerObserver(object : org.webrtc.DataChannel.Observer {
+            override fun onBufferedAmountChange(previousAmount: Long) {}
+
+            override fun onStateChange() {
+                val mappedState = when (dataChannel.android.state()) {
+                    org.webrtc.DataChannel.State.CONNECTING -> DataChannelState.Connecting
+                    org.webrtc.DataChannel.State.OPEN -> DataChannelState.Open
+                    org.webrtc.DataChannel.State.CLOSING -> DataChannelState.Closing
+                    org.webrtc.DataChannel.State.CLOSED -> DataChannelState.Closed
+                    else -> DataChannelState.Closed
+                }
+                _state.update { mappedState }
+            }
+
+            override fun onMessage(buffer: org.webrtc.DataChannel.Buffer) {
+                // Copy data out of native ByteBuffer immediately — buffer is reused after return.
+                val byteBuffer = buffer.data
+                val bytes = ByteArray(byteBuffer.remaining())
+                byteBuffer.get(bytes)
+
+                if (bytes.isNotEmpty() && (bytes[0] == 0x7B.toByte() || bytes[0] == 0x5B.toByte())) {
+                    if (!_textMessages.tryEmit(bytes.decodeToString())) {
+                        logger.w { "Text message buffer full, dropping message" }
+                    }
+                } else {
+                    if (!_binaryMessages.tryEmit(bytes)) {
+                        logger.w { "Binary message buffer full, dropping chunk" }
                     }
                 }
-            } catch (e: Exception) {
-                logger.e(e) { "Error in onMessage flow" }
             }
-        }
-        // Monitor state changes via flow events
-        eventScope.launch {
-            try {
-                dataChannel.onOpen.collect { _state.update { DataChannelState.Open } }
-            } catch (e: Exception) {
-                logger.e(e) { "Error in onOpen flow" }
-            }
-        }
-        eventScope.launch {
-            try {
-                dataChannel.onClosing.collect { _state.update { DataChannelState.Closing } }
-            } catch (e: Exception) {
-                logger.e(e) { "Error in onClosing flow" }
-            }
-        }
-        eventScope.launch {
-            try {
-                dataChannel.onClose.collect { _state.update { DataChannelState.Closed } }
-            } catch (e: Exception) {
-                logger.e(e) { "Error in onClose flow" }
-            }
-        }
+        })
     }
 
     actual fun send(message: String) {
