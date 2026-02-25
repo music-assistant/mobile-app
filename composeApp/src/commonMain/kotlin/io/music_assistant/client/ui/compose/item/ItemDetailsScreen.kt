@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -44,11 +45,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import compose.icons.TablerIcons
 import compose.icons.tablericons.FolderMinus
 import compose.icons.tablericons.FolderPlus
@@ -259,6 +263,7 @@ private fun ItemChildren(
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         ItemHeader(
                             item = item,
+                            serverUrl = serverUrl,
                             onBack = onBack,
                             onPlayClick = onPlayItemClick,
                             libraryAction = libraryActions,
@@ -417,6 +422,7 @@ private fun ItemChildren(
 @Composable
 private fun ItemHeader(
     item: AppMediaItem,
+    serverUrl: String?,
     onBack: () -> Unit,
     onPlayClick: (QueueOption, Boolean) -> Unit,
     libraryAction: ActionsViewModel.LibraryActions,
@@ -431,6 +437,17 @@ private fun ItemHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            item.imageInfo?.url(serverUrl)?.let {
+                AsyncImage(
+                    model = it,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize(0.70f)
+                        .clip(RoundedCornerShape(16.dp))
+                )
+            }
+
             Text(
                 item.name,
                 style = MaterialTheme.typography.titleLarge,
