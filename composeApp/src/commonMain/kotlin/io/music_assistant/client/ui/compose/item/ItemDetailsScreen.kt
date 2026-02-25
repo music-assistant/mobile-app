@@ -458,6 +458,22 @@ private fun ChapterRow(
 
 @Preview
 @Composable
+private fun PreviewLoading() {
+    AppTheme(darkTheme = false) {
+        Scaffold {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    DataState.Loading(),
+                    DataState.Loading(),
+                    DataState.Loading()
+                )
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
 private fun PreviewArtist(isRowMode: Boolean = true) {
     val artist = AppMediaItemFixtures.artist("Artist")
 
