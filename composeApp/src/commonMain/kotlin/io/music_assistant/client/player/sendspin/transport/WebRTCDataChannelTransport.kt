@@ -118,22 +118,14 @@ class WebRTCDataChannelTransport(
 
     /**
      * Disconnect from the transport.
-     * Closes the underlying data channel.
+     * Does NOT close the data channel — it's owned by WebRTCConnectionManager
+     * and shared across Sendspin sessions for the lifetime of the peer connection.
      */
     override suspend fun disconnect() {
-        logger.i { "Disconnecting WebRTC transport" }
-        dataChannelWrapper.close()
+        logger.i { "Disconnecting WebRTC transport (channel stays open)" }
     }
 
-    /**
-     * Close and cleanup resources.
-     * Closes the underlying data channel.
-     */
     override fun close() {
-        logger.i { "Closing WebRTC transport" }
-        // DataChannelWrapper.close() is suspend, but close() is not
-        // The close will happen when disconnect() is called
-        // For immediate cleanup, we could launch a coroutine, but that requires a scope
-        // For now, rely on disconnect() being called before close()
+        // No-op: data channel lifecycle is managed by WebRTCConnectionManager
     }
 }

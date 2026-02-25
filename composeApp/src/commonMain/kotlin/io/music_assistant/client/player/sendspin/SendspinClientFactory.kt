@@ -10,6 +10,12 @@ import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTran
 import io.music_assistant.client.settings.SettingsRepository
 
 /**
+ * Signals that the WebRTC sendspin channel was already used (goodbye sent)
+ * and a full WebRTC reconnection is needed to get a fresh channel.
+ */
+class WebRTCSendspinChannelExhausted : Exception("WebRTC sendspin channel exhausted")
+
+/**
  * Factory for creating SendspinClient instances with proper configuration.
  * Separates client creation logic from lifecycle management.
  * Automatically detects WebRTC vs WebSocket connection and uses appropriate transport.
@@ -27,6 +33,7 @@ class SendspinClientFactory(
     // Shared audio pipeline — persists across SendspinClient reconnections
     private var sharedClockSynchronizer: ClockSynchronizer? = null
     private var sharedPipeline: AudioStreamManager? = null
+    private var webrtcSendspinUsed = false
 
     /**
      * Returns the shared pipeline (and its clock synchronizer), creating them if needed.
@@ -36,6 +43,14 @@ class SendspinClientFactory(
         val cs = sharedClockSynchronizer ?: ClockSynchronizer().also { sharedClockSynchronizer = it }
         val pipeline = sharedPipeline ?: AudioStreamManager(cs, mediaPlayerController).also { sharedPipeline = it }
         return Pair(pipeline, cs)
+    }
+
+    /**
+     * Reset the WebRTC channel flag. Called after a fresh WebRTC connection is established
+     * (new SDP-negotiated channels are available).
+     */
+    fun onFreshWebRTCConnection() {
+        webrtcSendspinUsed = false
     }
 
     /**
@@ -107,7 +122,12 @@ class SendspinClientFactory(
 
         return try {
             if (webrtcChannel != null) {
-                // WebRTC mode: create config WITHOUT auth requirement (auth inherited from main channel)
+                if (webrtcSendspinUsed) {
+                    log.i { "Sendspin channel exhausted — need WebRTC reconnect" }
+                    return Result.failure(WebRTCSendspinChannelExhausted())
+                }
+                webrtcSendspinUsed = true
+
                 log.i { "Creating Sendspin client over WebRTC data channel" }
 
                 val webrtcConfig = config.copy(

@@ -381,7 +381,7 @@ class SendspinClient(
     private fun monitorStreamEvents() {
         launch {
             messageDispatcher?.streamStartEvent?.collect { event ->
-                Logger.withTag("SendspinClient").e { "🎵 STREAM START received" }
+                logger.i { "Stream start received" }
                 event.payload.player?.let { playerConfig ->
                     audioPipeline.startStream(playerConfig)
                     _playbackState.update { SendspinPlaybackState.Buffering }
@@ -395,8 +395,7 @@ class SendspinClient(
 
         launch {
             messageDispatcher?.streamEndEvent?.collect {
-                Logger.withTag("SendspinClient")
-                    .e { "⛔ STREAM END received from server - stopping playback" }
+                logger.i { "Stream end received - stopping playback" }
                 audioPipeline.stopStream()
                 _playbackState.update { SendspinPlaybackState.Idle }
                 // Notify coordinator that stream stopped
@@ -410,7 +409,7 @@ class SendspinClient(
 
         launch {
             messageDispatcher?.streamClearEvent?.collect {
-                Logger.withTag("SendspinClient").e { "🗑️ STREAM CLEAR received from server" }
+                logger.i { "Stream clear received" }
                 audioPipeline.clearStream()
             }
         }

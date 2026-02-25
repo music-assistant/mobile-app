@@ -94,6 +94,58 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
         get() = webrtcManager?.sendspinDataChannel
 
+    /**
+     * Force a full WebRTC reconnection to get fresh SDP-negotiated data channels.
+     * Disconnects cleanly, waits for the signaling server to process, then reconnects.
+     * The session state transitions (Reconnecting → Connected → Authenticated) will
+     * trigger re-authentication and sendspin re-initialization automatically.
+     */
+    fun forceWebRTCReconnect() {
+        val currentState = _sessionState.value as? SessionState.Connected.WebRTC ?: return
+        val remoteId = currentState.remoteId
+        val logger = Logger.withTag("ServiceClient")
+        logger.i { "Forcing WebRTC reconnect for fresh sendspin channel" }
+
+        // Transition to Reconnecting (preserves server info, user, auth for seamless recovery)
+        _sessionState.update {
+            SessionState.Reconnecting.WebRTC(
+                attempt = 0,
+                remoteId = currentState.remoteId,
+                serverInfo = currentState.serverInfo,
+                user = currentState.user,
+                authProcessState = currentState.authProcessState,
+                wasAutoLogin = currentState.wasAutoLogin
+            )
+        }
+
+        // Disconnect old manager first, then reconnect after a delay
+        webrtcReconnectJob?.cancel()
+        webrtcReconnectJob = launch {
+            // Step 1: Clean up old connection
+            webrtcListeningJob?.cancel()
+            webrtcListeningJob = null
+            webrtcStateMonitorJob?.cancel()
+            webrtcStateMonitorJob = null
+            webrtcInitialMonitorJob?.cancel()
+            webrtcInitialMonitorJob = null
+            webrtcManager?.disconnect()
+            webrtcManager = null
+
+            // Step 2: Wait for signaling server to process the disconnect
+            kotlinx.coroutines.delay(1500)
+
+            // Step 3: Reconnect using the standard mechanism
+            logger.i { "Starting fresh WebRTC connection after forced disconnect" }
+            autoReconnectWebRTC(
+                remoteId,
+                currentState.serverInfo,
+                currentState.user,
+                currentState.authProcessState,
+                currentState.wasAutoLogin
+            )
+        }
+    }
+
     private val rpcEngine = RpcEngine {
         _sessionState.update {
             (it as? SessionState.Connected)?.update(

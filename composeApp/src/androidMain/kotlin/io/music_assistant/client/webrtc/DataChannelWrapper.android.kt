@@ -45,20 +45,16 @@ actual class DataChannelWrapper(
     actual val binaryMessages: Flow<ByteArray> = _binaryMessages.asSharedFlow()
 
     init {
-        // Discriminate between text and binary messages
+        // Discriminate between text and binary messages by first byte.
+        // JSON text starts with '{' (0x7B) or '[' (0x5B).
+        // Binary audio chunks start with a timestamp header (never 0x7B/0x5B).
+        // Checking first byte avoids decodeToString() on binary data (50-100 chunks/sec).
         eventScope.launch {
             try {
                 dataChannel.onMessage.collect { data ->
-                    // Try to decode as UTF-8 text; binary audio data will fail or not start with JSON
-                    try {
-                        val text = data.decodeToString()
-                        if (text.isNotEmpty() && (text.first() == '{' || text.first() == '[')) {
-                            _textMessages.emit(text)
-                        } else {
-                            _binaryMessages.emit(data)
-                        }
-                    } catch (e: Exception) {
-                        // Failed to decode as UTF-8, must be binary
+                    if (data.isNotEmpty() && (data[0] == 0x7B.toByte() || data[0] == 0x5B.toByte())) {
+                        _textMessages.emit(data.decodeToString())
+                    } else {
                         _binaryMessages.emit(data)
                     }
                 }
@@ -100,7 +96,9 @@ actual class DataChannelWrapper(
             ByteBuffer.wrap(data),
             false
         )
-        dataChannel.android.send(buffer)
+        if (!dataChannel.android.send(buffer)) {
+            logger.e { "Native send failed on channel $label (state=${_state.value})" }
+        }
     }
 
     actual fun sendBinary(data: ByteArray) {

@@ -35,6 +35,7 @@ import io.music_assistant.client.player.sendspin.SendspinClient
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.player.sendspin.SendspinConnectionState
 import io.music_assistant.client.player.sendspin.SendspinError
+import io.music_assistant.client.player.sendspin.WebRTCSendspinChannelExhausted
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.StaleReason
@@ -366,6 +367,7 @@ class MainDataSource(
                                             //    old SendspinClient holds a dead channel (Idle state).
                                             //  - WebSocket: ReconnectionCoordinator may have given up;
                                             //    server removes the player when the socket closes.
+                                            sendspinClientFactory.onFreshWebRTCConnection()
                                             launch { initSendspinIfEnabled() }
                                         }
 
@@ -394,6 +396,7 @@ class MainDataSource(
                                     // Fresh connection or error recovery - show loading
                                     _serverPlayers.update { DataState.Loading() }
                                     updateProvidersManifests()
+                                    sendspinClientFactory.onFreshWebRTCConnection()
                                     initSendspinIfEnabled()
                                     updatePlayersAndQueues()
                                 }
@@ -679,6 +682,13 @@ class MainDataSource(
         )
 
         createResult.onFailure { error ->
+            if (error is WebRTCSendspinChannelExhausted) {
+                log.i { "WebRTC sendspin channel exhausted — forcing reconnect for fresh channels" }
+                apiClient.forceWebRTCReconnect()
+                // After reconnection, initSendspinIfEnabled() will be called again
+                // from the session state handler with a fresh channel.
+                return
+            }
             log.w { "Cannot create Sendspin client: ${error.message}" }
             return
         }

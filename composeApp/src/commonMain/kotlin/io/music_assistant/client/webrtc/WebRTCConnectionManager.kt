@@ -93,8 +93,8 @@ class WebRTCConnectionManager(
 
     /**
      * Sendspin data channel for audio streaming.
-     * Created during WebRTC peer connection setup, available when connected.
-     * Returns null when not connected via WebRTC.
+     * Created during SDP negotiation, cannot be recreated dynamically.
+     * Null when not connected via WebRTC.
      */
     val sendspinDataChannel: DataChannelWrapper?
         get() = sendspinDataChannelInternal
