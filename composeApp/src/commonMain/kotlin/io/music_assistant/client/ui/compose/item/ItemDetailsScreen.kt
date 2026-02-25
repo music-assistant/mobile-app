@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
@@ -255,7 +256,7 @@ private fun ItemChildren(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         ItemHeader(
                             item = item,
                             onBack = onBack,
@@ -421,43 +422,58 @@ private fun ItemHeader(
     libraryAction: ActionsViewModel.LibraryActions,
     playlistActions: ActionsViewModel.PlaylistActions?
 ) {
-    Column {
+    Column(modifier = Modifier.fillMaxWidth()) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
         }
 
-        Text(item.name)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                item.name,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 16.dp)
+            )
 
-        item.subtitle?.let {
-            Text(it)
-        }
-
-        Row {
-            Button(
-                modifier = Modifier.semantics {
-                    contentDescription = "Play now"
-                },
-                onClick = {
-                    onPlayClick(QueueOption.REPLACE, false)
-                }
-            ) {
-                Text("Play")
+            item.subtitle?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
 
-            ItemOverflowMenu(
-                item = item,
-                onPlayClick = onPlayClick,
-                libraryActions = libraryAction,
-                playlistActions = playlistActions
-            )
-        }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Button(
+                    modifier = Modifier.semantics { contentDescription = "Play now" },
+                    onClick = { onPlayClick(QueueOption.REPLACE, false) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
+                        Text(modifier = Modifier.padding(start = 8.dp), text = "Play")
+                    }
+                }
 
+                ItemOverflowMenu(
+                    item = item,
+                    modifier = Modifier.padding(start = 4.dp),
+                    onPlayClick = onPlayClick,
+                    libraryActions = libraryAction,
+                    playlistActions = playlistActions
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun ItemOverflowMenu(
     item: AppMediaItem,
+    modifier: Modifier,
     onPlayClick: (QueueOption, Boolean) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
     playlistActions: ActionsViewModel.PlaylistActions?
@@ -468,7 +484,7 @@ private fun ItemOverflowMenu(
     var isLoadingPlaylists by remember { mutableStateOf(false) }
 
     OverflowMenu(
-        modifier = Modifier,
+        modifier = modifier,
         buttonContent = { onClick ->
             Icon(
                 modifier = Modifier.clickable { onClick() },
