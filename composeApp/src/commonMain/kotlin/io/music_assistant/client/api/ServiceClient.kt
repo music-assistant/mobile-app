@@ -456,8 +456,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         // Monitor WebRTC connection state for failures
         webrtcStateMonitorJob = launch {
             manager.connectionState.collect { connectionState ->
-                Logger.withTag("ServiceClient")
-                    .w { "🔍 MONITOR[${manager.hashCode()}]: ${connectionState::class.simpleName}" }
                 when (connectionState) {
                     is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
                         Logger.withTag("ServiceClient")
@@ -969,6 +967,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
                 state.sendMessage(jsonObject)
             } catch (e: Exception) {
+                Logger.withTag("ServiceClient").e(e) { "sendRequest FAILED cmd=${request.command}" }
                 rpcEngine.removeCallback(request.messageId)
                 continuation.resume(Result.failure(e))
                 disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))

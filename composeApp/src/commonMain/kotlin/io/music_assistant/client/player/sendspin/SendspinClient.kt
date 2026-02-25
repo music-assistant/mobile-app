@@ -350,7 +350,6 @@ class SendspinClient(
     private fun monitorProtocolState() {
         launch {
             messageDispatcher?.protocolState?.collect { state ->
-                Logger.withTag("SendspinClient").e { "📡 PROTOCOL STATE: $state" }
                 when (state) {
                     is ProtocolState.Ready -> {
                         val serverInfo = messageDispatcher?.serverInfo?.value
@@ -370,8 +369,6 @@ class SendspinClient(
                     }
 
                     ProtocolState.Disconnected -> {
-                        Logger.withTag("SendspinClient")
-                            .e { "📡 PROTOCOL DISCONNECTED - setting connectionState to Idle" }
                         _connectionState.update { SendspinConnectionState.Idle }
                     }
 

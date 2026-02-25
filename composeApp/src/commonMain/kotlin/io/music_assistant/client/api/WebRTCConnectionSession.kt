@@ -4,7 +4,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.WebRTCConnectionManager
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -18,12 +18,12 @@ class WebRTCConnectionSession(
 ) : ConnectionSession {
     private val logger = Logger.withTag("WebRTCConnectionSession")
 
-    override val messages: Flow<JsonObject> = manager.incomingMessages.map { jsonString ->
+    override val messages: Flow<JsonObject> = manager.incomingMessages.mapNotNull { jsonString ->
         try {
             myJson.decodeFromString<JsonObject>(jsonString)
         } catch (e: Exception) {
-            logger.e(e) { "Failed to parse incoming WebRTC message: $jsonString" }
-            throw e
+            logger.e(e) { "Failed to parse incoming WebRTC message: ${jsonString.take(200)}" }
+            null
         }
     }
 

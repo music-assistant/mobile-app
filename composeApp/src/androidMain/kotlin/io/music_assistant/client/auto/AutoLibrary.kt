@@ -182,7 +182,7 @@ class AutoLibrary(
                 .first()
         } != null
 
-    private suspend fun loadItems(request: Request, groupTitle: String? = null): List<MediaItem>? =
+    private suspend fun loadItems(request: Request): List<MediaItem>? =
         apiClient.sendRequest(request)
             .resultAs<List<ServerMediaItem>>()
             ?.toAppMediaItemList()
@@ -191,8 +191,7 @@ class AutoLibrary(
                 it.toAutoMediaItem(
                     baseUrl,
                     true,
-                    defaultIconUri,
-                    groupTitle
+                    defaultIconUri
                 )
             }
 

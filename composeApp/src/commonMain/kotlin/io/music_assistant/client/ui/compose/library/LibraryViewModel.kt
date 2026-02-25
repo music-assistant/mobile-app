@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
@@ -88,8 +89,10 @@ class LibraryViewModel(
         viewModelScope.launch {
             connectionState.collect { connection ->
                 _state.update { state -> state.copy(connectionState = connection) }
-                if (connection is SessionState.Connected) {
-                    // Load all tabs when connected
+                if (connection is SessionState.Connected &&
+                    connection.dataConnectionState == DataConnectionState.Authenticated
+                ) {
+                    // Load all tabs when authenticated
                     loadArtists()
                     loadAlbums()
                     loadTracks()

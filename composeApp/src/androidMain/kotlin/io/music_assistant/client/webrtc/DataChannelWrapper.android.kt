@@ -53,18 +53,7 @@ actual class DataChannelWrapper(
                     try {
                         val text = data.decodeToString()
                         if (text.isNotEmpty() && (text.first() == '{' || text.first() == '[')) {
-                            // SCTP may deliver multiple messages concatenated in one callback.
-                            // Split into individual JSON objects and emit each one separately.
-                            var remaining = text
-                            while (remaining.isNotEmpty()) {
-                                val end = findJsonEnd(remaining)
-                                if (end < 0) {
-                                    _textMessages.emit(remaining) // incomplete — emit as-is, let parser fail
-                                    break
-                                }
-                                _textMessages.emit(remaining.substring(0, end + 1))
-                                remaining = remaining.substring(end + 1).trimStart()
-                            }
+                            _textMessages.emit(text)
                         } else {
                             _binaryMessages.emit(data)
                         }
@@ -99,31 +88,6 @@ actual class DataChannelWrapper(
                 logger.e(e) { "Error in onClose flow" }
             }
         }
-    }
-
-    /**
-     * Finds the index of the closing character of the first top-level JSON value in [s].
-     * Handles nested objects/arrays and string literals (including escaped chars).
-     * Returns -1 if no complete value is found.
-     */
-    private fun findJsonEnd(s: String): Int {
-        var depth = 0
-        var inString = false
-        var escaped = false
-        for (i in s.indices) {
-            val c = s[i]
-            when {
-                escaped -> escaped = false
-                inString && c == '\\' -> escaped = true
-                c == '"' -> inString = !inString
-                !inString && (c == '{' || c == '[') -> depth++
-                !inString && (c == '}' || c == ']') -> {
-                    depth--
-                    if (depth == 0) return i
-                }
-            }
-        }
-        return -1
     }
 
     actual fun send(message: String) {

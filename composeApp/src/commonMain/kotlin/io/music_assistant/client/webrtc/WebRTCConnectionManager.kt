@@ -158,11 +158,7 @@ class WebRTCConnectionManager(
      * @param message JSON string to send
      */
     fun send(message: String) {
-        dataChannel?.also { channel ->
-            logger.e { "🔵 SEND REQUEST - Channel: ${channel.label}, State: ${channel.state.value}, Length: ${message.length}" }
-            logger.e { "🔵 SEND CONTENT: ${message.take(300)}" }
-        }?.send(message)
-
+        dataChannel?.send(message)
     }
 
     /**
