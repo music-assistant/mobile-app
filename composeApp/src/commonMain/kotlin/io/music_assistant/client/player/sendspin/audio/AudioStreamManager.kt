@@ -88,14 +88,6 @@ class AudioStreamManager(
     private var streamConfig: StreamStartPlayer? = null
     private var isStreaming = false
 
-    // Diagnostics
-    private var receivedChunksCount = 0
-    private var playedChunksCount = 0
-    private var lastDecodedTs = 0L
-    private var prevArrivalTs = 0L
-    private var orderViolations = 0
-    private var lastDiagLogTime = 0L
-
     // Shared sorted queue between producer (processBinaryMessage) and consumer (playback thread)
     private class RawFrame(val timestamp: Long, val data: ByteArray)
 
@@ -131,13 +123,6 @@ class AudioStreamManager(
         isNetworkDisconnected = false
         streamConfig = config
         isStreaming = true
-        receivedChunksCount = 0
-        playedChunksCount = 0
-        lastDecodedTs = 0
-        prevArrivalTs = 0
-        orderViolations = 0
-        lastDiagLogTime = 0
-
         // Create and configure decoder atomically under lock
         val outputCodec = decoderLock.withLock {
             audioDecoder?.release()
@@ -220,17 +205,7 @@ class AudioStreamManager(
             return
         }
 
-        receivedChunksCount++
         val ts = binaryMessage.timestamp
-
-        // Detect arrival-order violations (OOO delivery from SCTP)
-        if (ts < prevArrivalTs) {
-            orderViolations++
-            if (orderViolations <= 20) {
-                logger.w { "OOO arrival #$orderViolations: ts=$ts < prev=$prevArrivalTs (delta=${prevArrivalTs - ts}μs)" }
-            }
-        }
-        prevArrivalTs = ts
 
         // Sorted insert into reorder queue
         val frame = RawFrame(ts, binaryMessage.data)
@@ -259,17 +234,6 @@ class AudioStreamManager(
                         val pcmData = decoderLock.withLock {
                             audioDecoder?.decode(frame.data) ?: continue
                         }
-                        lastDecodedTs = frame.timestamp
-                        playedChunksCount++
-
-                        // Periodic diagnostic summary
-                        val now = getCurrentTimeMicros()
-                        if (now - lastDiagLogTime > 5_000_000) {
-                            val depth = queueLock.withLock { queue.size }
-                            logger.i { "Stream stats: recv=$receivedChunksCount played=$playedChunksCount arrOOO=$orderViolations depth=$depth" }
-                            lastDiagLogTime = now
-                        }
-
                         mediaPlayerController.writeRawPcm(pcmData)
                     } else {
                         delay(2)
@@ -280,7 +244,7 @@ class AudioStreamManager(
             } catch (e: Exception) {
                 logger.e(e) { "Consumer error: ${e.message}" }
             }
-            logger.i { "Playback consumer stopped, played=$playedChunksCount" }
+            logger.i { "Playback consumer stopped" }
         }
     }
 
@@ -316,8 +280,6 @@ class AudioStreamManager(
         _playbackPosition.update { 0L }
         _bufferState.update { BufferState(0L, false, 0) }
     }
-
-    private fun getCurrentTimeMicros(): Long = clockSynchronizer.getCurrentTimeMicros()
 
     override fun close() {
         logger.i { "Closing AudioStreamManager" }
