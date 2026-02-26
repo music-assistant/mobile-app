@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +12,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
@@ -63,14 +67,36 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 fun ItemHeader(
     item: AppMediaItem,
     serverUrl: String? = null,
+    isRowMode: Boolean = true,
     onBack: () -> Unit = {},
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
     libraryAction: ActionsViewModel.LibraryActions? = null,
-    playlistActions: ActionsViewModel.PlaylistActions? = null
+    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    onToggleViewMode: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+
+            OverflowMenu(
+                options = listOf(
+                    OverflowMenuOption(
+                        title = "Toggle view mode",
+                        icon = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
+                        onClick = onToggleViewMode
+                    )
+                )
+            ) { onClick ->
+                IconButton(onClick = onClick) {
+                    Icon(imageVector = Icons.Default.MoreVert, null)
+                }
+            }
         }
 
         Column(
@@ -120,7 +146,10 @@ fun ItemHeader(
                             modifier = Modifier.semantics { contentDescription = "Play now" },
                             onClick = { onPlayClick(QueueOption.REPLACE, false) }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null
+                                )
                                 Text(modifier = Modifier.padding(start = 8.dp), text = "Play")
                             }
                         }
@@ -162,7 +191,6 @@ private fun ItemOverflowMenu(
     var isLoadingPlaylists by remember { mutableStateOf(false) }
 
     OverflowMenu(
-        buttonContent = button,
         options = buildList {
             add(
                 OverflowMenuOption(
@@ -230,7 +258,8 @@ private fun ItemOverflowMenu(
                         }
                     })
             }
-        }
+        },
+        buttonContent = button
     )
 
     if (showPlaylistDialog) {
@@ -288,7 +317,7 @@ private fun ItemOverflowMenu(
 @Preview
 @Composable
 private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
-    ItemHeader(item)
+    ItemHeader(item,)
 }
 
 @Preview

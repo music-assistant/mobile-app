@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun OverflowMenu(
     modifier: Modifier = Modifier,
-    buttonContent: @Composable (onClick: () -> Unit) -> Unit,
     options: List<OverflowMenuOption>,
+    buttonContent: @Composable (onClick: () -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(

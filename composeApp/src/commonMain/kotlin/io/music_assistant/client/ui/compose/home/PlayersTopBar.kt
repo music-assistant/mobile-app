@@ -54,7 +54,15 @@ fun PlayersTopBar(
             )
 
             OverflowMenu(
-                modifier = Modifier,
+                options = playerDataList.map { data ->
+                    val isLocalPlayer = data.playerId == playersState.localPlayerId
+                    OverflowMenuOption(
+                        title = data.player.displayName + (if (isLocalPlayer) " (local)" else ""),
+                        icon = Icons.Filled.Speaker,
+                    ) {
+                        onMoveToPlayer(data.player.id)
+                    }
+                },
                 buttonContent = { onClick ->
                     IconButton(
                         modifier = Modifier.size(32.dp),
@@ -66,15 +74,6 @@ fun PlayersTopBar(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )
-                    }
-                },
-                options = playerDataList.map { data ->
-                    val isLocalPlayer = data.playerId == playersState.localPlayerId
-                    OverflowMenuOption(
-                        title = data.player.displayName + (if (isLocalPlayer) " (local)" else ""),
-                        icon = Icons.Filled.Speaker,
-                    ) {
-                        onMoveToPlayer(data.player.id)
                     }
                 }
             )

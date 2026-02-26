@@ -109,12 +109,6 @@ fun CollapsibleQueue(
             ) {
                 // Transfer button
                 OverflowMenu(
-                    modifier = Modifier,
-                    buttonContent = {
-                        OutlinedButton(onClick = it) {
-                            Text("Transfer")
-                        }
-                    },
                     options = players.filter { p -> p.player.id != queueId }.map { playerData ->
                         OverflowMenuOption(
                             title = playerData.player.displayName,
@@ -137,6 +131,11 @@ fun CollapsibleQueue(
                                 onClick = { /* No-op */ }
                             )
                         )
+                    },
+                    buttonContent = {
+                        OutlinedButton(onClick = it) {
+                            Text("Transfer")
+                        }
                     }
                 )
 

@@ -15,13 +15,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -238,10 +233,12 @@ private fun ItemChildren(
                         ItemHeader(
                             item = item,
                             serverUrl = serverUrl,
+                            isRowMode = isRowMode,
                             onBack = onBack,
                             onPlayClick = onPlayItemClick,
                             libraryAction = libraryActions,
-                            playlistActions = playlistActions
+                            playlistActions = playlistActions,
+                            onToggleViewMode = onToggleViewMode
                         )
                     }
 
@@ -251,11 +248,7 @@ private fun ItemChildren(
                             is DataState.Data -> {
                                 if (albumsState.data.isNotEmpty()) {
                                     item(span = { GridItemSpan(maxLineSpan) }) {
-                                        SectionHeader(
-                                            "Albums",
-                                            isRowMode = isRowMode,
-                                            onToggleViewMode = onToggleViewMode
-                                        )
+                                        SectionHeader("Albums")
                                     }
                                     items(
                                         albumsState.data,
@@ -297,11 +290,7 @@ private fun ItemChildren(
                         val chapters = item.chapters
                         if (!chapters.isNullOrEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
-                                SectionHeader(
-                                    "Chapters",
-                                    isRowMode = isRowMode,
-                                    onToggleViewMode = null
-                                )
+                                SectionHeader("Chapters",)
                             }
                             chapters.forEach { chapter ->
                                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -325,9 +314,7 @@ private fun ItemChildren(
                                         when (item) {
                                             is AppMediaItem.Podcast -> "Episodes"
                                             else -> "Tracks"
-                                        },
-                                        isRowMode = isRowMode,
-                                        onToggleViewMode = onToggleViewMode
+                                        }
                                     )
                                 }
                                 tracksState.data.forEachIndexed { index, track ->
@@ -404,24 +391,14 @@ private fun ItemChildren(
 }
 
 @Composable
-private fun SectionHeader(title: String, isRowMode: Boolean, onToggleViewMode: (() -> Unit)? = null) {
+private fun SectionHeader(title: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
         )
-
-        if (onToggleViewMode != null) {
-            IconButton(onClick = onToggleViewMode) {
-                Icon(
-                    imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                    contentDescription = "Toggle view mode"
-                )
-            }
-        }
     }
-
 }
 
 @Composable

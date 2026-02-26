@@ -795,7 +795,11 @@ private fun SendspinSection(
             }
 
             OverflowMenu(
-                modifier = Modifier,
+                options = Codecs.list.map { item ->
+                    OverflowMenuOption(
+                        title = item.uiTitle()
+                    ) { viewModel.setSendspinCodecPreference(item) }
+                },
                 buttonContent = { onClick ->
                     Icon(
                         modifier = Modifier
@@ -808,11 +812,6 @@ private fun SendspinSection(
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                },
-                options = Codecs.list.map { item ->
-                    OverflowMenuOption(
-                        title = item.uiTitle()
-                    ) { viewModel.setSendspinCodecPreference(item) }
                 }
             )
         }
