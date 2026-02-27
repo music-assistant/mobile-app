@@ -79,11 +79,15 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
             }
 
             is SessionState.Disconnected -> {
-                // Navigate to Settings for all disconnected states
-                // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
-                if (backStack.last() !is NavScreen.Settings) {
-                    backStack.clear()
-                    backStack.add(NavScreen.Settings)
+                if (sessionState is SessionState.Disconnected.Backgrounded) {
+                    // Backgrounded — preserve current screen for instant foreground reconnect
+                } else {
+                    // Navigate to Settings for all other disconnected states
+                    // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
+                    if (backStack.last() !is NavScreen.Settings) {
+                        backStack.clear()
+                        backStack.add(NavScreen.Settings)
+                    }
                 }
             }
 

@@ -129,6 +129,10 @@ class HomeScreenViewModel(
                                 _playersState.update { PlayersState.NoServer }
                                 stopJobs()
                             }
+
+                            SessionState.Disconnected.Backgrounded -> {
+                                // Preserve current state for instant foreground reconnect
+                            }
                         }
 
                     }

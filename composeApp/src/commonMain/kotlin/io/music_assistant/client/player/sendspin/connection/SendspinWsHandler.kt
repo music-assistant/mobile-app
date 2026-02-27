@@ -65,7 +65,7 @@ class SendspinWsHandler(
     private var explicitDisconnect = false
     private var reconnectAttempts = 0
     private var reconnectJob: Job? = null
-    private val maxReconnectAttempts = 10
+    private val maxReconnectAttempts = 5
 
     private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 50)
     val textMessages: Flow<String> = _textMessages.asSharedFlow()
@@ -261,13 +261,12 @@ class SendspinWsHandler(
     }
 
     private fun calculateBackoff(): Long {
-        // Exponential backoff: 500ms, 1s, 2s, 5s, 10s
         return when (reconnectAttempts) {
-            0 -> 500L
-            1 -> 1000L
-            2 -> 2000L
-            3 -> 5000L
-            else -> 10000L
+            0 -> 0L
+            1 -> 500L
+            2 -> 1000L
+            3 -> 2000L
+            else -> 3000L
         }
     }
 

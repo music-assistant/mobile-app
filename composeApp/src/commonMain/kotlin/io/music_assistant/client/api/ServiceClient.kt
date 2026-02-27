@@ -33,6 +33,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -78,6 +79,18 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     )
 
     private var lastWebRTCConnection: WebRTCConnectionCache? = null
+
+    // --- Lifecycle / background state ---
+    var isAnythingPlayingFlow: StateFlow<Boolean>? = null
+    private var isInBackground = false
+    private var backgroundPlaybackMonitorJob: Job? = null
+
+    private sealed class BackgroundedConnectionInfo {
+        data class Direct(val connectionInfo: ConnectionInfo) : BackgroundedConnectionInfo()
+        data class WebRTC(val remoteId: RemoteId) : BackgroundedConnectionInfo()
+    }
+
+    private var backgroundedConnectionInfo: BackgroundedConnectionInfo? = null
 
     private var _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -146,6 +159,91 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         }
     }
 
+    /**
+     * Called when the app moves to the background.
+     * If nothing is playing, disconnect to save resources. If something is playing,
+     * keep the connection alive but monitor — if playback stops while still backgrounded,
+     * disconnect at that point.
+     */
+    fun onAppBackground() {
+        val logger = Logger.withTag("ServiceClient")
+        isInBackground = true
+        logger.i { "App backgrounded" }
+
+        val currentState = _sessionState.value
+
+        // Only act if connected or reconnecting
+        if (currentState !is SessionState.Connected && currentState !is SessionState.Reconnecting) {
+            logger.d { "Not connected, nothing to do on background" }
+            return
+        }
+
+        if (isAnythingPlayingFlow?.value == true) {
+            logger.i { "Audio is playing — keeping connection alive, monitoring playback" }
+            backgroundPlaybackMonitorJob?.cancel()
+            backgroundPlaybackMonitorJob = launch {
+                isAnythingPlayingFlow?.collect { isPlaying ->
+                    if (!isPlaying && isInBackground) {
+                        logger.i { "Playback stopped while backgrounded — disconnecting now" }
+                        performBackgroundDisconnect()
+                        // Stop monitoring after disconnect (coroutine is still alive until next suspension)
+                        return@collect
+                    }
+                }
+            }
+            return
+        }
+
+        performBackgroundDisconnect()
+    }
+
+    private fun performBackgroundDisconnect() {
+        val logger = Logger.withTag("ServiceClient")
+        val currentState = _sessionState.value
+
+        // Save connection info for foreground reconnect
+        backgroundedConnectionInfo = when (currentState) {
+            is SessionState.Connected.Direct ->
+                BackgroundedConnectionInfo.Direct(currentState.connectionInfo)
+            is SessionState.Reconnecting.Direct ->
+                BackgroundedConnectionInfo.Direct(currentState.connectionInfo)
+            is SessionState.Connected.WebRTC ->
+                BackgroundedConnectionInfo.WebRTC(currentState.remoteId)
+            is SessionState.Reconnecting.WebRTC ->
+                BackgroundedConnectionInfo.WebRTC(currentState.remoteId)
+            else -> null
+        }
+
+        logger.i { "Disconnecting (Backgrounded), saved=${backgroundedConnectionInfo != null}" }
+        disconnect(SessionState.Disconnected.Backgrounded)
+    }
+
+    /**
+     * Called when the app returns to the foreground.
+     * If we disconnected for backgrounding, reconnect immediately.
+     */
+    fun onAppForeground() {
+        val logger = Logger.withTag("ServiceClient")
+        isInBackground = false
+        backgroundPlaybackMonitorJob?.cancel()
+        backgroundPlaybackMonitorJob = null
+        logger.i { "App foregrounded" }
+
+        val savedInfo = backgroundedConnectionInfo ?: return
+        backgroundedConnectionInfo = null
+
+        logger.i { "Reconnecting after foreground (was backgrounded)" }
+        when (savedInfo) {
+            is BackgroundedConnectionInfo.Direct -> {
+                val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
+                connect(connInfo)
+            }
+            is BackgroundedConnectionInfo.WebRTC -> {
+                connectWebRTC(savedInfo.remoteId)
+            }
+        }
+    }
+
     private val rpcEngine = RpcEngine {
         _sessionState.update {
             (it as? SessionState.Connected)?.update(
@@ -182,6 +280,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         when (state) {
                             SessionState.Disconnected.ByUser,
                             SessionState.Disconnected.NoServerData,
+                            SessionState.Disconnected.Backgrounded,
                             is SessionState.Disconnected.Error -> Unit
 
                             SessionState.Disconnected.Initial -> {
@@ -835,10 +934,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
         runReconnectionLoop(
             tag = "WebRTC",
-            maxAttempts = 10,
+            maxAttempts = 5,
             waitAfterConnectMs = 30_000L,
             shouldStop = {
-                _sessionState.value.let {
+                isInBackground || _sessionState.value.let {
                     it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting.WebRTC
                 }
             },
@@ -975,9 +1074,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
         runReconnectionLoop(
             tag = "Direct",
+            maxAttempts = 5,
             waitAfterConnectMs = 2000L,
             shouldStop = {
-                _sessionState.value.let {
+                isInBackground || _sessionState.value.let {
                     it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting
                 }
             },
@@ -998,7 +1098,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 connect(info)
             },
             onGiveUp = {
-                disconnect(SessionState.Disconnected.Error(Exception("Failed to reconnect after 10 attempts")))
+                disconnect(SessionState.Disconnected.Error(Exception("Failed to reconnect after max attempts")))
             }
         )
     }
@@ -1034,6 +1134,14 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     private fun disconnect(newState: SessionState.Disconnected) {
         launch {
+            // Guard: if we're disconnecting for background but the app already returned
+            // to foreground (rapid background/foreground), abort the disconnect.
+            if (newState is SessionState.Disconnected.Backgrounded && !isInBackground) {
+                Logger.withTag("ServiceClient")
+                    .i { "Backgrounded disconnect aborted — app already foregrounded" }
+                return@launch
+            }
+
             when (val currentState = _sessionState.value) {
                 is SessionState.Connected.Direct -> {
                     currentState.session.close()

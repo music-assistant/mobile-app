@@ -182,6 +182,9 @@ class MainDataSource(
     private var updateJob: Job? = null
 
     init {
+        // Wire isAnythingPlayingFlow so ServiceClient can check playback state on background
+        apiClient.isAnythingPlayingFlow = isAnythingPlaying
+
         // Position calculation loop - runs independently to provide smooth position updates
         launch {
             while (isActive) {
@@ -455,6 +458,36 @@ class MainDataSource(
                                 }
 
                                 // Cancel jobs (no point running without connection)
+                                updateJob?.cancel()
+                                updateJob = null
+                                watchJob?.cancel()
+                                watchJob = null
+                            }
+
+                            SessionState.Disconnected.Backgrounded -> {
+                                // App backgrounded — preserve data for instant foreground reconnect
+                                when (val currentState = _serverPlayers.value) {
+                                    is DataState.Data -> {
+                                        log.i { "Backgrounded — preserving ${currentState.data.size} players as Stale(RECONNECTING)" }
+                                        _serverPlayers.update {
+                                            DataState.Stale(
+                                                data = currentState.data,
+                                                disconnectedAt = currentTimeMillis(),
+                                                reason = StaleReason.RECONNECTING
+                                            )
+                                        }
+                                    }
+
+                                    is DataState.Stale -> {
+                                        log.i { "Backgrounded — already stale, keeping data" }
+                                    }
+
+                                    else -> {
+                                        log.d { "Backgrounded with no data to preserve" }
+                                    }
+                                }
+
+                                stopSendspin()
                                 updateJob?.cancel()
                                 updateJob = null
                                 watchJob?.cancel()

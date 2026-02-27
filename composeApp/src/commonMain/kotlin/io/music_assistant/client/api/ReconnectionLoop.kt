@@ -5,11 +5,11 @@ import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.coroutines.delay
 
 private fun backoffMs(attempt: Int): Long = when (attempt) {
-    0 -> 500L
-    1 -> 1000L
-    2 -> 2000L
-    3 -> 3000L
-    else -> 5000L
+    0 -> 0L
+    1 -> 500L
+    2 -> 1000L
+    3 -> 2000L
+    else -> 3000L
 }
 
 /**

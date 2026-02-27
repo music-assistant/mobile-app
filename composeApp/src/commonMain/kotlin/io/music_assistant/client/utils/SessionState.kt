@@ -101,6 +101,7 @@ sealed class SessionState {
         data object Initial : Disconnected()
         data object ByUser : Disconnected()
         data object NoServerData : Disconnected()
+        data object Backgrounded : Disconnected()
         data class Error(val reason: Exception?) : Disconnected()
     }
 }
