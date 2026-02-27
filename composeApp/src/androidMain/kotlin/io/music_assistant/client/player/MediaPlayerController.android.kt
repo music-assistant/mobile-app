@@ -336,7 +336,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     }
 
     actual fun flush() {
-        audioTrack?.flush()
+        try {
+            audioTrack?.flush()
+        } catch (e: IllegalStateException) {
+            logger.w(e) { "AudioTrack flush failed (track released)" }
+        }
     }
 
     actual fun stopRawPcmStream() {

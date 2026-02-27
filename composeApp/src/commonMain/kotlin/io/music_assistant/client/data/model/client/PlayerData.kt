@@ -7,6 +7,7 @@ data class PlayerData(
     val queue: DataState<Queue>,
     val groupChildren: List<Bind>,
     val isLocal: Boolean = false,
+    val pendingPlay: Boolean = false,
 ) {
     val playerId = player.id
     val queueInfo = (queue as? DataState.Data)?.data?.info
@@ -46,6 +47,7 @@ data class PlayerData(
             },
             groupChildren = other.groupChildren,
             isLocal = other.isLocal,
+            pendingPlay = other.pendingPlay,
         )
     }
 

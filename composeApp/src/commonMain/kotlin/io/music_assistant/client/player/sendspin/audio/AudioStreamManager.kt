@@ -67,6 +67,10 @@ class AudioStreamManager(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisorJob
 
+    // Serializes startStream/stopStream to prevent race where stopStream nulls
+    // audioTrack after startStream has already decided to reuse it.
+    private val streamLifecycleLock = Mutex()
+
     // Lock protecting audioDecoder lifecycle (startStream/stopStream/processBinaryMessage/close)
     // Prevents race where processBinaryMessage() calls decode() on a decoder
     // that startStream() or close() has already released.
@@ -117,7 +121,7 @@ class AudioStreamManager(
         isNetworkDisconnected = true
     }
 
-    override suspend fun startStream(config: StreamStartPlayer) {
+    override suspend fun startStream(config: StreamStartPlayer) = streamLifecycleLock.withLock {
         logger.i { "Starting stream: ${config.codec}, ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
 
         isNetworkDisconnected = false
@@ -254,19 +258,7 @@ class AudioStreamManager(
         _playbackPosition.update { 0L }
     }
 
-    /**
-     * Flush audio for track change (next/prev/seek).
-     * Clears buffer and resets decoder, but keeps isStreaming=true.
-     */
-    suspend fun flushForTrackChange() {
-        logger.i { "Flushing for track change" }
-        queueLock.withLock { queue.clear() }
-        decoderLock.withLock { audioDecoder?.reset() }
-        mediaPlayerController.stopRawPcmStream()
-        _playbackPosition.update { 0L }
-    }
-
-    override suspend fun stopStream() {
+    override suspend fun stopStream() = streamLifecycleLock.withLock {
         logger.i { "Stopping stream" }
         isStreaming = false
         isNetworkDisconnected = false

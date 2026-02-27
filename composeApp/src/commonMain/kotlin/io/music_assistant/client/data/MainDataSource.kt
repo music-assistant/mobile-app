@@ -72,7 +72,8 @@ class MainDataSource(
     private val settings: SettingsRepository,
     val apiClient: ServiceClient,
     private val mediaPlayerController: MediaPlayerController,
-    private val sendspinClientFactory: SendspinClientFactory
+    private val sendspinClientFactory: SendspinClientFactory,
+    private val localPlayerRepository: LocalPlayerRepository,
 ) : CoroutineScope {
 
     private val log = Logger.withTag("MainDataSource")
@@ -148,10 +149,7 @@ class MainDataSource(
     private val _playersData = MutableStateFlow<DataState<List<PlayerData>>>(DataState.Loading())
     val playersData = _playersData.asStateFlow()
 
-    val localPlayer = playersData
-        .mapNotNull { it as? DataState.Data<List<PlayerData>> }
-        .map { it.data.firstOrNull { data -> data.player.id == settings.sendspinClientId.value } }
-        .stateIn(this, SharingStarted.Eagerly, null)
+    val localPlayer = localPlayerRepository.localPlayerData
 
     val isAnythingPlaying =
         playersData
@@ -215,87 +213,29 @@ class MainDataSource(
         launch {
             combine(
                 _players,
-                _queueInfos
-            ) { players, queues -> Pair(players, queues) }
+                _queueInfos,
+                localPlayerRepository.localPlayerData
+            ) { players, queues, localData -> Triple(players, queues, localData) }
                 .debounce(50L) // Small debounce to batch rapid updates, but don't delay initial load
-                .collect { p ->
+                .collect { (playersState, queues, localData) ->
                     _playersData.update { oldValues ->
-                        when (val playersState = p.first) {
+                        when (playersState) {
                             is DataState.Error -> DataState.Error()
                             is DataState.Loading -> DataState.Loading()
                             is DataState.NoData -> DataState.NoData()
-                            is DataState.Data -> {
-                                val localPlayerId = settings.sendspinClientId.value
-                                val groupedPlayersToHide = playersState.data
-                                    .map { (it.groupChildren ?: emptyList()) - it.id }
-                                    .flatten()
-                                    .filter { it != localPlayerId } // Local player always shown directly
-                                    .toSet()
-                                val filteredPlayers = playersState.data
-                                    .filter { it.id !in groupedPlayersToHide }
-                                DataState.Data(
-                                    filteredPlayers.map { player ->
-                                        val newData = PlayerData(
-                                            player = player,
-                                            queue = p.second.find { it.id == player.queueId }
-                                                ?.let { queueInfo ->
-                                                    DataState.Data(
-                                                        Queue(
-                                                            info = queueInfo,
-                                                            items = DataState.NoData()
-                                                        )
-                                                    )
-                                                } ?: DataState.NoData(),
-                                            groupChildren = playersState.data
-                                                .mapNotNull { it.asBindFor(player) },
-                                            isLocal = player.id == settings.sendspinClientId.value
-
-                                        )
-                                        (oldValues as? DataState.Data)?.data
-                                            ?.firstOrNull { it.player.id == player.id }
-                                            ?.updateFrom(newData) ?: newData
-
-                                    }
+                            is DataState.Data -> DataState.Data(
+                                buildPlayerDataList(
+                                    playersState.data, queues, localData, oldValues
                                 )
-                            }
+                            )
 
-                            is DataState.Stale -> {
-                                // Handle stale state - preserve data structure with stale marker
-                                val localPlayerId = settings.sendspinClientId.value
-                                val groupedPlayersToHide = playersState.data
-                                    .map { (it.groupChildren ?: emptyList()) - it.id }
-                                    .flatten()
-                                    .filter { it != localPlayerId } // Local player always shown directly
-                                    .toSet()
-                                val filteredPlayers = playersState.data
-                                    .filter { it.id !in groupedPlayersToHide }
-                                DataState.Stale(
-                                    data = filteredPlayers.map { player ->
-                                        val newData = PlayerData(
-                                            player = player,
-                                            queue = p.second.find { it.id == player.queueId }
-                                                ?.let { queueInfo ->
-                                                    DataState.Data(
-                                                        Queue(
-                                                            info = queueInfo,
-                                                            items = DataState.NoData()
-                                                        )
-                                                    )
-                                                } ?: DataState.NoData(),
-                                            groupChildren = playersState.data
-                                                .mapNotNull { it.asBindFor(player) },
-                                            isLocal = player.id == settings.sendspinClientId.value
-
-                                        )
-                                        (oldValues as? DataState.Data)?.data
-                                            ?.firstOrNull { it.player.id == player.id }
-                                            ?.updateFrom(newData) ?: newData
-
-                                    },
-                                    disconnectedAt = playersState.disconnectedAt,
-                                    reason = playersState.reason
-                                )
-                            }
+                            is DataState.Stale -> DataState.Stale(
+                                data = buildPlayerDataList(
+                                    playersState.data, queues, localData, oldValues
+                                ),
+                                disconnectedAt = playersState.disconnectedAt,
+                                reason = playersState.reason
+                            )
                         }
                     }
                 }
@@ -369,6 +309,8 @@ class MainDataSource(
                                             //    server removes the player when the socket closes.
                                             sendspinClientFactory.onFreshWebRTCConnection()
                                             launch { initSendspinIfEnabled() }
+                                            // Drain any commands queued while disconnected
+                                            localPlayerRepository.drainCommandQueue()
                                         }
 
                                         StaleReason.PERSISTENT_ERROR -> {
@@ -380,6 +322,7 @@ class MainDataSource(
                                             updateProvidersManifests()
                                             initSendspinIfEnabled()
                                             updatePlayersAndQueues()
+                                            localPlayerRepository.drainCommandQueue()
                                         }
                                     }
                                 }
@@ -595,13 +538,80 @@ class MainDataSource(
                         album = track.parentName,
                         artworkUrl = track.imageInfo?.url(serverUrl),
                         duration = track.duration ?: 0.0,
-                        elapsedTime = playerData.queueInfo?.elapsedTime ?: 0.0,
+                        elapsedTime = playerData.queueInfo.elapsedTime ?: 0.0,
                         playbackRate = if (playerData.player.isPlaying) 1.0 else 0.0
                     )
                 } else {
                     mediaPlayerController.clearNowPlaying()
                 }
             }
+        }
+    }
+
+    /**
+     * Build the merged player data list for [_playersData].
+     * Local player uses repository state (single source of truth); others built from server data.
+     */
+    private fun buildPlayerDataList(
+        allPlayers: List<Player>,
+        queues: List<QueueInfo>,
+        localData: PlayerData?,
+        oldValues: DataState<List<PlayerData>>
+    ): List<PlayerData> {
+        val localPlayerId = settings.sendspinClientId.value
+        val groupedPlayersToHide = allPlayers
+            .map { (it.groupChildren ?: emptyList()) - it.id }
+            .flatten()
+            .filter { it != localPlayerId }
+            .toSet()
+        val filteredPlayers = allPlayers.filter { it.id !in groupedPlayersToHide }
+
+        val playerDataList = filteredPlayers.map { player ->
+            if (player.id == localPlayerId && localData != null) {
+                // Repository is source of truth. Overlay interpolated position from tracker
+                // (repository has raw server position; queues has smooth 500ms interpolation).
+                val trackedElapsed = queues.find {
+                    it.id == player.queueId || it.id == localPlayerId
+                }?.elapsedTime
+                val withPosition = trackedElapsed?.let {
+                    (localData.queue as? DataState.Data)?.let { qd ->
+                        localData.copy(
+                            queue = DataState.Data(
+                                qd.data.copy(info = qd.data.info.copy(elapsedTime = it))
+                            )
+                        )
+                    }
+                } ?: localData
+                val enriched = withPosition.copy(
+                    groupChildren = allPlayers.mapNotNull { it.asBindFor(player) }
+                )
+                // Preserve loaded queue items from previous state
+                (oldValues as? DataState.Data)?.data
+                    ?.firstOrNull { it.player.id == player.id }
+                    ?.updateFrom(enriched) ?: enriched
+            } else {
+                val newData = PlayerData(
+                    player = player,
+                    queue = queues.find { it.id == player.queueId }
+                        ?.let { queueInfo ->
+                            DataState.Data(
+                                Queue(info = queueInfo, items = DataState.NoData())
+                            )
+                        } ?: DataState.NoData(),
+                    groupChildren = allPlayers.mapNotNull { it.asBindFor(player) },
+                    isLocal = player.id == localPlayerId
+                )
+                (oldValues as? DataState.Data)?.data
+                    ?.firstOrNull { it.player.id == player.id }
+                    ?.updateFrom(newData) ?: newData
+            }
+        }
+
+        // Inject synthetic local player if not in server list
+        return if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
+            listOf(localData) + playerDataList
+        } else {
+            playerDataList
         }
     }
 
@@ -613,6 +623,7 @@ class MainDataSource(
         _serverPlayers.update { DataState.NoData() }
         _queueInfos.update { emptyList() }
         _positionTrackers.update { emptyMap() }
+        localPlayerRepository.clearState()
         // Note: _providersIcons deliberately NOT cleared (static data)
     }
 
@@ -798,6 +809,13 @@ class MainDataSource(
     }
 
     fun playerAction(playerId: String, action: PlayerAction) {
+        // Delegate to data-based overload for local player (handles optimistic + routing)
+        if (playerId == settings.sendspinClientId.value) {
+            localPlayerRepository.localPlayerData.value?.let { localData ->
+                playerAction(localData, action)
+                return
+            }
+        }
         launch {
             when (action) {
                 PlayerAction.TogglePlayPause -> {
@@ -895,144 +913,110 @@ class MainDataSource(
     }
 
     fun playerAction(data: PlayerData, action: PlayerAction) {
+        // Apply optimistic update for local player (immediate, before async command)
+        if (data.isLocal) {
+            localPlayerRepository.applyOptimisticUpdate(data, action)
+            // Optimistic seek: update position tracker immediately
+            if (action is PlayerAction.SeekTo) {
+                data.queueInfo?.id?.let { queueId ->
+                    _positionTrackers.update { trackers ->
+                        trackers + (queueId to PositionTracker(
+                            queueId = queueId,
+                            basePosition = action.position.toDouble(),
+                            baseTimestamp = currentTimeMillis(),
+                            isPlaying = data.player.isPlaying,
+                            duration = data.queueInfo.currentItem?.track?.duration
+                        ))
+                    }
+                }
+            }
+        }
         launch {
-            when (action) {
-                PlayerAction.TogglePlayPause -> {
-                    apiClient.sendRequest(
-                        Request.Player.simpleCommand(
-                            playerId = data.playerId,
-                            command = "play_pause"
-                        )
-                    )
-                }
+            val request = buildPlayerRequest(data, action) ?: return@launch
+            if (data.isLocal) {
+                localPlayerRepository.sendOrQueue(action, request)
+            } else {
+                apiClient.sendRequest(request)
+            }
+        }
+    }
 
-                PlayerAction.Next -> {
-                    val currentPos = data.queueInfo?.elapsedTime ?: 0.0
-                    (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
-                        ?.chapters?.firstOrNull { it.start > currentPos }?.start
-                        ?.let {
-                            apiClient.sendRequest(
-                                Request.Player.seek(
-                                    queueId = data.playerId,
-                                    position = it.toLong()
-                                )
-                            )
-                        }
-                        ?: apiClient.sendRequest(
-                            Request.Player.simpleCommand(
-                                playerId = data.playerId,
-                                command = "next"
-                            )
-                        )
-                }
+    private fun buildPlayerRequest(data: PlayerData, action: PlayerAction): Request? {
+        return when (action) {
+            PlayerAction.TogglePlayPause ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "play_pause")
 
-                PlayerAction.Previous -> {
-                    val currentPos = data.queueInfo?.elapsedTime ?: 0.0
-                    (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
-                        ?.chapters?.takeIf { it.isNotEmpty() }
-                        ?.let { chapters ->
-                            val currentChapterStart =
-                                chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
-                            val prevStart =
-                                if (currentPos - currentChapterStart > 5) currentChapterStart
-                                else chapters.lastOrNull { it.start < currentChapterStart }?.start
-                                    ?: 0.0
-                            apiClient.sendRequest(
-                                Request.Player.seek(
-                                    queueId = data.playerId,
-                                    position = prevStart.toLong()
-                                )
-                            )
-                        } ?: apiClient.sendRequest(
-                        Request.Player.simpleCommand(
-                            playerId = data.playerId,
-                            command = "previous"
-                        )
-                    )
-                }
+            PlayerAction.Next -> {
+                val currentPos = data.queueInfo?.elapsedTime ?: 0.0
+                (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
+                    ?.chapters?.firstOrNull { it.start > currentPos }?.start
+                    ?.let { Request.Player.seek(queueId = data.playerId, position = it.toLong()) }
+                    ?: Request.Player.simpleCommand(playerId = data.playerId, command = "next")
+            }
 
-                is PlayerAction.SeekTo -> {
-                    apiClient.sendRequest(
-                        Request.Player.seek(
-                            queueId = data.playerId,
-                            position = action.position
-                        )
-                    )
-                }
+            PlayerAction.Previous -> {
+                val currentPos = data.queueInfo?.elapsedTime ?: 0.0
+                (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
+                    ?.chapters?.takeIf { it.isNotEmpty() }
+                    ?.let { chapters ->
+                        val currentChapterStart =
+                            chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
+                        val prevStart =
+                            if (currentPos - currentChapterStart > 5) currentChapterStart
+                            else chapters.lastOrNull { it.start < currentChapterStart }?.start
+                                ?: 0.0
+                        Request.Player.seek(queueId = data.playerId, position = prevStart.toLong())
+                    }
+                    ?: Request.Player.simpleCommand(playerId = data.playerId, command = "previous")
+            }
 
-                is PlayerAction.ToggleRepeatMode -> apiClient.sendRequest(
-                    Request.Queue.setRepeatMode(
-                        queueId = data.queueInfo?.id ?: return@launch,
-                        repeatMode = when (action.current) {
-                            RepeatMode.OFF -> RepeatMode.ALL
-                            RepeatMode.ALL -> RepeatMode.ONE
-                            RepeatMode.ONE -> RepeatMode.OFF
-                        }
-                    )
-                )
+            is PlayerAction.SeekTo ->
+                Request.Player.seek(queueId = data.playerId, position = action.position)
 
-                is PlayerAction.ToggleShuffle -> apiClient.sendRequest(
-                    Request.Queue.setShuffle(
-                        queueId = data.queueInfo?.id ?: return@launch,
-                        enabled = !action.current
-                    )
-                )
-
-                PlayerAction.VolumeDown -> apiClient.sendRequest(
-                    Request.Player.simpleCommand(
-                        playerId = data.playerId,
-                        command = "volume_down"
-                    )
-                )
-
-                PlayerAction.VolumeUp -> apiClient.sendRequest(
-                    Request.Player.simpleCommand(
-                        playerId = data.playerId,
-                        command = "volume_up"
-                    )
-                )
-
-
-                is PlayerAction.VolumeSet -> apiClient.sendRequest(
-                    Request.Player.setVolume(
-                        playerId = data.playerId,
-                        volumeLevel = action.level
-                    )
-                )
-
-                PlayerAction.GroupVolumeDown -> apiClient.sendRequest(
-                    Request.Player.simpleCommand(
-                        playerId = data.playerId,
-                        command = "group_volume_down"
-                    )
-                )
-
-                PlayerAction.GroupVolumeUp -> apiClient.sendRequest(
-                    Request.Player.simpleCommand(
-                        playerId = data.playerId,
-                        command = "group_volume_up"
-                    )
-                )
-
-                is PlayerAction.GroupVolumeSet -> apiClient.sendRequest(
-                    Request.Player.setGroupVolume(
-                        playerId = data.playerId,
-                        volumeLevel = action.level
-                    )
-                )
-
-                is PlayerAction.ToggleMute -> apiClient.sendRequest(
-                    Request.Player.setMute(playerId = data.playerId, !action.isMutedNow)
-                )
-
-                is PlayerAction.GroupManage -> apiClient.sendRequest(
-                    Request.Player.setGroupMembers(
-                        playerId = data.playerId,
-                        playersToAdd = action.toAdd,
-                        playersToRemove = action.toRemove
-                    )
+            is PlayerAction.ToggleRepeatMode -> {
+                val queueId = data.queueInfo?.id ?: return null
+                Request.Queue.setRepeatMode(
+                    queueId = queueId,
+                    repeatMode = when (action.current) {
+                        RepeatMode.OFF -> RepeatMode.ALL
+                        RepeatMode.ALL -> RepeatMode.ONE
+                        RepeatMode.ONE -> RepeatMode.OFF
+                    }
                 )
             }
+
+            is PlayerAction.ToggleShuffle -> {
+                val queueId = data.queueInfo?.id ?: return null
+                Request.Queue.setShuffle(queueId = queueId, enabled = !action.current)
+            }
+
+            PlayerAction.VolumeDown ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "volume_down")
+
+            PlayerAction.VolumeUp ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "volume_up")
+
+            is PlayerAction.VolumeSet ->
+                Request.Player.setVolume(playerId = data.playerId, volumeLevel = action.level)
+
+            PlayerAction.GroupVolumeDown ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "group_volume_down")
+
+            PlayerAction.GroupVolumeUp ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "group_volume_up")
+
+            is PlayerAction.GroupVolumeSet ->
+                Request.Player.setGroupVolume(playerId = data.playerId, volumeLevel = action.level)
+
+            is PlayerAction.ToggleMute ->
+                Request.Player.setMute(playerId = data.playerId, !action.isMutedNow)
+
+            is PlayerAction.GroupManage ->
+                Request.Player.setGroupMembers(
+                    playerId = data.playerId,
+                    playersToAdd = action.toAdd,
+                    playersToRemove = action.toRemove
+                )
         }
     }
 
@@ -1147,6 +1131,10 @@ class MainDataSource(
                         is PlayerUpdatedEvent -> {
                             val data = event.player()
                             Logger.e("Player updated: $data")
+                            // Forward to local player repository if this is the local player
+                            if (data.id == settings.sendspinClientId.value) {
+                                localPlayerRepository.onServerPlayerUpdate(data)
+                            }
                             _serverPlayers.update { oldState ->
                                 when (oldState) {
                                     is DataState.Data -> {
@@ -1182,6 +1170,15 @@ class MainDataSource(
                         is QueueUpdatedEvent -> {
                             val data = event.queue()
                             Logger.e("Queue updated $data")
+
+                            // Forward to local player repository if this is the local player's queue
+                            val localPlayerId = settings.sendspinClientId.value
+                            if (data.id == localPlayerId ||
+                                (_serverPlayers.value as? DataState.Data)?.data
+                                    ?.find { it.id == localPlayerId }?.queueId == data.id
+                            ) {
+                                localPlayerRepository.onServerQueueUpdate(data)
+                            }
 
                             // Update position tracker if elapsedTime is present
                             data.elapsedTime?.let { elapsed ->
@@ -1361,8 +1358,18 @@ class MainDataSource(
             apiClient.sendRequest(Request.Player.all())
                 .resultAs<List<ServerPlayer>>()?.map { it.toPlayer() }
                 ?.let { list ->
+                    val visiblePlayers = list.filter { it.shouldBeShown }
                     _serverPlayers.update {
-                        DataState.Data(list.filter { it.shouldBeShown })
+                        DataState.Data(visiblePlayers)
+                    }
+                    // Forward to repository: real player if found, synthetic if not
+                    val localPlayerId = settings.sendspinClientId.value
+                    val localServerPlayer = visiblePlayers.find { it.id == localPlayerId }
+                    localPlayerRepository.onInitialPlayersReceived(
+                        hasLocalPlayer = localServerPlayer != null
+                    )
+                    localServerPlayer?.let {
+                        localPlayerRepository.onServerPlayerUpdate(it)
                     }
                 }
         }
@@ -1370,6 +1377,13 @@ class MainDataSource(
             apiClient.sendRequest(Request.Queue.all())
                 .resultAs<List<ServerQueue>>()?.map { it.toQueue() }?.let { list ->
                     _queueInfos.update { list }
+
+                    // Forward local player's queue to repository
+                    val localPlayerId = settings.sendspinClientId.value
+                    val localQueueId = (_serverPlayers.value as? DataState.Data)?.data
+                        ?.find { it.id == localPlayerId }?.queueId
+                    list.find { it.id == localPlayerId || it.id == localQueueId }
+                        ?.let { localPlayerRepository.onServerQueueUpdate(it) }
 
                     // Initialize position trackers from initial queue data
                     list.forEach { queue ->

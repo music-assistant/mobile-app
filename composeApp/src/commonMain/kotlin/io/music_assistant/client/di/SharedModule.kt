@@ -2,6 +2,7 @@ package io.music_assistant.client.di
 
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
+import io.music_assistant.client.data.LocalPlayerRepository
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
@@ -32,6 +33,7 @@ val sharedModule = module {
     }  // Eager - needs to start monitoring immediately
     singleOf(::MediaPlayerController)  // Used by MainDataSource for Sendspin
     singleOf(::SendspinClientFactory)   // Factory for creating Sendspin clients
+    singleOf(::LocalPlayerRepository)   // Optimistic local player state
     singleOf(::MainDataSource)          // Singleton - held by foreground service
     viewModelOf(::ThemeViewModel)
     factory { ActionsViewModel(get(), get()) }

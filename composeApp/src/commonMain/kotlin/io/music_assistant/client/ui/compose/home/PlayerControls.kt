@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -92,15 +93,30 @@ fun PlayerControls(
             enabled = playerEnabled && buttonsEnabled,
         ) { playerAction(playerData, PlayerAction.Previous) }
 
-        ActionButton(
-            icon = when (player.isPlaying) {
-                true -> Icons.Default.Pause
-                false -> Icons.Default.PlayArrow
-            },
-            tint = MaterialTheme.colorScheme.primary,
-            size = mainButtonSize,
-            enabled = playerEnabled && buttonsEnabled,
-        ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
+        if (playerData.pendingPlay && player.isPlaying) {
+            IconButton(
+                modifier = Modifier
+                    .size(mainButtonSize),
+                onClick = { playerAction(playerData, PlayerAction.TogglePlayPause) },
+                enabled = playerEnabled && buttonsEnabled,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size((mainButtonSize.value * 0.6).dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
+                )
+            }
+        } else {
+            ActionButton(
+                icon = when (player.isPlaying) {
+                    true -> Icons.Default.Pause
+                    false -> Icons.Default.PlayArrow
+                },
+                tint = MaterialTheme.colorScheme.primary,
+                size = mainButtonSize,
+                enabled = playerEnabled && buttonsEnabled,
+            ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
+        }
 
         ActionButton(
             icon = Icons.Default.SkipNext,
