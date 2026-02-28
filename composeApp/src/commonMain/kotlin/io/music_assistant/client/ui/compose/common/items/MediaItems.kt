@@ -21,14 +21,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FeaturedPlayList
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -80,7 +80,8 @@ fun ArtistGridItem(
             ArtistImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -163,7 +164,8 @@ fun AlbumGridItem(
             AlbumImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -257,7 +259,8 @@ fun PlaylistGridItem(
             PlaylistImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -373,7 +376,8 @@ fun PodcastGridItem(
             PodcastImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -488,7 +492,8 @@ internal fun TrackGridItem(
             TrackImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
         GridPlayableItemLabels(item, 96.dp, showSubtitle)
@@ -558,7 +563,8 @@ internal fun PodcastEpisodeGridItem(
             PodcastEpisodeImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
             ProgressBadge(
                 fullyPlayed = item.fullyPlayed,
@@ -649,7 +655,8 @@ internal fun RadioGridItem(
             RadioImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
         GridPlayableItemLabels(item, 96.dp, showSubtitle)
@@ -713,7 +720,8 @@ internal fun AudiobookGridItem(
             AudiobookImage(96.dp, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
             ProgressBadge(
                 fullyPlayed = item.fullyPlayed,
@@ -846,12 +854,11 @@ private fun GridItem(
 }
 
 @Composable
-fun BoxScope.Badges(
+fun Badges(
     item: AppMediaItem,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
+    modifier: Modifier
 ) {
-    val modifier =
-        Modifier.align(Alignment.BottomEnd).size(16.dp)
     if (item.favorite == true) {
         Icon(
             modifier = modifier,
@@ -929,7 +936,8 @@ internal fun TrackRowItem(
             TrackImage(ROW_IMAGE_SIZE, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         },
         onClick = { onClick(item) },
@@ -952,7 +960,11 @@ internal fun AlbumRowItem(
         subtitle = item.subtitle,
         imageContent = {
             AlbumImage(ROW_IMAGE_SIZE, item, serverUrl)
-            Badges(item = item, providerIconFetcher = providerIconFetcher)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+            )
         },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) }
@@ -974,7 +986,11 @@ internal fun ArtistRowItem(
         subtitle = item.subtitle,
         imageContent = {
             ArtistImage(ROW_IMAGE_SIZE, item, serverUrl)
-            Badges(item = item, providerIconFetcher = providerIconFetcher)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+            )
         },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) }
@@ -996,7 +1012,11 @@ internal fun PlaylistRowItem(
         subtitle = item.subtitle,
         imageContent = {
             PlaylistImage(ROW_IMAGE_SIZE, item, serverUrl)
-            Badges(item = item, providerIconFetcher = providerIconFetcher)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+            )
         },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) }
@@ -1018,7 +1038,11 @@ internal fun PodcastRowItem(
         subtitle = item.subtitle,
         imageContent = {
             PodcastImage(ROW_IMAGE_SIZE, item, serverUrl)
-            Badges(item = item, providerIconFetcher = providerIconFetcher)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+            )
         },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) }
@@ -1042,7 +1066,8 @@ internal fun PodcastEpisodeRowItem(
             PodcastEpisodeImage(ROW_IMAGE_SIZE, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
             ProgressBadge(
                 fullyPlayed = item.fullyPlayed,
@@ -1071,7 +1096,8 @@ internal fun RadioRowItem(
             RadioImage(ROW_IMAGE_SIZE, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         },
         onClick = { onClick(item) },
@@ -1096,7 +1122,8 @@ internal fun AudiobookRowItem(
             AudiobookImage(ROW_IMAGE_SIZE, item, serverUrl)
             Badges(
                 item = item,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
             ProgressBadge(
                 fullyPlayed = item.fullyPlayed,

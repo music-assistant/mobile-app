@@ -238,7 +238,8 @@ private fun ItemChildren(
                             onPlayClick = onPlayItemClick,
                             libraryAction = libraryActions,
                             playlistActions = playlistActions,
-                            onToggleViewMode = onToggleViewMode
+                            onToggleViewMode = onToggleViewMode,
+                            providerIconFetcher = providerIconFetcher
                         )
                     }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -72,7 +74,8 @@ fun ItemHeader(
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
     libraryAction: ActionsViewModel.LibraryActions? = null,
     playlistActions: ActionsViewModel.PlaylistActions? = null,
-    onToggleViewMode: () -> Unit = {}
+    onToggleViewMode: () -> Unit = {},
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -110,14 +113,27 @@ fun ItemHeader(
                     RoundedCornerShape(16.dp)
                 }
 
-                AsyncImage(
-                    model = it,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize(0.70f)
-                        .clip(shape)
-                )
+                Box(modifier = Modifier.fillMaxSize(0.70f)) {
+                    AsyncImage(
+                        model = it,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(shape)
+                    )
+
+                    Badges(
+                        item,
+                        providerIconFetcher,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 8.dp, bottom = 8.dp)
+                            .size(24.dp)
+                    )
+                }
+
+
             }
 
             Text(
@@ -317,7 +333,7 @@ private fun ItemOverflowMenu(
 @Preview
 @Composable
 private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
-    ItemHeader(item,)
+    ItemHeader(item)
 }
 
 @Preview
