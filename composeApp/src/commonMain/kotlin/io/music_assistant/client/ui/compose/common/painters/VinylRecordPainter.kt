@@ -9,16 +9,12 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 class VinylRecordPainter(
     private val recordColor: Color,
     private val labelColor: Color,
     private val holeColor: Color,
-    private val innerCircleRadius: Dp = 16.dp, // Color for the center spindle hole
-    private val holeRadius: Dp = 3.dp, // Color for the center spindle hole
     private val grooveColor: Color = labelColor.copy(alpha = 0.4f), // Subtle white for grooves
     private val grooveCount: Int = 6 // Number of grooves to draw
 ) : Painter() {
@@ -48,23 +44,24 @@ class VinylRecordPainter(
             style = Fill
         )
 
+        val innerCircleRadius = radius * 0.38f
         drawCircle(
             color = recordColor,
-            radius = with(Density(density)) { innerCircleRadius.toPx() },
+            radius = innerCircleRadius,
             center = center,
             style = Fill
         )
 
         drawCircle(
             color = labelColor,
-            radius = with(Density(density)) { (innerCircleRadius - 3.dp).toPx() },
+            radius = innerCircleRadius * 0.8f,
             center = center,
             style = Fill
         )
 
         drawCircle(
             color = holeColor,
-            radius = with(Density(density)) { holeRadius.toPx() },
+            radius = radius * 0.08f,
             center = center,
             style = Fill
         )

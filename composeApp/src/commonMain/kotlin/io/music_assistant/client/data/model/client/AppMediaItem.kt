@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.server.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.utils.formatIsoDate
 
 interface PlayableItem {
     val defaultIcon: ImageVector
@@ -359,7 +360,7 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
     ), PlayableItem {
-        override val subtitle = null
+        override val subtitle = metadata?.releaseDate?.let(::formatIsoDate)
         override val parentName: String? = podcast?.name
         override val defaultIcon = Icons.Default.Podcasts
     }

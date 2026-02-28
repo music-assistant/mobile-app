@@ -206,11 +206,9 @@ private fun AlbumImage(
             backgroundColor = background,
             labelColor = primaryContainer,
         )
-        val stripWidth = 10.dp
-        val holeRadius = 16.dp
 
-        val cutStripShape = remember(stripWidth) { CutStripShape(stripWidth) }
-        val holeShape = remember(holeRadius) { HoleShape(holeRadius) }
+        val cutStripShape = remember { CutStripShape() }
+        val holeShape = remember { HoleShape() }
 
         Image(
             painter = vinylRecord,
@@ -299,8 +297,7 @@ private fun PlaylistImage(
             .size(itemSize)
             .clip(RoundedCornerShape(8.dp))
     ) {
-        val bindingWidth = 10.dp
-        val notebookCutShape = remember(bindingWidth) { NotebookCutShape(bindingWidth) }
+        val notebookCutShape = remember { NotebookCutShape() }
 
         // Draw notebook cover background (clipped)
         Box(
@@ -325,6 +322,7 @@ private fun PlaylistImage(
             } else {
                 0f
             }
+            val bindingWidth = 10.dp
 
             // Draw ellipses in the binding strip area
             for (i in 0 until ellipseCount) {
@@ -415,8 +413,7 @@ private fun PodcastImage(
             .size(itemSize)
             .clip(RoundedCornerShape(8.dp))
     ) {
-        val cutSize = itemSize / 3
-        val cornerCutShape = remember(cutSize) { CornerCutShape(cutSize) }
+        val cornerCutShape = remember { CornerCutShape() }
 
         // Draw background (clipped)
         Box(
@@ -428,6 +425,7 @@ private fun PodcastImage(
 
         // Draw concentric circles in the cut corner area (centered on cut edge, rippling outward)
         val circleCount = 10
+        val cutSize = itemSize / 3
         Canvas(
             modifier = Modifier.fillMaxSize()
         ) {

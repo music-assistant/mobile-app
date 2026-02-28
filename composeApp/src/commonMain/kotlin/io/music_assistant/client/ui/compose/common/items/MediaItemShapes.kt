@@ -19,19 +19,17 @@ import kotlin.math.sin
  * Shape that cuts a vertical strip from the right side.
  * Used for album vinyl record effect.
  */
-class CutStripShape(private val stripWidth: Dp) : Shape {
+class CutStripShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
         return Outline.Generic(Path().apply {
-            val stripPx = with(density) { stripWidth.toPx() }
-
             // Defines the album cover area, excluding the rightmost strip
             moveTo(0f, 0f)
-            lineTo(size.width - stripPx, 0f)
-            lineTo(size.width - stripPx, size.height)
+            lineTo(size.width * 0.9f, 0f)
+            lineTo(size.width * 0.9f, size.height)
             lineTo(0f, size.height)
             close()
         })
@@ -42,14 +40,14 @@ class CutStripShape(private val stripWidth: Dp) : Shape {
  * Shape that cuts a circular hole in the center.
  * Used for album vinyl record effect.
  */
-class HoleShape(private val holeRadius: Dp) : Shape {
+class HoleShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
-        val radiusPx = with(density) { holeRadius.toPx() }
-        val center = size.width / 2f
+        val radiusPx = size.width * 0.17f
+        val center = size.width * 0.5f
 
         // Define the full cover path
         val coverPath = Path().apply {
@@ -82,14 +80,14 @@ class HoleShape(private val holeRadius: Dp) : Shape {
  * Shape that cuts a vertical strip from the left side.
  * Used for notebook/playlist spiral binding effect.
  */
-class NotebookCutShape(private val stripWidth: Dp) : Shape {
+class NotebookCutShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
         return Outline.Generic(Path().apply {
-            val stripPx = with(density) { stripWidth.toPx() }
+            val stripPx = size.width * 0.1f
 
             // Defines the content area, excluding the leftmost strip
             moveTo(stripPx, 0f)
@@ -105,14 +103,14 @@ class NotebookCutShape(private val stripWidth: Dp) : Shape {
  * Shape that cuts the top-left corner.
  * Used for podcast concentric circles effect.
  */
-class CornerCutShape(private val cutSize: Dp) : Shape {
+class CornerCutShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
         return Outline.Generic(Path().apply {
-            val cutPx = with(density) { cutSize.toPx() }
+            val cutPx = size.width / 3f
 
             // Start from top-left corner after the cut
             moveTo(cutPx, 0f)
@@ -137,7 +135,6 @@ class BookSpineShape(private val spineWidth: Dp) : Shape {
     ): Outline {
         return Outline.Generic(Path().apply {
             val spinePx = with(density) { spineWidth.toPx() }
-            val cornerRadius = spinePx / 2f
 
             // Content area excluding the spine strip on the left
             moveTo(spinePx, 0f)

@@ -65,7 +65,7 @@ data class DeviceInfo(
     companion object {
         // Platform-specific implementation needed
         val current = DeviceInfo(
-            model = "KMP Client", manufacturer = "formatBCE", ipAddress = null
+            model = "Mobile Application", manufacturer = "Music Assistant", ipAddress = null
         )
     }
 }
