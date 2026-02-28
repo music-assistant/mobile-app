@@ -235,11 +235,11 @@ private fun ItemChildren(
                             serverUrl = serverUrl,
                             isRowMode = isRowMode,
                             onBack = onBack,
-                            onPlayClick = onPlayItemClick,
                             libraryAction = libraryActions,
                             playlistActions = playlistActions,
                             onToggleViewMode = onToggleViewMode,
-                            providerIconFetcher = providerIconFetcher
+                            providerIconFetcher = providerIconFetcher,
+                            onPlayClick = onPlayItemClick
                         )
                     }
 
@@ -291,7 +291,7 @@ private fun ItemChildren(
                         val chapters = item.chapters
                         if (!chapters.isNullOrEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
-                                SectionHeader("Chapters",)
+                                SectionHeader("Chapters")
                             }
                             chapters.forEach { chapter ->
                                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -393,7 +393,10 @@ private fun ItemChildren(
 
 @Composable
 private fun SectionHeader(title: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
