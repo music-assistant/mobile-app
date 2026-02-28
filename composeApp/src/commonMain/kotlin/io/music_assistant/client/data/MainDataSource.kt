@@ -745,7 +745,9 @@ class MainDataSource(
             localPlayer.value?.let { playerData ->
                 log.i { "Remote command from Control Center: $command" }
                 when (command) {
-                    "play", "pause", "toggle_play_pause" -> playerAction(
+                    "play" -> playerAction(playerData, PlayerAction.Play)
+                    "pause" -> playerAction(playerData, PlayerAction.Pause)
+                    "toggle_play_pause" -> playerAction(
                         playerData,
                         PlayerAction.TogglePlayPause
                     )
@@ -786,7 +788,7 @@ class MainDataSource(
                 localPlayer.value?.let { playerData ->
                     if (playerData.player.isPlaying) {
                         log.i { "Sending pause command to MA server for player ${playerData.player.name}" }
-                        playerAction(playerData, PlayerAction.TogglePlayPause)
+                        playerAction(playerData, PlayerAction.Pause)
                     }
                 }
             }
@@ -856,6 +858,24 @@ class MainDataSource(
                         Request.Player.simpleCommand(
                             playerId = playerId,
                             command = "play_pause"
+                        )
+                    )
+                }
+
+                PlayerAction.Play -> {
+                    apiClient.sendRequest(
+                        Request.Player.simpleCommand(
+                            playerId = playerId,
+                            command = "play"
+                        )
+                    )
+                }
+
+                PlayerAction.Pause -> {
+                    apiClient.sendRequest(
+                        Request.Player.simpleCommand(
+                            playerId = playerId,
+                            command = "pause"
                         )
                     )
                 }
@@ -978,6 +998,12 @@ class MainDataSource(
         return when (action) {
             PlayerAction.TogglePlayPause ->
                 Request.Player.simpleCommand(playerId = data.playerId, command = "play_pause")
+
+            PlayerAction.Play ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "play")
+
+            PlayerAction.Pause ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "pause")
 
             PlayerAction.Next -> {
                 val currentPos = data.queueInfo?.elapsedTime ?: 0.0

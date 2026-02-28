@@ -63,6 +63,26 @@ class LocalPlayerRepository(
                 }
             }
 
+            PlayerAction.Play -> {
+                mediaPlayerController.resumeSink()
+                _localPlayerData.update { current ->
+                    current?.copy(
+                        player = current.player.copy(isPlaying = true),
+                        pendingPlay = true,
+                    )
+                }
+            }
+
+            PlayerAction.Pause -> {
+                mediaPlayerController.pauseSink()
+                _localPlayerData.update { current ->
+                    current?.copy(
+                        player = current.player.copy(isPlaying = false),
+                        pendingPlay = false,
+                    )
+                }
+            }
+
             is PlayerAction.ToggleShuffle -> {
                 updateOptimisticQueueInfo { it.copy(shuffleEnabled = !action.current) }
             }
@@ -206,6 +226,16 @@ class LocalPlayerRepository(
                 PlayerAction.TogglePlayPause -> {
                     val idx = commandQueue.indexOfFirst { it.action is PlayerAction.TogglePlayPause }
                     if (idx >= 0) commandQueue.removeAt(idx) else commandQueue.add(entry)
+                }
+
+                PlayerAction.Play -> {
+                    commandQueue.removeAll { it.action is PlayerAction.Play || it.action is PlayerAction.Pause }
+                    commandQueue.add(entry)
+                }
+
+                PlayerAction.Pause -> {
+                    commandQueue.removeAll { it.action is PlayerAction.Play || it.action is PlayerAction.Pause }
+                    commandQueue.add(entry)
                 }
 
                 is PlayerAction.ToggleShuffle -> {

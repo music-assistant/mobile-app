@@ -4,6 +4,8 @@ import io.music_assistant.client.data.model.server.RepeatMode
 
 sealed interface PlayerAction {
     data object TogglePlayPause : PlayerAction
+    data object Play : PlayerAction
+    data object Pause : PlayerAction
     data object Next : PlayerAction
     data object Previous : PlayerAction
     data object VolumeUp : PlayerAction

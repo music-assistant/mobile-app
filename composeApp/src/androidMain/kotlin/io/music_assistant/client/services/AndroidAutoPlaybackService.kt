@@ -104,13 +104,14 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         dataSource.apiClient.onExternalConsumerActive()
         observeSessionState()
         observeLocalPlayer()
+        ensureNotificationService()
     }
 
     private fun createCallback(): MediaSessionCompat.Callback =
         object : MediaSessionCompat.Callback() {
             override fun onPlay() {
                 currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.TogglePlayPause)
+                    dataSource.playerAction(it, PlayerAction.Play)
                 }
             }
 
@@ -128,7 +129,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
             override fun onPause() {
                 currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.TogglePlayPause)
+                    dataSource.playerAction(it, PlayerAction.Pause)
                 }
             }
 
@@ -293,6 +294,23 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                             pendingIntent
                         )
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Start MainMediaPlaybackService when playback begins.
+     * MainActivity's lifecycle-aware observer won't fire while backgrounded,
+     * so Android Auto must ensure the notification service is running.
+     */
+    private fun ensureNotificationService() {
+        scope.launch {
+            dataSource.isAnythingPlaying.collect { isPlaying ->
+                if (isPlaying) {
+                    val intent = Intent(this@AndroidAutoPlaybackService, MainMediaPlaybackService::class.java)
+                    intent.action = "ACTION_PLAY"
+                    startForegroundService(intent)
                 }
             }
         }

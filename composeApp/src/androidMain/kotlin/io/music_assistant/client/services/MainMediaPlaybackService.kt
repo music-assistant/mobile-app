@@ -121,7 +121,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                     players.value.firstOrNull { it.isLocal }
                         ?.takeIf { it.player.isPlaying }
                         ?.let { localPlayer ->
-                            dataSource.playerAction(localPlayer, PlayerAction.TogglePlayPause)
+                            dataSource.playerAction(localPlayer, PlayerAction.Pause)
                         }
                 }
             }
@@ -204,13 +204,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         object : MediaSessionCompat.Callback() {
             override fun onPlay() {
                 currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.TogglePlayPause)
+                    dataSource.playerAction(it, PlayerAction.Play)
                 }
             }
 
             override fun onPause() {
                 currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.TogglePlayPause)
+                    dataSource.playerAction(it, PlayerAction.Pause)
                 }
             }
 
