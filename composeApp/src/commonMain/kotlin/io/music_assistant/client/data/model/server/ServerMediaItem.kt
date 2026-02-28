@@ -31,7 +31,7 @@ data class ServerMediaItem(
     // various subtypes
     //@SerialName("musicbrainz_id") val musicbrainzId: String? = null,
     // Album
-    //@SerialName("version") val version: String? = null,
+    @SerialName("version") val version: String? = null,
     //@SerialName("external_ids") val externalIds: List<List<String>>? = null,
     //@SerialName("position") val position: Int? = null,
     //@SerialName("year") val year: Int? = null,

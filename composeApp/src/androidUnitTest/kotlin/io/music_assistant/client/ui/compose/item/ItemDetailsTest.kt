@@ -69,6 +69,24 @@ class ItemDetailsTest {
     }
 
     @Test
+    fun `displays album version`() {
+        val artist = AppMediaItemFixtures.artist()
+        val album = AppMediaItemFixtures.album(artist = artist, version = "Best Version")
+
+        composeTestRule.setContent {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    itemState = DataState.Data(album),
+                    albumsState = DataState.NoData(),
+                    playableItemsState = DataState.Data(emptyList())
+                )
+            )
+        }
+
+        composeTestRule.onNodeWithText(album.version!!).assertIsDisplayed()
+    }
+
+    @Test
     fun `displays playlists`() {
         val playlist = AppMediaItemFixtures.playlist()
         val tracks = AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"))

@@ -143,12 +143,26 @@ fun ItemHeader(
                 modifier = Modifier.padding(top = 16.dp)
             )
 
+            if (!(item as? AppMediaItem.Album)?.version.isNullOrBlank()) {
+
+            }
+            (item as? AppMediaItem.Album)?.version?.let {
+                if (it.isNotBlank()) {
+                    Text(
+                        it,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+
             item.subtitle?.let {
                 Text(
                     it,
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 12.dp)
                 )
             }
 
@@ -340,4 +354,10 @@ private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
 @Composable
 private fun PreviewLongTitle() {
     Preview(AppMediaItemFixtures.album(name = "A very long title that is very long oh no it's so long"))
+}
+
+@Preview
+@Composable
+private fun PreviewAlbumVersion() {
+    Preview(AppMediaItemFixtures.album(version = "A Version"))
 }
