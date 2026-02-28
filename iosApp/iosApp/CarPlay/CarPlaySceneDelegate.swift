@@ -16,11 +16,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         // Koin/KMP is initialized when ContentView renders (MainViewController configure block).
         // CarPlay may connect before that, so check the shared flag first.
         if KmpState.isReady {
+            KmpHelper.shared.onExternalConsumerActive()
             setupTemplates()
         } else {
             kmpReadyObserver = NotificationCenter.default.addObserver(
                 forName: KmpState.readyNotification, object: nil, queue: .main
             ) { [weak self] _ in
+                KmpHelper.shared.onExternalConsumerActive()
                 self?.setupTemplates()
                 if let observer = self?.kmpReadyObserver {
                     NotificationCenter.default.removeObserver(observer)
@@ -35,6 +37,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         if let observer = kmpReadyObserver {
             NotificationCenter.default.removeObserver(observer)
             kmpReadyObserver = nil
+        }
+        if KmpState.isReady {
+            KmpHelper.shared.onExternalConsumerInactive()
         }
         print("CP: Disconnected from CarPlay")
     }

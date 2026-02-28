@@ -101,6 +101,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 }
             }
         }
+        dataSource.apiClient.onExternalConsumerActive()
         observeSessionState()
         observeLocalPlayer()
     }
@@ -298,6 +299,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onDestroy() {
+        dataSource.apiClient.onExternalConsumerInactive()
         mediaSessionHelper.release()
         scope.cancel()
         super.onDestroy()

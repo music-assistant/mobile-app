@@ -83,6 +83,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     // --- Lifecycle / background state ---
     var isAnythingPlayingFlow: StateFlow<Boolean>? = null
     private var isInBackground = false
+    private var hasActiveExternalConsumer = false
     private var backgroundPlaybackMonitorJob: Job? = null
 
     private sealed class BackgroundedConnectionInfo {
@@ -107,6 +108,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
         get() = webrtcManager?.sendspinDataChannel
 
+    private val logger = Logger.withTag("ServiceClient")
+
     /**
      * Force a full WebRTC reconnection to get fresh SDP-negotiated data channels.
      * Disconnects cleanly, waits for the signaling server to process, then reconnects.
@@ -116,7 +119,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     fun forceWebRTCReconnect() {
         val currentState = _sessionState.value as? SessionState.Connected.WebRTC ?: return
         val remoteId = currentState.remoteId
-        val logger = Logger.withTag("ServiceClient")
         logger.i { "Forcing WebRTC reconnect for fresh sendspin channel" }
 
         // Transition to Reconnecting (preserves server info, user, auth for seamless recovery)
@@ -166,9 +168,60 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
      * disconnect at that point.
      */
     fun onAppBackground() {
-        val logger = Logger.withTag("ServiceClient")
         isInBackground = true
         logger.i { "App backgrounded" }
+        evaluateBackgroundDisconnect()
+    }
+
+    /**
+     * Called when an external consumer (Android Auto / CarPlay) becomes active.
+     * Keeps the connection alive even when the UI is backgrounded.
+     * If already disconnected due to backgrounding, reconnects from saved info.
+     */
+    fun onExternalConsumerActive() {
+        hasActiveExternalConsumer = true
+        logger.i { "External consumer active" }
+
+        // If we already disconnected for backgrounding, reconnect now
+        if (_sessionState.value is SessionState.Disconnected.Backgrounded) {
+            val savedInfo = backgroundedConnectionInfo ?: return
+            backgroundedConnectionInfo = null
+            logger.i { "Reconnecting for external consumer (was backgrounded)" }
+            when (savedInfo) {
+                is BackgroundedConnectionInfo.Direct -> {
+                    val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
+                    connect(connInfo)
+                }
+                is BackgroundedConnectionInfo.WebRTC -> {
+                    connectWebRTC(savedInfo.remoteId)
+                }
+            }
+        }
+    }
+
+    /**
+     * Called when an external consumer (Android Auto / CarPlay) becomes inactive.
+     * Re-evaluates whether a background disconnect is needed.
+     */
+    fun onExternalConsumerInactive() {
+        hasActiveExternalConsumer = false
+        logger.i { "External consumer inactive" }
+
+        if (isInBackground) {
+            evaluateBackgroundDisconnect()
+        }
+    }
+
+    /**
+     * Evaluates whether to disconnect due to backgrounding.
+     * Skipped when an external consumer (Android Auto / CarPlay) is active.
+     */
+    private fun evaluateBackgroundDisconnect() {
+
+        if (hasActiveExternalConsumer) {
+            logger.i { "External consumer active — skipping background disconnect" }
+            return
+        }
 
         val currentState = _sessionState.value
 
@@ -183,7 +236,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             backgroundPlaybackMonitorJob?.cancel()
             backgroundPlaybackMonitorJob = launch {
                 isAnythingPlayingFlow?.collect { isPlaying ->
-                    if (!isPlaying && isInBackground) {
+                    if (!isPlaying && isInBackground && !hasActiveExternalConsumer) {
                         logger.i { "Playback stopped while backgrounded — disconnecting now" }
                         performBackgroundDisconnect()
                         // Stop monitoring after disconnect (coroutine is still alive until next suspension)
@@ -198,7 +251,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     }
 
     private fun performBackgroundDisconnect() {
-        val logger = Logger.withTag("ServiceClient")
         val currentState = _sessionState.value
 
         // Save connection info for foreground reconnect
@@ -223,7 +275,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
      * If we disconnected for backgrounding, reconnect immediately.
      */
     fun onAppForeground() {
-        val logger = Logger.withTag("ServiceClient")
         isInBackground = false
         backgroundPlaybackMonitorJob?.cancel()
         backgroundPlaybackMonitorJob = null
@@ -327,7 +378,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             is SessionState.Reconnecting -> {
                 // Don't change state during reconnection - stay in Reconnecting!
                 // This prevents MainDataSource from calling stopSendspin()
-                Logger.withTag("ServiceClient")
+                logger
                     .i { "🔄 RECONNECT ATTEMPT - staying in Reconnecting state (no stopSendspin!)" }
                 launch {
                     try {
@@ -379,7 +430,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         // 1. Trigger navigation to Settings (lost auth)
                         // 2. Clear stale data in MainDataSource
                         // 3. Show Loading screen on next attempt
-                        Logger.withTag("ServiceClient")
+                        logger
                             .w { "Reconnect attempt failed (staying in Reconnecting): ${e.message}" }
                         // Don't update state - stay in Reconnecting!
                     }
@@ -452,7 +503,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             is SessionState.Connected -> return
 
             is SessionState.Reconnecting.WebRTC -> {
-                Logger.withTag("ServiceClient")
+                logger
                     .i { "🔄 RECONNECT ATTEMPT (WebRTC) - staying in Reconnecting state" }
                 launch {
                     try {
@@ -488,7 +539,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                     }
 
                                     is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
-                                        Logger.withTag("ServiceClient")
+                                        logger
                                             .w { "WebRTC reconnect failed: ${state.error}" }
                                     }
 
@@ -497,7 +548,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                             }
                         }
                     } catch (e: Exception) {
-                        Logger.withTag("ServiceClient")
+                        logger
                             .w { "WebRTC reconnect attempt failed: ${e.message}" }
                     }
                 }
@@ -505,7 +556,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
             is SessionState.Reconnecting.Direct -> {
                 // User switched modes during reconnection - not supported
-                Logger.withTag("ServiceClient")
+                logger
                     .w { "Cannot switch to WebRTC during Direct reconnection" }
                 return
             }
@@ -566,7 +617,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private suspend fun getOrCreateWebRTCManager(): WebRTCConnectionManager {
         // Clean up old manager completely before creating new one
         webrtcManager?.let { oldManager ->
-            Logger.withTag("ServiceClient")
+            logger
                 .d { "🧹 Cleaning up old WebRTC manager [${oldManager.hashCode()}]" }
             webrtcListeningJob?.cancel()
             webrtcListeningJob = null
@@ -574,17 +625,17 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             webrtcStateMonitorJob = null
             webrtcInitialMonitorJob?.cancel()
             webrtcInitialMonitorJob = null
-            Logger.withTag("ServiceClient")
+            logger
                 .d { "🧹 Disconnecting old manager [${oldManager.hashCode()}]" }
             oldManager.disconnect()
-            Logger.withTag("ServiceClient")
+            logger
                 .d { "🧹 Old manager [${oldManager.hashCode()}] cleaned up" }
         }
 
         val signalingClient = SignalingClient(webrtcHttpClient, this)
         val manager = WebRTCConnectionManager(signalingClient, this)
         webrtcManager = manager
-        Logger.withTag("ServiceClient").d { "✨ Created new WebRTC manager [${manager.hashCode()}]" }
+        logger.d { "✨ Created new WebRTC manager [${manager.hashCode()}]" }
         return manager
     }
 
@@ -599,7 +650,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 listenOnSession(WebRTCConnectionSession(manager))
             } catch (e: Exception) {
                 // Don't trigger reconnection here - the state monitor will handle it
-                Logger.withTag("ServiceClient")
+                logger
                     .d { "WebRTC message listener ended: ${e.message}" }
             }
         }
@@ -609,17 +660,17 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             manager.connectionState.collect { connectionState ->
                 when (connectionState) {
                     is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
-                        Logger.withTag("ServiceClient")
+                        logger
                             .w { "🚨 MONITOR[${manager.hashCode()}] triggering reconnection for error: ${connectionState.error}" }
-                        Logger.withTag("ServiceClient")
+                        logger
                             .w { "🚨 ERROR: ${connectionState.error}" }
                         val currentState = _sessionState.value
-                        Logger.withTag("ServiceClient")
+                        logger
                             .w { "📊 STATE: ${currentState::class.simpleName}" }
 
                         // Skip reconnection if user manually disconnected
                         if (currentState is SessionState.Disconnected.ByUser) {
-                            Logger.withTag("ServiceClient")
+                            logger
                                 .w { "🛑 SKIP: User disconnected" }
                             return@collect
                         }
@@ -647,16 +698,16 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         if (info != null) {
                             // Check if reconnection already running
                             if (webrtcReconnectJob?.isActive == true) {
-                                Logger.withTag("ServiceClient")
+                                logger
                                     .w { "🛑 SKIP: Reconnection already in progress" }
                                 return@collect
                             }
 
                             val source =
                                 if (currentState is SessionState.Connected.WebRTC) "current state" else "cache"
-                            Logger.withTag("ServiceClient")
+                            logger
                                 .w { "🔄 RECONNECT: Starting (from $source)" }
-                            Logger.withTag("ServiceClient")
+                            logger
                                 .w { "WebRTC error: ${connectionState.error}. Will auto-reconnect..." }
 
                             // Enter Reconnecting state
@@ -687,7 +738,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                 )
                             }
                         } else {
-                            Logger.withTag("ServiceClient")
+                            logger
                                 .w { "🛑 SKIP: No connection info in state or cache" }
                         }
                     }
@@ -810,7 +861,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 }
             }
             settings.setTokenForServer(serverIdentifier, null)
-            Logger.withTag("ServiceClient").d { "Cleared token for server: $serverIdentifier" }
+            logger.d { "Cleared token for server: $serverIdentifier" }
         }
 
         if (_sessionState.value !is SessionState.Connected) {
@@ -885,7 +936,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         }
                     }
                     settings.setTokenForServer(serverIdentifier, token)
-                    Logger.withTag("ServiceClient")
+                    logger
                         .d { "Saved token for server: $serverIdentifier" }
                 }
 
@@ -929,7 +980,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         authProcessState: AuthProcessState,
         wasAutoLogin: Boolean
     ) {
-        Logger.withTag("ServiceClient")
+        logger
             .i { "🔄 AUTO-RECONNECT WebRTC started for ${remoteId.rawId}" }
 
         runReconnectionLoop(
@@ -937,7 +988,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             maxAttempts = 5,
             waitAfterConnectMs = 30_000L,
             shouldStop = {
-                isInBackground || _sessionState.value.let {
+                (isInBackground && !hasActiveExternalConsumer) || _sessionState.value.let {
                     it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting.WebRTC
                 }
             },
@@ -956,7 +1007,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 try {
                     connectWebRTC(remoteId)
                 } catch (e: Exception) {
-                    Logger.withTag("ServiceClient")
+                    logger
                         .w(e) { "WebRTC reconnect attempt ${attempt + 1} threw exception" }
                 }
             },
@@ -967,23 +1018,23 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
         // WebRTC-specific: re-authenticate with saved token after successful reconnection
         if (_sessionState.value is SessionState.Connected.WebRTC) {
-            Logger.withTag("ServiceClient")
+            logger
                 .i { "✅ WebRTC reconnection successful! Re-authenticating..." }
             launch {
                 val serverIdentifier = settings.getWebRTCServerIdentifier(remoteId.rawId)
                 val token = settings.getTokenForServer(serverIdentifier)
 
                 if (token != null) {
-                    Logger.withTag("ServiceClient")
+                    logger
                         .i { "🔐 Re-authenticating after WebRTC reconnection with saved token" }
                     authorize(token, isAutoLogin = true)
                 } else {
-                    Logger.withTag("ServiceClient")
+                    logger
                         .w { "⚠️ No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
                 }
             }
         }
-        Logger.withTag("ServiceClient").i { "🏁 autoReconnectWebRTC() returning" }
+        logger.i { "🏁 autoReconnectWebRTC() returning" }
     }
 
     /**
@@ -1007,7 +1058,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 }
             }
             settings.setTokenForServer(serverIdentifier, null)
-            Logger.withTag("ServiceClient")
+            logger
                 .d { "Cleared token for server: $serverIdentifier due to auth failure" }
         }
     }
@@ -1028,7 +1079,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 Event(message).event()?.let { _eventsFlow.emit(it) }
             }
 
-            else -> Logger.withTag("ServiceClient").i { "Unknown message: $message" }
+            else -> logger.i { "Unknown message: $message" }
         }
     }
 
@@ -1045,7 +1096,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         try {
             listenOnSession(session)
         } catch (e: Exception) {
-            Logger.withTag("ServiceClient").w { "WebSocket error: ${e.message}" }
+            logger.w { "WebSocket error: ${e.message}" }
         }
 
         // Connection ended (normal close or error) - check if reconnection is needed.
@@ -1053,7 +1104,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         if (state is SessionState.Disconnected.ByUser) return
         if (state !is SessionState.Connected.Direct) return
 
-        Logger.withTag("ServiceClient").w { "Connection lost. Will auto-reconnect..." }
+        logger.w { "Connection lost. Will auto-reconnect..." }
         val connectionInfo = state.connectionInfo
         val serverInfo = state.serverInfo
         val user = state.user
@@ -1077,7 +1128,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             maxAttempts = 5,
             waitAfterConnectMs = 2000L,
             shouldStop = {
-                isInBackground || _sessionState.value.let {
+                (isInBackground && !hasActiveExternalConsumer) || _sessionState.value.let {
                     it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting
                 }
             },
@@ -1119,7 +1170,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
                 state.sendMessage(jsonObject)
             } catch (e: Exception) {
-                Logger.withTag("ServiceClient").e(e) { "sendRequest FAILED cmd=${request.command}" }
+                logger.e(e) { "sendRequest FAILED cmd=${request.command}" }
                 rpcEngine.removeCallback(request.messageId)
                 continuation.resume(Result.failure(e))
                 disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
@@ -1136,8 +1187,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         launch {
             // Guard: if we're disconnecting for background but the app already returned
             // to foreground (rapid background/foreground), abort the disconnect.
-            if (newState is SessionState.Disconnected.Backgrounded && !isInBackground) {
-                Logger.withTag("ServiceClient")
+            if (newState is SessionState.Disconnected.Backgrounded && (!isInBackground || hasActiveExternalConsumer)) {
+                logger
                     .i { "Backgrounded disconnect aborted — app already foregrounded" }
                 return@launch
             }

@@ -31,6 +31,11 @@ object KmpHelper : KoinComponent {
         return (serviceClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
     }
 
+    // MARK: - External Consumer Lifecycle (CarPlay)
+
+    fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
+    fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
+
     // MARK: - Swift Helpers for Data Fetching
     
     fun fetchRecommendations(completion: (List<AppMediaItem>) -> Unit) {
