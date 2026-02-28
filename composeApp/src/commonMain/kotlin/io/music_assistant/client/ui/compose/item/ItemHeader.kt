@@ -86,6 +86,19 @@ fun ItemHeader(
     Column(modifier = Modifier.fillMaxWidth()) {
         ItemTopBar(onBack, isRowMode, onToggleViewMode)
 
+        val image = @Composable {
+            Image(
+                item = item,
+                serverUrl = serverUrl,
+                providerIconFetcher = providerIconFetcher,
+            )
+        }
+
+        val textAndControls = @Composable { textAlign: TextAlign ->
+            ItemText(item, textAlign)
+            ItemControls(onPlayClick, item, libraryAction, playlistActions)
+        }
+
         val windowSizeClass =
             currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
         if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)) {
@@ -93,15 +106,9 @@ fun ItemHeader(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    item = item,
-                    serverUrl = serverUrl,
-                    providerIconFetcher = providerIconFetcher,
-                )
-
+                image()
                 Column(modifier = Modifier.padding(start = 32.dp)) {
-                    ItemText(item, TextAlign.Start)
-                    ItemControls(onPlayClick, item, libraryAction, playlistActions)
+                    textAndControls(TextAlign.Start)
                 }
             }
         } else {
@@ -109,14 +116,8 @@ fun ItemHeader(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    item = item,
-                    serverUrl = serverUrl,
-                    providerIconFetcher = providerIconFetcher,
-                )
-
-                ItemText(item, TextAlign.Center)
-                ItemControls(onPlayClick, item, libraryAction, playlistActions)
+                image()
+                textAndControls(TextAlign.Center)
             }
         }
     }
