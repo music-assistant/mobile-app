@@ -16,24 +16,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.AddToQueue
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlaylistAddCircle
-import androidx.compose.material.icons.filled.QueuePlayNext
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SplitButtonDefaults.LeadingButton
-import androidx.compose.material3.SplitButtonDefaults.TrailingButton
-import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -48,8 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -102,8 +91,8 @@ fun ItemHeader(
         }
 
         val textAndControls = @Composable { textAlign: TextAlign ->
-            ItemText(item, textAlign)
-            ItemControls(onPlayClick, item)
+            ItemText(item, textAlign, Modifier.padding(top = 16.dp))
+            ItemPlayButton(onPlayClick, item, Modifier.padding(top = 16.dp))
         }
 
         val windowSizeClass =
@@ -277,62 +266,23 @@ private fun ItemOverflow(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun ItemControls(
-    onPlayClick: (QueueOption, Boolean) -> Unit,
-    item: AppMediaItem
+private fun ItemText(
+    item: AppMediaItem, textAlign: TextAlign, modifier: Modifier
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 16.dp)
-    ) {
-        SplitButtonLayout(
-            leadingButton = {
-                LeadingButton(
-                    modifier = Modifier.semantics { contentDescription = "Play now" },
-                    onClick = { onPlayClick(QueueOption.REPLACE, false) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null
-                        )
-                        Text(modifier = Modifier.padding(start = 8.dp), text = "Play")
-                    }
-                }
-            },
-            trailingButton = {
-                PlayOverflow(
-                    item = item,
-                    onPlayClick = onPlayClick
-                ) { onClick ->
-                    TrailingButton(
-                        onClick = onClick
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ExpandMore,
-                            contentDescription = null
-                        )
-                    }
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun ItemText(item: AppMediaItem, textAlign: TextAlign) {
     val horizontalAlignment = if (textAlign == TextAlign.Center) {
         Alignment.CenterHorizontally
     } else {
         Alignment.Start
     }
 
-    Column(horizontalAlignment = horizontalAlignment) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = horizontalAlignment
+    ) {
         Text(
             item.name,
             textAlign = textAlign,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(top = 16.dp)
+            style = MaterialTheme.typography.titleLarge
         )
 
         (item as? AppMediaItem.Album)?.version?.let {
@@ -402,49 +352,6 @@ private fun Image(
                 .size(24.dp)
         )
     }
-}
-
-@Composable
-private fun PlayOverflow(
-    item: AppMediaItem,
-    onPlayClick: (QueueOption, Boolean) -> Unit,
-    button: @Composable (() -> Unit) -> Unit
-) {
-    OverflowMenu(
-        options = buildList {
-            add(
-                OverflowMenuOption(
-                    title = "Insert next and play",
-                    icon = Icons.Default.PlaylistAddCircle
-                ) { onPlayClick(QueueOption.PLAY, false) })
-            add(
-                OverflowMenuOption(
-                    title = "Insert next",
-                    icon = Icons.Default.QueuePlayNext
-                ) {
-                    onPlayClick(QueueOption.NEXT, false)
-                })
-            add(
-                OverflowMenuOption(
-                    title = "Add to bottom",
-                    icon = Icons.Default.AddToQueue
-                ) {
-                    onPlayClick(
-                        QueueOption.ADD, false
-                    )
-                })
-            if (item.canStartRadio) {
-                add(
-                    OverflowMenuOption(
-                        title = "Start radio",
-                        icon = Icons.Default.Radio
-                    ) {
-                        onPlayClick(QueueOption.REPLACE, true)
-                    })
-            }
-        },
-        buttonContent = button
-    )
 }
 
 @Preview
