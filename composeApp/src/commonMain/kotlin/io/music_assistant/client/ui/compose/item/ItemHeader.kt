@@ -84,7 +84,14 @@ fun ItemHeader(
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> }
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        ItemTopBar(onBack, isRowMode, onToggleViewMode)
+        ItemTopBar(
+            item = item,
+            isRowMode = isRowMode,
+            onBack = onBack,
+            onToggleViewMode = onToggleViewMode,
+            libraryActions = libraryAction,
+            playlistActions = playlistActions
+        )
 
         val image = @Composable {
             Image(
@@ -96,7 +103,7 @@ fun ItemHeader(
 
         val textAndControls = @Composable { textAlign: TextAlign ->
             ItemText(item, textAlign)
-            ItemControls(onPlayClick, item, libraryAction, playlistActions)
+            ItemControls(onPlayClick, item)
         }
 
         val windowSizeClass =
@@ -125,9 +132,12 @@ fun ItemHeader(
 
 @Composable
 private fun ItemTopBar(
-    onBack: () -> Unit,
+    item: AppMediaItem,
     isRowMode: Boolean,
-    onToggleViewMode: () -> Unit
+    onBack: () -> Unit,
+    onToggleViewMode: () -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions?,
+    playlistActions: ActionsViewModel.PlaylistActions?
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -138,19 +148,131 @@ private fun ItemTopBar(
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
         }
 
-        OverflowMenu(
-            options = listOf(
+        ItemOverflow(
+            item = item,
+            isRowMode = isRowMode,
+            onToggleViewMode = onToggleViewMode,
+            libraryActions = libraryActions,
+            playlistActions = playlistActions
+        )
+    }
+}
+
+@Composable
+private fun ItemOverflow(
+    item: AppMediaItem,
+    isRowMode: Boolean,
+    onToggleViewMode: () -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions?,
+    playlistActions: ActionsViewModel.PlaylistActions?,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var playlists by remember { mutableStateOf<List<AppMediaItem.Playlist>>(emptyList()) }
+    var isLoadingPlaylists by remember { mutableStateOf(false) }
+
+    OverflowMenu(
+        options = buildList {
+            add(
+                OverflowMenuOption(
+                    title =
+                        if (item.isInLibrary) "Remove from library"
+                        else "Add to library",
+                    icon =
+                        if (item.isInLibrary) TablerIcons.FolderMinus
+                        else TablerIcons.FolderPlus
+                ) { libraryActions?.onLibraryClick(item) })
+            if (item.isInLibrary) {
+                add(
+                    OverflowMenuOption(
+                        title =
+                            if (item.favorite == true) "Unfavorite"
+                            else "Favorite",
+                        icon =
+                            if (item.favorite == true) TablerIcons.HeartBroken
+                            else TablerIcons.Heart
+                    ) { libraryActions?.onFavoriteClick(item) })
+            }
+
+            playlistActions?.let {
+                add(
+                    OverflowMenuOption(
+                        title = "Add to Playlist",
+                        icon = Icons.AutoMirrored.Filled.PlaylistAdd
+                    ) {
+                        showPlaylistDialog = true
+                        // Load playlists when dialog opens
+                        coroutineScope.launch {
+                            isLoadingPlaylists = true
+                            playlists = it.onLoadPlaylists()
+                            isLoadingPlaylists = false
+                        }
+                    })
+            }
+
+            add(
                 OverflowMenuOption(
                     title = "Toggle view mode",
                     icon = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                     onClick = onToggleViewMode
                 )
             )
-        ) { onClick ->
-            IconButton(onClick = onClick) {
-                Icon(imageVector = Icons.Default.MoreVert, null)
-            }
         }
+    ) { onClick ->
+        IconButton(onClick = onClick) {
+            Icon(imageVector = Icons.Default.MoreVert, null)
+        }
+    }
+
+    if (showPlaylistDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showPlaylistDialog = false
+                playlists = emptyList()
+                isLoadingPlaylists = false
+            },
+            title = { Text("Add to Playlist") },
+            text = {
+                if (isLoadingPlaylists) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (playlists.isEmpty()) {
+                    Text("No editable playlists available")
+                } else {
+                    Column {
+                        playlists.forEach { playlist ->
+                            TextButton(
+                                onClick = {
+                                    playlistActions?.onAddToPlaylist(item, playlist)
+                                    showPlaylistDialog = false
+                                    playlists = emptyList()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = playlist.name,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    showPlaylistDialog = false
+                    playlists = emptyList()
+                    isLoadingPlaylists = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -158,9 +280,7 @@ private fun ItemTopBar(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun ItemControls(
     onPlayClick: (QueueOption, Boolean) -> Unit,
-    item: AppMediaItem,
-    libraryAction: ActionsViewModel.LibraryActions?,
-    playlistActions: ActionsViewModel.PlaylistActions?
+    item: AppMediaItem
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -181,11 +301,9 @@ private fun ItemControls(
                 }
             },
             trailingButton = {
-                ItemOverflowMenu(
+                PlayOverflow(
                     item = item,
-                    onPlayClick = onPlayClick,
-                    libraryActions = libraryAction,
-                    playlistActions = playlistActions
+                    onPlayClick = onPlayClick
                 ) { onClick ->
                     TrailingButton(
                         onClick = onClick
@@ -287,18 +405,11 @@ private fun Image(
 }
 
 @Composable
-private fun ItemOverflowMenu(
+private fun PlayOverflow(
     item: AppMediaItem,
     onPlayClick: (QueueOption, Boolean) -> Unit,
-    libraryActions: ActionsViewModel.LibraryActions?,
-    playlistActions: ActionsViewModel.PlaylistActions?,
     button: @Composable (() -> Unit) -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    var playlists by remember { mutableStateOf<List<AppMediaItem.Playlist>>(emptyList()) }
-    var isLoadingPlaylists by remember { mutableStateOf(false) }
-
     OverflowMenu(
         options = buildList {
             add(
@@ -331,96 +442,9 @@ private fun ItemOverflowMenu(
                         onPlayClick(QueueOption.REPLACE, true)
                     })
             }
-            add(
-                OverflowMenuOption(
-                    title =
-                        if (item.isInLibrary) "Remove from library"
-                        else "Add to library",
-                    icon =
-                        if (item.isInLibrary) TablerIcons.FolderMinus
-                        else TablerIcons.FolderPlus
-                ) { libraryActions?.onLibraryClick(item) })
-            if (item.isInLibrary) {
-                add(
-                    OverflowMenuOption(
-                        title =
-                            if (item.favorite == true) "Unfavorite"
-                            else "Favorite",
-                        icon =
-                            if (item.favorite == true) TablerIcons.HeartBroken
-                            else TablerIcons.Heart
-                    ) { libraryActions?.onFavoriteClick(item) })
-            }
-
-            playlistActions?.let {
-                add(
-                    OverflowMenuOption(
-                        title = "Add to Playlist",
-                        icon = Icons.AutoMirrored.Filled.PlaylistAdd
-                    ) {
-                        showPlaylistDialog = true
-                        // Load playlists when dialog opens
-                        coroutineScope.launch {
-                            isLoadingPlaylists = true
-                            playlists = it.onLoadPlaylists()
-                            isLoadingPlaylists = false
-                        }
-                    })
-            }
         },
         buttonContent = button
     )
-
-    if (showPlaylistDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showPlaylistDialog = false
-                playlists = emptyList()
-                isLoadingPlaylists = false
-            },
-            title = { Text("Add to Playlist") },
-            text = {
-                if (isLoadingPlaylists) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else if (playlists.isEmpty()) {
-                    Text("No editable playlists available")
-                } else {
-                    Column {
-                        playlists.forEach { playlist ->
-                            TextButton(
-                                onClick = {
-                                    playlistActions?.onAddToPlaylist(item, playlist)
-                                    showPlaylistDialog = false
-                                    playlists = emptyList()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = playlist.name,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = {
-                    showPlaylistDialog = false
-                    playlists = emptyList()
-                    isLoadingPlaylists = false
-                }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
 
 @Preview
