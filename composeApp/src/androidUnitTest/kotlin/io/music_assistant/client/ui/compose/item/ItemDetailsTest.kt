@@ -11,6 +11,8 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.support.inScrollable
+import io.music_assistant.client.utils.support.MockFunction0
+import io.music_assistant.client.utils.support.MockFunction2
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -161,13 +163,6 @@ class ItemDetailsTest {
 
     @Test
     fun `can play any item`() {
-        var calledQueueOption: QueueOption?
-        var calledRadio: Boolean?
-        val onPlayClick: (QueueOption, Boolean) -> Unit = { queueOption, radio ->
-            calledQueueOption = queueOption
-            calledRadio = radio
-        }
-
         val state = mutableStateOf(
             ItemDetailsViewModel.State(
                 itemState = DataState.Loading(),
@@ -175,6 +170,8 @@ class ItemDetailsTest {
                 playableItemsState = DataState.Loading()
             )
         )
+
+        val onPlayClick = MockFunction2<QueueOption, Boolean>()
 
         composeTestRule.setContent {
             ItemDetails(
@@ -190,8 +187,7 @@ class ItemDetailsTest {
             AppMediaItemFixtures.podcast(),
             AppMediaItemFixtures.audiobook()
         ).forEach {
-            calledQueueOption = null
-            calledRadio = null
+            onPlayClick.reset()
 
             state.value = ItemDetailsViewModel.State(
                 itemState = DataState.Data(it),
@@ -201,19 +197,15 @@ class ItemDetailsTest {
 
             composeTestRule.inScrollable("LazyVerticalGrid") {
                 onNode(hasContentDescription("Play now")).performClick()
-                assertEquals(calledQueueOption, QueueOption.REPLACE)
-                assertEquals(calledRadio, false)
+                assertEquals(onPlayClick.arg1, QueueOption.REPLACE)
+                assertEquals(onPlayClick.arg2, false)
             }
         }
     }
 
     @Test
     fun `can return from any item`() {
-        var onBackCalled = false
-        val onBack: () -> Unit = {
-            onBackCalled = true
-        }
-
+        val onBack = MockFunction0()
         val state = mutableStateOf(
             ItemDetailsViewModel.State(
                 itemState = DataState.Loading(),
@@ -236,7 +228,7 @@ class ItemDetailsTest {
             AppMediaItemFixtures.podcast(),
             AppMediaItemFixtures.audiobook()
         ).forEach {
-            onBackCalled = false
+            onBack.reset()
 
             state.value = ItemDetailsViewModel.State(
                 itemState = DataState.Data(it),
@@ -246,7 +238,7 @@ class ItemDetailsTest {
 
             composeTestRule.inScrollable("LazyVerticalGrid") {
                 onNode(hasContentDescription("Back")).performClick()
-                assertEquals(onBackCalled, true)
+                assertEquals(onBack.wasCalled, true)
             }
         }
     }

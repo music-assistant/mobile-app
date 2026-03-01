@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.utils.support.MockFunction2
 import org.junit.Rule
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -20,14 +21,8 @@ class ItemPlayButtonTest {
 
     @Test
     fun `clicking start radio starts radio`() {
-        var calledQueueOption: QueueOption? = null
-        var calledRadio: Boolean? = null
-        val onPlayClick: (QueueOption, Boolean) -> Unit = { queueOption, radio ->
-            calledQueueOption = queueOption
-            calledRadio = radio
-        }
-
         val item = AppMediaItemFixtures.artist()
+        val onPlayClick = MockFunction2<QueueOption, Boolean>()
 
         composeTestRule.setContent {
             ItemPlayButton(item = item, onPlayClick = onPlayClick)
@@ -35,7 +30,7 @@ class ItemPlayButtonTest {
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
         composeTestRule.onNodeWithText("Start radio").performClick()
-        assertEquals(calledQueueOption, QueueOption.REPLACE)
-        assertEquals(calledRadio, true)
+        assertEquals(onPlayClick.arg1, QueueOption.REPLACE)
+        assertEquals(onPlayClick.arg2, true)
     }
 }
