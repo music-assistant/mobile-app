@@ -76,19 +76,19 @@ private fun PlayOverflow(
         options = buildList {
             add(
                 OverflowMenuOption(
-                    title = "Insert next and play",
+                    title = "Play now",
                     icon = Icons.Default.PlaylistAddCircle
                 ) { onPlayClick(QueueOption.PLAY, false) })
             add(
                 OverflowMenuOption(
-                    title = "Insert next",
+                    title = "Play next",
                     icon = Icons.Default.QueuePlayNext
                 ) {
                     onPlayClick(QueueOption.NEXT, false)
                 })
             add(
                 OverflowMenuOption(
-                    title = "Add to bottom",
+                    title = "Add to queue",
                     icon = Icons.Default.AddToQueue
                 ) {
                     onPlayClick(
