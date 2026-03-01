@@ -92,7 +92,11 @@ fun ItemHeader(
 
         val textAndControls = @Composable { textAlign: TextAlign ->
             ItemText(item, textAlign, Modifier.padding(top = 16.dp))
-            ItemPlayButton(onPlayClick, item, Modifier.padding(top = 16.dp))
+            ItemPlayButton(
+                item,
+                onPlayClick = onPlayClick,
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
 
         val windowSizeClass =

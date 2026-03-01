@@ -29,9 +29,9 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun ItemPlayButton(
-    onPlayClick: (QueueOption, Boolean) -> Unit,
     item: AppMediaItem,
-    modifier: Modifier
+    onPlayClick: (QueueOption, Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     SplitButtonLayout(
         modifier = modifier,
@@ -54,11 +54,11 @@ fun ItemPlayButton(
                 onPlayClick = onPlayClick
             ) { onClick ->
                 TrailingButton(
-                    onClick = onClick
+                    onClick = onClick,
                 ) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,
-                        contentDescription = null
+                        contentDescription = "Play options"
                     )
                 }
             }
