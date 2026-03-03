@@ -10,8 +10,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.conditional
@@ -145,6 +148,7 @@ internal fun PlayersPager(
                     hasNoChildren = player.groupChildren.isEmpty(),
                     hasNoBoundChildren = player.groupChildren.none { it.isBound },
                     isLocalPlayer = isLocalPlayer,
+                    sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
                     onShowGroup = { groupDialogPlayerId = player.player.id }
                 )
 
@@ -503,22 +507,37 @@ private fun PlayerNameRow(
     hasNoChildren: Boolean,
     hasNoBoundChildren: Boolean,
     isLocalPlayer: Boolean,
+    sendspinState: SendspinState?,
     onShowGroup: () -> Unit
 ) {
+    val dotColor = sendspinState?.toDotColor()
+
     Box(
         modifier = Modifier.fillMaxWidth()
     ) {
         val playerName: @Composable (Color) -> Unit = { textColor ->
-            Text(
+            Row(
                 modifier = Modifier.align(Alignment.Center),
-                text = playerName + (if (isLocalPlayer) " (local)" else ""),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Medium,
-                color = textColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = playerName + (if (isLocalPlayer) " (local)" else ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (dotColor != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(dotColor, CircleShape)
+                    )
+                }
+            }
         }
 
         when {
@@ -563,4 +582,13 @@ private fun PlayerNameRow(
 //                        )
 //                    )
     }
+}
+
+private fun SendspinState.toDotColor(): Color? = when (this) {
+    is SendspinState.Synchronized, is SendspinState.Ready,
+    is SendspinState.Buffering -> Color(0xFF4CAF50) // Green
+    is SendspinState.Connecting, is SendspinState.Authenticating,
+    is SendspinState.Handshaking, is SendspinState.Reconnecting -> Color(0xFFFF9800) // Orange
+    is SendspinState.Error -> Color(0xFFF44336) // Red
+    is SendspinState.Idle -> null // No dot
 }

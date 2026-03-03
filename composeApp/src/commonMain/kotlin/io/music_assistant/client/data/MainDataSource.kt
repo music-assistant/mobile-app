@@ -33,7 +33,7 @@ import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClient
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
-import io.music_assistant.client.player.sendspin.SendspinConnectionState
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.player.sendspin.SendspinError
 import io.music_assistant.client.player.sendspin.WebRTCSendspinChannelExhausted
 import io.music_assistant.client.settings.SettingsRepository
@@ -42,6 +42,7 @@ import io.music_assistant.client.ui.compose.common.StaleReason
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconModel
+import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.currentTimeMillis
@@ -55,6 +56,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -65,6 +67,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(FlowPreview::class)
@@ -79,6 +83,11 @@ class MainDataSource(
     private val log = Logger.withTag("MainDataSource")
 
     private var sendspinClient: SendspinClient? = null
+    private var sendspinMonitorJobs = mutableListOf<Job>()
+    private val sendspinMutex = Mutex()
+
+    private val _sendspinState = MutableStateFlow<SendspinState?>(null)
+    val sendspinState: StateFlow<SendspinState?> = _sendspinState.asStateFlow()
 
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
@@ -301,11 +310,11 @@ class MainDataSource(
                                             }
 
                                             // Reinit Sendspin — safe because initSendspinIfEnabled()
-                                            // returns early if already Connected or actively retrying.
+                                            // returns early if already Connected/Reconnecting.
                                             // Needed because:
                                             //  - WebRTC: new data channels were created on reconnect;
                                             //    old SendspinClient holds a dead channel (Idle state).
-                                            //  - WebSocket: ReconnectionCoordinator may have given up;
+                                            //  - WebSocket: reconnection may have given up;
                                             //    server removes the player when the socket closes.
                                             sendspinClientFactory.onFreshWebRTCConnection()
                                             launch { initSendspinIfEnabled() }
@@ -332,7 +341,9 @@ class MainDataSource(
                                     log.w { "Connected while already in Data state - refreshing anyway" }
                                     updateProvidersManifests()
                                     updatePlayersAndQueues()
-                                    // Don't reinit Sendspin if already running
+                                    // Safety net: reinit Sendspin if it's not already connected
+                                    sendspinClientFactory.onFreshWebRTCConnection()
+                                    launch { initSendspinIfEnabled() }
                                 }
 
                                 is DataState.Loading, is DataState.NoData, is DataState.Error -> {
@@ -345,9 +356,27 @@ class MainDataSource(
                                 }
                             }
                         } else {
-                            // Not authenticated yet - clear data
-                            stopSendspin()
-                            clearAllData()
+                            // Not authenticated yet
+                            val connState = sessionState.dataConnectionState
+                            val isTerminalAuthFailure =
+                                connState is DataConnectionState.AwaitingAuth &&
+                                        (connState.authProcessState is AuthProcessState.LoggedOut ||
+                                                connState.authProcessState is AuthProcessState.Failed)
+
+                            if (isTerminalAuthFailure) {
+                                // Auth permanently failed — stop everything
+                                log.w { "[SS-DIAG] Terminal auth failure (${connState}) — stopping sendspin" }
+                                stopSendspin()
+                                clearAllData()
+                            } else {
+                                // Transient: AwaitingServerInfo or auth in progress.
+                                // Keep sendspin alive — it will be reinitialized when auth completes.
+                                // Preserve stale data so reconnection recovery works.
+                                log.w { "[SS-DIAG] Transient non-auth state ($connState) — keeping sendspin alive" }
+                                if (_serverPlayers.value !is DataState.Stale) {
+                                    clearAllData()
+                                }
+                            }
                             updateJob?.cancel()
                             updateJob = null
                             watchJob?.cancel()
@@ -661,11 +690,13 @@ class MainDataSource(
      * Initialize Sendspin player if enabled in settings.
      * Safe for background: MainDataSource is singleton held by foreground service.
      */
-    private suspend fun initSendspinIfEnabled() {
+    private suspend fun initSendspinIfEnabled() = sendspinMutex.withLock {
+        log.w { "[SS-DIAG] initSendspin: acquired mutex" }
+
         // Get prerequisites
         val mainConnectionInfo = settings.connectionInfo.value ?: run {
             log.w { "No main connection info available, cannot initialize Sendspin" }
-            return
+            return@withLock
         }
 
         val authToken = when (val state = apiClient.sessionState.value) {
@@ -684,37 +715,41 @@ class MainDataSource(
             else -> null
         }
 
-        // Stop existing client if any (but preserve if it's reconnecting)
+        // Stop existing client if any (but preserve if it's actively connected, connecting, or reconnecting)
         sendspinClient?.let { existing ->
-            when (val state = existing.connectionState.value) {
-                is SendspinConnectionState.Connected -> {
-                    log.d { "Sendspin already connected - skipping reinitialization" }
-                    return
+            when (val state = existing.state.value) {
+                is SendspinState.Ready,
+                is SendspinState.Buffering,
+                is SendspinState.Synchronized,
+                is SendspinState.Connecting,
+                is SendspinState.Authenticating,
+                is SendspinState.Handshaking -> {
+                    log.w { "[SS-DIAG] initSendspin: SKIP — ${state::class.simpleName} (in progress)" }
+                    return@withLock
                 }
 
-                is SendspinConnectionState.Error -> {
-                    // Check if it's a transient error with auto-retry in progress
-                    if (state.error is SendspinError.Transient && state.error.willRetry) {
-                        log.d { "Sendspin is reconnecting - skipping reinitialization" }
-                        return
-                    }
-                    // Otherwise, it's a real error - stop and recreate
+                is SendspinState.Reconnecting -> {
+                    log.w { "[SS-DIAG] initSendspin: SKIP — Reconnecting (wasStreaming=${state.wasStreaming}, attempt=${state.attempt})" }
+                    return@withLock
+                }
+
+                is SendspinState.Error -> {
                     val errorMsg = when (val err = state.error) {
                         is SendspinError.Permanent -> err.userAction
                         is SendspinError.Transient -> err.cause.message
                         is SendspinError.Degraded -> err.reason
                     }
-                    log.i { "Sendspin has error: $errorMsg - reinitializing" }
+                    log.w { "[SS-DIAG] initSendspin: REINIT — Error: $errorMsg" }
                 }
 
-                is SendspinConnectionState.Advertising,
-                SendspinConnectionState.Idle -> {
-                    log.i { "Sendspin in ${state::class.simpleName} state - reinitializing" }
+                is SendspinState.Idle -> {
+                    log.w { "[SS-DIAG] initSendspin: REINIT — was Idle" }
                 }
             }
+            log.w { "[SS-DIAG] initSendspin: stopping old client before reinit" }
             existing.stop()
             existing.close()
-        }
+        } ?: log.w { "[SS-DIAG] initSendspin: no existing client — fresh init" }
 
         // Create client using factory
         val createResult = sendspinClientFactory.createIfEnabled(
@@ -728,13 +763,13 @@ class MainDataSource(
                 apiClient.forceWebRTCReconnect()
                 // After reconnection, initSendspinIfEnabled() will be called again
                 // from the session state handler with a fresh channel.
-                return
+                return@withLock
             }
             log.w { "Cannot create Sendspin client: ${error.message}" }
-            return
+            return@withLock
         }
 
-        val client = createResult.getOrNull() ?: return
+        val client = createResult.getOrNull() ?: return@withLock
 
         // Set up remote command handler for Control Center/Lock Screen commands
         // Commands go directly through MainDataSource via REST API
@@ -776,42 +811,65 @@ class MainDataSource(
      * Monitor Sendspin client for errors and state changes.
      */
     private fun monitorSendspinClient(client: SendspinClient) {
-        launch {
+        // Cancel any previous monitoring jobs to prevent old clients from
+        // leaking state transitions into _sendspinState or triggering pipeline disconnects
+        cancelSendspinMonitorJobs()
+
+        sendspinMonitorJobs += launch {
             // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
             // and pause the MA server player when they occur
             client.playbackStoppedDueToError.filterNotNull().collect { error ->
-                log.w(error) { "Sendspin playback stopped due to error - pausing MA server player" }
+                log.w(error) { "[SS-DIAG] playbackStoppedDueToError fired: ${error.message}" }
                 // Pause the local sendspin player on the MA server
                 localPlayer.value?.let { playerData ->
+                    log.w { "[SS-DIAG] localPlayer isPlaying=${playerData.player.isPlaying}, name=${playerData.player.name}" }
                     if (playerData.player.isPlaying) {
-                        log.i { "Sending pause command to MA server for player ${playerData.player.name}" }
+                        log.w { "[SS-DIAG] >>> SENDING PAUSE to server for ${playerData.player.name}" }
                         playerAction(playerData, PlayerAction.Pause)
                     }
-                }
+                } ?: log.w { "[SS-DIAG] playbackStoppedDueToError but localPlayer is null" }
             }
         }
 
-        launch {
-            client.connectionState.collect { state ->
+        sendspinMonitorJobs += launch {
+            client.state.collect { state ->
+                log.w { "[SS-DIAG] state transition -> $state (prev=${_sendspinState.value})" }
+                _sendspinState.value = state
                 when (state) {
-                    is SendspinConnectionState.Connected -> {
+                    is SendspinState.Ready -> {
                         // Refresh player list so the local player appears in the UI
-                        log.i { "Sendspin connected - refreshing player list" }
+                        log.w { "[SS-DIAG] Ready — refreshing player list in 1s" }
                         delay(1000) // Give server a moment to register the player
                         updatePlayersAndQueues()
                     }
 
-                    is SendspinConnectionState.Error,
-                    SendspinConnectionState.Idle -> {
-                        // Transport dropped (Error = WebSocket retry path, Idle = WebRTC channel closed).
-                        // Signal the shared pipeline so it pauses the sink when the buffer empties.
-                        log.i { "Sendspin not connected ($state) - signalling pipeline network disconnect" }
+                    is SendspinState.Error -> {
+                        log.w { "[SS-DIAG] Error state: ${state.error} — signalling pipeline disconnect" }
                         sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
                     }
 
-                    else -> {}
+                    is SendspinState.Idle -> {
+                        log.w { "[SS-DIAG] Idle state — signalling pipeline disconnect" }
+                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+                    }
+
+                    is SendspinState.Reconnecting -> {
+                        log.w { "[SS-DIAG] Reconnecting: wasStreaming=${state.wasStreaming}, attempt=${state.attempt}" }
+                    }
+
+                    else -> {
+                        log.w { "[SS-DIAG] state=$state (no special handling)" }
+                    }
                 }
             }
+        }
+    }
+
+    private fun cancelSendspinMonitorJobs() {
+        if (sendspinMonitorJobs.isNotEmpty()) {
+            log.w { "[SS-DIAG] cancelling ${sendspinMonitorJobs.size} old monitor jobs" }
+            sendspinMonitorJobs.forEach { it.cancel() }
+            sendspinMonitorJobs.clear()
         }
     }
 
@@ -819,9 +877,13 @@ class MainDataSource(
      * Stop Sendspin player if running.
      * Destroys the shared audio pipeline so the AudioTrack is fully released.
      */
-    private suspend fun stopSendspin() {
+    private suspend fun stopSendspin() = sendspinMutex.withLock {
+        val currentState = sendspinClient?.state?.value
+        log.w { "[SS-DIAG] stopSendspin() acquired mutex — client=${sendspinClient != null}, clientState=$currentState" }
+        // Cancel monitor jobs FIRST to prevent old state transitions from leaking
+        cancelSendspinMonitorJobs()
         sendspinClient?.let { client ->
-            log.i { "Stopping Sendspin client" }
+            log.w { "[SS-DIAG] stopping client (state=${client.state.value})" }
             try {
                 client.stop()
                 client.close()
@@ -830,6 +892,7 @@ class MainDataSource(
             }
             sendspinClient = null
         }
+        _sendspinState.value = null
         // Fully release the shared audio pipeline (AudioTrack, decoder, etc.)
         // A fresh pipeline will be created on the next initSendspinIfEnabled()
         sendspinClientFactory.destroyPipeline()

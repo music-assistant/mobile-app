@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -222,7 +224,12 @@ class HomeScreenViewModel(
     }
 
     private fun watchPlayersData(): Job = viewModelScope.launch {
-        dataSource.playersData.collect { playerData ->
+        combine(
+            dataSource.playersData,
+            dataSource.sendspinState
+        ) { playerData, sendspinState ->
+            playerData to sendspinState
+        }.collect { (playerData, sendspinState) ->
             // Update when in Loading or Data state
             // This allows transitioning from Loading to Data and updating existing Data
             // Don't update terminal states (Disconnected, NoAuth, NoServer)
@@ -233,13 +240,15 @@ class HomeScreenViewModel(
                         is DataState.Data -> PlayersState.Data(
                             playerData.data,
                             dataSource.selectedPlayerIndex.value,
-                            dataSource.localPlayer.value?.playerId
+                            dataSource.localPlayer.value?.playerId,
+                            sendspinState
                         )
 
                         is DataState.Stale -> PlayersState.Data(
                             playerData.data,  // Show stale data as normal data
                             dataSource.selectedPlayerIndex.value,
-                            dataSource.localPlayer.value?.playerId
+                            dataSource.localPlayer.value?.playerId,
+                            sendspinState
                         )
 
                         is DataState.Error -> PlayersState.Error
@@ -313,7 +322,8 @@ class HomeScreenViewModel(
         data class Data(
             val playerData: List<PlayerData>,
             val selectedPlayerIndex: Int? = null,
-            val localPlayerId: String? = null
+            val localPlayerId: String? = null,
+            val sendspinState: SendspinState? = null
         ) : PlayersState()
     }
 }

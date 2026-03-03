@@ -2,7 +2,6 @@ package io.music_assistant.client.player.sendspin.protocol
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.ClockSynchronizer
-import io.music_assistant.client.player.sendspin.ProtocolState
 import io.music_assistant.client.player.sendspin.model.ClientAuthMessage
 import io.music_assistant.client.player.sendspin.model.ClientCommandMessage
 import io.music_assistant.client.player.sendspin.model.ClientGoodbyeMessage
@@ -73,8 +72,8 @@ class MessageDispatcher(
     private var messageListenerJob: Job? = null
     private var clockSyncJob: Job? = null
 
-    private val _protocolState = MutableStateFlow<ProtocolState>(ProtocolState.Disconnected)
-    val protocolState: StateFlow<ProtocolState> = _protocolState.asStateFlow()
+    private val _serverHelloEvent = MutableSharedFlow<ServerHelloPayload>(extraBufferCapacity = 1)
+    val serverHelloEvent: Flow<ServerHelloPayload> = _serverHelloEvent.asSharedFlow()
 
     private val _serverInfo = MutableStateFlow<ServerHelloPayload?>(null)
     val serverInfo: StateFlow<ServerHelloPayload?> = _serverInfo.asStateFlow()
@@ -104,7 +103,6 @@ class MessageDispatcher(
         logger.i { "Stopping MessageDispatcher" }
         messageListenerJob?.cancel()
         clockSyncJob?.cancel()
-        _protocolState.value = ProtocolState.Disconnected
     }
 
     private fun startMessageListener() {
@@ -212,7 +210,6 @@ class MessageDispatcher(
         }
 
         logger.i { "Sending auth message (proxy mode)" }
-        _protocolState.value = ProtocolState.AwaitingAuth
 
         val message = ClientAuthMessage(
             token = token,
@@ -224,7 +221,6 @@ class MessageDispatcher(
 
     suspend fun sendHello() {
         logger.i { "Sending client/hello" }
-        _protocolState.value = ProtocolState.AwaitingServerHello
 
         val message = ClientHelloMessage(payload = clientCapabilities)
         val json = myJson.encodeToString(message)
@@ -278,13 +274,15 @@ class MessageDispatcher(
     private suspend fun handleServerHello(message: ServerHelloMessage) {
         logger.i { "Received server/hello from ${message.payload.name}" }
         _serverInfo.value = message.payload
-        _protocolState.value = ProtocolState.Ready(message.payload.activeRoles)
 
         // Send initial state (required by spec)
         sendInitialState()
 
         // Start clock synchronization
         startClockSync()
+
+        // Emit event so the state machine can transition to Ready
+        _serverHelloEvent.emit(message.payload)
     }
 
     private suspend fun sendInitialState() {
@@ -333,20 +331,11 @@ class MessageDispatcher(
 
     private suspend fun handleStreamStart(message: StreamStartMessage) {
         logger.i { "Received stream/start" }
-        _protocolState.value = ProtocolState.Streaming
         _streamStartEvent.emit(message)
     }
 
     private suspend fun handleStreamEnd(message: StreamEndMessage) {
         logger.i { "Received stream/end" }
-        val currentState = _protocolState.value
-        if (currentState is ProtocolState.Ready) {
-            // Already ready, keep the state
-        } else {
-            _protocolState.value = ProtocolState.Ready(
-                _serverInfo.value?.activeRoles ?: emptyList()
-            )
-        }
         _streamEndEvent.emit(message)
     }
 

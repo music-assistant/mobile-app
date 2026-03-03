@@ -1,38 +1,38 @@
 package io.music_assistant.client.player.sendspin
 
-import io.music_assistant.client.player.sendspin.model.ConnectionReason
-import io.music_assistant.client.player.sendspin.model.VersionedRole
+/**
+ * Unified Sendspin state machine.
+ *
+ * Replaces the former SendspinConnectionState + SendspinPlaybackState + ProtocolState
+ * with a single sealed hierarchy so there is exactly one source of truth.
+ */
+sealed class SendspinState {
+    /** Client created but not yet started. */
+    object Idle : SendspinState()
 
-sealed class SendspinConnectionState {
-    object Idle : SendspinConnectionState()
-    object Advertising : SendspinConnectionState()
-    data class Connected(
-        val serverId: String,
-        val serverName: String,
-        val connectionReason: ConnectionReason
-    ) : SendspinConnectionState()
+    /** Transport is connecting (initial or after explicit start). */
+    object Connecting : SendspinState()
 
-    /**
-     * Error state with categorized error information.
-     * Use SendspinError to distinguish transient, permanent, and degraded states.
-     */
-    data class Error(val error: SendspinError) : SendspinConnectionState()
-}
+    /** Transport connected; waiting for auth_ok (proxy mode). */
+    object Authenticating : SendspinState()
 
-sealed class SendspinPlaybackState {
-    object Idle : SendspinPlaybackState()
-    object Buffering : SendspinPlaybackState()
-    data class Playing(val timestamp: Long) : SendspinPlaybackState()
-    object Synchronized : SendspinPlaybackState()
-    data class Error(val reason: String) : SendspinPlaybackState()
-}
+    /** auth_ok received (or direct mode); waiting for server/hello. */
+    object Handshaking : SendspinState()
 
-sealed class ProtocolState {
-    object Disconnected : ProtocolState()
-    object AwaitingAuth : ProtocolState()
-    object AwaitingServerHello : ProtocolState()
-    data class Ready(val activeRoles: List<VersionedRole>) : ProtocolState()
-    object Streaming : ProtocolState()
+    /** server/hello received — protocol ready, no active stream. */
+    data class Ready(val serverId: String, val serverName: String) : SendspinState()
+
+    /** stream/start received — pipeline running, pre-buffering. */
+    object Buffering : SendspinState()
+
+    /** Clock sync quality is GOOD — audio is playing in sync. */
+    object Synchronized : SendspinState()
+
+    /** Transport reconnecting after a drop. */
+    data class Reconnecting(val wasStreaming: Boolean, val attempt: Int) : SendspinState()
+
+    /** Unrecoverable or categorised error. */
+    data class Error(val error: SendspinError) : SendspinState()
 }
 
 sealed class WebSocketState {

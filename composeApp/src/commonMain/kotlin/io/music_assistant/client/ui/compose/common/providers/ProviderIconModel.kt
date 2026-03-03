@@ -68,8 +68,9 @@ sealed class ProviderIconModel {
                 val icon = when (mdiIcon) {
                     "harddisk" -> Icons.Default.Hardware
                     "network" -> Icons.Default.NetworkWifi
-                    "radio" -> Icons.Default.Mic
                     "podcast" -> TablerIcons.Microphone
+                    "mdi:radio",
+                    "radio" -> Icons.Default.Mic
                     else -> {
                         Logger.e("Cannot find MDI icon for $mdiIcon.")
                         return null
