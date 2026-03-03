@@ -50,3 +50,4 @@ obj/
 .externalNativeBuild
 composeApp/keystore.properties
 composeApp/upload-keystore.jks
+gha-creds-*.json

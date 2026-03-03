@@ -6,6 +6,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -73,13 +74,20 @@ jobs:
       - name: Build release AAB
         run: ./gradlew :androidApp:bundleRelease
 
-#      - name: Upload to Google Play (internal testing)
-#        uses: r0adkll/upload-google-play@v1
-#        with:
-#          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-#          packageName: io.music_assistant.client
-#          releaseFiles: composeApp/build/outputs/bundle/release/composeApp-release.aab
-#          track: internal
+      - name: Authenticate to Google Cloud
+        id: gcloud-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github/providers/music-assistant-mobile'
+          service_account: 'SERVICE_ACCOUNT_EMAIL'
+
+      - name: Upload to Google Play (internal testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.gcloud-auth.outputs.credentials_file_path }}
+          packageName: io.music_assistant.client
+          releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
+          track: internal
 
       - name: Create and push tag
         run: |
