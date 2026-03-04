@@ -54,6 +54,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -84,6 +85,7 @@ class MainDataSource(
 
     private var sendspinClient: SendspinClient? = null
     private var sendspinMonitorJobs = mutableListOf<Job>()
+    private var sendspinRetryCount = 0
     private val sendspinMutex = Mutex()
 
     private val _sendspinState = MutableStateFlow<SendspinState?>(null)
@@ -837,7 +839,7 @@ class MainDataSource(
                 _sendspinState.value = state
                 when (state) {
                     is SendspinState.Ready -> {
-                        // Refresh player list so the local player appears in the UI
+                        sendspinRetryCount = 0
                         log.w { "[SS-DIAG] Ready — refreshing player list in 1s" }
                         delay(1000) // Give server a moment to register the player
                         updatePlayersAndQueues()
@@ -846,6 +848,36 @@ class MainDataSource(
                     is SendspinState.Error -> {
                         log.w { "[SS-DIAG] Error state: ${state.error} — signalling pipeline disconnect" }
                         sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+
+                        // Retry if error is not being auto-retried and main API is connected
+                        val shouldRetry = when (state.error) {
+                            is SendspinError.Permanent -> true
+                            is SendspinError.Transient -> !state.error.willRetry
+                            is SendspinError.Degraded -> false
+                        }
+
+                        if (shouldRetry && sendspinRetryCount < MAX_SENDSPIN_RETRIES) {
+                            val isAuthenticated = (apiClient.sessionState.value as? SessionState.Connected)
+                                ?.dataConnectionState == DataConnectionState.Authenticated
+                            if (isAuthenticated && settings.sendspinEnabled.value) {
+                                sendspinRetryCount++
+                                val backoffMs = 5000L * sendspinRetryCount
+                                log.w { "[SS-DIAG] retry $sendspinRetryCount/$MAX_SENDSPIN_RETRIES in ${backoffMs}ms" }
+                                delay(backoffMs)
+                                // Re-check after delay (conditions may have changed)
+                                val stillValid = (apiClient.sessionState.value as? SessionState.Connected)
+                                    ?.dataConnectionState == DataConnectionState.Authenticated
+                                    && settings.sendspinEnabled.value
+                                if (stillValid) {
+                                    try {
+                                        initSendspinIfEnabled()
+                                    } catch (e: Exception) {
+                                        coroutineContext.ensureActive()
+                                        log.e(e) { "[SS-DIAG] retry $sendspinRetryCount failed" }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     is SendspinState.Idle -> {
@@ -882,6 +914,7 @@ class MainDataSource(
         log.w { "[SS-DIAG] stopSendspin() acquired mutex — client=${sendspinClient != null}, clientState=$currentState" }
         // Cancel monitor jobs FIRST to prevent old state transitions from leaking
         cancelSendspinMonitorJobs()
+        sendspinRetryCount = 0
         sendspinClient?.let { client ->
             log.w { "[SS-DIAG] stopping client (state=${client.state.value})" }
             try {
@@ -1597,4 +1630,7 @@ class MainDataSource(
 
     fun refreshPlayersAndQueues() = updatePlayersAndQueues()
 
+    private companion object {
+        const val MAX_SENDSPIN_RETRIES = 5
+    }
 }
