@@ -1580,6 +1580,12 @@ class MainDataSource(
             (forcedQueueData ?: fullData.queueInfo)?.let { queueInfo ->
                 val queueTracks = apiClient.sendRequest(Request.Queue.items(queueInfo.id))
                     .resultAs<List<ServerQueueItem>>()?.mapNotNull { it.toQueueTrack() }
+
+                // Forward to local player repository so external consumers (Android Auto, CarPlay) see items
+                if (fullData.isLocal && queueTracks != null) {
+                    localPlayerRepository.onQueueItemsLoaded(queueInfo, queueTracks)
+                }
+
                 _playersData.update { currentState ->
                     when (currentState) {
                         is DataState.Error,

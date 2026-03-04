@@ -7,6 +7,7 @@ import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
+import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.server.PlayerType
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.player.MediaPlayerController
@@ -153,6 +154,14 @@ class LocalPlayerRepository(
                             ?: DataState.NoData()
                     )
                 )
+            )
+        }
+    }
+
+    fun onQueueItemsLoaded(queueInfo: QueueInfo, items: List<QueueTrack>) {
+        _localPlayerData.update { current ->
+            current?.copy(
+                queue = DataState.Data(Queue(info = queueInfo, items = DataState.Data(items)))
             )
         }
     }
