@@ -207,6 +207,10 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                 }
             }
 
+            override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+                Logger.withTag("MainMediaPlayback").i { "onPlayFromSearch: $query (not handled)" }
+            }
+
             override fun onPause() {
                 currentPlayerData.value?.let {
                     dataSource.playerAction(it, PlayerAction.Pause)

@@ -127,6 +127,14 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 }
             }
 
+            override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+                currentPlayerData.value?.let { playerData ->
+                    query?.takeIf { it.isNotBlank() }?.let { q ->
+                        library.searchAndPlay(q, playerData.queueInfo?.id ?: playerData.player.id)
+                    }
+                }
+            }
+
             override fun onPause() {
                 currentPlayerData.value?.let {
                     dataSource.playerAction(it, PlayerAction.Pause)

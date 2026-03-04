@@ -244,6 +244,33 @@ class AutoLibrary(
         searchFlow.update { Pair(query, result) }
     }
 
+    fun searchAndPlay(query: String, queueId: String) {
+        scope.launch {
+            if (!waitForCorrectState()) return@launch
+            val result = apiClient.sendRequest(
+                Request.Library.search(
+                    query = query,
+                    mediaTypes = listOf(MediaType.TRACK, MediaType.ARTIST, MediaType.ALBUM, MediaType.PLAYLIST),
+                    libraryOnly = false
+                )
+            )
+            val firstUri = result.resultAs<SearchResult>()?.let { sr ->
+                sr.tracks.firstOrNull()?.uri
+                    ?: sr.artists.firstOrNull()?.uri
+                    ?: sr.albums.firstOrNull()?.uri
+                    ?: sr.playlists.firstOrNull()?.uri
+            } ?: return@launch
+            apiClient.sendRequest(
+                Request.Library.play(
+                    media = listOf(firstUri),
+                    queueOrPlayerId = queueId,
+                    option = QueueOption.REPLACE,
+                    radioMode = false
+                )
+            )
+        }
+    }
+
     fun play(id: String, extras: Bundle?, queueId: String) {
         id.split("__").getOrNull(1)?.let { uri ->
             scope.launch {
