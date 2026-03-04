@@ -18,7 +18,6 @@ import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,8 +39,7 @@ class ItemDetailsViewModel(
         val playableItemsState: DataState<List<PlayableItem>>,
     )
 
-    val serverUrl =
-        apiClient.sessionState.map { (it as? SessionState.Connected)?.serverInfo?.baseUrl }
+    val serverUrl = apiClient.serverBaseUrl
 
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()

@@ -29,13 +29,11 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,9 +46,7 @@ class HomeScreenViewModel(
 
     private val jobs = mutableListOf<Job>()
 
-    val serverUrl =
-        apiClient.sessionState.map { (it as? SessionState.Connected)?.serverInfo?.baseUrl }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+    val serverUrl = apiClient.serverBaseUrl
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
 

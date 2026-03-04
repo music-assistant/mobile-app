@@ -16,7 +16,6 @@ import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,9 +36,7 @@ class SearchViewModel(
     private val mainDataSource: MainDataSource,
 ) : ViewModel() {
 
-    val serverUrl = apiClient.sessionState.map {
-        (it as? SessionState.Connected)?.serverInfo?.baseUrl
-    }
+    val serverUrl = apiClient.serverBaseUrl
 
     val searchJob = AtomicReference<Job?>(null)
 

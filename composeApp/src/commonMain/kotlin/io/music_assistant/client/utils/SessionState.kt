@@ -1,54 +1,30 @@
 package io.music_assistant.client.utils
 
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.sendSerialized
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
-import io.music_assistant.client.webrtc.WebRTCConnectionManager
 import io.music_assistant.client.webrtc.model.RemoteId
-import kotlinx.serialization.json.JsonObject
 
 sealed class SessionState {
     /**
      * Connected to Music Assistant server.
      * Sealed class with Direct (WebSocket) and WebRTC subclasses.
      */
-    sealed class Connected : SessionState() {
-        abstract val serverInfo: ServerInfo?
-        abstract val user: User?
-        abstract val authProcessState: AuthProcessState
-        abstract val wasAutoLogin: Boolean
-
-        val dataConnectionState: DataConnectionState
-            get() = when {
-                serverInfo == null -> DataConnectionState.AwaitingServerInfo
-                user == null -> DataConnectionState.AwaitingAuth(authProcessState)
-                else -> DataConnectionState.Authenticated
-            }
-
+    sealed class Connected : SessionState(), HasConnectionData {
         /**
          * Connected via direct WebSocket connection (host:port).
          */
         data class Direct(
-            val session: DefaultClientWebSocketSession,
             val connectionInfo: ConnectionInfo,
-            override val serverInfo: ServerInfo? = null,
-            override val user: User? = null,
-            override val authProcessState: AuthProcessState = AuthProcessState.NotStarted,
-            override val wasAutoLogin: Boolean = false,
+            override val connectionData: ConnectionData = ConnectionData()
         ) : Connected()
 
         /**
          * Connected via WebRTC peer-to-peer connection (Remote ID).
          */
         data class WebRTC(
-            val manager: WebRTCConnectionManager,
             val remoteId: RemoteId,
-            override val serverInfo: ServerInfo? = null,
-            override val user: User? = null,
-            override val authProcessState: AuthProcessState = AuthProcessState.NotStarted,
-            override val wasAutoLogin: Boolean = false,
+            override val connectionData: ConnectionData = ConnectionData()
         ) : Connected()
     }
 
@@ -58,19 +34,8 @@ sealed class SessionState {
      * Reconnecting to Music Assistant server.
      * Sealed class with Direct (WebSocket) and WebRTC subclasses.
      */
-    sealed class Reconnecting : SessionState() {
+    sealed class Reconnecting : SessionState(), HasConnectionData {
         abstract val attempt: Int
-        abstract val serverInfo: ServerInfo?
-        abstract val user: User?
-        abstract val authProcessState: AuthProcessState
-        abstract val wasAutoLogin: Boolean
-
-        val dataConnectionState: DataConnectionState
-            get() = when {
-                serverInfo == null -> DataConnectionState.AwaitingServerInfo
-                user == null -> DataConnectionState.AwaitingAuth(authProcessState)
-                else -> DataConnectionState.Authenticated
-            }
 
         /**
          * Reconnecting via direct WebSocket connection.
@@ -78,10 +43,7 @@ sealed class SessionState {
         data class Direct(
             override val attempt: Int,
             val connectionInfo: ConnectionInfo,
-            override val serverInfo: ServerInfo? = null,
-            override val user: User? = null,
-            override val authProcessState: AuthProcessState = AuthProcessState.NotStarted,
-            override val wasAutoLogin: Boolean = false,
+            override val connectionData: ConnectionData = ConnectionData()
         ) : Reconnecting()
 
         /**
@@ -90,10 +52,7 @@ sealed class SessionState {
         data class WebRTC(
             override val attempt: Int,
             val remoteId: RemoteId,
-            override val serverInfo: ServerInfo? = null,
-            override val user: User? = null,
-            override val authProcessState: AuthProcessState = AuthProcessState.NotStarted,
-            override val wasAutoLogin: Boolean = false,
+            override val connectionData: ConnectionData = ConnectionData()
         ) : Reconnecting()
     }
 
@@ -107,29 +66,27 @@ sealed class SessionState {
 }
 
 /**
- * Helper extension to update common fields on Connected instances.
+ * Helper extension to update ConnectionData on Connected instances.
  * Works for both Direct and WebRTC subclasses.
+ */
+fun SessionState.Connected.update(
+    connectionData: ConnectionData = this.connectionData
+): SessionState.Connected = when (this) {
+    is SessionState.Connected.Direct -> copy(connectionData = connectionData)
+    is SessionState.Connected.WebRTC -> copy(connectionData = connectionData)
+}
+
+/**
+ * Convenience overload preserving existing call-site syntax.
  */
 fun SessionState.Connected.update(
     serverInfo: ServerInfo? = this.serverInfo,
     user: User? = this.user,
     authProcessState: AuthProcessState = this.authProcessState,
     wasAutoLogin: Boolean = this.wasAutoLogin
-): SessionState.Connected = when (this) {
-    is SessionState.Connected.Direct -> copy(
-        serverInfo = serverInfo,
-        user = user,
-        authProcessState = authProcessState,
-        wasAutoLogin = wasAutoLogin
-    )
-
-    is SessionState.Connected.WebRTC -> copy(
-        serverInfo = serverInfo,
-        user = user,
-        authProcessState = authProcessState,
-        wasAutoLogin = wasAutoLogin
-    )
-}
+): SessionState.Connected = update(
+    connectionData = ConnectionData(serverInfo, user, authProcessState, wasAutoLogin)
+)
 
 /**
  * Helper extension to get connectionInfo from any Connected instance.
@@ -142,38 +99,26 @@ val SessionState.Connected.connectionInfo: ConnectionInfo?
     }
 
 /**
- * Helper extension to get WebSocket session from Connected.Direct.
- * Returns null for WebRTC connections.
+ * Helper extension to update ConnectionData on Reconnecting instances.
  */
-val SessionState.Connected.session: DefaultClientWebSocketSession?
-    get() = when (this) {
-        is SessionState.Connected.Direct -> this.session
-        is SessionState.Connected.WebRTC -> null
-    }
+fun SessionState.Reconnecting.update(
+    connectionData: ConnectionData = this.connectionData
+): SessionState.Reconnecting = when (this) {
+    is SessionState.Reconnecting.Direct -> copy(connectionData = connectionData)
+    is SessionState.Reconnecting.WebRTC -> copy(connectionData = connectionData)
+}
 
 /**
- * Helper extension to update common fields on Reconnecting instances.
+ * Convenience overload preserving existing call-site syntax.
  */
 fun SessionState.Reconnecting.update(
     serverInfo: ServerInfo? = this.serverInfo,
     user: User? = this.user,
     authProcessState: AuthProcessState = this.authProcessState,
     wasAutoLogin: Boolean = this.wasAutoLogin
-): SessionState.Reconnecting = when (this) {
-    is SessionState.Reconnecting.Direct -> copy(
-        serverInfo = serverInfo,
-        user = user,
-        authProcessState = authProcessState,
-        wasAutoLogin = wasAutoLogin
-    )
-
-    is SessionState.Reconnecting.WebRTC -> copy(
-        serverInfo = serverInfo,
-        user = user,
-        authProcessState = authProcessState,
-        wasAutoLogin = wasAutoLogin
-    )
-}
+): SessionState.Reconnecting = update(
+    connectionData = ConnectionData(serverInfo, user, authProcessState, wasAutoLogin)
+)
 
 /**
  * Helper extension to get connectionInfo from any Reconnecting instance.
@@ -183,20 +128,3 @@ val SessionState.Reconnecting.connectionInfo: ConnectionInfo?
         is SessionState.Reconnecting.Direct -> connectionInfo
         is SessionState.Reconnecting.WebRTC -> null
     }
-
-/**
- * Send a JSON message through the appropriate transport (WebSocket or WebRTC).
- * Abstracts away the transport-specific send logic.
- */
-suspend fun SessionState.Connected.sendMessage(message: JsonObject) {
-    when (this) {
-        is SessionState.Connected.Direct -> {
-            session.sendSerialized(message)
-        }
-
-        is SessionState.Connected.WebRTC -> {
-            val json = myJson.encodeToString(JsonObject.serializer(), message)
-            manager.send(json)
-        }
-    }
-}

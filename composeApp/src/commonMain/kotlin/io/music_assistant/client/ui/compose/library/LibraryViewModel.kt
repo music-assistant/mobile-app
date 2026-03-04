@@ -62,8 +62,7 @@ class LibraryViewModel(
 
     private val connectionState = apiClient.sessionState
 
-    val serverUrl =
-        apiClient.sessionState.map { (it as? SessionState.Connected)?.serverInfo?.baseUrl }
+    val serverUrl = apiClient.serverBaseUrl
 
     val itemsRowMode = settingsRepository.itemsRowMode
 

@@ -4,11 +4,7 @@ import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.ws
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
-import io.ktor.websocket.close
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
 import io.music_assistant.client.data.model.server.events.Event
@@ -16,14 +12,14 @@ import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
+import io.music_assistant.client.utils.ConnectionData
+import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.connectionInfo
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.resultAs
-import io.music_assistant.client.utils.sendMessage
 import io.music_assistant.client.utils.update
-import io.music_assistant.client.webrtc.SignalingClient
-import io.music_assistant.client.webrtc.WebRTCConnectionManager
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,9 +29,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -56,29 +55,13 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     private val client = HttpClient(CIO) {
         install(WebSockets) { contentConverter = KotlinxWebsocketSerializationConverter(myJson) }
     }
-    private var listeningJob: Job? = null
 
-    // WebRTC components - created lazily on first WebRTC connection
+    // WebRTC HTTP client - created lazily on first WebRTC connection
     private val webrtcHttpClient: HttpClient by inject(named("webrtcHttpClient"))
-    private var webrtcManager: WebRTCConnectionManager? = null
-    private var webrtcListeningJob: Job? = null
-    private var webrtcStateMonitorJob: Job? = null
-    private var webrtcInitialMonitorJob: Job? =
-        null  // Temp monitor during connection, cancelled when message listener starts
-    private var webrtcReconnectJob: Job? =
-        null  // Active reconnection job, cancelled when connection succeeds or user disconnects
 
-    // Cache last successful WebRTC connection for reconnection
-    // Needed because state may transition to Error before monitor can extract info (race with MainDataSource)
-    private data class WebRTCConnectionCache(
-        val remoteId: RemoteId,
-        val serverInfo: io.music_assistant.client.data.model.server.ServerInfo?,
-        val user: io.music_assistant.client.data.model.server.User?,
-        val authProcessState: AuthProcessState,
-        val wasAutoLogin: Boolean
-    )
-
-    private var lastWebRTCConnection: WebRTCConnectionCache? = null
+    // --- Transport ---
+    private var transport: Transport? = null
+    private var transportObserverJob: Job? = null
 
     // --- Lifecycle / background state ---
     private var isInBackground = false
@@ -95,73 +78,46 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         MutableStateFlow(SessionState.Disconnected.Initial)
     val sessionState = _sessionState.asStateFlow()
 
+    val serverBaseUrl: StateFlow<String?> = _sessionState
+        .map { (it as? HasConnectionData)?.serverInfo?.baseUrl }
+        .stateIn(this, SharingStarted.Eagerly, null)
+
+    val isReadyForCommands: StateFlow<Boolean> = _sessionState
+        .map { it is SessionState.Connected && it.dataConnectionState == DataConnectionState.Authenticated }
+        .stateIn(this, SharingStarted.Eagerly, false)
+
     private val _eventsFlow = MutableSharedFlow<Event<out Any>>(extraBufferCapacity = 10)
     val events: Flow<Event<out Any>> = _eventsFlow.asSharedFlow()
 
     /**
      * WebRTC Sendspin data channel.
      * Available when connected via WebRTC, null otherwise.
-     * Used by SendspinClientFactory to create WebRTC transport for Sendspin.
      */
     val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
-        get() = webrtcManager?.sendspinDataChannel
+        get() = (transport as? WebRTCTransport)?.sendspinDataChannel
 
     private val logger = Logger.withTag("ServiceClient")
 
     /**
      * Force a full WebRTC reconnection to get fresh SDP-negotiated data channels.
-     * Disconnects cleanly, waits for the signaling server to process, then reconnects.
-     * The session state transitions (Reconnecting → Connected → Authenticated) will
-     * trigger re-authentication and sendspin re-initialization automatically.
      */
     fun forceWebRTCReconnect() {
         val currentState = _sessionState.value as? SessionState.Connected.WebRTC ?: return
-        val remoteId = currentState.remoteId
         logger.i { "Forcing WebRTC reconnect for fresh sendspin channel" }
 
-        // Transition to Reconnecting (preserves server info, user, auth for seamless recovery)
         _sessionState.update {
             SessionState.Reconnecting.WebRTC(
                 attempt = 0,
                 remoteId = currentState.remoteId,
-                serverInfo = currentState.serverInfo,
-                user = currentState.user,
-                authProcessState = currentState.authProcessState,
-                wasAutoLogin = currentState.wasAutoLogin
+                connectionData = currentState.connectionData
             )
         }
 
-        // Disconnect old manager first, then reconnect after a delay
-        webrtcReconnectJob?.cancel()
-        webrtcReconnectJob = launch {
-            // Step 1: Clean up old connection
-            webrtcListeningJob?.cancel()
-            webrtcListeningJob = null
-            webrtcStateMonitorJob?.cancel()
-            webrtcStateMonitorJob = null
-            webrtcInitialMonitorJob?.cancel()
-            webrtcInitialMonitorJob = null
-            webrtcManager?.disconnect()
-            webrtcManager = null
-
-            // Step 2: Wait for signaling server to process the disconnect
-            kotlinx.coroutines.delay(1500)
-
-            // Step 3: Reconnect using the standard mechanism
-            logger.i { "Starting fresh WebRTC connection after forced disconnect" }
-            autoReconnectWebRTC(
-                remoteId,
-                currentState.serverInfo,
-                currentState.user,
-                currentState.authProcessState,
-                currentState.wasAutoLogin
-            )
-        }
+        (transport as? WebRTCTransport)?.forceReconnect()
     }
 
     /**
      * Called when the app moves to the background.
-     * Connection stays alive — if the system kills it, we save info and reconnect on foreground.
      */
     fun onAppBackground() {
         isInBackground = true
@@ -170,14 +126,11 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     /**
      * Called when an external consumer (Android Auto / CarPlay) becomes active.
-     * Keeps the connection alive even when the UI is backgrounded.
-     * If already disconnected due to backgrounding, reconnects from saved info.
      */
     fun onExternalConsumerActive() {
         hasActiveExternalConsumer = true
         logger.i { "External consumer active" }
 
-        // If we already disconnected for backgrounding, reconnect now
         if (_sessionState.value is SessionState.Disconnected.Backgrounded) {
             val savedInfo = backgroundedConnectionInfo ?: return
             backgroundedConnectionInfo = null
@@ -204,7 +157,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     /**
      * Called when the app returns to the foreground.
-     * If we disconnected for backgrounding, reconnect immediately.
      */
     fun onAppForeground() {
         isInBackground = false
@@ -240,24 +192,17 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 when (state) {
                     is SessionState.Connected -> {
                         state.connectionInfo?.let { connInfo ->
-                            settings.updateConnectionInfo(
-                                connInfo
-                            )
+                            settings.updateConnectionInfo(connInfo)
                         }
                     }
 
                     is SessionState.Reconnecting -> {
-                        // Keep connection info during reconnection (no UI reload)
                         state.connectionInfo?.let { connInfo ->
-                            settings.updateConnectionInfo(
-                                connInfo
-                            )
+                            settings.updateConnectionInfo(connInfo)
                         }
                     }
 
                     is SessionState.Disconnected -> {
-                        listeningJob?.cancel()
-                        listeningJob = null
                         when (state) {
                             SessionState.Disconnected.ByUser,
                             SessionState.Disconnected.NoServerData,
@@ -265,7 +210,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                             is SessionState.Disconnected.Error -> Unit
 
                             SessionState.Disconnected.Initial -> {
-                                // Auto-connect using the most recent history entry
                                 val mostRecent = settings.connectionHistory.value.firstOrNull()
                                 when (mostRecent?.type) {
                                     ConnectionType.DIRECT -> {
@@ -285,7 +229,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                         }
                                     }
                                     else -> {
-                                        // No history - fall back to legacy connection info
                                         settings.connectionInfo.value?.let { connect(it) }
                                             ?: _sessionState.update { SessionState.Disconnected.NoServerData }
                                     }
@@ -300,489 +243,234 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         }
     }
 
-    fun connect(connection: ConnectionInfo) {
-        when (val currentState = _sessionState.value) {
-            SessionState.Connecting,
-            is SessionState.Connected -> return
+    // --- Transport state observation ---
 
-            is SessionState.Reconnecting -> {
-                // Don't change state during reconnection - stay in Reconnecting!
-                // This prevents MainDataSource from calling stopSendspin()
-                logger
-                    .i { "🔄 RECONNECT ATTEMPT - staying in Reconnecting state (no stopSendspin!)" }
-                launch {
-                    try {
-                        if (connection.isTls) {
-                            client.wss(
-                                HttpMethod.Get,
-                                connection.host,
-                                connection.port,
-                                "/ws",
-                            ) {
-                                // Preserve server/user/auth from Reconnecting state
-                                _sessionState.update {
-                                    SessionState.Connected.Direct(
-                                        session = this,
-                                        connectionInfo = connection,
-                                        serverInfo = currentState.serverInfo,
-                                        user = currentState.user,
-                                        authProcessState = currentState.authProcessState,
-                                        wasAutoLogin = currentState.wasAutoLogin
-                                    )
-                                }
-                                listenForMessages(WebSocketConnectionSession(this))
+    private fun observeTransport(
+        transport: Transport,
+        createConnected: (ConnectionData) -> SessionState.Connected,
+        createReconnecting: (Int, ConnectionData) -> SessionState.Reconnecting,
+        backgroundInfo: () -> BackgroundedConnectionInfo,
+        onFreshConnect: () -> Unit,
+        onReconnected: suspend () -> Unit
+    ) {
+        transportObserverJob?.cancel()
+        transportObserverJob = launch {
+            // State collector
+            launch {
+                transport.state.collect { transportState ->
+                    when (transportState) {
+                        TransportState.Connected -> {
+                            val preserved = (_sessionState.value as? HasConnectionData)?.connectionData ?: ConnectionData()
+                            val wasReconnecting = _sessionState.value is SessionState.Reconnecting
+                            _sessionState.update { createConnected(preserved) }
+                            if (wasReconnecting) onReconnected()
+                            else onFreshConnect()
+                        }
+
+                        is TransportState.Reconnecting -> {
+                            if (isInBackground && !hasActiveExternalConsumer) {
+                                backgroundedConnectionInfo = backgroundInfo()
+                                transport.disconnect()
+                                _sessionState.update { SessionState.Disconnected.Backgrounded }
+                                return@collect
                             }
-                        } else {
-                            client.ws(
-                                HttpMethod.Get,
-                                connection.host,
-                                connection.port,
-                                "/ws",
-                            ) {
-                                // Preserve server/user/auth from Reconnecting state
-                                _sessionState.update {
-                                    SessionState.Connected.Direct(
-                                        session = this,
-                                        connectionInfo = connection,
-                                        serverInfo = currentState.serverInfo,
-                                        user = currentState.user,
-                                        authProcessState = currentState.authProcessState,
-                                        wasAutoLogin = currentState.wasAutoLogin
-                                    )
-                                }
-                                listenForMessages(WebSocketConnectionSession(this))
+                            val preserved = (_sessionState.value as? HasConnectionData)?.connectionData ?: ConnectionData()
+                            _sessionState.update { createReconnecting(transportState.attempt, preserved) }
+                        }
+
+                        is TransportState.Failed -> {
+                            _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
+                        }
+
+                        TransportState.Disconnected -> {
+                            if (_sessionState.value !is SessionState.Disconnected) {
+                                _sessionState.update { SessionState.Disconnected.ByUser }
                             }
                         }
-                    } catch (e: Exception) {
-                        // CRITICAL: Don't transition to Disconnected.Error during reconnection!
-                        // Stay in Reconnecting state and let the outer loop handle retries
-                        // Transitioning to Disconnected.Error would:
-                        // 1. Trigger navigation to Settings (lost auth)
-                        // 2. Clear stale data in MainDataSource
-                        // 3. Show Loading screen on next attempt
-                        logger
-                            .w { "Reconnect attempt failed (staying in Reconnecting): ${e.message}" }
-                        // Don't update state - stay in Reconnecting!
+
+                        TransportState.Connecting -> {} // already handled
                     }
                 }
             }
-
-            is SessionState.Disconnected -> {
-                // Fresh connection - transition to Connecting
-                _sessionState.update { SessionState.Connecting }
-                launch {
-                    try {
-                        if (connection.isTls) {
-                            client.wss(
-                                HttpMethod.Get,
-                                connection.host,
-                                connection.port,
-                                "/ws",
-                            ) {
-                                _sessionState.update {
-                                    SessionState.Connected.Direct(
-                                        this,
-                                        connection
-                                    )
-                                }
-                                settings.setLastConnectionMode("direct")
-                                settings.addOrUpdateHistoryEntry(ConnectionHistoryEntry(
-                                    type = ConnectionType.DIRECT,
-                                    host = connection.host,
-                                    port = connection.port,
-                                    isTls = connection.isTls,
-                                ))
-                                listenForMessages(WebSocketConnectionSession(this))
-                            }
-                        } else {
-                            client.ws(
-                                HttpMethod.Get,
-                                connection.host,
-                                connection.port,
-                                "/ws",
-                            ) {
-                                _sessionState.update {
-                                    SessionState.Connected.Direct(
-                                        this,
-                                        connection
-                                    )
-                                }
-                                settings.setLastConnectionMode("direct")
-                                settings.addOrUpdateHistoryEntry(ConnectionHistoryEntry(
-                                    type = ConnectionType.DIRECT,
-                                    host = connection.host,
-                                    port = connection.port,
-                                    isTls = connection.isTls,
-                                ))
-                                listenForMessages(WebSocketConnectionSession(this))
-                            }
-                        }
-                    } catch (e: Exception) {
-                        _sessionState.update {
-                            SessionState.Disconnected.Error(Exception("Connection failed: ${e.message}"))
-                        }
-                    }
-                }
+            // Message collector
+            launch {
+                transport.messages.collect { handleIncomingMessage(it) }
             }
         }
+    }
+
+    // --- Connect / Disconnect ---
+
+    fun connect(connection: ConnectionInfo) {
+        if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
+
+        // Cancel observer before disconnecting transport to prevent race where the old
+        // observer processes TransportState.Disconnected and briefly sets ByUser
+        transportObserverJob?.cancel()
+        transport?.disconnect()
+        _sessionState.update { SessionState.Connecting }
+
+        val directTransport = DirectTransport(
+            client = client,
+            connectionInfoProvider = { settings.connectionInfo.value ?: connection },
+            scope = this
+        )
+        transport = directTransport
+
+        observeTransport(
+            transport = directTransport,
+            createConnected = { data ->
+                val info = settings.connectionInfo.value ?: connection
+                SessionState.Connected.Direct(info, data)
+            },
+            createReconnecting = { attempt, data ->
+                val info = settings.connectionInfo.value ?: connection
+                SessionState.Reconnecting.Direct(attempt, info, data)
+            },
+            backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
+            onFreshConnect = {
+                settings.setLastConnectionMode("direct")
+                settings.addOrUpdateHistoryEntry(
+                    ConnectionHistoryEntry(
+                        type = ConnectionType.DIRECT,
+                        host = connection.host,
+                        port = connection.port,
+                        isTls = connection.isTls,
+                    )
+                )
+            },
+            onReconnected = {} // Direct doesn't need re-auth — server preserves session
+        )
+        directTransport.connect()
     }
 
     fun connectWebRTC(remoteId: RemoteId) {
-        when (val currentState = _sessionState.value) {
-            SessionState.Connecting,
-            is SessionState.Connected -> return
+        if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
 
-            is SessionState.Reconnecting.WebRTC -> {
-                logger
-                    .i { "🔄 RECONNECT ATTEMPT (WebRTC) - staying in Reconnecting state" }
-                launch {
-                    try {
-                        val manager = getOrCreateWebRTCManager()
-                        manager.connect(remoteId)
+        transportObserverJob?.cancel()
+        transport?.disconnect()
+        _sessionState.update { SessionState.Connecting }
 
-                        // Wait for connection to establish
-                        webrtcInitialMonitorJob = launch {
-                            manager.connectionState.collect { state ->
-                                when (state) {
-                                    is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Connected -> {
-                                        _sessionState.update {
-                                            SessionState.Connected.WebRTC(
-                                                manager = manager,
-                                                remoteId = remoteId,
-                                                serverInfo = currentState.serverInfo,
-                                                user = currentState.user,
-                                                authProcessState = currentState.authProcessState,
-                                                wasAutoLogin = currentState.wasAutoLogin
-                                            )
-                                        }
-                                        // Cache connection info for reconnection (before MainDataSource can transition to Error)
-                                        lastWebRTCConnection = WebRTCConnectionCache(
-                                            remoteId = remoteId,
-                                            serverInfo = currentState.serverInfo,
-                                            user = currentState.user,
-                                            authProcessState = currentState.authProcessState,
-                                            wasAutoLogin = currentState.wasAutoLogin
-                                        )
+        val webrtcTransport = WebRTCTransport(
+            httpClient = webrtcHttpClient,
+            remoteId = remoteId,
+            scope = this
+        )
+        transport = webrtcTransport
 
-                                        startWebRTCMessageListener(manager)
-                                        settings.setLastConnectionMode("webrtc")
-                                    }
-
-                                    is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
-                                        logger
-                                            .w { "WebRTC reconnect failed: ${state.error}" }
-                                    }
-
-                                    else -> {}
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        logger
-                            .w { "WebRTC reconnect attempt failed: ${e.message}" }
-                    }
+        observeTransport(
+            transport = webrtcTransport,
+            createConnected = { data -> SessionState.Connected.WebRTC(remoteId, data) },
+            createReconnecting = { attempt, data ->
+                SessionState.Reconnecting.WebRTC(attempt, remoteId, data)
+            },
+            backgroundInfo = { BackgroundedConnectionInfo.WebRTC(remoteId) },
+            onFreshConnect = {
+                settings.setLastConnectionMode("webrtc")
+                settings.addOrUpdateHistoryEntry(
+                    ConnectionHistoryEntry(
+                        type = ConnectionType.WEBRTC,
+                        remoteId = remoteId.rawId,
+                    )
+                )
+            },
+            onReconnected = {
+                // WebRTC-specific: re-authenticate with saved token after successful reconnection
+                logger.i { "WebRTC reconnection successful! Re-authenticating..." }
+                val serverIdentifier = settings.getWebRTCServerIdentifier(remoteId.rawId)
+                val token = settings.getTokenForServer(serverIdentifier)
+                if (token != null) {
+                    logger.i { "Re-authenticating after WebRTC reconnection with saved token" }
+                    authorize(token, isAutoLogin = true)
+                } else {
+                    logger.w { "No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
                 }
             }
+        )
+        webrtcTransport.connect()
+    }
 
-            is SessionState.Reconnecting.Direct -> {
-                // User switched modes during reconnection - not supported
-                logger
-                    .w { "Cannot switch to WebRTC during Direct reconnection" }
-                return
+    fun disconnectByUser() {
+        disconnect(SessionState.Disconnected.ByUser)
+    }
+
+    private fun disconnect(newState: SessionState.Disconnected) {
+        launch {
+            if (newState is SessionState.Disconnected.Backgrounded && (!isInBackground || hasActiveExternalConsumer)) {
+                logger.i { "Backgrounded disconnect aborted — app already foregrounded" }
+                return@launch
             }
 
-            is SessionState.Disconnected -> {
-                _sessionState.update { SessionState.Connecting }
-                launch {
-                    try {
-                        val manager = getOrCreateWebRTCManager()
-                        manager.connect(remoteId)
-
-                        // Monitor initial connection attempt only
-                        // Once connected, startWebRTCMessageListener() takes over state monitoring
-                        webrtcInitialMonitorJob = launch {
-                            manager.connectionState.collect { managerState ->
-                                when (managerState) {
-                                    is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Connected -> {
-                                        _sessionState.update {
-                                            SessionState.Connected.WebRTC(
-                                                manager = manager,
-                                                remoteId = remoteId
-                                            )
-                                        }
-                                        startWebRTCMessageListener(manager)
-                                        settings.setLastConnectionMode("webrtc")
-                                        settings.addOrUpdateHistoryEntry(ConnectionHistoryEntry(
-                                            type = ConnectionType.WEBRTC,
-                                            remoteId = remoteId.rawId,
-                                        ))
-                                        // Stop this monitor - message listener will take over
-                                        return@collect
-                                    }
-
-                                    is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
-                                        // Initial connection failed - just fail, don't reconnect
-                                        _sessionState.update {
-                                            SessionState.Disconnected.Error(
-                                                Exception("WebRTC connection failed: ${managerState.error}")
-                                            )
-                                        }
-                                        return@collect
-                                    }
-
-                                    else -> {}
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        _sessionState.update {
-                            SessionState.Disconnected.Error(Exception("WebRTC connection failed: ${e.message}"))
-                        }
-                    }
-                }
-            }
+            transportObserverJob?.cancel()
+            transportObserverJob = null
+            transport?.disconnect()
+            transport = null
+            _sessionState.update { newState }
+            rpcEngine.clear()
         }
     }
 
-    private suspend fun getOrCreateWebRTCManager(): WebRTCConnectionManager {
-        // Clean up old manager completely before creating new one
-        webrtcManager?.let { oldManager ->
-            logger
-                .d { "🧹 Cleaning up old WebRTC manager [${oldManager.hashCode()}]" }
-            webrtcListeningJob?.cancel()
-            webrtcListeningJob = null
-            webrtcStateMonitorJob?.cancel()
-            webrtcStateMonitorJob = null
-            webrtcInitialMonitorJob?.cancel()
-            webrtcInitialMonitorJob = null
-            logger
-                .d { "🧹 Disconnecting old manager [${oldManager.hashCode()}]" }
-            oldManager.disconnect()
-            logger
-                .d { "🧹 Old manager [${oldManager.hashCode()}] cleaned up" }
-        }
+    // --- Auth ---
 
-        val signalingClient = SignalingClient(webrtcHttpClient, this)
-        val manager = WebRTCConnectionManager(signalingClient, this)
-        webrtcManager = manager
-        logger.d { "✨ Created new WebRTC manager [${manager.hashCode()}]" }
-        return manager
-    }
-
-    private fun startWebRTCMessageListener(manager: WebRTCConnectionManager) {
-        // Cancel previous jobs to prevent leaks and race conditions
-        webrtcListeningJob?.cancel()
-        webrtcStateMonitorJob?.cancel()
-        webrtcInitialMonitorJob?.cancel()  // Critical: stop initial monitor that sets Disconnected.Error
-
-        webrtcListeningJob = launch {
-            try {
-                listenOnSession(WebRTCConnectionSession(manager))
-            } catch (e: Exception) {
-                // Don't trigger reconnection here - the state monitor will handle it
-                logger
-                    .d { "WebRTC message listener ended: ${e.message}" }
-            }
-        }
-
-        // Monitor WebRTC connection state for failures
-        webrtcStateMonitorJob = launch {
-            manager.connectionState.collect { connectionState ->
-                when (connectionState) {
-                    is io.music_assistant.client.webrtc.model.WebRTCConnectionState.Error -> {
-                        logger
-                            .w { "🚨 MONITOR[${manager.hashCode()}] triggering reconnection for error: ${connectionState.error}" }
-                        logger
-                            .w { "🚨 ERROR: ${connectionState.error}" }
-                        val currentState = _sessionState.value
-                        logger
-                            .w { "📊 STATE: ${currentState::class.simpleName}" }
-
-                        // Skip reconnection if user manually disconnected
-                        if (currentState is SessionState.Disconnected.ByUser) {
-                            logger
-                                .w { "🛑 SKIP: User disconnected" }
-                            return@collect
-                        }
-
-                        // Extract connection info: try current state first, fall back to cache
-                        // Cache handles race condition where state transitions to Error before we check
-                        val info: WebRTCConnectionCache? = when (currentState) {
-                            is SessionState.Connected.WebRTC -> {
-                                // State still Connected - extract info directly
-                                WebRTCConnectionCache(
-                                    remoteId = currentState.remoteId,
-                                    serverInfo = currentState.serverInfo,
-                                    user = currentState.user,
-                                    authProcessState = currentState.authProcessState,
-                                    wasAutoLogin = currentState.wasAutoLogin
-                                )
-                            }
-
-                            else -> {
-                                // State already changed (race condition) - use cached info
-                                lastWebRTCConnection
-                            }
-                        }
-
-                        if (info != null) {
-                            // Check if reconnection already running
-                            if (webrtcReconnectJob?.isActive == true) {
-                                logger
-                                    .w { "🛑 SKIP: Reconnection already in progress" }
-                                return@collect
-                            }
-
-                            // If backgrounded without external consumer, save info and stop
-                            if (isInBackground && !hasActiveExternalConsumer) {
-                                logger.i { "App is backgrounded — saving WebRTC connection info instead of reconnecting" }
-                                backgroundedConnectionInfo = BackgroundedConnectionInfo.WebRTC(info.remoteId)
-                                disconnect(SessionState.Disconnected.Backgrounded)
-                                return@collect
-                            }
-
-                            val source =
-                                if (currentState is SessionState.Connected.WebRTC) "current state" else "cache"
-                            logger
-                                .w { "🔄 RECONNECT: Starting (from $source)" }
-                            logger
-                                .w { "WebRTC error: ${connectionState.error}. Will auto-reconnect..." }
-
-                            // Enter Reconnecting state
-                            _sessionState.update {
-                                SessionState.Reconnecting.WebRTC(
-                                    attempt = 0,
-                                    remoteId = info.remoteId,
-                                    serverInfo = info.serverInfo,
-                                    user = info.user,
-                                    authProcessState = info.authProcessState,
-                                    wasAutoLogin = info.wasAutoLogin
-                                )
-                            }
-
-                            // Cancel any stale reconnection job (defensive)
-                            webrtcReconnectJob?.cancel()
-
-                            // Launch reconnection in ServiceClient scope to survive monitor cancellation
-                            // (getOrCreateWebRTCManager cancels webrtcStateMonitorJob)
-                            // CRITICAL: Use this@ServiceClient.launch, NOT launch (which would create child of monitor job)
-                            webrtcReconnectJob = this@ServiceClient.launch {
-                                autoReconnectWebRTC(
-                                    info.remoteId,
-                                    info.serverInfo,
-                                    info.user,
-                                    info.authProcessState,
-                                    info.wasAutoLogin
-                                )
-                            }
-                        } else {
-                            logger
-                                .w { "🛑 SKIP: No connection info in state or cache" }
-                        }
-                    }
-
-                    else -> {
-                        // Other states handled in connectWebRTC()
-                    }
-                }
-            }
+    private fun setAuthState(newState: AuthProcessState) {
+        _sessionState.update { state ->
+            (state as? SessionState.Connected)?.update(authProcessState = newState) ?: state
         }
     }
+
+    private fun setAuthFailed(reason: String) = setAuthState(AuthProcessState.Failed(reason))
 
     suspend fun login(
         username: String,
         password: String,
     ) {
-        if (_sessionState.value !is SessionState.Connected) {
-            return
-        }
-        _sessionState.update {
-            (it as? SessionState.Connected)?.update(authProcessState = AuthProcessState.InProgress)
-                ?: it
-        }
+        if (_sessionState.value !is SessionState.Connected) return
+        setAuthState(AuthProcessState.InProgress)
 
         try {
             val response =
                 sendRequest(Request.Auth.login(username, password, settings.deviceName.value))
-            if (_sessionState.value !is SessionState.Connected) {
-                return
-            }
+            if (_sessionState.value !is SessionState.Connected) return
 
             if (response.isFailure) {
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        authProcessState = AuthProcessState.Failed("No response from server")
-                    ) ?: it
-                }
+                setAuthFailed("No response from server")
                 return
             }
 
-            // Check for error in response
             if (response.getOrNull()?.json?.containsKey("error_code") == true) {
                 val errorMessage =
                     response.getOrNull()?.json["error"]?.jsonPrimitive?.content
                         ?: "Authentication failed"
                 clearCurrentServerToken()
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        authProcessState = AuthProcessState.Failed(errorMessage)
-                    ) ?: it
-                }
+                setAuthFailed(errorMessage)
                 return
             }
 
             response.resultAs<LoginResponse>()?.let { auth ->
                 if (!auth.success) {
-                    _sessionState.update {
-                        (it as? SessionState.Connected)?.update(
-                            authProcessState = AuthProcessState.Failed(
-                                auth.error ?: "Authentication failed"
-                            )
-                        ) ?: it
-                    }
+                    setAuthFailed(auth.error ?: "Authentication failed")
                     return
                 }
                 if (auth.token.isNullOrBlank()) {
-                    _sessionState.update {
-                        (it as? SessionState.Connected)?.update(
-                            authProcessState = AuthProcessState.Failed("No token received")
-                        ) ?: it
-                    }
+                    setAuthFailed("No token received")
                     return
                 }
                 if (auth.user == null) {
-                    _sessionState.update {
-                        (it as? SessionState.Connected)?.update(
-                            authProcessState = AuthProcessState.Failed("No user data received")
-                        ) ?: it
-                    }
+                    setAuthFailed("No user data received")
                     return
                 }
                 authorize(auth.token, isAutoLogin = false)
             } ?: run {
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        authProcessState = AuthProcessState.Failed("Failed to parse auth data")
-                    ) ?: it
-                }
+                setAuthFailed("Failed to parse auth data")
             }
         } catch (e: Exception) {
-            if (_sessionState.value !is SessionState.Connected) {
-                return
-            }
-            _sessionState.update {
-                (it as? SessionState.Connected)?.update(
-                    authProcessState = AuthProcessState.Failed(
-                        e.message ?: "Exception happened: $e"
-                    )
-                ) ?: it
-            }
+            if (_sessionState.value !is SessionState.Connected) return
+            setAuthFailed(e.message ?: "Exception happened: $e")
             clearCurrentServerToken()
         }
     }
 
     fun logout() {
-        // Clear token for current server
         val currentState = _sessionState.value
         if (currentState is SessionState.Connected) {
             val serverIdentifier = when (currentState) {
@@ -793,7 +481,6 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         currentState.connectionInfo.isTls
                     )
                 }
-
                 is SessionState.Connected.WebRTC -> {
                     settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                 }
@@ -802,46 +489,29 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
             logger.d { "Cleared token for server: $serverIdentifier" }
         }
 
-        if (_sessionState.value !is SessionState.Connected) {
-            return
-        }
-        // Update state synchronously
+        if (_sessionState.value !is SessionState.Connected) return
         _sessionState.update {
             (it as? SessionState.Connected)?.update(
                 authProcessState = AuthProcessState.LoggedOut,
                 user = null
             ) ?: it
         }
-        // Fire and forget - send logout to server without waiting for response
         launch {
             try {
                 sendRequest(Request.Auth.logout())
-            } catch (_: Exception) {
-                // Ignore errors - we're already logged out locally
-            }
+            } catch (_: Exception) { }
         }
     }
 
     suspend fun authorize(token: String, isAutoLogin: Boolean = false) {
         try {
-            if (_sessionState.value !is SessionState.Connected) {
-                return
-            }
-            _sessionState.update {
-                (it as? SessionState.Connected)?.update(authProcessState = AuthProcessState.InProgress)
-                    ?: it
-            }
+            if (_sessionState.value !is SessionState.Connected) return
+            setAuthState(AuthProcessState.InProgress)
             val response = sendRequest(Request.Auth.authorize(token, settings.deviceName.value))
-            if (_sessionState.value !is SessionState.Connected) {
-                return
-            }
+            if (_sessionState.value !is SessionState.Connected) return
             if (response.isFailure) {
                 Logger.e(response.exceptionOrNull().toString())
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        authProcessState = AuthProcessState.Failed("No response from server")
-                    ) ?: it
-                }
+                setAuthFailed("No response from server")
                 return
             }
             if (response.getOrNull()?.json?.containsKey("error_code") == true) {
@@ -849,15 +519,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     response.getOrNull()?.json["error"]?.jsonPrimitive?.content
                         ?: "Authentication failed"
                 clearCurrentServerToken()
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        authProcessState = AuthProcessState.Failed(errorMessage)
-                    ) ?: it
-                }
+                setAuthFailed(errorMessage)
                 return
             }
             response.resultAs<AuthorizationResponse>()?.user?.let { user ->
-                // Save token for current server
                 val currentState = _sessionState.value
                 if (currentState is SessionState.Connected) {
                     val serverIdentifier = when (currentState) {
@@ -868,14 +533,12 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                 currentState.connectionInfo.isTls
                             )
                         }
-
                         is SessionState.Connected.WebRTC -> {
                             settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                         }
                     }
                     settings.setTokenForServer(serverIdentifier, token)
-                    logger
-                        .d { "Saved token for server: $serverIdentifier" }
+                    logger.d { "Saved token for server: $serverIdentifier" }
                 }
 
                 _sessionState.update {
@@ -886,107 +549,15 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     ) ?: it
                 }
             } ?: run {
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        authProcessState = AuthProcessState.Failed("Failed to parse user data")
-                    ) ?: it
-                }
+                setAuthFailed("Failed to parse user data")
             }
         } catch (e: Exception) {
-            if (_sessionState.value !is SessionState.Connected) {
-                return
-            }
-            _sessionState.update {
-                (it as? SessionState.Connected)?.update(
-                    authProcessState = AuthProcessState.Failed(
-                        e.message ?: "Exception happened: $e"
-                    )
-                ) ?: it
-            }
+            if (_sessionState.value !is SessionState.Connected) return
+            setAuthFailed(e.message ?: "Exception happened: $e")
             clearCurrentServerToken()
         }
     }
 
-    /**
-     * Auto-reconnect WebRTC connection with exponential backoff.
-     * Matches the reconnection behaviour of Direct connections.
-     */
-    private suspend fun autoReconnectWebRTC(
-        remoteId: RemoteId,
-        serverInfo: io.music_assistant.client.data.model.server.ServerInfo?,
-        user: io.music_assistant.client.data.model.server.User?,
-        authProcessState: AuthProcessState,
-        wasAutoLogin: Boolean
-    ) {
-        logger
-            .i { "🔄 AUTO-RECONNECT WebRTC started for ${remoteId.rawId}" }
-
-        runReconnectionLoop(
-            tag = "WebRTC",
-            maxAttempts = 5,
-            waitAfterConnectMs = 30_000L,
-            shouldStop = {
-                (isInBackground && !hasActiveExternalConsumer) || _sessionState.value.let {
-                    it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting.WebRTC
-                }
-            },
-            isConnected = { _sessionState.value is SessionState.Connected.WebRTC },
-            onAttempt = { attempt ->
-                _sessionState.update {
-                    SessionState.Reconnecting.WebRTC(
-                        attempt = attempt + 1,
-                        remoteId = remoteId,
-                        serverInfo = serverInfo,
-                        user = user,
-                        authProcessState = authProcessState,
-                        wasAutoLogin = wasAutoLogin
-                    )
-                }
-                try {
-                    connectWebRTC(remoteId)
-                } catch (e: Exception) {
-                    logger
-                        .w(e) { "WebRTC reconnect attempt ${attempt + 1} threw exception" }
-                }
-            },
-            onGiveUp = {
-                disconnect(SessionState.Disconnected.Error(Exception("Max WebRTC reconnect attempts reached")))
-            }
-        )
-
-        // If backgrounded during reconnection, save info and disconnect instead of re-auth
-        if (isInBackground && !hasActiveExternalConsumer && _sessionState.value is SessionState.Reconnecting.WebRTC) {
-            logger.i { "App backgrounded during WebRTC reconnection — saving info and disconnecting" }
-            backgroundedConnectionInfo = BackgroundedConnectionInfo.WebRTC(remoteId)
-            disconnect(SessionState.Disconnected.Backgrounded)
-            return
-        }
-
-        // WebRTC-specific: re-authenticate with saved token after successful reconnection
-        if (_sessionState.value is SessionState.Connected.WebRTC) {
-            logger
-                .i { "✅ WebRTC reconnection successful! Re-authenticating..." }
-            launch {
-                val serverIdentifier = settings.getWebRTCServerIdentifier(remoteId.rawId)
-                val token = settings.getTokenForServer(serverIdentifier)
-
-                if (token != null) {
-                    logger
-                        .i { "🔐 Re-authenticating after WebRTC reconnection with saved token" }
-                    authorize(token, isAutoLogin = true)
-                } else {
-                    logger
-                        .w { "⚠️ No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
-                }
-            }
-        }
-        logger.i { "🏁 autoReconnectWebRTC() returning" }
-    }
-
-    /**
-     * Clear authentication token for the currently connected server.
-     * Also clears legacy global token for backward compatibility.
-     */
     private fun clearCurrentServerToken() {
         val currentState = _sessionState.value
         if (currentState is SessionState.Connected) {
@@ -998,16 +569,16 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         currentState.connectionInfo.isTls
                     )
                 }
-
                 is SessionState.Connected.WebRTC -> {
                     settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                 }
             }
             settings.setTokenForServer(serverIdentifier, null)
-            logger
-                .d { "Cleared token for server: $serverIdentifier due to auth failure" }
+            logger.d { "Cleared token for server: $serverIdentifier due to auth failure" }
         }
     }
+
+    // --- Messaging ---
 
     private suspend fun handleIncomingMessage(message: JsonObject) {
         when {
@@ -1029,172 +600,26 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         }
     }
 
-    /** Collect messages from a [ConnectionSession] and dispatch each to [handleIncomingMessage]. */
-    private suspend fun listenOnSession(session: ConnectionSession) {
-        session.messages.collect { handleIncomingMessage(it) }
-    }
-
-    /**
-     * Listen on a Direct WebSocket session. When the connection drops, enters the
-     * Reconnecting state and retries with exponential backoff.
-     */
-    private suspend fun listenForMessages(session: ConnectionSession) {
-        try {
-            listenOnSession(session)
-        } catch (e: Exception) {
-            logger.w { "WebSocket error: ${e.message}" }
-        }
-
-        // Connection ended (normal close or error) - check if reconnection is needed.
-        val state = _sessionState.value
-        if (state is SessionState.Disconnected.ByUser) return
-        if (state !is SessionState.Connected.Direct) return
-
-        logger.w { "Connection lost. Will auto-reconnect..." }
-        val connectionInfo = state.connectionInfo
-        val serverInfo = state.serverInfo
-        val user = state.user
-        val authProcessState = state.authProcessState
-        val wasAutoLogin = state.wasAutoLogin
-
-        // If backgrounded without external consumer, save info and disconnect
-        if (isInBackground && !hasActiveExternalConsumer) {
-            logger.i { "App is backgrounded — saving Direct connection info instead of reconnecting" }
-            backgroundedConnectionInfo = BackgroundedConnectionInfo.Direct(connectionInfo)
-            disconnect(SessionState.Disconnected.Backgrounded)
-            return
-        }
-
-        // Enter Reconnecting state (preserves server/user/auth state - no UI reload!)
-        _sessionState.update {
-            SessionState.Reconnecting.Direct(
-                attempt = 0,
-                connectionInfo = connectionInfo,
-                serverInfo = serverInfo,
-                user = user,
-                authProcessState = authProcessState,
-                wasAutoLogin = wasAutoLogin
-            )
-        }
-
-        runReconnectionLoop(
-            tag = "Direct",
-            maxAttempts = 5,
-            waitAfterConnectMs = 2000L,
-            shouldStop = {
-                (isInBackground && !hasActiveExternalConsumer) || _sessionState.value.let {
-                    it is SessionState.Disconnected.ByUser || it !is SessionState.Reconnecting
-                }
-            },
-            isConnected = { _sessionState.value is SessionState.Connected },
-            onAttempt = { attempt ->
-                // Read current connection info from settings to allow IP changes during reconnection
-                val info = settings.connectionInfo.value ?: connectionInfo
-                _sessionState.update {
-                    SessionState.Reconnecting.Direct(
-                        attempt = attempt + 1,
-                        connectionInfo = info,
-                        serverInfo = serverInfo,
-                        user = user,
-                        authProcessState = authProcessState,
-                        wasAutoLogin = wasAutoLogin
-                    )
-                }
-                connect(info)
-            },
-            onGiveUp = {
-                disconnect(SessionState.Disconnected.Error(Exception("Failed to reconnect after max attempts")))
-            }
-        )
-
-        // If backgrounded during reconnection, save info and disconnect
-        if (isInBackground && !hasActiveExternalConsumer && _sessionState.value is SessionState.Reconnecting.Direct) {
-            logger.i { "App backgrounded during Direct reconnection — saving info and disconnecting" }
-            backgroundedConnectionInfo = BackgroundedConnectionInfo.Direct(connectionInfo)
-            disconnect(SessionState.Disconnected.Backgrounded)
-        }
-    }
-
     suspend fun sendRequest(request: Request): Result<Answer> = suspendCoroutine { continuation ->
         rpcEngine.registerCallback(request.messageId) { response ->
             continuation.resume(Result.success(response))
         }
         launch {
-            val state = _sessionState.value as? SessionState.Connected
-                ?: run {
-                    rpcEngine.removeCallback(request.messageId)
-                    continuation.resume(Result.failure(IllegalStateException("Not connected")))
-                    return@launch
-                }
+            val t = transport ?: run {
+                rpcEngine.removeCallback(request.messageId)
+                continuation.resume(Result.failure(IllegalStateException("Not connected")))
+                return@launch
+            }
             try {
                 val jsonObject =
                     myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
-                state.sendMessage(jsonObject)
+                t.send(jsonObject)
             } catch (e: Exception) {
                 logger.e(e) { "sendRequest FAILED cmd=${request.command}" }
                 rpcEngine.removeCallback(request.messageId)
                 continuation.resume(Result.failure(e))
                 disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
             }
-        }
-    }
-
-    fun disconnectByUser() {
-        disconnect(SessionState.Disconnected.ByUser)
-    }
-
-
-    private fun disconnect(newState: SessionState.Disconnected) {
-        launch {
-            // Guard: if we're disconnecting for background but the app already returned
-            // to foreground (rapid background/foreground), abort the disconnect.
-            if (newState is SessionState.Disconnected.Backgrounded && (!isInBackground || hasActiveExternalConsumer)) {
-                logger
-                    .i { "Backgrounded disconnect aborted — app already foregrounded" }
-                return@launch
-            }
-
-            when (val currentState = _sessionState.value) {
-                is SessionState.Connected.Direct -> {
-                    currentState.session.close()
-                    _sessionState.update { newState }
-                }
-
-                is SessionState.Connected.WebRTC -> {
-                    webrtcListeningJob?.cancel()
-                    webrtcListeningJob = null
-                    webrtcInitialMonitorJob?.cancel()
-                    webrtcInitialMonitorJob = null
-                    webrtcReconnectJob?.cancel()
-                    webrtcReconnectJob = null
-                    currentState.manager.disconnect()
-                    _sessionState.update { newState }
-
-                    // Clear cache on manual disconnect to prevent unwanted reconnection
-                    if (newState is SessionState.Disconnected.ByUser) {
-                        lastWebRTCConnection = null
-                    }
-                }
-
-                is SessionState.Reconnecting -> {
-                    // Cancel any active reconnection attempt
-                    webrtcReconnectJob?.cancel()
-                    webrtcReconnectJob = null
-                    _sessionState.update { newState }
-                }
-
-                else -> {
-                    // Already disconnected or in some other state (including Connecting)
-                    // Cancel any active WebRTC jobs
-                    webrtcInitialMonitorJob?.cancel()
-                    webrtcInitialMonitorJob = null
-                    webrtcReconnectJob?.cancel()
-                    webrtcReconnectJob = null
-                    _sessionState.update { newState }
-                }
-            }
-            // Clear pending requests and partial result accumulations to prevent leaks
-            rpcEngine.clear()
         }
     }
 

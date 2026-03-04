@@ -1,0 +1,191 @@
+package io.music_assistant.client.api
+
+import co.touchlab.kermit.Logger
+import io.ktor.client.HttpClient
+import io.music_assistant.client.utils.myJson
+import io.music_assistant.client.webrtc.DataChannelWrapper
+import io.music_assistant.client.webrtc.SignalingClient
+import io.music_assistant.client.webrtc.WebRTCConnectionManager
+import io.music_assistant.client.webrtc.model.RemoteId
+import io.music_assistant.client.webrtc.model.WebRTCConnectionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+
+private fun backoffMs(attempt: Int): Long = when (attempt) {
+    0 -> 0L
+    1 -> 500L
+    2 -> 1000L
+    3 -> 2000L
+    else -> 3000L
+}
+
+class WebRTCTransport(
+    private val httpClient: HttpClient,
+    private val remoteId: RemoteId,
+    private val scope: CoroutineScope,
+    private val maxReconnectAttempts: Int = 5
+) : Transport {
+
+    private val logger = Logger.withTag("WebRTCTransport")
+
+    private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
+    override val state = _state.asStateFlow()
+
+    private val _messages = MutableSharedFlow<JsonObject>(extraBufferCapacity = 10)
+    override val messages = _messages.asSharedFlow()
+
+    private var manager: WebRTCConnectionManager? = null
+    private var connectionJob: Job? = null
+    private var messageListenerJob: Job? = null
+    private var stateMonitorJob: Job? = null
+
+    val sendspinDataChannel: DataChannelWrapper?
+        get() = manager?.sendspinDataChannel
+
+    override fun connect() {
+        connectionJob?.cancel()
+        connectionJob = scope.launch {
+            _state.value = TransportState.Connecting
+            connectInternal(isReconnect = false)
+        }
+    }
+
+    private suspend fun connectInternal(isReconnect: Boolean) {
+        try {
+            // Clean up old manager
+            cleanupManager()
+            val mgr = createManager()
+            manager = mgr
+            mgr.connect(remoteId)
+
+            // Wait for terminal WebRTC connection state (Connected or Error)
+            val result = mgr.connectionState.first { connState ->
+                connState is WebRTCConnectionState.Connected || connState is WebRTCConnectionState.Error
+            }
+
+            when (result) {
+                is WebRTCConnectionState.Connected -> {
+                    _state.value = TransportState.Connected
+                    startMessageListener(mgr)
+                    startStateMonitor(mgr)
+                }
+
+                is WebRTCConnectionState.Error -> {
+                    if (!isReconnect) {
+                        _state.value = TransportState.Failed(
+                            Exception("WebRTC connection failed: ${result.error}")
+                        )
+                    }
+                }
+
+                else -> {} // unreachable
+            }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (!isReconnect) {
+                _state.value = TransportState.Failed(e)
+            }
+        }
+    }
+
+    private fun startMessageListener(mgr: WebRTCConnectionManager) {
+        messageListenerJob?.cancel()
+        messageListenerJob = scope.launch {
+            try {
+                mgr.incomingMessages.collect { jsonString ->
+                    try {
+                        val jsonObject = myJson.decodeFromString<JsonObject>(jsonString)
+                        _messages.emit(jsonObject)
+                    } catch (e: Exception) {
+                        logger.e(e) { "Failed to parse incoming WebRTC message: ${jsonString.take(200)}" }
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                logger.d { "WebRTC message listener ended: ${e.message}" }
+            }
+        }
+    }
+
+    private fun startStateMonitor(mgr: WebRTCConnectionManager) {
+        stateMonitorJob?.cancel()
+        stateMonitorJob = scope.launch {
+            // Wait for error state — first() completes when predicate matches
+            val errorState = mgr.connectionState.first { it is WebRTCConnectionState.Error }
+            logger.w { "WebRTC error detected: $errorState. Starting reconnection..." }
+            messageListenerJob?.cancel()
+            startReconnection()
+            // Reconnection either succeeded (this job was already cancelled by new
+            // startStateMonitor) or all attempts exhausted. Job ends naturally.
+        }
+    }
+
+    private suspend fun startReconnection() {
+        for (attempt in 0 until maxReconnectAttempts) {
+            _state.value = TransportState.Reconnecting(attempt + 1)
+            delay(backoffMs(attempt))
+            logger.i { "WebRTC reconnect attempt ${attempt + 1}/$maxReconnectAttempts" }
+            connectInternal(isReconnect = true)
+            // If connected, we're done
+            if (_state.value == TransportState.Connected) return
+        }
+        _state.value = TransportState.Failed(Exception("Max WebRTC reconnect attempts reached"))
+    }
+
+    fun forceReconnect() {
+        connectionJob?.cancel()
+        connectionJob = scope.launch {
+            messageListenerJob?.cancel()
+            stateMonitorJob?.cancel()
+            cleanupManager()
+            delay(1500) // wait for signaling server to process disconnect
+            logger.i { "Starting fresh WebRTC connection after forced disconnect" }
+            startReconnection()
+        }
+    }
+
+    override suspend fun send(message: JsonObject) {
+        val mgr = manager ?: throw IllegalStateException("Not connected")
+        val jsonString = myJson.encodeToString(JsonObject.serializer(), message)
+        mgr.send(jsonString)
+    }
+
+    override fun disconnect() {
+        connectionJob?.cancel()
+        connectionJob = null
+        messageListenerJob?.cancel()
+        messageListenerJob = null
+        stateMonitorJob?.cancel()
+        stateMonitorJob = null
+        val mgr = manager
+        manager = null
+        if (mgr != null) {
+            scope.launch { mgr.disconnect() }
+        }
+        _state.value = TransportState.Disconnected
+    }
+
+    private suspend fun cleanupManager() {
+        messageListenerJob?.cancel()
+        messageListenerJob = null
+        stateMonitorJob?.cancel()
+        stateMonitorJob = null
+        manager?.disconnect()
+        manager = null
+    }
+
+    private fun createManager(): WebRTCConnectionManager {
+        val signalingClient = SignalingClient(httpClient, scope)
+        val mgr = WebRTCConnectionManager(signalingClient, scope)
+        logger.d { "Created new WebRTC manager [${mgr.hashCode()}]" }
+        return mgr
+    }
+}

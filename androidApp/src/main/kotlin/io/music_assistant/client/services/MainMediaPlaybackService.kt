@@ -24,7 +24,6 @@ import coil3.request.SuccessResult
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -78,7 +77,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         players.map { it.size > 1 }
     ) { player, moreThanOnePlayer ->
         MediaNotificationData.from(
-            (dataSource.apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl,
+            dataSource.apiClient.serverBaseUrl.value,
             player,
             moreThanOnePlayer
         )

@@ -196,7 +196,7 @@ class AutoLibrary(
             }
 
     private val baseUrl: String?
-        get() = (apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
+        get() = apiClient.serverBaseUrl.value
 
     private fun actionsForItem(itemId: String): List<MediaItem> {
         return buildList {

@@ -559,16 +559,12 @@ class MainDataSource(
             selectedPlayerIndex.filterNotNull().collect { index ->
                 // Only refresh queue if we have live data and are authenticated
                 // Don't try to load during Stale state - will error with auth issues
-                val sessionState = apiClient.sessionState.value
-                val isAuthenticated =
-                    (sessionState as? SessionState.Connected)?.dataConnectionState == DataConnectionState.Authenticated
-
-                if (isAuthenticated) {
+                if (apiClient.isReadyForCommands.value) {
                     (playersData.value as? DataState.Data)?.data?.let { list ->
                         refreshPlayerQueueItems(list[index])
                     }
                 } else {
-                    log.d { "Skipping queue refresh - not authenticated (state: ${sessionState::class.simpleName})" }
+                    log.d { "Skipping queue refresh - not authenticated (state: ${apiClient.sessionState.value::class.simpleName})" }
                 }
             }
         }
@@ -590,8 +586,7 @@ class MainDataSource(
         launch {
             localPlayer.collect { playerData ->
                 val track = playerData?.queueInfo?.currentItem?.track
-                val serverUrl =
-                    (apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
+                val serverUrl = apiClient.serverBaseUrl.value
                 if (track != null) {
                     mediaPlayerController.updateNowPlaying(
                         title = track.name,
@@ -857,19 +852,14 @@ class MainDataSource(
                         }
 
                         if (shouldRetry && sendspinRetryCount < MAX_SENDSPIN_RETRIES) {
-                            val isAuthenticated =
-                                (apiClient.sessionState.value as? SessionState.Connected)
-                                    ?.dataConnectionState == DataConnectionState.Authenticated
-                            if (isAuthenticated && settings.sendspinEnabled.value) {
+                            if (apiClient.isReadyForCommands.value && settings.sendspinEnabled.value) {
                                 sendspinRetryCount++
                                 val backoffMs = 5000L * sendspinRetryCount
                                 log.w { "[SS-DIAG] retry $sendspinRetryCount/$MAX_SENDSPIN_RETRIES in ${backoffMs}ms" }
                                 delay(backoffMs)
                                 // Re-check after delay (conditions may have changed)
                                 val stillValid =
-                                    (apiClient.sessionState.value as? SessionState.Connected)
-                                        ?.dataConnectionState == DataConnectionState.Authenticated
-                                            && settings.sendspinEnabled.value
+                                    apiClient.isReadyForCommands.value && settings.sendspinEnabled.value
                                 if (stillValid) {
                                     try {
                                         initSendspinIfEnabled()
