@@ -510,7 +510,7 @@ private fun PlayerNameRow(
     sendspinState: SendspinState?,
     onShowGroup: () -> Unit
 ) {
-    val dotColor = sendspinState?.toDotColor()
+    val dotColor = sendspinState.toDotColor()
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -529,14 +529,12 @@ private fun PlayerNameRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (dotColor != null) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(dotColor, CircleShape)
-                    )
-                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(dotColor, CircleShape)
+                )
             }
         }
 
@@ -584,11 +582,11 @@ private fun PlayerNameRow(
     }
 }
 
-private fun SendspinState.toDotColor(): Color? = when (this) {
+private fun SendspinState?.toDotColor(): Color = when (this) {
     is SendspinState.Synchronized, is SendspinState.Ready,
     is SendspinState.Buffering -> Color(0xFF4CAF50) // Green
     is SendspinState.Connecting, is SendspinState.Authenticating,
     is SendspinState.Handshaking, is SendspinState.Reconnecting -> Color(0xFFFF9800) // Orange
     is SendspinState.Error -> Color(0xFFF44336) // Red
-    is SendspinState.Idle -> null // No dot
+    is SendspinState.Idle, null -> Color(0xFFBDBDBD) // Light gray
 }
