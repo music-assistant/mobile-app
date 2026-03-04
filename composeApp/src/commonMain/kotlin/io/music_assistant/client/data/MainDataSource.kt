@@ -831,7 +831,6 @@ class MainDataSource(
                     }
                 } ?: log.w { "[SS-DIAG] playbackStoppedDueToError but localPlayer is null" }
             }
-        }
 
         sendspinMonitorJobs += launch {
             client.state.collect { state ->
