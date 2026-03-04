@@ -33,8 +33,8 @@ import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClient
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
-import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.player.sendspin.SendspinError
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.player.sendspin.WebRTCSendspinChannelExhausted
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -458,7 +458,6 @@ class MainDataSource(
                                         val data = when (currentState) {
                                             is DataState.Data -> currentState.data
                                             is DataState.Stale -> currentState.data
-                                            else -> throw IllegalStateException()
                                         }
                                         val originalDisconnectedAt =
                                             (currentState as? DataState.Stale)?.disconnectedAt
@@ -591,7 +590,8 @@ class MainDataSource(
         launch {
             localPlayer.collect { playerData ->
                 val track = playerData?.queueInfo?.currentItem?.track
-                val serverUrl = (apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
+                val serverUrl =
+                    (apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
                 if (track != null) {
                     mediaPlayerController.updateNowPlaying(
                         title = track.name,
@@ -832,64 +832,67 @@ class MainDataSource(
                 } ?: log.w { "[SS-DIAG] playbackStoppedDueToError but localPlayer is null" }
             }
 
-        sendspinMonitorJobs += launch {
-            client.state.collect { state ->
-                log.w { "[SS-DIAG] state transition -> $state (prev=${_sendspinState.value})" }
-                _sendspinState.value = state
-                when (state) {
-                    is SendspinState.Ready -> {
-                        sendspinRetryCount = 0
-                        log.w { "[SS-DIAG] Ready — refreshing player list in 1s" }
-                        delay(1000) // Give server a moment to register the player
-                        updatePlayersAndQueues()
-                    }
-
-                    is SendspinState.Error -> {
-                        log.w { "[SS-DIAG] Error state: ${state.error} — signalling pipeline disconnect" }
-                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
-
-                        // Retry if error is not being auto-retried and main API is connected
-                        val shouldRetry = when (state.error) {
-                            is SendspinError.Permanent -> true
-                            is SendspinError.Transient -> !state.error.willRetry
-                            is SendspinError.Degraded -> false
+            sendspinMonitorJobs += launch {
+                client.state.collect { state ->
+                    log.w { "[SS-DIAG] state transition -> $state (prev=${_sendspinState.value})" }
+                    _sendspinState.value = state
+                    when (state) {
+                        is SendspinState.Ready -> {
+                            sendspinRetryCount = 0
+                            log.w { "[SS-DIAG] Ready — refreshing player list in 1s" }
+                            delay(1000) // Give server a moment to register the player
+                            updatePlayersAndQueues()
                         }
 
-                        if (shouldRetry && sendspinRetryCount < MAX_SENDSPIN_RETRIES) {
-                            val isAuthenticated = (apiClient.sessionState.value as? SessionState.Connected)
-                                ?.dataConnectionState == DataConnectionState.Authenticated
-                            if (isAuthenticated && settings.sendspinEnabled.value) {
-                                sendspinRetryCount++
-                                val backoffMs = 5000L * sendspinRetryCount
-                                log.w { "[SS-DIAG] retry $sendspinRetryCount/$MAX_SENDSPIN_RETRIES in ${backoffMs}ms" }
-                                delay(backoffMs)
-                                // Re-check after delay (conditions may have changed)
-                                val stillValid = (apiClient.sessionState.value as? SessionState.Connected)
-                                    ?.dataConnectionState == DataConnectionState.Authenticated
-                                    && settings.sendspinEnabled.value
-                                if (stillValid) {
-                                    try {
-                                        initSendspinIfEnabled()
-                                    } catch (e: Exception) {
-                                        coroutineContext.ensureActive()
-                                        log.e(e) { "[SS-DIAG] retry $sendspinRetryCount failed" }
+                        is SendspinState.Error -> {
+                            log.w { "[SS-DIAG] Error state: ${state.error} — signalling pipeline disconnect" }
+                            sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+
+                            // Retry if error is not being auto-retried and main API is connected
+                            val shouldRetry = when (state.error) {
+                                is SendspinError.Permanent -> true
+                                is SendspinError.Transient -> !state.error.willRetry
+                                is SendspinError.Degraded -> false
+                            }
+
+                            if (shouldRetry && sendspinRetryCount < MAX_SENDSPIN_RETRIES) {
+                                val isAuthenticated =
+                                    (apiClient.sessionState.value as? SessionState.Connected)
+                                        ?.dataConnectionState == DataConnectionState.Authenticated
+                                if (isAuthenticated && settings.sendspinEnabled.value) {
+                                    sendspinRetryCount++
+                                    val backoffMs = 5000L * sendspinRetryCount
+                                    log.w { "[SS-DIAG] retry $sendspinRetryCount/$MAX_SENDSPIN_RETRIES in ${backoffMs}ms" }
+                                    delay(backoffMs)
+                                    // Re-check after delay (conditions may have changed)
+                                    val stillValid =
+                                        (apiClient.sessionState.value as? SessionState.Connected)
+                                            ?.dataConnectionState == DataConnectionState.Authenticated
+                                                && settings.sendspinEnabled.value
+                                    if (stillValid) {
+                                        try {
+                                            initSendspinIfEnabled()
+                                        } catch (e: Exception) {
+                                            coroutineContext.ensureActive()
+                                            log.e(e) { "[SS-DIAG] retry $sendspinRetryCount failed" }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    is SendspinState.Idle -> {
-                        log.w { "[SS-DIAG] Idle state — signalling pipeline disconnect" }
-                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
-                    }
+                        is SendspinState.Idle -> {
+                            log.w { "[SS-DIAG] Idle state — signalling pipeline disconnect" }
+                            sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+                        }
 
-                    is SendspinState.Reconnecting -> {
-                        log.w { "[SS-DIAG] Reconnecting: wasStreaming=${state.wasStreaming}, attempt=${state.attempt}" }
-                    }
+                        is SendspinState.Reconnecting -> {
+                            log.w { "[SS-DIAG] Reconnecting: wasStreaming=${state.wasStreaming}, attempt=${state.attempt}" }
+                        }
 
-                    else -> {
-                        log.w { "[SS-DIAG] state=$state (no special handling)" }
+                        else -> {
+                            log.w { "[SS-DIAG] state=$state (no special handling)" }
+                        }
                     }
                 }
             }
@@ -1151,7 +1154,10 @@ class MainDataSource(
                 Request.Player.setVolume(playerId = data.playerId, volumeLevel = action.level)
 
             PlayerAction.GroupVolumeDown ->
-                Request.Player.simpleCommand(playerId = data.playerId, command = "group_volume_down")
+                Request.Player.simpleCommand(
+                    playerId = data.playerId,
+                    command = "group_volume_down"
+                )
 
             PlayerAction.GroupVolumeUp ->
                 Request.Player.simpleCommand(playerId = data.playerId, command = "group_volume_up")
