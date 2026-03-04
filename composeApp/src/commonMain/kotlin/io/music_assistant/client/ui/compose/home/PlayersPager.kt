@@ -510,7 +510,7 @@ private fun PlayerNameRow(
     sendspinState: SendspinState?,
     onShowGroup: () -> Unit
 ) {
-    val dotColor = sendspinState.toDotColor()
+    val dotColor = sendspinState.toDotColor().takeIf { isLocalPlayer }
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -529,12 +529,14 @@ private fun PlayerNameRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(dotColor, CircleShape)
-                )
+                dotColor?.let {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(it, CircleShape)
+                    )
+                }
             }
         }
 
