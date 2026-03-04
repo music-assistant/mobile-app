@@ -46,6 +46,7 @@ class WebRTCTransport(
     private var connectionJob: Job? = null
     private var messageListenerJob: Job? = null
     private var stateMonitorJob: Job? = null
+    private var reconnectionJob: Job? = null
 
     val sendspinDataChannel: DataChannelWrapper?
         get() = manager?.sendspinDataChannel
@@ -60,7 +61,7 @@ class WebRTCTransport(
 
     private suspend fun connectInternal(isReconnect: Boolean) {
         try {
-            // Clean up old manager
+            // Clean up old manager (does not cancel reconnectionJob — we may be inside it)
             cleanupManager()
             val mgr = createManager()
             manager = mgr
@@ -122,9 +123,11 @@ class WebRTCTransport(
             val errorState = mgr.connectionState.first { it is WebRTCConnectionState.Error }
             logger.w { "WebRTC error detected: $errorState. Starting reconnection..." }
             messageListenerJob?.cancel()
-            startReconnection()
-            // Reconnection either succeeded (this job was already cancelled by new
-            // startStateMonitor) or all attempts exhausted. Job ends naturally.
+            // Launch reconnection in a separate job so:
+            // 1. cleanupManager() can cancel stateMonitorJob without killing reconnection
+            // 2. disconnect()/forceReconnect() can cancel reconnectionJob explicitly
+            reconnectionJob?.cancel()
+            reconnectionJob = scope.launch { startReconnection() }
         }
     }
 
@@ -142,6 +145,7 @@ class WebRTCTransport(
 
     fun forceReconnect() {
         connectionJob?.cancel()
+        reconnectionJob?.cancel()
         connectionJob = scope.launch {
             messageListenerJob?.cancel()
             stateMonitorJob?.cancel()
@@ -161,6 +165,8 @@ class WebRTCTransport(
     override fun disconnect() {
         connectionJob?.cancel()
         connectionJob = null
+        reconnectionJob?.cancel()
+        reconnectionJob = null
         messageListenerJob?.cancel()
         messageListenerJob = null
         stateMonitorJob?.cancel()
@@ -173,6 +179,7 @@ class WebRTCTransport(
         _state.value = TransportState.Disconnected
     }
 
+    /** Cleans up the current manager and its listener jobs. Does NOT cancel reconnectionJob. */
     private suspend fun cleanupManager() {
         messageListenerJob?.cancel()
         messageListenerJob = null
