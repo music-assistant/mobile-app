@@ -122,7 +122,6 @@ class OpusLibDecoder: NativeAudioDecoder {
     }
     
     func decode(_ data: Data) throws -> Data {
-        // Decode Opus packet to AVAudioPCMBuffer
         let pcmBuffer: AVAudioPCMBuffer
         do {
             pcmBuffer = try decoder.decode(data)
@@ -130,33 +129,20 @@ class OpusLibDecoder: NativeAudioDecoder {
             throw AudioDecoderError.decodingFailed("Opus decode failed: \(error.localizedDescription)")
         }
         
-        // swift-opus outputs float32 in AVAudioPCMBuffer
-        // Convert float32 → int16 for AudioQueue
         guard let floatChannelData = pcmBuffer.floatChannelData else {
             throw AudioDecoderError.decodingFailed("No float channel data in decoded buffer")
         }
         
         let frameLength = Int(pcmBuffer.frameLength)
-        let totalSamples = frameLength * channels
-        var int16Samples = [Int16](repeating: 0, count: totalSamples)
+        let totalSamples = frameLength * channels  // e.g. 960 * 2 = 1920
         
-        // Convert interleaved float32 samples to int16
-        if channels == 1 {
-            let floatData = floatChannelData[0]
-            for i in 0..<frameLength {
-                let floatSample = max(-1.0, min(1.0, floatData[i]))
-                int16Samples[i] = Int16(floatSample * Float(Int16.max))
-            }
-        } else {
-            // Stereo or multi-channel: interleave
-            for channel in 0..<channels {
-                let floatData = floatChannelData[channel]
-                for frame in 0..<frameLength {
-                    let floatSample = max(-1.0, min(1.0, floatData[frame]))
-                    let sampleIndex = frame * channels + channel
-                    int16Samples[sampleIndex] = Int16(floatSample * Float(Int16.max))
-                }
-            }
+        // With interleaved=true, floatChannelData[0] contains ALL samples as LRLRLR...
+        // Iterate totalSamples, not frameLength — the original loop only read 960 of 1920
+        let floatData = floatChannelData[0]
+        var int16Samples = [Int16](repeating: 0, count: totalSamples)
+        for i in 0..<totalSamples {
+            let floatSample = max(-1.0, min(1.0, floatData[i]))
+            int16Samples[i] = Int16(floatSample * Float(Int16.max))
         }
         
         return int16Samples.withUnsafeBytes { Data($0) }
