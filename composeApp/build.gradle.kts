@@ -41,6 +41,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
 
             implementation(libs.ktor.client.android)
+            implementation(libs.ktor.client.cio)
 
             implementation(libs.koin.android)
             implementation(libs.koin.androidx.compose)
@@ -70,7 +71,6 @@ kotlin {
             implementation(libs.androidx.navigation3.material3.adaptive)
 
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.client.json)
 //            implementation(libs.ktor.client.logging)
