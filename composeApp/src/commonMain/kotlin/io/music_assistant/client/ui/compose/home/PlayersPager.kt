@@ -106,16 +106,18 @@ internal fun PlayersPager(
     }
 
     Column(modifier = modifier) {
-        PlayersTopBar(
-            playerDataList = playerDataList,
-            playersState = playersState,
-            playerPagerState = playerPagerState,
-            onPlayersRefreshClick = onPlayersRefreshClick,
-            onItemMoved = onItemMoved
-        ) { moveToPlayer(it) }
+        if (playerDataList.size > 1) {
+            HorizontalPagerIndicator(
+                modifier = Modifier.padding(top = 16.dp),
+                pagerState = playerPagerState,
+                onItemMoved = onItemMoved,
+            )
+        }
 
         HorizontalPager(
-            modifier = Modifier.wrapContentHeight(),
+            modifier = Modifier
+                .wrapContentHeight()
+                .padding(top = 8.dp),
             state = playerPagerState,
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
