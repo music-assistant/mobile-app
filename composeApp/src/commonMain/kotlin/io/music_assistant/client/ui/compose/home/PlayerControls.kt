@@ -42,7 +42,8 @@ fun PlayerControls(
     playerData: PlayerData,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     showAdditionalButtons: Boolean = true,
-    mainButtonSize: Dp = 48.dp
+    mainButtonSize: Dp = 48.dp,
+    showSkip: Boolean = true
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
@@ -78,12 +79,15 @@ fun PlayerControls(
             }
         }
 
-        ActionButton(
-            icon = Icons.Default.SkipPrevious,
-            tint = MaterialTheme.colorScheme.primary,
-            size = smallButtonSize,
-            enabled = playerEnabled && buttonsEnabled,
-        ) { playerAction(playerData, PlayerAction.Previous) }
+        if (showSkip) {
+            ActionButton(
+                icon = Icons.Default.SkipPrevious,
+                tint = MaterialTheme.colorScheme.primary,
+                size = smallButtonSize,
+                enabled = playerEnabled && buttonsEnabled,
+            ) { playerAction(playerData, PlayerAction.Previous) }
+        }
+
 
         if (playerData.pendingPlay && player.isPlaying) {
             IconButton(
@@ -110,12 +114,14 @@ fun PlayerControls(
             ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
         }
 
-        ActionButton(
-            icon = Icons.Default.SkipNext,
-            tint = MaterialTheme.colorScheme.primary,
-            size = smallButtonSize,
-            enabled = playerEnabled && buttonsEnabled,
-        ) { playerAction(playerData, PlayerAction.Next) }
+        if (showSkip) {
+            ActionButton(
+                icon = Icons.Default.SkipNext,
+                tint = MaterialTheme.colorScheme.primary,
+                size = smallButtonSize,
+                enabled = playerEnabled && buttonsEnabled,
+            ) { playerAction(playerData, PlayerAction.Next) }
+        }
 
         if (showAdditionalButtons) {
             queue?.let {
@@ -169,7 +175,7 @@ private fun ActionButton(
 
 @Preview
 @Composable
-private fun Preview() {
+private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = true) {
     MaterialTheme {
         PlayerControls(
             playerData = PlayerData(
@@ -205,7 +211,21 @@ private fun Preview() {
                 ),
                 groupChildren = emptyList(),
             ),
-            playerAction = { _, _ -> }
+            playerAction = { _, _ -> },
+            showSkip = showSkip,
+            showAdditionalButtons = showAdditionButtons
         )
     }
+}
+
+@Preview
+@Composable
+fun PreviewNoAdditional() {
+    Preview(showAdditionButtons = false)
+}
+
+@Preview
+@Composable
+fun PreviewNoSkipNoAdditional() {
+    Preview(showSkip = false, showAdditionButtons = false)
 }

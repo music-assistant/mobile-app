@@ -138,6 +138,7 @@ fun CompactPlayerItem(
                 playerData = item,
                 playerAction = playerAction,
                 showAdditionalButtons = false,
+                showSkip = false
             )
         }
     }
@@ -347,7 +348,7 @@ fun FullPlayerItem(
         PlayerControls(
             playerData = item,
             playerAction = playerAction,
-            mainButtonSize = 64.dp
+            mainButtonSize = 64.dp,
         )
     }
 }
