@@ -8,8 +8,8 @@ import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
+import kotlinx.cinterop.allocArrayOf
+import kotlinx.cinterop.memScoped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import platform.Foundation.NSData
+import platform.Foundation.create
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.
@@ -99,13 +100,13 @@ actual class DataChannelWrapper(
         // CRITICAL FIX: webrtc-kmp sends BINARY frames on iOS, but Music Assistant server expects TEXT.
         // We bypass webrtc-kmp and use the native RTCDataChannel API to send as TEXT (isBinary=false).
         //
-        // NSData via initWithBytes:length: — this is in the main NSData interface (not a category),
-        // so it is always present in the Kotlin/Native Foundation binding. The `const void *` param
-        // maps to CValuesRef<*>?, which accepts a pinned ByteVar pointer directly.
+        // NSData.create() is an extension on NSData.Companion (needs `import platform.Foundation.create`).
+        // Uses memScoped + allocArrayOf to copy bytes into native memory, matching the pattern from
+        // kotlinx-io (https://github.com/Kotlin/kotlinx-io/issues/266).
         val bytes = message.encodeToByteArray()
         if (bytes.isEmpty()) return
-        val nsData: NSData = bytes.usePinned { pinned ->
-            NSData.create(bytes = pinned.addressOf(0), length = bytes.size.toULong())
+        val nsData: NSData = memScoped {
+            NSData.create(bytes = allocArrayOf(bytes), length = bytes.size.toULong())
         } ?: return
         val buffer = RTCDataBuffer(nsData, false)
         dataChannel.ios.sendData(buffer)
