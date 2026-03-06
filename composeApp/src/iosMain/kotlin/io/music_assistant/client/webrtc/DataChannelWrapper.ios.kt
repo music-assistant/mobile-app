@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import platform.Foundation.NSData
+import platform.Foundation.NSMutableData
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.
@@ -121,8 +122,8 @@ actual class DataChannelWrapper(
 
     private fun ByteArray.toNSData(): NSData {
         if (isEmpty()) return NSData()
-        return usePinned { pinned ->
-            NSData.dataWithBytes(pinned.addressOf(0), size.toULong())
+        return NSMutableData().apply {
+            usePinned { pinned -> appendBytes(pinned.addressOf(0), size.toULong()) }
         }
     }
 }
