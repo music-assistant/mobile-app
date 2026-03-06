@@ -55,6 +55,9 @@ fun CompactPlayerItem(
     item: PlayerData,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
+    playerDataList: List<PlayerData>,
+    playersState: HomeScreenViewModel.PlayersState.Data,
+    onMoveToPlayer: (String) -> Unit,
 ) {
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -133,6 +136,8 @@ fun CompactPlayerItem(
                     }
                 }
             }
+
+            PlayerSelectionButton(playersState, onMoveToPlayer)
 
             PlayerControls(
                 playerData = item,
@@ -306,10 +311,12 @@ fun FullPlayerItem(
                             modifier = Modifier.height(8.dp)
                         )
                         if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
-                            val tickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            val tickColor =
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
                                 chapters.drop(1).forEach { chapter ->
-                                    val fraction = (chapter.start.toFloat() / duration).coerceIn(0f, 1f)
+                                    val fraction =
+                                        (chapter.start.toFloat() / duration).coerceIn(0f, 1f)
                                     val x = fraction * size.width
                                     drawLine(
                                         color = tickColor,

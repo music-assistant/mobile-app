@@ -175,6 +175,9 @@ internal fun PlayersPager(
                             item = player,
                             serverUrl = serverUrl,
                             playerAction = playerAction,
+                            playerDataList = playerDataList,
+                            playersState = playersState,
+                            onMoveToPlayer = { moveToPlayer(it) }
                         )
                     }
                 }
