@@ -7,6 +7,8 @@ import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,8 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import platform.Foundation.NSData
-import platform.Foundation.NSString
-import platform.Foundation.NSUTF8StringEncoding
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.
@@ -98,10 +98,14 @@ actual class DataChannelWrapper(
         // CRITICAL FIX: webrtc-kmp sends BINARY frames on iOS, but Music Assistant server expects TEXT.
         // We bypass webrtc-kmp and use the native RTCDataChannel API to send as TEXT (isBinary=false).
         //
-        // NSData via NSString.dataUsingEncoding: Kotlin String bridges directly to NSString on iOS,
-        // so casting and calling dataUsingEncoding(NSUTF8StringEncoding) avoids all raw-pointer
-        // / CInterop complexity. NSData must be imported for the return type to resolve.
-        val nsData: NSData = (message as NSString).dataUsingEncoding(NSUTF8StringEncoding) ?: return
+        // NSData via initWithBytes:length: — this is in the main NSData interface (not a category),
+        // so it is always present in the Kotlin/Native Foundation binding. The `const void *` param
+        // maps to CValuesRef<*>?, which accepts a pinned ByteVar pointer directly.
+        val bytes = message.encodeToByteArray()
+        if (bytes.isEmpty()) return
+        val nsData: NSData = bytes.usePinned { pinned ->
+            NSData(bytes = pinned.addressOf(0), length = bytes.size.toULong())
+        } ?: return
         val buffer = RTCDataBuffer(nsData, false)
         dataChannel.ios.sendData(buffer)
     }
