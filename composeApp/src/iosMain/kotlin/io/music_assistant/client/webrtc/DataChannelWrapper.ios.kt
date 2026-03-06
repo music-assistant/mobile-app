@@ -6,11 +6,7 @@ import WebRTC.RTCDataBuffer
 import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
-import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.UByteVar
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,8 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import platform.Foundation.NSData
-import platform.Foundation.NSMutableData
+import platform.Foundation.NSUTF8StringEncoding
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.
@@ -98,11 +93,11 @@ actual class DataChannelWrapper(
     }
 
     actual fun send(message: String) {
-        val data = message.encodeToByteArray()
-
         // CRITICAL FIX: webrtc-kmp sends BINARY frames on iOS, but Music Assistant server expects TEXT.
         // We bypass webrtc-kmp and use the native RTCDataChannel API to send as TEXT (isBinary=false).
-        val nsData = data.toNSData()
+        // Convert Kotlin String → NSString → NSData via UTF-8 encoding (avoids ByteArray→NSData interop).
+        val nsData = (message as platform.Foundation.NSString)
+            .dataUsingEncoding(NSUTF8StringEncoding) ?: return
         val buffer = RTCDataBuffer(nsData, false)
         dataChannel.ios.sendData(buffer)
     }
@@ -118,12 +113,5 @@ actual class DataChannelWrapper(
         eventScope.cancel()
         dataChannel.close()
         _state.update { DataChannelState.Closed }
-    }
-
-    private fun ByteArray.toNSData(): NSData {
-        if (isEmpty()) return NSData()
-        return NSMutableData().apply {
-            usePinned { pinned -> appendBytes(pinned.addressOf(0), size.toULong()) }
-        }
     }
 }
