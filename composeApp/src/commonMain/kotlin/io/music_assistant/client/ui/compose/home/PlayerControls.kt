@@ -27,13 +27,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.client.Queue
-import io.music_assistant.client.data.model.client.QueueInfo
-import io.music_assistant.client.data.model.server.PlayerType
+import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.server.RepeatMode
-import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 
 @Composable
@@ -178,39 +174,7 @@ private fun ActionButton(
 private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = true) {
     MaterialTheme {
         PlayerControls(
-            playerData = PlayerData(
-                player = Player(
-                    id = "player",
-                    name = "Player",
-                    provider = "provider",
-                    type = PlayerType.PLAYER,
-                    shouldBeShown = true,
-                    canSetVolume = true,
-                    volumeLevel = 50f,
-                    volumeMuted = false,
-                    canMute = true,
-                    queueId = "queue",
-                    isPlaying = true,
-                    isAnnouncing = false,
-                    canGroupWith = emptyList(),
-                    groupChildren = emptyList(),
-                    groupVolume = null,
-                ),
-                queue = DataState.Data(
-                    Queue(
-                        info = QueueInfo(
-                            id = "queue",
-                            available = true,
-                            shuffleEnabled = false,
-                            repeatMode = RepeatMode.OFF,
-                            elapsedTime = 100.0,
-                            currentItem = null,
-                        ),
-                        items = DataState.NoData()
-                    )
-                ),
-                groupChildren = emptyList(),
-            ),
+            playerData = PlayerDataFixtures.playerData(),
             playerAction = { _, _ -> },
             showSkip = showSkip,
             showAdditionalButtons = showAdditionButtons
@@ -220,12 +184,12 @@ private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = tru
 
 @Preview
 @Composable
-fun PreviewNoAdditional() {
+private fun PreviewNoAdditional() {
     Preview(showAdditionButtons = false)
 }
 
 @Preview
 @Composable
-fun PreviewNoSkipNoAdditional() {
+private fun PreviewNoSkipNoAdditional() {
     Preview(showSkip = false, showAdditionButtons = false)
 }

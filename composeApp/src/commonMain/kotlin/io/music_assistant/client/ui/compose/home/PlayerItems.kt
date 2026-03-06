@@ -137,7 +137,13 @@ fun CompactPlayerItem(
                 }
             }
 
-            PlayerSelectionButton(playersState, onMoveToPlayer)
+            if (playersState.selectedPlayerIndex != null) {
+                PlayerSelectionButton(
+                    selectedPlayer = playersState.selectedPlayerIndex,
+                    players = playersState.playerData,
+                    onMoveToPlayer = onMoveToPlayer
+                )
+            }
 
             PlayerControls(
                 playerData = item,
