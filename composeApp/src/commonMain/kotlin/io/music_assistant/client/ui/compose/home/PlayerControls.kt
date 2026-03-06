@@ -27,10 +27,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import compose.icons.FontAwesomeIcons
-import compose.icons.fontawesomeicons.Solid
-import compose.icons.fontawesomeicons.solid.VolumeDown
-import compose.icons.fontawesomeicons.solid.VolumeUp
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
@@ -45,7 +41,6 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
     playerData: PlayerData,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    showVolumeButtons: Boolean = true,
     showAdditionalButtons: Boolean = true,
     mainButtonSize: Dp = 48.dp
 ) {
@@ -64,15 +59,6 @@ fun PlayerControls(
         ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (player.canSetVolume && showVolumeButtons) {
-            ActionButton(
-                icon = FontAwesomeIcons.Solid.VolumeDown,
-                tint = MaterialTheme.colorScheme.primary,
-                size = smallButtonSize,
-                enabled = playerEnabled,
-            ) { playerAction(playerData, PlayerAction.VolumeDown) }
-        }
-
         if (showAdditionalButtons) {
             queue?.let {
                 ActionButton(
@@ -153,15 +139,6 @@ fun PlayerControls(
                     }
                 }
             }
-        }
-
-        if (player.canSetVolume && showVolumeButtons) {
-            ActionButton(
-                icon = FontAwesomeIcons.Solid.VolumeUp,
-                tint = MaterialTheme.colorScheme.primary,
-                size = smallButtonSize,
-                enabled = playerEnabled,
-            ) { playerAction(playerData, PlayerAction.VolumeUp) }
         }
     }
 }
