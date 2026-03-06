@@ -108,7 +108,7 @@ internal fun PlayersPager(
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 8.dp),
                 pagerState = playerPagerState,
                 onItemMoved = onItemMoved,
             )
@@ -144,15 +144,16 @@ internal fun PlayersPager(
                     }
                 )
             ) {
-
-                PlayerNameRow(
-                    playerName = player.player.displayName,
-                    hasNoChildren = player.groupChildren.isEmpty(),
-                    hasNoBoundChildren = player.groupChildren.none { it.isBound },
-                    isLocalPlayer = isLocalPlayer,
-                    sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
-                    onShowGroup = { groupDialogPlayerId = player.player.id }
-                )
+                if (showQueue) {
+                    PlayerNameRow(
+                        playerName = player.player.displayName,
+                        hasNoChildren = player.groupChildren.isEmpty(),
+                        hasNoBoundChildren = player.groupChildren.none { it.isBound },
+                        isLocalPlayer = isLocalPlayer,
+                        sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
+                        onShowGroup = { groupDialogPlayerId = player.player.id }
+                    )
+                }
 
                 AnimatedVisibility(
                     visible = isQueueExpanded.takeIf { showQueue } != false,
@@ -162,6 +163,7 @@ internal fun PlayersPager(
 
                     Box(
                         modifier = Modifier
+                            .padding(top = 8.dp)
                             .fillMaxWidth()
                             .wrapContentSize()
                             .conditional(
