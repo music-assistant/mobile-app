@@ -24,14 +24,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
 import compose.icons.fontawesomeicons.solid.VolumeDown
 import compose.icons.fontawesomeicons.solid.VolumeUp
+import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.Queue
+import io.music_assistant.client.data.model.client.QueueInfo
+import io.music_assistant.client.data.model.server.PlayerType
 import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 
 @Composable
@@ -180,6 +186,49 @@ private fun ActionButton(
             imageVector = icon,
             contentDescription = null,
             tint = tint,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun Preview() {
+    MaterialTheme {
+        PlayerControls(
+            playerData = PlayerData(
+                player = Player(
+                    id = "player",
+                    name = "Player",
+                    provider = "provider",
+                    type = PlayerType.PLAYER,
+                    shouldBeShown = true,
+                    canSetVolume = true,
+                    volumeLevel = 50f,
+                    volumeMuted = false,
+                    canMute = true,
+                    queueId = "queue",
+                    isPlaying = true,
+                    isAnnouncing = false,
+                    canGroupWith = emptyList(),
+                    groupChildren = emptyList(),
+                    groupVolume = null,
+                ),
+                queue = DataState.Data(
+                    Queue(
+                        info = QueueInfo(
+                            id = "queue",
+                            available = true,
+                            shuffleEnabled = false,
+                            repeatMode = RepeatMode.OFF,
+                            elapsedTime = 100.0,
+                            currentItem = null,
+                        ),
+                        items = DataState.NoData()
+                    )
+                ),
+                groupChildren = emptyList(),
+            ),
+            playerAction = { _, _ -> }
         )
     }
 }
