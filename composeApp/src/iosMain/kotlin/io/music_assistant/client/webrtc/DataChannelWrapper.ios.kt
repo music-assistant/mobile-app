@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalForeignApi::class)
+@file:OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 
 package io.music_assistant.client.webrtc
 
@@ -6,6 +6,7 @@ import WebRTC.RTCDataBuffer
 import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -104,7 +105,7 @@ actual class DataChannelWrapper(
         val bytes = message.encodeToByteArray()
         if (bytes.isEmpty()) return
         val nsData: NSData = bytes.usePinned { pinned ->
-            NSData(bytes = pinned.addressOf(0), length = bytes.size.toULong())
+            NSData.create(bytes = pinned.addressOf(0), length = bytes.size.toULong())
         } ?: return
         val buffer = RTCDataBuffer(nsData, false)
         dataChannel.ios.sendData(buffer)
