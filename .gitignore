@@ -51,3 +51,5 @@ obj/
 composeApp/keystore.properties
 composeApp/upload-keystore.jks
 gha-creds-*.json
+
+.local_gitignore
