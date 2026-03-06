@@ -7,8 +7,6 @@ import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,8 +19,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import platform.Foundation.NSMutableData
-import platform.posix.memcpy
+import platform.Foundation.NSData
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.
@@ -99,17 +98,11 @@ actual class DataChannelWrapper(
         // CRITICAL FIX: webrtc-kmp sends BINARY frames on iOS, but Music Assistant server expects TEXT.
         // We bypass webrtc-kmp and use the native RTCDataChannel API to send as TEXT (isBinary=false).
         //
-        // NSData creation strategy: pre-allocate NSMutableData(length:) from initWithLength: (a
-        // designated initializer that is always in the Kotlin/Native Foundation binding), obtain
-        // its mutableBytes COpaquePointer, then memcpy the pinned ByteArray into it.
-        // This avoids appendBytes (not reliably in the binding) and NSString category methods.
-        val bytes = message.encodeToByteArray()
-        if (bytes.isEmpty()) return
-        val mutableData = NSMutableData(length = bytes.size.toULong()) ?: return
-        bytes.usePinned { pinned ->
-            memcpy(mutableData.mutableBytes, pinned.addressOf(0), bytes.size.toULong())
-        }
-        val buffer = RTCDataBuffer(mutableData, false)
+        // NSData via NSString.dataUsingEncoding: Kotlin String bridges directly to NSString on iOS,
+        // so casting and calling dataUsingEncoding(NSUTF8StringEncoding) avoids all raw-pointer
+        // / CInterop complexity. NSData must be imported for the return type to resolve.
+        val nsData: NSData = (message as NSString).dataUsingEncoding(NSUTF8StringEncoding) ?: return
+        val buffer = RTCDataBuffer(nsData, false)
         dataChannel.ios.sendData(buffer)
     }
 
