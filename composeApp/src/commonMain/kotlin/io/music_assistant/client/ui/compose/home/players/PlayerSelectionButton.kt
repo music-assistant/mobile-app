@@ -13,6 +13,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -146,7 +147,17 @@ fun SelectPlayerDialog(
                             horizontalArrangement = Arrangement.End
                         ) {
                             TextButton(onClick = { showGroupSettings = true }) {
-                                Text("Group")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Link,
+                                        contentDescription = null
+                                    )
+
+                                    Text(
+                                        "Group",
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }

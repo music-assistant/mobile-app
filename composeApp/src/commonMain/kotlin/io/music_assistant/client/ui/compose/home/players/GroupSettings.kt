@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,10 +18,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,14 +46,6 @@ fun GroupSettings(
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Non-scrollable Done button at top
-        OutlinedButton(
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        ) {
-            Text("Done")
-        }
-
         // Scrollable list of players
         LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
@@ -96,6 +87,15 @@ fun GroupSettings(
                     simplePlayerAction = playerAction,
                     bindItem = child,
                 )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onDismiss) {
+                Text("Save")
             }
         }
     }
