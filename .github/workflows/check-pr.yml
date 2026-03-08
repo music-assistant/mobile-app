@@ -29,7 +29,7 @@ jobs:
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
 
       - name: Run tests
-        run: ./gradlew :androidApp:testDebug
+        run: ./gradlew :androidApp:testDebug :composeApp:testAndroidHostTest
 
       - name: Run lint
         run: ./gradlew :androidApp:lintDebug

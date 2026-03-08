@@ -11,7 +11,7 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.utils.support.MockFunction2
 import org.junit.Rule
 import org.junit.runner.RunWith
-import kotlin.test.Test
+import org.junit.Test
 import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
