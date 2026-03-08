@@ -57,7 +57,7 @@ The project is in an early stage of development. Any help (especially from desig
 
 Download and install debug APK from latest release on [releases page](https://github.com/music-assistant/kmp-client-app/releases).
 
-*Disclamer: this is debug version of application, and isn't recommended for usage beyond testing purposes!*
+*Disclaimer: this is debug version of application, and isn't recommended for usage beyond testing purposes!*
 
 ### To use the app with Android Auto you will need additional steps
    - in Android Auto menu on your phone, click repeatedly on `Version and permission info` text, until dialog appears, that will allow you turning dev mode on;
