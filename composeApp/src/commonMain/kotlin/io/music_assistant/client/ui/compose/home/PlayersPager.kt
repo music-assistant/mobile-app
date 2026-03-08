@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -61,7 +60,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.home.players.GroupSettings
+import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
 import io.music_assistant.client.utils.conditional
 import kotlinx.coroutines.launch
 
@@ -88,8 +87,6 @@ internal fun PlayersPager(
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
     val coroutineScope = rememberCoroutineScope()
-    var groupDialogPlayerId by remember { mutableStateOf<String?>(null) }
-
     fun moveToPlayer(playerId: String) {
         val targetIndex =
             playerDataList.indexOfFirst { it.player.id == playerId }
@@ -98,6 +95,18 @@ internal fun PlayersPager(
                 playerPagerState.animateScrollToPage(targetIndex)
             }
         }
+    }
+
+
+    var showSelectDialog by remember { mutableStateOf(false) }
+    if (showSelectDialog) {
+        SelectPlayerDialog(
+            selectedPlayer = playerDataList[playersState.selectedPlayerIndex!!],
+            players = playerDataList,
+            onDismissRequest = { showSelectDialog = false },
+            onMoveToPlayer = { moveToPlayer(it) },
+            groupAction = simplePlayerAction
+        )
     }
 
     Column(modifier = modifier) {
@@ -116,7 +125,6 @@ internal fun PlayersPager(
             state = playerPagerState,
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
-
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
             val isLocalPlayer = player.playerId == playersState.localPlayerId
 
@@ -146,7 +154,7 @@ internal fun PlayersPager(
                         hasNoBoundChildren = player.groupChildren.none { it.isBound },
                         isLocalPlayer = isLocalPlayer,
                         sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
-                        onShowGroup = { groupDialogPlayerId = player.player.id }
+                        onShowGroup = { showSelectDialog = true }
                     )
                 }
 
@@ -307,33 +315,7 @@ internal fun PlayersPager(
                 }
             }
         }
-
-        groupDialogPlayerId?.let { playerId ->
-            playerDataList.find { it.player.id == playerId }?.let { player ->
-                GroupDialog(
-                    item = player,
-                    simplePlayerAction = simplePlayerAction,
-                    onDismiss = { groupDialogPlayerId = null }
-                )
-            }
-        }
     }
-}
-
-@Composable
-private fun GroupDialog(
-    item: PlayerData,
-    simplePlayerAction: (String, PlayerAction) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Group settings") },
-        text = {
-            GroupSettings(item, onDismiss, simplePlayerAction)
-        },
-        confirmButton = {}
-    )
 }
 
 @Composable

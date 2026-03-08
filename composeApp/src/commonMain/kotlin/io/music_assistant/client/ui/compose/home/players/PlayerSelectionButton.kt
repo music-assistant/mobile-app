@@ -44,8 +44,18 @@ fun PlayerSelectionButton(
     onMoveToPlayer: (String) -> Unit = {},
     groupAction: (String, PlayerAction) -> Unit = { _, _ -> }
 ) {
-    var showSelectDialog by remember { mutableStateOf(false) }
     val currentPlayer = players[selectedPlayer]
+
+    var showSelectDialog by remember { mutableStateOf(false) }
+    if (showSelectDialog) {
+        SelectPlayerDialog(
+            selectedPlayer = currentPlayer,
+            players = players,
+            onDismissRequest = { showSelectDialog = false },
+            onMoveToPlayer = onMoveToPlayer,
+            groupAction = groupAction
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -68,16 +78,6 @@ fun PlayerSelectionButton(
             modifier = Modifier.padding(top = 4.dp),
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall
-        )
-    }
-
-    if (showSelectDialog) {
-        SelectPlayerDialog(
-            selectedPlayer = currentPlayer,
-            players = players,
-            onDismissRequest = { showSelectDialog = false },
-            onMoveToPlayer = onMoveToPlayer,
-            groupAction = groupAction
         )
     }
 }
