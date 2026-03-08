@@ -156,8 +156,9 @@ class ItemDetailsTest {
 
         composeTestRule.inScrollable("LazyVerticalGrid") {
             onNode(hasText(audiobook.name)).assertIsDisplayed()
-            onNode(hasText(audiobook.chapters!![0].name)).assertIsDisplayed()
-            onNode(hasText(audiobook.chapters[1].name)).assertIsDisplayed()
+            val chapters = audiobook.chapters!!
+            onNode(hasText(chapters[0].name)).assertIsDisplayed()
+            onNode(hasText(chapters[1].name)).assertIsDisplayed()
         }
     }
 

@@ -80,7 +80,11 @@ class HomeScreenViewModel(
                                 if (_recommendationsState.value.recommendations is DataState.Loading) {
                                     loadRecommendations()
                                 }
-                                _playersState.update { PlayersState.Loading }
+                                // Only show loading if we don't have cached data (e.g. fresh connect).
+                                // During reconnection the existing player list stays visible.
+                                if (_playersState.value !is PlayersState.Data) {
+                                    _playersState.update { PlayersState.Loading }
+                                }
                                 stopJobs()
                                 jobs.add(watchPlayersData())
                                 jobs.add(watchSelectedPlayerData())
@@ -90,7 +94,9 @@ class HomeScreenViewModel(
                                 when (connState.authProcessState) {
                                     AuthProcessState.NotStarted,
                                     AuthProcessState.InProgress -> {
-                                        _playersState.update { PlayersState.Loading }
+                                        if (_playersState.value !is PlayersState.Data) {
+                                            _playersState.update { PlayersState.Loading }
+                                        }
                                         stopJobs()
                                     }
 
@@ -103,14 +109,18 @@ class HomeScreenViewModel(
                             }
 
                             DataConnectionState.AwaitingServerInfo -> {
-                                _playersState.update { PlayersState.Loading }
+                                if (_playersState.value !is PlayersState.Data) {
+                                    _playersState.update { PlayersState.Loading }
+                                }
                                 stopJobs()
                             }
                         }
                     }
 
                     SessionState.Connecting -> {
-                        _playersState.update { PlayersState.Loading }
+                        if (_playersState.value !is PlayersState.Data) {
+                            _playersState.update { PlayersState.Loading }
+                        }
                         stopJobs()
                     }
 

@@ -427,14 +427,21 @@ class MainDataSource(
                     }
 
                     SessionState.Connecting -> {
-                        // Fresh connection attempt - show loading
-                        log.i { "Connecting - stopping Sendspin and showing loading state" }
+                        log.i { "Connecting - stopping Sendspin" }
                         stopSendspin()
                         updateJob?.cancel()
                         updateJob = null
                         watchJob?.cancel()
                         watchJob = null
-                        _serverPlayers.update { DataState.Loading() }
+                        // Preserve stale data (e.g. reconnecting from backgrounded state)
+                        // so the player list stays visible instead of showing "Loading players"
+                        when (val current = _serverPlayers.value) {
+                            is DataState.Data -> _serverPlayers.update {
+                                DataState.Stale(current.data, currentTimeMillis(), StaleReason.RECONNECTING)
+                            }
+                            is DataState.Stale -> {} // Already stale, keep as is
+                            else -> _serverPlayers.update { DataState.Loading() }
+                        }
                     }
 
                     is SessionState.Disconnected -> {

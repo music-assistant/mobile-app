@@ -18,4 +18,11 @@ interface Transport {
     suspend fun send(message: JsonObject)
     fun connect()
     fun disconnect()
+
+    /**
+     * Probe connection liveness. Sends a WebSocket ping; if no activity within
+     * [timeoutMs], transitions to [TransportState.Reconnecting] and reconnects.
+     * Default no-op for transports with built-in keepalive (e.g. WebRTC ICE).
+     */
+    fun verifyConnection(timeoutMs: Long = 1000) {}
 }

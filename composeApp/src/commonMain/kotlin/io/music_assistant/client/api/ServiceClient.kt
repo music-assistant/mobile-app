@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
@@ -17,6 +18,7 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.connectionInfo
+import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.resultAs
 import io.music_assistant.client.utils.update
@@ -46,6 +48,7 @@ import org.koin.core.qualifier.named
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import kotlin.time.Duration.Companion.seconds
 
 class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, KoinComponent {
 
@@ -53,7 +56,10 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
     private val client = HttpClient(CIO) {
-        install(WebSockets) { contentConverter = KotlinxWebsocketSerializationConverter(myJson) }
+        install(WebSockets) {
+            contentConverter = KotlinxWebsocketSerializationConverter(myJson)
+            pingInterval = 10.seconds
+        }
     }
 
     // WebRTC HTTP client - created lazily on first WebRTC connection
@@ -66,6 +72,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     // --- Lifecycle / background state ---
     private var isInBackground = false
     private var hasActiveExternalConsumer = false
+    private var backgroundedAt = 0L
 
     private sealed class BackgroundedConnectionInfo {
         data class Direct(val connectionInfo: ConnectionInfo) : BackgroundedConnectionInfo()
@@ -121,6 +128,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
      */
     fun onAppBackground() {
         isInBackground = true
+        backgroundedAt = currentTimeMillis()
         logger.i { "App backgrounded" }
     }
 
@@ -162,18 +170,28 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         isInBackground = false
         logger.i { "App foregrounded" }
 
-        val savedInfo = backgroundedConnectionInfo ?: return
-        backgroundedConnectionInfo = null
+        val savedInfo = backgroundedConnectionInfo
+        if (savedInfo != null) {
+            backgroundedConnectionInfo = null
+            logger.i { "Reconnecting after foreground (was backgrounded)" }
+            when (savedInfo) {
+                is BackgroundedConnectionInfo.Direct -> {
+                    val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
+                    connect(connInfo)
+                }
+                is BackgroundedConnectionInfo.WebRTC -> {
+                    connectWebRTC(savedInfo.remoteId)
+                }
+            }
+            return
+        }
 
-        logger.i { "Reconnecting after foreground (was backgrounded)" }
-        when (savedInfo) {
-            is BackgroundedConnectionInfo.Direct -> {
-                val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
-                connect(connInfo)
-            }
-            is BackgroundedConnectionInfo.WebRTC -> {
-                connectWebRTC(savedInfo.remoteId)
-            }
+        // Connection appears alive — probe it if we've been in background long enough
+        // for a half-open TCP zombie to form.
+        val elapsed = currentTimeMillis() - backgroundedAt
+        if (elapsed > STALE_CONNECTION_THRESHOLD_MS && _sessionState.value is SessionState.Connected) {
+            logger.i { "Probing connection after ${elapsed}ms in background" }
+            transport?.verifyConnection()
         }
     }
 
@@ -618,7 +636,11 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 logger.e(e) { "sendRequest FAILED cmd=${request.command}" }
                 rpcEngine.removeCallback(request.messageId)
                 continuation.resume(Result.failure(e))
-                disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
+                // Don't trigger full disconnect if transport is already reconnecting
+                val transportState = transport?.state?.value
+                if (transportState !is TransportState.Reconnecting) {
+                    disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
+                }
             }
         }
     }
@@ -626,5 +648,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     fun close() {
         supervisorJob.cancel()
         client.close()
+    }
+
+    companion object {
+        private const val STALE_CONNECTION_THRESHOLD_MS = 30_000L
     }
 }

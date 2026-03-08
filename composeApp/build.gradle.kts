@@ -52,11 +52,6 @@ kotlin {
             implementation(libs.concentus)
         }
 
-        getByName("androidHostTest").dependencies {
-            implementation(libs.androidx.compose.ui.test.junit4)
-            implementation(libs.robolectric)
-        }
-
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)

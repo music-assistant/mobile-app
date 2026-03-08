@@ -32,7 +32,9 @@
       "WebFetch(domain:developers.google.com)",
       "WebFetch(domain:hyperb1iss.github.io)",
       "Bash(adb devices:*)",
-      "WebFetch(domain:docs.cloud.google.com)"
+      "WebFetch(domain:docs.cloud.google.com)",
+      "Bash(bash -c './gradlew :composeApp:testAndroidHostTest > /tmp/test_output.txt 2>&1')",
+      "Read(//tmp/**)"
     ]
   }
 }
