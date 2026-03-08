@@ -172,7 +172,8 @@ internal fun PlayersPager(
                             playerAction = playerAction,
                             playerDataList = playerDataList,
                             playersState = playersState,
-                            onMoveToPlayer = { moveToPlayer(it) }
+                            onMoveToPlayer = { moveToPlayer(it) },
+                            groupAction = simplePlayerAction
                         )
                     }
                 }

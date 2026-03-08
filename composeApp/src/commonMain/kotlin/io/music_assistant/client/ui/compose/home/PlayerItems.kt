@@ -59,6 +59,7 @@ fun CompactPlayerItem(
     playerDataList: List<PlayerData>,
     playersState: HomeScreenViewModel.PlayersState.Data,
     onMoveToPlayer: (String) -> Unit,
+    groupAction: (String, PlayerAction) -> Unit,
 ) {
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -142,7 +143,8 @@ fun CompactPlayerItem(
                 PlayerSelectionButton(
                     selectedPlayer = playersState.selectedPlayerIndex,
                     players = playersState.playerData,
-                    onMoveToPlayer = onMoveToPlayer
+                    onMoveToPlayer = onMoveToPlayer,
+                    groupAction = groupAction
                 )
             }
 

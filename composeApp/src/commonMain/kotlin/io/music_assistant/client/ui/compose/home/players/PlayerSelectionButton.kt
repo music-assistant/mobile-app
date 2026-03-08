@@ -1,6 +1,8 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -14,10 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,12 +35,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
 
 @Composable
 fun PlayerSelectionButton(
     selectedPlayer: Int,
     players: List<PlayerData>,
-    onMoveToPlayer: (String) -> Unit = {}
+    onMoveToPlayer: (String) -> Unit = {},
+    groupAction: (String, PlayerAction) -> Unit = { _, _ -> }
 ) {
     var showSelectDialog by remember { mutableStateOf(false) }
     val currentPlayer = players[selectedPlayer]
@@ -70,53 +76,79 @@ fun PlayerSelectionButton(
             selectedPlayer = currentPlayer,
             players = players,
             onDismissRequest = { showSelectDialog = false },
-            onMoveToPlayer = onMoveToPlayer
+            onMoveToPlayer = onMoveToPlayer,
+            groupAction = groupAction
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SelectPlayerDialog(
+fun SelectPlayerDialog(
     selectedPlayer: PlayerData,
     players: List<PlayerData>,
     onDismissRequest: () -> Unit,
-    onMoveToPlayer: (String) -> Unit = {}
+    onMoveToPlayer: (String) -> Unit = {},
+    groupAction: (String, PlayerAction) -> Unit = { _, _ -> }
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-                    .selectableGroup()
-            ) {
-                players.forEach {
-                    val selected = it.player.id == selectedPlayer.player.id
+            Box(modifier = Modifier.padding(16.dp)) {
+                var showGroupSettings by remember { mutableStateOf(false) }
 
-                    Row(
+                if (showGroupSettings) {
+                    GroupSettings(
+                        item = selectedPlayer,
+                        onDismissRequest,
+                        groupAction
+                    )
+                } else {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
-                            .selectable(
-                                selected = selected,
-                                onClick = { onMoveToPlayer(it.player.id) },
-                                role = Role.RadioButton
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
+                            .selectableGroup()
                     ) {
-                        RadioButton(
-                            selected = selected,
-                            onClick = null
-                        )
+                        players.forEach {
+                            val selected = it.player.id == selectedPlayer.player.id
 
-                        Text(
-                            it.player.displayName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp)
-                        )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .selectable(
+                                        selected = selected,
+                                        onClick = {
+                                            onDismissRequest()
+                                            onMoveToPlayer(it.player.id)
+                                        },
+                                        role = Role.RadioButton
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selected,
+                                    onClick = null
+                                )
+
+                                Text(
+                                    it.player.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(start = 16.dp)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { showGroupSettings = true }) {
+                                Text("Group")
+                            }
+                        }
                     }
                 }
             }
@@ -129,7 +161,7 @@ private fun SelectPlayerDialog(
 fun Preview() {
     PlayerSelectionButton(
         selectedPlayer = 0,
-        players = listOf(PlayerDataFixtures.playerData()),
+        players = listOf(PlayerDataFixtures.playerData())
     )
 }
 
