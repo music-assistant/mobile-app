@@ -147,7 +147,7 @@ internal fun PlayersPager(
                     }
                 )
             ) {
-                if (showQueue) {
+                if (showQueue && !isQueueExpanded) {
                     PlayerNameRow(
                         playerName = player.player.displayName,
                         hasNoChildren = player.groupChildren.isEmpty(),
