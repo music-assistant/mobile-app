@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Assistant Mobile App — Visual Audit</title>
+<style>
+:root {
+  /* Dark theme colors from Color.kt */
+  --md-primary: #C0C1FF;
+  --md-on-primary: #292A60;
+  --md-secondary: #C6C4DD;
+  --md-on-secondary: #2E2F42;
+  --md-error: #FFB4AB;
+  --md-on-error: #690005;
+  --md-background: #131318;
+  --md-on-background: #E4E1E9;
+  --md-surface: #131318;
+  --md-on-surface: #E4E1E9;
+  /* Derived M3 tonal surface colors (approximated) */
+  --md-surface-container: #1D1B20;
+  --md-surface-container-high: #2B2930;
+  --md-surface-container-low: #1D1B20;
+  --md-surface-variant: rgba(73, 69, 79, 0.3);
+  --md-on-surface-variant: #CAC4D0;
+  --md-primary-container: #3F4099;
+  --md-on-primary-container: #E1DFFF;
+  --md-outline-variant: #49454F;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0a0f;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  padding: 24px;
+}
+
+h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.subtitle { color: #999; font-size: 14px; margin-bottom: 40px; }
+
+.screen-row {
+  margin-bottom: 48px;
+  border-bottom: 1px solid #222;
+  padding-bottom: 32px;
+}
+.screen-heading {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--md-primary);
+  margin-bottom: 4px;
+  padding: 8px 16px;
+  background: rgba(192,193,255,0.08);
+  border-radius: 8px;
+  display: inline-block;
+}
+.state-label {
+  font-size: 13px;
+  color: #888;
+  margin: 12px 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.devices-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+.device-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.device-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+.device-size {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 6px;
+}
+.viewport {
+  overflow: hidden;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: var(--md-background);
+  position: relative;
+}
+.viewport-inner {
+  transform-origin: top left;
+  overflow: hidden;
+  position: relative;
+  color: var(--md-on-surface);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* Composable rendering helpers */
+.top-bar {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 8px;
+  gap: 8px;
+  background: var(--md-surface-container);
+}
+.top-bar .logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--md-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--md-on-primary-container);
+}
+.top-bar .title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  flex: 1;
+}
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  color: var(--md-on-surface);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.library-section { padding: 8px 16px; }
+.library-section .section-title {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.library-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+}
+.library-card .icon-box {
+  width: 100%;
+  height: 64px;
+  background: var(--md-primary-container);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--md-primary);
+}
+.library-card .label {
+  font-size: 13px;
+  margin-top: 4px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.category-row { margin-bottom: 8px; }
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+}
+.category-header .cat-title { font-size: 18px; font-weight: 600; }
+.category-header .cat-link { font-size: 13px; color: var(--md-primary); }
+.category-items {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  overflow: hidden;
+}
+.media-card {
+  width: 96px;
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.media-card .art {
+  width: 96px;
+  height: 96px;
+  background: var(--md-primary-container);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--md-on-primary-container);
+}
+.media-card .art.circle { border-radius: 50%; }
+.media-card .card-title {
+  font-size: 12px;
+  margin-top: 4px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.media-card .card-subtitle {
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+  text-align: center;
+}
+
+/* Mini player */
+.mini-player {
+  min-height: 100px;
+  background: var(--md-surface-container-high);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.mini-player-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  width: 100%;
+}
+.mini-player .player-name {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 0 4px;
+}
+.mini-player .art-small {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: var(--md-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--md-on-primary-container);
+}
+.mini-player .track-info { flex: 1; min-width: 0; }
+.mini-player .track-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-player .track-artist {
+  font-size: 12px;
+  color: var(--md-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--md-primary);
+  font-size: 20px;
+}
+
+/* Full player */
+.full-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(var(--md-surface-container-high), var(--md-primary-container));
+  height: 100%;
+}
+.full-player .close-bar {
+  width: 100%;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.full-player .player-name-row {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 12px 0 4px;
+}
+.full-player .provider-type {
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+  opacity: 0.5;
+}
+.full-player .album-art {
+  width: 70%;
+  max-width: 500px;
+  aspect-ratio: 1;
+  background: var(--md-primary-container);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  color: var(--md-on-primary-container);
+  margin: 16px;
+}
+.full-player .track-title {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  padding: 0 16px;
+}
+.full-player .track-subtitle {
+  font-size: 14px;
+  color: var(--md-on-surface-variant);
+  text-align: center;
+  padding: 0 16px;
+}
+.full-player .audio-format {
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+  opacity: 0.4;
+}
+.progress-bar {
+  width: calc(100% - 32px);
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  margin: 8px 16px;
+  position: relative;
+}
+.progress-bar .fill {
+  width: 35%;
+  height: 100%;
+  background: var(--md-primary);
+  border-radius: 4px;
+}
+.progress-bar .thumb {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--md-secondary);
+  border-radius: 50%;
+  top: -4px;
+  left: 33%;
+}
+.time-labels {
+  display: flex;
+  justify-content: space-between;
+  width: calc(100% - 32px);
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+  margin-top: -4px;
+}
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  padding: 8px;
+  color: var(--md-primary);
+}
+.player-controls .btn-sm { font-size: 20px; opacity: 0.8; }
+.player-controls .btn-xs { font-size: 14px; opacity: 0.7; }
+.player-controls .btn-lg { font-size: 40px; }
+
+/* Queue */
+.queue-section {
+  width: 100%;
+  background: rgba(0,0,0,0.15);
+  flex: 1;
+  min-height: 60px;
+}
+.queue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  font-size: 12px;
+}
+.queue-item .q-art {
+  width: 40px;
+  height: 40px;
+  background: var(--md-primary-container);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--md-on-primary-container);
+}
+.queue-item .q-info { flex: 1; min-width: 0; }
+.queue-item .q-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.queue-item .q-artist {
+  color: var(--md-on-surface-variant);
+  font-size: 11px;
+}
+
+/* Volume row */
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 64px;
+  height: 36px;
+}
+.volume-row .vol-icon { font-size: 18px; color: var(--md-primary); }
+.volume-row .vol-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  position: relative;
+}
+.volume-row .vol-fill {
+  width: 60%;
+  height: 100%;
+  background: var(--md-primary);
+  border-radius: 2px;
+}
+
+/* Settings screen */
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+}
+.settings-header .s-title { font-size: 18px; font-weight: 600; }
+.settings-header .theme-icon { font-size: 18px; color: var(--md-on-surface-variant); }
+.section-card {
+  background: var(--md-surface-variant);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 0 16px 16px;
+}
+.section-card .card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.text-field {
+  width: 100%;
+  height: 48px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 4px 4px 0 0;
+  padding: 16px 12px 4px;
+  color: var(--md-on-background);
+  font-size: 14px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.text-field .tf-label {
+  position: absolute;
+  top: 4px;
+  left: 12px;
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+}
+.text-field .tf-value {
+  margin-top: 8px;
+  font-size: 14px;
+}
+.btn-primary {
+  width: 100%;
+  height: 40px;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-outlined {
+  width: 100%;
+  height: 40px;
+  background: transparent;
+  color: var(--md-primary);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tab-row {
+  display: flex;
+  border-bottom: 2px solid var(--md-outline-variant);
+}
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 14px;
+  color: var(--md-on-surface);
+}
+.tab-item.active {
+  border-bottom: 2px solid var(--md-primary);
+  color: var(--md-primary);
+  margin-bottom: -2px;
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 14px;
+}
+.checkbox-row .cb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--md-on-surface-variant);
+  border-radius: 3px;
+}
+
+/* Library screen */
+.scrollable-tabs {
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+}
+.scrollable-tabs .tab-item { min-width: 60px; padding: 12px 8px; font-size: 13px; }
+.search-field {
+  margin: 8px 16px;
+  padding: 12px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 4px;
+  color: var(--md-on-surface-variant);
+  font-size: 14px;
+}
+.filter-chip {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 8px;
+  font-size: 12px;
+  margin: 4px 16px;
+  color: var(--md-on-surface);
+}
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+/* Item details */
+.item-header-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+}
+.item-header-row {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  gap: 32px;
+}
+.detail-art {
+  width: 70%;
+  max-width: 300px;
+  aspect-ratio: 1;
+  background: var(--md-primary-container);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: var(--md-on-primary-container);
+}
+.detail-title { font-size: 18px; font-weight: 600; padding-top: 16px; }
+.detail-subtitle { font-size: 15px; color: var(--md-on-surface-variant); padding-top: 12px; }
+.play-btn-row {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+}
+.play-btn {
+  padding: 8px 24px;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.track-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+.track-list-item .t-art {
+  width: 40px;
+  height: 40px;
+  background: var(--md-primary-container);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--md-on-primary-container);
+}
+.track-list-item .t-info { flex: 1; min-width: 0; }
+.track-list-item .t-name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track-list-item .t-artist {
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+}
+.track-list-item .t-duration {
+  font-size: 11px;
+  color: var(--md-on-surface-variant);
+}
+
+/* Search */
+.search-input {
+  margin: 8px 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 28px;
+  color: var(--md-on-surface);
+  font-size: 14px;
+}
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 16px;
+}
+.filter-chips .chip {
+  padding: 4px 12px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.chip.selected {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  border-color: var(--md-primary);
+}
+.section-header {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 16px 16px 8px;
+  grid-column: 1 / -1;
+}
+
+/* Legend */
+.legend-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+.legend-table th, .legend-table td {
+  border: 1px solid #333;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 13px;
+}
+.legend-table th {
+  background: #1a1a2a;
+  color: var(--md-primary);
+  font-weight: 600;
+}
+.legend-table td { color: #bbb; }
+</style>
+</head>
+<body>
+
+<h1>Music Assistant Mobile App — Visual Audit</h1>
+<p class="subtitle">Generated from codebase on 2026-03-08 &nbsp;|&nbsp; Dark theme only &nbsp;|&nbsp; No explicit form factor system — uses Compose adaptive primitives</p>
+
+<!-- ============================================ -->
+<!-- SCREEN 1: Landing Page                       -->
+<!-- ============================================ -->
+<div class="screen-row">
+<div class="screen-heading">Landing Page (Home)</div>
+
+<div class="state-label">No Playback</div>
+<div class="devices-row">
+
+<!-- Phone Portrait -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="logo">♫</div>
+        <div class="title">MASS</div>
+        <div class="icon-btn">⚙</div>
+      </div>
+      <div class="library-section">
+        <div class="section-title">Your library</div>
+        <div class="library-grid">
+          <div class="library-card"><div class="icon-box">🎤</div><div class="label">Artists</div></div>
+          <div class="library-card"><div class="icon-box">💿</div><div class="label">Albums</div></div>
+          <div class="library-card"><div class="icon-box">♪</div><div class="label">Tracks</div></div>
+          <div class="library-card"><div class="icon-box">☰</div><div class="label">Playlists</div></div>
+          <div class="library-card"><div class="icon-box">📖</div><div class="label">Audiobooks</div></div>
+          <div class="library-card"><div class="icon-box">🎙</div><div class="label">Podcasts</div></div>
+          <div class="library-card"><div class="icon-box">📻</div><div class="label">Radio</div></div>
+          <div class="library-card"><div class="icon-box">🔍</div><div class="label">Search</div></div>
+          <div class="library-card"></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Recently played</span><span class="cat-link">All tracks</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Midnight Rain</div><div class="card-subtitle">Track</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Hour</div><div class="card-subtitle">Track</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Wildflowers</div><div class="card-subtitle">Track</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Eclipse</div><div class="card-subtitle">Track</div></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Top albums</span><span class="cat-link">All albums</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Abbey Road</div><div class="card-subtitle">Album</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Rumours</div><div class="card-subtitle">Album</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Blue</div><div class="card-subtitle">Album</div></div>
+        </div>
+      </div>
+      <!-- Mini player area - idle -->
+      <div style="position:absolute;bottom:0;left:0;right:0;">
+        <div class="mini-player">
+          <div class="player-name">Living Room Speaker</div>
+          <div class="mini-player-content">
+            <div class="art-small" style="opacity:0.4;">💿</div>
+            <div class="track-info"><div class="track-name" style="opacity:0.5;">--idle--</div></div>
+            <div class="mini-controls"><span style="opacity:0.5;">⏮ ▶ ⏭</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone Landscape -->
+<div class="device-card">
+  <div class="device-label">Phone Landscape</div>
+  <div class="device-size">844 × 390 @ 0.5x</div>
+  <div class="viewport" style="width:422px; height:195px;">
+    <div class="viewport-inner" style="width:844px; height:390px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="logo">♫</div>
+        <div class="title">MASS</div>
+        <div class="icon-btn">⚙</div>
+      </div>
+      <div style="display:flex; height:calc(100% - 64px - 80px);">
+        <div style="flex:1; overflow:hidden;">
+          <div class="library-section">
+            <div class="section-title">Your library</div>
+            <div class="library-grid">
+              <div class="library-card"><div class="icon-box">🎤</div><div class="label">Artists</div></div>
+              <div class="library-card"><div class="icon-box">💿</div><div class="label">Albums</div></div>
+              <div class="library-card"><div class="icon-box">♪</div><div class="label">Tracks</div></div>
+              <div class="library-card"><div class="icon-box">☰</div><div class="label">Playlists</div></div>
+              <div class="library-card"><div class="icon-box">📖</div><div class="label">Audiobooks</div></div>
+              <div class="library-card"><div class="icon-box">🎙</div><div class="label">Podcasts</div></div>
+              <div class="library-card"><div class="icon-box">📻</div><div class="label">Radio</div></div>
+              <div class="library-card"><div class="icon-box">🔍</div><div class="label">Search</div></div>
+              <div class="library-card"></div>
+            </div>
+          </div>
+          <div class="category-row">
+            <div class="category-header"><span class="cat-title">Recently played</span><span class="cat-link">All tracks</span></div>
+            <div class="category-items">
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Midnight Rain</div></div>
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Hour</div></div>
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Wildflowers</div></div>
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Eclipse</div></div>
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Sunset Blvd</div></div>
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Neon Lights</div></div>
+              <div class="media-card"><div class="art">♪</div><div class="card-title">Firefly</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;">
+        <div class="mini-player" style="min-height:80px;">
+          <div class="player-name">Living Room Speaker</div>
+          <div class="mini-player-content">
+            <div class="art-small" style="opacity:0.4;">💿</div>
+            <div class="track-info"><div class="track-name" style="opacity:0.5;">--idle--</div></div>
+            <div class="mini-controls"><span style="opacity:0.5;">⏮ ▶ ⏭</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet 7" Portrait -->
+<div class="device-card">
+  <div class="device-label">Tablet 7" Portrait</div>
+  <div class="device-size">600 × 1024 @ 0.5x</div>
+  <div class="viewport" style="width:300px; height:512px;">
+    <div class="viewport-inner" style="width:600px; height:1024px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="logo">♫</div>
+        <div class="title">MASS</div>
+        <div class="icon-btn">⚙</div>
+      </div>
+      <div class="library-section">
+        <div class="section-title">Your library</div>
+        <div class="library-grid">
+          <div class="library-card"><div class="icon-box">🎤</div><div class="label">Artists</div></div>
+          <div class="library-card"><div class="icon-box">💿</div><div class="label">Albums</div></div>
+          <div class="library-card"><div class="icon-box">♪</div><div class="label">Tracks</div></div>
+          <div class="library-card"><div class="icon-box">☰</div><div class="label">Playlists</div></div>
+          <div class="library-card"><div class="icon-box">📖</div><div class="label">Audiobooks</div></div>
+          <div class="library-card"><div class="icon-box">🎙</div><div class="label">Podcasts</div></div>
+          <div class="library-card"><div class="icon-box">📻</div><div class="label">Radio</div></div>
+          <div class="library-card"><div class="icon-box">🔍</div><div class="label">Search</div></div>
+          <div class="library-card"></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Recently played</span><span class="cat-link">All tracks</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Midnight Rain</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Hour</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Wildflowers</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Eclipse</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Sunset Blvd</div></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Top albums</span><span class="cat-link">All albums</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Abbey Road</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Rumours</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Blue</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Kind of Blue</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Thriller</div></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Favorite artists</span><span class="cat-link">All artists</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art circle">🎤</div><div class="card-title">Radiohead</div></div>
+          <div class="media-card"><div class="art circle">🎤</div><div class="card-title">Bjork</div></div>
+          <div class="media-card"><div class="art circle">🎤</div><div class="card-title">Pink Floyd</div></div>
+          <div class="media-card"><div class="art circle">🎤</div><div class="card-title">Sigur Ros</div></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;">
+        <div class="mini-player">
+          <div class="player-name">Living Room Speaker</div>
+          <div class="mini-player-content">
+            <div class="art-small" style="opacity:0.4;">💿</div>
+            <div class="track-info"><div class="track-name" style="opacity:0.5;">--idle--</div></div>
+            <div class="mini-controls"><span style="opacity:0.5;">⏮ ▶ ⏭</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet 10" Landscape -->
+<div class="device-card">
+  <div class="device-label">Tablet 10" Landscape</div>
+  <div class="device-size">1280 × 800 @ 0.35x</div>
+  <div class="viewport" style="width:448px; height:280px;">
+    <div class="viewport-inner" style="width:1280px; height:800px; transform:scale(0.35);">
+      <div class="top-bar">
+        <div class="logo">♫</div>
+        <div class="title">MASS</div>
+        <div class="icon-btn">⚙</div>
+      </div>
+      <div class="library-section">
+        <div class="section-title">Your library</div>
+        <div class="library-grid" style="grid-template-columns: repeat(8, 1fr);">
+          <div class="library-card"><div class="icon-box">🎤</div><div class="label">Artists</div></div>
+          <div class="library-card"><div class="icon-box">💿</div><div class="label">Albums</div></div>
+          <div class="library-card"><div class="icon-box">♪</div><div class="label">Tracks</div></div>
+          <div class="library-card"><div class="icon-box">☰</div><div class="label">Playlists</div></div>
+          <div class="library-card"><div class="icon-box">📖</div><div class="label">Audiobooks</div></div>
+          <div class="library-card"><div class="icon-box">🎙</div><div class="label">Podcasts</div></div>
+          <div class="library-card"><div class="icon-box">📻</div><div class="label">Radio</div></div>
+          <div class="library-card"><div class="icon-box">🔍</div><div class="label">Search</div></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Recently played</span><span class="cat-link">All tracks</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Midnight Rain</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Hour</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Wildflowers</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Eclipse</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Sunset Blvd</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Neon Lights</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Firefly</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Stardust</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Velvet Sky</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Ocean Drive</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Silver Lining</div></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;">
+        <div class="mini-player" style="min-height:80px;">
+          <div class="player-name">Living Room Speaker</div>
+          <div class="mini-player-content">
+            <div class="art-small" style="opacity:0.4;">💿</div>
+            <div class="track-info"><div class="track-name" style="opacity:0.5;">--idle--</div></div>
+            <div class="mini-controls"><span style="opacity:0.5;">⏮ ▶ ⏭</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+
+<div class="state-label">Playing</div>
+<div class="devices-row">
+
+<!-- Phone Portrait - Playing -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="logo">♫</div>
+        <div class="title">MASS</div>
+        <div class="icon-btn">⚙</div>
+      </div>
+      <div class="library-section">
+        <div class="section-title">Your library</div>
+        <div class="library-grid">
+          <div class="library-card"><div class="icon-box">🎤</div><div class="label">Artists</div></div>
+          <div class="library-card"><div class="icon-box">💿</div><div class="label">Albums</div></div>
+          <div class="library-card"><div class="icon-box">♪</div><div class="label">Tracks</div></div>
+          <div class="library-card"><div class="icon-box">☰</div><div class="label">Playlists</div></div>
+          <div class="library-card"><div class="icon-box">📖</div><div class="label">Audiobooks</div></div>
+          <div class="library-card"><div class="icon-box">🎙</div><div class="label">Podcasts</div></div>
+          <div class="library-card"><div class="icon-box">📻</div><div class="label">Radio</div></div>
+          <div class="library-card"><div class="icon-box">🔍</div><div class="label">Search</div></div>
+          <div class="library-card"></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Recently played</span><span class="cat-link">All tracks</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Midnight Rain</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Hour</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Wildflowers</div></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;">
+        <div class="mini-player">
+          <div class="player-name">Living Room Speaker</div>
+          <div class="mini-player-content">
+            <div class="art-small">♪</div>
+            <div class="track-info">
+              <div class="track-name">Midnight Rain</div>
+              <div class="track-artist">Taylor Swift</div>
+            </div>
+            <div class="mini-controls">⏮ ⏸ ⏭</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet 7" Portrait - Playing -->
+<div class="device-card">
+  <div class="device-label">Tablet 7" Portrait</div>
+  <div class="device-size">600 × 1024 @ 0.5x</div>
+  <div class="viewport" style="width:300px; height:512px;">
+    <div class="viewport-inner" style="width:600px; height:1024px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="logo">♫</div>
+        <div class="title">MASS</div>
+        <div class="icon-btn">⚙</div>
+      </div>
+      <div class="library-section">
+        <div class="section-title">Your library</div>
+        <div class="library-grid">
+          <div class="library-card"><div class="icon-box">🎤</div><div class="label">Artists</div></div>
+          <div class="library-card"><div class="icon-box">💿</div><div class="label">Albums</div></div>
+          <div class="library-card"><div class="icon-box">♪</div><div class="label">Tracks</div></div>
+          <div class="library-card"><div class="icon-box">☰</div><div class="label">Playlists</div></div>
+          <div class="library-card"><div class="icon-box">📖</div><div class="label">Audiobooks</div></div>
+          <div class="library-card"><div class="icon-box">🎙</div><div class="label">Podcasts</div></div>
+          <div class="library-card"><div class="icon-box">📻</div><div class="label">Radio</div></div>
+          <div class="library-card"><div class="icon-box">🔍</div><div class="label">Search</div></div>
+          <div class="library-card"></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Recently played</span><span class="cat-link">All tracks</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Midnight Rain</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Hour</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Wildflowers</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Eclipse</div></div>
+          <div class="media-card"><div class="art">♪</div><div class="card-title">Sunset Blvd</div></div>
+        </div>
+      </div>
+      <div class="category-row">
+        <div class="category-header"><span class="cat-title">Top albums</span><span class="cat-link">All albums</span></div>
+        <div class="category-items">
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Abbey Road</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Rumours</div></div>
+          <div class="media-card"><div class="art">💿</div><div class="card-title">Blue</div></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;">
+        <div class="mini-player">
+          <div class="player-name">Living Room Speaker</div>
+          <div class="mini-player-content">
+            <div class="art-small">♪</div>
+            <div class="track-info">
+              <div class="track-name">Midnight Rain</div>
+              <div class="track-artist">Taylor Swift</div>
+            </div>
+            <div class="mini-controls">⏮ ⏸ ⏭</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+</div><!-- /screen-row -->
+
+<!-- ============================================ -->
+<!-- SCREEN 2: Expanded Player View               -->
+<!-- ============================================ -->
+<div class="screen-row">
+<div class="screen-heading">Expanded Player View</div>
+
+<div class="state-label">Queue Collapsed (Full Art)</div>
+<div class="devices-row">
+
+<!-- Phone Portrait -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="full-player" style="height:844px;">
+        <div class="close-bar">▾</div>
+        <div style="display:flex;align-items:center;gap:4px;padding:4px;">
+          <span style="font-size:13px;font-weight:500;">Living Room Speaker</span>
+        </div>
+        <div class="provider-type">Music Assistant</div>
+        <div class="album-art" style="width:280px;height:280px;">♪</div>
+        <div class="track-title">Midnight Rain</div>
+        <div class="track-subtitle">Taylor Swift</div>
+        <div class="audio-format">FLAC 44.1kHz 16bit</div>
+        <div class="progress-bar" style="margin-top:16px;"><div class="fill"></div><div class="thumb"></div></div>
+        <div class="time-labels" style="padding:0 16px;"><span>1:23</span><span>3:54</span></div>
+        <div class="player-controls" style="padding:16px;">
+          <span class="btn-xs">🔀</span>
+          <span class="btn-sm">⏮</span>
+          <span class="btn-lg">⏸</span>
+          <span class="btn-sm">⏭</span>
+          <span class="btn-xs">🔁</span>
+        </div>
+        <div style="height:8px;"></div>
+        <div class="queue-section">
+          <div class="queue-header"><span>Queue (12 items)</span><span>▲</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone Landscape -->
+<div class="device-card">
+  <div class="device-label">Phone Landscape</div>
+  <div class="device-size">844 × 390 @ 0.5x</div>
+  <div class="viewport" style="width:422px; height:195px;">
+    <div class="viewport-inner" style="width:844px; height:390px; transform:scale(0.5);">
+      <div class="full-player" style="height:390px;">
+        <div class="close-bar">▾</div>
+        <div style="display:flex;align-items:center;gap:4px;padding:0 4px;">
+          <span style="font-size:13px;font-weight:500;">Living Room Speaker</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex:1;padding:0 16px;">
+          <div class="album-art" style="width:180px;height:180px;min-width:180px;margin:0;">♪</div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+            <div class="track-title">Midnight Rain</div>
+            <div class="track-subtitle">Taylor Swift</div>
+            <div class="audio-format">FLAC 44.1kHz 16bit</div>
+            <div class="progress-bar" style="margin-top:8px;"><div class="fill"></div><div class="thumb"></div></div>
+            <div class="time-labels"><span>1:23</span><span>3:54</span></div>
+            <div class="player-controls">
+              <span class="btn-xs">🔀</span>
+              <span class="btn-sm">⏮</span>
+              <span class="btn-lg">⏸</span>
+              <span class="btn-sm">⏭</span>
+              <span class="btn-xs">🔁</span>
+            </div>
+          </div>
+        </div>
+        <div class="queue-section" style="min-height:40px;">
+          <div class="queue-header" style="padding:4px 16px;"><span>Queue (12 items)</span><span>▲</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet 7" Portrait -->
+<div class="device-card">
+  <div class="device-label">Tablet 7" Portrait</div>
+  <div class="device-size">600 × 1024 @ 0.5x</div>
+  <div class="viewport" style="width:300px; height:512px;">
+    <div class="viewport-inner" style="width:600px; height:1024px; transform:scale(0.5);">
+      <div class="full-player" style="height:1024px;">
+        <div class="close-bar">▾</div>
+        <div style="display:flex;align-items:center;gap:4px;padding:4px;">
+          <span style="font-size:13px;font-weight:500;">Living Room Speaker</span>
+        </div>
+        <div class="provider-type">Music Assistant</div>
+        <div class="album-art" style="width:380px;height:380px;">♪</div>
+        <div class="track-title">Midnight Rain</div>
+        <div class="track-subtitle">Taylor Swift</div>
+        <div class="audio-format">FLAC 44.1kHz 16bit</div>
+        <div class="progress-bar" style="margin-top:16px;"><div class="fill"></div><div class="thumb"></div></div>
+        <div class="time-labels" style="padding:0 16px;"><span>1:23</span><span>3:54</span></div>
+        <div class="player-controls" style="padding:16px;">
+          <span class="btn-xs">🔀</span>
+          <span class="btn-sm">⏮</span>
+          <span class="btn-lg">⏸</span>
+          <span class="btn-sm">⏭</span>
+          <span class="btn-xs">🔁</span>
+        </div>
+        <div class="volume-row"><span class="vol-icon">🔈</span><div class="vol-track"><div class="vol-fill"></div></div></div>
+        <div style="height:8px;"></div>
+        <div class="queue-section" style="flex:1;">
+          <div class="queue-header"><span>Queue (12 items)</span><span>▲</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+
+<div class="state-label">Queue Expanded</div>
+<div class="devices-row">
+
+<!-- Phone Portrait - Queue Expanded -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="full-player" style="height:844px;">
+        <div class="close-bar">▾</div>
+        <div style="display:flex;align-items:center;gap:4px;padding:4px;">
+          <span style="font-size:13px;font-weight:500;">Living Room Speaker</span>
+        </div>
+        <!-- Compact player item (queue expanded hides full art) -->
+        <div style="padding:8px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="art-small">♪</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Midnight Rain</div>
+              <div style="font-size:12px;color:var(--md-on-surface-variant);">Taylor Swift</div>
+            </div>
+            <div class="mini-controls">⏮ ⏸ ⏭</div>
+          </div>
+        </div>
+        <div class="volume-row"><span class="vol-icon">🔈</span><div class="vol-track"><div class="vol-fill"></div></div></div>
+        <div style="height:8px;"></div>
+        <div class="queue-section" style="flex:1;">
+          <div class="queue-header"><span>Queue (12 items)</span><span>▼</span></div>
+          <div class="queue-item" style="background:rgba(192,193,255,0.08);">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Midnight Rain</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">3:54</span>
+          </div>
+          <div class="queue-item">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Anti-Hero</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">3:20</span>
+          </div>
+          <div class="queue-item">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Lavender Haze</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">3:22</span>
+          </div>
+          <div class="queue-item">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Snow on the Beach</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">4:21</span>
+          </div>
+          <div class="queue-item">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Maroon</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">3:53</span>
+          </div>
+          <div class="queue-item">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Karma</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">3:24</span>
+          </div>
+          <div class="queue-item">
+            <div class="q-art">♪</div>
+            <div class="q-info"><div class="q-title">Bejeweled</div><div class="q-artist">Taylor Swift</div></div>
+            <span style="font-size:11px;color:var(--md-on-surface-variant);">3:14</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+</div><!-- /screen-row -->
+
+<!-- ============================================ -->
+<!-- SCREEN 3: Library Screen                     -->
+<!-- ============================================ -->
+<div class="screen-row">
+<div class="screen-heading">Library Screen</div>
+
+<div class="state-label">Albums Tab - Grid View</div>
+<div class="devices-row">
+
+<!-- Phone Portrait -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="icon-btn">←</div>
+        <div class="scrollable-tabs" style="flex:1;">
+          <div class="tab-item">Artists</div>
+          <div class="tab-item active">Albums</div>
+          <div class="tab-item">Tracks</div>
+          <div class="tab-item">Playlists</div>
+        </div>
+        <div class="icon-btn">☰</div>
+      </div>
+      <div class="search-field">Quick search</div>
+      <div class="filter-chip">Favorites</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Abbey Road</div><div class="card-subtitle">The Beatles</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Rumours</div><div class="card-subtitle">Fleetwood Mac</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Blue</div><div class="card-subtitle">Joni Mitchell</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Kind of Blue</div><div class="card-subtitle">Miles Davis</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Thriller</div><div class="card-subtitle">Michael Jackson</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">OK Computer</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Dark Side</div><div class="card-subtitle">Pink Floyd</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Nevermind</div><div class="card-subtitle">Nirvana</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">In Rainbows</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Loveless</div><div class="card-subtitle">My Bloody Valentine</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Vespertine</div><div class="card-subtitle">Bjork</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Homogenic</div><div class="card-subtitle">Bjork</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet 10" Landscape -->
+<div class="device-card">
+  <div class="device-label">Tablet 10" Landscape</div>
+  <div class="device-size">1280 × 800 @ 0.35x</div>
+  <div class="viewport" style="width:448px; height:280px;">
+    <div class="viewport-inner" style="width:1280px; height:800px; transform:scale(0.35);">
+      <div class="top-bar">
+        <div class="icon-btn">←</div>
+        <div class="scrollable-tabs" style="flex:1;">
+          <div class="tab-item">Artists</div>
+          <div class="tab-item active">Albums</div>
+          <div class="tab-item">Tracks</div>
+          <div class="tab-item">Playlists</div>
+          <div class="tab-item">Audiobooks</div>
+          <div class="tab-item">Podcasts</div>
+          <div class="tab-item">Radio</div>
+        </div>
+        <div class="icon-btn">☰</div>
+      </div>
+      <div class="search-field">Quick search</div>
+      <div class="filter-chip">Favorites</div>
+      <div class="media-grid" style="grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));">
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Abbey Road</div><div class="card-subtitle">The Beatles</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Rumours</div><div class="card-subtitle">Fleetwood Mac</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Blue</div><div class="card-subtitle">Joni Mitchell</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Kind of Blue</div><div class="card-subtitle">Miles Davis</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Thriller</div><div class="card-subtitle">M. Jackson</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">OK Computer</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Dark Side</div><div class="card-subtitle">Pink Floyd</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Nevermind</div><div class="card-subtitle">Nirvana</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">In Rainbows</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Loveless</div><div class="card-subtitle">MBV</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Vespertine</div><div class="card-subtitle">Bjork</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Homogenic</div><div class="card-subtitle">Bjork</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+</div><!-- /screen-row -->
+
+<!-- ============================================ -->
+<!-- SCREEN 4: Item Details                       -->
+<!-- ============================================ -->
+<div class="screen-row">
+<div class="screen-heading">Item Details (Album)</div>
+
+<div class="state-label">Compact Width (Column Layout &lt; 840dp)</div>
+<div class="devices-row">
+
+<!-- Phone Portrait -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px;">
+        <div class="icon-btn">←</div>
+        <div class="icon-btn">⋮</div>
+      </div>
+      <div class="item-header-col">
+        <div class="detail-art">💿</div>
+        <div class="detail-title" style="text-align:center;">Abbey Road</div>
+        <div class="detail-subtitle" style="text-align:center;">The Beatles</div>
+        <div class="play-btn-row"><div class="play-btn">▶ Play</div></div>
+      </div>
+      <div style="padding:8px 8px 0;font-size:15px;font-weight:600;">Tracks</div>
+      <div class="track-list-item"><div class="t-art">♪</div><div class="t-info"><div class="t-name">Come Together</div><div class="t-artist">The Beatles</div></div><div class="t-duration">4:19</div></div>
+      <div class="track-list-item"><div class="t-art">♪</div><div class="t-info"><div class="t-name">Something</div><div class="t-artist">The Beatles</div></div><div class="t-duration">3:02</div></div>
+      <div class="track-list-item"><div class="t-art">♪</div><div class="t-info"><div class="t-name">Maxwell's Silver Hammer</div><div class="t-artist">The Beatles</div></div><div class="t-duration">3:27</div></div>
+      <div class="track-list-item"><div class="t-art">♪</div><div class="t-info"><div class="t-name">Oh! Darling</div><div class="t-artist">The Beatles</div></div><div class="t-duration">3:27</div></div>
+      <div class="track-list-item"><div class="t-art">♪</div><div class="t-info"><div class="t-name">Octopus's Garden</div><div class="t-artist">The Beatles</div></div><div class="t-duration">2:51</div></div>
+      <div class="track-list-item"><div class="t-art">♪</div><div class="t-info"><div class="t-name">Here Comes the Sun</div><div class="t-artist">The Beatles</div></div><div class="t-duration">3:05</div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+
+<div class="state-label">Expanded Width (Row Layout &ge; 840dp)</div>
+<div class="devices-row">
+
+<!-- Tablet 10" Landscape -->
+<div class="device-card">
+  <div class="device-label">Tablet 10" Landscape</div>
+  <div class="device-size">1280 × 800 @ 0.35x</div>
+  <div class="viewport" style="width:448px; height:280px;">
+    <div class="viewport-inner" style="width:1280px; height:800px; transform:scale(0.35);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px;">
+        <div class="icon-btn">←</div>
+        <div class="icon-btn">⋮</div>
+      </div>
+      <div class="item-header-row">
+        <div class="detail-art" style="width:250px;min-width:250px;max-width:300px;">💿</div>
+        <div style="display:flex;flex-direction:column;">
+          <div class="detail-title" style="padding-top:0;">Abbey Road</div>
+          <div class="detail-subtitle">The Beatles</div>
+          <div class="play-btn-row"><div class="play-btn">▶ Play</div></div>
+        </div>
+      </div>
+      <div style="padding:8px 8px 0;font-size:15px;font-weight:600;">Tracks</div>
+      <div class="media-grid" style="grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));">
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Come Together</div><div class="card-subtitle">4:19</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Something</div><div class="card-subtitle">3:02</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Maxwell's...</div><div class="card-subtitle">3:27</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Oh! Darling</div><div class="card-subtitle">3:27</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Octopus's...</div><div class="card-subtitle">2:51</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Here Comes...</div><div class="card-subtitle">3:05</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Because</div><div class="card-subtitle">2:45</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Sun King</div><div class="card-subtitle">2:26</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Mean Mr...</div><div class="card-subtitle">1:06</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">She Came In</div><div class="card-subtitle">3:28</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Golden Slum.</div><div class="card-subtitle">1:31</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Carry That W.</div><div class="card-subtitle">1:36</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+</div><!-- /screen-row -->
+
+<!-- ============================================ -->
+<!-- SCREEN 5: Search Screen                      -->
+<!-- ============================================ -->
+<div class="screen-row">
+<div class="screen-heading">Search Screen</div>
+
+<div class="state-label">With Results</div>
+<div class="devices-row">
+
+<!-- Phone Portrait -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="icon-btn">←</div>
+        <div class="title" style="font-size:18px;letter-spacing:0;">Global search</div>
+      </div>
+      <div class="search-input">radiohead</div>
+      <div class="filter-chips">
+        <div class="chip selected">Artist</div>
+        <div class="chip selected">Album</div>
+        <div class="chip selected">Track</div>
+        <div class="chip">Playlist</div>
+        <div class="chip">Podcast</div>
+        <div class="chip">Radio</div>
+        <div class="chip">In library only</div>
+      </div>
+      <div class="section-header">Artists</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art circle">🎤</div><div class="card-title">Radiohead</div></div>
+      </div>
+      <div class="section-header">Albums</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art">💿</div><div class="card-title">OK Computer</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">In Rainbows</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Kid A</div><div class="card-subtitle">Radiohead</div></div>
+      </div>
+      <div class="section-header">Tracks</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Creep</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Karma Police</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Paranoid And.</div><div class="card-subtitle">Radiohead</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet 7" Portrait -->
+<div class="device-card">
+  <div class="device-label">Tablet 7" Portrait</div>
+  <div class="device-size">600 × 1024 @ 0.5x</div>
+  <div class="viewport" style="width:300px; height:512px;">
+    <div class="viewport-inner" style="width:600px; height:1024px; transform:scale(0.5);">
+      <div class="top-bar">
+        <div class="icon-btn">←</div>
+        <div class="title" style="font-size:18px;letter-spacing:0;">Global search</div>
+      </div>
+      <div class="search-input">radiohead</div>
+      <div class="filter-chips">
+        <div class="chip selected">Artist</div>
+        <div class="chip selected">Album</div>
+        <div class="chip selected">Track</div>
+        <div class="chip">Playlist</div>
+        <div class="chip">Podcast</div>
+        <div class="chip">Audiobook</div>
+        <div class="chip">Radio</div>
+        <div class="chip">In library only</div>
+      </div>
+      <div class="section-header">Artists</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art circle">🎤</div><div class="card-title">Radiohead</div></div>
+      </div>
+      <div class="section-header">Albums</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art">💿</div><div class="card-title">OK Computer</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">In Rainbows</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Kid A</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">Amnesiac</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">💿</div><div class="card-title">The Bends</div><div class="card-subtitle">Radiohead</div></div>
+      </div>
+      <div class="section-header">Tracks</div>
+      <div class="media-grid">
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Creep</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Karma Police</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Paranoid And.</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">No Surprises</div><div class="card-subtitle">Radiohead</div></div>
+        <div class="media-card"><div class="art">♪</div><div class="card-title">Everything In</div><div class="card-subtitle">Radiohead</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+</div><!-- /screen-row -->
+
+<!-- ============================================ -->
+<!-- SCREEN 6: Settings Screen                    -->
+<!-- ============================================ -->
+<div class="screen-row">
+<div class="screen-heading">Settings Screen</div>
+
+<div class="state-label">Disconnected</div>
+<div class="devices-row">
+
+<!-- Phone Portrait -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="settings-header">
+        <span class="s-title">Settings</span>
+        <span class="theme-icon">🌙</span>
+      </div>
+      <div style="display:flex;justify-content:center;padding:0 16px 16px;">
+        <div class="btn-outlined" style="width:auto;padding:0 24px;">EXIT APP</div>
+      </div>
+      <div class="section-card">
+        <div class="card-title">Connection Method</div>
+        <div class="tab-row">
+          <div class="tab-item active">Direct</div>
+          <div class="tab-item">WebRTC</div>
+        </div>
+        <div style="height:16px;"></div>
+        <div class="text-field"><div class="tf-label">Server host</div><div class="tf-value">homeassistant.local</div></div>
+        <div class="text-field"><div class="tf-label">Port</div><div class="tf-value">8095</div></div>
+        <div class="checkbox-row"><div class="cb"></div><span>Use TLS (wss://)</span></div>
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+          <div class="btn-primary" style="flex:1;">Connect</div>
+          <div class="icon-btn">☰</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone Portrait - Connected -->
+<div class="device-card">
+  <div class="device-label">Phone Portrait</div>
+  <div class="device-size">390 × 844 @ 0.5x (Connected)</div>
+  <div class="viewport" style="width:195px; height:422px;">
+    <div class="viewport-inner" style="width:390px; height:844px; transform:scale(0.5);">
+      <div class="settings-header">
+        <span class="s-title">Settings</span>
+        <span class="theme-icon">🌙</span>
+      </div>
+      <div style="display:flex;justify-content:center;padding:0 16px 16px;">
+        <div class="btn-primary" style="width:auto;padding:0 24px;">GO HOME</div>
+      </div>
+      <div class="section-card">
+        <div class="card-title">Server</div>
+        <div style="font-size:13px;padding-bottom:8px;">Connected to 192.168.1.100:8095</div>
+        <div style="font-size:12px;opacity:0.7;padding-bottom:12px;">Version 2.5.1, Schema 25</div>
+        <div class="btn-outlined">Disconnect</div>
+      </div>
+      <div class="section-card">
+        <div class="card-title">Authentication</div>
+        <div style="font-size:13px;padding-bottom:8px;color:var(--md-primary);">Logged in as admin</div>
+      </div>
+      <div class="section-card">
+        <div class="card-title">Local player enabled</div>
+        <div class="text-field"><div class="tf-label">Player name</div><div class="tf-value" style="opacity:0.6;">Pixel 8</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 16px;">
+          <div><div style="font-size:12px;color:var(--md-on-surface-variant);">Codec preference</div><div style="font-size:14px;opacity:0.6;">FLAC</div></div>
+          <span style="opacity:0.6;">▾</span>
+        </div>
+        <div class="checkbox-row"><div class="cb"></div><span style="opacity:0.6;">Custom Sendspin connection</span></div>
+        <div style="height:12px;"></div>
+        <div class="btn-outlined">Disable local player</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /devices-row -->
+</div><!-- /screen-row -->
+
+
+<!-- ============================================ -->
+<!-- LEGEND                                        -->
+<!-- ============================================ -->
+<div class="screen-row" style="border-bottom:none;">
+<div class="screen-heading">Adaptive Layout Summary</div>
+
+<table class="legend-table">
+  <thead>
+    <tr>
+      <th>Layout Aspect</th>
+      <th>Compact (&lt; 840dp width)</th>
+      <th>Expanded (&ge; 840dp width)</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Navigation</td>
+      <td colspan="2">Screen-based (no BottomNav/Rail/Drawer). Animated slide transitions.</td>
+      <td>AppNavigation.kt, HomeScreen.kt</td>
+    </tr>
+    <tr>
+      <td>Item Header Layout</td>
+      <td>Column: art centered above text+controls</td>
+      <td>Row: art on left, text+controls on right</td>
+      <td>ItemHeader.kt:104</td>
+    </tr>
+    <tr>
+      <td>Album Art (Item Header)</td>
+      <td>70% width, max 300dp, 1:1 ratio</td>
+      <td>Same sizing, positioned in row</td>
+      <td>ItemHeader.kt:321-324</td>
+    </tr>
+    <tr>
+      <td>Grid Item Min Size</td>
+      <td colspan="2">96dp (GridCells.Adaptive) — columns auto-calculated per width</td>
+      <td>AdaptiveMediaGrid.kt, SearchScreen.kt, ItemDetailsScreen.kt</td>
+    </tr>
+    <tr>
+      <td>Grid Spacing</td>
+      <td colspan="2">8dp horizontal + 8dp vertical, 8dp content padding</td>
+      <td>AdaptiveMediaGrid.kt</td>
+    </tr>
+    <tr>
+      <td>Mini Player</td>
+      <td colspan="2">Fixed at bottom of HomeScreen, min-height 100dp. Taps expand to full-screen player.</td>
+      <td>HomeScreen.kt:174-231</td>
+    </tr>
+    <tr>
+      <td>Full Player Art</td>
+      <td colspan="2">1:1 aspect ratio, max 500dp height, 16dp padding, 16dp corner radius</td>
+      <td>PlayerItems.kt:173-179</td>
+    </tr>
+    <tr>
+      <td>Player Controls (main)</td>
+      <td colspan="2">Play/Pause 64dp, Skip 38dp, Shuffle/Repeat 26dp, 16dp spacing</td>
+      <td>PlayerControls.kt:44-51</td>
+    </tr>
+    <tr>
+      <td>Player Controls (compact)</td>
+      <td colspan="2">Play/Pause 48dp (default), no volume/shuffle/repeat buttons</td>
+      <td>PlayerControls.kt:42-43, PlayerItems.kt:138-142</td>
+    </tr>
+    <tr>
+      <td>Volume Slider</td>
+      <td colspan="2">Shown in expanded player view, 64dp horizontal padding, 36dp row height</td>
+      <td>PlayersPager.kt:212-214</td>
+    </tr>
+    <tr>
+      <td>Library Row</td>
+      <td colspan="2">3-column grid of library type cards (Artists, Albums, etc.), 64dp icon boxes</td>
+      <td>LandingPage.kt:234</td>
+    </tr>
+    <tr>
+      <td>Category Rows</td>
+      <td colspan="2">Horizontal LazyRow, 96dp item width, 4dp spacing, 16dp edge padding</td>
+      <td>LandingPage.kt:352-356</td>
+    </tr>
+    <tr>
+      <td>Top Bar</td>
+      <td colspan="2">64dp height, 8dp padding. Contains logo/back + title/tabs + action icons</td>
+      <td>LandingPage.kt:165, LibraryScreen.kt:148</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+</body>
+</html>
