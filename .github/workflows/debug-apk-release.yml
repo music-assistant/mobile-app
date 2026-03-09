@@ -44,7 +44,7 @@ jobs:
           EOF
 
       - name: Build debug APK
-        run: ./gradlew :androidApp:assembleDebug
+        run: ./gradlew :androidApp:assembleSelfSignedRelease
 
       - name: Get vars
         id: vars
