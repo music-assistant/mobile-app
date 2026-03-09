@@ -23,12 +23,13 @@ android {
         }
     }
     signingConfigs {
-        getByName("debug") {
+        create("selfSignedRelease") {
             storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+
         create("release") {
             val props = Properties().apply {
                 val file = project.file("keystore.properties")
@@ -49,6 +50,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+
+        create("selfSignedRelease") {
+            isDebuggable = true
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("selfSignedRelease")
         }
     }
     compileOptions {
