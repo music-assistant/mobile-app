@@ -26,9 +26,17 @@ By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant
   - background audio playback with automatic resume after phone call or Siri interruptions;
   - WebRTC data channel transport for low-latency Sendspin streaming.
 
-## Building from source
+## Contributing
 
-### iOS
+The project is in an early stage of development. Any help (especially from designers and iOS developers) is appreciated. To contribute:
+
+1. [Find an issue](https://github.com/music-assistant/mobile-app/issues) to work on - if you've noticed something wrong or missing, please file an issue about it
+2. Ask in the issue if you can work on it - this prevents multiple people from working on an issue at the same time
+3. Submit a PR with "Closes #<issue number>" at the top of the description
+
+### Building from source
+
+#### iOS
 
 See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-step guide covering:
 
@@ -38,20 +46,12 @@ See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-st
 - Build commands for simulator and physical device
 - Known limitations and troubleshooting
 
-### Android
+#### Android
 
 ```bash
 ./gradlew :androidApp:assembleDebug
 ./gradlew :androidApp:installDebug
 ```
-
-## Contributing
-
-The project is in an early stage of development. Any help (especially from designers and iOS developers) is appreciated. To contribute:
-
-1. [Find an issue](https://github.com/music-assistant/mobile-app/issues) to work on - if you've noticed something wrong or missing, please file an issue about it
-2. Ask in the issue if you can work on it - this prevents multiple people from working on an issue at the same time
-3. Submit a PR with "Closes #<issue number>" at the top of the description
 
 ## Want to try it?
 
