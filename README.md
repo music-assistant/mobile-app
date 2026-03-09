@@ -34,6 +34,10 @@ The project is in an early stage of development. Any help (especially from desig
 2. Ask in the issue if you can work on it - this prevents multiple people from working on an issue at the same time
 3. Submit a PR with "Closes #<issue number>" at the top of the description
 
+### Structure
+
+The project currently supports the iOS and Android targets. Common code is held within a KMP library module (`composeApp`) which the two platform specific app modules then depend on (`androidApp` and `iosApp`).
+
 ### Building from source
 
 #### iOS
@@ -50,7 +54,6 @@ See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-st
 
 ```bash
 ./gradlew :androidApp:assembleDebug
-./gradlew :androidApp:installDebug
 ```
 
 ## Want to try it?
