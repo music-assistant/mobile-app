@@ -41,8 +41,8 @@ See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-st
 ### Android
 
 ```bash
-./gradlew :composeApp:assembleDebug
-./gradlew :composeApp:installDebug
+./gradlew :androidApp:assembleDebug
+./gradlew :androidApp:installDebug
 ```
 
 ## Contributing
