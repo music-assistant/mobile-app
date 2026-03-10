@@ -120,8 +120,7 @@ internal fun PlayersPager(
 
         HorizontalPager(
             modifier = Modifier
-                .wrapContentHeight()
-                .padding(top = 8.dp),
+                .wrapContentHeight(),
             state = playerPagerState,
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
