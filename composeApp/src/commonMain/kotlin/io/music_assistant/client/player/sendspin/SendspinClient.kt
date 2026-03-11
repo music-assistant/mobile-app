@@ -173,30 +173,23 @@ class SendspinClient(
         // --- Transport state ---
         launch {
             sendspinTransport.connectionState.collect { wsState ->
-                logger.w { "[SS-DIAG] Transport=$wsState, SendspinState=${_state.value}" }
                 when (wsState) {
                     WebSocketState.Connected -> {
-                        val current = _state.value
-                        when (current) {
+                        when (_state.value) {
                             is SendspinState.Connecting, is SendspinState.Reconnecting -> {
-                                logger.w { "[SS-DIAG] Transport reconnected from $current — initiating handshake" }
                                 try {
                                     if (config.requiresAuth) {
                                         _state.update { SendspinState.Authenticating }
-                                        logger.w { "[SS-DIAG] Sending auth (proxy mode)" }
                                         dispatcher.sendAuth()
                                     } else {
                                         _state.update { SendspinState.Handshaking }
-                                        logger.w { "[SS-DIAG] Sending hello (direct mode)" }
                                         dispatcher.sendHello()
                                     }
                                 } catch (e: Exception) {
-                                    logger.w { "[SS-DIAG] Failed to send auth/hello (transport closed during handshake): ${e.message}" }
+                                    logger.w { "Failed to send auth/hello (transport closed during handshake): ${e.message}" }
                                 }
                             }
-                            else -> {
-                                logger.w { "[SS-DIAG] Transport connected but state=$current — NO ACTION" }
-                            }
+                            else -> Unit
                         }
                     }
 
@@ -204,13 +197,11 @@ class SendspinClient(
                         val current = _state.value
                         val wasStreaming = current is SendspinState.Buffering ||
                                 current is SendspinState.Synchronized
-                        logger.w { "[SS-DIAG] Transport reconnecting: attempt=${wsState.attempt}, wasStreaming=$wasStreaming, from=$current" }
                         // DON'T stop the pipeline — AudioPipeline keeps playing from buffer
                         _state.update { SendspinState.Reconnecting(wasStreaming, wsState.attempt) }
                     }
 
                     is WebSocketState.Error -> {
-                        logger.e { "[SS-DIAG] Transport error: ${wsState.error.message}" }
                         val isPermanent =
                             wsState.error.message?.contains("Failed to reconnect") == true
 
@@ -218,9 +209,7 @@ class SendspinClient(
                             val current = _state.value
                             val wasStreaming = current is SendspinState.Reconnecting &&
                                     current.wasStreaming
-                            logger.w { "[SS-DIAG] PERMANENT transport error, wasStreaming=$wasStreaming, currentState=$current" }
                             if (wasStreaming) {
-                                logger.w { "[SS-DIAG] >>> STOPPING pipeline due to permanent error" }
                                 audioPipeline.stopStream()
                                 stateReporter?.stop()
                             }
@@ -233,7 +222,6 @@ class SendspinClient(
                                 )
                             }
                         } else {
-                            logger.w { "[SS-DIAG] TRANSIENT transport error: ${wsState.error.message}" }
                             _state.update {
                                 SendspinState.Error(
                                     SendspinError.Transient(
@@ -247,16 +235,12 @@ class SendspinClient(
 
                     WebSocketState.Disconnected -> {
                         val current = _state.value
-                        logger.w { "[SS-DIAG] Transport Disconnected, currentState=$current, isReconnecting=${current is SendspinState.Reconnecting}" }
                         if (current !is SendspinState.Reconnecting) {
-                            logger.w { "[SS-DIAG] >>> setting Idle (not reconnecting)" }
                             _state.update { SendspinState.Idle }
                         }
                     }
 
-                    WebSocketState.Connecting -> {
-                        logger.w { "[SS-DIAG] Transport connecting..." }
-                    }
+                    WebSocketState.Connecting -> Unit
                 }
             }
         }
@@ -284,7 +268,6 @@ class SendspinClient(
         // --- Stream events ---
         launch {
             dispatcher.streamStartEvent.collect { event ->
-                logger.w { "[SS-DIAG] stream/start received, currentState=${_state.value}" }
                 event.payload.player?.let { playerConfig ->
                     audioPipeline.startStream(playerConfig)
                     _state.update { SendspinState.Buffering }
@@ -297,7 +280,6 @@ class SendspinClient(
         launch {
             dispatcher.streamEndEvent.collect {
                 val current = _state.value
-                logger.w { "[SS-DIAG] stream/end received, currentState=$current" }
                 audioPipeline.stopStream()
                 if (current is SendspinState.Buffering || current is SendspinState.Synchronized) {
                     val serverInfo = messageDispatcher?.serverInfo?.value
@@ -306,7 +288,6 @@ class SendspinClient(
                     } else {
                         SendspinState.Idle
                     }
-                    logger.w { "[SS-DIAG] stream/end: transitioning from $current to $nextState" }
                     _state.update { nextState }
                 }
                 // Stop periodic state reporting
@@ -316,7 +297,6 @@ class SendspinClient(
 
         launch {
             dispatcher.streamClearEvent.collect {
-                logger.w { "[SS-DIAG] stream/clear received, currentState=${_state.value}" }
                 audioPipeline.clearStream()
             }
         }
@@ -353,11 +333,10 @@ class SendspinClient(
                 } else {
                     SendspinState.Idle
                 }
-                logger.w(error) { "[SS-DIAG] PIPELINE ERROR: ${error.message}, currentState=$current, nextState=$nextState" }
+                logger.w(error) { "PIPELINE ERROR: ${error.message}, currentState=$current, nextState=$nextState" }
                 _state.update { nextState }
                 stateReporter?.stop()
                 // Notify that playback stopped due to error
-                logger.w { "[SS-DIAG] >>> firing playbackStoppedDueToError (will auto-pause server player)" }
                 _playbackStoppedDueToError.update { error }
                 delay(100)
                 _playbackStoppedDueToError.update { null }
@@ -400,8 +379,6 @@ class SendspinClient(
 
     suspend fun stop() {
         val current = _state.value
-        logger.w { "[SS-DIAG] stop() called, currentState=$current" }
-
         // Stop state reporting
         stateReporter?.stop()
 
@@ -411,7 +388,6 @@ class SendspinClient(
             current is SendspinState.Synchronized
         ) {
             try {
-                logger.w { "[SS-DIAG] sending goodbye (was $current)" }
                 messageDispatcher?.sendGoodbye("shutdown")
                 delay(100) // Give it time to send
             } catch (e: Exception) {
@@ -420,8 +396,6 @@ class SendspinClient(
         }
 
         disconnectFromServer()
-
-        logger.w { "[SS-DIAG] stop() → Idle" }
         _state.update { SendspinState.Idle }
     }
 

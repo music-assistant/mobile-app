@@ -19,7 +19,8 @@ data class Player(
     val isPlaying: Boolean,
     val isAnnouncing: Boolean,
     val canGroupWith: List<String>?,
-    val groupChildren: List<String>?,
+    val groupMembers: Set<String>?,
+    val staticGroupMembers: Set<String>?,
     //val activeGroup: String?,
     val groupVolume: Float?,
 ) {
@@ -27,7 +28,7 @@ data class Player(
     val isGroup = volumeLevel == null && groupVolume != null
 
     val displayName: String = run {
-        val counter = groupChildren?.takeIf { isGroup || it.size > 1 }?.size
+        val counter = groupMembers?.takeIf { isGroup || it.size > 1 }?.size
         val suffix = if (counter != null) {
             if (isGroup) " (${counter.takeIf { it > 0 } ?: "empty"})" else " +${counter - 1}"
         } else ""
@@ -37,20 +38,21 @@ data class Player(
     val providerType = provider.substringBefore("--")
 
     val currentVolume =
-        if (groupChildren?.isNotEmpty() == true) groupVolume else volumeLevel
+        if (groupMembers?.isNotEmpty() == true) groupVolume else volumeLevel
 
-    val canPlay = !isGroup || (groupChildren?.isNotEmpty() == true)
+    val canPlay = !isGroup || (groupMembers?.isNotEmpty() == true)
 
     fun asBindFor(other: Player): PlayerData.Bind? {
         if (id == other.id) return null
-        if (other.canGroupWith?.contains(providerType) != true) return null
+        if (other.canGroupWith?.contains(providerType) != true && other.canGroupWith?.contains(id) != true) return null
         return PlayerData.Bind(
             id = id,
             parentId = other.id,
             name = name,
             volume = volumeLevel,
             isMuted = volumeMuted.takeIf { canMute },
-            isBound = other.groupChildren?.contains(id) == true,
+            isBound = other.groupMembers?.contains(id) == true,
+            isManageable = other.staticGroupMembers?.contains(id) != true,
         )
     }
 
@@ -71,7 +73,8 @@ data class Player(
             isPlaying = state == PlayerState.PLAYING,
             isAnnouncing = announcementInProgress == true,
             canGroupWith = canGroupWith,
-            groupChildren = groupChilds,
+            groupMembers = groupMembers,
+            staticGroupMembers = staticGroupMembers,
             //activeGroup = activeGroup,
             groupVolume = groupVolume,
         )

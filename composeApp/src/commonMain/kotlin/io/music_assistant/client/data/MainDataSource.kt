@@ -367,14 +367,12 @@ class MainDataSource(
 
                             if (isTerminalAuthFailure) {
                                 // Auth permanently failed — stop everything
-                                log.w { "[SS-DIAG] Terminal auth failure (${connState}) — stopping sendspin" }
                                 stopSendspin()
                                 clearAllData()
                             } else {
                                 // Transient: AwaitingServerInfo or auth in progress.
                                 // Keep sendspin alive — it will be reinitialized when auth completes.
                                 // Preserve stale data so reconnection recovery works.
-                                log.w { "[SS-DIAG] Transient non-auth state ($connState) — keeping sendspin alive" }
                                 if (_serverPlayers.value !is DataState.Stale) {
                                     clearAllData()
                                 }
@@ -437,8 +435,13 @@ class MainDataSource(
                         // so the player list stays visible instead of showing "Loading players"
                         when (val current = _serverPlayers.value) {
                             is DataState.Data -> _serverPlayers.update {
-                                DataState.Stale(current.data, currentTimeMillis(), StaleReason.RECONNECTING)
+                                DataState.Stale(
+                                    current.data,
+                                    currentTimeMillis(),
+                                    StaleReason.RECONNECTING
+                                )
                             }
+
                             is DataState.Stale -> {} // Already stale, keep as is
                             else -> _serverPlayers.update { DataState.Loading() }
                         }
@@ -623,14 +626,17 @@ class MainDataSource(
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinClientId.value
         val groupedPlayersToHide = allPlayers
-            .map { (it.groupChildren ?: emptyList()) - it.id }
-            .flatten()
+            .flatMap { (it.groupMembers ?: emptyList()) - it.id }
             .filter { it != localPlayerId }
             .toSet()
         val filteredPlayers = allPlayers.filter { it.id !in groupedPlayersToHide }
 
         val playerDataList = filteredPlayers.map { player ->
-            if (player.id == localPlayerId && localData != null) {
+            val isLocal = player.id == localPlayerId
+            val groupChildren =
+                // No grouping for local player
+                if (isLocal) emptyList() else allPlayers.mapNotNull { it.asBindFor(player) }
+            if (isLocal && localData != null) {
                 // Repository is source of truth. Overlay interpolated position from tracker
                 // (repository has raw server position; queues has smooth 500ms interpolation).
                 val trackedElapsed = queues.find {
@@ -645,9 +651,7 @@ class MainDataSource(
                         )
                     }
                 } ?: localData
-                val enriched = withPosition.copy(
-                    groupChildren = allPlayers.mapNotNull { it.asBindFor(player) }
-                )
+                val enriched = withPosition.copy(groupChildren = groupChildren)
                 // Preserve loaded queue items from previous state
                 (oldValues as? DataState.Data)?.data
                     ?.firstOrNull { it.player.id == player.id }
@@ -661,8 +665,8 @@ class MainDataSource(
                                 Queue(info = queueInfo, items = DataState.NoData())
                             )
                         } ?: DataState.NoData(),
-                    groupChildren = allPlayers.mapNotNull { it.asBindFor(player) },
-                    isLocal = player.id == localPlayerId
+                    groupChildren = groupChildren,
+                    isLocal = isLocal
                 )
                 (oldValues as? DataState.Data)?.data
                     ?.firstOrNull { it.player.id == player.id }
@@ -695,8 +699,6 @@ class MainDataSource(
      * Safe for background: MainDataSource is singleton held by foreground service.
      */
     private suspend fun initSendspinIfEnabled() = sendspinMutex.withLock {
-        log.w { "[SS-DIAG] initSendspin: acquired mutex" }
-
         // Get prerequisites
         val mainConnectionInfo = settings.connectionInfo.value ?: run {
             log.w { "No main connection info available, cannot initialize Sendspin" }
@@ -728,12 +730,10 @@ class MainDataSource(
                 is SendspinState.Connecting,
                 is SendspinState.Authenticating,
                 is SendspinState.Handshaking -> {
-                    log.w { "[SS-DIAG] initSendspin: SKIP — ${state::class.simpleName} (in progress)" }
                     return@withLock
                 }
 
                 is SendspinState.Reconnecting -> {
-                    log.w { "[SS-DIAG] initSendspin: SKIP — Reconnecting (wasStreaming=${state.wasStreaming}, attempt=${state.attempt})" }
                     return@withLock
                 }
 
@@ -743,17 +743,14 @@ class MainDataSource(
                         is SendspinError.Transient -> err.cause.message
                         is SendspinError.Degraded -> err.reason
                     }
-                    log.w { "[SS-DIAG] initSendspin: REINIT — Error: $errorMsg" }
+                    log.w { "Sendspin: REINIT — Error: $errorMsg" }
                 }
 
-                is SendspinState.Idle -> {
-                    log.w { "[SS-DIAG] initSendspin: REINIT — was Idle" }
-                }
+                is SendspinState.Idle -> Unit
             }
-            log.w { "[SS-DIAG] initSendspin: stopping old client before reinit" }
             existing.stop()
             existing.close()
-        } ?: log.w { "[SS-DIAG] initSendspin: no existing client — fresh init" }
+        }
 
         // Create client using factory
         val createResult = sendspinClientFactory.createIfEnabled(
@@ -776,7 +773,7 @@ class MainDataSource(
         val client = createResult.getOrNull() ?: return@withLock
 
         // Set up remote command handler for Control Center/Lock Screen commands
-        // Commands go directly through MainDataSource via REST API
+        // Go directly through MainDataSource via REST API
         mediaPlayerController.onRemoteCommand = { command ->
             localPlayer.value?.let { playerData ->
                 log.i { "Remote command from Control Center: $command" }
@@ -822,33 +819,27 @@ class MainDataSource(
         sendspinMonitorJobs += launch {
             // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
             // and pause the MA server player when they occur
-            client.playbackStoppedDueToError.filterNotNull().collect { error ->
-                log.w(error) { "[SS-DIAG] playbackStoppedDueToError fired: ${error.message}" }
+            client.playbackStoppedDueToError.filterNotNull().collect { _ ->
                 // Pause the local sendspin player on the MA server
                 localPlayer.value?.let { playerData ->
-                    log.w { "[SS-DIAG] localPlayer isPlaying=${playerData.player.isPlaying}, name=${playerData.player.name}" }
                     if (playerData.player.isPlaying) {
-                        log.w { "[SS-DIAG] >>> SENDING PAUSE to server for ${playerData.player.name}" }
                         playerAction(playerData, PlayerAction.Pause)
                     }
-                } ?: log.w { "[SS-DIAG] playbackStoppedDueToError but localPlayer is null" }
+                }
             }
         }
 
         sendspinMonitorJobs += launch {
             client.state.collect { state ->
-                log.w { "[SS-DIAG] state transition -> $state (prev=${_sendspinState.value})" }
                 _sendspinState.value = state
                 when (state) {
                     is SendspinState.Ready -> {
                         sendspinRetryCount = 0
-                        log.w { "[SS-DIAG] Ready — refreshing player list in 1s" }
                         delay(1000) // Give server a moment to register the player
                         updatePlayersAndQueues()
                     }
 
                     is SendspinState.Error -> {
-                        log.w { "[SS-DIAG] Error state: ${state.error} — signalling pipeline disconnect" }
                         sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
 
                         // Retry if error is not being auto-retried and main API is connected
@@ -862,7 +853,6 @@ class MainDataSource(
                             if (apiClient.isReadyForCommands.value && settings.sendspinEnabled.value) {
                                 sendspinRetryCount++
                                 val backoffMs = 5000L * sendspinRetryCount
-                                log.w { "[SS-DIAG] retry $sendspinRetryCount/$MAX_SENDSPIN_RETRIES in ${backoffMs}ms" }
                                 delay(backoffMs)
                                 // Re-check after delay (conditions may have changed)
                                 val stillValid =
@@ -870,9 +860,8 @@ class MainDataSource(
                                 if (stillValid) {
                                     try {
                                         initSendspinIfEnabled()
-                                    } catch (e: Exception) {
+                                    } catch (_: Exception) {
                                         coroutineContext.ensureActive()
-                                        log.e(e) { "[SS-DIAG] retry $sendspinRetryCount failed" }
                                     }
                                 }
                             }
@@ -880,24 +869,18 @@ class MainDataSource(
                     }
 
                     is SendspinState.Idle -> {
-                        log.w { "[SS-DIAG] Idle state — signalling pipeline disconnect" }
                         sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
                     }
 
-                    is SendspinState.Reconnecting -> {
-                        log.w { "[SS-DIAG] Reconnecting: wasStreaming=${state.wasStreaming}, attempt=${state.attempt}" }
-                    }
-
-                    else -> {
-                        log.w { "[SS-DIAG] state=$state (no special handling)" }
-                    }
+                    is SendspinState.Reconnecting -> Unit
+                    else -> Unit
                 }
             }
         }
     }
+
     private fun cancelSendspinMonitorJobs() {
         if (sendspinMonitorJobs.isNotEmpty()) {
-            log.w { "[SS-DIAG] cancelling ${sendspinMonitorJobs.size} old monitor jobs" }
             sendspinMonitorJobs.forEach { it.cancel() }
             sendspinMonitorJobs.clear()
         }
@@ -908,13 +891,10 @@ class MainDataSource(
      * Destroys the shared audio pipeline so the AudioTrack is fully released.
      */
     private suspend fun stopSendspin() = sendspinMutex.withLock {
-        val currentState = sendspinClient?.state?.value
-        log.w { "[SS-DIAG] stopSendspin() acquired mutex — client=${sendspinClient != null}, clientState=$currentState" }
         // Cancel monitor jobs FIRST to prevent old state transitions from leaking
         cancelSendspinMonitorJobs()
         sendspinRetryCount = 0
         sendspinClient?.let { client ->
-            log.w { "[SS-DIAG] stopping client (state=${client.state.value})" }
             try {
                 client.stop()
                 client.close()

@@ -59,13 +59,19 @@ data class ClientHelloPayload(
 @Serializable
 data class DeviceInfo(
     @SerialName("model") val model: String?,
+    @SerialName("model_id") val modelId: String?,
     @SerialName("manufacturer") val manufacturer: String?,
-    @SerialName("ip_address") val ipAddress: String?
+    @SerialName("manufacturer_id") val manufacturerId: String?,
+    @SerialName("software_version") val softwareVersion: String?,
 ) {
     companion object {
         // Platform-specific implementation needed
         val current = DeviceInfo(
-            model = "Mobile Application", manufacturer = "Music Assistant", ipAddress = null
+            model = "Mobile Application",
+            modelId = "mobile_app",
+            manufacturer = "Music Assistant",
+            manufacturerId = "music_assistant",
+            softwareVersion = "1.0.0" // TODO: Get actual app version from build config or similar
         )
     }
 }
