@@ -26,7 +26,8 @@ class SendspinClient(
     private val config: SendspinConfig,
     private val mediaPlayerController: MediaPlayerController,
     private val externalPipeline: AudioPipeline? = null,
-    private val externalClockSynchronizer: ClockSynchronizer? = null
+    private val externalClockSynchronizer: ClockSynchronizer? = null,
+    private val networkAvailable: StateFlow<Boolean>? = null
 ) : CoroutineScope {
 
     private val logger = Logger.withTag("SendspinClient")
@@ -75,7 +76,8 @@ class SendspinClient(
             val serverUrl = config.buildServerUrl()
             val sendspinTransport =
                 io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport(
-                    serverUrl
+                    serverUrl,
+                    networkAvailable
                 )
             connectWithTransport(sendspinTransport)
         } catch (e: Exception) {

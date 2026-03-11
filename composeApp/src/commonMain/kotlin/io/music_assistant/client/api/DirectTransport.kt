@@ -16,24 +16,18 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
-private fun backoffMs(attempt: Int): Long = when (attempt) {
-    0 -> 0L
-    1 -> 500L
-    2 -> 1000L
-    3 -> 2000L
-    else -> 3000L
-}
-
 class DirectTransport(
     private val client: HttpClient,
     private val connectionInfoProvider: () -> ConnectionInfo,
     private val scope: CoroutineScope,
-    private val maxReconnectAttempts: Int = 5
+    private val networkAvailable: StateFlow<Boolean>? = null,
+    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS
 ) : Transport {
 
     private val logger = Logger.withTag("DirectTransport")
@@ -56,6 +50,8 @@ class DirectTransport(
             _state.value = TransportState.Connecting
             try {
                 openWebSocket(connectionInfoProvider())
+                // Returned normally = was connected, then connection dropped
+                if (wasConnected) startReconnection()
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 if (!wasConnected) {
@@ -90,24 +86,34 @@ class DirectTransport(
         } else {
             client.ws(HttpMethod.Get, info.host, info.port, "/ws", block = block)
         }
-        // Block returned = connection dropped. If wasConnected, auto-reconnect.
-        if (wasConnected) startReconnection()
     }
 
     private suspend fun startReconnection() {
-        for (attempt in 0 until maxReconnectAttempts) {
-            _state.value = TransportState.Reconnecting(attempt + 1)
-            delay(backoffMs(attempt))
-            try {
-                logger.i { "Reconnect attempt ${attempt + 1}/$maxReconnectAttempts" }
-                openWebSocket(connectionInfoProvider())
-                return // openWebSocket stayed alive then dropped again — loop re-entered via recursive startReconnection
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                logger.w { "Reconnect attempt ${attempt + 1} failed: ${e.message}" }
+        // Outer loop: each successful-then-dropped connection gets a fresh attempt cycle
+        while (true) {
+            val reconnected = runReconnectionLoop(
+                maxAttempts = maxReconnectAttempts,
+                networkAvailable = networkAvailable,
+                onAttemptStarting = { _state.value = TransportState.Reconnecting(it) },
+                tryConnect = { attempt ->
+                    try {
+                        logger.i { "Reconnect attempt $attempt/$maxReconnectAttempts" }
+                        openWebSocket(connectionInfoProvider())
+                        // Returned normally = was connected, then dropped — signal success for fresh cycle
+                        true
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (e: Exception) {
+                        logger.w { "Reconnect attempt $attempt failed: ${e.message}" }
+                        false
+                    }
+                }
+            )
+            if (!reconnected) {
+                _state.value = TransportState.Failed(Exception("Max reconnect attempts reached"))
+                return
             }
+            // Was reconnected but connection dropped again — start fresh cycle
         }
-        _state.value = TransportState.Failed(Exception("Max reconnect attempts reached"))
     }
 
     override fun verifyConnection(timeoutMs: Long) {

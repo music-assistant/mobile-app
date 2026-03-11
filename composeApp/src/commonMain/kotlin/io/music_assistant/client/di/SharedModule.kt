@@ -16,6 +16,7 @@ import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.utils.NetworkMonitor
 
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -24,6 +25,7 @@ import org.koin.dsl.module
 val sharedModule = module {
     single { provideSettings() }
     singleOf(::SettingsRepository)
+    singleOf(::NetworkMonitor)
     singleOf(::ServiceClient)
     single(createdAtStart = true) {
         AuthenticationManager(

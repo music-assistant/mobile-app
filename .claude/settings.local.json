@@ -34,7 +34,11 @@
       "Bash(adb devices:*)",
       "WebFetch(domain:docs.cloud.google.com)",
       "Bash(bash -c './gradlew :composeApp:testAndroidHostTest > /tmp/test_output.txt 2>&1')",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_android.txt 2>&1'; tail -5 /tmp/gradle_android.txt)",
+      "Bash(bash -c './gradlew :composeApp:compileCommonMainKotlinMetadata > /tmp/gradle_output.txt 2>&1')",
+      "Read(//private/tmp/**)",
+      "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_android.txt 2>&1'; tail -10 /tmp/gradle_android.txt)"
     ]
   }
 }

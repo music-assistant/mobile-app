@@ -18,6 +18,7 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.connectionInfo
+import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.resultAs
@@ -64,6 +65,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     // WebRTC HTTP client - created lazily on first WebRTC connection
     private val webrtcHttpClient: HttpClient by inject(named("webrtcHttpClient"))
+
+    private val networkMonitor: NetworkMonitor by inject()
 
     // --- Transport ---
     private var transport: Transport? = null
@@ -331,7 +334,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         val directTransport = DirectTransport(
             client = client,
             connectionInfoProvider = { settings.connectionInfo.value ?: connection },
-            scope = this
+            scope = this,
+            networkAvailable = networkMonitor.isAvailable
         )
         transport = directTransport
 
@@ -372,7 +376,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         val webrtcTransport = WebRTCTransport(
             httpClient = webrtcHttpClient,
             remoteId = remoteId,
-            scope = this
+            scope = this,
+            networkAvailable = networkMonitor.isAvailable
         )
         transport = webrtcTransport
 

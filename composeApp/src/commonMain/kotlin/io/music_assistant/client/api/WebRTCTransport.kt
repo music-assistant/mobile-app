@@ -13,25 +13,19 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
-private fun backoffMs(attempt: Int): Long = when (attempt) {
-    0 -> 0L
-    1 -> 500L
-    2 -> 1000L
-    3 -> 2000L
-    else -> 3000L
-}
-
 class WebRTCTransport(
     private val httpClient: HttpClient,
     private val remoteId: RemoteId,
     private val scope: CoroutineScope,
-    private val maxReconnectAttempts: Int = 5
+    private val networkAvailable: StateFlow<Boolean>? = null,
+    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS
 ) : Transport {
 
     private val logger = Logger.withTag("WebRTCTransport")
@@ -132,15 +126,19 @@ class WebRTCTransport(
     }
 
     private suspend fun startReconnection() {
-        for (attempt in 0 until maxReconnectAttempts) {
-            _state.value = TransportState.Reconnecting(attempt + 1)
-            delay(backoffMs(attempt))
-            logger.i { "WebRTC reconnect attempt ${attempt + 1}/$maxReconnectAttempts" }
-            connectInternal(isReconnect = true)
-            // If connected, we're done
-            if (_state.value == TransportState.Connected) return
+        val reconnected = runReconnectionLoop(
+            maxAttempts = maxReconnectAttempts,
+            networkAvailable = networkAvailable,
+            onAttemptStarting = { _state.value = TransportState.Reconnecting(it) },
+            tryConnect = { attempt ->
+                logger.i { "WebRTC reconnect attempt $attempt/$maxReconnectAttempts" }
+                connectInternal(isReconnect = true)
+                _state.value == TransportState.Connected
+            }
+        )
+        if (!reconnected) {
+            _state.value = TransportState.Failed(Exception("Max WebRTC reconnect attempts reached"))
         }
-        _state.value = TransportState.Failed(Exception("Max WebRTC reconnect attempts reached"))
     }
 
     fun forceReconnect() {

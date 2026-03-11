@@ -80,7 +80,7 @@ jobs:
             
             ### Installation
             Download the APK below and install on your Android device.
-          files: androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          files: androidApp/build/outputs/apk/selfSignedRelease/androidApp-selfSignedRelease.apk
           draft: false
           prerelease: true
         env:
