@@ -38,7 +38,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,11 +51,10 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.home.players.PlayerNameRow
+import io.music_assistant.client.ui.compose.home.players.PlayerSelectionButton
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
 import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,13 +131,16 @@ internal fun PlayersPager(
             ) {
                 val isAtLeaseExpanded = WindowClass.isAtLeastExpanded()
                 if (!isAtLeaseExpanded || showQueue) {
-                    PlayerNameRow(
-                        playerName = player.player.displayName,
-                        hasNoBoundChildren = player.groupChildren.none { it.isBound },
-                        isLocalPlayer = isLocalPlayer,
-                        sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
-                        onShowGroup = onSelectPlayer
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        PlayerSelectionButton(
+                            player = player,
+                            playersState = playersState,
+                            onSelectPlayer = onSelectPlayer
+                        )
+                    }
                 }
 
                 AnimatedVisibility(
@@ -160,10 +161,11 @@ internal fun PlayersPager(
                     ) {
                         CompactPlayerItem(
                             item = player,
+                            playersState = playersState,
                             serverUrl = serverUrl,
                             playerAction = playerAction,
                             onSelectPlayer = if (isAtLeaseExpanded && !isQueueExpanded) onSelectPlayer else null,
-                            showAdditionalControls = isAtLeaseExpanded
+                            showAdditionalControls = isAtLeaseExpanded,
                         )
                     }
                 }

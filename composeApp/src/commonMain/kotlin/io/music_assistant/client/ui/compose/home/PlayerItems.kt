@@ -54,6 +54,7 @@ import kotlin.time.DurationUnit
 @Composable
 fun CompactPlayerItem(
     item: PlayerData,
+    playersState: HomeScreenViewModel.PlayersState.Data,
     serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
@@ -154,7 +155,8 @@ fun CompactPlayerItem(
             ) {
                 PlayerSelectionButton(
                     player = item,
-                    onSelectPlayer
+                    playersState = playersState,
+                    onSelectPlayer = onSelectPlayer
                 )
             }
         }
