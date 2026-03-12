@@ -56,20 +56,24 @@ fun CompactPlayerItem(
     item: PlayerData,
     serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
-    onSelectPlayer: (() -> Unit)? = null
+    onSelectPlayer: (() -> Unit)? = null,
+    showAdditionalControls: Boolean = false
 ) {
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.Start
         ) {
             // Album cover on the far left
             Box(
@@ -104,9 +108,7 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.padding(start = 16.dp)) {
                 Text(
                     text = track?.name ?: "--idle--",
                     style = MaterialTheme.typography.bodyLarge,
@@ -124,7 +126,7 @@ fun CompactPlayerItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 } ?: run {
-                    if (item.queueInfo?.currentItem?.isPlayable == false) {
+                    if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
                         Text(
                             text = "Cannot play this item",
                             style = MaterialTheme.typography.bodySmall,
@@ -135,15 +137,21 @@ fun CompactPlayerItem(
                     }
                 }
             }
+        }
 
-            PlayerControls(
-                playerData = item,
-                playerAction = playerAction,
-                showAdditionalButtons = false,
-                showSkip = true
-            )
+        PlayerControls(
+            playerData = item,
+            playerAction = playerAction,
+            showAdditionalButtons = showAdditionalControls,
+            showSkip = true
+        )
 
-            if (onSelectPlayer != null) {
+        if (onSelectPlayer != null) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
                 PlayerSelectionButton(
                     player = item,
                     onSelectPlayer

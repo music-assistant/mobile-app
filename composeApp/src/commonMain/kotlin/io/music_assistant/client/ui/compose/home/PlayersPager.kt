@@ -180,7 +180,8 @@ internal fun PlayersPager(
                             item = player,
                             serverUrl = serverUrl,
                             playerAction = playerAction,
-                            if (isAtLeaseExpanded && !isQueueExpanded) onSelectPlayer else null
+                            onSelectPlayer = if (isAtLeaseExpanded && !isQueueExpanded) onSelectPlayer else null,
+                            showAdditionalControls = isAtLeaseExpanded
                         )
                     }
                 }
