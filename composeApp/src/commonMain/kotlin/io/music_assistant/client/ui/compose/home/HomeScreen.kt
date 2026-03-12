@@ -110,10 +110,11 @@ fun HomeScreen(
         val currentData = playersState as? HomeScreenViewModel.PlayersState.Data
             ?: return@LaunchedEffect
         val target = currentData.selectedPlayerIndex ?: return@LaunchedEffect
-        if (playerPagerState.currentPage != target) {
-            playerPagerState.scrollToPage(target)
+        if (!playerPagerState.isScrollInProgress) {
+            playerPagerState.animateScrollToPage(target)
         }
-        snapshotFlow { playerPagerState.currentPage }.collect { currentPage ->
+
+        snapshotFlow { playerPagerState.settledPage }.collect { currentPage ->
             currentData.playerData.getOrNull(currentPage)?.let { playerData ->
                 viewModel.selectPlayer(playerData.player)
             }
