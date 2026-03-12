@@ -146,16 +146,14 @@ internal fun PlayersPager(
                     }
                 )
             ) {
-                if (showQueue && !isQueueExpanded) {
-                    PlayerNameRow(
-                        playerName = player.player.displayName,
-                        hasNoChildren = player.groupChildren.isEmpty(),
-                        hasNoBoundChildren = player.groupChildren.none { it.isBound },
-                        isLocalPlayer = isLocalPlayer,
-                        sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
-                        onShowGroup = { showSelectDialog = true }
-                    )
-                }
+                PlayerNameRow(
+                    playerName = player.player.displayName,
+                    hasNoChildren = player.groupChildren.isEmpty(),
+                    hasNoBoundChildren = player.groupChildren.none { it.isBound },
+                    isLocalPlayer = isLocalPlayer,
+                    sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
+                    onShowGroup = { showSelectDialog = true }
+                )
 
                 AnimatedVisibility(
                     visible = isQueueExpanded.takeIf { showQueue } != false,
@@ -176,11 +174,7 @@ internal fun PlayersPager(
                         CompactPlayerItem(
                             item = player,
                             serverUrl = serverUrl,
-                            playerAction = playerAction,
-                            playerDataList = playerDataList,
-                            playersState = playersState,
-                            onMoveToPlayer = { moveToPlayer(it) },
-                            groupAction = simplePlayerAction
+                            playerAction = playerAction
                         )
                     }
                 }
