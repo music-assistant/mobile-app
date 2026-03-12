@@ -40,27 +40,12 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 
 @Composable
 fun PlayerSelectionButton(
-    selectedPlayer: Int,
-    players: List<PlayerData>,
-    onMoveToPlayer: (String) -> Unit = {},
-    groupAction: (String, PlayerAction) -> Unit = { _, _ -> }
+    player: PlayerData,
+    onSelectPlayer: () -> Unit = {}
 ) {
-    val currentPlayer = players[selectedPlayer]
-
-    var showSelectDialog by remember { mutableStateOf(false) }
-    if (showSelectDialog) {
-        SelectPlayerDialog(
-            selectedPlayer = currentPlayer,
-            players = players,
-            onDismissRequest = { showSelectDialog = false },
-            onMoveToPlayer = onMoveToPlayer,
-            groupAction = groupAction
-        )
-    }
-
     Column(
         modifier = Modifier
-            .clickable(onClick = { showSelectDialog = true })
+            .clickable(onClick = onSelectPlayer)
             .defaultMinSize(
                 minWidth = ButtonDefaults.MinWidth,
                 minHeight = ButtonDefaults.MinHeight
@@ -75,7 +60,7 @@ fun PlayerSelectionButton(
         )
 
         Text(
-            currentPlayer.player.displayName,
+            player.player.displayName,
             modifier = Modifier.padding(top = 4.dp),
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall
@@ -170,9 +155,9 @@ fun SelectPlayerDialog(
 @Preview
 @Composable
 fun Preview() {
+    val player = PlayerDataFixtures.playerData()
     PlayerSelectionButton(
-        selectedPlayer = 0,
-        players = listOf(PlayerDataFixtures.playerData())
+        player = player
     )
 }
 

@@ -61,6 +61,7 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
+import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
 import kotlinx.coroutines.launch
 
@@ -99,6 +100,7 @@ internal fun PlayersPager(
 
 
     var showSelectDialog by remember { mutableStateOf(false) }
+    val onSelectPlayer = { showSelectDialog = true }
     if (showSelectDialog) {
         SelectPlayerDialog(
             selectedPlayer = playerDataList[playersState.selectedPlayerIndex!!],
@@ -146,14 +148,17 @@ internal fun PlayersPager(
                     }
                 )
             ) {
-                PlayerNameRow(
-                    playerName = player.player.displayName,
-                    hasNoChildren = player.groupChildren.isEmpty(),
-                    hasNoBoundChildren = player.groupChildren.none { it.isBound },
-                    isLocalPlayer = isLocalPlayer,
-                    sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
-                    onShowGroup = { showSelectDialog = true }
-                )
+                val isAtLeaseExpanded = WindowClass.isAtLeastExpanded()
+                if (!isAtLeaseExpanded || showQueue) {
+                    PlayerNameRow(
+                        playerName = player.player.displayName,
+                        hasNoChildren = player.groupChildren.isEmpty(),
+                        hasNoBoundChildren = player.groupChildren.none { it.isBound },
+                        isLocalPlayer = isLocalPlayer,
+                        sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
+                        onShowGroup = onSelectPlayer
+                    )
+                }
 
                 AnimatedVisibility(
                     visible = isQueueExpanded.takeIf { showQueue } != false,
@@ -174,7 +179,8 @@ internal fun PlayersPager(
                         CompactPlayerItem(
                             item = player,
                             serverUrl = serverUrl,
-                            playerAction = playerAction
+                            playerAction = playerAction,
+                            if (isAtLeaseExpanded && !isQueueExpanded) onSelectPlayer else null
                         )
                     }
                 }
