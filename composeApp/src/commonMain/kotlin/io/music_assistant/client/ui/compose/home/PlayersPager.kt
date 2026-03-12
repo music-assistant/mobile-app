@@ -21,20 +21,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -48,18 +44,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.home.players.PlayerNameRow
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
 import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
@@ -152,7 +145,6 @@ internal fun PlayersPager(
                 if (!isAtLeaseExpanded || showQueue) {
                     PlayerNameRow(
                         playerName = player.player.displayName,
-                        hasNoChildren = player.groupChildren.isEmpty(),
                         hasNoBoundChildren = player.groupChildren.none { it.isBound },
                         isLocalPlayer = isLocalPlayer,
                         sendspinState = if (isLocalPlayer) playersState.sendspinState else null,
@@ -316,96 +308,4 @@ internal fun PlayersPager(
             }
         }
     }
-}
-
-@Composable
-private fun PlayerNameRow(
-    playerName: String,
-    hasNoChildren: Boolean,
-    hasNoBoundChildren: Boolean,
-    isLocalPlayer: Boolean,
-    sendspinState: SendspinState?,
-    onShowGroup: () -> Unit
-) {
-    val dotColor = sendspinState.toDotColor().takeIf { isLocalPlayer }
-
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        val playerName: @Composable (Color) -> Unit = { textColor ->
-            Row(
-                modifier = Modifier.align(Alignment.Center),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = playerName + (if (isLocalPlayer) " (local)" else ""),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                dotColor?.let {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(it, CircleShape)
-                    )
-                }
-            }
-        }
-
-        when {
-            hasNoChildren ->
-                Box(
-                    modifier = Modifier.height(48.dp).align(Alignment.Center)
-                ) {
-                    playerName(MaterialTheme.colorScheme.onSurface)
-                }
-
-            hasNoBoundChildren ->
-                OutlinedButton(
-                    modifier = Modifier.align(Alignment.Center),
-                    enabled = true,
-                    onClick = { onShowGroup() }
-                ) {
-                    playerName(MaterialTheme.colorScheme.onSurface)
-                }
-
-            else ->
-                Button(
-                    modifier = Modifier.align(Alignment.Center),
-                    enabled = true,
-                    onClick = { onShowGroup() }) {
-                    playerName(MaterialTheme.colorScheme.onPrimary)
-                }
-        }
-
-//                    // Overflow menu on the right TODO re-enable when settings are fixed in MA
-//                    OverflowMenuThreeDots(
-//                        modifier = Modifier.align(Alignment.CenterEnd)
-//                            .padding(end = 8.dp),
-//                        options = listOf(
-//                            OverflowMenuOption(
-//                                title = "Settings",
-//                                onClick = { settingsAction(player.player.id) }
-//                            ),
-//                            OverflowMenuOption(
-//                                title = "DSP settings",
-//                                onClick = { dspSettingsAction(player.player.id) }
-//                            ),
-//                        )
-//                    )
-    }
-}
-
-private fun SendspinState?.toDotColor(): Color = when (this) {
-    is SendspinState.Synchronized, is SendspinState.Ready,
-    is SendspinState.Buffering -> Color(0xFF4CAF50) // Green
-    is SendspinState.Connecting, is SendspinState.Authenticating,
-    is SendspinState.Handshaking, is SendspinState.Reconnecting -> Color(0xFFFF9800) // Orange
-    is SendspinState.Error -> Color(0xFFF44336) // Red
-    is SendspinState.Idle, null -> Color(0xFFBDBDBD) // Light gray
 }
