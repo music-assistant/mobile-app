@@ -218,6 +218,13 @@ fun HomeScreen(
                                             queueAction = { action -> viewModel.queueAction(action) },
                                             settingsAction = viewModel::openPlayerSettings,
                                             dspSettingsAction = viewModel::openPlayerDspSettings,
+                                            moveToPlayer = { id: String ->
+                                                val player =
+                                                    state.playerData.find { it.player.id == id }
+                                                if (player != null) {
+                                                    viewModel.selectPlayer(player.player)
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -309,6 +316,13 @@ fun HomeScreen(
                                             queueAction = { action -> viewModel.queueAction(action) },
                                             settingsAction = viewModel::openPlayerSettings,
                                             dspSettingsAction = viewModel::openPlayerDspSettings,
+                                            moveToPlayer = { id: String ->
+                                                val player =
+                                                    state.playerData.find { it.player.id == id }
+                                                if (player != null) {
+                                                    viewModel.selectPlayer(player.player)
+                                                }
+                                            }
                                         )
                                     }
                                 }

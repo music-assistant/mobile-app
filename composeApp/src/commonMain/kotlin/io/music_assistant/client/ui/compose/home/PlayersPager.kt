@@ -77,20 +77,10 @@ internal fun PlayersPager(
     queueAction: (QueueAction) -> Unit,
     settingsAction: (String) -> Unit,
     dspSettingsAction: (String) -> Unit,
+    moveToPlayer: (String) -> Unit
 ) {
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
-    val coroutineScope = rememberCoroutineScope()
-    fun moveToPlayer(playerId: String) {
-        val targetIndex =
-            playerDataList.indexOfFirst { it.player.id == playerId }
-        if (targetIndex != -1) {
-            coroutineScope.launch {
-                playerPagerState.animateScrollToPage(targetIndex)
-            }
-        }
-    }
-
 
     var showSelectDialog by remember { mutableStateOf(false) }
     val onSelectPlayer = { showSelectDialog = true }
