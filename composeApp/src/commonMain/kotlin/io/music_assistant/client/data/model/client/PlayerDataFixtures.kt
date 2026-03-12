@@ -25,8 +25,9 @@ object PlayerDataFixtures {
                 isPlaying = true,
                 isAnnouncing = false,
                 canGroupWith = emptyList(),
-                groupChildren = emptyList(),
                 groupVolume = null,
+                groupMembers = null,
+                staticGroupMembers = null
             ),
             queue = DataState.Data(
                 Queue(
