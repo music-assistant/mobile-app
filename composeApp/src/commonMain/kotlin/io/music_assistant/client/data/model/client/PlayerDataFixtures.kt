@@ -9,11 +9,14 @@ object PlayerDataFixtures {
 
     private val uniqueIdGenerator = UniqueIdGenerator()
 
-    fun playerData(queueId: String = "queue${uniqueIdGenerator.nextInt()}" ): PlayerData {
+    fun playerData(
+        queueId: String = "queue${uniqueIdGenerator.nextInt()}",
+        name: String = "Player ${uniqueIdGenerator.nextInt()}"
+    ): PlayerData {
         return PlayerData(
             player = Player(
                 id = "player${uniqueIdGenerator.nextInt()}",
-                name = "Player ${uniqueIdGenerator.nextInt()}",
+                name = name,
                 provider = "provider",
                 type = PlayerType.PLAYER,
                 shouldBeShown = true,

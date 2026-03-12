@@ -56,3 +56,12 @@ fun PreviewPlayerSelectionButton() {
         player = player
     )
 }
+
+@Preview
+@Composable
+fun PreviewPlayerSelectionButtonLongName() {
+    val player = PlayerDataFixtures.playerData(name = "Very Long Speaker Name")
+    PlayerSelectionButton(
+        player = player
+    )
+}
