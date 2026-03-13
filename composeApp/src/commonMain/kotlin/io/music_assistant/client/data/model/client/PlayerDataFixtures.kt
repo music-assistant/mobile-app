@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.client.PlayerData.Bind
 import io.music_assistant.client.data.model.server.PlayerType
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.ui.compose.common.DataState
@@ -11,7 +12,8 @@ object PlayerDataFixtures {
 
     fun playerData(
         queueId: String = "queue${uniqueIdGenerator.nextInt()}",
-        name: String = "Player ${uniqueIdGenerator.nextInt()}"
+        name: String = "Player ${uniqueIdGenerator.nextInt()}",
+        groupChildren: List<Bind> = emptyList()
     ): PlayerData {
         return PlayerData(
             player = Player(
@@ -45,7 +47,19 @@ object PlayerDataFixtures {
                     items = DataState.NoData()
                 )
             ),
-            groupChildren = emptyList(),
+            groupChildren = groupChildren,
+        )
+    }
+
+    fun bind(): Bind {
+        return Bind(
+            id = "bind${uniqueIdGenerator.nextInt()}",
+            parentId = "bind${uniqueIdGenerator.nextInt()}",
+            volume = null,
+            isMuted = null,
+            name = "Player ${uniqueIdGenerator.nextInt()}",
+            isBound = false,
+            isManageable = true
         )
     }
 }

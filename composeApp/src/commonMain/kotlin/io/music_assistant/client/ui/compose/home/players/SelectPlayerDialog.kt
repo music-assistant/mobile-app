@@ -55,7 +55,7 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 fun SelectPlayerDialog(
     selectedPlayer: PlayerData,
     players: List<PlayerData>,
-    onDismissRequest: () -> Unit,
+    onDismissRequest: () -> Unit = {},
     onMoveToPlayer: (String) -> Unit = {},
     groupAction: (String, PlayerAction) -> Unit = { _, _ -> },
     showGroupSettings: Boolean = false
@@ -144,7 +144,10 @@ private fun PlayerSelection(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            TextButton(onClick = onShowGroupSettings) {
+            TextButton(
+                onClick = onShowGroupSettings,
+                enabled = selectedPlayer.groupChildren.isNotEmpty()
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Link,
@@ -278,7 +281,7 @@ private fun GroupPlayerItem(
                     }
                 ) {
                     Icon(
-                        modifier = Modifier.alpha(if(bindItem.isManageable) 1f else 0.4f),
+                        modifier = Modifier.alpha(if (bindItem.isManageable) 1f else 0.4f),
                         imageVector = if (bindItem.isBound) Icons.Default.Remove else Icons.Default.Add,
                         contentDescription = if (bindItem.isBound) "Remove from group" else "Add to group",
                         tint = if (bindItem.isBound)
