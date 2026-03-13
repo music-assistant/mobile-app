@@ -222,7 +222,7 @@ fun GroupSettings(
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = onDismiss) {
-                Text("Save")
+                Text("Done")
             }
         }
     }
