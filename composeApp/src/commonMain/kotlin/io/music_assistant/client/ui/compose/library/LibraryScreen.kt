@@ -41,6 +41,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -225,7 +227,14 @@ private fun Library(
                     Text(text = "Quick search")
                 },
                 trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
-                    { IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) { Icon(Icons.Default.Clear, contentDescription = "Clear") } }
+                    {
+                        IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Clear"
+                            )
+                        }
+                    }
                 } else null,
                 singleLine = true
             )
@@ -278,17 +287,23 @@ private fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
     onCreate: (String) -> Unit,
 ) {
+    val focusRequester = remember { FocusRequester() }
     var playlistName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create New Playlist") },
         text = {
             OutlinedTextField(
+                modifier = Modifier.focusRequester(focusRequester),
                 value = playlistName,
                 onValueChange = { playlistName = it },
                 label = { Text("Playlist name") },
-                singleLine = true
+                singleLine = true,
             )
         },
         confirmButton = {

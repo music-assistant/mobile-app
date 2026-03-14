@@ -1,16 +1,19 @@
 package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -37,8 +40,6 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Replay
 
 @Composable
 fun AlbumWithMenu(
@@ -276,9 +277,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     Box(modifier = modifier) {
         itemComposable(
             Modifier.align(Alignment.Center),
-            onNavigateClick,
-            { expandedItemId = item.itemId },
-        )
+            onNavigateClick
+        ) { expandedItemId = item.itemId }
+
         DropdownMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null }
@@ -396,7 +397,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     onClick = {
                         showPlaylistDialog = true
                         expandedItemId = null
-                        // Load playlists when dialog opens
+                        // Load playlists when dialogue opens
                         coroutineScope.launch {
                             isLoadingPlaylists = true
                             playlists = playlistActions.onLoadPlaylists()
@@ -435,7 +436,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
             }
         }
 
-        // Add to Playlist Dialog
+        // Add to Playlist Dialogue
         if (showPlaylistDialog && item is AppMediaItem.Track) {
             AlertDialog(
                 onDismissRequest = {
@@ -455,8 +456,10 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     } else if (playlists.isEmpty()) {
                         Text("No editable playlists available")
                     } else {
-                        Column {
-                            playlists.forEach { playlist ->
+                        LazyColumn {
+                            items(
+                                items = playlists,
+                                key = { p -> p.itemId }) { playlist ->
                                 TextButton(
                                     onClick = {
                                         playlistActions?.onAddToPlaylist
