@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -109,6 +110,7 @@ private fun PlayerSelection(
         modifier = Modifier
             .fillMaxWidth()
             .selectableGroup()
+            .testTag("PlayersList")
     ) {
         players.forEach {
             val selected = it.player.id == selectedPlayer.player.id
@@ -352,6 +354,20 @@ private fun PreviewSelectPlayerDialog() {
     SelectPlayerDialog(
         selectedPlayer = selectedPlayer,
         players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
+        onDismissRequest = {}
+    )
+}
+
+@Preview
+@Composable
+private fun PreviewSelectPlayerDialogLongList() {
+    val players = 0.until(25).map {
+        PlayerDataFixtures.playerData()
+    }
+
+    SelectPlayerDialog(
+        selectedPlayer = players[0],
+        players = players,
         onDismissRequest = {}
     )
 }
