@@ -395,4 +395,21 @@ private fun PreviewGroupSettingDialog() {
     )
 }
 
+@Preview
+@Composable
+private fun PreviewGroupSettingDialogLongList() {
+    val selectedPlayer = PlayerDataFixtures.playerData(
+        groupChildren = 0.until(25).map {
+            PlayerDataFixtures.bind()
+        }
+    )
+
+    SelectPlayerDialog(
+        selectedPlayer = selectedPlayer,
+        players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
+        onDismissRequest = {},
+        showGroupSettings = true,
+    )
+}
+
 private val MAX_LIST_HEIGHT = 400.dp
