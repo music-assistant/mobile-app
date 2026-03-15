@@ -114,6 +114,7 @@ private fun PlayerSelection(
             modifier = Modifier
                 .testTag("PlayersList")
                 .selectableGroup()
+                .heightIn(max = MAX_LIST_HEIGHT)
                 .weight(1f, false)
         ) {
             players.forEach {
@@ -184,7 +185,10 @@ fun GroupSettings(
     ) {
         // Scrollable list of players
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = MAX_LIST_HEIGHT)
+                .weight(1f, false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Current player at the very top
@@ -390,3 +394,5 @@ private fun PreviewGroupSettingDialog() {
         showGroupSettings = true,
     )
 }
+
+private val MAX_LIST_HEIGHT = 400.dp
