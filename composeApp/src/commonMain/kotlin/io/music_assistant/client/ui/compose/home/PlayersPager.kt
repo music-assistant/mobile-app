@@ -80,18 +80,6 @@ internal fun PlayersPager(
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
 
-    var showSelectDialog by remember { mutableStateOf(false) }
-    val onSelectPlayer = { showSelectDialog = true }
-    if (showSelectDialog) {
-        SelectPlayerDialog(
-            selectedPlayer = playerDataList[playersState.selectedPlayerIndex!!],
-            players = playerDataList,
-            onDismissRequest = { showSelectDialog = false },
-            onMoveToPlayer = { moveToPlayer(it) },
-            groupAction = simplePlayerAction
-        )
-    }
-
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
@@ -109,6 +97,18 @@ internal fun PlayersPager(
         ) { page ->
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
             val isLocalPlayer = player.playerId == playersState.localPlayerId
+
+            var showSelectDialog by remember { mutableStateOf(false) }
+            val onSelectPlayer = { showSelectDialog = true }
+            if (showSelectDialog) {
+                SelectPlayerDialog(
+                    selectedPlayer = player,
+                    players = playerDataList,
+                    onDismissRequest = { showSelectDialog = false },
+                    onMoveToPlayer = { moveToPlayer(it) },
+                    groupAction = simplePlayerAction
+                )
+            }
 
             Column(
                 Modifier.background(
