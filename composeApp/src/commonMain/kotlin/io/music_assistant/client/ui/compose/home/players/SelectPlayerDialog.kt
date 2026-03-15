@@ -109,36 +109,43 @@ private fun PlayerSelection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .selectableGroup()
-            .testTag("PlayersList")
     ) {
-        players.forEach {
-            val selected = it.player.id == selectedPlayer.player.id
+        LazyColumn(
+            modifier = Modifier
+                .testTag("PlayersList")
+                .selectableGroup()
+                .weight(1f, false)
+        ) {
+            players.forEach {
+                item {
+                    val selected = it.player.id == selectedPlayer.player.id
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .selectable(
-                        selected = selected,
-                        onClick = {
-                            onDismissRequest()
-                            onSelectPlayer(it.player.id)
-                        },
-                        role = Role.RadioButton
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(
-                    selected = selected,
-                    onClick = null
-                )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .selectable(
+                                selected = selected,
+                                onClick = {
+                                    onDismissRequest()
+                                    onSelectPlayer(it.player.id)
+                                },
+                                role = Role.RadioButton
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = null
+                        )
 
-                Text(
-                    it.player.displayName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(start = 16.dp)
-                )
+                        Text(
+                            it.player.displayName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    }
+                }
             }
         }
 
