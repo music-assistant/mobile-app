@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,15 +49,15 @@ import kotlin.math.max
 
 @OptIn(FlowPreview::class)
 class MainMediaPlaybackService : MediaBrowserServiceCompat() {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val logger = Logger.withTag("MainMediaPlaybackService")
 
-    private lateinit var mediaSessionHelper: MediaSessionHelper
     private lateinit var mediaNotificationManager: MediaNotificationManager
     private lateinit var imageLoader: ImageLoader
     private lateinit var audioManager: AudioManager
 
     private val dataSource: MainDataSource by inject()
+    private val sharedSession: SharedMediaSessionManager by inject()
 
     // Note: Sendspin is managed by MainDataSource (singleton, shared across app)
     private val players = dataSource.playersData
@@ -133,18 +134,16 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-        mediaSessionHelper = MediaSessionHelper(
-            tag = "MainMediaSession",
-            multiPlayer = true,
-            context = this,
+        val token = sharedSession.acquire(
             callback = createCallback(),
+            isAutoService = false
         )
-        mediaNotificationManager = MediaNotificationManager(this, mediaSessionHelper)
+        sessionToken = token
+        mediaNotificationManager = MediaNotificationManager(this, token)
         startForeground(
             MediaNotificationManager.NOTIFICATION_ID,
             mediaNotificationManager.createNotification(null)
         )
-        sessionToken = mediaSessionHelper.getSessionToken()
         imageLoader = ImageLoader(this)
 
         // Register audio device callback to detect when external outputs disconnect
@@ -276,7 +275,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         unregisterReceiver(notificationDismissReceiver)
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         logger.i { "Unregistered audio device callback" }
-        mediaSessionHelper.release()
+        sharedSession.release(isAutoService = false)
         scope.cancel()
         super.onDestroy()
     }
@@ -291,9 +290,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                     .build()
             ) as? SuccessResult)?.image as? BitmapImage)?.bitmap
         }
-        mediaSessionHelper.updatePlaybackState(data, bitmap)
-        val notification =
-            mediaNotificationManager.createNotification(bitmap)
+        // Only write to the shared session when AA is NOT active.
+        // When AA is active, it is the sole writer (with its own data flow).
+        // The notification still picks up metadata from the shared session via MediaStyle.
+        if (!sharedSession.isAutoServiceActive()) {
+            sharedSession.updatePlaybackState(data, bitmap, multiPlayer = true)
+        }
+        val notification = mediaNotificationManager.createNotification(bitmap)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 MediaNotificationManager.NOTIFICATION_ID,

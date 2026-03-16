@@ -30,6 +30,7 @@ import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,14 +45,14 @@ import org.koin.android.ext.android.inject
 
 @OptIn(FlowPreview::class)
 class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private lateinit var mediaSessionHelper: MediaSessionHelper
     private lateinit var imageLoader: ImageLoader
     private lateinit var defaultIconUri: Uri
 
     private val dataSource: MainDataSource by inject()
     private val library: AutoLibrary by inject()
+    private val sharedSession: SharedMediaSessionManager by inject()
     private val currentPlayerData = dataSource.localPlayer
     private val mediaNotificationData = currentPlayerData.filterNotNull()
         .map {
@@ -67,40 +68,53 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-        mediaSessionHelper = MediaSessionHelper(
-            tag = "AutoMediaSession",
-            multiPlayer = false,
-            context = this,
+        val token = sharedSession.acquire(
             callback = createCallback(),
+            isAutoService = true
         )
-        sessionToken = mediaSessionHelper.getSessionToken()
+        sessionToken = token
         imageLoader = ImageLoader(this)
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
+
+        // Playback data collector — the primary writer for playback state.
+        // SharedMediaSessionManager coordinates with error state: if an error is set,
+        // updatePlaybackState will still cache the data but show the error to the user.
+        // When clearErrorState is called, it restores the cached data automatically.
         scope.launch {
-            mediaNotificationData.debounce(200).collect { updatePlaybackState(it) }
+            mediaNotificationData.debounce(200).collect { data ->
+                val bitmap = loadBitmap(data)
+                sharedSession.updatePlaybackState(data, bitmap, multiPlayer = false)
+            }
         }
+
+        // Queue updates (separate MediaSession property — no conflict with playback state)
         scope.launch {
             currentPlayerData.filterNotNull().collect { playerData ->
-                // Get queue items from the player's queue data
                 when (val queueData = playerData.queue) {
                     is DataState.Data -> {
                         when (val queueItems = queueData.data.items) {
                             is DataState.Data -> {
                                 val baseUrl = dataSource.apiClient.serverBaseUrl.value
-                                mediaSessionHelper.updateQueue(queueItems.data.map { queueTrack ->
+                                sharedSession.updateQueue(queueItems.data.map { queueTrack ->
                                     QueueItem(
-                                        (queueTrack.track as AppMediaItem).toMediaDescription(baseUrl, defaultIconUri),
+                                        (queueTrack.track as AppMediaItem).toMediaDescription(
+                                            baseUrl,
+                                            defaultIconUri
+                                        ),
                                         queueTrack.track.longId
                                     )
                                 })
                             }
-                            else -> mediaSessionHelper.updateQueue(emptyList())
+
+                            else -> sharedSession.updateQueue(emptyList())
                         }
                     }
-                    else -> mediaSessionHelper.updateQueue(emptyList())
+
+                    else -> sharedSession.updateQueue(emptyList())
                 }
             }
         }
+
         dataSource.apiClient.onExternalConsumerActive()
         observeSessionState()
         observeLocalPlayer()
@@ -153,7 +167,6 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
             override fun onSkipToQueueItem(id: Long) {
                 currentPlayerData.value?.let { playerData ->
-                    // Get queue items from player's queue data
                     when (val queueData = playerData.queue) {
                         is DataState.Data -> {
                             when (val queueItems = queueData.data.items) {
@@ -161,16 +174,19 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                                     queueItems.data.find { it.track.longId == id }?.id?.let { queueItemId ->
                                         dataSource.queueAction(
                                             QueueAction.PlayQueueItem(
-                                                playerData.queueInfo?.id ?: playerData.player.id,
+                                                playerData.queueInfo?.id
+                                                    ?: playerData.player.id,
                                                 queueItemId
                                             )
                                         )
                                     }
                                 }
-                                else -> {} // No queue items available
+
+                                else -> {}
                             }
                         }
-                        else -> {} // No queue data available
+
+                        else -> {}
                     }
                 }
             }
@@ -231,6 +247,11 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         result: Result<List<MediaBrowserCompat.MediaItem>>
     ) = library.search(query, result)
 
+    /**
+     * Observe session state for errors (reconnecting, disconnected).
+     * Uses SharedMediaSessionManager's error/clear mechanism which properly
+     * coordinates with playback data (clearErrorState restores cached data).
+     */
     private fun observeSessionState() {
         scope.launch {
             var wasAuthenticated = false
@@ -238,7 +259,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 when (state) {
                     is SessionState.Connected -> {
                         if (state.dataConnectionState is DataConnectionState.Authenticated) {
-                            mediaSessionHelper.clearErrorState()
+                            sharedSession.clearErrorState()
                             if (!wasAuthenticated) {
                                 wasAuthenticated = true
                                 notifyChildrenChanged(MediaIds.ROOT)
@@ -251,23 +272,27 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                             }
                         }
                     }
+
                     is SessionState.Reconnecting -> {
                         wasAuthenticated = false
-                        mediaSessionHelper.setErrorState(
+                        sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
                             "Reconnecting..."
                         )
                     }
+
                     is SessionState.Disconnected.Error -> {
                         wasAuthenticated = false
-                        mediaSessionHelper.setErrorState(
+                        sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
                             "Connection lost"
                         )
                     }
+
                     is SessionState.Disconnected -> {
                         wasAuthenticated = false
                     }
+
                     is SessionState.Connecting -> {}
                 }
             }
@@ -296,12 +321,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                             )
                         }
-                        mediaSessionHelper.setErrorState(
+                        sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
                             "Local player is not enabled",
                             pendingIntent
                         )
                     }
+                } else if (playerData != null) {
+                    // Local player appeared (e.g. Sendspin initialized after AA started) —
+                    // clear the "not enabled" error so cached playback data is restored.
+                    sharedSession.clearErrorState()
                 }
             }
         }
@@ -316,7 +345,8 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         scope.launch {
             dataSource.isAnythingPlaying.collect { isPlaying ->
                 if (isPlaying) {
-                    val intent = Intent(this@AndroidAutoPlaybackService, MainMediaPlaybackService::class.java)
+                    val intent =
+                        Intent(this@AndroidAutoPlaybackService, MainMediaPlaybackService::class.java)
                     intent.action = "ACTION_PLAY"
                     startForegroundService(intent)
                 }
@@ -326,22 +356,19 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onDestroy() {
         dataSource.apiClient.onExternalConsumerInactive()
-        mediaSessionHelper.release()
+        sharedSession.release(isAutoService = true)
         scope.cancel()
         super.onDestroy()
     }
 
-    private suspend fun updatePlaybackState(data: MediaNotificationData) {
-        val bitmap =
-            data.imageUrl?.let {
-                ((imageLoader.execute(
-                    ImageRequest.Builder(this@AndroidAutoPlaybackService)
-                        .data(it)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .memoryCacheKey(it)
-                        .build()
-                ) as? SuccessResult)?.image as? BitmapImage)?.bitmap
-            }
-        mediaSessionHelper.updatePlaybackState(data, bitmap)
-    }
+    private suspend fun loadBitmap(data: MediaNotificationData): android.graphics.Bitmap? =
+        data.imageUrl?.let {
+            ((imageLoader.execute(
+                ImageRequest.Builder(this@AndroidAutoPlaybackService)
+                    .data(it)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .memoryCacheKey(it)
+                    .build()
+            ) as? SuccessResult)?.image as? BitmapImage)?.bitmap
+        }
 }

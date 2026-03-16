@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import io.music_assistant.client.MainActivity
 import io.music_assistant.client.R
@@ -14,7 +15,7 @@ import io.music_assistant.client.services.MainMediaPlaybackService.Companion.ACT
 
 class MediaNotificationManager(
     private val context: Context,
-    private val mediaSessionHelper: MediaSessionHelper
+    private val sessionToken: MediaSessionCompat.Token
 ) {
 
     fun createNotification(bitmap: Bitmap?): Notification {
@@ -39,7 +40,7 @@ class MediaNotificationManager(
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
-                    .setMediaSession(mediaSessionHelper.getSessionToken())
+                    .setMediaSession(sessionToken)
             )
             .setPriority(NotificationManager.IMPORTANCE_HIGH)
             .setOngoing(true)
