@@ -66,13 +66,14 @@ fun SelectPlayerDialog(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Box(modifier = Modifier.padding(16.dp)) {
+            Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 var showGroupSettings by remember { mutableStateOf(showGroupSettings) }
 
                 Column {
                     Text(
                         if (showGroupSettings) "Group settings" else "Players",
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
                     Box(modifier = Modifier.padding(top = 16.dp)) {
@@ -132,7 +133,7 @@ private fun PlayerSelection(
                                     onSelectPlayer(it.player.id)
                                 },
                                 role = Role.RadioButton
-                            ),
+                            ).padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -151,7 +152,9 @@ private fun PlayerSelection(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(
@@ -181,7 +184,7 @@ fun GroupSettings(
     playerAction: (String, PlayerAction) -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
     ) {
         // Scrollable list of players
         LazyColumn(
