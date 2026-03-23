@@ -13,6 +13,7 @@ data class Player(
     val shouldBeShown: Boolean,
     val canSetVolume: Boolean,
     val volumeLevel: Float?,
+    val volumeControl: String?,
     val volumeMuted: Boolean,
     val canMute: Boolean,
     val queueId: String?,
@@ -25,7 +26,7 @@ data class Player(
     val groupVolume: Float?,
 ) {
 
-    val isGroup = volumeLevel == null && groupVolume != null
+    val isGroup = type == PlayerType.GROUP || groupMembers?.isNotEmpty() == true
 
     val displayName: String = run {
         val counter = groupMembers?.takeIf { isGroup || it.size > 1 }?.size
@@ -67,6 +68,7 @@ data class Player(
             shouldBeShown = available && enabled && (hidden != true),
             canSetVolume = supportedFeatures.contains(PlayerFeature.VOLUME_SET),
             volumeLevel = volumeLevel,
+            volumeControl = volumeControl,
             volumeMuted = volumeMuted == true,
             canMute = muteControl != null && muteControl != PLAYER_CONTROL_NONE,
             queueId = currentMedia?.queueId ?: activeSource,

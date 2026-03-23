@@ -185,6 +185,7 @@ class LocalPlayerRepository(
                         shouldBeShown = true,
                         canSetVolume = false,
                         volumeLevel = null,
+                        volumeControl = null,
                         volumeMuted = false,
                         canMute = false,
                         queueId = null,

@@ -32,7 +32,7 @@ data class ServerPlayer(
     @SerialName("hidden") val hidden: Boolean? = null,
     //@SerialName("icon") val icon: String,
     //@SerialName("power_control") val powerControl: String,
-    //@SerialName("volume_control") val volumeControl: String,
+    @SerialName("volume_control") val volumeControl: String,
     @SerialName("mute_control") val muteControl: String? = null,
     //@SerialName("enabled_by_default") val enabledByDefault: Boolean? = null,
     //@SerialName("needs_poll") val needsPoll: Boolean? = null,
