@@ -25,6 +25,7 @@ object PlayerDataFixtures {
                 canSetVolume = true,
                 volumeLevel = 50f,
                 volumeMuted = false,
+                volumeControl = "native",
                 canMute = true,
                 queueId = queueId,
                 isPlaying = true,
