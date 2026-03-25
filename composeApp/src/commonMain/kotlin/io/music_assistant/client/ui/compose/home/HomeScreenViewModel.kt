@@ -27,6 +27,7 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -45,6 +46,7 @@ class HomeScreenViewModel(
 ) : ViewModel() {
 
     private val jobs = mutableListOf<Job>()
+    private var recommendationsJob: Job? = null
 
     val serverUrl = apiClient.serverBaseUrl
     private val _links = MutableSharedFlow<String>()
@@ -76,9 +78,9 @@ class HomeScreenViewModel(
                     is SessionState.Connected -> {
                         when (val connState = connection.dataConnectionState) {
                             DataConnectionState.Authenticated -> {
-                                // Load recommendations when data connection is ready
-                                if (_recommendationsState.value.recommendations is DataState.Loading) {
-                                    loadRecommendations()
+                                if (_recommendationsState.value.recommendations !is DataState.Data) {
+                                    recommendationsJob?.cancel()
+                                    recommendationsJob = loadRecommendations()
                                 }
                                 // Only show loading if we don't have cached data (e.g. fresh connect).
                                 // During reconnection the existing player list stays visible.
@@ -121,10 +123,12 @@ class HomeScreenViewModel(
                         if (_playersState.value !is PlayersState.Data) {
                             _playersState.update { PlayersState.Loading }
                         }
+                        recommendationsJob?.cancel()
                         stopJobs()
                     }
 
                     is SessionState.Disconnected -> {
+                        recommendationsJob?.cancel()
                         when (connection) {
                             is SessionState.Disconnected.Error,
                             SessionState.Disconnected.Initial,
@@ -164,16 +168,17 @@ class HomeScreenViewModel(
         }
     }
 
-    private fun loadRecommendations() {
-        viewModelScope.launch {
-            _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
+    private fun loadRecommendations(): Job = viewModelScope.launch {
+        _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
+        repeat(3) { attempt ->
+            if (attempt > 0) delay(2_000L)
             getList<AppMediaItem.RecommendationFolder>(Request.Library.recommendations())
                 ?.let { items ->
                     _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
-                } ?: run {
-                _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
-            }
+                    return@launch
+                }
         }
+        _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
     }
 
     fun onPlayClick(item: AppMediaItem, option: QueueOption, radio: Boolean) {
