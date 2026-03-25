@@ -20,6 +20,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -223,26 +225,36 @@ private fun ItemChildren(
                     else -> return@Box
                 }
 
-                LazyVerticalGrid(
-                    modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-                    columns = GridCells.Adaptive(minSize = 96.dp),
-                    contentPadding = PaddingValues(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
                 ) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        ItemHeader(
-                            item = item,
-                            serverUrl = serverUrl,
-                            isRowMode = isRowMode,
-                            onBack = onBack,
-                            libraryAction = libraryActions,
-                            playlistActions = playlistActions,
-                            onToggleViewMode = onToggleViewMode,
-                            providerIconFetcher = providerIconFetcher,
-                            onPlayClick = onPlayItemClick
-                        )
-                    }
+                    ItemTopBar(
+                        item = item,
+                        isRowMode = isRowMode,
+                        onBack = onBack,
+                        onToggleViewMode = onToggleViewMode,
+                        libraryActions = libraryActions,
+                        playlistActions = playlistActions,
+                        scrollBehavior = scrollBehavior
+                    )
+                    LazyVerticalGrid(
+                        modifier = Modifier.weight(1f).fillMaxWidth().testTag("LazyVerticalGrid"),
+                        columns = GridCells.Adaptive(minSize = 96.dp),
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            ItemHeader(
+                                item = item,
+                                serverUrl = serverUrl,
+                                providerIconFetcher = providerIconFetcher,
+                                onPlayClick = onPlayItemClick
+                            )
+                        }
 
                     // For Artist: Albums section
                     if (item is AppMediaItem.Artist) {
@@ -368,6 +380,7 @@ private fun ItemChildren(
                         }
 
                         else -> Unit
+                    }
                     }
                 }
             }

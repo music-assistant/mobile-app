@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package io.music_assistant.client.ui.compose.item
 
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +21,8 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -26,6 +30,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,24 +71,10 @@ import kotlinx.coroutines.launch
 fun ItemHeader(
     item: AppMediaItem,
     serverUrl: String? = null,
-    isRowMode: Boolean = true,
-    onBack: () -> Unit = {},
-    libraryAction: ActionsViewModel.LibraryActions? = null,
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
-    onToggleViewMode: () -> Unit = {},
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> }
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        ItemTopBar(
-            item = item,
-            isRowMode = isRowMode,
-            onBack = onBack,
-            onToggleViewMode = onToggleViewMode,
-            libraryActions = libraryAction,
-            playlistActions = playlistActions
-        )
-
         val image = @Composable {
             Image(
                 item = item,
@@ -122,31 +115,37 @@ fun ItemHeader(
 }
 
 @Composable
-private fun ItemTopBar(
+internal fun ItemTopBar(
     item: AppMediaItem,
     isRowMode: Boolean,
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
-    playlistActions: ActionsViewModel.PlaylistActions?
+    playlistActions: ActionsViewModel.PlaylistActions?,
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-        }
-
-        ItemOverflow(
-            item = item,
-            isRowMode = isRowMode,
-            onToggleViewMode = onToggleViewMode,
-            libraryActions = libraryActions,
-            playlistActions = playlistActions
-        )
-    }
+    TopAppBar(
+        title = {},
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+        },
+        actions = {
+            ItemOverflow(
+                item = item,
+                isRowMode = isRowMode,
+                onToggleViewMode = onToggleViewMode,
+                libraryActions = libraryActions,
+                playlistActions = playlistActions
+            )
+        },
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        scrollBehavior = scrollBehavior
+    )
 }
 
 @Composable
