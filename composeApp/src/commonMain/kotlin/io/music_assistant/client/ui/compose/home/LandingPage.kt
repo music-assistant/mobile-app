@@ -225,30 +225,17 @@ fun LibraryRow(
                 style = MaterialTheme.typography.titleLarge
             )
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            libraryItems.chunked(3).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    rowItems.forEach { item ->
-                        LibraryItemCard(
-                            modifier = Modifier.weight(1f),
-                            name = item.name,
-                            icon = item.icon,
-                            onClick = { onLibraryItemClick(item.type) }
-                        )
-                    }
-                    // Fill remaining columns with spacers to keep grid alignment
-                    repeat(3 - rowItems.size) {
-                        Spacer(modifier = Modifier.weight(1f).padding(8.dp))
-                    }
-                }
+            items(libraryItems) { item ->
+                LibraryItemCard(
+                    modifier = Modifier,
+                    name = item.name,
+                    icon = item.icon,
+                    onClick = { onLibraryItemClick(item.type) }
+                )
             }
         }
     }
@@ -274,7 +261,7 @@ fun LibraryItemCard(
     ) {
         Box(
             modifier = Modifier
-                .height(64.dp)
+                .size(width = 96.dp, height = 40.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(primaryContainer),
             contentAlignment = Alignment.Center
