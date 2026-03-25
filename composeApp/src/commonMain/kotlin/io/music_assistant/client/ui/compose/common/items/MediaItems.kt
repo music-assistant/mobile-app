@@ -10,13 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,7 +45,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
@@ -77,7 +77,7 @@ fun ArtistGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            ArtistImage(96.dp, item, serverUrl)
+            ArtistImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -86,7 +86,7 @@ fun ArtistGridItem(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            modifier = Modifier.width(96.dp),
+            modifier = Modifier.fillMaxWidth(),
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
@@ -95,7 +95,7 @@ fun ArtistGridItem(
         )
         if (showSubtitle) {
             Text(
-                modifier = Modifier.width(96.dp),
+                modifier = Modifier.fillMaxWidth(),
                 text = item.subtitle.orEmpty(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -109,7 +109,6 @@ fun ArtistGridItem(
 
 @Composable
 private fun ArtistImage(
-    itemSize: Dp,
     item: AppMediaItem.Artist,
     serverUrl: String?
 ) {
@@ -117,7 +116,8 @@ private fun ArtistImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(CircleShape)
             .background(primaryContainer)
     ) {
@@ -161,7 +161,7 @@ fun AlbumGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            AlbumImage(96.dp, item, serverUrl)
+            AlbumImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -170,7 +170,7 @@ fun AlbumGridItem(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            modifier = Modifier.width(96.dp),
+            modifier = Modifier.fillMaxWidth(),
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -179,7 +179,7 @@ fun AlbumGridItem(
         )
         if (showSubtitle) {
             Text(
-                modifier = Modifier.width(96.dp),
+                modifier = Modifier.fillMaxWidth(),
                 text = item.subtitle.orEmpty(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -193,7 +193,6 @@ fun AlbumGridItem(
 
 @Composable
 private fun AlbumImage(
-    itemSize: Dp,
     item: AppMediaItem.Album,
     serverUrl: String?
 ) {
@@ -201,7 +200,8 @@ private fun AlbumImage(
     val background = MaterialTheme.colorScheme.background
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
     ) {
         val vinylRecord = rememberVinylRecordPainter(
@@ -256,7 +256,7 @@ fun PlaylistGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            PlaylistImage(96.dp, item, serverUrl)
+            PlaylistImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -265,7 +265,7 @@ fun PlaylistGridItem(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            modifier = Modifier.width(96.dp),
+            modifier = Modifier.fillMaxWidth(),
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -274,7 +274,7 @@ fun PlaylistGridItem(
         )
         if (showSubtitle) {
             Text(
-                modifier = Modifier.width(96.dp),
+                modifier = Modifier.fillMaxWidth(),
                 text = item.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -288,7 +288,6 @@ fun PlaylistGridItem(
 
 @Composable
 private fun PlaylistImage(
-    itemSize: Dp,
     item: AppMediaItem.Playlist,
     serverUrl: String?
 ) {
@@ -297,7 +296,8 @@ private fun PlaylistImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
     ) {
         val notebookCutShape = remember { NotebookCutShape() }
@@ -373,7 +373,7 @@ fun PodcastGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            PodcastImage(96.dp, item, serverUrl)
+            PodcastImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -382,7 +382,7 @@ fun PodcastGridItem(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            modifier = Modifier.width(96.dp),
+            modifier = Modifier.fillMaxWidth(),
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -391,7 +391,7 @@ fun PodcastGridItem(
         )
         if (showSubtitle) {
             Text(
-                modifier = Modifier.width(96.dp),
+                modifier = Modifier.fillMaxWidth(),
                 text = item.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -405,7 +405,6 @@ fun PodcastGridItem(
 
 @Composable
 private fun PodcastImage(
-    itemSize: Dp,
     item: AppMediaItem.Podcast,
     serverUrl: String?
 ) {
@@ -414,7 +413,8 @@ private fun PodcastImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
     ) {
         val cornerCutShape = remember { CornerCutShape() }
@@ -429,11 +429,10 @@ private fun PodcastImage(
 
         // Draw concentric circles in the cut corner area (centered on cut edge, rippling outward)
         val circleCount = 10
-        val cutSize = itemSize / 3
         Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            val center = cutSize.toPx() * 0.7f
+            val center = (size.width / 3f) * 0.7f
             val spacing = center / circleCount
 
             for (i in 1 until circleCount) {
@@ -489,20 +488,19 @@ internal fun TrackGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            TrackImage(96.dp, item, serverUrl)
+            TrackImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
                 modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
-        GridPlayableItemLabels(item, 96.dp, showSubtitle)
+        GridPlayableItemLabels(item, showSubtitle)
     }
 }
 
 @Composable
 private fun TrackImage(
-    itemSize: Dp,
     item: PlayableItem,
     serverUrl: String?,
 ) {
@@ -511,7 +509,8 @@ private fun TrackImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(primaryContainer)
     ) {
@@ -534,7 +533,7 @@ private fun TrackImage(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(itemSize / 3)
+                .fillMaxHeight(1f / 3f)
                 .align(Alignment.BottomCenter)
         ) {
             with(waveformPainter) {
@@ -560,7 +559,7 @@ internal fun PodcastEpisodeGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            PodcastEpisodeImage(96.dp, item, serverUrl)
+            PodcastEpisodeImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -571,13 +570,12 @@ internal fun PodcastEpisodeGridItem(
                 resumePositionMs = item.resumePositionMs
             )
         }
-        GridPlayableItemLabels(item, 96.dp, showSubtitle)
+        GridPlayableItemLabels(item, showSubtitle)
     }
 }
 
 @Composable
 private fun PodcastEpisodeImage(
-    itemSize: Dp,
     item: PlayableItem,
     serverUrl: String?,
 ) {
@@ -586,7 +584,8 @@ private fun PodcastEpisodeImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(primaryContainer)
     ) {
@@ -652,20 +651,19 @@ internal fun RadioGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            RadioImage(96.dp, item, serverUrl)
+            RadioImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
                 modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
-        GridPlayableItemLabels(item, 96.dp, showSubtitle)
+        GridPlayableItemLabels(item, showSubtitle)
     }
 }
 
 @Composable
 private fun RadioImage(
-    itemSize: Dp,
     item: PlayableItem,
     serverUrl: String?
 ) {
@@ -673,7 +671,8 @@ private fun RadioImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(WavyHexagonShape())
             .background(primaryContainer)
     ) {
@@ -717,7 +716,7 @@ internal fun AudiobookGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            AudiobookImage(96.dp, item, serverUrl)
+            AudiobookImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -730,7 +729,7 @@ internal fun AudiobookGridItem(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            modifier = Modifier.width(96.dp),
+            modifier = Modifier.fillMaxWidth(),
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -739,7 +738,7 @@ internal fun AudiobookGridItem(
         )
         if (showSubtitle) {
             Text(
-                modifier = Modifier.width(96.dp),
+                modifier = Modifier.fillMaxWidth(),
                 text = item.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -753,7 +752,6 @@ internal fun AudiobookGridItem(
 
 @Composable
 private fun AudiobookImage(
-    itemSize: Dp,
     item: AppMediaItem.Audiobook,
     serverUrl: String?
 ) {
@@ -762,7 +760,8 @@ private fun AudiobookImage(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     Box(
         modifier = Modifier
-            .size(itemSize)
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
     ) {
         val spineWidth = 8.dp
@@ -780,7 +779,7 @@ private fun AudiobookImage(
         Box(
             modifier = Modifier
                 .width(spineWidth)
-                .height(itemSize)
+                .fillMaxHeight()
                 .background(primary)
         )
 
@@ -806,7 +805,6 @@ private fun AudiobookImage(
 @Composable
 private fun GridPlayableItemLabels(
     item: PlayableItem,
-    itemSize: Dp,
     showSubtitle: Boolean
 ) {
     Spacer(Modifier.height(4.dp))
@@ -815,7 +813,7 @@ private fun GridPlayableItemLabels(
         style = MaterialTheme.typography.bodyMedium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.width(itemSize),
+        modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center,
     )
     if (showSubtitle) {
@@ -825,7 +823,7 @@ private fun GridPlayableItemLabels(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(itemSize),
+            modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
     }
@@ -842,8 +840,9 @@ private fun GridItem(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier = modifier
-            .wrapContentSize()
+        modifier = Modifier
+            .width(96.dp)
+            .then(modifier)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(8.dp),
@@ -933,7 +932,7 @@ internal fun TrackRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            TrackImage(ROW_IMAGE_SIZE, item, serverUrl)
+            TrackImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -959,7 +958,7 @@ internal fun AlbumRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            AlbumImage(ROW_IMAGE_SIZE, item, serverUrl)
+            AlbumImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -985,7 +984,7 @@ internal fun ArtistRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            ArtistImage(ROW_IMAGE_SIZE, item, serverUrl)
+            ArtistImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1011,7 +1010,7 @@ internal fun PlaylistRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            PlaylistImage(ROW_IMAGE_SIZE, item, serverUrl)
+            PlaylistImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1037,7 +1036,7 @@ internal fun PodcastRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            PodcastImage(ROW_IMAGE_SIZE, item, serverUrl)
+            PodcastImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1063,7 +1062,7 @@ internal fun PodcastEpisodeRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            PodcastEpisodeImage(ROW_IMAGE_SIZE, item, serverUrl)
+            PodcastEpisodeImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1093,7 +1092,7 @@ internal fun RadioRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            RadioImage(ROW_IMAGE_SIZE, item, serverUrl)
+            RadioImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1119,7 +1118,7 @@ internal fun AudiobookRowItem(
         name = item.name,
         subtitle = item.subtitle,
         imageContent = {
-            AudiobookImage(ROW_IMAGE_SIZE, item, serverUrl)
+            AudiobookImage(item, serverUrl)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
