@@ -1263,7 +1263,7 @@ class MainDataSource(
 
                         is PlayerUpdatedEvent -> {
                             val data = event.player()
-                            Logger.e("Player updated: $data")
+                            Logger.i("Player updated: $data")
                             // Forward to local player repository if this is the local player
                             if (data.id == settings.sendspinClientId.value) {
                                 localPlayerRepository.onServerPlayerUpdate(data)
@@ -1302,7 +1302,7 @@ class MainDataSource(
 
                         is QueueUpdatedEvent -> {
                             val data = event.queue()
-                            Logger.e("Queue updated $data")
+                            Logger.i("Queue updated $data")
 
                             // Forward to local player repository if this is the local player's queue
                             val localPlayerId = settings.sendspinClientId.value
