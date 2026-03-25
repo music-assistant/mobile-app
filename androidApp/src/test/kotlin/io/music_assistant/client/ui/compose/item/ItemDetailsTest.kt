@@ -237,10 +237,8 @@ class ItemDetailsTest {
                 playableItemsState = DataState.NoData()
             )
 
-            composeTestRule.inScrollable("LazyVerticalGrid") {
-                onNode(hasContentDescription("Back")).performClick()
-                assertEquals(onBack.wasCalled, true)
-            }
+            composeTestRule.onNode(hasContentDescription("Back")).performClick()
+            assertEquals(onBack.wasCalled, true)
         }
     }
 }
