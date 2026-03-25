@@ -88,7 +88,7 @@ fun HorizontalPagerIndicator(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 32.dp),
+        modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 24.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -133,9 +133,9 @@ fun HorizontalPagerIndicator(
 
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 4.dp)
+                        .padding(horizontal = 3.dp)
                         .offset(x = xOffset.dp, y = yOffset.dp)
-                        .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
+                        .size(if (index == pagerState.currentPage) 6.dp else 5.dp)
                         .clip(CircleShape)
                         .background(
                             if (index == pagerState.currentPage)

@@ -31,7 +31,7 @@ data class Player(
     val displayName: String = run {
         val counter = groupMembers?.takeIf { isGroup || it.size > 1 }?.size
         val suffix = if (counter != null) {
-            if (isGroup) " (${counter.takeIf { it > 0 } ?: "empty"})" else " +${counter - 1}"
+            if (isGroup) " (${counter})" else " +${counter - 1}"
         } else ""
         "$name$suffix"
     }

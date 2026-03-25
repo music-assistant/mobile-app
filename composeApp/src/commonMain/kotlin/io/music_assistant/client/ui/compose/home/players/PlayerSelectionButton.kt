@@ -1,11 +1,10 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -30,33 +29,31 @@ fun PlayerSelectionButton(
     onSelectPlayer: () -> Unit = {}
 ) {
     val isLocalPlayer = player.playerId == playersState.localPlayerId
-    val dotColor = (if (isLocalPlayer) playersState.sendspinState else null)
-        .toDotColor()
-        .takeIf { isLocalPlayer }
+    val dotColor = (if (isLocalPlayer) playersState.sendspinState else null)?.toDotColor()
 
     Box {
         val playerName: @Composable (Color) -> Unit = { textColor ->
             Row(
                 modifier = Modifier.align(Alignment.Center),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = player.player.displayName + (if (isLocalPlayer) " (local)" else ""),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
                 dotColor?.let {
-                    Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .background(it, CircleShape)
                     )
                 }
+                Text(
+                    text = player.player.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -82,11 +79,11 @@ fun PlayerSelectionButton(
     }
 }
 
-private fun SendspinState?.toDotColor(): Color = when (this) {
+private fun SendspinState.toDotColor(): Color = when (this) {
     is SendspinState.Synchronized, is SendspinState.Ready,
     is SendspinState.Buffering -> Color(0xFF4CAF50) // Green
     is SendspinState.Connecting, is SendspinState.Authenticating,
     is SendspinState.Handshaking, is SendspinState.Reconnecting -> Color(0xFFFF9800) // Orange
     is SendspinState.Error -> Color(0xFFF44336) // Red
-    is SendspinState.Idle, null -> Color(0xFFBDBDBD) // Light gray
+    is SendspinState.Idle -> Color(0xFFBDBDBD) // Light gray
 }

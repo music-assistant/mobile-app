@@ -65,7 +65,6 @@ internal fun PlayersPager(
     serverUrl: String?,
     simplePlayerAction: (String, PlayerAction) -> Unit,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    onPlayersRefreshClick: () -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
     showQueue: Boolean,
     isQueueExpanded: Boolean,
@@ -128,8 +127,8 @@ internal fun PlayersPager(
                     }
                 )
             ) {
-                val isAtLeaseExpanded = WindowClass.isAtLeastExpanded()
-                if (!isAtLeaseExpanded || showQueue) {
+                val isAtLeastExpanded = WindowClass.isAtLeastExpanded()
+                if (!isAtLeastExpanded || showQueue) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -163,8 +162,8 @@ internal fun PlayersPager(
                             playersState = playersState,
                             serverUrl = serverUrl,
                             playerAction = playerAction,
-                            onSelectPlayer = if (isAtLeaseExpanded && !isQueueExpanded) onSelectPlayer else null,
-                            showAdditionalControls = isAtLeaseExpanded,
+                            onSelectPlayer = if (isAtLeastExpanded && !isQueueExpanded) onSelectPlayer else null,
+                            showAdditionalControls = isAtLeastExpanded,
                         )
                     }
                 }

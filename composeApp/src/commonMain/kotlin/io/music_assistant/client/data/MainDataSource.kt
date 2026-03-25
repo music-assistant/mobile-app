@@ -1615,8 +1615,6 @@ class MainDataSource(
         supervisorJob.cancel()
     }
 
-    fun refreshPlayersAndQueues() = updatePlayersAndQueues()
-
     private companion object {
         const val MAX_SENDSPIN_RETRIES = 5
     }

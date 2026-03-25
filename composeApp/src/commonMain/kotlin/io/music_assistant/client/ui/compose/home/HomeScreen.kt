@@ -207,7 +207,6 @@ fun HomeScreen(
                                             playerAction = { playerData, action ->
                                                 viewModel.playerAction(playerData, action)
                                             },
-                                            onPlayersRefreshClick = viewModel::refreshPlayers,
                                             onFavoriteClick = actionsViewModel::onFavoriteClick,
                                             showQueue = false,
                                             isQueueExpanded = isQueueExpanded,
@@ -286,7 +285,6 @@ fun HomeScreen(
                                             playerAction = { playerData, action ->
                                                 viewModel.playerAction(playerData, action)
                                             },
-                                            onPlayersRefreshClick = viewModel::refreshPlayers,
                                             onFavoriteClick = actionsViewModel::onFavoriteClick,
                                             showQueue = true,
                                             isQueueExpanded = isQueueExpanded,
