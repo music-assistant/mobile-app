@@ -29,6 +29,9 @@ enum class MediaType {
     @SerialName("podcast_episode")
     PODCAST_EPISODE,
 
+    @SerialName("genre")
+    GENRE,
+
     @SerialName("folder")
     FOLDER,
 

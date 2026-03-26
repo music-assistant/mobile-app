@@ -87,6 +87,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val connectionHistory by viewModel.connectionHistory.collectAsStateWithLifecycle()
     val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
     val isAuthenticated = dataConnection == DataConnectionState.Authenticated
+    val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
@@ -267,6 +268,14 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
+                // Misc settings - always visible
+                MiscSection(
+                    onShareLogs = { viewModel.shareLogs() },
+                    hasCrashLog = hasCrashLog,
+                    onShareCrashLog = { viewModel.shareCrashLog() },
+                    onDeleteCrashLog = { viewModel.deleteCrashLog() }
+                )
+
                 Spacer(modifier = Modifier.size(16.dp))
             }
         }
@@ -274,6 +283,41 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 }
 
 // Section Composables
+
+@Composable
+private fun MiscSection(
+    onShareLogs: () -> Unit,
+    hasCrashLog: Boolean,
+    onShareCrashLog: () -> Unit,
+    onDeleteCrashLog: () -> Unit
+) {
+    SectionCard {
+        SectionTitle("Misc")
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onShareLogs
+        ) {
+            Text("Share logs")
+        }
+        if (hasCrashLog) {
+            Spacer(modifier = Modifier.size(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    onClick = onShareCrashLog
+                ) {
+                    Text("Share crash logs")
+                }
+                OutlinedButton(onClick = onDeleteCrashLog) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete crash logs")
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun SectionCard(
