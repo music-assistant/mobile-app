@@ -1105,6 +1105,97 @@ internal fun RadioRowItem(
 }
 
 @Composable
+fun GenreGridItem(
+    modifier: Modifier = Modifier,
+    item: AppMediaItem.Genre,
+    serverUrl: String?,
+    onClick: (AppMediaItem.Genre) -> Unit,
+    onLongClick: (AppMediaItem.Genre) -> Unit,
+    showSubtitle: Boolean = true,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null
+) {
+    GridItem(
+        modifier = modifier,
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) },
+    ) {
+        Box {
+            GenreImage(item, serverUrl)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun GenreImage(
+    item: AppMediaItem.Genre,
+    serverUrl: String?
+) {
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(primaryContainer)
+    ) {
+        val placeholder = rememberPlaceholderPainter(
+            backgroundColor = primaryContainer,
+            iconColor = onPrimaryContainer,
+            icon = Icons.Default.MusicNote
+        )
+        AsyncImage(
+            placeholder = placeholder,
+            fallback = placeholder,
+            model = item.imageInfo?.url(serverUrl),
+            contentDescription = item.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
+internal fun GenreRowItem(
+    modifier: Modifier = Modifier,
+    item: AppMediaItem.Genre,
+    serverUrl: String?,
+    onClick: (AppMediaItem.Genre) -> Unit,
+    onLongClick: (AppMediaItem.Genre) -> Unit,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
+) {
+    RowItem(
+        modifier = modifier,
+        name = item.name,
+        subtitle = item.subtitle,
+        imageContent = {
+            GenreImage(item, serverUrl)
+            Badges(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
+            )
+        },
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) }
+    )
+}
+
+@Composable
 internal fun AudiobookRowItem(
     modifier: Modifier = Modifier,
     item: AppMediaItem.Audiobook,

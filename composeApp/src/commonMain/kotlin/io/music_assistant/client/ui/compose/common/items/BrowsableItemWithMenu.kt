@@ -212,6 +212,48 @@ fun AudiobookWithMenu(
 }
 
 @Composable
+fun GenreWithMenu(
+    item: AppMediaItem.Genre,
+    showSubtitle: Boolean = true,
+    rowMode: Boolean = false,
+    onNavigateClick: (AppMediaItem.Genre) -> Unit,
+    onPlayOption: ((AppMediaItem.Genre, QueueOption, Boolean) -> Unit),
+    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    libraryActions: ActionsViewModel.LibraryActions? = null,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
+    serverUrl: String?
+) {
+    BrowsableItemWithMenu(
+        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        item = item,
+        onNavigateClick = onNavigateClick,
+        onPlayOption = onPlayOption,
+        playlistActions = playlistActions,
+        libraryActions = null,
+    ) { mod, onClick, onLongClick ->
+        if (rowMode) {
+            GenreRowItem(
+                modifier = mod,
+                item = item,
+                serverUrl = serverUrl,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                providerIconFetcher = providerIconFetcher
+            )
+        } else {
+            GenreGridItem(
+                item = item,
+                showSubtitle = showSubtitle,
+                serverUrl = serverUrl,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                providerIconFetcher = providerIconFetcher
+            )
+        }
+    }
+}
+
+@Composable
 fun PodcastWithMenu(
     item: AppMediaItem.Podcast,
     showSubtitle: Boolean,
@@ -261,7 +303,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     onNavigateClick: (T) -> Unit,
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: ActionsViewModel.LibraryActions? = null,
     progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,
@@ -351,44 +393,43 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     }
                 )
             }
-            val libText = if (item.isInLibrary) "Remove from library" else "Add to library"
-            DropdownMenuItem(
-                text = { Text(libText) },
-                onClick = {
-                    libraryActions.onLibraryClick(item as AppMediaItem)
-                    expandedItemId = null
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector =
-                            if (item.isInLibrary) TablerIcons.FolderMinus
-                            else TablerIcons.FolderPlus,
-                        contentDescription = libText
-                    )
-                }
-            )
-
-
-            // Favorite management (only for library items)
-            if (item.isInLibrary) {
-                val favText = if (item.favorite == true) "Unfavorite" else "Favorite"
+            libraryActions?.let { actions ->
+                val libText = if (item.isInLibrary) "Remove from library" else "Add to library"
                 DropdownMenuItem(
-                    text = { Text(favText) },
+                    text = { Text(libText) },
                     onClick = {
-                        (item as? AppMediaItem)?.let {
-                            libraryActions.onFavoriteClick(it)
-                            expandedItemId = null
-                        }
+                        actions.onLibraryClick(item as AppMediaItem)
+                        expandedItemId = null
                     },
                     leadingIcon = {
                         Icon(
                             imageVector =
-                                if (item.favorite == true) TablerIcons.HeartBroken
-                                else TablerIcons.Heart,
-                            contentDescription = favText
+                                if (item.isInLibrary) TablerIcons.FolderMinus
+                                else TablerIcons.FolderPlus,
+                            contentDescription = libText
                         )
                     }
                 )
+
+                // Favorite management (only for library items)
+                if (item.isInLibrary) {
+                    val favText = if (item.favorite == true) "Unfavorite" else "Favorite"
+                    DropdownMenuItem(
+                        text = { Text(favText) },
+                        onClick = {
+                            actions.onFavoriteClick(item)
+                            expandedItemId = null
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector =
+                                    if (item.favorite == true) TablerIcons.HeartBroken
+                                    else TablerIcons.Heart,
+                                contentDescription = favText
+                            )
+                        }
+                    )
+                }
             }
 
             if (playlistActions != null && (item is AppMediaItem.Album || item is AppMediaItem.Artist)) {

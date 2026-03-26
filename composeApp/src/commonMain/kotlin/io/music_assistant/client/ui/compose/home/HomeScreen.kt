@@ -386,7 +386,8 @@ private fun HomeContent(
                             is AppMediaItem.Album,
                             is AppMediaItem.Playlist,
                             is AppMediaItem.Podcast,
-                            is AppMediaItem.Audiobook -> {
+                            is AppMediaItem.Audiobook,
+                            is AppMediaItem.Genre -> {
                                 typedBackStack.add(
                                     HomeNavScreen.ItemDetails(
                                         itemId = item.itemId,
@@ -425,7 +426,8 @@ private fun HomeContent(
                             is AppMediaItem.Album,
                             is AppMediaItem.Playlist,
                             is AppMediaItem.Podcast,
-                            is AppMediaItem.Audiobook -> {
+                            is AppMediaItem.Audiobook,
+                            is AppMediaItem.Genre -> {
                                 typedBackStack.add(
                                     HomeNavScreen.ItemDetails(
                                         itemId = item.itemId,

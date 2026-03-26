@@ -47,6 +47,7 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
+import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
@@ -100,7 +101,8 @@ fun SearchScreen(
                     is AppMediaItem.Album,
                     is AppMediaItem.Playlist,
                     is AppMediaItem.Podcast,
-                    is AppMediaItem.Audiobook -> {
+                    is AppMediaItem.Audiobook,
+                    is AppMediaItem.Genre -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -217,7 +219,8 @@ private fun SearchContent(
                             results.playlists.isNotEmpty() ||
                             results.audiobooks.isNotEmpty() ||
                             results.podcasts.isNotEmpty() ||
-                            results.radios.isNotEmpty()
+                            results.radios.isNotEmpty() ||
+                            results.genres.isNotEmpty()
 
                     if (!hasResults) {
                         Box(
@@ -355,6 +358,24 @@ private fun SearchContent(
                                         playlistActions = playlistActions,
                                         libraryActions = libraryActions,
                                         providerIconFetcher = providerIconFetcher,
+                                    )
+                                }
+                            }
+
+                            // Genres section
+                            if (results.genres.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    SectionHeader("Genres")
+                                }
+                                items(results.genres) { genre ->
+                                    GenreWithMenu(
+                                        item = genre,
+                                        showSubtitle = true,
+                                        serverUrl = serverUrl,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher
                                     )
                                 }
                             }

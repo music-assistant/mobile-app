@@ -337,6 +337,46 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
     }
 
+    data object Genre {
+
+        fun get(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.get("genres", itemId, providerInstanceIdOrDomain)
+
+        fun listLibrary(
+            favorite: Boolean? = null,
+            search: String? = null,
+            limit: Int = Int.MAX_VALUE,
+            offset: Int = 0,
+            orderBy: String? = null,
+        ) = Request(
+            command = "music/genres/library_items",
+            args = buildJsonObject {
+                favorite?.let { put("favorite", JsonPrimitive(it)) }
+                search?.let { put("search", JsonPrimitive(it)) }
+                put("limit", JsonPrimitive(limit))
+                put("offset", JsonPrimitive(offset))
+                orderBy?.let { put("order_by", JsonPrimitive(it)) }
+            }
+        )
+
+        fun overview(
+            itemId: String,
+            providerInstanceIdOrDomain: String? = null,
+            limit: Int = 25,
+        ) = Request(
+            command = "music/genres/overview",
+            args = buildJsonObject {
+                put("item_id", JsonPrimitive(itemId))
+                providerInstanceIdOrDomain?.let {
+                    put("provider_instance_id_or_domain", JsonPrimitive(it))
+                }
+                put("limit", JsonPrimitive(limit))
+            }
+        )
+    }
+
     data object Artist {
 
         fun get(

@@ -391,6 +391,29 @@ abstract class AppMediaItem(
         override val defaultIcon = Icons.Default.Radio
     }
 
+    class Genre(
+        itemId: String,
+        provider: String,
+        name: String,
+        providerMappings: List<ProviderMapping>?,
+        metadata: Metadata?,
+        favorite: Boolean?,
+        uri: String?,
+        image: MediaItemImage?,
+    ) : AppMediaItem(
+        itemId = itemId,
+        provider = provider,
+        name = name,
+        providerMappings = providerMappings,
+        metadata = metadata,
+        favorite = favorite,
+        mediaType = MediaType.GENRE,
+        uri = uri,
+        image = image,
+    ) {
+        override val subtitle = "Genre"
+    }
+
     class Audiobook(
         itemId: String,
         provider: String,
@@ -570,6 +593,17 @@ abstract class AppMediaItem(
                     resumePositionMs = resumePositionMs,
                 )
 
+                MediaType.GENRE -> Genre(
+                    itemId = itemId,
+                    provider = provider,
+                    name = name,
+                    providerMappings = providerMappings,
+                    metadata = metadata,
+                    favorite = favorite,
+                    uri = uri,
+                    image = image,
+                )
+
                 MediaType.FLOW_STREAM,
                 MediaType.ANNOUNCEMENT,
                 MediaType.UNKNOWN -> null
@@ -585,7 +619,8 @@ abstract class AppMediaItem(
                     playlists.toAppMediaItemList() +
                     podcasts.toAppMediaItemList() +
                     audiobooks.toAppMediaItemList() +
-                    radios.toAppMediaItemList()
+                    radios.toAppMediaItemList() +
+                    genres.toAppMediaItemList()
 
         val AudioFormat.description
             get() = listOfNotNull(

@@ -189,7 +189,7 @@ class HomeScreenViewModel(
                             media = listOf(uri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio
+                            radioMode = radio || item is AppMediaItem.Genre
                         )
                     )
                 }

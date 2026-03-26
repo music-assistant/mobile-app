@@ -163,25 +163,27 @@ private fun ItemOverflow(
 
     OverflowMenu(
         options = buildList {
-            add(
-                OverflowMenuOption(
-                    title =
-                        if (item.isInLibrary) "Remove from library"
-                        else "Add to library",
-                    icon =
-                        if (item.isInLibrary) TablerIcons.FolderMinus
-                        else TablerIcons.FolderPlus
-                ) { libraryActions?.onLibraryClick(item) })
-            if (item.isInLibrary) {
+            libraryActions?.let { actions ->
                 add(
                     OverflowMenuOption(
                         title =
-                            if (item.favorite == true) "Unfavorite"
-                            else "Favorite",
+                            if (item.isInLibrary) "Remove from library"
+                            else "Add to library",
                         icon =
-                            if (item.favorite == true) TablerIcons.HeartBroken
-                            else TablerIcons.Heart
-                    ) { libraryActions?.onFavoriteClick(item) })
+                            if (item.isInLibrary) TablerIcons.FolderMinus
+                            else TablerIcons.FolderPlus
+                    ) { actions.onLibraryClick(item) })
+                if (item.isInLibrary) {
+                    add(
+                        OverflowMenuOption(
+                            title =
+                                if (item.favorite == true) "Unfavorite"
+                                else "Favorite",
+                            icon =
+                                if (item.favorite == true) TablerIcons.HeartBroken
+                                else TablerIcons.Heart
+                        ) { actions.onFavoriteClick(item) })
+                }
             }
 
             playlistActions?.let {

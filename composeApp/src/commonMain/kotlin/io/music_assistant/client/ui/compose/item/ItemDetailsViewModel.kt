@@ -37,6 +37,7 @@ class ItemDetailsViewModel(
         val itemState: DataState<AppMediaItem>,
         val albumsState: DataState<List<AppMediaItem.Album>>,
         val playableItemsState: DataState<List<PlayableItem>>,
+        val artistsState: DataState<List<AppMediaItem.Artist>> = DataState.Loading(),
     )
 
     val serverUrl = apiClient.serverBaseUrl
@@ -157,6 +158,7 @@ class ItemDetailsViewModel(
             MediaType.PLAYLIST -> Request.Playlist.get(itemId, providerId)
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)
             MediaType.AUDIOBOOK -> Request.Audiobook.get(itemId, providerId)
+            MediaType.GENRE -> Request.Genre.get(itemId, providerId)
             else -> return null
         }
 
@@ -188,6 +190,11 @@ class ItemDetailsViewModel(
                 loadPodcastEpisodes(item.itemId, item.provider)
             }
 
+            is AppMediaItem.Genre -> {
+                _state.update { it.copy(playableItemsState = DataState.NoData()) }
+                loadGenreOverview(item.itemId, item.provider)
+            }
+
             is AppMediaItem.Audiobook -> {
                 _state.update { it.copy(albumsState = DataState.NoData()) }
                 // Chapters come from the audiobook's metadata, not a separate API call
@@ -199,6 +206,7 @@ class ItemDetailsViewModel(
             else -> {
                 _state.update {
                     it.copy(
+                        artistsState = DataState.NoData(),
                         albumsState = DataState.NoData(),
                         playableItemsState = DataState.NoData()
                     )
@@ -327,6 +335,48 @@ class ItemDetailsViewModel(
         }
     }
 
+    private fun loadGenreOverview(itemId: String, provider: String) {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    artistsState = DataState.Loading(),
+                    albumsState = DataState.Loading()
+                )
+            }
+
+            try {
+                val folders = apiClient.sendRequest(
+                    Request.Genre.overview(
+                        itemId = itemId,
+                        providerInstanceIdOrDomain = provider,
+                    )
+                ).resultAs<List<ServerMediaItem>>()
+                    ?.toAppMediaItemList()
+                    ?.filterIsInstance<AppMediaItem.RecommendationFolder>()
+                    ?: emptyList()
+
+                val allItems = folders.flatMap { it.items.orEmpty() }
+                val artists = allItems.filterIsInstance<AppMediaItem.Artist>()
+                val albums = allItems.filterIsInstance<AppMediaItem.Album>()
+
+                _state.update {
+                    it.copy(
+                        artistsState = DataState.Data(artists),
+                        albumsState = DataState.Data(albums)
+                    )
+                }
+            } catch (e: Exception) {
+                Logger.e("Failed to load genre overview", e)
+                _state.update {
+                    it.copy(
+                        artistsState = DataState.Error(),
+                        albumsState = DataState.Error()
+                    )
+                }
+            }
+        }
+    }
+
     fun onPlayClick(option: QueueOption, radio: Boolean) {
         (_state.value.itemState as? DataState.Data)?.data?.let {
             onPlayClick(it, option, radio)
@@ -342,7 +392,7 @@ class ItemDetailsViewModel(
                             media = listOf(uri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio
+                            radioMode = radio || track is AppMediaItem.Genre
                         )
                     )
                 }
@@ -378,6 +428,19 @@ class ItemDetailsViewModel(
     }
 
     private fun updateSubItemIfNeeded(serverItem: ServerMediaItem) {
+        // Update artists list if this item is an artist
+        val artistsData = (_state.value.artistsState as? DataState.Data)?.data
+        if (artistsData != null) {
+            val updatedArtists = artistsData.map { artist ->
+                if (artist.itemId == serverItem.itemId) {
+                    serverItem.toAppMediaItem() as? AppMediaItem.Artist ?: artist
+                } else {
+                    artist
+                }
+            }
+            _state.update { it.copy(artistsState = DataState.Data(updatedArtists)) }
+        }
+
         // Update albums list if this item is an album
         val albumsData = (_state.value.albumsState as? DataState.Data)?.data
         if (albumsData != null) {

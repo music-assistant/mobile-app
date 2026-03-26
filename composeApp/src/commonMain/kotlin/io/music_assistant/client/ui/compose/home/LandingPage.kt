@@ -58,6 +58,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
+import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
@@ -98,6 +99,7 @@ fun LandingPage(
                             || item is AppMediaItem.Podcast
                             || item is AppMediaItem.PodcastEpisode
                             || item is AppMediaItem.RadioStation
+                            || item is AppMediaItem.Genre
                 } == true
             }
         } else {
@@ -209,6 +211,7 @@ fun LibraryRow(
             LibraryItem("Audiobooks", Icons.AutoMirrored.Filled.MenuBook, MediaType.AUDIOBOOK),
             LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
             LibraryItem("Radio", Icons.Default.Radio, MediaType.RADIO),
+            LibraryItem("Genres", Icons.Default.MusicNote, MediaType.GENRE),
             LibraryItem("Global search", Icons.Default.Search, null),
         )
     }
@@ -352,7 +355,8 @@ fun CategoryRow(
                         is AppMediaItem.Audiobook,
                         is AppMediaItem.Podcast,
                         is AppMediaItem.PodcastEpisode,
-                        is AppMediaItem.RadioStation -> "${item::class.simpleName}_${item.itemId}"
+                        is AppMediaItem.RadioStation,
+                        is AppMediaItem.Genre -> "${item::class.simpleName}_${item.itemId}"
 
                         else -> item.hashCode()
                     }
@@ -367,6 +371,7 @@ fun CategoryRow(
                         is AppMediaItem.Podcast -> "Podcast"
                         is AppMediaItem.PodcastEpisode -> "Episode"
                         is AppMediaItem.RadioStation -> "RadioStation"
+                        is AppMediaItem.Genre -> "Genre"
                         else -> "Unknown"
                     }
                 }
@@ -451,6 +456,16 @@ fun CategoryRow(
                         providerIconFetcher = providerIconFetcher
                     )
 
+                    is AppMediaItem.Genre -> GenreWithMenu(
+                        item = item,
+                        showSubtitle = !isHomogenous,
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
                     else -> {}
                 }
             }
@@ -466,6 +481,7 @@ fun allItemsTitle(type: MediaType) = when (type) {
     MediaType.AUDIOBOOK -> "All audiobooks"
     MediaType.PODCAST -> "All podcasts"
     MediaType.RADIO -> "All radio stations"
+    MediaType.GENRE -> "All genres"
     else -> null
 }
 

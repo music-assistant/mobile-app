@@ -40,6 +40,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
+import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -154,7 +155,8 @@ fun ItemDetails(
                     is AppMediaItem.Album,
                     is AppMediaItem.Playlist,
                     is AppMediaItem.Podcast,
-                    is AppMediaItem.Audiobook -> {
+                    is AppMediaItem.Audiobook,
+                    is AppMediaItem.Genre -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -236,8 +238,8 @@ private fun ItemChildren(
                         isRowMode = isRowMode,
                         onBack = onBack,
                         onToggleViewMode = onToggleViewMode,
-                        libraryActions = libraryActions,
-                        playlistActions = playlistActions,
+                        libraryActions = libraryActions.takeIf { item !is AppMediaItem.Genre },
+                        playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
                         scrollBehavior = scrollBehavior
                     )
                     LazyVerticalGrid(
@@ -256,8 +258,51 @@ private fun ItemChildren(
                             )
                         }
 
-                    // For Artist: Albums section
-                    if (item is AppMediaItem.Artist) {
+                    // For Genre: Artists section
+                    if (item is AppMediaItem.Genre) {
+                        when (val artistsState = state.artistsState) {
+                            is DataState.Data -> {
+                                if (artistsState.data.isNotEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        SectionHeader("Artists")
+                                    }
+                                    items(
+                                        artistsState.data,
+                                        span = if (isRowMode) {
+                                            { GridItemSpan(maxLineSpan) }
+                                        } else null
+                                    ) { artist ->
+                                        ArtistWithMenu(
+                                            item = artist,
+                                            rowMode = isRowMode,
+                                            showSubtitle = true,
+                                            serverUrl = serverUrl,
+                                            onNavigateClick = onNavigateClick,
+                                            onPlayOption = onPlayChildClick,
+                                            libraryActions = libraryActions,
+                                            providerIconFetcher = providerIconFetcher
+                                        )
+                                    }
+                                }
+                            }
+
+                            is DataState.Loading -> {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            }
+
+                            else -> Unit
+                        }
+                    }
+
+                    // For Artist or Genre: Albums section
+                    if (item is AppMediaItem.Artist || item is AppMediaItem.Genre) {
                         when (val albumsState = state.albumsState) {
                             is DataState.Data -> {
                                 if (albumsState.data.isNotEmpty()) {
