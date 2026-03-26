@@ -43,7 +43,8 @@
       "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_output.txt 2>&1'; tail -20 /tmp/gradle_output.txt)",
       "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_output.txt 2>&1'; tail -5 /tmp/gradle_output.txt)",
       "Bash(bash -c './gradlew :composeApp:compileCommonMainKotlinMetadata :androidApp:compileDebugKotlin > /tmp/gradle_output.txt 2>&1')",
-      "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_output.txt 2>&1')"
+      "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_output.txt 2>&1')",
+      "Bash(bash -c './gradlew :androidApp:compileDebugKotlin > /tmp/gradle_android_output.txt 2>&1')"
     ]
   }
 }

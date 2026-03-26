@@ -169,9 +169,9 @@ class SendspinClientFactory(
         val serverHost = try {
             Url(mainConnection.webUrl).host
         } catch (e: Exception) {
-            log.e(e) { "Failed to parse server URL: ${mainConnection.webUrl}" }
+            log.e(e) { "Failed to parse server URL" }
             return Result.failure(
-                IllegalArgumentException("Invalid server URL: ${mainConnection.webUrl}", e)
+                IllegalArgumentException("Invalid server URL", e)
             )
         }
 
@@ -181,7 +181,7 @@ class SendspinClientFactory(
             authToken = authToken
         )
 
-        log.i { "Creating Sendspin client over WebSocket: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
+        log.i { "Creating Sendspin client over WebSocket (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
         val client = SendspinClient(
             config = config,
             mediaPlayerController = mediaPlayerController,

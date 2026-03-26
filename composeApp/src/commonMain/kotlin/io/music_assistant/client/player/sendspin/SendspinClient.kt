@@ -66,7 +66,7 @@ class SendspinClient(
 
     suspend fun start() {
         if (!config.isValid) {
-            logger.w { "Sendspin config invalid: enabled=${config.enabled}, host=${config.serverHost}, device=${config.deviceName}" }
+            logger.w { "Sendspin config invalid: enabled=${config.enabled}" }
             return
         }
 

@@ -21,7 +21,7 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
 
     actual fun shareLogs(logText: String) {
         val path = logFilePath()
-        writeTextToFile(logText, path)
+        writeTextToFile(LogSanitizer.sanitize(logText), path)
         shareFile(path)
     }
 
@@ -31,7 +31,10 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
     actual fun shareCrashLog() {
         val path = crashLogFilePath()
         if (NSFileManager.defaultManager.fileExistsAtPath(path)) {
-            shareFile(path)
+            val sanitizedPath = "${NSTemporaryDirectory()}ma_crash_log_share.txt"
+            val rawText = NSString.create(contentsOfFile = path, encoding = NSUTF8StringEncoding, error = null) as? String ?: return
+            writeTextToFile(LogSanitizer.sanitize(rawText), sanitizedPath)
+            shareFile(sanitizedPath)
         }
     }
 

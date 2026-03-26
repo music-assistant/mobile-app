@@ -304,10 +304,10 @@ class MainDataSource(
                                                 }
 
                                                 if (token != null) {
-                                                    log.i { "Re-authenticating after reconnection with saved token for server: $serverIdentifier" }
+                                                    log.i { "Re-authenticating after reconnection with saved token" }
                                                     apiClient.authorize(token, isAutoLogin = true)
                                                 } else {
-                                                    log.w { "No saved token to re-authenticate with for server: $serverIdentifier" }
+                                                    log.w { "No saved token to re-authenticate with" }
                                                 }
                                             }
 
