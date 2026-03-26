@@ -440,7 +440,8 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
     ), PlayableItem {
-        override val subtitle = authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
+        override val subtitle =
+            authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
         override val parentName: String? = authors?.firstOrNull()
         override val defaultIcon = Icons.AutoMirrored.Filled.MenuBook
     }
@@ -606,6 +607,7 @@ abstract class AppMediaItem(
 
                 MediaType.FLOW_STREAM,
                 MediaType.ANNOUNCEMENT,
+                MediaType.GENRE,
                 MediaType.UNKNOWN -> null
             }
 
