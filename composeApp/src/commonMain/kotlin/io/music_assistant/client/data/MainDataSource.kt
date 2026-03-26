@@ -700,11 +700,6 @@ class MainDataSource(
      */
     private suspend fun initSendspinIfEnabled() = sendspinMutex.withLock {
         // Get prerequisites
-        val mainConnectionInfo = settings.connectionInfo.value ?: run {
-            log.w { "No main connection info available, cannot initialize Sendspin" }
-            return@withLock
-        }
-
         val authToken = when (val state = apiClient.sessionState.value) {
             is SessionState.Connected.Direct ->
                 settings.getTokenForServer(
@@ -754,7 +749,7 @@ class MainDataSource(
 
         // Create client using factory
         val createResult = sendspinClientFactory.createIfEnabled(
-            mainConnection = mainConnectionInfo,
+            mainConnection = settings.connectionInfo.value,
             authToken = authToken
         )
 

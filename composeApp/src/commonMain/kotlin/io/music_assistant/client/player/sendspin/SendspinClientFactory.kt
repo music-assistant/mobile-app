@@ -9,6 +9,7 @@ import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.player.sendspin.audio.AudioStreamManager
 import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTransport
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.webrtc.DataChannelWrapper
 
 /**
  * Signals that the WebRTC sendspin channel was already used (goodbye sent)
@@ -75,7 +76,7 @@ class SendspinClientFactory(
      * @return Result containing SendspinClient on success, or error message on failure
      */
     suspend fun createIfEnabled(
-        mainConnection: ConnectionInfo,
+        mainConnection: ConnectionInfo?,
         authToken: String?
     ): Result<SendspinClient> {
         // Validate: Sendspin enabled
@@ -85,32 +86,8 @@ class SendspinClientFactory(
             )
         }
 
-        // Validate: Auth token required
-        if (authToken == null) {
-            return Result.failure(
-                IllegalStateException("No auth token available - user must be logged in")
-            )
-        }
-
-        // Extract server host from main connection URL
-        val serverHost = try {
-            Url(mainConnection.webUrl).host
-        } catch (e: Exception) {
-            log.e(e) { "Failed to parse server URL: ${mainConnection.webUrl}" }
-            return Result.failure(
-                IllegalArgumentException("Invalid server URL: ${mainConnection.webUrl}", e)
-            )
-        }
-
-        // Build Sendspin configuration based on connection mode
-        val config = buildConfig(
-            serverHost = serverHost,
-            mainConnection = mainConnection,
-            authToken = authToken
-        )
-
         // Validate device name (required for protocol)
-        if (config.deviceName.isBlank()) {
+        if (settings.sendspinDeviceName.value.isBlank()) {
             return Result.failure(
                 IllegalStateException("Sendspin device name cannot be empty")
             )
@@ -124,50 +101,97 @@ class SendspinClientFactory(
 
         return try {
             if (webrtcChannel != null) {
-                if (webrtcSendspinUsed) {
-                    log.i { "Sendspin channel exhausted — need WebRTC reconnect" }
-                    return Result.failure(WebRTCSendspinChannelExhausted())
-                }
-                webrtcSendspinUsed = true
-
-                log.i { "Creating Sendspin client over WebRTC data channel" }
-
-                val webrtcConfig = config.copy(
-                    // Override auth settings for WebRTC - auth is inherited from main channel
-                    serverPort = 0,  // Not used for WebRTC
-                    mainConnectionPort = null,  // This makes requiresAuth = false
-                    authToken = null  // Not needed, auth already done on ma-api channel
-                )
-
-                val client = SendspinClient(
-                    config = webrtcConfig,
-                    mediaPlayerController = mediaPlayerController,
-                    externalPipeline = pipeline,
-                    externalClockSynchronizer = clockSync,
-                    networkAvailable = networkMonitor.isAvailable
-                )
-                val transport = WebRTCDataChannelTransport(webrtcChannel)
-                client.connectWithTransport(transport)
-                log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello, shared pipeline)" }
-                Result.success(client)
+                createWebRTCClient(webrtcChannel, pipeline, clockSync)
             } else {
-                // WebSocket mode: use standard WebSocket transport
-                log.i { "Creating Sendspin client over WebSocket: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
-                val client = SendspinClient(
-                    config = config,
-                    mediaPlayerController = mediaPlayerController,
-                    externalPipeline = pipeline,
-                    externalClockSynchronizer = clockSync,
-                    networkAvailable = networkMonitor.isAvailable
-                )
-                client.start()
-                log.i { "Sendspin client started via WebSocket" }
-                Result.success(client)
+                createWebSocketClient(mainConnection, authToken, pipeline, clockSync)
             }
         } catch (e: Exception) {
             log.e(e) { "Failed to create and start Sendspin client" }
             Result.failure(e)
         }
+    }
+
+    private suspend fun createWebRTCClient(
+        webrtcChannel: DataChannelWrapper,
+        pipeline: AudioStreamManager,
+        clockSync: ClockSynchronizer
+    ): Result<SendspinClient> {
+        if (webrtcSendspinUsed) {
+            log.i { "Sendspin channel exhausted — need WebRTC reconnect" }
+            return Result.failure(WebRTCSendspinChannelExhausted())
+        }
+        webrtcSendspinUsed = true
+
+        log.i { "Creating Sendspin client over WebRTC data channel" }
+
+        val config = SendspinConfig(
+            clientId = settings.sendspinClientId.value,
+            deviceName = settings.sendspinDeviceName.value,
+            codecPreference = settings.sendspinCodecPreference.value,
+            bufferCapacityMicros = 500_000,
+            // WebRTC: auth inherited from ma-api channel, no server connection needed
+            serverHost = "",
+            serverPort = 0,
+            mainConnectionPort = null,
+            authToken = null
+        )
+
+        val client = SendspinClient(
+            config = config,
+            mediaPlayerController = mediaPlayerController,
+            externalPipeline = pipeline,
+            externalClockSynchronizer = clockSync,
+            networkAvailable = networkMonitor.isAvailable
+        )
+        val transport = WebRTCDataChannelTransport(webrtcChannel)
+        client.connectWithTransport(transport)
+        log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello, shared pipeline)" }
+        return Result.success(client)
+    }
+
+    private suspend fun createWebSocketClient(
+        mainConnection: ConnectionInfo?,
+        authToken: String?,
+        pipeline: AudioStreamManager,
+        clockSync: ClockSynchronizer
+    ): Result<SendspinClient> {
+        if (mainConnection == null) {
+            return Result.failure(
+                IllegalStateException("No connection info available for WebSocket Sendspin")
+            )
+        }
+        if (authToken == null) {
+            return Result.failure(
+                IllegalStateException("No auth token available - user must be logged in")
+            )
+        }
+
+        val serverHost = try {
+            Url(mainConnection.webUrl).host
+        } catch (e: Exception) {
+            log.e(e) { "Failed to parse server URL: ${mainConnection.webUrl}" }
+            return Result.failure(
+                IllegalArgumentException("Invalid server URL: ${mainConnection.webUrl}", e)
+            )
+        }
+
+        val config = buildConfig(
+            serverHost = serverHost,
+            mainConnection = mainConnection,
+            authToken = authToken
+        )
+
+        log.i { "Creating Sendspin client over WebSocket: $serverHost:${config.serverPort} (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
+        val client = SendspinClient(
+            config = config,
+            mediaPlayerController = mediaPlayerController,
+            externalPipeline = pipeline,
+            externalClockSynchronizer = clockSync,
+            networkAvailable = networkMonitor.isAvailable
+        )
+        client.start()
+        log.i { "Sendspin client started via WebSocket" }
+        return Result.success(client)
     }
 
     /**
