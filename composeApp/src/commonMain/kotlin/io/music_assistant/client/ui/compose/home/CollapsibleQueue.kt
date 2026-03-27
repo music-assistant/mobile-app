@@ -78,12 +78,24 @@ fun CollapsibleQueue(
             .padding(start = 16.dp, end = 16.dp, bottom = if (isQueueExpanded) 0.dp else 16.dp)
             .animateContentSize(),
     ) {
+        // Action buttons (visible when expanded and has items)
+        val queueData = queue as? DataState.Data
+        val items = (queueData?.data?.items as? DataState.Data)?.data
+
+        val queueLabel = items?.let { list ->
+            val currentId = queueData?.data?.info?.currentItem?.id
+            val currentPos = currentId?.let { id -> list.indexOfFirst { it.id == id } }
+                ?.takeIf { it >= 0 }
+                ?.let { it + 1 }
+            currentPos?.let { "Queue ($it/${list.size})" }
+        } ?: "Queue"
+
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { onQueueExpandedSwitch() }
         ) {
             Text(
-                text = "Queue",
+                text = queueLabel,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -94,10 +106,6 @@ fun CollapsibleQueue(
                 contentDescription = "Toggle Queue"
             )
         }
-
-        // Action buttons (visible when expanded and has items)
-        val queueData = queue as? DataState.Data
-        val items = (queueData?.data?.items as? DataState.Data)?.data
         val hasItems = items?.isNotEmpty() == true
         val queueId = queueData?.data?.info?.id
 
@@ -301,7 +309,7 @@ fun CollapsibleQueue(
                                                         )
                                                     }
                                                 )
-                                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                                                .padding(horizontal = 12.dp, vertical = 2.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.Start
                                         ) {
@@ -313,7 +321,7 @@ fun CollapsibleQueue(
                                             AsyncImage(
                                                 modifier = Modifier
                                                     .padding(end = 8.dp)
-                                                    .size(48.dp)
+                                                    .size(40.dp)
                                                     .clip(RoundedCornerShape(size = 4.dp)),
                                                 placeholder = placeholder,
                                                 fallback = placeholder,
@@ -334,6 +342,18 @@ fun CollapsibleQueue(
                                                 modifier = Modifier.weight(1f).wrapContentHeight()
                                             ) {
                                                 Text(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    text = item.track.name,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = when {
+                                                        isCurrent -> FontWeight.Bold
+                                                        else -> FontWeight.Normal
+                                                    }
+                                                )
+                                                Text(
                                                     modifier = Modifier.fillMaxWidth().alpha(0.7f),
                                                     text = if (isPlayable) {
                                                         item.track.subtitle ?: "Unknown"
@@ -343,19 +363,7 @@ fun CollapsibleQueue(
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                     color = MaterialTheme.colorScheme.secondary,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                )
-                                                Text(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    text = item.track.name,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    color = MaterialTheme.colorScheme.secondary,
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    fontWeight = when {
-                                                        isCurrent -> FontWeight.Bold
-                                                        else -> FontWeight.Normal
-                                                    }
+                                                    style = MaterialTheme.typography.bodySmall,
                                                 )
                                             }
                                             if (!isCurrent && !isPlayed && isPlayable) {

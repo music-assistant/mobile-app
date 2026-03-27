@@ -182,14 +182,14 @@ class HomeScreenViewModel(
 
     fun onPlayClick(item: AppMediaItem, option: QueueOption, radio: Boolean) {
         dataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-            item.uri?.let { uri ->
+            item.mediaUri?.let { mediaUri ->
                 viewModelScope.launch {
                     apiClient.sendRequest(
                         Request.Library.play(
-                            media = listOf(uri),
+                            media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio || item is AppMediaItem.Genre
+                            radioMode = radio && item !is AppMediaItem.Genre
                         )
                     )
                 }

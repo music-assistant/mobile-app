@@ -204,13 +204,13 @@ class LibraryViewModel(
         viewModelScope.launch {
             val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
 
-            item.uri?.let { uri ->
+            item.mediaUri?.let { mediaUri ->
                 apiClient.sendRequest(
                     Request.Library.play(
-                        media = listOf(uri),
+                        media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio || item is AppMediaItem.Genre
+                        radioMode = radio && item !is AppMediaItem.Genre
                     )
                 )
             }

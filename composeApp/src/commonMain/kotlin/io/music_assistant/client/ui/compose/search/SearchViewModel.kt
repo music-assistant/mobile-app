@@ -120,13 +120,13 @@ class SearchViewModel(
     fun onPlayClick(track: AppMediaItem, option: QueueOption, radio: Boolean) {
         viewModelScope.launch {
             mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                track.uri?.let { uri ->
+                track.mediaUri?.let { mediaUri ->
                     apiClient.sendRequest(
                         Request.Library.play(
-                            media = listOf(uri),
+                            media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio || track is AppMediaItem.Genre
+                            radioMode = radio && track !is AppMediaItem.Genre
                         )
                     )
                 }

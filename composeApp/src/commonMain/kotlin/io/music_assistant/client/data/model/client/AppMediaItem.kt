@@ -56,6 +56,14 @@ abstract class AppMediaItem(
 
     val isInLibrary = provider == "library"
 
+    /**
+     * URI suitable for the play_media API.
+     * For genres, always constructs a full URI since the server requires it.
+     * For other types, uses the server-provided [uri].
+     */
+    open val mediaUri: String?
+        get() = uri
+
     private val mappingsHashes =
         providerMappings?.map { it.toHash().hashCode() }?.toSet() ?: emptySet()
 
@@ -412,6 +420,8 @@ abstract class AppMediaItem(
         image = image,
     ) {
         override val subtitle = "Genre"
+        override val mediaUri: String
+            get() = uri ?: "$provider://genre/$itemId"
     }
 
     class Audiobook(

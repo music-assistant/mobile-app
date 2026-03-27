@@ -145,11 +145,11 @@ object KmpHelper : KoinComponent {
     }
     
     private fun playItem(item: AppMediaItem, queueOrPlayerId: String, option: QueueOption) {
-        item.uri?.let { uri ->
+        item.mediaUri?.let { mediaUri ->
             mainScope.launch {
                 serviceClient.sendRequest(
                     Request.Library.play(
-                        media = listOf(uri),
+                        media = listOf(mediaUri),
                         queueOrPlayerId = queueOrPlayerId,
                         option = option,
                         radioMode = false

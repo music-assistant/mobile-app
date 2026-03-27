@@ -385,17 +385,16 @@ class ItemDetailsViewModel(
 
     fun onPlayClick(track: AppMediaItem, option: QueueOption, radio: Boolean) {
         viewModelScope.launch {
-            track.uri?.let { uri ->
-                mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                    apiClient.sendRequest(
-                        Request.Library.play(
-                            media = listOf(uri),
-                            queueOrPlayerId = queueId,
-                            option = option,
-                            radioMode = radio || track is AppMediaItem.Genre
-                        )
+            val mediaUri = track.mediaUri ?: return@launch
+            mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
+                apiClient.sendRequest(
+                    Request.Library.play(
+                        media = listOf(mediaUri),
+                        queueOrPlayerId = queueId,
+                        option = option,
+                        radioMode = radio && track !is AppMediaItem.Genre
                     )
-                }
+                )
             }
         }
     }
