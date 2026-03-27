@@ -1,7 +1,8 @@
 name: Android Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ android-release ]
 
 permissions:
   contents: write
@@ -13,23 +14,16 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout dev
+      - name: Checkout android-release
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: android-release
           fetch-depth: 0
 
       - name: Configure git identity
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
-      - name: Merge dev into android-release
-        run: |
-          git fetch origin android-release || true
-          git checkout android-release 2>/dev/null || git checkout -b android-release
-          git merge origin/dev --ff-only || git merge origin/dev --no-edit
-          git push origin android-release
 
       - name: Extract version
         id: version
@@ -42,6 +36,7 @@ jobs:
 
       - name: Guard against duplicate tag
         run: |
+          git fetch --tags
           if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
             echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump the version before releasing."
             exit 1
