@@ -59,11 +59,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleOAuthCallback(intent: Intent?) {
-        val data = intent?.data
+        val data = intent?.data ?: return
         Logger.withTag("MainActivity").d("Deep link received: $data")
 
         // Handle musicassistant://auth/callback?code=...
-        if (data?.scheme == "musicassistant" && data.host == "auth" && data.path == "/callback") {
+        if (data.scheme == "musicassistant" && data.host == "auth" && data.path == "/callback") {
             val token = data.getQueryParameter("code")
             Logger.withTag("MainActivity").d("Custom scheme callback - token: ${token != null}")
 

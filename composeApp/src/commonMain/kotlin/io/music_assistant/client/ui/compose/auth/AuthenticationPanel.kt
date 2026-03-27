@@ -50,7 +50,6 @@ fun AuthenticationPanel(
     var loginError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(authState) {
-        Logger.e("State $authState")
         if (authState is AuthState.Error) {
             loginError = (authState as? AuthState.Error)?.message
         } else if (authState is AuthState.Authenticated) {

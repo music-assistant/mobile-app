@@ -87,7 +87,7 @@ class SendspinWsHandler(
         }
 
         _connectionState.value = WebSocketState.Connecting
-        logger.i { "Connecting to $serverUrl" }
+        logger.i { "Connecting to server" }
 
         try {
             val wsSession = client.webSocketSession(serverUrl)
@@ -100,11 +100,11 @@ class SendspinWsHandler(
             reconnectJob = null
 
             _connectionState.value = WebSocketState.Connected
-            logger.i { "Connected to $serverUrl" }
+            logger.i { "Connected to server" }
 
             startListening(wsSession)
         } catch (e: Exception) {
-            logger.e(e) { "Failed to connect to $serverUrl" }
+            logger.e(e) { "Failed to connect to server" }
             _connectionState.value = WebSocketState.Error(e)
             session = null
         }
@@ -118,7 +118,7 @@ class SendspinWsHandler(
                     when (frame) {
                         is Frame.Text -> {
                             val text = frame.readText()
-                            logger.d { "Received text message: ${text.take(100)}" }
+                            logger.d { "Received text message, length: ${text.length}" }
                             _textMessages.emit(text)
                         }
 
@@ -173,7 +173,7 @@ class SendspinWsHandler(
         }
 
         try {
-            logger.d { "Sending text message: ${message.take(100)}" }
+            logger.d { "Sending text message, length: ${message.length}" }
             currentSession.send(Frame.Text(message))
         } catch (e: Exception) {
             logger.e(e) { "Failed to send text message" }

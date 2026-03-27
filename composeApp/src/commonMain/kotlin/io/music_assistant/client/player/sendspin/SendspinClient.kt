@@ -335,7 +335,11 @@ class SendspinClient(
                 } else {
                     SendspinState.Idle
                 }
-                logger.w(error) { "PIPELINE ERROR: ${error.message}, currentState=$current, nextState=$nextState" }
+                logger.w(error) {
+                    "PIPELINE ERROR: ${error.message}, " +
+                            "currentState=${current::class.simpleName}, " +
+                            "nextState=${nextState::class.simpleName}"
+                }
                 _state.update { nextState }
                 stateReporter?.stop()
                 // Notify that playback stopped due to error
