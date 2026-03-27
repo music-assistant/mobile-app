@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package io.music_assistant.client.ui.compose.item
 
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +21,8 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -26,8 +30,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
@@ -56,32 +63,18 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ItemHeader(
     item: AppMediaItem,
     serverUrl: String? = null,
-    isRowMode: Boolean = true,
-    onBack: () -> Unit = {},
-    libraryAction: ActionsViewModel.LibraryActions? = null,
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
-    onToggleViewMode: () -> Unit = {},
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> }
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        ItemTopBar(
-            item = item,
-            isRowMode = isRowMode,
-            onBack = onBack,
-            onToggleViewMode = onToggleViewMode,
-            libraryActions = libraryAction,
-            playlistActions = playlistActions
-        )
-
         val image = @Composable {
             Image(
                 item = item,
@@ -99,9 +92,7 @@ fun ItemHeader(
             )
         }
 
-        val windowSizeClass =
-            currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
-        if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)) {
+        if (WindowClass.isAtLeastExpanded()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -124,31 +115,37 @@ fun ItemHeader(
 }
 
 @Composable
-private fun ItemTopBar(
+internal fun ItemTopBar(
     item: AppMediaItem,
     isRowMode: Boolean,
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
-    playlistActions: ActionsViewModel.PlaylistActions?
+    playlistActions: ActionsViewModel.PlaylistActions?,
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-        }
-
-        ItemOverflow(
-            item = item,
-            isRowMode = isRowMode,
-            onToggleViewMode = onToggleViewMode,
-            libraryActions = libraryActions,
-            playlistActions = playlistActions
-        )
-    }
+    TopAppBar(
+        title = {},
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+        },
+        actions = {
+            ItemOverflow(
+                item = item,
+                isRowMode = isRowMode,
+                onToggleViewMode = onToggleViewMode,
+                libraryActions = libraryActions,
+                playlistActions = playlistActions
+            )
+        },
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        scrollBehavior = scrollBehavior
+    )
 }
 
 @Composable
@@ -166,25 +163,27 @@ private fun ItemOverflow(
 
     OverflowMenu(
         options = buildList {
-            add(
-                OverflowMenuOption(
-                    title =
-                        if (item.isInLibrary) "Remove from library"
-                        else "Add to library",
-                    icon =
-                        if (item.isInLibrary) TablerIcons.FolderMinus
-                        else TablerIcons.FolderPlus
-                ) { libraryActions?.onLibraryClick(item) })
-            if (item.isInLibrary) {
+            libraryActions?.let { actions ->
                 add(
                     OverflowMenuOption(
                         title =
-                            if (item.favorite == true) "Unfavorite"
-                            else "Favorite",
+                            if (item.isInLibrary) "Remove from library"
+                            else "Add to library",
                         icon =
-                            if (item.favorite == true) TablerIcons.HeartBroken
-                            else TablerIcons.Heart
-                    ) { libraryActions?.onFavoriteClick(item) })
+                            if (item.isInLibrary) TablerIcons.FolderMinus
+                            else TablerIcons.FolderPlus
+                    ) { actions.onLibraryClick(item) })
+                if (item.isInLibrary) {
+                    add(
+                        OverflowMenuOption(
+                            title =
+                                if (item.favorite == true) "Unfavorite"
+                                else "Favorite",
+                            icon =
+                                if (item.favorite == true) TablerIcons.HeartBroken
+                                else TablerIcons.Heart
+                        ) { actions.onFavoriteClick(item) })
+                }
             }
 
             playlistActions?.let {

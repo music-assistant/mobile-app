@@ -7,14 +7,13 @@ import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
+import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.server.PlayerType
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.utils.DataConnectionState
-import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -105,9 +104,7 @@ class LocalPlayerRepository(
     // --- Command queue (online: send immediately, offline: queue with dedup) ---
 
     suspend fun sendOrQueue(action: PlayerAction, request: Request) {
-        val isConnected = (apiClient.sessionState.value as? SessionState.Connected)
-            ?.dataConnectionState == DataConnectionState.Authenticated
-        if (isConnected) {
+        if (apiClient.isReadyForCommands.value) {
             apiClient.sendRequest(request)
         } else {
             enqueue(action, request)
@@ -161,6 +158,14 @@ class LocalPlayerRepository(
         }
     }
 
+    fun onQueueItemsLoaded(queueInfo: QueueInfo, items: List<QueueTrack>) {
+        _localPlayerData.update { current ->
+            current?.copy(
+                queue = DataState.Data(Queue(info = queueInfo, items = DataState.Data(items)))
+            )
+        }
+    }
+
     // --- Synthetic player ---
 
     fun onInitialPlayersReceived(hasLocalPlayer: Boolean) {
@@ -180,13 +185,15 @@ class LocalPlayerRepository(
                         shouldBeShown = true,
                         canSetVolume = false,
                         volumeLevel = null,
+                        volumeControl = null,
                         volumeMuted = false,
                         canMute = false,
                         queueId = null,
                         isPlaying = false,
                         isAnnouncing = false,
                         canGroupWith = null,
-                        groupChildren = null,
+                        groupMembers = null,
+                        staticGroupMembers = null,
                         groupVolume = null,
                     ),
                     queue = DataState.NoData(),

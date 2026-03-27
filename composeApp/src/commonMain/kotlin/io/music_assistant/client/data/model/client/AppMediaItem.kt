@@ -56,6 +56,14 @@ abstract class AppMediaItem(
 
     val isInLibrary = provider == "library"
 
+    /**
+     * URI suitable for the play_media API.
+     * For genres, always constructs a full URI since the server requires it.
+     * For other types, uses the server-provided [uri].
+     */
+    open val mediaUri: String?
+        get() = uri
+
     private val mappingsHashes =
         providerMappings?.map { it.toHash().hashCode() }?.toSet() ?: emptySet()
 
@@ -391,6 +399,31 @@ abstract class AppMediaItem(
         override val defaultIcon = Icons.Default.Radio
     }
 
+    class Genre(
+        itemId: String,
+        provider: String,
+        name: String,
+        providerMappings: List<ProviderMapping>?,
+        metadata: Metadata?,
+        favorite: Boolean?,
+        uri: String?,
+        image: MediaItemImage?,
+    ) : AppMediaItem(
+        itemId = itemId,
+        provider = provider,
+        name = name,
+        providerMappings = providerMappings,
+        metadata = metadata,
+        favorite = favorite,
+        mediaType = MediaType.GENRE,
+        uri = uri,
+        image = image,
+    ) {
+        override val subtitle = "Genre"
+        override val mediaUri: String
+            get() = uri ?: "$provider://genre/$itemId"
+    }
+
     class Audiobook(
         itemId: String,
         provider: String,
@@ -417,7 +450,8 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
     ), PlayableItem {
-        override val subtitle = authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
+        override val subtitle =
+            authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
         override val parentName: String? = authors?.firstOrNull()
         override val defaultIcon = Icons.AutoMirrored.Filled.MenuBook
     }
@@ -570,8 +604,20 @@ abstract class AppMediaItem(
                     resumePositionMs = resumePositionMs,
                 )
 
+                MediaType.GENRE -> Genre(
+                    itemId = itemId,
+                    provider = provider,
+                    name = name,
+                    providerMappings = providerMappings,
+                    metadata = metadata,
+                    favorite = favorite,
+                    uri = uri,
+                    image = image,
+                )
+
                 MediaType.FLOW_STREAM,
                 MediaType.ANNOUNCEMENT,
+                MediaType.GENRE,
                 MediaType.UNKNOWN -> null
             }
 
@@ -585,7 +631,8 @@ abstract class AppMediaItem(
                     playlists.toAppMediaItemList() +
                     podcasts.toAppMediaItemList() +
                     audiobooks.toAppMediaItemList() +
-                    radios.toAppMediaItemList()
+                    radios.toAppMediaItemList() +
+                    genres.toAppMediaItemList()
 
         val AudioFormat.description
             get() = listOfNotNull(

@@ -32,16 +32,18 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     // AudioTrack for raw PCM streaming (Sendspin)
-    private var audioTrack: AudioTrack? = null
+    // @Volatile: read by audio dispatcher thread, written by main/focus-callback thread
+    @Volatile private var audioTrack: AudioTrack? = null
     private var audioTrackCreationTime: Long = 0 // Timestamp when AudioTrack was created
     private var currentListener: MediaPlayerListener? = null // Track listener to signal errors
 
     // AudioFocus management for Android Auto
     private var audioFocusRequest: AudioFocusRequest? = null
-    private var hasAudioFocus = false
+    @Volatile private var hasAudioFocus = false
 
     // Playback state - controls whether we should write audio data
-    private var shouldPlayAudio = false
+    // @Volatile: read by audio dispatcher thread, written by focus-callback thread
+    @Volatile private var shouldPlayAudio = false
 
     // Volume state (0-100)
     private var currentVolume: Int = 100
@@ -234,13 +236,23 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
 
         // Calculate buffer size
         val minBufferSize = AudioTrack.getMinBufferSize(sampleRate, channelConfig, encoding)
+        if (minBufferSize <= 0) {
+            val errorName = when (minBufferSize) {
+                AudioTrack.ERROR -> "ERROR"
+                AudioTrack.ERROR_BAD_VALUE -> "ERROR_BAD_VALUE"
+                else -> "UNKNOWN($minBufferSize)"
+            }
+            logger.e { "getMinBufferSize returned $errorName for ${sampleRate}Hz/${channels}ch/${bitDepth}bit" }
+            listener.onError(IllegalStateException("Audio configuration not supported by device: $errorName"))
+            return
+        }
         val bufferSize = minBufferSize * 16 // Large buffer to absorb decode/scheduling jitter
 
         logger.i { "AudioTrack config: sampleRate=$sampleRate, channels=$channels, bitDepth=$bitDepth" }
         logger.i { "AudioTrack buffer: $bufferSize bytes (min: $minBufferSize)" }
 
         try {
-            audioTrack = AudioTrack.Builder()
+            val track = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -261,14 +273,22 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             // Record creation time to help ignore spurious focus changes during transitions
             audioTrackCreationTime = System.currentTimeMillis()
 
-            val state = audioTrack?.state
-            val playState = audioTrack?.playState
-            logger.i { "AudioTrack created: state=$state (${if (state == AudioTrack.STATE_INITIALIZED) "INITIALIZED" else "UNINITIALIZED"}), playState=$playState" }
+            if (track.state != AudioTrack.STATE_INITIALIZED) {
+                logger.e { "AudioTrack created but STATE_UNINITIALIZED — aborting" }
+                track.release()
+                audioTrack = null
+                listener.onError(IllegalStateException("AudioTrack failed to initialize"))
+                return
+            }
 
-            audioTrack?.play()
+            audioTrack = track
+            logger.i { "AudioTrack created: STATE_INITIALIZED" }
 
-            val newPlayState = audioTrack?.playState
-            logger.i { "AudioTrack started: playState=$newPlayState (${if (newPlayState == AudioTrack.PLAYSTATE_PLAYING) "PLAYING" else "NOT_PLAYING"})" }
+            track.play()
+
+            if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                logger.e { "AudioTrack.play() called but playState=${track.playState} — not playing" }
+            }
 
             // Set playback state to true since we're starting playback
             shouldPlayAudio = true

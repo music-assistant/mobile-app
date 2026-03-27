@@ -110,10 +110,11 @@ fun HomeScreen(
         val currentData = playersState as? HomeScreenViewModel.PlayersState.Data
             ?: return@LaunchedEffect
         val target = currentData.selectedPlayerIndex ?: return@LaunchedEffect
-        if (playerPagerState.currentPage != target) {
-            playerPagerState.scrollToPage(target)
+        if (!playerPagerState.isScrollInProgress) {
+            playerPagerState.animateScrollToPage(target)
         }
-        snapshotFlow { playerPagerState.currentPage }.collect { currentPage ->
+
+        snapshotFlow { playerPagerState.settledPage }.collect { currentPage ->
             currentData.playerData.getOrNull(currentPage)?.let { playerData ->
                 viewModel.selectPlayer(playerData.player)
             }
@@ -206,7 +207,6 @@ fun HomeScreen(
                                             playerAction = { playerData, action ->
                                                 viewModel.playerAction(playerData, action)
                                             },
-                                            onPlayersRefreshClick = viewModel::refreshPlayers,
                                             onFavoriteClick = actionsViewModel::onFavoriteClick,
                                             showQueue = false,
                                             isQueueExpanded = isQueueExpanded,
@@ -218,6 +218,13 @@ fun HomeScreen(
                                             queueAction = { action -> viewModel.queueAction(action) },
                                             settingsAction = viewModel::openPlayerSettings,
                                             dspSettingsAction = viewModel::openPlayerDspSettings,
+                                            moveToPlayer = { id: String ->
+                                                val player =
+                                                    state.playerData.find { it.player.id == id }
+                                                if (player != null) {
+                                                    viewModel.selectPlayer(player.player)
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -278,7 +285,6 @@ fun HomeScreen(
                                             playerAction = { playerData, action ->
                                                 viewModel.playerAction(playerData, action)
                                             },
-                                            onPlayersRefreshClick = viewModel::refreshPlayers,
                                             onFavoriteClick = actionsViewModel::onFavoriteClick,
                                             showQueue = true,
                                             isQueueExpanded = isQueueExpanded,
@@ -309,6 +315,13 @@ fun HomeScreen(
                                             queueAction = { action -> viewModel.queueAction(action) },
                                             settingsAction = viewModel::openPlayerSettings,
                                             dspSettingsAction = viewModel::openPlayerDspSettings,
+                                            moveToPlayer = { id: String ->
+                                                val player =
+                                                    state.playerData.find { it.player.id == id }
+                                                if (player != null) {
+                                                    viewModel.selectPlayer(player.player)
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -373,7 +386,8 @@ private fun HomeContent(
                             is AppMediaItem.Album,
                             is AppMediaItem.Playlist,
                             is AppMediaItem.Podcast,
-                            is AppMediaItem.Audiobook -> {
+                            is AppMediaItem.Audiobook,
+                            is AppMediaItem.Genre -> {
                                 typedBackStack.add(
                                     HomeNavScreen.ItemDetails(
                                         itemId = item.itemId,
@@ -412,7 +426,8 @@ private fun HomeContent(
                             is AppMediaItem.Album,
                             is AppMediaItem.Playlist,
                             is AppMediaItem.Podcast,
-                            is AppMediaItem.Audiobook -> {
+                            is AppMediaItem.Audiobook,
+                            is AppMediaItem.Genre -> {
                                 typedBackStack.add(
                                     HomeNavScreen.ItemDetails(
                                         itemId = item.itemId,

@@ -14,13 +14,14 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readReason
 import io.ktor.websocket.readText
+import io.music_assistant.client.api.DEFAULT_MAX_RECONNECT_ATTEMPTS
+import io.music_assistant.client.api.runReconnectionLoop
 import io.music_assistant.client.player.sendspin.WebSocketState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,8 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 class SendspinWsHandler(
-    private val serverUrl: String
+    private val serverUrl: String,
+    private val networkAvailable: StateFlow<Boolean>? = null
 ) : CoroutineScope {
 
     private val logger = Logger.withTag("SendspinWsHandler")
@@ -65,7 +67,7 @@ class SendspinWsHandler(
     private var explicitDisconnect = false
     private var reconnectAttempts = 0
     private var reconnectJob: Job? = null
-    private val maxReconnectAttempts = 5
+    private val maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS
 
     private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 50)
     val textMessages: Flow<String> = _textMessages.asSharedFlow()
@@ -85,7 +87,7 @@ class SendspinWsHandler(
         }
 
         _connectionState.value = WebSocketState.Connecting
-        logger.i { "Connecting to $serverUrl" }
+        logger.i { "Connecting to server" }
 
         try {
             val wsSession = client.webSocketSession(serverUrl)
@@ -98,11 +100,11 @@ class SendspinWsHandler(
             reconnectJob = null
 
             _connectionState.value = WebSocketState.Connected
-            logger.i { "Connected to $serverUrl" }
+            logger.i { "Connected to server" }
 
             startListening(wsSession)
         } catch (e: Exception) {
-            logger.e(e) { "Failed to connect to $serverUrl" }
+            logger.e(e) { "Failed to connect to server" }
             _connectionState.value = WebSocketState.Error(e)
             session = null
         }
@@ -116,7 +118,7 @@ class SendspinWsHandler(
                     when (frame) {
                         is Frame.Text -> {
                             val text = frame.readText()
-                            logger.d { "Received text message: ${text.take(100)}" }
+                            logger.d { "Received text message, length: ${text.length}" }
                             _textMessages.emit(text)
                         }
 
@@ -171,7 +173,7 @@ class SendspinWsHandler(
         }
 
         try {
-            logger.d { "Sending text message: ${message.take(100)}" }
+            logger.d { "Sending text message, length: ${message.length}" }
             currentSession.send(Frame.Text(message))
         } catch (e: Exception) {
             logger.e(e) { "Failed to send text message" }
@@ -220,53 +222,36 @@ class SendspinWsHandler(
     private fun attemptReconnect() {
         reconnectJob?.cancel()
         reconnectJob = launch {
-            while (reconnectAttempts < maxReconnectAttempts && !explicitDisconnect) {
-                val delayMs = calculateBackoff()
-                logger.i { "Reconnect attempt ${reconnectAttempts + 1}/$maxReconnectAttempts in ${delayMs}ms" }
-                _connectionState.value = WebSocketState.Reconnecting(reconnectAttempts)
-
-                delay(delayMs)
-
-                try {
-                    reconnectAttempts++
-                    logger.i { "Attempting reconnection..." }
-
-                    // Try to reconnect
-                    val wsSession = client.webSocketSession(serverUrl)
-                    session = wsSession
-
-                    // Success!
-                    Logger.withTag("WebSocketHandler")
-                        .e { "✅ RECONNECTED successfully after $reconnectAttempts attempts" }
-                    reconnectAttempts = 0
-                    _connectionState.value = WebSocketState.Connected
-
-                    // Resume listening
-                    startListening(wsSession)
-                    return@launch
-
-                } catch (e: Exception) {
-                    logger.w(e) { "Reconnect attempt $reconnectAttempts failed" }
-                    if (reconnectAttempts >= maxReconnectAttempts) {
-                        logger.e { "Max reconnect attempts ($maxReconnectAttempts) reached, giving up" }
-                        _connectionState.value = WebSocketState.Error(
-                            Exception("Failed to reconnect after $maxReconnectAttempts attempts")
-                        )
-                        handleDisconnection()
-                        return@launch
+            val reconnected = runReconnectionLoop(
+                maxAttempts = maxReconnectAttempts,
+                networkAvailable = networkAvailable,
+                onAttemptStarting = { attempt ->
+                    reconnectAttempts = attempt
+                    logger.i { "Reconnect attempt $attempt/$maxReconnectAttempts" }
+                    _connectionState.value = WebSocketState.Reconnecting(attempt)
+                },
+                tryConnect = { attempt ->
+                    try {
+                        val wsSession = client.webSocketSession(serverUrl)
+                        session = wsSession
+                        logger.i { "Reconnected successfully after $attempt attempts" }
+                        reconnectAttempts = 0
+                        _connectionState.value = WebSocketState.Connected
+                        startListening(wsSession)
+                        true
+                    } catch (e: Exception) {
+                        logger.w(e) { "Reconnect attempt $attempt failed" }
+                        false
                     }
                 }
+            )
+            if (!reconnected) {
+                logger.e { "Max reconnect attempts ($maxReconnectAttempts) reached, giving up" }
+                session = null
+                _connectionState.value = WebSocketState.Error(
+                    Exception("Failed to reconnect after $maxReconnectAttempts attempts")
+                )
             }
-        }
-    }
-
-    private fun calculateBackoff(): Long {
-        return when (reconnectAttempts) {
-            0 -> 0L
-            1 -> 500L
-            2 -> 1000L
-            3 -> 2000L
-            else -> 3000L
         }
     }
 

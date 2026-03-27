@@ -21,8 +21,9 @@ import kotlinx.serialization.json.decodeFromJsonElement
 data class Event(
     val json: JsonObject
 ) {
-    private val type: EventType =
+    private val type: EventType? = parseEventType(
         myJson.decodeFromJsonElement<GenericEvent>(json).eventType
+    )
 
     fun event(): Event<out Any>? = when (type) {
         EventType.PLAYER_ADDED -> myJson.decodeFromJsonElement<PlayerAddedEvent>(json)
@@ -42,13 +43,18 @@ data class Event(
         EventType.PROVIDERS_UPDATED,
         EventType.PLAYER_CONFIG_UPDATED,
         EventType.SYNC_TASKS_UPDATED,
+        EventType.TASKS_UPDATED,
         EventType.AUTH_SESSION,
         EventType.CONNECTED,
         EventType.DISCONNECTED,
-        EventType.ALL -> {
+        EventType.ALL,
+        null -> {
             Logger.withTag("Event").w { "Unparsed event: $json" }
             null
         }
     }
+
+    private fun parseEventType(value: String): EventType? =
+        EventType.entries.find { it.name.equals(value, ignoreCase = true) }
 
 }

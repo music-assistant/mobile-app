@@ -33,8 +33,8 @@ import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClient
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
-import io.music_assistant.client.player.sendspin.SendspinConnectionState
 import io.music_assistant.client.player.sendspin.SendspinError
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.player.sendspin.WebRTCSendspinChannelExhausted
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -42,6 +42,7 @@ import io.music_assistant.client.ui.compose.common.StaleReason
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconModel
+import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.currentTimeMillis
@@ -53,8 +54,10 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -65,6 +68,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(FlowPreview::class)
@@ -79,6 +84,12 @@ class MainDataSource(
     private val log = Logger.withTag("MainDataSource")
 
     private var sendspinClient: SendspinClient? = null
+    private var sendspinMonitorJobs = mutableListOf<Job>()
+    private var sendspinRetryCount = 0
+    private val sendspinMutex = Mutex()
+
+    private val _sendspinState = MutableStateFlow<SendspinState?>(null)
+    val sendspinState: StateFlow<SendspinState?> = _sendspinState.asStateFlow()
 
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
@@ -293,19 +304,19 @@ class MainDataSource(
                                                 }
 
                                                 if (token != null) {
-                                                    log.i { "Re-authenticating after reconnection with saved token for server: $serverIdentifier" }
+                                                    log.i { "Re-authenticating after reconnection with saved token" }
                                                     apiClient.authorize(token, isAutoLogin = true)
                                                 } else {
-                                                    log.w { "No saved token to re-authenticate with for server: $serverIdentifier" }
+                                                    log.w { "No saved token to re-authenticate with" }
                                                 }
                                             }
 
                                             // Reinit Sendspin — safe because initSendspinIfEnabled()
-                                            // returns early if already Connected or actively retrying.
+                                            // returns early if already Connected/Reconnecting.
                                             // Needed because:
                                             //  - WebRTC: new data channels were created on reconnect;
                                             //    old SendspinClient holds a dead channel (Idle state).
-                                            //  - WebSocket: ReconnectionCoordinator may have given up;
+                                            //  - WebSocket: reconnection may have given up;
                                             //    server removes the player when the socket closes.
                                             sendspinClientFactory.onFreshWebRTCConnection()
                                             launch { initSendspinIfEnabled() }
@@ -332,7 +343,9 @@ class MainDataSource(
                                     log.w { "Connected while already in Data state - refreshing anyway" }
                                     updateProvidersManifests()
                                     updatePlayersAndQueues()
-                                    // Don't reinit Sendspin if already running
+                                    // Safety net: reinit Sendspin if it's not already connected
+                                    sendspinClientFactory.onFreshWebRTCConnection()
+                                    launch { initSendspinIfEnabled() }
                                 }
 
                                 is DataState.Loading, is DataState.NoData, is DataState.Error -> {
@@ -345,9 +358,25 @@ class MainDataSource(
                                 }
                             }
                         } else {
-                            // Not authenticated yet - clear data
-                            stopSendspin()
-                            clearAllData()
+                            // Not authenticated yet
+                            val connState = sessionState.dataConnectionState
+                            val isTerminalAuthFailure =
+                                connState is DataConnectionState.AwaitingAuth &&
+                                        (connState.authProcessState is AuthProcessState.LoggedOut ||
+                                                connState.authProcessState is AuthProcessState.Failed)
+
+                            if (isTerminalAuthFailure) {
+                                // Auth permanently failed — stop everything
+                                stopSendspin()
+                                clearAllData()
+                            } else {
+                                // Transient: AwaitingServerInfo or auth in progress.
+                                // Keep sendspin alive — it will be reinitialized when auth completes.
+                                // Preserve stale data so reconnection recovery works.
+                                if (_serverPlayers.value !is DataState.Stale) {
+                                    clearAllData()
+                                }
+                            }
                             updateJob?.cancel()
                             updateJob = null
                             watchJob?.cancel()
@@ -396,14 +425,26 @@ class MainDataSource(
                     }
 
                     SessionState.Connecting -> {
-                        // Fresh connection attempt - show loading
-                        log.i { "Connecting - stopping Sendspin and showing loading state" }
+                        log.i { "Connecting - stopping Sendspin" }
                         stopSendspin()
                         updateJob?.cancel()
                         updateJob = null
                         watchJob?.cancel()
                         watchJob = null
-                        _serverPlayers.update { DataState.Loading() }
+                        // Preserve stale data (e.g. reconnecting from backgrounded state)
+                        // so the player list stays visible instead of showing "Loading players"
+                        when (val current = _serverPlayers.value) {
+                            is DataState.Data -> _serverPlayers.update {
+                                DataState.Stale(
+                                    current.data,
+                                    currentTimeMillis(),
+                                    StaleReason.RECONNECTING
+                                )
+                            }
+
+                            is DataState.Stale -> {} // Already stale, keep as is
+                            else -> _serverPlayers.update { DataState.Loading() }
+                        }
                     }
 
                     is SessionState.Disconnected -> {
@@ -427,7 +468,6 @@ class MainDataSource(
                                         val data = when (currentState) {
                                             is DataState.Data -> currentState.data
                                             is DataState.Stale -> currentState.data
-                                            else -> throw IllegalStateException()
                                         }
                                         val originalDisconnectedAt =
                                             (currentState as? DataState.Stale)?.disconnectedAt
@@ -529,16 +569,12 @@ class MainDataSource(
             selectedPlayerIndex.filterNotNull().collect { index ->
                 // Only refresh queue if we have live data and are authenticated
                 // Don't try to load during Stale state - will error with auth issues
-                val sessionState = apiClient.sessionState.value
-                val isAuthenticated =
-                    (sessionState as? SessionState.Connected)?.dataConnectionState == DataConnectionState.Authenticated
-
-                if (isAuthenticated) {
+                if (apiClient.isReadyForCommands.value) {
                     (playersData.value as? DataState.Data)?.data?.let { list ->
                         refreshPlayerQueueItems(list[index])
                     }
                 } else {
-                    log.d { "Skipping queue refresh - not authenticated (state: ${sessionState::class.simpleName})" }
+                    log.d { "Skipping queue refresh - not authenticated (state: ${apiClient.sessionState.value::class.simpleName})" }
                 }
             }
         }
@@ -560,7 +596,7 @@ class MainDataSource(
         launch {
             localPlayer.collect { playerData ->
                 val track = playerData?.queueInfo?.currentItem?.track
-                val serverUrl = (apiClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
+                val serverUrl = apiClient.serverBaseUrl.value
                 if (track != null) {
                     mediaPlayerController.updateNowPlaying(
                         title = track.name,
@@ -590,14 +626,17 @@ class MainDataSource(
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinClientId.value
         val groupedPlayersToHide = allPlayers
-            .map { (it.groupChildren ?: emptyList()) - it.id }
-            .flatten()
+            .flatMap { (it.groupMembers ?: emptyList()) - it.id }
             .filter { it != localPlayerId }
             .toSet()
         val filteredPlayers = allPlayers.filter { it.id !in groupedPlayersToHide }
 
         val playerDataList = filteredPlayers.map { player ->
-            if (player.id == localPlayerId && localData != null) {
+            val isLocal = player.id == localPlayerId
+            val groupChildren =
+                // No grouping for local player
+                if (isLocal) emptyList() else allPlayers.mapNotNull { it.asBindFor(player) }
+            if (isLocal && localData != null) {
                 // Repository is source of truth. Overlay interpolated position from tracker
                 // (repository has raw server position; queues has smooth 500ms interpolation).
                 val trackedElapsed = queues.find {
@@ -612,9 +651,7 @@ class MainDataSource(
                         )
                     }
                 } ?: localData
-                val enriched = withPosition.copy(
-                    groupChildren = allPlayers.mapNotNull { it.asBindFor(player) }
-                )
+                val enriched = withPosition.copy(groupChildren = groupChildren)
                 // Preserve loaded queue items from previous state
                 (oldValues as? DataState.Data)?.data
                     ?.firstOrNull { it.player.id == player.id }
@@ -628,8 +665,8 @@ class MainDataSource(
                                 Queue(info = queueInfo, items = DataState.NoData())
                             )
                         } ?: DataState.NoData(),
-                    groupChildren = allPlayers.mapNotNull { it.asBindFor(player) },
-                    isLocal = player.id == localPlayerId
+                    groupChildren = groupChildren,
+                    isLocal = isLocal
                 )
                 (oldValues as? DataState.Data)?.data
                     ?.firstOrNull { it.player.id == player.id }
@@ -661,13 +698,8 @@ class MainDataSource(
      * Initialize Sendspin player if enabled in settings.
      * Safe for background: MainDataSource is singleton held by foreground service.
      */
-    private suspend fun initSendspinIfEnabled() {
+    private suspend fun initSendspinIfEnabled() = sendspinMutex.withLock {
         // Get prerequisites
-        val mainConnectionInfo = settings.connectionInfo.value ?: run {
-            log.w { "No main connection info available, cannot initialize Sendspin" }
-            return
-        }
-
         val authToken = when (val state = apiClient.sessionState.value) {
             is SessionState.Connected.Direct ->
                 settings.getTokenForServer(
@@ -684,33 +716,32 @@ class MainDataSource(
             else -> null
         }
 
-        // Stop existing client if any (but preserve if it's reconnecting)
+        // Stop existing client if any (but preserve if it's actively connected, connecting, or reconnecting)
         sendspinClient?.let { existing ->
-            when (val state = existing.connectionState.value) {
-                is SendspinConnectionState.Connected -> {
-                    log.d { "Sendspin already connected - skipping reinitialization" }
-                    return
+            when (val state = existing.state.value) {
+                is SendspinState.Ready,
+                is SendspinState.Buffering,
+                is SendspinState.Synchronized,
+                is SendspinState.Connecting,
+                is SendspinState.Authenticating,
+                is SendspinState.Handshaking -> {
+                    return@withLock
                 }
 
-                is SendspinConnectionState.Error -> {
-                    // Check if it's a transient error with auto-retry in progress
-                    if (state.error is SendspinError.Transient && state.error.willRetry) {
-                        log.d { "Sendspin is reconnecting - skipping reinitialization" }
-                        return
-                    }
-                    // Otherwise, it's a real error - stop and recreate
+                is SendspinState.Reconnecting -> {
+                    return@withLock
+                }
+
+                is SendspinState.Error -> {
                     val errorMsg = when (val err = state.error) {
                         is SendspinError.Permanent -> err.userAction
                         is SendspinError.Transient -> err.cause.message
                         is SendspinError.Degraded -> err.reason
                     }
-                    log.i { "Sendspin has error: $errorMsg - reinitializing" }
+                    log.w { "Sendspin: REINIT — Error: $errorMsg" }
                 }
 
-                is SendspinConnectionState.Advertising,
-                SendspinConnectionState.Idle -> {
-                    log.i { "Sendspin in ${state::class.simpleName} state - reinitializing" }
-                }
+                is SendspinState.Idle -> Unit
             }
             existing.stop()
             existing.close()
@@ -718,7 +749,7 @@ class MainDataSource(
 
         // Create client using factory
         val createResult = sendspinClientFactory.createIfEnabled(
-            mainConnection = mainConnectionInfo,
+            mainConnection = settings.connectionInfo.value,
             authToken = authToken
         )
 
@@ -728,16 +759,16 @@ class MainDataSource(
                 apiClient.forceWebRTCReconnect()
                 // After reconnection, initSendspinIfEnabled() will be called again
                 // from the session state handler with a fresh channel.
-                return
+                return@withLock
             }
             log.w { "Cannot create Sendspin client: ${error.message}" }
-            return
+            return@withLock
         }
 
-        val client = createResult.getOrNull() ?: return
+        val client = createResult.getOrNull() ?: return@withLock
 
         // Set up remote command handler for Control Center/Lock Screen commands
-        // Commands go directly through MainDataSource via REST API
+        // Go directly through MainDataSource via REST API
         mediaPlayerController.onRemoteCommand = { command ->
             localPlayer.value?.let { playerData ->
                 log.i { "Remote command from Control Center: $command" }
@@ -776,42 +807,77 @@ class MainDataSource(
      * Monitor Sendspin client for errors and state changes.
      */
     private fun monitorSendspinClient(client: SendspinClient) {
-        launch {
+        // Cancel any previous monitoring jobs to prevent old clients from
+        // leaking state transitions into _sendspinState or triggering pipeline disconnects
+        cancelSendspinMonitorJobs()
+
+        sendspinMonitorJobs += launch {
             // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
             // and pause the MA server player when they occur
-            client.playbackStoppedDueToError.filterNotNull().collect { error ->
-                log.w(error) { "Sendspin playback stopped due to error - pausing MA server player" }
+            client.playbackStoppedDueToError.filterNotNull().collect { _ ->
                 // Pause the local sendspin player on the MA server
                 localPlayer.value?.let { playerData ->
                     if (playerData.player.isPlaying) {
-                        log.i { "Sending pause command to MA server for player ${playerData.player.name}" }
                         playerAction(playerData, PlayerAction.Pause)
                     }
                 }
             }
         }
 
-        launch {
-            client.connectionState.collect { state ->
+        sendspinMonitorJobs += launch {
+            client.state.collect { state ->
+                _sendspinState.value = state
                 when (state) {
-                    is SendspinConnectionState.Connected -> {
-                        // Refresh player list so the local player appears in the UI
-                        log.i { "Sendspin connected - refreshing player list" }
+                    is SendspinState.Ready -> {
+                        sendspinRetryCount = 0
                         delay(1000) // Give server a moment to register the player
                         updatePlayersAndQueues()
                     }
 
-                    is SendspinConnectionState.Error,
-                    SendspinConnectionState.Idle -> {
-                        // Transport dropped (Error = WebSocket retry path, Idle = WebRTC channel closed).
-                        // Signal the shared pipeline so it pauses the sink when the buffer empties.
-                        log.i { "Sendspin not connected ($state) - signalling pipeline network disconnect" }
+                    is SendspinState.Error -> {
+                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+
+                        // Retry if error is not being auto-retried and main API is connected
+                        val shouldRetry = when (state.error) {
+                            is SendspinError.Permanent -> true
+                            is SendspinError.Transient -> !state.error.willRetry
+                            is SendspinError.Degraded -> false
+                        }
+
+                        if (shouldRetry && sendspinRetryCount < MAX_SENDSPIN_RETRIES) {
+                            if (apiClient.isReadyForCommands.value && settings.sendspinEnabled.value) {
+                                sendspinRetryCount++
+                                val backoffMs = 5000L * sendspinRetryCount
+                                delay(backoffMs)
+                                // Re-check after delay (conditions may have changed)
+                                val stillValid =
+                                    apiClient.isReadyForCommands.value && settings.sendspinEnabled.value
+                                if (stillValid) {
+                                    try {
+                                        initSendspinIfEnabled()
+                                    } catch (_: Exception) {
+                                        coroutineContext.ensureActive()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    is SendspinState.Idle -> {
                         sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
                     }
 
-                    else -> {}
+                    is SendspinState.Reconnecting -> Unit
+                    else -> Unit
                 }
             }
+        }
+    }
+
+    private fun cancelSendspinMonitorJobs() {
+        if (sendspinMonitorJobs.isNotEmpty()) {
+            sendspinMonitorJobs.forEach { it.cancel() }
+            sendspinMonitorJobs.clear()
         }
     }
 
@@ -819,9 +885,11 @@ class MainDataSource(
      * Stop Sendspin player if running.
      * Destroys the shared audio pipeline so the AudioTrack is fully released.
      */
-    private suspend fun stopSendspin() {
+    private suspend fun stopSendspin() = sendspinMutex.withLock {
+        // Cancel monitor jobs FIRST to prevent old state transitions from leaking
+        cancelSendspinMonitorJobs()
+        sendspinRetryCount = 0
         sendspinClient?.let { client ->
-            log.i { "Stopping Sendspin client" }
             try {
                 client.stop()
                 client.close()
@@ -830,6 +898,7 @@ class MainDataSource(
             }
             sendspinClient = null
         }
+        _sendspinState.value = null
         // Fully release the shared audio pipeline (AudioTrack, decoder, etc.)
         // A fresh pipeline will be created on the next initSendspinIfEnabled()
         sendspinClientFactory.destroyPipeline()
@@ -1056,7 +1125,10 @@ class MainDataSource(
                 Request.Player.setVolume(playerId = data.playerId, volumeLevel = action.level)
 
             PlayerAction.GroupVolumeDown ->
-                Request.Player.simpleCommand(playerId = data.playerId, command = "group_volume_down")
+                Request.Player.simpleCommand(
+                    playerId = data.playerId,
+                    command = "group_volume_down"
+                )
 
             PlayerAction.GroupVolumeUp ->
                 Request.Player.simpleCommand(playerId = data.playerId, command = "group_volume_up")
@@ -1186,7 +1258,7 @@ class MainDataSource(
 
                         is PlayerUpdatedEvent -> {
                             val data = event.player()
-                            Logger.e("Player updated: $data")
+                            Logger.i("Player updated: $data")
                             // Forward to local player repository if this is the local player
                             if (data.id == settings.sendspinClientId.value) {
                                 localPlayerRepository.onServerPlayerUpdate(data)
@@ -1225,7 +1297,7 @@ class MainDataSource(
 
                         is QueueUpdatedEvent -> {
                             val data = event.queue()
-                            Logger.e("Queue updated $data")
+                            Logger.i("Queue updated $data")
 
                             // Forward to local player repository if this is the local player's queue
                             val localPlayerId = settings.sendspinClientId.value
@@ -1490,6 +1562,12 @@ class MainDataSource(
             (forcedQueueData ?: fullData.queueInfo)?.let { queueInfo ->
                 val queueTracks = apiClient.sendRequest(Request.Queue.items(queueInfo.id))
                     .resultAs<List<ServerQueueItem>>()?.mapNotNull { it.toQueueTrack() }
+
+                // Forward to local player repository so external consumers (Android Auto, CarPlay) see items
+                if (fullData.isLocal && queueTracks != null) {
+                    localPlayerRepository.onQueueItemsLoaded(queueInfo, queueTracks)
+                }
+
                 _playersData.update { currentState ->
                     when (currentState) {
                         is DataState.Error,
@@ -1532,6 +1610,7 @@ class MainDataSource(
         supervisorJob.cancel()
     }
 
-    fun refreshPlayersAndQueues() = updatePlayersAndQueues()
-
+    private companion object {
+        const val MAX_SENDSPIN_RETRIES = 5
+    }
 }

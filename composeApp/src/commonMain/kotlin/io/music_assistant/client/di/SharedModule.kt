@@ -14,8 +14,10 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
+import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.utils.NetworkMonitor
 
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -24,7 +26,9 @@ import org.koin.dsl.module
 val sharedModule = module {
     single { provideSettings() }
     singleOf(::SettingsRepository)
+    singleOf(::NetworkMonitor)
     singleOf(::ServiceClient)
+    singleOf(::LogSharer)
     single(createdAtStart = true) {
         AuthenticationManager(
             get(),
@@ -37,7 +41,7 @@ val sharedModule = module {
     singleOf(::MainDataSource)          // Singleton - held by foreground service
     viewModelOf(::ThemeViewModel)
     factory { ActionsViewModel(get(), get()) }
-    factory { SettingsViewModel(get(), get()) }
+    factory { SettingsViewModel(get(), get(), get()) }
     factory { AuthenticationViewModel(get(), get()) }
     factory { LibraryViewModel(get(), get(), get()) }
     factory { ItemDetailsViewModel(get(), get(), get()) }

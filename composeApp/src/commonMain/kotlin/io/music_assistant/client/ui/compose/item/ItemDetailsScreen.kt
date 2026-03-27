@@ -20,6 +20,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,13 +40,14 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
+import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.theme.AppTheme
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -152,7 +155,8 @@ fun ItemDetails(
                     is AppMediaItem.Album,
                     is AppMediaItem.Playlist,
                     is AppMediaItem.Podcast,
-                    is AppMediaItem.Audiobook -> {
+                    is AppMediaItem.Audiobook,
+                    is AppMediaItem.Genre -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -223,29 +227,82 @@ private fun ItemChildren(
                     else -> return@Box
                 }
 
-                LazyVerticalGrid(
-                    modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-                    columns = GridCells.Adaptive(minSize = 96.dp),
-                    contentPadding = PaddingValues(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
                 ) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        ItemHeader(
-                            item = item,
-                            serverUrl = serverUrl,
-                            isRowMode = isRowMode,
-                            onBack = onBack,
-                            libraryAction = libraryActions,
-                            playlistActions = playlistActions,
-                            onToggleViewMode = onToggleViewMode,
-                            providerIconFetcher = providerIconFetcher,
-                            onPlayClick = onPlayItemClick
-                        )
+                    ItemTopBar(
+                        item = item,
+                        isRowMode = isRowMode,
+                        onBack = onBack,
+                        onToggleViewMode = onToggleViewMode,
+                        libraryActions = libraryActions.takeIf { item !is AppMediaItem.Genre },
+                        playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
+                        scrollBehavior = scrollBehavior
+                    )
+                    LazyVerticalGrid(
+                        modifier = Modifier.weight(1f).fillMaxWidth().testTag("LazyVerticalGrid"),
+                        columns = GridCells.Adaptive(minSize = 96.dp),
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            ItemHeader(
+                                item = item,
+                                serverUrl = serverUrl,
+                                providerIconFetcher = providerIconFetcher,
+                                onPlayClick = onPlayItemClick
+                            )
+                        }
+
+                    // For Genre: Artists section
+                    if (item is AppMediaItem.Genre) {
+                        when (val artistsState = state.artistsState) {
+                            is DataState.Data -> {
+                                if (artistsState.data.isNotEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        SectionHeader("Artists")
+                                    }
+                                    items(
+                                        artistsState.data,
+                                        span = if (isRowMode) {
+                                            { GridItemSpan(maxLineSpan) }
+                                        } else null
+                                    ) { artist ->
+                                        ArtistWithMenu(
+                                            item = artist,
+                                            rowMode = isRowMode,
+                                            showSubtitle = true,
+                                            serverUrl = serverUrl,
+                                            onNavigateClick = onNavigateClick,
+                                            onPlayOption = onPlayChildClick,
+                                            libraryActions = libraryActions,
+                                            providerIconFetcher = providerIconFetcher
+                                        )
+                                    }
+                                }
+                            }
+
+                            is DataState.Loading -> {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            }
+
+                            else -> Unit
+                        }
                     }
 
-                    // For Artist: Albums section
-                    if (item is AppMediaItem.Artist) {
+                    // For Artist or Genre: Albums section
+                    if (item is AppMediaItem.Artist || item is AppMediaItem.Genre) {
                         when (val albumsState = state.albumsState) {
                             is DataState.Data -> {
                                 if (albumsState.data.isNotEmpty()) {
@@ -368,6 +425,7 @@ private fun ItemChildren(
                         }
 
                         else -> Unit
+                    }
                     }
                 }
             }

@@ -5,11 +5,10 @@ package io.music_assistant.client.ui.compose.library
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -28,10 +27,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +42,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,6 +81,7 @@ fun LibraryScreen(
         MediaType.AUDIOBOOK -> LibraryViewModel.Tab.AUDIOBOOKS
         MediaType.PODCAST -> LibraryViewModel.Tab.PODCASTS
         MediaType.RADIO -> LibraryViewModel.Tab.RADIOS
+        MediaType.GENRE -> LibraryViewModel.Tab.GENRES
         null -> LibraryViewModel.Tab.ARTISTS
         else -> LibraryViewModel.Tab.ARTISTS
     }
@@ -93,13 +98,19 @@ fun LibraryScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+    ) {
         LibraryTopBar(
             onBack = onBack,
             tabs = state.tabs,
             onTabSelected = viewModel::onTabSelected,
             isRowMode = isRowMode,
             onToggleViewMode = viewModel::toggleItemsRowMode,
+            scrollBehavior = scrollBehavior,
         )
         Library(
             state = state,
@@ -137,24 +148,11 @@ private fun LibraryTopBar(
     onTabSelected: (LibraryViewModel.Tab) -> Unit,
     isRowMode: Boolean,
     onToggleViewMode: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier.height(64.dp).fillMaxWidth().padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-            }
-            // Tab row
+    TopAppBar(
+        title = {
             PrimaryScrollableTabRow(
-                modifier = Modifier.weight(1f),
                 containerColor = Color.Transparent,
                 edgePadding = 0.dp,
                 selectedTabIndex = tabs.indexOfFirst { it.isSelected }
@@ -173,20 +171,33 @@ private fun LibraryTopBar(
                                     LibraryViewModel.Tab.AUDIOBOOKS -> "Audiobooks"
                                     LibraryViewModel.Tab.PODCASTS -> "Podcasts"
                                     LibraryViewModel.Tab.RADIOS -> "Radio"
+                                    LibraryViewModel.Tab.GENRES -> "Genres"
                                 }
                             )
                         }
                     )
                 }
             }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+        },
+        actions = {
             IconButton(onClick = onToggleViewMode) {
                 Icon(
                     imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                     contentDescription = "Toggle view mode"
                 )
             }
-        }
-    }
+        },
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        scrollBehavior = scrollBehavior
+    )
 }
 
 @Composable
@@ -225,7 +236,14 @@ private fun Library(
                     Text(text = "Quick search")
                 },
                 trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
-                    { IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) { Icon(Icons.Default.Clear, contentDescription = "Clear") } }
+                    {
+                        IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Clear"
+                            )
+                        }
+                    }
                 } else null,
                 singleLine = true
             )
@@ -278,17 +296,23 @@ private fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
     onCreate: (String) -> Unit,
 ) {
+    val focusRequester = remember { FocusRequester() }
     var playlistName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create New Playlist") },
         text = {
             OutlinedTextField(
+                modifier = Modifier.focusRequester(focusRequester),
                 value = playlistName,
                 onValueChange = { playlistName = it },
                 label = { Text("Playlist name") },
-                singleLine = true
+                singleLine = true,
             )
         },
         confirmButton = {
@@ -332,6 +356,7 @@ private fun TabContent(
     val audiobooksGridState = rememberLazyGridState()
     val podcastsGridState = rememberLazyGridState()
     val radiosGridState = rememberLazyGridState()
+    val genresGridState = rememberLazyGridState()
 
     val gridStates =
         remember(
@@ -341,7 +366,8 @@ private fun TabContent(
             playlistsGridState,
             audiobooksGridState,
             podcastsGridState,
-            radiosGridState
+            radiosGridState,
+            genresGridState
         ) {
             mapOf(
                 LibraryViewModel.Tab.ARTISTS to artistsGridState,
@@ -350,7 +376,8 @@ private fun TabContent(
                 LibraryViewModel.Tab.PLAYLISTS to playlistsGridState,
                 LibraryViewModel.Tab.AUDIOBOOKS to audiobooksGridState,
                 LibraryViewModel.Tab.PODCASTS to podcastsGridState,
-                LibraryViewModel.Tab.RADIOS to radiosGridState
+                LibraryViewModel.Tab.RADIOS to radiosGridState,
+                LibraryViewModel.Tab.GENRES to genresGridState
             )
         }
 

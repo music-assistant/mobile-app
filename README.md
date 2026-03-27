@@ -26,9 +26,21 @@ By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant
   - background audio playback with automatic resume after phone call or Siri interruptions;
   - WebRTC data channel transport for low-latency Sendspin streaming.
 
-## Building from source
+## Contributing
 
-### iOS
+The project is in an early stage of development. Any help (especially from designers and iOS developers) is appreciated. To contribute:
+
+1. [Find an issue](https://github.com/music-assistant/mobile-app/issues) to work on - if you've noticed something wrong or missing, please file an issue about it
+2. Ask in the issue if you can work on it - this prevents multiple people from working on an issue at the same time
+3. Submit a PR with "Closes #<issue number>" at the top of the description
+
+### Structure
+
+The project currently supports the iOS and Android targets. Common code is held within a KMP library module (`composeApp`) which the two platform specific app modules then depend on (`androidApp` and `iosApp`).
+
+### Building from source
+
+#### iOS
 
 See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-step guide covering:
 
@@ -38,21 +50,17 @@ See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-st
 - Build commands for simulator and physical device
 - Known limitations and troubleshooting
 
-### Android
+#### Android
 
 ```bash
-./gradlew :composeApp:assembleDebug
-./gradlew :composeApp:installDebug
+./gradlew :androidApp:assembleDebug
 ```
 
-## Contributing
+### Writing/running tests
 
-The project is in an early stage of development. Any help (especially from designers and iOS developers) is appreciated. To contribute:
+Tests for shared multiplatform code live in the `composeApp` module's `commonTest` source set. These can be run locally in the JVM for the Android target using `./gradlew :composeApp:testAndroidHostTest`.
 
-1. [Find an issue](https://github.com/music-assistant/mobile-app/issues) to work on - if you've noticed something wrong or missing, please file an issue about it
-2. Ask in the issue if you can work on it - this prevents multiple people from working on an issue at the same time
-3. Submit a PR with "Closes #<issue number>" at the top of the description
-
+Tests for Compose UI code are in the `androidApp` module. This is because [multiplatform Compose testing is currently still experimental](https://kotlinlang.org/docs/multiplatform/compose-test.html) and tests written using the multiplatform approach cannot be easily run in a local JVM yet without the desktop target (which this project doesn't use). The Compose tests can be run with `./gradlew :androidApp:testDebug`.
 ## Want to try it?
 
 Download and install debug APK from latest release on [releases page](https://github.com/music-assistant/kmp-client-app/releases).

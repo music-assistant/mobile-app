@@ -110,6 +110,9 @@ enum class EventType {
     @SerialName("sync_tasks_updated")
     SYNC_TASKS_UPDATED,
 
+    @SerialName("tasks_updated")
+    TASKS_UPDATED,
+
     @SerialName("auth_session")
     AUTH_SESSION,
 

@@ -4,18 +4,39 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.logging.InMemoryLogWriter
+import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.SettingsRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val apiClient: ServiceClient,
-    private val settings: SettingsRepository
+    private val settings: SettingsRepository,
+    private val logSharer: LogSharer
 ) : ViewModel() {
 
     val savedConnectionInfo = settings.connectionInfo
     val sessionState = apiClient.sessionState
+
+    private val _hasCrashLog = MutableStateFlow(logSharer.hasCrashLog())
+    val hasCrashLog: StateFlow<Boolean> = _hasCrashLog
+
+    fun shareLogs() {
+        logSharer.shareLogs(InMemoryLogWriter.getLogText())
+    }
+
+    fun shareCrashLog() {
+        logSharer.shareCrashLog()
+    }
+
+    fun deleteCrashLog() {
+        logSharer.deleteCrashLog()
+        _hasCrashLog.value = false
+    }
 
     fun attemptConnection(host: String, port: String, isTls: Boolean) =
         apiClient.connect(connection = ConnectionInfo(host, port.toInt(), isTls))

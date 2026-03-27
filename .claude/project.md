@@ -7,14 +7,14 @@ Built with Kotlin Multiplatform + Compose Multiplatform for Android and iOS.
 
 ```bash
 # Android
-./gradlew :composeApp:assembleDebug
-./gradlew :composeApp:installDebug
+./gradlew :androidApp:assembleDebug
+./gradlew :androidApp:installDebug
 
 # iOS - open in Xcode
 open iosApp/iosApp.xcodeproj
 
 # Tests
-./gradlew :composeApp:testDebugUnitTest
+./gradlew :androidApp:testDebug
 ```
 
 ## Features

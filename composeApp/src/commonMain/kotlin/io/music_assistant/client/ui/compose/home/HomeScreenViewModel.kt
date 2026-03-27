@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -26,14 +27,13 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -45,10 +45,9 @@ class HomeScreenViewModel(
 ) : ViewModel() {
 
     private val jobs = mutableListOf<Job>()
+    private var recommendationsJob: Job? = null
 
-    val serverUrl =
-        apiClient.sessionState.map { (it as? SessionState.Connected)?.serverInfo?.baseUrl }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+    val serverUrl = apiClient.serverBaseUrl
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
 
@@ -78,11 +77,15 @@ class HomeScreenViewModel(
                     is SessionState.Connected -> {
                         when (val connState = connection.dataConnectionState) {
                             DataConnectionState.Authenticated -> {
-                                // Load recommendations when data connection is ready
-                                if (_recommendationsState.value.recommendations is DataState.Loading) {
-                                    loadRecommendations()
+                                if (_recommendationsState.value.recommendations !is DataState.Data) {
+                                    recommendationsJob?.cancel()
+                                    recommendationsJob = loadRecommendations()
                                 }
-                                _playersState.update { PlayersState.Loading }
+                                // Only show loading if we don't have cached data (e.g. fresh connect).
+                                // During reconnection the existing player list stays visible.
+                                if (_playersState.value !is PlayersState.Data) {
+                                    _playersState.update { PlayersState.Loading }
+                                }
                                 stopJobs()
                                 jobs.add(watchPlayersData())
                                 jobs.add(watchSelectedPlayerData())
@@ -92,7 +95,9 @@ class HomeScreenViewModel(
                                 when (connState.authProcessState) {
                                     AuthProcessState.NotStarted,
                                     AuthProcessState.InProgress -> {
-                                        _playersState.update { PlayersState.Loading }
+                                        if (_playersState.value !is PlayersState.Data) {
+                                            _playersState.update { PlayersState.Loading }
+                                        }
                                         stopJobs()
                                     }
 
@@ -105,18 +110,24 @@ class HomeScreenViewModel(
                             }
 
                             DataConnectionState.AwaitingServerInfo -> {
-                                _playersState.update { PlayersState.Loading }
+                                if (_playersState.value !is PlayersState.Data) {
+                                    _playersState.update { PlayersState.Loading }
+                                }
                                 stopJobs()
                             }
                         }
                     }
 
                     SessionState.Connecting -> {
-                        _playersState.update { PlayersState.Loading }
+                        if (_playersState.value !is PlayersState.Data) {
+                            _playersState.update { PlayersState.Loading }
+                        }
+                        recommendationsJob?.cancel()
                         stopJobs()
                     }
 
                     is SessionState.Disconnected -> {
+                        recommendationsJob?.cancel()
                         when (connection) {
                             is SessionState.Disconnected.Error,
                             SessionState.Disconnected.Initial,
@@ -156,28 +167,29 @@ class HomeScreenViewModel(
         }
     }
 
-    private fun loadRecommendations() {
-        viewModelScope.launch {
-            _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
+    private fun loadRecommendations(): Job = viewModelScope.launch {
+        _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
+        repeat(3) { attempt ->
+            if (attempt > 0) delay(2_000L)
             getList<AppMediaItem.RecommendationFolder>(Request.Library.recommendations())
                 ?.let { items ->
                     _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
-                } ?: run {
-                _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
-            }
+                    return@launch
+                }
         }
+        _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
     }
 
     fun onPlayClick(item: AppMediaItem, option: QueueOption, radio: Boolean) {
         dataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-            item.uri?.let { uri ->
+            item.mediaUri?.let { mediaUri ->
                 viewModelScope.launch {
                     apiClient.sendRequest(
                         Request.Library.play(
-                            media = listOf(uri),
+                            media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio
+                            radioMode = radio && item !is AppMediaItem.Genre
                         )
                     )
                 }
@@ -222,7 +234,12 @@ class HomeScreenViewModel(
     }
 
     private fun watchPlayersData(): Job = viewModelScope.launch {
-        dataSource.playersData.collect { playerData ->
+        combine(
+            dataSource.playersData,
+            dataSource.sendspinState
+        ) { playerData, sendspinState ->
+            playerData to sendspinState
+        }.collect { (playerData, sendspinState) ->
             // Update when in Loading or Data state
             // This allows transitioning from Loading to Data and updating existing Data
             // Don't update terminal states (Disconnected, NoAuth, NoServer)
@@ -233,13 +250,15 @@ class HomeScreenViewModel(
                         is DataState.Data -> PlayersState.Data(
                             playerData.data,
                             dataSource.selectedPlayerIndex.value,
-                            dataSource.localPlayer.value?.playerId
+                            dataSource.localPlayer.value?.playerId,
+                            sendspinState
                         )
 
                         is DataState.Stale -> PlayersState.Data(
                             playerData.data,  // Show stale data as normal data
                             dataSource.selectedPlayerIndex.value,
-                            dataSource.localPlayer.value?.playerId
+                            dataSource.localPlayer.value?.playerId,
+                            sendspinState
                         )
 
                         is DataState.Error -> PlayersState.Error
@@ -261,7 +280,6 @@ class HomeScreenViewModel(
         }
     }
 
-    fun refreshPlayers() = dataSource.refreshPlayersAndQueues()
     fun selectPlayer(player: Player) = dataSource.selectPlayer(player)
     fun playerAction(playerId: String, action: PlayerAction) =
         dataSource.playerAction(playerId, action)
@@ -313,7 +331,8 @@ class HomeScreenViewModel(
         data class Data(
             val playerData: List<PlayerData>,
             val selectedPlayerIndex: Int? = null,
-            val localPlayerId: String? = null
+            val localPlayerId: String? = null,
+            val sendspinState: SendspinState? = null
         ) : PlayersState()
     }
 }

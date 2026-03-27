@@ -40,7 +40,7 @@ class LibraryViewModel(
     }
 
     enum class Tab {
-        ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS
+        ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES
     }
 
     data class TabState(
@@ -62,8 +62,7 @@ class LibraryViewModel(
 
     private val connectionState = apiClient.sessionState
 
-    val serverUrl =
-        apiClient.sessionState.map { (it as? SessionState.Connected)?.serverInfo?.baseUrl }
+    val serverUrl = apiClient.serverBaseUrl
 
     val itemsRowMode = settingsRepository.itemsRowMode
 
@@ -100,6 +99,7 @@ class LibraryViewModel(
                     loadAudiobooks()
                     loadPodcasts()
                     loadRadios()
+                    loadGenres()
                     // Tracks tab stays as NoData since there's no API
                     updateTabState(Tab.TRACKS, DataState.NoData())
                 }
@@ -148,6 +148,7 @@ class LibraryViewModel(
                             Tab.AUDIOBOOKS -> loadAudiobooks()
                             Tab.PODCASTS -> loadPodcasts()
                             Tab.RADIOS -> loadRadios()
+                            Tab.GENRES -> loadGenres()
                         }
                     }
             }
@@ -203,13 +204,13 @@ class LibraryViewModel(
         viewModelScope.launch {
             val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
 
-            item.uri?.let { uri ->
+            item.mediaUri?.let { mediaUri ->
                 apiClient.sendRequest(
                     Request.Library.play(
-                        media = listOf(uri),
+                        media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio
+                        radioMode = radio && item !is AppMediaItem.Genre
                     )
                 )
             }
@@ -433,6 +434,37 @@ class LibraryViewModel(
         }
     }
 
+    private fun loadGenres() {
+        viewModelScope.launch {
+            val tabState = _state.value.tabs.find { it.tab == Tab.GENRES }
+            val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
+            val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            updateTabState(Tab.GENRES, DataState.Loading())
+            val result = apiClient.sendRequest(
+                Request.Genre.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = 0,
+                    search = searchQuery,
+                    favorite = favoritesOnly
+                )
+            )
+            result.resultAs<List<ServerMediaItem>>()
+                ?.toAppMediaItemList()
+                ?.filterIsInstance<AppMediaItem.Genre>()
+                ?.let { genres ->
+                    updateTabStateWithData(
+                        tab = Tab.GENRES,
+                        items = genres,
+                        offset = PAGE_SIZE,
+                        hasMore = genres.size >= PAGE_SIZE
+                    )
+                } ?: run {
+                Logger.e("Error loading genres:", result.exceptionOrNull())
+                updateTabState(Tab.GENRES, DataState.Error())
+            }
+        }
+    }
+
     fun loadMore(tab: Tab) {
         val tabState = _state.value.tabs.find { it.tab == tab } ?: return
 
@@ -502,6 +534,14 @@ class LibraryViewModel(
 
                 Tab.RADIOS -> apiClient.sendRequest(
                     Request.RadioStation.listLibrary(
+                        limit = PAGE_SIZE,
+                        offset = tabState.offset,
+                        search = searchQuery
+                    )
+                )
+
+                Tab.GENRES -> apiClient.sendRequest(
+                    Request.Genre.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
                         search = searchQuery
@@ -577,6 +617,7 @@ class LibraryViewModel(
                     is AppMediaItem.Audiobook -> tabState.tab == Tab.AUDIOBOOKS
                     is AppMediaItem.Podcast -> tabState.tab == Tab.PODCASTS
                     is AppMediaItem.RadioStation -> tabState.tab == Tab.RADIOS
+                    is AppMediaItem.Genre -> tabState.tab == Tab.GENRES
                     else -> false
                 }
 

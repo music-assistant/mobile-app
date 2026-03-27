@@ -17,14 +17,12 @@ import kotlin.coroutines.CoroutineContext
 /**
  * Handles periodic state reporting to the Sendspin server.
  * Reports player state (SYNCHRONIZED), volume, and mute status every 2 seconds.
- *
- * Separated from SendspinClient to follow Single Responsibility Principle.
  */
 class StateReporter(
     private val messageDispatcher: MessageDispatcher,
     private val volumeProvider: () -> Int,
     private val mutedProvider: () -> Boolean,
-    private val playbackStateProvider: () -> SendspinPlaybackState
+    private val stateProvider: () -> SendspinState
 ) : CoroutineScope {
 
     private val logger = Logger.withTag("StateReporter")
@@ -48,21 +46,16 @@ class StateReporter(
                     // Wait before reporting (report every 2 seconds)
                     delay(2000)
 
-                    // Only report if we're still streaming and synchronized
-                    when (val state = playbackStateProvider()) {
-                        SendspinPlaybackState.Synchronized,
-                        is SendspinPlaybackState.Playing -> {
+                    // Only report if we're still streaming
+                    when (stateProvider()) {
+                        is SendspinState.Synchronized,
+                        is SendspinState.Buffering -> {
                             logger.d { "Periodic state report: SYNCHRONIZED" }
                             reportNow(PlayerStateValue.SYNCHRONIZED)
                         }
 
-                        SendspinPlaybackState.Buffering -> {
-                            logger.d { "Periodic state report: SYNCHRONIZED (buffering)" }
-                            reportNow(PlayerStateValue.SYNCHRONIZED)
-                        }
-
                         else -> {
-                            // Idle or Error - don't report
+                            // Not streaming — don't report
                         }
                     }
                 } catch (e: CancellationException) {

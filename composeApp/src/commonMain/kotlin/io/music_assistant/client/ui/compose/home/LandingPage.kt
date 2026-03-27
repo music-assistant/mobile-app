@@ -58,6 +58,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
+import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
@@ -98,6 +99,7 @@ fun LandingPage(
                             || item is AppMediaItem.Podcast
                             || item is AppMediaItem.PodcastEpisode
                             || item is AppMediaItem.RadioStation
+                            || item is AppMediaItem.Genre
                 } == true
             }
         } else {
@@ -209,6 +211,7 @@ fun LibraryRow(
             LibraryItem("Audiobooks", Icons.AutoMirrored.Filled.MenuBook, MediaType.AUDIOBOOK),
             LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
             LibraryItem("Radio", Icons.Default.Radio, MediaType.RADIO),
+            LibraryItem("Genres", Icons.Default.MusicNote, MediaType.GENRE),
             LibraryItem("Global search", Icons.Default.Search, null),
         )
     }
@@ -225,30 +228,17 @@ fun LibraryRow(
                 style = MaterialTheme.typography.titleLarge
             )
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            libraryItems.chunked(3).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    rowItems.forEach { item ->
-                        LibraryItemCard(
-                            modifier = Modifier.weight(1f),
-                            name = item.name,
-                            icon = item.icon,
-                            onClick = { onLibraryItemClick(item.type) }
-                        )
-                    }
-                    // Fill remaining columns with spacers to keep grid alignment
-                    repeat(3 - rowItems.size) {
-                        Spacer(modifier = Modifier.weight(1f).padding(8.dp))
-                    }
-                }
+            items(libraryItems) { item ->
+                LibraryItemCard(
+                    modifier = Modifier,
+                    name = item.name,
+                    icon = item.icon,
+                    onClick = { onLibraryItemClick(item.type) }
+                )
             }
         }
     }
@@ -274,7 +264,7 @@ fun LibraryItemCard(
     ) {
         Box(
             modifier = Modifier
-                .height(64.dp)
+                .size(width = 96.dp, height = 40.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(primaryContainer),
             contentAlignment = Alignment.Center
@@ -365,7 +355,8 @@ fun CategoryRow(
                         is AppMediaItem.Audiobook,
                         is AppMediaItem.Podcast,
                         is AppMediaItem.PodcastEpisode,
-                        is AppMediaItem.RadioStation -> "${item::class.simpleName}_${item.itemId}"
+                        is AppMediaItem.RadioStation,
+                        is AppMediaItem.Genre -> "${item::class.simpleName}_${item.itemId}"
 
                         else -> item.hashCode()
                     }
@@ -380,6 +371,7 @@ fun CategoryRow(
                         is AppMediaItem.Podcast -> "Podcast"
                         is AppMediaItem.PodcastEpisode -> "Episode"
                         is AppMediaItem.RadioStation -> "RadioStation"
+                        is AppMediaItem.Genre -> "Genre"
                         else -> "Unknown"
                     }
                 }
@@ -464,6 +456,16 @@ fun CategoryRow(
                         providerIconFetcher = providerIconFetcher
                     )
 
+                    is AppMediaItem.Genre -> GenreWithMenu(
+                        item = item,
+                        showSubtitle = !isHomogenous,
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
                     else -> {}
                 }
             }
@@ -479,6 +481,7 @@ fun allItemsTitle(type: MediaType) = when (type) {
     MediaType.AUDIOBOOK -> "All audiobooks"
     MediaType.PODCAST -> "All podcasts"
     MediaType.RADIO -> "All radio stations"
+    MediaType.GENRE -> "All genres"
     else -> null
 }
 

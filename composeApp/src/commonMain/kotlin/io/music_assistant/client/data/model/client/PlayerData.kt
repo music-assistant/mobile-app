@@ -58,5 +58,6 @@ data class PlayerData(
         val isMuted: Boolean?,
         val name: String,
         val isBound: Boolean,
+        val isManageable: Boolean,
     )
 }

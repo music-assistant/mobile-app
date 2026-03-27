@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -31,9 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
 fun HorizontalPagerIndicator(
@@ -87,7 +88,7 @@ fun HorizontalPagerIndicator(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth().wrapContentHeight(),
+        modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 24.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -132,9 +133,9 @@ fun HorizontalPagerIndicator(
 
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 4.dp)
+                        .padding(horizontal = 3.dp)
                         .offset(x = xOffset.dp, y = yOffset.dp)
-                        .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
+                        .size(if (index == pagerState.currentPage) 6.dp else 5.dp)
                         .clip(CircleShape)
                         .background(
                             if (index == pagerState.currentPage)
@@ -192,6 +193,18 @@ fun HorizontalPagerIndicatorDotsPreview() {
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
             pagerState = rememberPagerState(pageCount = { 9 }, initialPage = 2),
             onItemMoved = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+fun HorizontalPagerIndicatorDotsPreviewNoMove() {
+    MaterialTheme {
+        HorizontalPagerIndicator(
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+            pagerState = rememberPagerState(pageCount = { 9 }, initialPage = 2),
+            onItemMoved = null,
         )
     }
 }

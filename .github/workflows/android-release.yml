@@ -1,21 +1,23 @@
 name: Android Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ android-release ]
 
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout dev
+      - name: Checkout android-release
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: android-release
           fetch-depth: 0
 
       - name: Configure git identity
@@ -23,24 +25,18 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Merge dev into android-release
-        run: |
-          git fetch origin android-release || true
-          git checkout android-release 2>/dev/null || git checkout -b android-release
-          git merge origin/dev --ff-only || git merge origin/dev --no-edit
-          git push origin android-release
-
       - name: Extract version
         id: version
         run: |
-          VERSION_NAME=$(grep 'versionName' composeApp/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-          VERSION_CODE=$(grep 'versionCode' composeApp/build.gradle.kts | sed 's/[^0-9]*//g')
+          VERSION_NAME=$(grep 'versionName' androidApp/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_CODE=$(grep 'versionCode' androidApp/build.gradle.kts | sed 's/[^0-9]*//g')
           echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "tag=android-v${VERSION_NAME}" >> $GITHUB_OUTPUT
 
       - name: Guard against duplicate tag
         run: |
+          git fetch --tags
           if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
             echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump the version before releasing."
             exit 1
@@ -62,8 +58,8 @@ jobs:
 
       - name: Restore release keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > composeApp/upload-keystore.jks
-          cat > composeApp/keystore.properties <<EOF
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/upload-keystore.jks
+          cat > androidApp/keystore.properties <<EOF
           storeFile=upload-keystore.jks
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
@@ -71,15 +67,22 @@ jobs:
           EOF
 
       - name: Build release AAB
-        run: ./gradlew :composeApp:bundleRelease
+        run: ./gradlew :androidApp:bundleRelease
 
-#      - name: Upload to Google Play (internal testing)
-#        uses: r0adkll/upload-google-play@v1
-#        with:
-#          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-#          packageName: io.music_assistant.client
-#          releaseFiles: composeApp/build/outputs/bundle/release/composeApp-release.aab
-#          track: internal
+      - name: Authenticate to Google Cloud
+        id: gcloud-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github/providers/music-assistant-mobile'
+          service_account: 'SERVICE_ACCOUNT_EMAIL'
+
+      - name: Upload to Google Play (internal testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.gcloud-auth.outputs.credentials_file_path }}
+          packageName: io.music_assistant.client
+          releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
+          track: internal
 
       - name: Create and push tag
         run: |
@@ -122,10 +125,10 @@ jobs:
           git fetch origin dev
           git checkout -b "${{ steps.next.outputs.branch }}" origin/dev
 
-          sed -i "s/versionCode = ${{ steps.version.outputs.code }}/versionCode = ${{ steps.next.outputs.code }}/" composeApp/build.gradle.kts
-          sed -i "s/versionName = \"${{ steps.version.outputs.name }}\"/versionName = \"${{ steps.next.outputs.version }}\"/" composeApp/build.gradle.kts
+          sed -i "s/versionCode = ${{ steps.version.outputs.code }}/versionCode = ${{ steps.next.outputs.code }}/" androidApp/build.gradle.kts
+          sed -i "s/versionName = \"${{ steps.version.outputs.name }}\"/versionName = \"${{ steps.next.outputs.version }}\"/" androidApp/build.gradle.kts
 
-          git add composeApp/build.gradle.kts
+          git add androidApp/build.gradle.kts
           git commit -m "chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})"
           git push origin "${{ steps.next.outputs.branch }}"
 

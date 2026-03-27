@@ -7,8 +7,6 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.ServerMediaItem
-
-import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +26,7 @@ object KmpHelper : KoinComponent {
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     fun getServerUrl(): String? {
-        return (serviceClient.sessionState.value as? SessionState.Connected)?.serverInfo?.baseUrl
+        return serviceClient.serverBaseUrl.value
     }
 
     // MARK: - External Consumer Lifecycle (CarPlay)
@@ -147,11 +145,11 @@ object KmpHelper : KoinComponent {
     }
     
     private fun playItem(item: AppMediaItem, queueOrPlayerId: String, option: QueueOption) {
-        item.uri?.let { uri ->
+        item.mediaUri?.let { mediaUri ->
             mainScope.launch {
                 serviceClient.sendRequest(
                     Request.Library.play(
-                        media = listOf(uri),
+                        media = listOf(mediaUri),
                         queueOrPlayerId = queueOrPlayerId,
                         option = option,
                         radioMode = false

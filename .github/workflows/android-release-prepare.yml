@@ -1,0 +1,57 @@
+name: Android Release – Prepare
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION_NAME=$(grep 'versionName' androidApp/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_CODE=$(grep 'versionCode' androidApp/build.gradle.kts | sed 's/[^0-9]*//g')
+          echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "tag=android-v${VERSION_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Guard against duplicate tag
+        run: |
+          git fetch --tags
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump the version before releasing."
+            exit 1
+          fi
+
+      - name: Create release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh pr list --base android-release --head dev --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "::warning::Open release PR already exists: #${EXISTING}"
+            exit 0
+          fi
+
+          gh pr create \
+            --base android-release \
+            --head dev \
+            --title "release: Android v${{ steps.version.outputs.name }}" \
+            --body "## Android Release ${{ steps.version.outputs.name }}
+
+          - **Version code**: ${{ steps.version.outputs.code }}
+          - **Tag**: \`${{ steps.version.outputs.tag }}\`
+
+          Merging this PR will trigger the release workflow."

@@ -1,18 +1,25 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
-    androidTarget {
+    androidLibrary {
+        namespace = "io.music_assistant.client.shared"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
+        }
+        androidResources {
+            enable = true
+        }
+        withHostTestBuilder {
         }
     }
 
@@ -30,7 +37,7 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            implementation(compose.preview)
+            implementation(libs.compose.ui.tooling.preview)
             implementation(libs.androidx.activity.compose)
 
             implementation(libs.ktor.client.android)
@@ -39,23 +46,18 @@ kotlin {
             implementation(libs.koin.androidx.compose)
 
             implementation(libs.androidx.media)
-            implementation("androidx.browser:browser:1.8.0")
+            implementation(libs.androidx.browser)
 
             implementation(libs.coil)
             implementation(libs.concentus)
         }
 
-        androidUnitTest.dependencies {
-            implementation(libs.androidx.compose.ui.test.junit4)
-            implementation(libs.robolectric)
-        }
-
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
+            implementation(libs.compose.ui.tooling.preview)
             implementation(libs.material)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
@@ -103,68 +105,6 @@ kotlin {
     }
 }
 
-android {
-    namespace = "io.music_assistant.client"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    defaultConfig {
-        applicationId = "io.music_assistant.client"
-        minSdk { version = release(libs.versions.android.minSdk.get().toInt()) }
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "0.2.0"
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-        create("release") {
-            val props = Properties().apply {
-                val file = project.file("keystore.properties")
-                if (file.exists()) load(file.inputStream())
-            }
-            storeFile = props["storeFile"]?.let { file(it as String) }
-            storePassword = props["storePassword"] as? String
-            keyAlias = props["keyAlias"] as? String
-            keyPassword = props["keyPassword"] as? String
-        }
-    }
-
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false // Set to true to enable code shrinking and obfuscation
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-
-    testOptions {
-        unitTests.isIncludeAndroidResources = true
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildToolsVersion = "36.0.0"
-
-    lint {
-        baseline = file("lint-baseline.xml")
-    }
-}
-
 dependencies {
-    debugImplementation(compose.uiTooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    androidRuntimeClasspath(libs.compose.ui.tooling)
 }

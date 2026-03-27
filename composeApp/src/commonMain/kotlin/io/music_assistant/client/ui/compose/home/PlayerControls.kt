@@ -24,13 +24,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import compose.icons.FontAwesomeIcons
-import compose.icons.fontawesomeicons.Solid
-import compose.icons.fontawesomeicons.solid.VolumeDown
-import compose.icons.fontawesomeicons.solid.VolumeUp
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 
@@ -39,9 +37,9 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
     playerData: PlayerData,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    showVolumeButtons: Boolean = true,
     showAdditionalButtons: Boolean = true,
-    mainButtonSize: Dp = 48.dp
+    mainButtonSize: Dp = 48.dp,
+    showSkip: Boolean = true
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
@@ -58,15 +56,6 @@ fun PlayerControls(
         ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (player.canSetVolume && showVolumeButtons) {
-            ActionButton(
-                icon = FontAwesomeIcons.Solid.VolumeDown,
-                tint = MaterialTheme.colorScheme.primary,
-                size = smallButtonSize,
-                enabled = playerEnabled,
-            ) { playerAction(playerData, PlayerAction.VolumeDown) }
-        }
-
         if (showAdditionalButtons) {
             queue?.let {
                 ActionButton(
@@ -86,12 +75,15 @@ fun PlayerControls(
             }
         }
 
-        ActionButton(
-            icon = Icons.Default.SkipPrevious,
-            tint = MaterialTheme.colorScheme.primary,
-            size = smallButtonSize,
-            enabled = playerEnabled && buttonsEnabled,
-        ) { playerAction(playerData, PlayerAction.Previous) }
+        if (showSkip) {
+            ActionButton(
+                icon = Icons.Default.SkipPrevious,
+                tint = MaterialTheme.colorScheme.primary,
+                size = smallButtonSize,
+                enabled = playerEnabled && buttonsEnabled,
+            ) { playerAction(playerData, PlayerAction.Previous) }
+        }
+
 
         if (playerData.pendingPlay && player.isPlaying) {
             IconButton(
@@ -118,12 +110,14 @@ fun PlayerControls(
             ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
         }
 
-        ActionButton(
-            icon = Icons.Default.SkipNext,
-            tint = MaterialTheme.colorScheme.primary,
-            size = smallButtonSize,
-            enabled = playerEnabled && buttonsEnabled,
-        ) { playerAction(playerData, PlayerAction.Next) }
+        if (showSkip) {
+            ActionButton(
+                icon = Icons.Default.SkipNext,
+                tint = MaterialTheme.colorScheme.primary,
+                size = smallButtonSize,
+                enabled = playerEnabled && buttonsEnabled,
+            ) { playerAction(playerData, PlayerAction.Next) }
+        }
 
         if (showAdditionalButtons) {
             queue?.let {
@@ -147,15 +141,6 @@ fun PlayerControls(
                     }
                 }
             }
-        }
-
-        if (player.canSetVolume && showVolumeButtons) {
-            ActionButton(
-                icon = FontAwesomeIcons.Solid.VolumeUp,
-                tint = MaterialTheme.colorScheme.primary,
-                size = smallButtonSize,
-                enabled = playerEnabled,
-            ) { playerAction(playerData, PlayerAction.VolumeUp) }
         }
     }
 }
@@ -182,4 +167,29 @@ private fun ActionButton(
             tint = tint,
         )
     }
+}
+
+@Preview
+@Composable
+private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = true) {
+    MaterialTheme {
+        PlayerControls(
+            playerData = PlayerDataFixtures.playerData(),
+            playerAction = { _, _ -> },
+            showSkip = showSkip,
+            showAdditionalButtons = showAdditionButtons
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewNoAdditional() {
+    Preview(showAdditionButtons = false)
+}
+
+@Preview
+@Composable
+private fun PreviewNoSkipNoAdditional() {
+    Preview(showSkip = false, showAdditionButtons = false)
 }

@@ -1,16 +1,19 @@
 package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -37,8 +40,6 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Replay
 
 @Composable
 fun AlbumWithMenu(
@@ -211,6 +212,48 @@ fun AudiobookWithMenu(
 }
 
 @Composable
+fun GenreWithMenu(
+    item: AppMediaItem.Genre,
+    showSubtitle: Boolean = true,
+    rowMode: Boolean = false,
+    onNavigateClick: (AppMediaItem.Genre) -> Unit,
+    onPlayOption: ((AppMediaItem.Genre, QueueOption, Boolean) -> Unit),
+    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    libraryActions: ActionsViewModel.LibraryActions? = null,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
+    serverUrl: String?
+) {
+    BrowsableItemWithMenu(
+        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        item = item,
+        onNavigateClick = onNavigateClick,
+        onPlayOption = onPlayOption,
+        playlistActions = playlistActions,
+        libraryActions = null,
+    ) { mod, onClick, onLongClick ->
+        if (rowMode) {
+            GenreRowItem(
+                modifier = mod,
+                item = item,
+                serverUrl = serverUrl,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                providerIconFetcher = providerIconFetcher
+            )
+        } else {
+            GenreGridItem(
+                item = item,
+                showSubtitle = showSubtitle,
+                serverUrl = serverUrl,
+                onClick = onClick,
+                onLongClick = onLongClick,
+                providerIconFetcher = providerIconFetcher
+            )
+        }
+    }
+}
+
+@Composable
 fun PodcastWithMenu(
     item: AppMediaItem.Podcast,
     showSubtitle: Boolean,
@@ -260,7 +303,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     onNavigateClick: (T) -> Unit,
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: ActionsViewModel.LibraryActions? = null,
     progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,
@@ -276,9 +319,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     Box(modifier = modifier) {
         itemComposable(
             Modifier.align(Alignment.Center),
-            onNavigateClick,
-            { expandedItemId = item.itemId },
-        )
+            onNavigateClick
+        ) { expandedItemId = item.itemId }
+
         DropdownMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null }
@@ -350,44 +393,43 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     }
                 )
             }
-            val libText = if (item.isInLibrary) "Remove from library" else "Add to library"
-            DropdownMenuItem(
-                text = { Text(libText) },
-                onClick = {
-                    libraryActions.onLibraryClick(item as AppMediaItem)
-                    expandedItemId = null
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector =
-                            if (item.isInLibrary) TablerIcons.FolderMinus
-                            else TablerIcons.FolderPlus,
-                        contentDescription = libText
-                    )
-                }
-            )
-
-
-            // Favorite management (only for library items)
-            if (item.isInLibrary) {
-                val favText = if (item.favorite == true) "Unfavorite" else "Favorite"
+            libraryActions?.let { actions ->
+                val libText = if (item.isInLibrary) "Remove from library" else "Add to library"
                 DropdownMenuItem(
-                    text = { Text(favText) },
+                    text = { Text(libText) },
                     onClick = {
-                        (item as? AppMediaItem)?.let {
-                            libraryActions.onFavoriteClick(it)
-                            expandedItemId = null
-                        }
+                        actions.onLibraryClick(item as AppMediaItem)
+                        expandedItemId = null
                     },
                     leadingIcon = {
                         Icon(
                             imageVector =
-                                if (item.favorite == true) TablerIcons.HeartBroken
-                                else TablerIcons.Heart,
-                            contentDescription = favText
+                                if (item.isInLibrary) TablerIcons.FolderMinus
+                                else TablerIcons.FolderPlus,
+                            contentDescription = libText
                         )
                     }
                 )
+
+                // Favorite management (only for library items)
+                if (item.isInLibrary) {
+                    val favText = if (item.favorite == true) "Unfavorite" else "Favorite"
+                    DropdownMenuItem(
+                        text = { Text(favText) },
+                        onClick = {
+                            actions.onFavoriteClick(item)
+                            expandedItemId = null
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector =
+                                    if (item.favorite == true) TablerIcons.HeartBroken
+                                    else TablerIcons.Heart,
+                                contentDescription = favText
+                            )
+                        }
+                    )
+                }
             }
 
             if (playlistActions != null && (item is AppMediaItem.Album || item is AppMediaItem.Artist)) {
@@ -396,7 +438,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     onClick = {
                         showPlaylistDialog = true
                         expandedItemId = null
-                        // Load playlists when dialog opens
+                        // Load playlists when dialogue opens
                         coroutineScope.launch {
                             isLoadingPlaylists = true
                             playlists = playlistActions.onLoadPlaylists()
@@ -435,7 +477,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
             }
         }
 
-        // Add to Playlist Dialog
+        // Add to Playlist Dialogue
         if (showPlaylistDialog && item is AppMediaItem.Track) {
             AlertDialog(
                 onDismissRequest = {
@@ -455,8 +497,10 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     } else if (playlists.isEmpty()) {
                         Text("No editable playlists available")
                     } else {
-                        Column {
-                            playlists.forEach { playlist ->
+                        LazyColumn {
+                            items(
+                                items = playlists,
+                                key = { p -> p.itemId }) { playlist ->
                                 TextButton(
                                     onClick = {
                                         playlistActions?.onAddToPlaylist

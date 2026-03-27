@@ -112,7 +112,7 @@ class WebRTCConnectionManager(
             return@withLock
         }
 
-        logger.i { "Starting WebRTC connection to Remote ID: $remoteId" }
+        logger.i { "Starting WebRTC connection" }
         currentRemoteId = remoteId
         _connectionState.value = WebRTCConnectionState.ConnectingToSignaling
 
@@ -209,7 +209,7 @@ class WebRTCConnectionManager(
      * Handle Connected: Initialize peer connection and create offer.
      */
     private suspend fun handleConnected(message: SignalingMessage.Connected) {
-        logger.i { "Connected. Session ID: ${message.sessionId}, ICE servers: ${message.iceServers.size}" }
+        logger.i { "Connected. ICE servers: ${message.iceServers.size}" }
         currentSessionId = message.sessionId
         _connectionState.value =
             WebRTCConnectionState.NegotiatingPeerConnection(message.sessionId ?: "")

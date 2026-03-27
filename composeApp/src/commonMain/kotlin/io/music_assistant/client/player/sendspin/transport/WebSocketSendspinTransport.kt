@@ -3,6 +3,7 @@ package io.music_assistant.client.player.sendspin.transport
 import io.music_assistant.client.player.sendspin.WebSocketState
 import io.music_assistant.client.player.sendspin.connection.SendspinWsHandler
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * WebSocket implementation of SendspinTransport.
@@ -12,7 +13,10 @@ class WebSocketSendspinTransport(
     private val sendspinWsHandler: SendspinWsHandler
 ) : SendspinTransport {
 
-    constructor(serverUrl: String) : this(SendspinWsHandler(serverUrl))
+    constructor(
+        serverUrl: String,
+        networkAvailable: StateFlow<Boolean>? = null
+    ) : this(SendspinWsHandler(serverUrl, networkAvailable))
 
     override val connectionState: Flow<WebSocketState>
         get() = sendspinWsHandler.connectionState

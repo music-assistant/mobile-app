@@ -2,7 +2,7 @@ name: Check PR
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ dev, android-release ]
 
 jobs:
   build:
@@ -23,21 +23,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Restore release keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > composeApp/upload-keystore.jks
-          cat > composeApp/keystore.properties <<EOF
-          storeFile=upload-keystore.jks
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          EOF
+      - name: Build debug APK
+        run: ./gradlew :androidApp:assembleDebug
 
       - name: Run tests
-        run: ./gradlew testDebug
+        run: ./gradlew :androidApp:testDebug :composeApp:testAndroidHostTest
 
       - name: Run lint
-        run: ./gradlew lintDebug
-
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew :androidApp:lintDebug

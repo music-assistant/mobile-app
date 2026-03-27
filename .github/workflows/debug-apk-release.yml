@@ -3,7 +3,7 @@ name: Debug APK Release
 on:
   push:
     branches:
-      - main
+      - dev
   workflow_dispatch:
 
 permissions:
@@ -35,8 +35,8 @@ jobs:
 
       - name: Restore release keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > composeApp/upload-keystore.jks
-          cat > composeApp/keystore.properties <<EOF
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/upload-keystore.jks
+          cat > androidApp/keystore.properties <<EOF
           storeFile=upload-keystore.jks
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
@@ -44,7 +44,7 @@ jobs:
           EOF
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew :androidApp:assembleSelfSignedRelease
 
       - name: Get vars
         id: vars
@@ -80,7 +80,7 @@ jobs:
             
             ### Installation
             Download the APK below and install on your Android device.
-          files: composeApp/build/outputs/apk/debug/composeApp-debug.apk
+          files: androidApp/build/outputs/apk/selfSignedRelease/androidApp-selfSignedRelease.apk
           draft: false
           prerelease: true
         env:
