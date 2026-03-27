@@ -3,6 +3,7 @@ name: Android Release
 on:
   push:
     branches: [ android-release ]
+  workflow_dispatch:
 
 permissions:
   contents: write

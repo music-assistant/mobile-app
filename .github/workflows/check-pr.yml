@@ -2,7 +2,7 @@ name: Check PR
 
 on:
   pull_request:
-    branches: [ dev, android-release ]
+    branches: [ dev ]
 
 jobs:
   build:
