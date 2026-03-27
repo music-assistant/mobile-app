@@ -238,7 +238,7 @@ private fun ItemChildren(
                         isRowMode = isRowMode,
                         onBack = onBack,
                         onToggleViewMode = onToggleViewMode,
-                        libraryActions = libraryActions.takeIf { item !is AppMediaItem.Genre },
+                        libraryActions = libraryActions,
                         playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
                         scrollBehavior = scrollBehavior
                     )
@@ -275,7 +275,7 @@ private fun ItemChildren(
                                         ArtistWithMenu(
                                             item = artist,
                                             rowMode = isRowMode,
-                                            showSubtitle = true,
+
                                             serverUrl = serverUrl,
                                             onNavigateClick = onNavigateClick,
                                             onPlayOption = onPlayChildClick,
@@ -318,7 +318,7 @@ private fun ItemChildren(
                                         AlbumWithMenu(
                                             item = album,
                                             rowMode = isRowMode,
-                                            showSubtitle = true,
+
                                             serverUrl = serverUrl,
                                             onNavigateClick = onNavigateClick,
                                             onPlayOption = onPlayChildClick,

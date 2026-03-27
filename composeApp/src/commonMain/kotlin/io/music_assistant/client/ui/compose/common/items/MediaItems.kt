@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Schedule
+import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,7 +60,6 @@ import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPain
  * @param item The artist item to display
  * @param serverUrl Server URL for image loading
  * @param onClick Click handler
- * @param showSubtitle Whether to show subtitle (default true)
  */
 @Composable
 fun ArtistGridItem(
@@ -68,7 +68,6 @@ fun ArtistGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Artist) -> Unit,
     onLongClick: (AppMediaItem.Artist) -> Unit,
-    showSubtitle: Boolean,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
 ) {
     GridItem(
@@ -93,17 +92,15 @@ fun ArtistGridItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        if (showSubtitle) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.subtitle.orEmpty(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.subtitle.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -143,7 +140,6 @@ private fun ArtistImage(
  * @param item The album item to display
  * @param serverUrl Server URL for image loading
  * @param onClick Click handler
- * @param showSubtitle Whether to show subtitle (default true)
  */
 @Composable
 fun AlbumGridItem(
@@ -152,7 +148,6 @@ fun AlbumGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Album) -> Unit,
     onLongClick: (AppMediaItem.Album) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
 ) {
     GridItem(
@@ -177,17 +172,15 @@ fun AlbumGridItem(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
-        if (showSubtitle) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.subtitle.orEmpty(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.subtitle.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -238,7 +231,7 @@ private fun AlbumImage(
  * @param item The playlist item to display
  * @param serverUrl Server URL for image loading
  * @param onClick Click handler
- * @param showSubtitle Whether to show subtitle (default true)
+
  */
 @Composable
 fun PlaylistGridItem(
@@ -247,7 +240,6 @@ fun PlaylistGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Playlist) -> Unit,
     onLongClick: (AppMediaItem.Playlist) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null
 ) {
     GridItem(
@@ -272,17 +264,15 @@ fun PlaylistGridItem(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
-        if (showSubtitle) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -364,7 +354,6 @@ fun PodcastGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Podcast) -> Unit,
     onLongClick: (AppMediaItem.Podcast) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null
 ) {
     GridItem(
@@ -389,17 +378,15 @@ fun PodcastGridItem(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
-        if (showSubtitle) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -470,7 +457,7 @@ private fun PodcastImage(
  * @param item The track item to display
  * @param serverUrl Server URL for image loading
  * @param onClick Click handler
- * @param showSubtitle Whether to show subtitle (default true)
+
  */
 @Composable
 internal fun TrackGridItem(
@@ -479,7 +466,6 @@ internal fun TrackGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Track) -> Unit,
     onLongClick: (AppMediaItem.Track) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
 ) {
     GridItem(
@@ -495,7 +481,7 @@ internal fun TrackGridItem(
                 modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
-        GridPlayableItemLabels(item, showSubtitle)
+        GridPlayableItemLabels(item)
     }
 }
 
@@ -550,7 +536,6 @@ internal fun PodcastEpisodeGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.PodcastEpisode) -> Unit,
     onLongClick: (AppMediaItem.PodcastEpisode) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
 ) {
     GridItem(
@@ -570,7 +555,7 @@ internal fun PodcastEpisodeGridItem(
                 resumePositionMs = item.resumePositionMs
             )
         }
-        GridPlayableItemLabels(item, showSubtitle)
+        GridPlayableItemLabels(item)
     }
 }
 
@@ -633,7 +618,7 @@ private fun PodcastEpisodeImage(
  * @param item The radio station item to display
  * @param serverUrl Server URL for image loading
  * @param onClick Click handler
- * @param showSubtitle Whether to show subtitle (default true)
+
  */
 @Composable
 internal fun RadioGridItem(
@@ -642,7 +627,6 @@ internal fun RadioGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.RadioStation) -> Unit,
     onLongClick: (AppMediaItem.RadioStation) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
 ) {
     GridItem(
@@ -658,7 +642,7 @@ internal fun RadioGridItem(
                 modifier = Modifier.align(Alignment.BottomEnd).size(16.dp)
             )
         }
-        GridPlayableItemLabels(item, showSubtitle)
+        GridPlayableItemLabels(item)
     }
 }
 
@@ -698,7 +682,7 @@ private fun RadioImage(
  * @param item The audiobook item to display
  * @param serverUrl Server URL for image loading
  * @param onClick Click handler
- * @param showSubtitle Whether to show subtitle (default true)
+
  */
 @Composable
 internal fun AudiobookGridItem(
@@ -707,7 +691,6 @@ internal fun AudiobookGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Audiobook) -> Unit,
     onLongClick: (AppMediaItem.Audiobook) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?
 ) {
     GridItem(
@@ -736,17 +719,15 @@ internal fun AudiobookGridItem(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
-        if (showSubtitle) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -803,10 +784,7 @@ private fun AudiobookImage(
 }
 
 @Composable
-private fun GridPlayableItemLabels(
-    item: PlayableItem,
-    showSubtitle: Boolean
-) {
+private fun GridPlayableItemLabels(item: PlayableItem) {
     Spacer(Modifier.height(4.dp))
     Text(
         text = item.name,
@@ -816,17 +794,15 @@ private fun GridPlayableItemLabels(
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center,
     )
-    if (showSubtitle) {
-        Text(
-            text = item.subtitle.orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
-    }
+    Text(
+        text = item.subtitle.orEmpty(),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+    )
 }
 
 /**
@@ -1111,7 +1087,6 @@ fun GenreGridItem(
     serverUrl: String?,
     onClick: (AppMediaItem.Genre) -> Unit,
     onLongClick: (AppMediaItem.Genre) -> Unit,
-    showSubtitle: Boolean = true,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null
 ) {
     GridItem(
@@ -1136,6 +1111,15 @@ fun GenreGridItem(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.subtitle.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -1156,7 +1140,7 @@ private fun GenreImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = Icons.Default.MusicNote
+            icon = GenreIcon
         )
         AsyncImage(
             placeholder = placeholder,
@@ -1259,15 +1243,13 @@ private fun RowItem(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            if (!subtitle.isNullOrEmpty()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = subtitle.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

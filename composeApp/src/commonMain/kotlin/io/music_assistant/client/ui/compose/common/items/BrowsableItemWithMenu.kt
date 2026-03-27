@@ -44,7 +44,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun AlbumWithMenu(
     item: AppMediaItem.Album,
-    showSubtitle: Boolean,
     rowMode: Boolean = false,
     onNavigateClick: (AppMediaItem.Album) -> Unit,
     onPlayOption: ((AppMediaItem.Album, QueueOption, Boolean) -> Unit),
@@ -73,7 +72,6 @@ fun AlbumWithMenu(
         } else {
             AlbumGridItem(
                 item = item,
-                showSubtitle = showSubtitle,
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -86,7 +84,6 @@ fun AlbumWithMenu(
 @Composable
 fun ArtistWithMenu(
     item: AppMediaItem.Artist,
-    showSubtitle: Boolean,
     rowMode: Boolean = false,
     onNavigateClick: (AppMediaItem.Artist) -> Unit,
     onPlayOption: ((AppMediaItem.Artist, QueueOption, Boolean) -> Unit),
@@ -115,7 +112,6 @@ fun ArtistWithMenu(
         } else {
             ArtistGridItem(
                 item = item,
-                showSubtitle = showSubtitle,
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -128,7 +124,6 @@ fun ArtistWithMenu(
 @Composable
 fun PlaylistWithMenu(
     item: AppMediaItem.Playlist,
-    showSubtitle: Boolean,
     rowMode: Boolean = false,
     onNavigateClick: (AppMediaItem.Playlist) -> Unit,
     onPlayOption: ((AppMediaItem.Playlist, QueueOption, Boolean) -> Unit),
@@ -157,7 +152,6 @@ fun PlaylistWithMenu(
         } else {
             PlaylistGridItem(
                 item = item,
-                showSubtitle = showSubtitle,
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -170,7 +164,6 @@ fun PlaylistWithMenu(
 @Composable
 fun AudiobookWithMenu(
     item: AppMediaItem.Audiobook,
-    showSubtitle: Boolean,
     rowMode: Boolean = false,
     onNavigateClick: (AppMediaItem.Audiobook) -> Unit,
     onPlayOption: ((AppMediaItem.Audiobook, QueueOption, Boolean) -> Unit),
@@ -201,7 +194,6 @@ fun AudiobookWithMenu(
         } else {
             AudiobookGridItem(
                 item = item,
-                showSubtitle = showSubtitle,
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -214,12 +206,11 @@ fun AudiobookWithMenu(
 @Composable
 fun GenreWithMenu(
     item: AppMediaItem.Genre,
-    showSubtitle: Boolean = true,
     rowMode: Boolean = false,
     onNavigateClick: (AppMediaItem.Genre) -> Unit,
     onPlayOption: ((AppMediaItem.Genre, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions? = null,
+    libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
     serverUrl: String?
 ) {
@@ -229,7 +220,7 @@ fun GenreWithMenu(
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
-        libraryActions = null,
+        libraryActions = libraryActions,
     ) { mod, onClick, onLongClick ->
         if (rowMode) {
             GenreRowItem(
@@ -243,7 +234,6 @@ fun GenreWithMenu(
         } else {
             GenreGridItem(
                 item = item,
-                showSubtitle = showSubtitle,
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -256,7 +246,6 @@ fun GenreWithMenu(
 @Composable
 fun PodcastWithMenu(
     item: AppMediaItem.Podcast,
-    showSubtitle: Boolean,
     rowMode: Boolean = false,
     onNavigateClick: (AppMediaItem.Podcast) -> Unit,
     onPlayOption: ((AppMediaItem.Podcast, QueueOption, Boolean) -> Unit),
@@ -285,7 +274,6 @@ fun PodcastWithMenu(
         } else {
             PodcastGridItem(
                 item = item,
-                showSubtitle = showSubtitle,
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -394,22 +382,25 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 )
             }
             libraryActions?.let { actions ->
-                val libText = if (item.isInLibrary) "Remove from library" else "Add to library"
-                DropdownMenuItem(
-                    text = { Text(libText) },
-                    onClick = {
-                        actions.onLibraryClick(item as AppMediaItem)
-                        expandedItemId = null
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector =
-                                if (item.isInLibrary) TablerIcons.FolderMinus
-                                else TablerIcons.FolderPlus,
-                            contentDescription = libText
-                        )
-                    }
-                )
+                if (item !is AppMediaItem.Genre) {
+                    val libText =
+                        if (item.isInLibrary) "Remove from library" else "Add to library"
+                    DropdownMenuItem(
+                        text = { Text(libText) },
+                        onClick = {
+                            actions.onLibraryClick(item as AppMediaItem)
+                            expandedItemId = null
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector =
+                                    if (item.isInLibrary) TablerIcons.FolderMinus
+                                    else TablerIcons.FolderPlus,
+                                contentDescription = libText
+                            )
+                        }
+                    )
+                }
 
                 // Favorite management (only for library items)
                 if (item.isInLibrary) {

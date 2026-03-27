@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -211,7 +212,7 @@ fun LibraryRow(
             LibraryItem("Audiobooks", Icons.AutoMirrored.Filled.MenuBook, MediaType.AUDIOBOOK),
             LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
             LibraryItem("Radio", Icons.Default.Radio, MediaType.RADIO),
-            LibraryItem("Genres", Icons.Default.MusicNote, MediaType.GENRE),
+            LibraryItem("Genres", GenreIcon, MediaType.GENRE),
             LibraryItem("Global search", Icons.Default.Search, null),
         )
     }
@@ -310,9 +311,6 @@ fun CategoryRow(
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)
 ) {
-    val isHomogenous = remember(mediaItems) {
-        mediaItems.all { it::class == mediaItems.firstOrNull()?.let { first -> first::class } }
-    }
     val rowListState = rememberLazyListState()
 
     Column {
@@ -379,7 +377,7 @@ fun CategoryRow(
                 when (item) {
                     is AppMediaItem.Artist -> ArtistWithMenu(
                         item = item,
-                        showSubtitle = !isHomogenous,
+
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -389,7 +387,7 @@ fun CategoryRow(
 
                     is AppMediaItem.Album -> AlbumWithMenu(
                         item = item,
-                        showSubtitle = !isHomogenous,
+
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -399,7 +397,7 @@ fun CategoryRow(
 
                     is AppMediaItem.Playlist -> PlaylistWithMenu(
                         item = item,
-                        showSubtitle = !isHomogenous,
+
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -409,7 +407,7 @@ fun CategoryRow(
 
                     is AppMediaItem.Podcast -> PodcastWithMenu(
                         item = item,
-                        showSubtitle = !isHomogenous,
+
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -438,7 +436,7 @@ fun CategoryRow(
 
                     is AppMediaItem.Audiobook -> AudiobookWithMenu(
                         item = item,
-                        showSubtitle = !isHomogenous,
+
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -458,7 +456,7 @@ fun CategoryRow(
 
                     is AppMediaItem.Genre -> GenreWithMenu(
                         item = item,
-                        showSubtitle = !isHomogenous,
+
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,

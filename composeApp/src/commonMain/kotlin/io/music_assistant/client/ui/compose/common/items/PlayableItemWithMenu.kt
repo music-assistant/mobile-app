@@ -78,7 +78,6 @@ fun TrackWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    showSubtitle = true,
                     providerIconFetcher = providerIconFetcher
                 )
             }
@@ -123,7 +122,6 @@ fun PodcastEpisodeWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    showSubtitle = true,
                     providerIconFetcher = providerIconFetcher
                 )
             }
@@ -166,7 +164,6 @@ fun RadioWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    showSubtitle = true,
                     providerIconFetcher = providerIconFetcher
                 )
             }

@@ -87,7 +87,7 @@ fun AdaptiveMediaGrid(
                 is AppMediaItem.Artist -> ArtistWithMenu(
                     item = item,
                     rowMode = isRowMode,
-                    showSubtitle = true,
+
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -98,7 +98,7 @@ fun AdaptiveMediaGrid(
                 is AppMediaItem.Album -> AlbumWithMenu(
                     item = item,
                     rowMode = isRowMode,
-                    showSubtitle = true,
+
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -109,7 +109,7 @@ fun AdaptiveMediaGrid(
                 is AppMediaItem.Playlist -> PlaylistWithMenu(
                     item = item,
                     rowMode = isRowMode,
-                    showSubtitle = true,
+
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -120,7 +120,7 @@ fun AdaptiveMediaGrid(
                 is AppMediaItem.Podcast -> PodcastWithMenu(
                     item = item,
                     rowMode = isRowMode,
-                    showSubtitle = true,
+
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -152,7 +152,7 @@ fun AdaptiveMediaGrid(
                 is AppMediaItem.Audiobook -> AudiobookWithMenu(
                     item = item,
                     rowMode = isRowMode,
-                    showSubtitle = true,
+
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -164,7 +164,7 @@ fun AdaptiveMediaGrid(
                 is AppMediaItem.Genre -> GenreWithMenu(
                     item = item,
                     rowMode = isRowMode,
-                    showSubtitle = true,
+
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,

@@ -1,7 +1,6 @@
 package io.music_assistant.client.data
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LibraryMusic
+import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 import androidx.compose.ui.graphics.Color
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
@@ -1541,7 +1540,7 @@ class MainDataSource(
                     val map = buildMap {
                         put(
                             "library",
-                            ProviderIconModel.Mdi(Icons.Default.LibraryMusic, Color.White)
+                            ProviderIconModel.Mdi(BookshelfIcon, Color.White)
                         )
                         manifests.forEach { manifest ->
                             ProviderIconModel.from(manifest.icon, manifest.iconSvgDark)?.let {

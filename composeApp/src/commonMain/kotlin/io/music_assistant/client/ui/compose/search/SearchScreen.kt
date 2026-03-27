@@ -262,7 +262,7 @@ private fun SearchContent(
                                 items(results.artists) { artist ->
                                     ArtistWithMenu(
                                         item = artist,
-                                        showSubtitle = true,
+
                                         serverUrl = serverUrl,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -280,7 +280,7 @@ private fun SearchContent(
                                 items(results.albums) { album ->
                                     AlbumWithMenu(
                                         item = album,
-                                        showSubtitle = true,
+
                                         serverUrl = serverUrl,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -298,7 +298,7 @@ private fun SearchContent(
                                 items(results.playlists) { playlist ->
                                     PlaylistWithMenu(
                                         item = playlist,
-                                        showSubtitle = true,
+
                                         serverUrl = serverUrl,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -316,7 +316,7 @@ private fun SearchContent(
                                 items(results.podcasts) { podcast ->
                                     PodcastWithMenu(
                                         item = podcast,
-                                        showSubtitle = true,
+
                                         serverUrl = serverUrl,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -334,7 +334,7 @@ private fun SearchContent(
                                 items(results.audiobooks) { audiobook ->
                                     AudiobookWithMenu(
                                         item = audiobook,
-                                        showSubtitle = true,
+
                                         serverUrl = serverUrl,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -370,7 +370,7 @@ private fun SearchContent(
                                 items(results.genres) { genre ->
                                     GenreWithMenu(
                                         item = genre,
-                                        showSubtitle = true,
+
                                         serverUrl = serverUrl,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
