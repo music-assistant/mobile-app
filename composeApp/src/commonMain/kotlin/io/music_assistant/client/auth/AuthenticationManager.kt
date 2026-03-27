@@ -148,8 +148,6 @@ class AuthenticationManager(
 
     suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String> {
         return try {
-            println("AuthenticationManager: Requesting OAuth URL with returnUrl=$returnUrl")
-
             val response = serviceClient.sendRequest(
                 Request.Auth.authorizationUrl(providerId, returnUrl)
             )
@@ -159,7 +157,6 @@ class AuthenticationManager(
             }
 
             response.resultAs<OauthUrl>()?.let { oauthUrl ->
-                println("AuthenticationManager: Received OAuth URL: ${oauthUrl.url}")
                 Result.success(oauthUrl.url)
             } ?: Result.failure(Exception("Failed to parse OAuth URL"))
         } catch (e: Exception) {
@@ -216,14 +213,14 @@ class AuthenticationManager(
                     }
                 }
 
-                Logger.d("Waiting for connection... State: $currentState, attempt ${attempts + 1}")
+                Logger.d("Waiting for connection... attempt ${attempts + 1}")
                 delay(250)
                 attempts++
             }
 
             // Timeout - connection not established
             val currentState = serviceClient.sessionState.value
-            Logger.e("Connection timeout - cannot authorize. Connection state: $currentState")
+            Logger.e("Connection timeout - cannot authorize")
             _authState.value = AuthState.Error("Connection timeout. Please try again.")
         }
     }
@@ -231,18 +228,15 @@ class AuthenticationManager(
     private suspend fun authorizeWithSavedToken(token: String) {
         try {
             serviceClient.authorize(token, isAutoLogin = true)
-        } catch (e: Exception) {
-            Logger.e(">>> AUTHORIZATION with saved token FAILED: ${e.message}")
+        } catch (_: Exception) {
             // Silent failure - user will see auth UI
         }
     }
 
     suspend fun logout(): Result<Unit> {
         return try {
-            Logger.e(">>> LOGOUT CALLED - Setting isLoggingOut flag to TRUE")
             // Set flag FIRST, before any async operations
             _isLoggingOut.value = true
-            Logger.e(">>> LOGOUT - Clearing token from settings")
             val currentState = serviceClient.sessionState.value
             if (currentState is SessionState.Connected) {
                 val serverIdentifier = when (currentState) {
@@ -257,16 +251,11 @@ class AuthenticationManager(
                 }
                 settings.setTokenForServer(serverIdentifier, null)
             }
-            Logger.e(">>> LOGOUT - Sending logout command to server")
-            // Now send logout command to server
             serviceClient.logout()
-            Logger.e(">>> LOGOUT - Setting auth state to Idle")
             _authState.value = AuthState.Idle
-            Logger.e(">>> LOGOUT COMPLETE - Flag remains TRUE to prevent auto-login")
             // Keep the flag set to prevent auto-login until user explicitly logs in again
             Result.success(Unit)
         } catch (e: Exception) {
-            Logger.e(">>> LOGOUT FAILED - Resetting flag to FALSE")
             _isLoggingOut.value = false
             Result.failure(e)
         }

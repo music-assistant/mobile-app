@@ -174,7 +174,6 @@ class SignalingClient(
                 )
             }
             logger.d { "Sending signaling message: ${message.type}" }
-            logger.d { "JSON payload: $json" }
             currentSession.send(Frame.Text(json))
         } catch (e: Exception) {
             logger.e(e) { "Failed to send signaling message" }
@@ -258,7 +257,7 @@ class SignalingClient(
     private suspend fun handleTextFrame(frame: Frame.Text) {
         try {
             val text = frame.readText()
-            logger.d { "Received signaling message: ${text.take(100)}..." }
+            logger.d { "Received signaling message" }
 
             val message = signalingJson.decodeFromString(SignalingMessageSerializer, text)
             logger.d { "Parsed signaling message type: ${message.type}" }

@@ -406,7 +406,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     logger.i { "Re-authenticating after WebRTC reconnection with saved token" }
                     authorize(token, isAutoLogin = true)
                 } else {
-                    logger.w { "No saved token to re-authenticate with for WebRTC server: $serverIdentifier" }
+                    logger.w { "No saved token to re-authenticate with for WebRTC server" }
                 }
             }
         )
@@ -509,7 +509,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 }
             }
             settings.setTokenForServer(serverIdentifier, null)
-            logger.d { "Cleared token for server: $serverIdentifier" }
+            logger.d { "Cleared token for server" }
         }
 
         if (_sessionState.value !is SessionState.Connected) return
@@ -561,7 +561,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         }
                     }
                     settings.setTokenForServer(serverIdentifier, token)
-                    logger.d { "Saved token for server: $serverIdentifier" }
+                    logger.d { "Saved token for server" }
                 }
 
                 _sessionState.update {
@@ -597,7 +597,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 }
             }
             settings.setTokenForServer(serverIdentifier, null)
-            logger.d { "Cleared token for server: $serverIdentifier due to auth failure" }
+            logger.d { "Cleared token for server due to auth failure" }
         }
     }
 

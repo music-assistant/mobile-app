@@ -16,7 +16,7 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
 
     actual fun shareLogs(logText: String) {
         val file = logFile()
-        file.writeText(logText)
+        file.writeText(LogSanitizer.sanitize(logText))
         shareFile(file)
     }
 
@@ -24,7 +24,11 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
 
     actual fun shareCrashLog() {
         val file = crashLogFile()
-        if (file.exists()) shareFile(file)
+        if (file.exists()) {
+            val sanitizedFile = File(context.cacheDir, "ma_crash_log_share.txt")
+            sanitizedFile.writeText(LogSanitizer.sanitize(file.readText()))
+            shareFile(sanitizedFile)
+        }
     }
 
     actual fun deleteCrashLog() {
