@@ -65,7 +65,7 @@ class SelectPlayerDialogTest {
         }
 
         composeTestRule.inScrollable("PlayersList") {
-            onNode(hasText(players.last().player.displayName)).assertIsDisplayed()
+            onNode(hasText(players.last().player.name)).assertIsDisplayed()
         }
     }
 
@@ -83,7 +83,7 @@ class SelectPlayerDialogTest {
         }
 
         composeTestRule.inScrollable("PlayersList") {
-            onNode(hasText(players.first().player.displayName)).assertIsDisplayed()
+            onNode(hasText(players.first().player.name)).assertIsDisplayed()
         }
 
         composeTestRule.onNodeWithText("Group").assertIsDisplayed()

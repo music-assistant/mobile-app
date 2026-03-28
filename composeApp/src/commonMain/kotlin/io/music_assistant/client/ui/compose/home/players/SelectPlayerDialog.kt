@@ -88,8 +88,9 @@ fun SelectPlayerDialog(
                                 players,
                                 selectedPlayer,
                                 onDismissRequest,
-                                onMoveToPlayer)
-                                { showGroupSettings = true }
+                                onMoveToPlayer
+                            )
+                            { showGroupSettings = true }
                         }
                     }
                 }
@@ -141,10 +142,17 @@ private fun PlayerSelection(
                         )
 
                         Text(
-                            it.player.displayName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp)
+                            text = it.player.name,
+                            modifier = Modifier.padding(start = 16.dp),
+                            style = MaterialTheme.typography.bodyLarge
                         )
+                        it.player.suffix?.let { suffix ->
+                            Text(
+                                text = suffix,
+                                modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
                     }
                 }
             }

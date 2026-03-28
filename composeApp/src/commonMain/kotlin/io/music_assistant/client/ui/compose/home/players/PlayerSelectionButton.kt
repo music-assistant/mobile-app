@@ -46,7 +46,7 @@ fun PlayerSelectionButton(
                     )
                 }
                 Text(
-                    text = player.player.displayName,
+                    text = player.player.name,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Medium,
@@ -54,6 +54,17 @@ fun PlayerSelectionButton(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                player.player.suffix?.let { suffix ->
+                    Text(
+                        text = suffix,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium,
+                        color = textColor.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
 

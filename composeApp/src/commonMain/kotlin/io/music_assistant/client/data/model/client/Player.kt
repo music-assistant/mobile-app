@@ -32,10 +32,10 @@ data class Player(
     val suffix = when {
         isGroup -> " (${groupMembers?.size ?: 0})"
         isGrouped && (groupMembers?.size ?: 0) > 1 -> " +${groupMembers?.size?.minus(1)}"
-        else -> ""
+        else -> null
     }
 
-    val displayName: String = "$name$suffix"
+    val nameAndSuffix: String = name + (suffix?.let { " $it" } ?: "")
 
     val providerType = provider.substringBefore("--")
 
