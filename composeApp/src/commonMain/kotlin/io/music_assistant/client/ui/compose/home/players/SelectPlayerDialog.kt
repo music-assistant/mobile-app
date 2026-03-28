@@ -88,9 +88,8 @@ fun SelectPlayerDialog(
                                 players,
                                 selectedPlayer,
                                 onDismissRequest,
-                                onMoveToPlayer,
+                                onMoveToPlayer)
                                 { showGroupSettings = true }
-                            )
                         }
                     }
                 }
@@ -199,8 +198,11 @@ fun GroupSettings(
                 GroupPlayerItem(
                     playerId = item.player.id,
                     playerName = item.player.name,
-                    isGroup = item.player.isGroup,
-                    volume = if (item.player.isGroup) item.player.groupVolume else item.player.volumeLevel,
+                    useGroupVolume = item.player.isGroup || item.player.isGrouped,
+                    volume =
+                        if (item.player.isGroup || item.player.isGrouped) item.player.groupVolume
+                        else item.player.volumeLevel,
+                    isVolumeEnabled = item.player.isVolumeSliderAccessible,
                     isMuted = item.player.volumeMuted.takeIf { item.player.canMute },
                     simplePlayerAction = playerAction,
                 )
@@ -213,6 +215,7 @@ fun GroupSettings(
                     playerId = child.id,
                     playerName = child.name,
                     volume = child.volume,
+                    isVolumeEnabled = child.volumeSliderAccessible,
                     isMuted = child.isMuted,
                     simplePlayerAction = playerAction,
                     bindItem = child,
@@ -221,11 +224,12 @@ fun GroupSettings(
 
             // Unbound players
             val unboundChildren = item.groupChildren.filter { !it.isBound }
-            items(unboundChildren, key = { it.id }) { child ->
+            items(unboundChildren, key = { "${it.id}_${it.volume}" }) { child ->
                 GroupPlayerItem(
                     playerId = child.id,
                     playerName = child.name,
                     volume = child.volume,
+                    isVolumeEnabled = child.volumeSliderAccessible,
                     isMuted = child.isMuted,
                     simplePlayerAction = playerAction,
                     bindItem = child,
@@ -252,8 +256,9 @@ fun GroupSettings(
 private fun GroupPlayerItem(
     playerId: String,
     playerName: String,
-    isGroup: Boolean = false,
+    useGroupVolume: Boolean = false,
     volume: Float?,
+    isVolumeEnabled: Boolean,
     isMuted: Boolean?,
     simplePlayerAction: (String, PlayerAction) -> Unit,
     bindItem: PlayerData.Bind? = null,
@@ -309,7 +314,7 @@ private fun GroupPlayerItem(
             }
         }
 
-        val volumeEnabled = volume != null && bindItem?.isBound != false
+        val volumeEnabled = isVolumeEnabled && volume != null && bindItem?.isBound != false
         Row {
             isMuted?.let {
                 IconButton(onClick = {
@@ -335,7 +340,7 @@ private fun GroupPlayerItem(
                 onValueChangeFinished = {
                     simplePlayerAction(
                         playerId,
-                        if (isGroup) PlayerAction.GroupVolumeSet(currentVolume.toDouble())
+                        if (useGroupVolume) PlayerAction.GroupVolumeSet(currentVolume.toDouble())
                         else PlayerAction.VolumeSet(currentVolume.toDouble())
                     )
                 },

@@ -26,22 +26,27 @@ data class Player(
     val groupVolume: Float?,
 ) {
 
-    val isGroup = type == PlayerType.GROUP || groupMembers?.isNotEmpty() == true
+    val isGroup = type == PlayerType.GROUP
+    val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true
 
-    val displayName: String = run {
-        val counter = groupMembers?.takeIf { isGroup || it.size > 1 }?.size
-        val suffix = if (counter != null) {
-            if (isGroup) " (${counter})" else " +${counter - 1}"
-        } else ""
-        "$name$suffix"
+    val suffix = when {
+        isGroup -> " (${groupMembers?.size ?: 0})"
+        isGrouped && (groupMembers?.size ?: 0) > 1 -> " +${groupMembers?.size?.minus(1)}"
+        else -> ""
     }
+
+    val displayName: String = "$name$suffix"
 
     val providerType = provider.substringBefore("--")
 
-    val currentVolume =
-        if (groupMembers?.isNotEmpty() == true) groupVolume else volumeLevel
+    val currentVolume = if (groupMembers?.isNotEmpty() == true) groupVolume else volumeLevel
 
-    val canPlay = !isGroup || (groupMembers?.isNotEmpty() == true)
+    val isVolumeSliderAccessible = (isGroup || canSetVolume) && currentVolume != null
+
+    val canPlay = when {
+        isGroup -> groupMembers?.isNotEmpty() == true
+        else -> true
+    }
 
     fun asBindFor(other: Player): PlayerData.Bind? {
         if (id == other.id) return null
@@ -51,6 +56,7 @@ data class Player(
             parentId = other.id,
             name = name,
             volume = volumeLevel,
+            volumeSliderAccessible = isVolumeSliderAccessible,
             isMuted = volumeMuted.takeIf { canMute },
             isBound = other.groupMembers?.contains(id) == true,
             isManageable = other.staticGroupMembers?.contains(id) != true,

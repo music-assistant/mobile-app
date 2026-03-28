@@ -195,7 +195,7 @@ internal fun PlayersPager(
 
                 if (
                     showQueue
-                    && player.player.canSetVolume
+                    && player.player.isVolumeSliderAccessible
                     && player.player.currentVolume != null
                 ) {
                     if (!isLocalPlayer) {

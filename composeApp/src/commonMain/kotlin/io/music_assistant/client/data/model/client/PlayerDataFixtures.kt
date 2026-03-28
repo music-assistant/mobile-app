@@ -57,6 +57,7 @@ object PlayerDataFixtures {
             id = "bind${uniqueIdGenerator.nextInt()}",
             parentId = "bind${uniqueIdGenerator.nextInt()}",
             volume = null,
+            volumeSliderAccessible = false,
             isMuted = null,
             name = "Player ${uniqueIdGenerator.nextInt()}",
             isBound = false,
