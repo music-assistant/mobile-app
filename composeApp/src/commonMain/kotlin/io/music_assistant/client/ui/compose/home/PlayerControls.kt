@@ -51,7 +51,7 @@ fun PlayerControls(
         modifier = modifier
             .wrapContentSize(),
         horizontalArrangement = Arrangement.spacedBy(
-            16.dp,
+            8.dp,
             alignment = Alignment.CenterHorizontally
         ),
         verticalAlignment = Alignment.CenterVertically,
