@@ -19,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -76,35 +77,37 @@ fun ItemDetailsScreen(
         }
     }
 
-    ItemDetails(
-        state,
-        serverUrl,
-        onBack,
-        isRowMode,
-        toastState,
-        onNavigateToItem,
-        actionsViewModel::getEditablePlaylists,
-        actionsViewModel::addToPlaylist,
-        actionsViewModel::onLibraryClick,
-        actionsViewModel::onFavoriteClick,
-        actionsViewModel::onMarkPlayed,
-        actionsViewModel::onMarkUnplayed,
-        { id, pos ->
-            actionsViewModel.removeFromPlaylist(
-                id,
-                pos,
-                viewModel::reload
-            )
-        },
-        { modifier, provider ->
-            actionsViewModel.getProviderIcon(provider)
-                ?.let { ProviderIcon(modifier, it) }
-        },
-        viewModel::onPlayClick,
-        viewModel::toggleItemsRowMode,
-        viewModel::onChapterClick,
-        viewModel::onPlayClick
-    )
+    Surface {
+        ItemDetails(
+            state,
+            serverUrl,
+            onBack,
+            isRowMode,
+            toastState,
+            onNavigateToItem,
+            actionsViewModel::getEditablePlaylists,
+            actionsViewModel::addToPlaylist,
+            actionsViewModel::onLibraryClick,
+            actionsViewModel::onFavoriteClick,
+            actionsViewModel::onMarkPlayed,
+            actionsViewModel::onMarkUnplayed,
+            { id, pos ->
+                actionsViewModel.removeFromPlaylist(
+                    id,
+                    pos,
+                    viewModel::reload
+                )
+            },
+            { modifier, provider ->
+                actionsViewModel.getProviderIcon(provider)
+                    ?.let { ProviderIcon(modifier, it) }
+            },
+            viewModel::onPlayClick,
+            viewModel::toggleItemsRowMode,
+            viewModel::onChapterClick,
+            viewModel::onPlayClick
+        )
+    }
 }
 
 @Composable
