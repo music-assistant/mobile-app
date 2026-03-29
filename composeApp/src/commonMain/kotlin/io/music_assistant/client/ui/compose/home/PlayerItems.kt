@@ -141,6 +141,7 @@ fun CompactPlayerItem(
         }
 
         PlayerControls(
+            modifier = Modifier.padding(start = 16.dp),
             playerData = item,
             playerAction = playerAction,
             showAdditionalButtons = showAdditionalControls,
