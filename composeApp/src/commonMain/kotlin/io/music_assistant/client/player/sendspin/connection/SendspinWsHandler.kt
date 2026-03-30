@@ -1,9 +1,6 @@
 package io.music_assistant.client.player.sendspin.connection
 
 import co.touchlab.kermit.Logger
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.engine.cio.endpoint
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
@@ -17,6 +14,7 @@ import io.ktor.websocket.readText
 import io.music_assistant.client.api.DEFAULT_MAX_RECONNECT_ATTEMPTS
 import io.music_assistant.client.api.runReconnectionLoop
 import io.music_assistant.client.player.sendspin.WebSocketState
+import io.music_assistant.client.utils.createPlatformHttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -44,19 +42,9 @@ class SendspinWsHandler(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.IO + supervisorJob
 
-    private val client = HttpClient(CIO) {
+    private val client = createPlatformHttpClient {
         install(WebSockets) {
-            pingInterval = 5.seconds  // More aggressive keepalive (was 30s)
-            maxFrameSize = Long.MAX_VALUE
-        }
-
-        engine {
-            // TCP socket options for resilient connection during network transitions
-            endpoint {
-                keepAliveTime = 5000  // 5 seconds - maintain connection like VPN
-                connectTimeout = 10000
-                socketTimeout = 10000
-            }
+            pingInterval = 5.seconds
         }
     }
 

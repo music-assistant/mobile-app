@@ -1,20 +1,19 @@
 package io.music_assistant.client
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.asLiveData
-import androidx.lifecycle.lifecycleScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.services.MainMediaPlaybackService
 import io.music_assistant.client.ui.compose.App
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
@@ -40,11 +39,15 @@ class MainActivity : ComponentActivity() {
                 if (it) {
                     val serviceIntent = Intent(this, MainMediaPlaybackService::class.java)
                     serviceIntent.action = "ACTION_PLAY"
-                    lifecycleScope.launch {
-                        // This allows app to start before showing notification -
-                        // otherwise if something is playing on app start, service doesn't start...
-                        delay(1000)
+                    try {
                         startForegroundService(serviceIntent)
+                    } catch (e: Exception) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                            && e is ForegroundServiceStartNotAllowedException
+                        ) {
+                            Logger.withTag("MainActivity")
+                                .w("Cannot start foreground service from background, will retry when foregrounded")
+                        } else throw e
                     }
                 }
             }

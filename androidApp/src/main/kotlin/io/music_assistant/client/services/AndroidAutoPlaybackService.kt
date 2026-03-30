@@ -1,9 +1,12 @@
 package io.music_assistant.client.services
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Build
 import android.net.Uri
 import android.os.Bundle
+import co.touchlab.kermit.Logger
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.MediaSessionCompat.QueueItem
@@ -348,7 +351,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                     val intent =
                         Intent(this@AndroidAutoPlaybackService, MainMediaPlaybackService::class.java)
                     intent.action = "ACTION_PLAY"
-                    startForegroundService(intent)
+                    try {
+                        startForegroundService(intent)
+                    } catch (e: Exception) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                            && e is ForegroundServiceStartNotAllowedException
+                        ) {
+                            Logger.withTag("AndroidAutoPlaybackService")
+                                .w("Cannot start MainMediaPlaybackService from background")
+                        } else throw e
+                    }
                 }
             }
         }
