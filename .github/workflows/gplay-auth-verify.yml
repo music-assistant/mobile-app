@@ -49,10 +49,9 @@ jobs:
 
       - name: Test Google Play API access
         run: |
-          ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}
           # We check the 'internal' track specifically. This is a valid GET endpoint.
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
             "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/io.music_assistant.client/tracks/internal")
           
           if [ "$RESPONSE" = "200" ]; then
