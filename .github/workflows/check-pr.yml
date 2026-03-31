@@ -9,25 +9,35 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      - name: Skip for version bump PRs
+        if: ${{ startsWith(github.head_ref, 'chore/bump-android-v') }}
+        run: echo "Version bump PR — skipping build"
+
       - name: Checkout code
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Grant execute permission for gradlew
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         run: chmod +x ./gradlew
 
       - name: Build debug APK
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         run: ./gradlew :androidApp:assembleDebug
 
       - name: Run tests
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         run: ./gradlew :androidApp:testDebug :composeApp:testAndroidHostTest
 
       - name: Run lint
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         run: ./gradlew :androidApp:lintDebug
