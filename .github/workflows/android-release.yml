@@ -2,7 +2,7 @@ name: Android Release
 
 on:
   push:
-    branches: [ android-release ]
+    tags: [ 'android-v*' ]
   workflow_dispatch:
 
 permissions:
@@ -15,10 +15,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout android-release
+      - name: Checkout tagged commit
         uses: actions/checkout@v4
         with:
-          ref: android-release
           fetch-depth: 0
 
       - name: Configure git identity
@@ -34,14 +33,6 @@ jobs:
           echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "tag=android-v${VERSION_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Guard against duplicate tag
-        run: |
-          git fetch --tags
-          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump the version before releasing."
-            exit 1
-          fi
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -84,11 +75,6 @@ jobs:
           packageName: io.music_assistant.client
           releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
           track: internal
-
-      - name: Create and push tag
-        run: |
-          git tag "${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
