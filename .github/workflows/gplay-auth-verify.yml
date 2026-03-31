@@ -29,16 +29,11 @@ jobs:
 
       - name: Test Google Play api access
         run: |
-          # We use the /reviews endpoint because it is a valid top-level resource for an app.
-          # Even if you have 0 reviews, this will return a 200 OK if the app is found.
-          
-          echo "Checking access for: io.music_assistant.client"
-          
+          # Use the access_token output from the 'auth' step directly
           RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
             "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/io.music_assistant.client/reviews")
           
-          # Separate the body from the status code
           HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
           
@@ -46,24 +41,15 @@ jobs:
           
           if [ "$HTTP_STATUS" -eq "200" ]; then
             echo "✅ Success! The API can see your app."
-          elif [ "$HTTP_STATUS" -eq "404" ]; then
-            echo "❌ Error 404: The API cannot find package 'io.music_assistant.client'."
-            echo "Double-check that this matches the 'Package Name' in the Play Console exactly."
-            exit 1
-          elif [ "$HTTP_STATUS" -eq "403" ]; then
-            echo "❌ Error 403: Permission Denied."
-            echo "The Service Account is authenticated, but does not have 'View app information' for this specific app."
-            echo "API Response: $BODY"
-            exit 1
           else
-            echo "❌ Error $HTTP_STATUS: Unexpected error."
+            echo "❌ Error $HTTP_STATUS: Access denied or app not found."
             echo "API Response: $BODY"
             exit 1
           fi
 
       - name: Test Google Play API access
         run: |
-          ACCESS_TOKEN=$(gcloud auth print-access-token)
+          ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}
           # We check the 'internal' track specifically. This is a valid GET endpoint.
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
