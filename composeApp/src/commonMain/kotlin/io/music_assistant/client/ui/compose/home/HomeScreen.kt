@@ -23,6 +23,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +64,7 @@ import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeScreenViewModel = koinViewModel(),
@@ -142,13 +144,12 @@ fun HomeScreen(
                 label = "player_transition"
             ) { isPlayersViewShown ->
                 if (!isPlayersViewShown) {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
                     ) {
                         HomeContent(
-                            modifier = Modifier.weight(1f),
                             homeBackStack = homeBackStack,
                             connectionState = connectionState,
                             dataState = dataState,
@@ -172,14 +173,8 @@ fun HomeScreen(
                                 ?.let { ProviderIcon(modifier, it) }
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentHeight()
-                                .defaultMinSize(minHeight = 100.dp)
-                                .clickable { showPlayersView = true }
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                            contentAlignment = Alignment.Center
+                        FloatingBar(
+                            modifier = Modifier.align(Alignment.BottomCenter)
                         ) {
                             when (val state = playersState) {
                                 is HomeScreenViewModel.PlayersState.Loading -> Text(
