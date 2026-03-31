@@ -28,11 +28,16 @@ jobs:
       - name: Test Google Play API access
         run: |
           ACCESS_TOKEN=$(gcloud auth print-access-token)
+          # We check the 'internal' track specifically. This is a valid GET endpoint.
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/io.music_assistant.client")
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/io.music_assistant.client/tracks/internal")
+          
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ Google Play API access confirmed (HTTP $RESPONSE)"
+          elif [ "$RESPONSE" = "404" ]; then
+            echo "❌ HTTP 404: The App ID is wrong OR the Service Account wasn't invited to this specific app."
+            exit 1
           else
             echo "❌ Google Play API returned HTTP $RESPONSE"
             exit 1
