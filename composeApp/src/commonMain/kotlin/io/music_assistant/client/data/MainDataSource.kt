@@ -1,6 +1,5 @@
 package io.music_assistant.client.data
 
-import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 import androidx.compose.ui.graphics.Color
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
@@ -40,6 +39,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.StaleReason
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconModel
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
@@ -584,6 +584,9 @@ class MainDataSource(
                 if (apiClient.sessionState.value is SessionState.Connected) {
                     if (enabled) {
                         initSendspinIfEnabled()
+                        // Inject synthetic player immediately so UI reflects the change
+                        // before Sendspin fully connects and server confirms the player
+                        localPlayerRepository.onInitialPlayersReceived(hasLocalPlayer = false)
                     } else {
                         stopSendspin()
                     }
@@ -628,50 +631,51 @@ class MainDataSource(
             .flatMap { (it.groupMembers ?: emptyList()) - it.id }
             .filter { it != localPlayerId }
             .toSet()
-        val filteredPlayers = allPlayers.filter { it.id !in groupedPlayersToHide }
-
-        val playerDataList = filteredPlayers.map { player ->
-            val isLocal = player.id == localPlayerId
-            val groupChildren =
-                // No grouping for local player
-                if (isLocal) emptyList() else allPlayers.mapNotNull { it.asBindFor(player) }
-            if (isLocal && localData != null) {
-                // Repository is source of truth. Overlay interpolated position from tracker
-                // (repository has raw server position; queues has smooth 500ms interpolation).
-                val trackedElapsed = queues.find {
-                    it.id == player.queueId || it.id == localPlayerId
-                }?.elapsedTime
-                val withPosition = trackedElapsed?.let {
-                    (localData.queue as? DataState.Data)?.let { qd ->
-                        localData.copy(
-                            queue = DataState.Data(
-                                qd.data.copy(info = qd.data.info.copy(elapsedTime = it))
+        val playerDataList = allPlayers
+            .filter { it.id !in groupedPlayersToHide }
+            .map { player ->
+                val isLocal = player.id == localPlayerId
+                val groupChildren =
+                    // No grouping for local player
+                    if (isLocal) emptyList() else allPlayers.mapNotNull { it.asBindFor(player) }
+                if (isLocal && localData != null) {
+                    // Repository is source of truth. Overlay interpolated position from tracker
+                    // (repository has raw server position; queues has smooth 500ms interpolation).
+                    val trackedElapsed = queues.find {
+                        it.id == player.queueId || it.id == localPlayerId
+                    }?.elapsedTime
+                    val withPosition = trackedElapsed?.let {
+                        (localData.queue as? DataState.Data)?.let { qd ->
+                            localData.copy(
+                                queue = DataState.Data(
+                                    qd.data.copy(info = qd.data.info.copy(elapsedTime = it))
+                                )
                             )
-                        )
-                    }
-                } ?: localData
-                val enriched = withPosition.copy(groupChildren = groupChildren)
-                // Preserve loaded queue items from previous state
-                (oldValues as? DataState.Data)?.data
-                    ?.firstOrNull { it.player.id == player.id }
-                    ?.updateFrom(enriched) ?: enriched
-            } else {
-                val newData = PlayerData(
-                    player = player,
-                    queue = queues.find { it.id == player.queueId }
-                        ?.let { queueInfo ->
-                            DataState.Data(
-                                Queue(info = queueInfo, items = DataState.NoData())
-                            )
-                        } ?: DataState.NoData(),
-                    groupChildren = groupChildren,
-                    isLocal = isLocal
-                )
-                (oldValues as? DataState.Data)?.data
-                    ?.firstOrNull { it.player.id == player.id }
-                    ?.updateFrom(newData) ?: newData
+                        }
+                    } ?: localData
+                    // TODO check why we need groupChildren if it should be empty for local player?
+                    val enriched = withPosition.copy(groupChildren = groupChildren)
+                    // Preserve loaded queue items from previous state
+                    (oldValues as? DataState.Data)?.data
+                        ?.firstOrNull { it.player.id == player.id }
+                        ?.updateFrom(enriched) ?: enriched
+                } else {
+                    val newData = PlayerData(
+                        player = player,
+                        queue = queues.find { it.id == player.queueId }
+                            ?.let { queueInfo ->
+                                DataState.Data(
+                                    Queue(info = queueInfo, items = DataState.NoData())
+                                )
+                            } ?: DataState.NoData(),
+                        groupChildren = groupChildren,
+                        isLocal = isLocal
+                    )
+                    (oldValues as? DataState.Data)?.data
+                        ?.firstOrNull { it.player.id == player.id }
+                        ?.updateFrom(newData) ?: newData
+                }
             }
-        }
 
         // Inject synthetic local player if not in server list
         return if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
@@ -898,6 +902,8 @@ class MainDataSource(
             sendspinClient = null
         }
         _sendspinState.value = null
+        // Clear local player data immediately so the UI reflects the change
+        localPlayerRepository.clearState()
         // Fully release the shared audio pipeline (AudioTrack, decoder, etc.)
         // A fresh pipeline will be created on the next initSendspinIfEnabled()
         sendspinClientFactory.destroyPipeline()
