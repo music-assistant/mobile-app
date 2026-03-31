@@ -74,8 +74,8 @@ jobs:
         id: gcloud-auth
         uses: google-github-actions/auth@v3
         with:
-          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github/providers/music-assistant-mobile'
-          service_account: 'SERVICE_ACCOUNT_EMAIL'
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Upload to Google Play (internal testing)
         uses: r0adkll/upload-google-play@v1
