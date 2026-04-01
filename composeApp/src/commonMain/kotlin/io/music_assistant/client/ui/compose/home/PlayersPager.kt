@@ -51,7 +51,8 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.home.players.PlayerSelectionButton
+import io.music_assistant.client.ui.compose.home.players.GroupSettingsDialog
+import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
 import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
@@ -97,13 +98,21 @@ internal fun PlayersPager(
             val isLocalPlayer = player.playerId == playersState.localPlayerId
 
             var showSelectDialog by remember { mutableStateOf(false) }
+            var showGroupDialog by remember { mutableStateOf(false) }
             val onSelectPlayer = { showSelectDialog = true }
+            val onGroupButton = { showGroupDialog = true }
             if (showSelectDialog) {
                 SelectPlayerDialog(
                     selectedPlayer = player,
                     players = playerDataList,
                     onDismissRequest = { showSelectDialog = false },
                     onMoveToPlayer = { moveToPlayer(it) },
+                )
+            }
+            if (showGroupDialog) {
+                GroupSettingsDialog(
+                    player = player,
+                    onDismissRequest = { showGroupDialog = false },
                     groupAction = simplePlayerAction
                 )
             }
@@ -133,10 +142,11 @@ internal fun PlayersPager(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        PlayerSelectionButton(
+                        PlayerSelectionLayout(
                             player = player,
                             playersState = playersState,
-                            onSelectPlayer = onSelectPlayer
+                            onSelectPlayer = onSelectPlayer,
+                            onGroupButton = onGroupButton
                         )
                     }
                 }
@@ -163,6 +173,7 @@ internal fun PlayersPager(
                             serverUrl = serverUrl,
                             playerAction = playerAction,
                             onSelectPlayer = if (isAtLeastExpanded && !isQueueExpanded) onSelectPlayer else null,
+                            onGroupButton = if (isAtLeastExpanded && !isQueueExpanded) onGroupButton else null,
                             showAdditionalControls = isAtLeastExpanded,
                         )
                     }

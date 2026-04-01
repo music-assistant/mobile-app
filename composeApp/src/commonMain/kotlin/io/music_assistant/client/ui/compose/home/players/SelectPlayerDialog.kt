@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,8 +57,6 @@ fun SelectPlayerDialog(
     players: List<PlayerData>,
     onDismissRequest: () -> Unit = {},
     onMoveToPlayer: (String) -> Unit = {},
-    groupAction: (String, PlayerAction) -> Unit = { _, _ -> },
-    showGroupSettings: Boolean = false
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -67,31 +64,52 @@ fun SelectPlayerDialog(
             shape = RoundedCornerShape(16.dp)
         ) {
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
-                var showGroupSettings by remember { mutableStateOf(showGroupSettings) }
-
                 Column {
                     Text(
-                        if (showGroupSettings) "Group settings" else "Players",
+                        "Players",
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
                     Box(modifier = Modifier.padding(top = 16.dp)) {
-                        if (showGroupSettings) {
-                            GroupSettings(
-                                item = selectedPlayer,
-                                onDismiss = onDismissRequest,
-                                playerAction = groupAction
-                            )
-                        } else {
-                            PlayerSelection(
-                                players,
-                                selectedPlayer,
-                                onDismissRequest,
-                                onMoveToPlayer
-                            )
-                            { showGroupSettings = true }
-                        }
+                        PlayerSelection(
+                            players,
+                            selectedPlayer,
+                            onDismissRequest,
+                            onMoveToPlayer
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupSettingsDialog(
+    player: PlayerData,
+    onDismissRequest: () -> Unit = {},
+    groupAction: (String, PlayerAction) -> Unit = { _, _ -> },
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Box(modifier = Modifier.padding(vertical = 16.dp)) {
+                Column {
+                    Text(
+                        "Group settings",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    Box(modifier = Modifier.padding(top = 16.dp)) {
+                        GroupSettings(
+                            item = player,
+                            onDismiss = onDismissRequest,
+                            playerAction = groupAction
+                        )
                     }
                 }
             }
@@ -105,79 +123,48 @@ private fun PlayerSelection(
     selectedPlayer: PlayerData,
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
-    onShowGroupSettings: () -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
+            .testTag("PlayersList")
+            .selectableGroup()
+            .heightIn(max = MAX_LIST_HEIGHT)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .testTag("PlayersList")
-                .selectableGroup()
-                .heightIn(max = MAX_LIST_HEIGHT)
-                .weight(1f, false)
-        ) {
-            players.forEach {
-                item {
-                    val selected = it.player.id == selectedPlayer.player.id
+        players.forEach {
+            item {
+                val selected = it.player.id == selectedPlayer.player.id
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .selectable(
-                                selected = selected,
-                                onClick = {
-                                    onDismissRequest()
-                                    onSelectPlayer(it.player.id)
-                                },
-                                role = Role.RadioButton
-                            ).padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .selectable(
                             selected = selected,
-                            onClick = null
-                        )
-
-                        Text(
-                            text = it.player.name,
-                            modifier = Modifier.padding(start = 16.dp),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        it.player.suffix?.let { suffix ->
-                            Text(
-                                text = suffix,
-                                modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(
-                onClick = onShowGroupSettings,
-                enabled = selectedPlayer.groupChildren.isNotEmpty()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null
+                            onClick = {
+                                onDismissRequest()
+                                onSelectPlayer(it.player.id)
+                            },
+                            role = Role.RadioButton
+                        ).padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selected,
+                        onClick = null
                     )
 
                     Text(
-                        "Group",
-                        modifier = Modifier.padding(start = 4.dp)
+                        text = it.player.name,
+                        modifier = Modifier.padding(start = 16.dp),
+                        style = MaterialTheme.typography.bodyLarge
                     )
+                    it.player.suffix?.let { suffix ->
+                        Text(
+                            text = suffix,
+                            modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
             }
         }
@@ -403,11 +390,9 @@ private fun PreviewSelectPlayerDialogLongList() {
 @Composable
 private fun PreviewGroupSettingDialog() {
     val selectedPlayer = PlayerDataFixtures.playerData()
-    SelectPlayerDialog(
-        selectedPlayer = selectedPlayer,
-        players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
+    GroupSettingsDialog(
+        player = selectedPlayer,
         onDismissRequest = {},
-        showGroupSettings = true,
     )
 }
 
@@ -420,11 +405,9 @@ private fun PreviewGroupSettingDialogLongList() {
         }
     )
 
-    SelectPlayerDialog(
-        selectedPlayer = selectedPlayer,
-        players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
+    GroupSettingsDialog(
+        player = selectedPlayer,
         onDismissRequest = {},
-        showGroupSettings = true,
     )
 }
 

@@ -29,7 +29,7 @@ object InMemoryLogWriter : LogWriter() {
         while (true) {
             val current = bufferRef.load()
             val updated = current.toMutableList().apply {
-                if (size >= MAX_ENTRIES) removeFirst()
+                if (size >= MAX_ENTRIES) removeAt(0)
                 add(line)
             }
             if (bufferRef.compareAndSet(current, updated)) break

@@ -47,7 +47,7 @@ import io.music_assistant.client.data.model.client.AppMediaItem.Companion.descri
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
-import io.music_assistant.client.ui.compose.home.players.PlayerSelectionButton
+import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
 import io.music_assistant.client.utils.formatDuration
 import kotlin.time.DurationUnit
 
@@ -58,6 +58,7 @@ fun CompactPlayerItem(
     serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
+    onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false
 ) {
     val track = item.queueInfo?.currentItem?.track
@@ -153,10 +154,11 @@ fun CompactPlayerItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
-                PlayerSelectionButton(
+                PlayerSelectionLayout(
                     player = item,
                     playersState = playersState,
-                    onSelectPlayer = onSelectPlayer
+                    onSelectPlayer = onSelectPlayer,
+                    onGroupButton = onGroupButton ?: {}
                 )
             }
         }
