@@ -83,7 +83,6 @@ fun HomeScreen(
     }
 
     var showPlayersView by remember { mutableStateOf(false) }
-    var isQueueExpanded by remember { mutableStateOf(false) }
 
     val recommendationsState = viewModel.recommendationsState.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle()
@@ -196,11 +195,8 @@ fun HomeScreen(
                                             serverUrl = serverUrl,
                                             homeScreenViewModel = viewModel,
                                             actionsViewModel = actionsViewModel,
-                                            isQueueExpanded = isQueueExpanded,
-                                            onQueueExpanded = { isQueueExpanded = !isQueueExpanded },
-                                            onClose = { showPlayersView = false },
-                                            showQueue = false
-                                        )
+                                            expanded = false
+                                        ) { showPlayersView = false }
                                     }
                                 }
 
@@ -255,11 +251,8 @@ fun HomeScreen(
                                             serverUrl = serverUrl,
                                             homeScreenViewModel = viewModel,
                                             actionsViewModel = actionsViewModel,
-                                            isQueueExpanded = isQueueExpanded,
-                                            onQueueExpanded = { isQueueExpanded = !isQueueExpanded },
-                                            onClose = { showPlayersView = false },
-                                            showQueue = true
-                                        )
+                                            expanded = true
+                                        ) { showPlayersView = false }
                                     }
                                 }
 
@@ -423,10 +416,8 @@ private fun Player(
     serverUrl: String?,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
-    isQueueExpanded: Boolean,
-    onQueueExpanded: () -> Unit,
-    onClose: () -> Unit,
-    showQueue: Boolean
+    expanded: Boolean,
+    onClose: () -> Unit
 ) {
     PlayersPager(
         playerPagerState = playerPagerState,
@@ -439,10 +430,8 @@ private fun Player(
             homeScreenViewModel.playerAction(playerData, action)
         },
         onFavoriteClick = actionsViewModel::onFavoriteClick,
-        showQueue = showQueue,
-        isQueueExpanded = isQueueExpanded,
-        onQueueExpandedSwitch = onQueueExpanded,
-        onGoToLibrary = onClose,
+        expanded = expanded,
+        onClose = onClose,
         onItemMoved = { indexShift ->
             val currentPlayer =
                 state.playerData[playerPagerState.currentPage].player

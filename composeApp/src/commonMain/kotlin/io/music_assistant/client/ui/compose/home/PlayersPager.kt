@@ -67,10 +67,8 @@ internal fun PlayersPager(
     simplePlayerAction: (String, PlayerAction) -> Unit,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
-    showQueue: Boolean,
-    isQueueExpanded: Boolean,
-    onQueueExpandedSwitch: () -> Unit,
-    onGoToLibrary: () -> Unit,
+    expanded: Boolean,
+    onClose: () -> Unit,
     onItemMoved: ((Int) -> Unit)?,
     queueAction: (QueueAction) -> Unit,
     moveToPlayer: (String) -> Unit
@@ -82,7 +80,7 @@ internal fun PlayersPager(
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 pagerState = playerPagerState,
-                allowMoving = showQueue,
+                allowMoving = expanded,
                 onItemMoved = onItemMoved
             )
         }
@@ -116,6 +114,8 @@ internal fun PlayersPager(
                 )
             }
 
+            var isQueueExpanded by remember { mutableStateOf(false) }
+
             Column(
                 Modifier.background(
                     brush = if (isLocalPlayer) {
@@ -136,7 +136,7 @@ internal fun PlayersPager(
                 )
             ) {
                 val isAtLeastExpanded = WindowClass.isAtLeastExpanded()
-                if (!isAtLeastExpanded || showQueue) {
+                if (!isAtLeastExpanded || expanded) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -151,19 +151,18 @@ internal fun PlayersPager(
                 }
 
                 AnimatedVisibility(
-                    visible = isQueueExpanded.takeIf { showQueue } != false,
+                    visible = isQueueExpanded.takeIf { expanded } != false,
                     enter = fadeIn(tween(300)) + expandVertically(tween(300)),
                     exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
                 ) {
-
                     Box(
                         modifier = Modifier
                             .padding(top = 2.dp)
                             .fillMaxWidth()
                             .wrapContentSize()
                             .conditional(
-                                showQueue,
-                                { clickable { onQueueExpandedSwitch() } }
+                                expanded,
+                                { clickable { isQueueExpanded = false } }
                             )
                     ) {
                         CompactPlayerItem(
@@ -181,13 +180,13 @@ internal fun PlayersPager(
                 Column(
                     modifier = Modifier
                         .conditional(
-                            condition = isQueueExpanded.takeIf { showQueue } == false,
+                            condition = isQueueExpanded.takeIf { expanded } == false,
                             ifTrue = { weight(1f) },
                             ifFalse = { wrapContentHeight() }
                         )
                 ) {
                     AnimatedVisibility(
-                        visible = isQueueExpanded.takeIf { showQueue } == false,
+                        visible = isQueueExpanded.takeIf { expanded } == false,
                         enter = fadeIn(tween(300)) + expandVertically(tween(300)),
                         exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
                     ) {
@@ -204,7 +203,7 @@ internal fun PlayersPager(
                 }
 
                 if (
-                    showQueue
+                    expanded
                     && player.player.isVolumeSliderAccessible
                     && player.player.currentVolume != null
                 ) {
@@ -284,7 +283,7 @@ internal fun PlayersPager(
 
                 Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
 
-                player.queue.takeIf { showQueue }?.let { queue ->
+                player.queue.takeIf { expanded }?.let { queue ->
                     CollapsibleQueue(
                         modifier = Modifier
                             .conditional(
@@ -294,8 +293,8 @@ internal fun PlayersPager(
                             ),
                         queue = queue,
                         isQueueExpanded = isQueueExpanded,
-                        onQueueExpandedSwitch = { onQueueExpandedSwitch() },
-                        onGoToLibrary = onGoToLibrary,
+                        onQueueExpandedSwitch = { isQueueExpanded = !isQueueExpanded },
+                        onGoToLibrary = onClose,
                         serverUrl = serverUrl,
                         queueAction = queueAction,
                         players = playerDataList,
