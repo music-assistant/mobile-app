@@ -174,38 +174,14 @@ fun HomeScreen(
                                 .align(Alignment.BottomCenter),
                             onClick = { showPlayersView = true }
                         ) {
-                            when (val state = playersState) {
-                                is HomeScreenViewModel.PlayersState.Loading -> Text(
-                                    text = "Loading players...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-
-                                is HomeScreenViewModel.PlayersState.Data -> {
-                                    if (state.playerData.isEmpty()) {
-                                        Text(
-                                            text = "No players available",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    } else {
-                                        Player(
-                                            playerPagerState = playerPagerState,
-                                            state = state,
-                                            serverUrl = serverUrl,
-                                            homeScreenViewModel = viewModel,
-                                            actionsViewModel = actionsViewModel,
-                                            expanded = false
-                                        ) { showPlayersView = false }
-                                    }
-                                }
-
-                                else -> Text(
-                                    text = "No players available",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            Player(
+                                playerPagerState = playerPagerState,
+                                state = playersState,
+                                serverUrl = serverUrl,
+                                homeScreenViewModel = viewModel,
+                                actionsViewModel = actionsViewModel,
+                                expanded = false
+                            ) { showPlayersView = false }
                         }
                     }
                 } else {
@@ -230,38 +206,14 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            when (val state = playersState) {
-                                is HomeScreenViewModel.PlayersState.Loading -> Text(
-                                    text = "Loading players...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-
-                                is HomeScreenViewModel.PlayersState.Data -> {
-                                    if (state.playerData.isEmpty()) {
-                                        Text(
-                                            text = "No players available",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    } else {
-                                        Player(
-                                            playerPagerState = playerPagerState,
-                                            state = state,
-                                            serverUrl = serverUrl,
-                                            homeScreenViewModel = viewModel,
-                                            actionsViewModel = actionsViewModel,
-                                            expanded = true
-                                        ) { showPlayersView = false }
-                                    }
-                                }
-
-                                else -> Text(
-                                    text = "No players available",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            Player(
+                                playerPagerState = playerPagerState,
+                                state = playersState,
+                                serverUrl = serverUrl,
+                                homeScreenViewModel = viewModel,
+                                actionsViewModel = actionsViewModel,
+                                expanded = true
+                            ) { showPlayersView = false }
                         }
                     }
                 }
@@ -412,53 +364,77 @@ private fun HomeContent(
 @Composable
 private fun Player(
     playerPagerState: PagerState,
-    state: HomeScreenViewModel.PlayersState.Data,
+    state: HomeScreenViewModel.PlayersState,
     serverUrl: String?,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
     expanded: Boolean,
     onClose: () -> Unit
 ) {
-    PlayersPager(
-        playerPagerState = playerPagerState,
-        playersState = state,
-        serverUrl = serverUrl,
-        simplePlayerAction = { playerId, action ->
-            homeScreenViewModel.playerAction(playerId, action)
-        },
-        playerAction = { playerData, action ->
-            homeScreenViewModel.playerAction(playerData, action)
-        },
-        onFavoriteClick = actionsViewModel::onFavoriteClick,
-        expanded = expanded,
-        onClose = onClose,
-        onItemMoved = { indexShift ->
-            val currentPlayer =
-                state.playerData[playerPagerState.currentPage].player
-            val newIndex =
-                (playerPagerState.currentPage + indexShift).coerceIn(
-                    0,
-                    state.playerData.size - 1
+    when (state) {
+        is HomeScreenViewModel.PlayersState.Loading -> Text(
+            text = "Loading players...",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        is HomeScreenViewModel.PlayersState.Data -> {
+            if (state.playerData.isEmpty()) {
+                Text(
+                    text = "No players available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            val newPlayers =
-                state.playerData.map { it.player.id }
-                    .toMutableList()
-                    .apply {
-                        add(
-                            newIndex,
-                            removeAt(playerPagerState.currentPage)
-                        )
+            } else {
+                PlayersPager(
+                    playerPagerState = playerPagerState,
+                    playersState = state,
+                    serverUrl = serverUrl,
+                    simplePlayerAction = { playerId, action ->
+                        homeScreenViewModel.playerAction(playerId, action)
+                    },
+                    playerAction = { playerData, action ->
+                        homeScreenViewModel.playerAction(playerData, action)
+                    },
+                    onFavoriteClick = actionsViewModel::onFavoriteClick,
+                    expanded = expanded,
+                    onClose = onClose,
+                    onItemMoved = { indexShift ->
+                        val currentPlayer =
+                            state.playerData[playerPagerState.currentPage].player
+                        val newIndex =
+                            (playerPagerState.currentPage + indexShift).coerceIn(
+                                0,
+                                state.playerData.size - 1
+                            )
+                        val newPlayers =
+                            state.playerData.map { it.player.id }
+                                .toMutableList()
+                                .apply {
+                                    add(
+                                        newIndex,
+                                        removeAt(playerPagerState.currentPage)
+                                    )
+                                }
+                        homeScreenViewModel.selectPlayer(currentPlayer)
+                        homeScreenViewModel.onPlayersSortChanged(newPlayers)
+                    },
+                    queueAction = { action -> homeScreenViewModel.queueAction(action) },
+                    moveToPlayer = { id: String ->
+                        val player =
+                            state.playerData.find { it.player.id == id }
+                        if (player != null) {
+                            homeScreenViewModel.selectPlayer(player.player)
+                        }
                     }
-            homeScreenViewModel.selectPlayer(currentPlayer)
-            homeScreenViewModel.onPlayersSortChanged(newPlayers)
-        },
-        queueAction = { action -> homeScreenViewModel.queueAction(action) },
-        moveToPlayer = { id: String ->
-            val player =
-                state.playerData.find { it.player.id == id }
-            if (player != null) {
-                homeScreenViewModel.selectPlayer(player.player)
+                )
             }
         }
-    )
+
+        else -> Text(
+            text = "No players available",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
