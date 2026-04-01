@@ -73,8 +73,6 @@ internal fun PlayersPager(
     onGoToLibrary: () -> Unit,
     onItemMoved: ((Int) -> Unit)?,
     queueAction: (QueueAction) -> Unit,
-    settingsAction: (String) -> Unit,
-    dspSettingsAction: (String) -> Unit,
     moveToPlayer: (String) -> Unit
 ) {
     // Extract playerData list to ensure proper recomposition
@@ -84,7 +82,8 @@ internal fun PlayersPager(
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 pagerState = playerPagerState,
-                onItemMoved = onItemMoved,
+                allowMoving = showQueue,
+                onItemMoved = onItemMoved
             )
         }
 

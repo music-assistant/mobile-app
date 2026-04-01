@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
@@ -190,37 +190,16 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     } else {
-                                        PlayersPager(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .wrapContentHeight(),
+                                        Player(
                                             playerPagerState = playerPagerState,
-                                            playersState = state,
+                                            state = state,
                                             serverUrl = serverUrl,
-                                            simplePlayerAction = { playerId, action ->
-                                                viewModel.playerAction(playerId, action)
-                                            },
-                                            playerAction = { playerData, action ->
-                                                viewModel.playerAction(playerData, action)
-                                            },
-                                            onFavoriteClick = actionsViewModel::onFavoriteClick,
-                                            showQueue = false,
+                                            homeScreenViewModel = viewModel,
+                                            actionsViewModel = actionsViewModel,
                                             isQueueExpanded = isQueueExpanded,
-                                            onQueueExpandedSwitch = {
-                                                isQueueExpanded = !isQueueExpanded
-                                            },
-                                            onGoToLibrary = { showPlayersView = false },
-                                            onItemMoved = null,
-                                            queueAction = { action -> viewModel.queueAction(action) },
-                                            settingsAction = viewModel::openPlayerSettings,
-                                            dspSettingsAction = viewModel::openPlayerDspSettings,
-                                            moveToPlayer = { id: String ->
-                                                val player =
-                                                    state.playerData.find { it.player.id == id }
-                                                if (player != null) {
-                                                    viewModel.selectPlayer(player.player)
-                                                }
-                                            }
+                                            onQueueExpanded = { isQueueExpanded = !isQueueExpanded },
+                                            onClose = { showPlayersView = false },
+                                            showQueue = false
                                         )
                                     }
                                 }
@@ -270,54 +249,16 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     } else {
-                                        PlayersPager(
-                                            modifier = Modifier.fillMaxSize(),
+                                        Player(
                                             playerPagerState = playerPagerState,
-                                            playersState = state,
+                                            state = state,
                                             serverUrl = serverUrl,
-                                            simplePlayerAction = { playerId, action ->
-                                                viewModel.playerAction(playerId, action)
-                                            },
-                                            playerAction = { playerData, action ->
-                                                viewModel.playerAction(playerData, action)
-                                            },
-                                            onFavoriteClick = actionsViewModel::onFavoriteClick,
-                                            showQueue = true,
+                                            homeScreenViewModel = viewModel,
+                                            actionsViewModel = actionsViewModel,
                                             isQueueExpanded = isQueueExpanded,
-                                            onQueueExpandedSwitch = {
-                                                isQueueExpanded = !isQueueExpanded
-                                            },
-                                            onGoToLibrary = { showPlayersView = false },
-                                            onItemMoved = { indexShift ->
-                                                val currentPlayer =
-                                                    state.playerData[playerPagerState.currentPage].player
-                                                val newIndex =
-                                                    (playerPagerState.currentPage + indexShift).coerceIn(
-                                                        0,
-                                                        state.playerData.size - 1
-                                                    )
-                                                val newPlayers =
-                                                    state.playerData.map { it.player.id }
-                                                        .toMutableList()
-                                                        .apply {
-                                                            add(
-                                                                newIndex,
-                                                                removeAt(playerPagerState.currentPage)
-                                                            )
-                                                        }
-                                                viewModel.selectPlayer(currentPlayer)
-                                                viewModel.onPlayersSortChanged(newPlayers)
-                                            },
-                                            queueAction = { action -> viewModel.queueAction(action) },
-                                            settingsAction = viewModel::openPlayerSettings,
-                                            dspSettingsAction = viewModel::openPlayerDspSettings,
-                                            moveToPlayer = { id: String ->
-                                                val player =
-                                                    state.playerData.find { it.player.id == id }
-                                                if (player != null) {
-                                                    viewModel.selectPlayer(player.player)
-                                                }
-                                            }
+                                            onQueueExpanded = { isQueueExpanded = !isQueueExpanded },
+                                            onClose = { showPlayersView = false },
+                                            showQueue = true
                                         )
                                     }
                                 }
@@ -470,6 +411,64 @@ private fun HomeContent(
                         )
                     }
                 )
+            }
+        }
+    )
+}
+
+@Composable
+private fun Player(
+    playerPagerState: PagerState,
+    state: HomeScreenViewModel.PlayersState.Data,
+    serverUrl: String?,
+    homeScreenViewModel: HomeScreenViewModel,
+    actionsViewModel: ActionsViewModel,
+    isQueueExpanded: Boolean,
+    onQueueExpanded: () -> Unit,
+    onClose: () -> Unit,
+    showQueue: Boolean
+) {
+    PlayersPager(
+        playerPagerState = playerPagerState,
+        playersState = state,
+        serverUrl = serverUrl,
+        simplePlayerAction = { playerId, action ->
+            homeScreenViewModel.playerAction(playerId, action)
+        },
+        playerAction = { playerData, action ->
+            homeScreenViewModel.playerAction(playerData, action)
+        },
+        onFavoriteClick = actionsViewModel::onFavoriteClick,
+        showQueue = showQueue,
+        isQueueExpanded = isQueueExpanded,
+        onQueueExpandedSwitch = onQueueExpanded,
+        onGoToLibrary = onClose,
+        onItemMoved = { indexShift ->
+            val currentPlayer =
+                state.playerData[playerPagerState.currentPage].player
+            val newIndex =
+                (playerPagerState.currentPage + indexShift).coerceIn(
+                    0,
+                    state.playerData.size - 1
+                )
+            val newPlayers =
+                state.playerData.map { it.player.id }
+                    .toMutableList()
+                    .apply {
+                        add(
+                            newIndex,
+                            removeAt(playerPagerState.currentPage)
+                        )
+                    }
+            homeScreenViewModel.selectPlayer(currentPlayer)
+            homeScreenViewModel.onPlayersSortChanged(newPlayers)
+        },
+        queueAction = { action -> homeScreenViewModel.queueAction(action) },
+        moveToPlayer = { id: String ->
+            val player =
+                state.playerData.find { it.player.id == id }
+            if (player != null) {
+                homeScreenViewModel.selectPlayer(player.player)
             }
         }
     )

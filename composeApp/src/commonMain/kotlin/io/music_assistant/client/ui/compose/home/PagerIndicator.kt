@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 fun HorizontalPagerIndicator(
     modifier: Modifier = Modifier,
     pagerState: PagerState,
+    allowMoving: Boolean = true,
     onItemMoved: ((Int) -> Unit)?,
 ) {
     val pageCount = pagerState.pageCount
@@ -92,7 +93,7 @@ fun HorizontalPagerIndicator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        onItemMoved?.let {
+        if (allowMoving) {
             IconButton(
                 modifier = Modifier.size(32.dp),
                 enabled = pagerState.currentPage > 0,
@@ -155,7 +156,8 @@ fun HorizontalPagerIndicator(
                 textAlign = TextAlign.Center,
             )
         }
-        onItemMoved?.let {
+
+        if (allowMoving) {
             IconButton(
                 modifier = Modifier.size(32.dp),
                 enabled = pagerState.currentPage < pageCount - 1,
@@ -204,7 +206,8 @@ fun HorizontalPagerIndicatorDotsPreviewNoMove() {
         HorizontalPagerIndicator(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
             pagerState = rememberPagerState(pageCount = { 9 }, initialPage = 2),
-            onItemMoved = null,
+            allowMoving = false,
+            onItemMoved = { },
         )
     }
 }
