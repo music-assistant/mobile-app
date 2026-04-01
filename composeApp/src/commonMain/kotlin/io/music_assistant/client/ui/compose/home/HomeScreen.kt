@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -174,7 +175,7 @@ fun HomeScreen(
                                 .align(Alignment.BottomCenter),
                             onClick = { showPlayersView = true }
                         ) {
-                            Player(
+                            Players(
                                 playerPagerState = playerPagerState,
                                 state = playersState,
                                 serverUrl = serverUrl,
@@ -206,7 +207,7 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Player(
+                            Players(
                                 playerPagerState = playerPagerState,
                                 state = playersState,
                                 serverUrl = serverUrl,
@@ -362,7 +363,7 @@ private fun HomeContent(
 }
 
 @Composable
-private fun Player(
+private fun Players(
     playerPagerState: PagerState,
     state: HomeScreenViewModel.PlayersState,
     serverUrl: String?,
@@ -371,70 +372,66 @@ private fun Player(
     expanded: Boolean,
     onClose: () -> Unit
 ) {
-    when (state) {
-        is HomeScreenViewModel.PlayersState.Loading -> Text(
-            text = "Loading players...",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        is HomeScreenViewModel.PlayersState.Data -> {
-            if (state.playerData.isEmpty()) {
-                Text(
-                    text = "No players available",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                PlayersPager(
-                    playerPagerState = playerPagerState,
-                    playersState = state,
-                    serverUrl = serverUrl,
-                    simplePlayerAction = { playerId, action ->
-                        homeScreenViewModel.playerAction(playerId, action)
-                    },
-                    playerAction = { playerData, action ->
-                        homeScreenViewModel.playerAction(playerData, action)
-                    },
-                    onFavoriteClick = actionsViewModel::onFavoriteClick,
-                    expanded = expanded,
-                    onClose = onClose,
-                    onItemMoved = { indexShift ->
-                        val currentPlayer =
-                            state.playerData[playerPagerState.currentPage].player
-                        val newIndex =
-                            (playerPagerState.currentPage + indexShift).coerceIn(
-                                0,
-                                state.playerData.size - 1
+    if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
+        PlayersPager(
+            playerPagerState = playerPagerState,
+            playersState = state,
+            serverUrl = serverUrl,
+            simplePlayerAction = { playerId, action ->
+                homeScreenViewModel.playerAction(playerId, action)
+            },
+            playerAction = { playerData, action ->
+                homeScreenViewModel.playerAction(playerData, action)
+            },
+            onFavoriteClick = actionsViewModel::onFavoriteClick,
+            expanded = expanded,
+            onClose = onClose,
+            onItemMoved = { indexShift ->
+                val currentPlayer =
+                    state.playerData[playerPagerState.currentPage].player
+                val newIndex =
+                    (playerPagerState.currentPage + indexShift).coerceIn(
+                        0,
+                        state.playerData.size - 1
+                    )
+                val newPlayers =
+                    state.playerData.map { it.player.id }
+                        .toMutableList()
+                        .apply {
+                            add(
+                                newIndex,
+                                removeAt(playerPagerState.currentPage)
                             )
-                        val newPlayers =
-                            state.playerData.map { it.player.id }
-                                .toMutableList()
-                                .apply {
-                                    add(
-                                        newIndex,
-                                        removeAt(playerPagerState.currentPage)
-                                    )
-                                }
-                        homeScreenViewModel.selectPlayer(currentPlayer)
-                        homeScreenViewModel.onPlayersSortChanged(newPlayers)
-                    },
-                    queueAction = { action -> homeScreenViewModel.queueAction(action) },
-                    moveToPlayer = { id: String ->
-                        val player =
-                            state.playerData.find { it.player.id == id }
-                        if (player != null) {
-                            homeScreenViewModel.selectPlayer(player.player)
                         }
-                    }
-                )
+                homeScreenViewModel.selectPlayer(currentPlayer)
+                homeScreenViewModel.onPlayersSortChanged(newPlayers)
+            },
+            queueAction = { action -> homeScreenViewModel.queueAction(action) },
+            moveToPlayer = { id: String ->
+                val player =
+                    state.playerData.find { it.player.id == id }
+                if (player != null) {
+                    homeScreenViewModel.selectPlayer(player.player)
+                }
             }
-        }
-
-        else -> Text(
-            text = "No players available",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    } else {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 130.dp)
+        ) {
+            val text = when (state) {
+                is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
+                is HomeScreenViewModel.PlayersState.Data -> "No players available"
+                else ->  "No players available"
+            }
+
+            Text(
+                modifier = Modifier.align(Alignment.Center),
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
