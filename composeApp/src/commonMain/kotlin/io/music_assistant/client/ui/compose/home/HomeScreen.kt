@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -26,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -120,102 +118,98 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-    ) { paddingValues ->
-        val connectionState = recommendationsState.value.connectionState
-        val dataState = recommendationsState.value.recommendations
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            // Simple slide transition between main screen and big player
-            AnimatedContent(
-                targetState = showPlayersView,
-                transitionSpec = {
-                    slideInVertically(
-                        initialOffsetY = { if (targetState) it else -it },
-                        animationSpec = tween(300)
-                    ) togetherWith slideOutVertically(
-                        targetOffsetY = { if (targetState) -it else it },
-                        animationSpec = tween(300)
-                    )
-                },
-                label = "player_transition"
-            ) { isPlayersViewShown ->
-                if (!isPlayersViewShown) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        HomeContent(
-                            homeBackStack = homeBackStack,
-                            connectionState = connectionState,
-                            dataState = dataState,
-                            serverUrl = serverUrl,
-                            onPlayClick = viewModel::onPlayClick,
-                            playlistActions = ActionsViewModel.PlaylistActions(
-                                onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                                onAddToPlaylist = actionsViewModel::addToPlaylist
-                            ),
-                            libraryActions = ActionsViewModel.LibraryActions(
-                                onLibraryClick = actionsViewModel::onLibraryClick,
-                                onFavoriteClick = actionsViewModel::onFavoriteClick
-                            ),
-                            progressActions = ActionsViewModel.ProgressActions(
-                                onMarkPlayed = actionsViewModel::onMarkPlayed,
-                                onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                            ),
-                            navigateTo = navigateTo
-                        ) { modifier, provider ->
-                            actionsViewModel.getProviderIcon(provider)
-                                ?.let { ProviderIcon(modifier, it) }
-                        }
-
-                        FloatingBar(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter),
-                            onClick = { showPlayersView = true }
-                        ) {
-                            Players(
-                                playerPagerState = playerPagerState,
-                                state = playersState,
-                                serverUrl = serverUrl,
-                                homeScreenViewModel = viewModel,
-                                actionsViewModel = actionsViewModel,
-                                expanded = false
-                            ) { showPlayersView = false }
-                        }
+    val connectionState = recommendationsState.value.connectionState
+    val dataState = recommendationsState.value.recommendations
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Simple slide transition between main screen and big player
+        AnimatedContent(
+            targetState = showPlayersView,
+            transitionSpec = {
+                slideInVertically(
+                    initialOffsetY = { if (targetState) it else -it },
+                    animationSpec = tween(300)
+                ) togetherWith slideOutVertically(
+                    targetOffsetY = { if (targetState) -it else it },
+                    animationSpec = tween(300)
+                )
+            },
+            label = "player_transition"
+        ) { isPlayersViewShown ->
+            if (!isPlayersViewShown) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    HomeContent(
+                        homeBackStack = homeBackStack,
+                        connectionState = connectionState,
+                        dataState = dataState,
+                        serverUrl = serverUrl,
+                        onPlayClick = viewModel::onPlayClick,
+                        playlistActions = ActionsViewModel.PlaylistActions(
+                            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                            onAddToPlaylist = actionsViewModel::addToPlaylist
+                        ),
+                        libraryActions = ActionsViewModel.LibraryActions(
+                            onLibraryClick = actionsViewModel::onLibraryClick,
+                            onFavoriteClick = actionsViewModel::onFavoriteClick
+                        ),
+                        progressActions = ActionsViewModel.ProgressActions(
+                            onMarkPlayed = actionsViewModel::onMarkPlayed,
+                            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                        ),
+                        navigateTo = navigateTo
+                    ) { modifier, provider ->
+                        actionsViewModel.getProviderIcon(provider)
+                            ?.let { ProviderIcon(modifier, it) }
                     }
-                } else {
-                    Column(
+
+                    FloatingBar(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .align(Alignment.BottomCenter),
+                        onClick = { showPlayersView = true }
                     ) {
-                        // Close button
-                        IconButton(
-                            onClick = { showPlayersView = false },
-                            modifier = Modifier.fillMaxWidth().height(36.dp)
-                                .align(Alignment.CenterHorizontally)
-                        ) {
-                            Icon(
-                                Icons.Default.ExpandMore,
-                                "Collapse",
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Players(
-                                playerPagerState = playerPagerState,
-                                state = playersState,
-                                serverUrl = serverUrl,
-                                homeScreenViewModel = viewModel,
-                                actionsViewModel = actionsViewModel,
-                                expanded = true
-                            ) { showPlayersView = false }
-                        }
+                        Players(
+                            playerPagerState = playerPagerState,
+                            state = playersState,
+                            serverUrl = serverUrl,
+                            homeScreenViewModel = viewModel,
+                            actionsViewModel = actionsViewModel,
+                            expanded = false
+                        ) { showPlayersView = false }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    // Close button
+                    IconButton(
+                        onClick = { showPlayersView = false },
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            Icons.Default.ExpandMore,
+                            "Collapse",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Players(
+                            playerPagerState = playerPagerState,
+                            state = playersState,
+                            serverUrl = serverUrl,
+                            homeScreenViewModel = viewModel,
+                            actionsViewModel = actionsViewModel,
+                            expanded = true
+                        ) { showPlayersView = false }
                     }
                 }
             }

@@ -6,14 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
@@ -36,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -56,11 +52,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Defaults
-import io.music_assistant.client.settings.ConnectionHistoryEntry
-import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.player.sendspin.audio.Codecs
+import io.music_assistant.client.settings.ConnectionHistoryEntry
+import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -98,186 +94,178 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
         }
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-    ) { scaffoldPadding ->
+    Column(
+        modifier = Modifier
+            .background(color = MaterialTheme.colorScheme.background)
+            .fillMaxSize()
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(all = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            ThemeChooser(currentTheme = theme.value) { changedTheme ->
+                themeViewModel.switchTheme(changedTheme)
+            }
+        }
+
+        // Content
+        val scrollState = rememberScrollState()
+
         Column(
             modifier = Modifier
-                .background(color = MaterialTheme.colorScheme.background)
                 .fillMaxSize()
-                .padding(scaffoldPadding)
-                .consumeWindowInsets(scaffoldPadding)
-                .systemBarsPadding(),
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(all = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                ThemeChooser(currentTheme = theme.value) { changedTheme ->
-                    themeViewModel.switchTheme(changedTheme)
+            var ipAddress by remember { mutableStateOf(Defaults.URI) }
+            var port by remember { mutableStateOf(Defaults.PORT.toString()) }
+            var isTls by remember { mutableStateOf(false) }
+
+            LaunchedEffect(savedConnectionInfo) {
+                savedConnectionInfo?.let {
+                    ipAddress = it.host
+                    port = it.port.toString()
+                    isTls = it.isTls
                 }
             }
 
-            // Content
-            val scrollState = rememberScrollState()
+            // Track if we've already attempted auto-reconnect
+            var autoReconnectAttempted by remember { mutableStateOf(false) }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                var ipAddress by remember { mutableStateOf(Defaults.URI) }
-                var port by remember { mutableStateOf(Defaults.PORT.toString()) }
-                var isTls by remember { mutableStateOf(false) }
+            // Auto-reconnect on error ONLY if user hasn't changed the connection info
+            // This prevents auto-reconnect to old server when user is trying to connect to new server
+            // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
+            val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
+            LaunchedEffect(sessionState) {
+                val connInfo = savedConnectionInfo
+                if (sessionState is SessionState.Disconnected.Error &&
+                    connInfo != null &&
+                    !autoReconnectAttempted &&
+                    preferredMethod != "webrtc"
+                ) {
+                    // Only auto-reconnect if text fields match saved connection info
+                    // (i.e., user hasn't changed anything)
+                    val userChangedConnectionInfo =
+                        ipAddress != connInfo.host ||
+                                port != connInfo.port.toString() ||
+                                isTls != connInfo.isTls
 
-                LaunchedEffect(savedConnectionInfo) {
-                    savedConnectionInfo?.let {
-                        ipAddress = it.host
-                        port = it.port.toString()
-                        isTls = it.isTls
+                    if (!userChangedConnectionInfo) {
+                        // User is trying to reconnect to same server - auto-retry
+                        autoReconnectAttempted = true
+                        viewModel.attemptConnection(
+                            connInfo.host,
+                            connInfo.port.toString(),
+                            connInfo.isTls
+                        )
                     }
+                    // If user changed connection info, don't auto-retry - let them manually retry
+                } else if (sessionState is SessionState.Connected) {
+                    // Reset flag on successful connection
+                    autoReconnectAttempted = false
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (isAuthenticated) {
+                    Button(onClick = goHome) { Text("GO HOME") }
+                } else {
+                    OutlinedButton(onClick = exitApp) { Text("EXIT APP") }
+                }
+            }
+
+            when (sessionState) {
+                is SessionState.Disconnected -> {
+                    // State 1 & 2: Disconnected (with or without token)
+                    // Show connection method tabs
+                    ConnectionMethodTabs(
+                        viewModel = viewModel,
+                        ipAddress = ipAddress,
+                        port = port,
+                        isTls = isTls,
+                        onIpAddressChange = { ipAddress = it },
+                        onPortChange = { port = it },
+                        onTlsChange = { isTls = it },
+                        onDirectConnect = {
+                            viewModel.attemptConnection(
+                                ipAddress,
+                                port,
+                                isTls
+                            )
+                        },
+                        directConnectEnabled = ipAddress.isValidHost() && port.isIpPort(),
+                        sessionState = sessionState,
+                        connectionHistory = connectionHistory,
+                    )
                 }
 
-                // Track if we've already attempted auto-reconnect
-                var autoReconnectAttempted by remember { mutableStateOf(false) }
+                SessionState.Connecting -> {
+                    ConnectingSection(
+                        ipAddress = ipAddress,
+                        port = port,
+                        preferredMethod = preferredMethod,
+                        onCancel = { viewModel.disconnect() }
+                    )
+                }
 
-                // Auto-reconnect on error ONLY if user hasn't changed the connection info
-                // This prevents auto-reconnect to old server when user is trying to connect to new server
-                // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
-                val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
-                LaunchedEffect(sessionState) {
-                    val connInfo = savedConnectionInfo
-                    if (sessionState is SessionState.Disconnected.Error &&
-                        connInfo != null &&
-                        !autoReconnectAttempted &&
-                        preferredMethod != "webrtc"
-                    ) {
-                        // Only auto-reconnect if text fields match saved connection info
-                        // (i.e., user hasn't changed anything)
-                        val userChangedConnectionInfo =
-                            ipAddress != connInfo.host ||
-                                    port != connInfo.port.toString() ||
-                                    isTls != connInfo.isTls
+                is SessionState.Reconnecting -> {
+                    ConnectingSection(
+                        ipAddress = ipAddress,
+                        port = port,
+                        preferredMethod = preferredMethod,
+                        onCancel = { viewModel.disconnect() }
+                    )
+                }
 
-                        if (!userChangedConnectionInfo) {
-                            // User is trying to reconnect to same server - auto-retry
-                            autoReconnectAttempted = true
-                            viewModel.attemptConnection(
-                                connInfo.host,
-                                connInfo.port.toString(),
-                                connInfo.isTls
+                is SessionState.Connected -> {
+                    val connectedState = sessionState as SessionState.Connected
+
+                    // Server Info Section (always shown when connected)
+                    ServerInfoSection(
+                        connectionInfo = savedConnectionInfo,
+                        serverInfo = connectedState.serverInfo,
+                        isWebRTC = connectedState is SessionState.Connected.WebRTC,
+                        onDisconnect = { viewModel.disconnect() }
+                    )
+
+                    LoginSection(connectedState.user)
+
+                    when (dataConnection) {
+                        DataConnectionState.Authenticated -> {
+                            // State 4: Connected and authenticated
+
+                            // Local Player Section
+                            SendspinSection(
+                                viewModel = viewModel,
                             )
                         }
-                        // If user changed connection info, don't auto-retry - let them manually retry
-                    } else if (sessionState is SessionState.Connected) {
-                        // Reset flag on successful connection
-                        autoReconnectAttempted = false
+
+                        else -> Unit
                     }
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    if (isAuthenticated) {
-                        Button(onClick = goHome) { Text("GO HOME") }
-                    } else {
-                        OutlinedButton(onClick = exitApp) { Text("EXIT APP") }
-                    }
-                }
-
-                when (sessionState) {
-                    is SessionState.Disconnected -> {
-                        // State 1 & 2: Disconnected (with or without token)
-                        // Show connection method tabs
-                        ConnectionMethodTabs(
-                            viewModel = viewModel,
-                            ipAddress = ipAddress,
-                            port = port,
-                            isTls = isTls,
-                            onIpAddressChange = { ipAddress = it },
-                            onPortChange = { port = it },
-                            onTlsChange = { isTls = it },
-                            onDirectConnect = {
-                                viewModel.attemptConnection(
-                                    ipAddress,
-                                    port,
-                                    isTls
-                                )
-                            },
-                            directConnectEnabled = ipAddress.isValidHost() && port.isIpPort(),
-                            sessionState = sessionState,
-                            connectionHistory = connectionHistory,
-                        )
-                    }
-
-                    SessionState.Connecting -> {
-                        ConnectingSection(
-                            ipAddress = ipAddress,
-                            port = port,
-                            preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() }
-                        )
-                    }
-
-                    is SessionState.Reconnecting -> {
-                        ConnectingSection(
-                            ipAddress = ipAddress,
-                            port = port,
-                            preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() }
-                        )
-                    }
-
-                    is SessionState.Connected -> {
-                        val connectedState = sessionState as SessionState.Connected
-
-                        // Server Info Section (always shown when connected)
-                        ServerInfoSection(
-                            connectionInfo = savedConnectionInfo,
-                            serverInfo = connectedState.serverInfo,
-                            isWebRTC = connectedState is SessionState.Connected.WebRTC,
-                            onDisconnect = { viewModel.disconnect() }
-                        )
-
-                        LoginSection(connectedState.user)
-
-                        when (dataConnection) {
-                            DataConnectionState.Authenticated -> {
-                                // State 4: Connected and authenticated
-
-                                // Local Player Section
-                                SendspinSection(
-                                    viewModel = viewModel,
-                                )
-                            }
-
-                            else -> Unit
-                        }
-                    }
-                }
-
-                // Misc settings - always visible
-                MiscSection(
-                    onShareLogs = { viewModel.shareLogs() },
-                    hasCrashLog = hasCrashLog,
-                    onShareCrashLog = { viewModel.shareCrashLog() },
-                    onDeleteCrashLog = { viewModel.deleteCrashLog() }
-                )
-
-                Spacer(modifier = Modifier.size(16.dp))
             }
+
+            // Misc settings - always visible
+            MiscSection(
+                onShareLogs = { viewModel.shareLogs() },
+                hasCrashLog = hasCrashLog,
+                onShareCrashLog = { viewModel.shareCrashLog() },
+                onDeleteCrashLog = { viewModel.deleteCrashLog() }
+            )
+
+            Spacer(modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -371,7 +359,7 @@ private fun ConnectionMethodTabs(
     val directHasToken = port.toIntOrNull()
         ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls) } ?: false
     val webrtcHasToken = webrtcRemoteId.isNotBlank() &&
-        viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
+            viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
 
     SectionCard {
         SectionTitle("Connection Method")
@@ -441,6 +429,7 @@ private fun ConnectionMethodTabs(
                         }
                         viewModel.setPreferredConnectionMethod("direct")
                     }
+
                     ConnectionType.WEBRTC -> {
                         entry.remoteId?.let { viewModel.setWebrtcRemoteId(it) }
                         viewModel.setPreferredConnectionMethod("webrtc")

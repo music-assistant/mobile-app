@@ -2,7 +2,9 @@ package io.music_assistant.client.ui.compose.nav
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,37 +115,39 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
     val bottomSheetStrategy = remember { BottomSheetSceneStrategy<NavKey>() }
     val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Main navigation content
-        NavDisplay(
-            modifier = Modifier.fillMaxSize(),
-            backStack = backStack,
-            onBack = { backStack.removeLastOrNull() },
-            sceneStrategy = bottomSheetStrategy.then(dialogStrategy),
-            entryDecorators = listOf(
-                rememberSaveableStateHolderNavEntryDecorator(
-                    rememberSaveableStateHolder()
-                )
-            ),
-            entryProvider = entryProvider {
-                entry<NavScreen.Home> {
-                    HomeScreen(navigateTo = { screen -> backStack.add(screen) })
-                }
-                entry<NavScreen.Settings> {
-                    SettingsScreen(
-                        goHome = {
-                            backStack.clear()
-                            backStack.add(NavScreen.Home)
-                        },
-                        exitApp = { exitApp() }
+    Scaffold { contentPadding ->
+        Box(modifier = Modifier.padding(contentPadding)) {
+            // Main navigation content
+            NavDisplay(
+                modifier = Modifier.fillMaxSize(),
+                backStack = backStack,
+                onBack = { backStack.removeLastOrNull() },
+                sceneStrategy = bottomSheetStrategy.then(dialogStrategy),
+                entryDecorators = listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(
+                        rememberSaveableStateHolder()
                     )
+                ),
+                entryProvider = entryProvider {
+                    entry<NavScreen.Home> {
+                        HomeScreen(navigateTo = { screen -> backStack.add(screen) })
+                    }
+                    entry<NavScreen.Settings> {
+                        SettingsScreen(
+                            goHome = {
+                                backStack.clear()
+                                backStack.add(NavScreen.Home)
+                            },
+                            exitApp = { exitApp() }
+                        )
+                    }
                 }
-            }
-        )
+            )
 
-        // Connection status banner - overlays at top, doesn't shrink content
-        ConnectionStatusBanner(
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+            // Connection status banner - overlays at top, doesn't shrink content
+            ConnectionStatusBanner(
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
     }
 }
