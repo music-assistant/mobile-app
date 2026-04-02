@@ -176,6 +176,7 @@ fun HomeScreen(
                     onClick = { showPlayersView = true }
                 ) {
                     Players(
+                        modifier = Modifier.height(floatingBarHeight),
                         playerPagerState = playerPagerState,
                         state = playersState,
                         serverUrl = serverUrl,
@@ -366,6 +367,7 @@ private fun HomeContent(
 
 @Composable
 private fun Players(
+    modifier: Modifier = Modifier,
     playerPagerState: PagerState,
     state: HomeScreenViewModel.PlayersState,
     serverUrl: String?,
@@ -374,11 +376,7 @@ private fun Players(
     expanded: Boolean,
     onClose: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(floatingBarHeight)
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
         if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
             PlayersPager(
                 playerPagerState = playerPagerState,
@@ -430,7 +428,7 @@ private fun Players(
             }
 
             Text(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = modifier.align(Alignment.Center),
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
