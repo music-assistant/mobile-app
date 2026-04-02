@@ -22,13 +22,17 @@ fun FloatingBar(modifier: Modifier = Modifier, onClick: () -> Unit = {}, content
     Box(
         modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(FloatingBarDefaults.padding)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable { onClick() }
     ) {
         content()
     }
+}
+
+object FloatingBarDefaults {
+    val padding = 8.dp
 }
 
 @Preview

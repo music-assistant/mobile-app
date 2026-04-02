@@ -248,7 +248,8 @@ private fun HomeContent(
         typedBackStack.removeLastOrNull()
     }
 
-    val hostPadding = hostPadding + PaddingValues(bottom = 130.dp + 16.dp)
+    val hostPadding =
+        hostPadding + PaddingValues(bottom = floatingBarHeight + FloatingBarDefaults.padding)
     NavDisplay(
         modifier = modifier,
         backStack = typedBackStack,
@@ -376,7 +377,7 @@ private fun Players(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(130.dp)
+            .height(floatingBarHeight)
     ) {
         if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
             PlayersPager(
@@ -437,3 +438,5 @@ private fun Players(
         }
     }
 }
+
+private val floatingBarHeight = 130.dp
