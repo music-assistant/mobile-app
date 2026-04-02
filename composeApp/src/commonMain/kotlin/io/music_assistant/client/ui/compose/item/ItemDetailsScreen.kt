@@ -249,7 +249,7 @@ private fun ItemChildren(
                         modifier = Modifier.fillMaxWidth()
                             .testTag("LazyVerticalGrid"),
                         columns = GridCells.Adaptive(minSize = 96.dp),
-                        contentPadding = contentPadding + hostPadding,
+                        contentPadding = contentPadding + hostPadding + PaddingValues(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {

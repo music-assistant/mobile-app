@@ -2,10 +2,9 @@
 
 package io.music_assistant.client.ui.compose.library
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,10 +42,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
@@ -55,12 +55,14 @@ import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import org.koin.compose.koinInject
 
 @Composable
 fun LibraryScreen(
+    hostPadding: PaddingValues,
     initialTabType: MediaType?,
     onBack: () -> Unit,
     onNavigateClick: (AppMediaItem) -> Unit,
@@ -99,20 +101,22 @@ fun LibraryScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-    ) {
-        LibraryTopBar(
-            onBack = onBack,
-            tabs = state.tabs,
-            onTabSelected = viewModel::onTabSelected,
-            isRowMode = isRowMode,
-            onToggleViewMode = viewModel::toggleItemsRowMode,
-            scrollBehavior = scrollBehavior,
-        )
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LibraryTopBar(
+                onBack = onBack,
+                tabs = state.tabs,
+                onTabSelected = viewModel::onTabSelected,
+                isRowMode = isRowMode,
+                onToggleViewMode = viewModel::toggleItemsRowMode,
+                scrollBehavior = scrollBehavior,
+            )
+        }
+    ) { contentPadding ->
         Library(
+            modifier = Modifier.padding(contentPadding),
+            hostPadding = hostPadding,
             state = state,
             serverUrl = serverUrl,
             isRowMode = isRowMode,
@@ -192,7 +196,6 @@ private fun LibraryTopBar(
                 )
             }
         },
-        windowInsets = WindowInsets(0, 0, 0, 0),
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
@@ -202,10 +205,11 @@ private fun LibraryTopBar(
 
 @Composable
 private fun Library(
+    modifier: Modifier,
     state: LibraryViewModel.State,
     serverUrl: String?,
     isRowMode: Boolean,
-    toastState: io.music_assistant.client.ui.compose.common.ToastState,
+    toastState: ToastState,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
@@ -217,10 +221,11 @@ private fun Library(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
+    hostPadding: PaddingValues,
 ) {
     val selectedTab = state.tabs.find { it.isSelected } ?: state.tabs.first()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -269,6 +274,7 @@ private fun Library(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     progressActions = progressActions,
+                    hostPadding
                 )
             }
         }
@@ -347,6 +353,7 @@ private fun TabContent(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
+    hostPadding: PaddingValues,
 ) {
     // Create separate grid states for each tab to preserve scroll position
     val artistsGridState = rememberLazyGridState()
@@ -425,6 +432,7 @@ private fun TabContent(
                                 playlistActions = playlistActions,
                                 libraryActions = libraryActions,
                                 progressActions = progressActions,
+                                hostPadding
                             )
                         }
 

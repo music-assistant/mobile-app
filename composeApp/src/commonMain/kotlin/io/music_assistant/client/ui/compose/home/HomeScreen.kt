@@ -300,6 +300,7 @@ private fun HomeContent(
 
             entry<HomeNavScreen.Library> {
                 LibraryScreen(
+                    hostPadding = hostPadding,
                     initialTabType = it.type,
                     onBack = { typedBackStack.removeLastOrNull() },
                     onNavigateClick = { item ->

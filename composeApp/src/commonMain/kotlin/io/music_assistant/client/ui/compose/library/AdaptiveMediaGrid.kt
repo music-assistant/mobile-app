@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -48,6 +49,7 @@ fun AdaptiveMediaGrid(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
+    hostPadding: PaddingValues,
 ) {
     // Detect when we're near the end and trigger load more
     val shouldLoadMore by remember {
@@ -71,7 +73,7 @@ fun AdaptiveMediaGrid(
         modifier = modifier,
         state = gridState,
         columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = PaddingValues(8.dp),
+        contentPadding = hostPadding + PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
