@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -37,6 +38,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +75,7 @@ import org.publicvalue.multiplatform.qrcode.CameraPosition
 import org.publicvalue.multiplatform.qrcode.CodeType
 import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val themeViewModel = koinViewModel<ThemeViewModel>()
@@ -99,22 +102,18 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
             .background(color = MaterialTheme.colorScheme.background)
             .fillMaxSize()
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(all = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.titleLarge,
-            )
-            ThemeChooser(currentTheme = theme.value) { changedTheme ->
-                themeViewModel.switchTheme(changedTheme)
-            }
-        }
+        TopAppBar(
+            title = { Text("Settings") },
+            actions = {
+                ThemeChooser(
+                    modifier = Modifier.padding(end = 16.dp),
+                    currentTheme = theme.value
+                ) { changedTheme ->
+                    themeViewModel.switchTheme(changedTheme)
+                }
+            },
+            windowInsets = WindowInsets(0, 0, 0, 0)
+        )
 
         // Content
         val scrollState = rememberScrollState()
