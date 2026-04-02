@@ -38,7 +38,8 @@ class ItemDetailsTest {
                     DataState.Data(artist),
                     DataState.Data(albums),
                     DataState.NoData()
-                )
+                ),
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 
@@ -61,7 +62,8 @@ class ItemDetailsTest {
                     itemState = DataState.Data(album),
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.Data(tracks)
-                )
+                ),
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 
@@ -84,7 +86,8 @@ class ItemDetailsTest {
                     itemState = DataState.Data(album),
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.Data(emptyList())
-                )
+                ),
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 
@@ -104,7 +107,8 @@ class ItemDetailsTest {
                     itemState = DataState.Data(playlist),
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.Data(tracks)
-                )
+                ),
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 
@@ -129,7 +133,8 @@ class ItemDetailsTest {
                     itemState = DataState.Data(podcast),
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.Data(episodes)
-                )
+                ),
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 
@@ -150,7 +155,8 @@ class ItemDetailsTest {
                     itemState = DataState.Data(audiobook),
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.NoData()
-                )
+                ),
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 
@@ -177,7 +183,8 @@ class ItemDetailsTest {
         composeTestRule.setContent {
             ItemDetails(
                 state = state.value,
-                onPlayClick = onPlayClick
+                geEditablePlaylists = suspend { emptyList() },
+                onPlayClick = onPlayClick,
             )
         }
 
@@ -218,7 +225,8 @@ class ItemDetailsTest {
         composeTestRule.setContent {
             ItemDetails(
                 state = state.value,
-                onBack = onBack
+                onBack = onBack,
+                geEditablePlaylists = suspend { emptyList() },
             )
         }
 

@@ -1,8 +1,8 @@
 package io.music_assistant.client.ui.compose.nav
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
@@ -149,7 +149,7 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
             }
         }
     ) { contentPadding ->
-        Box(modifier = Modifier.padding(contentPadding)) {
+        Box {
             // Main navigation content
             NavDisplay(
                 modifier = Modifier.fillMaxSize(),
@@ -163,10 +163,14 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
                 ),
                 entryProvider = entryProvider {
                     entry<NavScreen.Home> {
-                        HomeScreen(navigateTo = { screen -> backStack.add(screen) })
+                        HomeScreen(
+                            hostPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
+                            navigateTo = { screen -> backStack.add(screen) })
                     }
+
                     entry<NavScreen.Settings> {
                         SettingsScreen(
+                            hostPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
                             goHome = goHome,
                             exitApp = { exitApp() }
                         )

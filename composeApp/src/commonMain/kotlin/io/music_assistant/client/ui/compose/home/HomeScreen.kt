@@ -11,10 +11,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -65,6 +67,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeScreen(
     viewModel: HomeScreenViewModel = koinViewModel(),
     actionsViewModel: ActionsViewModel = koinViewModel(),
+    hostPadding: PaddingValues,
     navigateTo: (NavScreen) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -120,97 +123,98 @@ fun HomeScreen(
 
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Simple slide transition between main screen and big player
-        AnimatedContent(
-            targetState = showPlayersView,
-            transitionSpec = {
-                slideInVertically(
-                    initialOffsetY = { if (targetState) it else -it },
-                    animationSpec = tween(300)
-                ) togetherWith slideOutVertically(
-                    targetOffsetY = { if (targetState) -it else it },
-                    animationSpec = tween(300)
-                )
-            },
-            label = "player_transition"
-        ) { isPlayersViewShown ->
-            if (!isPlayersViewShown) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    HomeContent(
-                        homeBackStack = homeBackStack,
-                        connectionState = connectionState,
-                        dataState = dataState,
-                        serverUrl = serverUrl,
-                        onPlayClick = viewModel::onPlayClick,
-                        playlistActions = ActionsViewModel.PlaylistActions(
-                            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                            onAddToPlaylist = actionsViewModel::addToPlaylist
-                        ),
-                        libraryActions = ActionsViewModel.LibraryActions(
-                            onLibraryClick = actionsViewModel::onLibraryClick,
-                            onFavoriteClick = actionsViewModel::onFavoriteClick
-                        ),
-                        progressActions = ActionsViewModel.ProgressActions(
-                            onMarkPlayed = actionsViewModel::onMarkPlayed,
-                            onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                        ),
-                        navigateTo = navigateTo
-                    ) { modifier, provider ->
+    // Simple slide transition between main screen and big player
+    AnimatedContent(
+        targetState = showPlayersView,
+        transitionSpec = {
+            slideInVertically(
+                initialOffsetY = { if (targetState) it else -it },
+                animationSpec = tween(300)
+            ) togetherWith slideOutVertically(
+                targetOffsetY = { if (targetState) -it else it },
+                animationSpec = tween(300)
+            )
+        },
+        label = "player_transition"
+    ) { isPlayersViewShown ->
+        if (!isPlayersViewShown) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                HomeContent(
+                    homeBackStack = homeBackStack,
+                    connectionState = connectionState,
+                    dataState = dataState,
+                    serverUrl = serverUrl,
+                    onPlayClick = viewModel::onPlayClick,
+                    playlistActions = ActionsViewModel.PlaylistActions(
+                        onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                        onAddToPlaylist = actionsViewModel::addToPlaylist
+                    ),
+                    libraryActions = ActionsViewModel.LibraryActions(
+                        onLibraryClick = actionsViewModel::onLibraryClick,
+                        onFavoriteClick = actionsViewModel::onFavoriteClick
+                    ),
+                    progressActions = ActionsViewModel.ProgressActions(
+                        onMarkPlayed = actionsViewModel::onMarkPlayed,
+                        onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                    ),
+                    navigateTo = navigateTo,
+                    providerIconFetcher = { modifier, provider ->
                         actionsViewModel.getProviderIcon(provider)
                             ?.let { ProviderIcon(modifier, it) }
-                    }
+                    },
+                    hostPadding = hostPadding
+                )
 
-                    FloatingBar(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter),
-                        onClick = { showPlayersView = true }
-                    ) {
-                        Players(
-                            playerPagerState = playerPagerState,
-                            state = playersState,
-                            serverUrl = serverUrl,
-                            homeScreenViewModel = viewModel,
-                            actionsViewModel = actionsViewModel,
-                            expanded = false
-                        ) { showPlayersView = false }
-                    }
-                }
-            } else {
-                Column(
+                FloatingBar(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .align(Alignment.BottomCenter)
+                        .padding(hostPadding),
+                    onClick = { showPlayersView = true }
                 ) {
-                    // Close button
-                    IconButton(
-                        onClick = { showPlayersView = false },
-                        modifier = Modifier.fillMaxWidth().height(36.dp)
-                            .align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(
-                            Icons.Default.ExpandMore,
-                            "Collapse",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Players(
-                            playerPagerState = playerPagerState,
-                            state = playersState,
-                            serverUrl = serverUrl,
-                            homeScreenViewModel = viewModel,
-                            actionsViewModel = actionsViewModel,
-                            expanded = true
-                        ) { showPlayersView = false }
-                    }
+                    Players(
+                        playerPagerState = playerPagerState,
+                        state = playersState,
+                        serverUrl = serverUrl,
+                        homeScreenViewModel = viewModel,
+                        actionsViewModel = actionsViewModel,
+                        expanded = false
+                    ) { showPlayersView = false }
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                // Close button
+                IconButton(
+                    onClick = { showPlayersView = false },
+                    modifier = Modifier.fillMaxWidth().height(36.dp)
+                        .align(Alignment.CenterHorizontally)
+                ) {
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        "Collapse",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Players(
+                        playerPagerState = playerPagerState,
+                        state = playersState,
+                        serverUrl = serverUrl,
+                        homeScreenViewModel = viewModel,
+                        actionsViewModel = actionsViewModel,
+                        expanded = true
+                    ) { showPlayersView = false }
                 }
             }
         }
@@ -229,7 +233,8 @@ private fun HomeContent(
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions,
     navigateTo: (NavScreen) -> Unit,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit)
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    hostPadding: PaddingValues
 ) {
     @Suppress("UNCHECKED_CAST")
     val typedBackStack = homeBackStack as NavBackStack<HomeNavScreen>
@@ -243,6 +248,7 @@ private fun HomeContent(
         typedBackStack.removeLastOrNull()
     }
 
+    val hostPadding = hostPadding + PaddingValues(bottom = 130.dp + 16.dp)
     NavDisplay(
         modifier = modifier,
         backStack = typedBackStack,
@@ -253,7 +259,7 @@ private fun HomeContent(
         entryProvider = entryProvider {
             entry<HomeNavScreen.Landing> {
                 LandingPage(
-                    modifier = Modifier.fillMaxSize(),
+                    hostPadding = hostPadding,
                     connectionState = connectionState,
                     dataState = dataState,
                     serverUrl = serverUrl,
@@ -288,7 +294,6 @@ private fun HomeContent(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     progressActions = progressActions,
-                    navigateTo = navigateTo,
                     providerIconFetcher = providerIconFetcher
                 )
             }
@@ -322,6 +327,7 @@ private fun HomeContent(
 
             entry<HomeNavScreen.ItemDetails> {
                 ItemDetailsScreen(
+                    hostPadding = hostPadding,
                     itemId = it.itemId,
                     mediaType = it.mediaType,
                     providerId = it.providerId,
@@ -366,58 +372,59 @@ private fun Players(
     expanded: Boolean,
     onClose: () -> Unit
 ) {
-    if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
-        PlayersPager(
-            playerPagerState = playerPagerState,
-            playersState = state,
-            serverUrl = serverUrl,
-            simplePlayerAction = { playerId, action ->
-                homeScreenViewModel.playerAction(playerId, action)
-            },
-            playerAction = { playerData, action ->
-                homeScreenViewModel.playerAction(playerData, action)
-            },
-            onFavoriteClick = actionsViewModel::onFavoriteClick,
-            expanded = expanded,
-            onClose = onClose,
-            onItemMoved = { indexShift ->
-                val currentPlayer =
-                    state.playerData[playerPagerState.currentPage].player
-                val newIndex =
-                    (playerPagerState.currentPage + indexShift).coerceIn(
-                        0,
-                        state.playerData.size - 1
-                    )
-                val newPlayers =
-                    state.playerData.map { it.player.id }
-                        .toMutableList()
-                        .apply {
-                            add(
-                                newIndex,
-                                removeAt(playerPagerState.currentPage)
-                            )
-                        }
-                homeScreenViewModel.selectPlayer(currentPlayer)
-                homeScreenViewModel.onPlayersSortChanged(newPlayers)
-            },
-            queueAction = { action -> homeScreenViewModel.queueAction(action) },
-            moveToPlayer = { id: String ->
-                val player =
-                    state.playerData.find { it.player.id == id }
-                if (player != null) {
-                    homeScreenViewModel.selectPlayer(player.player)
-                }
-            }
-        )
-    } else {
-        Box(modifier = Modifier
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 130.dp)
-        ) {
+            .height(130.dp)
+    ) {
+        if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
+            PlayersPager(
+                playerPagerState = playerPagerState,
+                playersState = state,
+                serverUrl = serverUrl,
+                simplePlayerAction = { playerId, action ->
+                    homeScreenViewModel.playerAction(playerId, action)
+                },
+                playerAction = { playerData, action ->
+                    homeScreenViewModel.playerAction(playerData, action)
+                },
+                onFavoriteClick = actionsViewModel::onFavoriteClick,
+                expanded = expanded,
+                onClose = onClose,
+                onItemMoved = { indexShift ->
+                    val currentPlayer =
+                        state.playerData[playerPagerState.currentPage].player
+                    val newIndex =
+                        (playerPagerState.currentPage + indexShift).coerceIn(
+                            0,
+                            state.playerData.size - 1
+                        )
+                    val newPlayers =
+                        state.playerData.map { it.player.id }
+                            .toMutableList()
+                            .apply {
+                                add(
+                                    newIndex,
+                                    removeAt(playerPagerState.currentPage)
+                                )
+                            }
+                    homeScreenViewModel.selectPlayer(currentPlayer)
+                    homeScreenViewModel.onPlayersSortChanged(newPlayers)
+                },
+                queueAction = { action -> homeScreenViewModel.queueAction(action) },
+                moveToPlayer = { id: String ->
+                    val player =
+                        state.playerData.find { it.player.id == id }
+                    if (player != null) {
+                        homeScreenViewModel.selectPlayer(player.player)
+                    }
+                }
+            )
+        } else {
             val text = when (state) {
                 is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
                 is HomeScreenViewModel.PlayersState.Data -> "No players available"
-                else ->  "No players available"
+                else -> "No players available"
             }
 
             Text(

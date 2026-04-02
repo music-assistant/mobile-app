@@ -5,7 +5,6 @@ package io.music_assistant.client.ui.compose.item
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -138,7 +137,6 @@ internal fun ItemTopBar(
                 playlistActions = playlistActions
             )
         },
-        windowInsets = WindowInsets(0, 0, 0, 0),
         scrollBehavior = scrollBehavior
     )
 }
