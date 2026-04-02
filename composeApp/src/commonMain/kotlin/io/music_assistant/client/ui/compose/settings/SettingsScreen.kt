@@ -178,9 +178,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                if (isAuthenticated) {
-                    Button(onClick = goHome) { Text("GO HOME") }
-                } else {
+                if (!isAuthenticated) {
                     OutlinedButton(onClick = exitApp) { Text("EXIT APP") }
                 }
             }

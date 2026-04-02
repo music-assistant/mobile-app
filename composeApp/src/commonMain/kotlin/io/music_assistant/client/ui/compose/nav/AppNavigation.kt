@@ -3,7 +3,13 @@ package io.music_assistant.client.ui.compose.nav
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -115,7 +121,34 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
     val bottomSheetStrategy = remember { BottomSheetSceneStrategy<NavKey>() }
     val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
 
-    Scaffold { contentPadding ->
+    val goHome: () -> Unit = {
+        backStack.clear()
+        backStack.add(NavScreen.Home)
+    }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = backStack.last() == NavScreen.Home,
+                    onClick = goHome,
+                    icon = {
+                        Icon(Icons.Default.Home, contentDescription = null)
+                    }
+                )
+
+                NavigationBarItem(
+                    selected = backStack.last() == NavScreen.Settings,
+                    onClick = {
+                        backStack.add(NavScreen.Settings)
+                    },
+                    icon = {
+                        Icon(Icons.Default.Settings, contentDescription = null)
+                    }
+                )
+            }
+        }
+    ) { contentPadding ->
         Box(modifier = Modifier.padding(contentPadding)) {
             // Main navigation content
             NavDisplay(
@@ -134,10 +167,7 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
                     }
                     entry<NavScreen.Settings> {
                         SettingsScreen(
-                            goHome = {
-                                backStack.clear()
-                                backStack.add(NavScreen.Home)
-                            },
+                            goHome = goHome,
                             exitApp = { exitApp() }
                         )
                     }

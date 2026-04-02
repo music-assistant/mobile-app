@@ -32,11 +32,8 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -156,14 +153,6 @@ private fun LandingPageTopBar(
 ) {
     TopAppBar(
         title = { Text("Home") },
-        actions = {
-            IconButton(onClick = { navigateTo(NavScreen.Settings) }) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                )
-            }
-        },
         windowInsets = WindowInsets(0, 0, 0, 0)
     )
 }
