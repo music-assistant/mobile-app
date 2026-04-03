@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,7 +55,6 @@ import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.home.players.GroupSettingsDialog
 import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
-import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,8 +71,15 @@ internal fun PlayersPager(
     onClose: () -> Unit,
     onItemMoved: ((Int) -> Unit)?,
     queueAction: (QueueAction) -> Unit,
-    moveToPlayer: (String) -> Unit
+    moveToPlayer: (String) -> Unit,
+    isExpandedScreen: Boolean
 ) {
+    val modifier = if (expanded) {
+        modifier
+    } else {
+        modifier.height(collapsedPlayerHeight(isExpandedScreen))
+    }
+
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
 
@@ -135,8 +142,7 @@ internal fun PlayersPager(
                     }
                 )
             ) {
-                val isAtLeastExpanded = WindowClass.isAtLeastExpanded()
-                if (!isAtLeastExpanded || expanded) {
+                if (!isExpandedScreen || expanded) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
@@ -170,9 +176,9 @@ internal fun PlayersPager(
                             playersState = playersState,
                             serverUrl = serverUrl,
                             playerAction = playerAction,
-                            onSelectPlayer = if (isAtLeastExpanded && !isQueueExpanded) onSelectPlayer else null,
-                            onGroupButton = if (isAtLeastExpanded && !isQueueExpanded) onGroupButton else null,
-                            showAdditionalControls = isAtLeastExpanded,
+                            onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
+                            onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
+                            showAdditionalControls = isExpandedScreen,
                         )
                     }
                 }
@@ -306,5 +312,13 @@ internal fun PlayersPager(
                 }
             }
         }
+    }
+}
+
+fun collapsedPlayerHeight(isExpandedScreen: Boolean): Dp {
+    return if (isExpandedScreen) {
+        84.dp
+    } else {
+        130.dp
     }
 }

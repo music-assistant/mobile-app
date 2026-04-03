@@ -43,7 +43,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
@@ -167,7 +166,8 @@ fun HomeScreen(
             }
         ) { contentPadding ->
             val bottomPadding = contentPadding.calculateBottomPadding()
-            val floatingBarHeight = floatingBarHeight()
+            val isExpandedScreen = WindowClass.isAtLeastExpanded()
+            val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
 
             if (!isPlayersViewShown) {
                 Box(
@@ -208,14 +208,15 @@ fun HomeScreen(
                         onClick = { showPlayersView = true }
                     ) {
                         Players(
-                            modifier = Modifier.height(floatingBarHeight),
                             playerPagerState = playerPagerState,
                             state = playersState,
                             serverUrl = serverUrl,
                             homeScreenViewModel = viewModel,
                             actionsViewModel = actionsViewModel,
-                            expanded = false
-                        ) { showPlayersView = false }
+                            expanded = false,
+                            onClose = { showPlayersView = false },
+                            isExpandedScreen = isExpandedScreen
+                        )
                     }
                 }
             } else {
@@ -245,8 +246,10 @@ fun HomeScreen(
                             serverUrl = serverUrl,
                             homeScreenViewModel = viewModel,
                             actionsViewModel = actionsViewModel,
-                            expanded = true
-                        ) { showPlayersView = false }
+                            expanded = true,
+                            onClose = { showPlayersView = false },
+                            isExpandedScreen = isExpandedScreen
+                        )
                     }
                 }
             }
@@ -396,60 +399,61 @@ private fun HomeContent(
 
 @Composable
 private fun Players(
-    modifier: Modifier = Modifier,
     playerPagerState: PagerState,
     state: HomeScreenViewModel.PlayersState,
     serverUrl: String?,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
     expanded: Boolean,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    isExpandedScreen: Boolean
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
-        if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
-            PlayersPager(
-                playerPagerState = playerPagerState,
-                playersState = state,
-                serverUrl = serverUrl,
-                simplePlayerAction = { playerId, action ->
-                    homeScreenViewModel.playerAction(playerId, action)
-                },
-                playerAction = { playerData, action ->
-                    homeScreenViewModel.playerAction(playerData, action)
-                },
-                onFavoriteClick = actionsViewModel::onFavoriteClick,
-                expanded = expanded,
-                onClose = onClose,
-                onItemMoved = { indexShift ->
-                    val currentPlayer =
-                        state.playerData[playerPagerState.currentPage].player
-                    val newIndex =
-                        (playerPagerState.currentPage + indexShift).coerceIn(
-                            0,
-                            state.playerData.size - 1
-                        )
-                    val newPlayers =
-                        state.playerData.map { it.player.id }
-                            .toMutableList()
-                            .apply {
-                                add(
-                                    newIndex,
-                                    removeAt(playerPagerState.currentPage)
-                                )
-                            }
-                    homeScreenViewModel.selectPlayer(currentPlayer)
-                    homeScreenViewModel.onPlayersSortChanged(newPlayers)
-                },
-                queueAction = { action -> homeScreenViewModel.queueAction(action) },
-                moveToPlayer = { id: String ->
-                    val player =
-                        state.playerData.find { it.player.id == id }
-                    if (player != null) {
-                        homeScreenViewModel.selectPlayer(player.player)
-                    }
+    if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
+        PlayersPager(
+            playerPagerState = playerPagerState,
+            playersState = state,
+            serverUrl = serverUrl,
+            simplePlayerAction = { playerId, action ->
+                homeScreenViewModel.playerAction(playerId, action)
+            },
+            playerAction = { playerData, action ->
+                homeScreenViewModel.playerAction(playerData, action)
+            },
+            onFavoriteClick = actionsViewModel::onFavoriteClick,
+            expanded = expanded,
+            onClose = onClose,
+            onItemMoved = { indexShift ->
+                val currentPlayer =
+                    state.playerData[playerPagerState.currentPage].player
+                val newIndex =
+                    (playerPagerState.currentPage + indexShift).coerceIn(
+                        0,
+                        state.playerData.size - 1
+                    )
+                val newPlayers =
+                    state.playerData.map { it.player.id }
+                        .toMutableList()
+                        .apply {
+                            add(
+                                newIndex,
+                                removeAt(playerPagerState.currentPage)
+                            )
+                        }
+                homeScreenViewModel.selectPlayer(currentPlayer)
+                homeScreenViewModel.onPlayersSortChanged(newPlayers)
+            },
+            queueAction = { action -> homeScreenViewModel.queueAction(action) },
+            moveToPlayer = { id: String ->
+                val player =
+                    state.playerData.find { it.player.id == id }
+                if (player != null) {
+                    homeScreenViewModel.selectPlayer(player.player)
                 }
-            )
-        } else {
+            },
+            isExpandedScreen = isExpandedScreen
+        )
+    } else {
+        Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {
             val text = when (state) {
                 is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
                 is HomeScreenViewModel.PlayersState.Data -> "No players available"
@@ -463,14 +467,5 @@ private fun Players(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun floatingBarHeight(): Dp {
-    return if (WindowClass.isAtLeastExpanded()) {
-        84.dp
-    } else {
-        130.dp
     }
 }
