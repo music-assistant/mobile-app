@@ -5,6 +5,7 @@ package io.music_assistant.client.ui.compose.item
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -231,25 +232,24 @@ private fun ItemChildren(
                 }
 
                 val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-                Scaffold(
+                Column(
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                    topBar = {
-                        ItemTopBar(
-                            item = item,
-                            isRowMode = isRowMode,
-                            onBack = onBack,
-                            onToggleViewMode = onToggleViewMode,
-                            libraryActions = libraryActions,
-                            playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
-                            scrollBehavior = scrollBehavior
-                        )
-                    }
-                ) { contentPadding ->
+                ) {
+                    ItemTopBar(
+                        item = item,
+                        isRowMode = isRowMode,
+                        onBack = onBack,
+                        onToggleViewMode = onToggleViewMode,
+                        libraryActions = libraryActions,
+                        playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
+                        scrollBehavior = scrollBehavior
+                    )
+
                     LazyVerticalGrid(
                         modifier = Modifier.fillMaxWidth()
                             .testTag("LazyVerticalGrid"),
                         columns = GridCells.Adaptive(minSize = 96.dp),
-                        contentPadding = contentPadding + hostPadding + PaddingValues(8.dp),
+                        contentPadding = hostPadding + PaddingValues(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {

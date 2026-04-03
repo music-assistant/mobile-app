@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
@@ -35,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -103,27 +101,25 @@ fun SettingsScreen(hostPadding: PaddingValues, goHome: () -> Unit, exitApp: () -
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    Scaffold(
-        modifier = Modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                actions = {
-                    ThemeChooser(
-                        modifier = Modifier.padding(end = 16.dp),
-                        currentTheme = theme.value
-                    ) { changedTheme ->
-                        themeViewModel.switchTheme(changedTheme)
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        }
-    ) { contentPadding ->
+    Column(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+    ) {
+        TopAppBar(
+            title = { Text("Settings") },
+            actions = {
+                ThemeChooser(
+                    modifier = Modifier.padding(end = 16.dp),
+                    currentTheme = theme.value
+                ) { changedTheme ->
+                    themeViewModel.switchTheme(changedTheme)
+                }
+            },
+            scrollBehavior = scrollBehavior
+        )
+
         Column(
             modifier = Modifier
-                .padding(contentPadding + hostPadding)
+                .padding(hostPadding)
                 .background(color = MaterialTheme.colorScheme.background)
                 .fillMaxSize()
         ) {
