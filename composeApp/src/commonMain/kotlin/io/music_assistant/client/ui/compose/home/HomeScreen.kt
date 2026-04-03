@@ -43,6 +43,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
@@ -62,6 +63,7 @@ import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -165,6 +167,8 @@ fun HomeScreen(
             }
         ) { contentPadding ->
             val bottomPadding = contentPadding.calculateBottomPadding()
+            val floatingBarHeight = floatingBarHeight()
+
             if (!isPlayersViewShown) {
                 Box(
                     modifier = Modifier
@@ -193,7 +197,9 @@ fun HomeScreen(
                             actionsViewModel.getProviderIcon(provider)
                                 ?.let { ProviderIcon(modifier, it) }
                         },
-                        contentPadding = PaddingValues(bottom = floatingBarHeight + FloatingBarDefaults.padding)
+                        contentPadding = PaddingValues(
+                            bottom = floatingBarHeight + FloatingBarDefaults.padding
+                        )
                     )
 
                     FloatingBar(
@@ -460,4 +466,11 @@ private fun Players(
     }
 }
 
-private val floatingBarHeight = 130.dp
+@Composable
+private fun floatingBarHeight(): Dp {
+    return if (WindowClass.isAtLeastExpanded()) {
+        84.dp
+    } else {
+        130.dp
+    }
+}
