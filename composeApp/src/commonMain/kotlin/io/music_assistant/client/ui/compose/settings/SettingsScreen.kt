@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
@@ -111,6 +112,13 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     currentTheme = theme.value
                 ) { changedTheme ->
                     themeViewModel.switchTheme(changedTheme)
+                }
+            },
+            navigationIcon = {
+                if (isAuthenticated) {
+                    IconButton(onClick = goHome) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
                 }
             },
             scrollBehavior = scrollBehavior
