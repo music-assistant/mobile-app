@@ -142,24 +142,26 @@ fun HomeScreen(
     ) { isPlayersViewShown ->
         Scaffold(
             bottomBar = {
-                NavigationBar(modifier = Modifier.height(88.dp)) {
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { },
-                        icon = {
-                            Icon(Icons.Default.Home, contentDescription = null)
-                        }
-                    )
+                if (!isPlayersViewShown) {
+                    NavigationBar(modifier = Modifier.height(88.dp)) {
+                        NavigationBarItem(
+                            selected = true,
+                            onClick = { },
+                            icon = {
+                                Icon(Icons.Default.Home, contentDescription = null)
+                            }
+                        )
 
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = {
-                            goToSettings()
-                        },
-                        icon = {
-                            Icon(Icons.Default.Settings, contentDescription = null)
-                        }
-                    )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = {
+                                goToSettings()
+                            },
+                            icon = {
+                                Icon(Icons.Default.Settings, contentDescription = null)
+                            }
+                        )
+                    }
                 }
             }
         ) { contentPadding ->
@@ -215,10 +217,9 @@ fun HomeScreen(
                     }
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                Column(modifier = Modifier
+                    .padding(contentPadding)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     // Close button
                     IconButton(
