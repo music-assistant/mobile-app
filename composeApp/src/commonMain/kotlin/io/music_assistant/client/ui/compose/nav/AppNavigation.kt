@@ -1,17 +1,8 @@
 package io.music_assistant.client.ui.compose.nav
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -123,67 +113,41 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
     val bottomSheetStrategy = remember { BottomSheetSceneStrategy<NavKey>() }
     val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
 
-    val goHome: () -> Unit = {
-        backStack.clear()
-        backStack.add(NavScreen.Home)
-    }
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar(modifier = Modifier.height(88.dp)) {
-                NavigationBarItem(
-                    selected = backStack.last() == NavScreen.Home,
-                    onClick = goHome,
-                    icon = {
-                        Icon(Icons.Default.Home, contentDescription = null)
-                    }
+    Box {
+        // Main navigation content
+        NavDisplay(
+            modifier = Modifier.fillMaxSize(),
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            sceneStrategy = bottomSheetStrategy.then(dialogStrategy),
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(
+                    rememberSaveableStateHolder()
                 )
-
-                NavigationBarItem(
-                    selected = backStack.last() == NavScreen.Settings,
-                    onClick = {
-                        backStack.add(NavScreen.Settings)
-                    },
-                    icon = {
-                        Icon(Icons.Default.Settings, contentDescription = null)
-                    }
-                )
-            }
-        }
-    ) { contentPadding ->
-        Box {
-            // Main navigation content
-            NavDisplay(
-                modifier = Modifier.fillMaxSize(),
-                backStack = backStack,
-                onBack = { backStack.removeLastOrNull() },
-                sceneStrategy = bottomSheetStrategy.then(dialogStrategy),
-                entryDecorators = listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(
-                        rememberSaveableStateHolder()
+            ),
+            entryProvider = entryProvider {
+                entry<NavScreen.Home> {
+                    HomeScreen(
+                        goToSettings = { backStack.add(NavScreen.Settings) }
                     )
-                ),
-                entryProvider = entryProvider {
-                    entry<NavScreen.Home> {
-                        HomeScreen(
-                            hostPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
-                            navigateTo = { screen -> backStack.add(screen) })
-                    }
-
-                    entry<NavScreen.Settings> {
-                        SettingsScreen(
-                            hostPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
-                            goHome = goHome,
-                            exitApp = { exitApp() }
-                        )
-                    }
                 }
-            )
 
-            // Connection status banner - overlays at top, doesn't shrink content
-            ConnectionStatusBanner(
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
+                entry<NavScreen.Settings> {
+                    SettingsScreen(
+                        goHome = {
+                            ->
+                            backStack.clear()
+                            backStack.add(NavScreen.Home)
+                        },
+                        exitApp = { exitApp() }
+                    )
+                }
+            }
+        )
+
+        // Connection status banner - overlays at top, doesn't shrink content
+        ConnectionStatusBanner(
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }

@@ -22,11 +22,16 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,7 +61,6 @@ import io.music_assistant.client.ui.compose.home.nav.rememberHomeNavBackStack
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.BackHandler
-import io.music_assistant.client.ui.compose.nav.NavScreen
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.collectLatest
@@ -67,8 +71,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeScreen(
     viewModel: HomeScreenViewModel = koinViewModel(),
     actionsViewModel: ActionsViewModel = koinViewModel(),
-    hostPadding: PaddingValues,
-    navigateTo: (NavScreen) -> Unit,
+    goToSettings: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     val toastState = rememberToastState()
@@ -137,85 +140,111 @@ fun HomeScreen(
         },
         label = "player_transition"
     ) { isPlayersViewShown ->
-        if (!isPlayersViewShown) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                HomeContent(
-                    homeBackStack = homeBackStack,
-                    connectionState = connectionState,
-                    dataState = dataState,
-                    serverUrl = serverUrl,
-                    onPlayClick = viewModel::onPlayClick,
-                    playlistActions = ActionsViewModel.PlaylistActions(
-                        onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                        onAddToPlaylist = actionsViewModel::addToPlaylist
-                    ),
-                    libraryActions = ActionsViewModel.LibraryActions(
-                        onLibraryClick = actionsViewModel::onLibraryClick,
-                        onFavoriteClick = actionsViewModel::onFavoriteClick
-                    ),
-                    progressActions = ActionsViewModel.ProgressActions(
-                        onMarkPlayed = actionsViewModel::onMarkPlayed,
-                        onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                    ),
-                    navigateTo = navigateTo,
-                    providerIconFetcher = { modifier, provider ->
-                        actionsViewModel.getProviderIcon(provider)
-                            ?.let { ProviderIcon(modifier, it) }
-                    },
-                    hostPadding = hostPadding
-                )
+        Scaffold(
+            bottomBar = {
+                NavigationBar(modifier = Modifier.height(88.dp)) {
+                    NavigationBarItem(
+                        selected = true,
+                        onClick = { },
+                        icon = {
+                            Icon(Icons.Default.Home, contentDescription = null)
+                        }
+                    )
 
-                FloatingBar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(hostPadding),
-                    onClick = { showPlayersView = true }
-                ) {
-                    Players(
-                        modifier = Modifier.height(floatingBarHeight),
-                        playerPagerState = playerPagerState,
-                        state = playersState,
-                        serverUrl = serverUrl,
-                        homeScreenViewModel = viewModel,
-                        actionsViewModel = actionsViewModel,
-                        expanded = false
-                    ) { showPlayersView = false }
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            ) {
-                // Close button
-                IconButton(
-                    onClick = { showPlayersView = false },
-                    modifier = Modifier.fillMaxWidth().height(36.dp)
-                        .align(Alignment.CenterHorizontally)
-                ) {
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        "Collapse",
-                        modifier = Modifier.size(32.dp)
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = {
+                            goToSettings()
+                        },
+                        icon = {
+                            Icon(Icons.Default.Settings, contentDescription = null)
+                        }
                     )
                 }
+            }
+        ) { contentPadding ->
+            val hostPadding =
+                contentPadding + PaddingValues(bottom = floatingBarHeight + FloatingBarDefaults.padding)
+
+            if (!isPlayersViewShown) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
-                    Players(
-                        playerPagerState = playerPagerState,
-                        state = playersState,
+                    HomeContent(
+                        homeBackStack = homeBackStack,
+                        connectionState = connectionState,
+                        dataState = dataState,
                         serverUrl = serverUrl,
-                        homeScreenViewModel = viewModel,
-                        actionsViewModel = actionsViewModel,
-                        expanded = true
-                    ) { showPlayersView = false }
+                        onPlayClick = viewModel::onPlayClick,
+                        playlistActions = ActionsViewModel.PlaylistActions(
+                            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                            onAddToPlaylist = actionsViewModel::addToPlaylist
+                        ),
+                        libraryActions = ActionsViewModel.LibraryActions(
+                            onLibraryClick = actionsViewModel::onLibraryClick,
+                            onFavoriteClick = actionsViewModel::onFavoriteClick
+                        ),
+                        progressActions = ActionsViewModel.ProgressActions(
+                            onMarkPlayed = actionsViewModel::onMarkPlayed,
+                            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                        ),
+                        providerIconFetcher = { modifier, provider ->
+                            actionsViewModel.getProviderIcon(provider)
+                                ?.let { ProviderIcon(modifier, it) }
+                        },
+                        hostPadding = hostPadding
+                    )
+
+                    FloatingBar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(contentPadding),
+                        onClick = { showPlayersView = true }
+                    ) {
+                        Players(
+                            modifier = Modifier.height(floatingBarHeight),
+                            playerPagerState = playerPagerState,
+                            state = playersState,
+                            serverUrl = serverUrl,
+                            homeScreenViewModel = viewModel,
+                            actionsViewModel = actionsViewModel,
+                            expanded = false
+                        ) { showPlayersView = false }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    // Close button
+                    IconButton(
+                        onClick = { showPlayersView = false },
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            Icons.Default.ExpandMore,
+                            "Collapse",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Players(
+                            playerPagerState = playerPagerState,
+                            state = playersState,
+                            serverUrl = serverUrl,
+                            homeScreenViewModel = viewModel,
+                            actionsViewModel = actionsViewModel,
+                            expanded = true
+                        ) { showPlayersView = false }
+                    }
                 }
             }
         }
@@ -233,7 +262,6 @@ private fun HomeContent(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions,
-    navigateTo: (NavScreen) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     hostPadding: PaddingValues
 ) {
@@ -249,8 +277,6 @@ private fun HomeContent(
         typedBackStack.removeLastOrNull()
     }
 
-    val hostPadding =
-        hostPadding + PaddingValues(bottom = floatingBarHeight + FloatingBarDefaults.padding)
     NavDisplay(
         modifier = modifier,
         backStack = typedBackStack,

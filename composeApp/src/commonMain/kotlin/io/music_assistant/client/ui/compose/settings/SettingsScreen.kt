@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,7 +78,7 @@ import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(hostPadding: PaddingValues, goHome: () -> Unit, exitApp: () -> Unit) {
+fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
     val viewModel = koinViewModel<SettingsViewModel>()
@@ -119,7 +118,6 @@ fun SettingsScreen(hostPadding: PaddingValues, goHome: () -> Unit, exitApp: () -
 
         Column(
             modifier = Modifier
-                .padding(hostPadding)
                 .background(color = MaterialTheme.colorScheme.background)
                 .fillMaxSize()
         ) {
