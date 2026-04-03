@@ -405,7 +405,7 @@ private fun Players(
     expanded: Boolean,
     onClose: () -> Unit
 ) {
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxSize()) {
         if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
             PlayersPager(
                 playerPagerState = playerPagerState,
@@ -457,7 +457,7 @@ private fun Players(
             }
 
             Text(
-                modifier = modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center),
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
