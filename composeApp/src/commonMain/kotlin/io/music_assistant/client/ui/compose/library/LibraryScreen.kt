@@ -61,7 +61,7 @@ import org.koin.compose.koinInject
 
 @Composable
 fun LibraryScreen(
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
     initialTabType: MediaType?,
     onBack: () -> Unit,
     onNavigateClick: (AppMediaItem) -> Unit,
@@ -113,7 +113,7 @@ fun LibraryScreen(
         )
 
         Library(
-            hostPadding = hostPadding,
+            contentPadding = contentPadding,
             state = state,
             serverUrl = serverUrl,
             isRowMode = isRowMode,
@@ -218,7 +218,7 @@ private fun Library(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
 ) {
     val selectedTab = state.tabs.find { it.isSelected } ?: state.tabs.first()
 
@@ -271,7 +271,7 @@ private fun Library(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     progressActions = progressActions,
-                    hostPadding
+                    contentPadding
                 )
             }
         }
@@ -350,7 +350,7 @@ private fun TabContent(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
 ) {
     // Create separate grid states for each tab to preserve scroll position
     val artistsGridState = rememberLazyGridState()
@@ -429,7 +429,7 @@ private fun TabContent(
                                 playlistActions = playlistActions,
                                 libraryActions = libraryActions,
                                 progressActions = progressActions,
-                                hostPadding
+                                contentPadding = contentPadding
                             )
                         }
 

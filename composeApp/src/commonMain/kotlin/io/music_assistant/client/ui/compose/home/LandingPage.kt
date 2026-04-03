@@ -70,7 +70,7 @@ import io.music_assistant.client.utils.SessionState
 @Composable
 fun LandingPage(
     modifier: Modifier = Modifier,
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
     connectionState: SessionState,
     dataState: DataState<List<AppMediaItem.RecommendationFolder>>,
     serverUrl: String?,
@@ -112,7 +112,7 @@ fun LandingPage(
 
         LazyColumn(
             state = listState,
-            contentPadding = hostPadding
+            contentPadding = contentPadding
         ) {
             // Your library row
             item {

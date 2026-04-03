@@ -49,7 +49,7 @@ fun AdaptiveMediaGrid(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
 ) {
     // Detect when we're near the end and trigger load more
     val shouldLoadMore by remember {
@@ -73,7 +73,7 @@ fun AdaptiveMediaGrid(
         modifier = modifier,
         state = gridState,
         columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = hostPadding + PaddingValues(8.dp),
+        contentPadding = contentPadding + PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {

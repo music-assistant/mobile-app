@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -165,13 +164,11 @@ fun HomeScreen(
                 }
             }
         ) { contentPadding ->
-            val hostPadding =
-                contentPadding + PaddingValues(bottom = floatingBarHeight + FloatingBarDefaults.padding)
-
+            val bottomPadding = contentPadding.calculateBottomPadding()
             if (!isPlayersViewShown) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .padding(bottom = bottomPadding)
                         .background(MaterialTheme.colorScheme.background)
                 ) {
                     HomeContent(
@@ -196,13 +193,12 @@ fun HomeScreen(
                             actionsViewModel.getProviderIcon(provider)
                                 ?.let { ProviderIcon(modifier, it) }
                         },
-                        hostPadding = hostPadding
+                        contentPadding = PaddingValues(bottom = floatingBarHeight + FloatingBarDefaults.padding)
                     )
 
                     FloatingBar(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(contentPadding),
+                            .align(Alignment.BottomCenter),
                         onClick = { showPlayersView = true }
                     ) {
                         Players(
@@ -264,7 +260,7 @@ private fun HomeContent(
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    hostPadding: PaddingValues
+    contentPadding: PaddingValues
 ) {
     @Suppress("UNCHECKED_CAST")
     val typedBackStack = homeBackStack as NavBackStack<HomeNavScreen>
@@ -288,7 +284,7 @@ private fun HomeContent(
         entryProvider = entryProvider {
             entry<HomeNavScreen.Landing> {
                 LandingPage(
-                    hostPadding = hostPadding,
+                    contentPadding = contentPadding,
                     connectionState = connectionState,
                     dataState = dataState,
                     serverUrl = serverUrl,
@@ -329,7 +325,7 @@ private fun HomeContent(
 
             entry<HomeNavScreen.Library> {
                 LibraryScreen(
-                    hostPadding = hostPadding,
+                    contentPadding = contentPadding,
                     initialTabType = it.type,
                     onBack = { typedBackStack.removeLastOrNull() },
                     onNavigateClick = { item ->
@@ -357,7 +353,7 @@ private fun HomeContent(
 
             entry<HomeNavScreen.ItemDetails> {
                 ItemDetailsScreen(
-                    hostPadding = hostPadding,
+                    contentPadding = contentPadding,
                     itemId = it.itemId,
                     mediaType = it.mediaType,
                     providerId = it.providerId,

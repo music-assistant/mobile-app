@@ -58,7 +58,7 @@ fun ItemDetailsScreen(
     providerId: String,
     onBack: () -> Unit,
     onNavigateToItem: (String, MediaType, String) -> Unit,
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
 ) {
     val viewModel: ItemDetailsViewModel = koinViewModel()
     val actionsViewModel: ActionsViewModel = koinViewModel()
@@ -79,7 +79,7 @@ fun ItemDetailsScreen(
     }
 
     ItemDetails(
-        hostPadding,
+        contentPadding,
         state,
         serverUrl,
         onBack,
@@ -112,7 +112,7 @@ fun ItemDetailsScreen(
 
 @Composable
 fun ItemDetails(
-    hostPadding: PaddingValues = PaddingValues(),
+    contentPadding: PaddingValues = PaddingValues(),
     state: ItemDetailsViewModel.State,
     serverUrl: String? = null,
     onBack: () -> Unit = {},
@@ -176,7 +176,7 @@ fun ItemDetails(
         providerIconFetcher = providerIconFetcher,
         onBack = onBack,
         onToggleViewMode = onToggleViewMode,
-        hostPadding,
+        contentPadding,
     )
 }
 
@@ -197,7 +197,7 @@ private fun ItemChildren(
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
-    hostPadding: PaddingValues,
+    contentPadding: PaddingValues,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (val itemState = state.itemState) {
@@ -249,7 +249,7 @@ private fun ItemChildren(
                         modifier = Modifier.fillMaxWidth()
                             .testTag("LazyVerticalGrid"),
                         columns = GridCells.Adaptive(minSize = 96.dp),
-                        contentPadding = hostPadding + PaddingValues(8.dp),
+                        contentPadding = contentPadding + PaddingValues(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
