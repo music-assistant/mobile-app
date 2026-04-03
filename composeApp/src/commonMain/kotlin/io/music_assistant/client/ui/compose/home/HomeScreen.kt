@@ -172,6 +172,7 @@ fun HomeScreen(
             if (!isPlayersViewShown) {
                 Box(
                     modifier = Modifier
+                        .fillMaxSize()
                         .padding(bottom = bottomPadding)
                         .background(MaterialTheme.colorScheme.background)
                 ) {

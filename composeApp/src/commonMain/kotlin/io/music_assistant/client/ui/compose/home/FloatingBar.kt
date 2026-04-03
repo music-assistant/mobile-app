@@ -32,7 +32,7 @@ fun FloatingBar(modifier: Modifier = Modifier, onClick: () -> Unit = {}, content
 }
 
 object FloatingBarDefaults {
-    val padding = 4.dp
+    val padding = 8.dp
 }
 
 @Preview
