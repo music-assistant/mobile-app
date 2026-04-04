@@ -5,7 +5,6 @@ package io.music_assistant.client.ui.compose.item
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,13 +20,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,6 +45,7 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.theme.AppTheme
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -231,10 +229,7 @@ private fun ItemChildren(
                     else -> return@Box
                 }
 
-                val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-                Column(
-                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                ) {
+                Screen(topBar = { scrollBehaviour ->
                     ItemTopBar(
                         item = item,
                         isRowMode = isRowMode,
@@ -242,9 +237,9 @@ private fun ItemChildren(
                         onToggleViewMode = onToggleViewMode,
                         libraryActions = libraryActions,
                         playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
-                        scrollBehavior = scrollBehavior
+                        scrollBehavior = scrollBehaviour
                     )
-
+                }) {
                     LazyVerticalGrid(
                         modifier = Modifier.fillMaxWidth()
                             .testTag("LazyVerticalGrid"),

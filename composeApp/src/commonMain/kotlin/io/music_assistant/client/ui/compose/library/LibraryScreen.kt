@@ -44,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
@@ -57,6 +56,7 @@ import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.nav.Screen
 import org.koin.compose.koinInject
 
 @Composable
@@ -99,19 +99,18 @@ fun LibraryScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    Column(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+    Screen(
+        topBar = { scrollBehavior ->
+            LibraryTopBar(
+                onBack = onBack,
+                tabs = state.tabs,
+                onTabSelected = viewModel::onTabSelected,
+                isRowMode = isRowMode,
+                onToggleViewMode = viewModel::toggleItemsRowMode,
+                scrollBehavior = scrollBehavior,
+            )
+        }
     ) {
-        LibraryTopBar(
-            onBack = onBack,
-            tabs = state.tabs,
-            onTabSelected = viewModel::onTabSelected,
-            isRowMode = isRowMode,
-            onToggleViewMode = viewModel::toggleItemsRowMode,
-            scrollBehavior = scrollBehavior,
-        )
-
         Library(
             contentPadding = contentPadding,
             state = state,

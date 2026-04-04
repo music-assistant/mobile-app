@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,7 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +63,7 @@ import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.nav.BackHandler
+import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
@@ -99,31 +98,29 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    Column(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-    ) {
-        TopAppBar(
-            title = { Text("Settings") },
-            actions = {
-                ThemeChooser(
-                    modifier = Modifier.padding(end = 16.dp),
-                    currentTheme = theme.value
-                ) { changedTheme ->
-                    themeViewModel.switchTheme(changedTheme)
-                }
-            },
-            navigationIcon = {
-                if (isAuthenticated) {
-                    IconButton(onClick = goHome) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+    Screen(
+        topBar = { scrollBehavior ->
+            TopAppBar(
+                title = { Text("Settings") },
+                actions = {
+                    ThemeChooser(
+                        modifier = Modifier.padding(end = 16.dp),
+                        currentTheme = theme.value
+                    ) { changedTheme ->
+                        themeViewModel.switchTheme(changedTheme)
                     }
-                }
-            },
-            scrollBehavior = scrollBehavior
-        )
-
+                },
+                navigationIcon = {
+                    if (isAuthenticated) {
+                        IconButton(onClick = goHome) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) {
         Column(
             modifier = Modifier
                 .background(color = MaterialTheme.colorScheme.background)
