@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,10 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,7 +57,9 @@ import io.music_assistant.client.ui.compose.home.nav.HomeNavScreen
 import io.music_assistant.client.ui.compose.home.nav.rememberHomeNavBackStack
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryScreen
+import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.BackHandler
+import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.WindowClass
@@ -145,113 +142,12 @@ fun HomeScreen(
     ) { isPlayersViewShown ->
         val isExpandedScreen = WindowClass.isAtLeastExpanded()
 
-        Scaffold(
-            bottomBar = {
-                if (!isPlayersViewShown && !isExpandedScreen) {
-                    NavigationBar(modifier = Modifier.height(88.dp)) {
-                        NavigationBarItem(
-                            selected = true,
-                            onClick = { },
-                            icon = {
-                                Icon(Icons.Default.Home, contentDescription = null)
-                            }
-                        )
-
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = {
-                                goToSettings()
-                            },
-                            icon = {
-                                Icon(Icons.Default.Settings, contentDescription = null)
-                            }
-                        )
-                    }
-                }
-            }
-        ) { contentPadding ->
-            val bottomPadding = contentPadding.calculateBottomPadding()
-            val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
-
-            if (!isPlayersViewShown) {
-                Row {
-                    if (isExpandedScreen) {
-                        NavigationRail {
-                            NavigationRailItem(
-                                selected = true,
-                                onClick = { },
-                                icon = {
-                                    Icon(Icons.Default.Home, contentDescription = null)
-                                }
-                            )
-
-                            NavigationRailItem(
-                                selected = false,
-                                onClick = {
-                                    goToSettings()
-                                },
-                                icon = {
-                                    Icon(Icons.Default.Settings, contentDescription = null)
-                                }
-                            )
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = bottomPadding)
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        HomeContent(
-                            homeBackStack = homeBackStack,
-                            connectionState = connectionState,
-                            dataState = dataState,
-                            serverUrl = serverUrl,
-                            onPlayClick = viewModel::onPlayClick,
-                            playlistActions = ActionsViewModel.PlaylistActions(
-                                onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                                onAddToPlaylist = actionsViewModel::addToPlaylist
-                            ),
-                            libraryActions = ActionsViewModel.LibraryActions(
-                                onLibraryClick = actionsViewModel::onLibraryClick,
-                                onFavoriteClick = actionsViewModel::onFavoriteClick
-                            ),
-                            progressActions = ActionsViewModel.ProgressActions(
-                                onMarkPlayed = actionsViewModel::onMarkPlayed,
-                                onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                            ),
-                            providerIconFetcher = { modifier, provider ->
-                                actionsViewModel.getProviderIcon(provider)
-                                    ?.let { ProviderIcon(modifier, it) }
-                            },
-                            contentPadding = PaddingValues(
-                                bottom = floatingBarHeight + FloatingBarDefaults.padding
-                            )
-                        )
-
-                        FloatingBar(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter),
-                            onClick = { showPlayersView = true }
-                        ) {
-                            Players(
-                                playerPagerState = playerPagerState,
-                                state = playersState,
-                                serverUrl = serverUrl,
-                                homeScreenViewModel = viewModel,
-                                actionsViewModel = actionsViewModel,
-                                expanded = false,
-                                onClose = { showPlayersView = false },
-                                isExpandedScreen = isExpandedScreen
-                            )
-                        }
-                    }
-                }
-            } else {
-                Column(modifier = Modifier
-                    .padding(contentPadding)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        if (isPlayersViewShown) {
+            Scaffold { contentPadding ->
+                Column(
+                    modifier = Modifier
+                        .padding(contentPadding)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     // Close button
                     IconButton(
@@ -276,6 +172,75 @@ fun HomeScreen(
                             homeScreenViewModel = viewModel,
                             actionsViewModel = actionsViewModel,
                             expanded = true,
+                            onClose = { showPlayersView = false },
+                            isExpandedScreen = isExpandedScreen
+                        )
+                    }
+                }
+            }
+        } else {
+            val navigationItems = listOf(
+                NavigationItem(
+                    selected = true,
+                    onClick = { },
+                    Icons.Default.Home
+                ),
+                NavigationItem(
+                    selected = false,
+                    onClick = { goToSettings() },
+                    Icons.Default.Settings
+                )
+            )
+
+            AdaptiveNavigationScaffold(navigationItems = navigationItems) { contentPadding ->
+                val bottomPadding = contentPadding.calculateBottomPadding()
+                val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = bottomPadding)
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    HomeContent(
+                        homeBackStack = homeBackStack,
+                        connectionState = connectionState,
+                        dataState = dataState,
+                        serverUrl = serverUrl,
+                        onPlayClick = viewModel::onPlayClick,
+                        playlistActions = ActionsViewModel.PlaylistActions(
+                            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                            onAddToPlaylist = actionsViewModel::addToPlaylist
+                        ),
+                        libraryActions = ActionsViewModel.LibraryActions(
+                            onLibraryClick = actionsViewModel::onLibraryClick,
+                            onFavoriteClick = actionsViewModel::onFavoriteClick
+                        ),
+                        progressActions = ActionsViewModel.ProgressActions(
+                            onMarkPlayed = actionsViewModel::onMarkPlayed,
+                            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                        ),
+                        providerIconFetcher = { modifier, provider ->
+                            actionsViewModel.getProviderIcon(provider)
+                                ?.let { ProviderIcon(modifier, it) }
+                        },
+                        contentPadding = PaddingValues(
+                            bottom = floatingBarHeight + FloatingBarDefaults.padding
+                        )
+                    )
+
+                    FloatingBar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter),
+                        onClick = { showPlayersView = true }
+                    ) {
+                        Players(
+                            playerPagerState = playerPagerState,
+                            state = playersState,
+                            serverUrl = serverUrl,
+                            homeScreenViewModel = viewModel,
+                            actionsViewModel = actionsViewModel,
+                            expanded = false,
                             onClose = { showPlayersView = false },
                             isExpandedScreen = isExpandedScreen
                         )
