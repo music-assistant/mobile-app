@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package io.music_assistant.client
 
 import androidx.compose.ui.window.ComposeUIViewController
@@ -5,6 +7,8 @@ import io.music_assistant.client.di.initKoin
 import io.music_assistant.client.di.iosModule
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.ui.compose.App
+import kotlinx.cinterop.staticCFunction
+import platform.Foundation.NSException
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSString
 import platform.Foundation.NSTemporaryDirectory
@@ -28,14 +32,15 @@ private fun cleanupStaleLogFile() {
 }
 
 private fun installCrashHandler() {
-    platform.Foundation.NSSetUncaughtExceptionHandler { exception ->
-        try {
+    platform.Foundation.NSSetUncaughtExceptionHandler(
+        staticCFunction { exception: NSException? ->
             val path = "${NSTemporaryDirectory()}ma_crash_log.txt"
             NSFileManager.defaultManager.removeItemAtPath(path, error = null)
             val text = InMemoryLogWriter.getLogText() +
                 "\n\n=== CRASH ===\n" + (exception?.description ?: "Unknown exception")
             val nsString = NSString.create(string = text)
             nsString.writeToFile(path, atomically = true, encoding = NSUTF8StringEncoding, error = null)
-        } catch (_: Exception) { }
-    }
+            Unit
+        }
+    )
 }

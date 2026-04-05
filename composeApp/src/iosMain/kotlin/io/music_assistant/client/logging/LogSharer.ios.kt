@@ -1,4 +1,5 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 
 package io.music_assistant.client.logging
 
@@ -12,6 +13,7 @@ import platform.Foundation.create
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
+import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
 
 actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platformContext: PlatformContext) {
@@ -57,6 +59,7 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
             .filterIsInstance<UIWindowScene>()
             .firstOrNull()
             ?.windows
+            ?.filterIsInstance<UIWindow>()
             ?.firstOrNull { it.isKeyWindow() }
             ?.rootViewController
         rootVC?.presentViewController(activityVC, animated = true, completion = null)
