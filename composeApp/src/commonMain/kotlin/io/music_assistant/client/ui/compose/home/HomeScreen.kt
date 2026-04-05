@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +31,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -140,9 +143,11 @@ fun HomeScreen(
         },
         label = "player_transition"
     ) { isPlayersViewShown ->
+        val isExpandedScreen = WindowClass.isAtLeastExpanded()
+
         Scaffold(
             bottomBar = {
-                if (!isPlayersViewShown) {
+                if (!isPlayersViewShown && !isExpandedScreen) {
                     NavigationBar(modifier = Modifier.height(88.dp)) {
                         NavigationBarItem(
                             selected = true,
@@ -166,58 +171,81 @@ fun HomeScreen(
             }
         ) { contentPadding ->
             val bottomPadding = contentPadding.calculateBottomPadding()
-            val isExpandedScreen = WindowClass.isAtLeastExpanded()
             val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
 
             if (!isPlayersViewShown) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = bottomPadding)
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    HomeContent(
-                        homeBackStack = homeBackStack,
-                        connectionState = connectionState,
-                        dataState = dataState,
-                        serverUrl = serverUrl,
-                        onPlayClick = viewModel::onPlayClick,
-                        playlistActions = ActionsViewModel.PlaylistActions(
-                            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                            onAddToPlaylist = actionsViewModel::addToPlaylist
-                        ),
-                        libraryActions = ActionsViewModel.LibraryActions(
-                            onLibraryClick = actionsViewModel::onLibraryClick,
-                            onFavoriteClick = actionsViewModel::onFavoriteClick
-                        ),
-                        progressActions = ActionsViewModel.ProgressActions(
-                            onMarkPlayed = actionsViewModel::onMarkPlayed,
-                            onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                        ),
-                        providerIconFetcher = { modifier, provider ->
-                            actionsViewModel.getProviderIcon(provider)
-                                ?.let { ProviderIcon(modifier, it) }
-                        },
-                        contentPadding = PaddingValues(
-                            bottom = floatingBarHeight + FloatingBarDefaults.padding
-                        )
-                    )
+                Row {
+                    if (isExpandedScreen) {
+                        NavigationRail {
+                            NavigationRailItem(
+                                selected = true,
+                                onClick = { },
+                                icon = {
+                                    Icon(Icons.Default.Home, contentDescription = null)
+                                }
+                            )
 
-                    FloatingBar(
+                            NavigationRailItem(
+                                selected = false,
+                                onClick = {
+                                    goToSettings()
+                                },
+                                icon = {
+                                    Icon(Icons.Default.Settings, contentDescription = null)
+                                }
+                            )
+                        }
+                    }
+
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter),
-                        onClick = { showPlayersView = true }
+                            .fillMaxSize()
+                            .padding(bottom = bottomPadding)
+                            .background(MaterialTheme.colorScheme.background)
                     ) {
-                        Players(
-                            playerPagerState = playerPagerState,
-                            state = playersState,
+                        HomeContent(
+                            homeBackStack = homeBackStack,
+                            connectionState = connectionState,
+                            dataState = dataState,
                             serverUrl = serverUrl,
-                            homeScreenViewModel = viewModel,
-                            actionsViewModel = actionsViewModel,
-                            expanded = false,
-                            onClose = { showPlayersView = false },
-                            isExpandedScreen = isExpandedScreen
+                            onPlayClick = viewModel::onPlayClick,
+                            playlistActions = ActionsViewModel.PlaylistActions(
+                                onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                                onAddToPlaylist = actionsViewModel::addToPlaylist
+                            ),
+                            libraryActions = ActionsViewModel.LibraryActions(
+                                onLibraryClick = actionsViewModel::onLibraryClick,
+                                onFavoriteClick = actionsViewModel::onFavoriteClick
+                            ),
+                            progressActions = ActionsViewModel.ProgressActions(
+                                onMarkPlayed = actionsViewModel::onMarkPlayed,
+                                onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                            ),
+                            providerIconFetcher = { modifier, provider ->
+                                actionsViewModel.getProviderIcon(provider)
+                                    ?.let { ProviderIcon(modifier, it) }
+                            },
+                            contentPadding = PaddingValues(
+                                bottom = floatingBarHeight + FloatingBarDefaults.padding
+                            )
                         )
+
+                        FloatingBar(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter),
+                            onClick = { showPlayersView = true }
+                        ) {
+                            Players(
+                                playerPagerState = playerPagerState,
+                                state = playersState,
+                                serverUrl = serverUrl,
+                                homeScreenViewModel = viewModel,
+                                actionsViewModel = actionsViewModel,
+                                expanded = false,
+                                onClose = { showPlayersView = false },
+                                isExpandedScreen = isExpandedScreen
+                            )
+                        }
                     }
                 }
             } else {
