@@ -102,7 +102,6 @@ internal fun PlayersPager(
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
-            val isLocalPlayer = player.playerId == playersState.localPlayerId
 
             var showSelectDialog by remember { mutableStateOf(false) }
             var showGroupDialog by remember { mutableStateOf(false) }
@@ -134,7 +133,7 @@ internal fun PlayersPager(
 
             Column(
                 Modifier.background(
-                    brush = if (isLocalPlayer) {
+                    brush = if (player.isLocal) {
                         Brush.verticalGradient(
                             listOf(
                                 MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -209,7 +208,7 @@ internal fun PlayersPager(
                         FullPlayerItem(
                             modifier = Modifier.fillMaxSize(),
                             item = player,
-                            isLocal = isLocalPlayer,
+                            isLocal = player.isLocal,
                             serverUrl = serverUrl,
                             playerAction = playerAction,
                             onFavoriteClick = onFavoriteClick,
@@ -222,7 +221,7 @@ internal fun PlayersPager(
                     && player.player.isVolumeSliderAccessible
                     && player.player.currentVolume != null
                 ) {
-                    if (!isLocalPlayer) {
+                    if (!player.isLocal) {
                         var currentVolume by remember(player.player.currentVolume) {
                             mutableStateOf(player.player.currentVolume)
                         }
