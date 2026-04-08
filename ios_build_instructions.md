@@ -57,7 +57,7 @@ Edit `iosApp/Configuration/Config.xcconfig`:
 
 ```
 TEAM_ID=YOUR_APPLE_TEAM_ID
-BUNDLE_ID=io.music_assistant.client.MusicAssistantClient
+PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
 APP_NAME=MusicAssistantClient
 IPHONEOS_DEPLOYMENT_TARGET = 15.0
 ```
@@ -136,7 +136,7 @@ Xcode will invoke the Gradle build phase automatically.
 
 Physical device builds require valid provisioning:
 - Set `TEAM_ID` in `Config.xcconfig`
-- Ensure your Apple Developer account can sign for `BUNDLE_ID`
+- Ensure your Apple Developer account can sign for `PRODUCT_BUNDLE_IDENTIFIER`
 - Remove `CODE_SIGNING_ALLOWED=NO` from the xcodebuild command
 - The device must be registered in your Apple Developer portal
 
@@ -156,7 +156,7 @@ xcrun simctl install <SIMULATOR_UUID> \
   ~/Library/Developer/Xcode/DerivedData/iosApp-*/Build/Products/Debug-iphonesimulator/MusicAssistantClient.app
 
 # Launch the app
-xcrun simctl launch <SIMULATOR_UUID> io.music_assistant.client.MusicAssistantClient
+xcrun simctl launch <SIMULATOR_UUID> io.music-assistant.client
 ```
 
 ---
@@ -174,7 +174,7 @@ mobile-app/
 │   ├── NativeAudioController.swift # AudioQueue-based PCM player
 │   ├── NowPlayingManager.swift    # Lock screen / Control Center
 │   ├── Configuration/
-│   │   └── Config.xcconfig        # TEAM_ID, BUNDLE_ID, APP_NAME
+│   │   └── Config.xcconfig        # TEAM_ID, PRODUCT_BUNDLE_IDENTIFIER, APP_NAME
 │   └── Frameworks/
 │       └── WebRTC.xcframework     # WebRTC M125 binary (125.6422.02)
 ├── composeApp/
@@ -255,7 +255,7 @@ The following issues were found and fixed to enable iOS/Kotlin-Native compilatio
 
 **File:** `iosApp/iosApp.xcodeproj/project.pbxproj`
 **Problem:** Bundle ID was hardcoded to `com.yourname.musicassistant` (placeholder).
-**Fix:** Changed to `"$(BUNDLE_ID)"` to use the value from `Config.xcconfig`.
+**Fix:** Changed to `"$(PRODUCT_BUNDLE_IDENTIFIER)"` to use the value from `Config.xcconfig`.
 
 ### 4. `TEAM_ID` empty in Config.xcconfig
 
@@ -312,7 +312,7 @@ WebRTC.xcframework is missing from `iosApp/Frameworks/`. Follow step 5 above to 
 
 ### `The project is damaged and cannot be opened due to a parse error`
 
-Variable references in `project.pbxproj` must be quoted. e.g., use `"$(BUNDLE_ID)"` not `$(BUNDLE_ID)`.
+Variable references in `project.pbxproj` must be quoted. e.g., use `"$(PRODUCT_BUNDLE_IDENTIFIER)"` not `$(PRODUCT_BUNDLE_IDENTIFIER)`.
 
 ### App crashes immediately on launch — `dyld4::halt()` / `dyld4::prepare()` in backtrace
 

@@ -56,6 +56,7 @@ gha-creds-*.json
 
 # Local Claude Code settings
 .claude/settings.local.json
+.mcp.json
 
 # Downloaded binary frameworks (too large for git, see ios_build_instructions.md step 5)
 iosApp/Frameworks/
