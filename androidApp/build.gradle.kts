@@ -23,7 +23,7 @@ android {
         }
     }
     signingConfigs {
-        create("selfSignedRelease") {
+        create("selfSigned") {
             storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
@@ -52,10 +52,16 @@ android {
             )
         }
 
-        create("selfSignedRelease") {
+        create("selfSignedDebug") {
             isDebuggable = true
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("selfSignedRelease")
+            signingConfig = signingConfigs.getByName("selfSigned")
+        }
+
+        create("selfSignedRelease") {
+            isDebuggable = false
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("selfSigned")
         }
     }
     compileOptions {

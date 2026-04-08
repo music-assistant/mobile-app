@@ -44,7 +44,7 @@ jobs:
           EOF
 
       - name: Build debug APK
-        run: ./gradlew :androidApp:assembleSelfSignedRelease
+        run: ./gradlew :androidApp:assembleSelfSignedDebug
 
       - name: Get vars
         id: vars
@@ -80,7 +80,7 @@ jobs:
             
             ### Installation
             Download the APK below and install on your Android device.
-          files: androidApp/build/outputs/apk/selfSignedRelease/androidApp-selfSignedRelease.apk
+          files: androidApp/build/outputs/apk/selfSignedDebug/androidApp-selfSignedDebug.apk
           draft: false
           prerelease: true
         env:
