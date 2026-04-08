@@ -6,11 +6,7 @@ import WebRTC.RTCDataBuffer
 import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
-import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.UByteVar
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,7 +20,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import platform.Foundation.NSData
-import platform.Foundation.NSMutableData
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.

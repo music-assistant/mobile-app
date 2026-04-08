@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
@@ -38,6 +37,7 @@ import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
 
@@ -322,7 +322,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = PlayIcon,
                         contentDescription = "Play now"
                     )
                 }

@@ -2,7 +2,6 @@ package io.music_assistant.client.webrtc
 
 import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.IceCandidate
-import com.shepeliev.webrtckmp.IceServer as RtcIceServer
 import com.shepeliev.webrtckmp.OfferAnswerOptions
 import com.shepeliev.webrtckmp.PeerConnection
 import com.shepeliev.webrtckmp.PeerConnectionState
@@ -27,6 +26,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import com.shepeliev.webrtckmp.IceServer as RtcIceServer
 
 /**
  * iOS implementation of PeerConnectionWrapper using webrtc-kmp library.

@@ -15,8 +15,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeMute
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
@@ -49,6 +47,8 @@ import androidx.compose.ui.window.Dialog
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
+import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -319,7 +319,7 @@ private fun GroupPlayerItem(
                     )
                 }, enabled = volumeEnabled) {
                     Icon(
-                        imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeMute else Icons.AutoMirrored.Filled.VolumeUp,
+                        imageVector = if (isMuted) VolumeMutedIcon else VolumeIcon,
                         contentDescription = if (isMuted) "Unmute" else "Mute"
                     )
                 }

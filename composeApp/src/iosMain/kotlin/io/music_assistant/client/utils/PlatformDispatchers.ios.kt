@@ -4,7 +4,9 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Runnable
-import platform.darwin.*
+import platform.darwin.DISPATCH_QUEUE_PRIORITY_HIGH
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_global_queue
 import kotlin.coroutines.CoroutineContext
 
 actual val mainDispatcher: CoroutineDispatcher = Dispatchers.Main

@@ -23,13 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FeaturedPlayList
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +45,13 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
+import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
+import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 import io.music_assistant.client.ui.compose.common.icons.GenreIcon
+import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
+import io.music_assistant.client.ui.compose.common.icons.RadioIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
@@ -164,17 +164,13 @@ fun LibraryRow(
 ) {
     val libraryItems = remember {
         listOf(
-            LibraryItem("Artists", Icons.Default.Mic, MediaType.ARTIST),
-            LibraryItem("Albums", Icons.Default.Album, MediaType.ALBUM),
-            LibraryItem("Tracks", Icons.Default.MusicNote, MediaType.TRACK),
-            LibraryItem(
-                "Playlists",
-                Icons.AutoMirrored.Filled.FeaturedPlayList,
-                MediaType.PLAYLIST
-            ),
-            LibraryItem("Audiobooks", Icons.AutoMirrored.Filled.MenuBook, MediaType.AUDIOBOOK),
+            LibraryItem("Artists", ArtistIcon, MediaType.ARTIST),
+            LibraryItem("Albums", AlbumIcon, MediaType.ALBUM),
+            LibraryItem("Tracks", TrackIcon, MediaType.TRACK),
+            LibraryItem("Playlists", PlaylistIcon, MediaType.PLAYLIST),
+            LibraryItem("Audiobooks", BookAudioIcon, MediaType.AUDIOBOOK),
             LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
-            LibraryItem("Radio", Icons.Default.Radio, MediaType.RADIO),
+            LibraryItem("Radio", RadioIcon, MediaType.RADIO),
             LibraryItem("Genres", GenreIcon, MediaType.GENRE),
             LibraryItem("Global search", Icons.Default.Search, null),
         )

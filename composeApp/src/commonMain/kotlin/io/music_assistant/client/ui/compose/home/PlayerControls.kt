@@ -4,16 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOn
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.ShuffleOn
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +21,15 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.icons.PauseIcon
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+import io.music_assistant.client.ui.compose.common.icons.RepeatOffIcon
+import io.music_assistant.client.ui.compose.common.icons.RepeatOnIcon
+import io.music_assistant.client.ui.compose.common.icons.RepeatOneIcon
+import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
+import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
+import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
+import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
 
 @Composable
 fun PlayerControls(
@@ -60,9 +59,9 @@ fun PlayerControls(
             queue?.let {
                 ActionButton(
                     icon = if (it.shuffleEnabled)
-                        Icons.Default.ShuffleOn
+                        ShuffleOnIcon
                     else
-                        Icons.Default.Shuffle,
+                        ShuffleOffIcon,
                     tint = MaterialTheme.colorScheme.primary,
                     size = additionalButtonSize,
                     enabled = playerEnabled && buttonsEnabled,
@@ -77,7 +76,7 @@ fun PlayerControls(
 
         if (showSkip) {
             ActionButton(
-                icon = Icons.Default.SkipPrevious,
+                icon = SkipBackIcon,
                 tint = MaterialTheme.colorScheme.primary,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
@@ -101,8 +100,8 @@ fun PlayerControls(
         } else {
             ActionButton(
                 icon = when (player.isPlaying) {
-                    true -> Icons.Default.Pause
-                    false -> Icons.Default.PlayArrow
+                    true -> PauseIcon
+                    false -> PlayIcon
                 },
                 tint = MaterialTheme.colorScheme.primary,
                 size = mainButtonSize,
@@ -112,7 +111,7 @@ fun PlayerControls(
 
         if (showSkip) {
             ActionButton(
-                icon = Icons.Default.SkipNext,
+                icon = SkipForwardIcon,
                 tint = MaterialTheme.colorScheme.primary,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
@@ -124,10 +123,10 @@ fun PlayerControls(
                 val repeatMode = it.repeatMode
                 ActionButton(
                     icon = when (repeatMode) {
-                        RepeatMode.ONE -> Icons.Default.RepeatOne
-                        RepeatMode.ALL -> Icons.Default.RepeatOn
+                        RepeatMode.ONE -> RepeatOneIcon
+                        RepeatMode.ALL -> RepeatOnIcon
                         RepeatMode.OFF,
-                        null -> Icons.Default.Repeat
+                        null -> RepeatOffIcon
                     },
                     tint = MaterialTheme.colorScheme.primary,
                     size = additionalButtonSize,

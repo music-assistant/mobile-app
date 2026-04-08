@@ -9,7 +9,6 @@ import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.serialization.encodeToString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +43,8 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
 import io.music_assistant.client.utils.formatDuration
@@ -89,7 +88,7 @@ fun CompactPlayerItem(
                     val placeholder = rememberPlaceholderPainter(
                         backgroundColor = primaryContainer,
                         iconColor = onPrimaryContainer,
-                        icon = Icons.Default.MusicNote
+                        icon = TrackIcon
                     )
                     AsyncImage(
                         placeholder = placeholder,
@@ -101,7 +100,7 @@ fun CompactPlayerItem(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.Album,
+                        imageVector = AlbumIcon,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
                         tint = onPrimaryContainer.copy(alpha = 0.4f)
@@ -145,6 +144,7 @@ fun CompactPlayerItem(
             playerData = item,
             playerAction = playerAction,
             showAdditionalButtons = showAdditionalControls,
+            mainButtonSize = 36.dp,
             showSkip = true
         )
 
@@ -173,7 +173,7 @@ fun FullPlayerItem(
     isLocal: Boolean,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
+    onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happeningÏ
 ) {
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -225,7 +225,7 @@ fun FullPlayerItem(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.Album,
+                    imageVector = AlbumIcon,
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
                     tint = onPrimaryContainer.copy(alpha = 0.4f)
@@ -371,7 +371,7 @@ fun FullPlayerItem(
         PlayerControls(
             playerData = item,
             playerAction = playerAction,
-            mainButtonSize = 64.dp,
+            mainButtonSize = 48.dp,
         )
     }
 }

@@ -1,10 +1,7 @@
 package io.music_assistant.client.data.model.client
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.ui.graphics.vector.ImageVector
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
@@ -16,6 +13,9 @@ import io.music_assistant.client.data.model.server.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
+import io.music_assistant.client.ui.compose.common.icons.RadioIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.utils.formatIsoDate
 
 interface PlayableItem {
@@ -283,7 +283,7 @@ abstract class AppMediaItem(
     ), PlayableItem {
         override val subtitle = artists?.joinToString(separator = ", ") { it.name }
         override val parentName: String? = album?.name
-        override val defaultIcon = Icons.Default.MusicNote
+        override val defaultIcon = TrackIcon
     }
 
     class Playlist(
@@ -396,7 +396,7 @@ abstract class AppMediaItem(
         override val duration: Double? = null  // Radio stations have no duration
         override val subtitle: String = "Radio"
         override val parentName: String? = null  // No parent item
-        override val defaultIcon = Icons.Default.Radio
+        override val defaultIcon = RadioIcon
     }
 
     class Genre(
@@ -453,7 +453,7 @@ abstract class AppMediaItem(
         override val subtitle =
             authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
         override val parentName: String? = authors?.firstOrNull()
-        override val defaultIcon = Icons.AutoMirrored.Filled.MenuBook
+        override val defaultIcon = BookAudioIcon
     }
 
     companion object {

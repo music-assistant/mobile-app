@@ -21,16 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FeaturedPlayList
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Schedule
-import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,6 +44,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayableItem
+import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
+import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
+import io.music_assistant.client.ui.compose.common.icons.GenreIcon
+import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
+import io.music_assistant.client.ui.compose.common.icons.RadioIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
@@ -121,7 +121,7 @@ private fun ArtistImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = Icons.Default.Mic
+            icon = ArtistIcon
         )
         AsyncImage(
             placeholder = placeholder,
@@ -332,7 +332,7 @@ private fun PlaylistImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = Icons.AutoMirrored.Filled.FeaturedPlayList
+            icon = PlaylistIcon
         )
         AsyncImage(
             placeholder = placeholder,
@@ -503,7 +503,7 @@ private fun TrackImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = Icons.Default.MusicNote
+            icon = TrackIcon
         )
         AsyncImage(
             placeholder = placeholder,
@@ -663,7 +663,7 @@ private fun RadioImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = Icons.Default.Radio
+            icon = RadioIcon
         )
         AsyncImage(
             placeholder = placeholder,
@@ -768,7 +768,7 @@ private fun AudiobookImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = Icons.AutoMirrored.Filled.MenuBook
+            icon = BookAudioIcon
         )
         AsyncImage(
             placeholder = placeholder,

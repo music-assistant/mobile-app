@@ -4,6 +4,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.data.LocalPlayerRepository
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.settings.SettingsRepository
@@ -14,11 +15,9 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
-import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.NetworkMonitor
-
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module

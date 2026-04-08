@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
@@ -25,6 +24,7 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -41,7 +41,7 @@ fun ItemPlayButton(
                 onClick = { onPlayClick(QueueOption.REPLACE, false) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = PlayIcon,
                         contentDescription = null
                     )
                     Text(modifier = Modifier.padding(start = 8.dp), text = "Play")

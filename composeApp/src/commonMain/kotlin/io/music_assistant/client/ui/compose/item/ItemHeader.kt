@@ -19,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +56,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -320,7 +320,7 @@ private fun Image(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = MaterialTheme.colorScheme.background,
             iconColor = MaterialTheme.colorScheme.secondary,
-            icon = Icons.Default.MusicNote
+            icon = TrackIcon
         )
 
         val shape = if (item is AppMediaItem.Artist) {

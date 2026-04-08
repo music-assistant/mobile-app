@@ -5,10 +5,10 @@ import io.ktor.http.Url
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.player.MediaPlayerController
-import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.player.sendspin.audio.AudioStreamManager
 import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTransport
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.webrtc.DataChannelWrapper
 
 /**

@@ -3,14 +3,6 @@
 package io.music_assistant.client.player
 
 import io.music_assistant.client.player.sendspin.model.AudioCodec
-import kotlinx.cinterop.CPointer
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.UByteVar
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
-import platform.AVFAudio.AVAudioSession
-import platform.Foundation.NSData
-import platform.Foundation.NSMutableData
 
 /**
  * MediaPlayerController - iOS implementation for Sendspin

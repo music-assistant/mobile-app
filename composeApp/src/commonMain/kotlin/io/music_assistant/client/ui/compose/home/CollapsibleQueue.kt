@@ -20,8 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -53,6 +51,8 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
 import sh.calvin.reorderable.ReorderableItem
@@ -316,7 +316,7 @@ fun CollapsibleQueue(
                                             val placeholder = rememberPlaceholderPainter(
                                                 backgroundColor = MaterialTheme.colorScheme.background,
                                                 iconColor = MaterialTheme.colorScheme.secondary,
-                                                icon = Icons.Default.MusicNote
+                                                icon = TrackIcon
                                             )
                                             AsyncImage(
                                                 modifier = Modifier
@@ -333,7 +333,7 @@ fun CollapsibleQueue(
                                                 Icon(
                                                     modifier = Modifier.padding(end = 8.dp)
                                                         .size(12.dp),
-                                                    imageVector = Icons.Default.PlayArrow,
+                                                    imageVector = PlayIcon,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.secondary,
                                                 )
