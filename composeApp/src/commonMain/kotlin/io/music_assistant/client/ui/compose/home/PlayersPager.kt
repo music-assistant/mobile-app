@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +54,7 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
+import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
 import io.music_assistant.client.ui.compose.home.players.GroupSettingsDialog
 import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
@@ -122,6 +126,12 @@ internal fun PlayersPager(
 
             var isQueueExpanded by remember { mutableStateOf(false) }
 
+            val imageUrl = player.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
+            val dominantColor by rememberAnimatedDominantColor(
+                imageUrl = imageUrl,
+                fallback = MaterialTheme.colorScheme.primaryContainer
+            )
+
             Column(
                 Modifier.background(
                     brush = if (isLocalPlayer) {
@@ -135,7 +145,7 @@ internal fun PlayersPager(
                         Brush.verticalGradient(
                             listOf(
                                 MaterialTheme.colorScheme.surfaceContainerHigh,
-                                MaterialTheme.colorScheme.primaryContainer
+                                dominantColor.copy(alpha = 0.6f)
                             )
                         )
                     }

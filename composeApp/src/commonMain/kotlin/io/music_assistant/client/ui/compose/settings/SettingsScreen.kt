@@ -130,7 +130,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState())                ,
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 var ipAddress by remember { mutableStateOf(Defaults.URI) }
@@ -810,40 +810,38 @@ private fun SendspinSection(
         )
 
         // Codec selection
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "Codec preference",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = sendspinCodecPreference.uiTitle(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (sendspinEnabled)
-                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    else
-                        MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            OverflowMenu(
-                options = Codecs.list.map { item ->
-                    OverflowMenuOption(
-                        title = item.uiTitle()
-                    ) { viewModel.setSendspinCodecPreference(item) }
-                },
-                buttonContent = { onClick ->
+        OverflowMenu(
+            options = Codecs.list.map { item ->
+                OverflowMenuOption(
+                    title = item.uiTitle()
+                ) { viewModel.setSendspinCodecPreference(item) }
+            },
+            buttonContent = { onClick ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !sendspinEnabled) { onClick() }
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Codec preference",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = sendspinCodecPreference.uiTitle(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (sendspinEnabled)
+                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            else
+                                MaterialTheme.colorScheme.onBackground
+                        )
+                    }
                     Icon(
-                        modifier = Modifier
-                            .clickable(enabled = !sendspinEnabled) { onClick() }
-                            .size(24.dp),
+                        modifier = Modifier.size(24.dp),
                         imageVector = Icons.Default.ExpandMore,
                         contentDescription = "Select codec",
                         tint = if (sendspinEnabled)
@@ -852,8 +850,9 @@ private fun SendspinSection(
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            )
-        }
+
+            }
+        )
 
         // Custom connection toggle
         Row(

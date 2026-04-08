@@ -25,6 +25,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +46,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
+import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
 import io.music_assistant.client.utils.formatDuration
@@ -63,6 +65,11 @@ fun CompactPlayerItem(
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
+    val imageUrl = track?.imageInfo?.url(serverUrl)
+    val dominantColor by rememberAnimatedDominantColor(
+        imageUrl = imageUrl,
+        fallback = primaryContainer
+    )
 
     Row(
         modifier = Modifier
@@ -81,12 +88,12 @@ fun CompactPlayerItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(primaryContainer.copy(alpha = track?.let { 1f } ?: 0.4f)),
+                    .background(dominantColor.copy(alpha = track?.let { 1f } ?: 0.4f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (track != null) {
                     val placeholder = rememberPlaceholderPainter(
-                        backgroundColor = primaryContainer,
+                        backgroundColor = dominantColor,
                         iconColor = onPrimaryContainer,
                         icon = TrackIcon
                     )
@@ -178,8 +185,11 @@ fun FullPlayerItem(
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-
-
+    val imageUrl = track?.imageInfo?.url(serverUrl)
+    val dominantColor by rememberAnimatedDominantColor(
+        imageUrl = imageUrl,
+        fallback = primaryContainer
+    )
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -198,13 +208,13 @@ fun FullPlayerItem(
                 .heightIn(max = 500.dp)
                 .padding(16.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(primaryContainer.copy(alpha = track?.let { 1f } ?: 0.4f)),
+                .background(dominantColor.copy(alpha = track?.let { 1f } ?: 0.4f)),
             contentAlignment = Alignment.Center
         ) {
             if (track != null) {
                 val placeholder =
                     rememberPlaceholderPainter(
-                        backgroundColor = primaryContainer,
+                        backgroundColor = dominantColor,
                         iconColor = onPrimaryContainer,
                         icon = track.defaultIcon
                     )

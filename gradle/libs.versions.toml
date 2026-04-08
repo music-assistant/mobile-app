@@ -34,6 +34,7 @@ settingsMultiplatform = "1.3.0"
 reorderable = "3.0.0"
 concentus = "1.0.2"
 webrtcKmp = "0.125.11"
+kmpalette = "3.1.0"
 
 androidxNavigation3UI = "1.0.0-alpha06"
 androidxNavigation3Material = "1.3.0-alpha03"
@@ -96,6 +97,8 @@ settings-multiplatform = { module = "com.russhwolf:multiplatform-settings-no-arg
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 concentus = { module = "io.github.jaredmdobson:concentus", version.ref = "concentus" }
 webrtc-kmp = { module = "com.shepeliev:webrtc-kmp", version.ref = "webrtcKmp" }
+kmpalette-core = { module = "com.kmpalette:kmpalette-core", version.ref = "kmpalette" }
+kmpalette-extensions-network = { module = "com.kmpalette:extensions-network", version.ref = "kmpalette" }
 
 androidx-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "androidxNavigation3UI" }
 androidx-navigation3-material3-adaptive = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation3", version.ref = "androidxNavigation3Material" }
