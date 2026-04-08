@@ -52,8 +52,16 @@ See [ios_build_instructions.md](ios_build_instructions.md) for a full step-by-st
 
 #### Android
 
+To build the app:
+
 ```bash
 ./gradlew :androidApp:assembleDebug
+```
+
+To build a non-debuggable "release mode" APK for testing performance using your local debug keystore:
+
+```bash
+./gradlew :androidApp:assembleSelfSignedRelease
 ```
 
 ### Writing/running tests
