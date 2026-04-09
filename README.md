@@ -8,6 +8,21 @@ This client interfaces with the [Music Assistant Server](https://github.com/musi
 
 By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant Kmp Client offers a consistent and efficient user experience across different platforms, simplifying the development process and ensuring feature parity.
 
+## Design goals
+
+The goal of this app is to provide an iOS and Android native feeling experience for playing and controlling audio via Music Assistant on both Android/iOS phones and tablets. This means that as well as making it easy to navigate the MA library and providers, this shouldn't come at the expense of being able to quickly control players. Specifically, these actions should be available as quickly as possible when opening the app in pretty much any state:
+
+- See what's playing on the app's current player
+- Change the current player
+- Play/pause current player
+- Transfer playback to another player
+- Group current player with another player
+- Navigate to "global" (across all providers) search
+- Return to home screen
+- Skip to next track
+- Start browsing library
+- Open settings
+
 ## Current set of features:
 
 ### Disclaimer: This app is not intended to provide offline playback
