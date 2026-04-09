@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
@@ -48,7 +49,6 @@ import org.koin.core.component.inject
 import org.koin.core.qualifier.named
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 import kotlin.time.Duration.Companion.seconds
 
 class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, KoinComponent {
@@ -75,6 +75,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     // --- Lifecycle / background state ---
     private var isInBackground = false
     private var hasActiveExternalConsumer = false
+    private var hasActivePlayback = false
     private var backgroundedAt = 0L
 
     private sealed class BackgroundedConnectionInfo {
@@ -164,6 +165,22 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
     fun onExternalConsumerInactive() {
         hasActiveExternalConsumer = false
         logger.i { "External consumer inactive" }
+    }
+
+    /**
+     * Called when any player starts playing. Prevents background teardown.
+     */
+    fun onPlaybackActive() {
+        hasActivePlayback = true
+        logger.i { "Playback active" }
+    }
+
+    /**
+     * Called when all players stop playing.
+     */
+    fun onPlaybackInactive() {
+        hasActivePlayback = false
+        logger.i { "Playback inactive" }
     }
 
     /**
@@ -289,7 +306,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         }
 
                         is TransportState.Reconnecting -> {
-                            if (isInBackground && !hasActiveExternalConsumer) {
+                            if (isInBackground && !hasActiveExternalConsumer && !hasActivePlayback) {
                                 backgroundedConnectionInfo = backgroundInfo()
                                 transport.disconnect()
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
@@ -419,7 +436,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     private fun disconnect(newState: SessionState.Disconnected) {
         launch {
-            if (newState is SessionState.Disconnected.Backgrounded && (!isInBackground || hasActiveExternalConsumer)) {
+            if (newState is SessionState.Disconnected.Backgrounded && (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)) {
                 logger.i { "Backgrounded disconnect aborted — app already foregrounded" }
                 return@launch
             }
@@ -623,32 +640,33 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         }
     }
 
-    suspend fun sendRequest(request: Request): Result<Answer> = suspendCoroutine { continuation ->
-        rpcEngine.registerCallback(request.messageId) { response ->
-            continuation.resume(Result.success(response))
-        }
-        launch {
-            val t = transport ?: run {
-                rpcEngine.removeCallback(request.messageId)
-                continuation.resume(Result.failure(IllegalStateException("Not connected")))
-                return@launch
+    suspend fun sendRequest(request: Request): Result<Answer> =
+        suspendCancellableCoroutine { continuation ->
+            rpcEngine.registerCallback(request.messageId) { response ->
+                continuation.resume(Result.success(response))
             }
-            try {
-                val jsonObject =
-                    myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
-                t.send(jsonObject)
-            } catch (e: Exception) {
-                logger.e(e) { "sendRequest FAILED cmd=${request.command}" }
-                rpcEngine.removeCallback(request.messageId)
-                continuation.resume(Result.failure(e))
-                // Don't trigger full disconnect if transport is already reconnecting
-                val transportState = transport?.state?.value
-                if (transportState !is TransportState.Reconnecting) {
-                    disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
+            launch {
+                val t = transport ?: run {
+                    rpcEngine.removeCallback(request.messageId)
+                    continuation.resume(Result.failure(IllegalStateException("Not connected")))
+                    return@launch
+                }
+                try {
+                    val jsonObject =
+                        myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
+                    t.send(jsonObject)
+                } catch (e: Exception) {
+                    logger.e(e) { "sendRequest FAILED cmd=${request.command}" }
+                    rpcEngine.removeCallback(request.messageId)
+                    continuation.resume(Result.failure(e))
+                    // Don't trigger full disconnect if transport is already reconnecting
+                    val transportState = transport?.state?.value
+                    if (transportState !is TransportState.Reconnecting) {
+                        disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
+                    }
                 }
             }
         }
-    }
 
     fun close() {
         supervisorJob.cancel()

@@ -9,6 +9,7 @@ import android.content.pm.ServiceInfo
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
@@ -22,6 +23,7 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +57,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private lateinit var mediaNotificationManager: MediaNotificationManager
     private lateinit var imageLoader: ImageLoader
     private lateinit var audioManager: AudioManager
+    private var wifiLock: WifiManager.WifiLock? = null
 
     private val dataSource: MainDataSource by inject()
     private val sharedSession: SharedMediaSessionManager by inject()
@@ -166,7 +169,34 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                 .mapNotNull { p -> players.value.indexOf(p).takeIf { it >= 0 } }
                 .collect { newIndex -> activePlayerIndex.update { newIndex } }
         }
+        scope.launch {
+            dataSource.sendspinState.collect { state ->
+                val needsWifi = state is SendspinState.Ready
+                        || state is SendspinState.Buffering
+                        || state is SendspinState.Synchronized
+                if (needsWifi) acquireWifiLock() else releaseWifiLock()
+            }
+        }
         registerNotificationDismissReceiver()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun acquireWifiLock() {
+        if (wifiLock?.isHeld == true) return
+        val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        wifiLock = wifiManager.createWifiLock(
+            WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+            "MusicAssistant:Sendspin"
+        ).apply { acquire() }
+        logger.i { "Wi-Fi lock acquired for Sendspin streaming" }
+    }
+
+    private fun releaseWifiLock() {
+        wifiLock?.takeIf { it.isHeld }?.let {
+            it.release()
+            logger.i { "Wi-Fi lock released" }
+        }
+        wifiLock = null
     }
 
     private val notificationDismissReceiver = object : BroadcastReceiver() {
@@ -272,6 +302,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onDestroy() {
+        releaseWifiLock()
         unregisterReceiver(notificationDismissReceiver)
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         logger.i { "Unregistered audio device callback" }

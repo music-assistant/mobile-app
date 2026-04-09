@@ -251,6 +251,12 @@ class MainDataSource(
                 }
         }
         launch {
+            isAnythingPlaying.collect { playing ->
+                if (playing) apiClient.onPlaybackActive()
+                else apiClient.onPlaybackInactive()
+            }
+        }
+        launch {
             apiClient.sessionState.collect { sessionState ->
                 log.i { "SessionState changed: ${sessionState::class.simpleName}" }
 
