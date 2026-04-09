@@ -251,8 +251,8 @@ class MainDataSource(
                 }
         }
         launch {
-            isAnythingPlaying.collect { playing ->
-                if (playing) apiClient.onPlaybackActive()
+            doesAnythingHavePlayableItem.collect { hasPlayableItem ->
+                if (hasPlayableItem) apiClient.onPlaybackActive()
                 else apiClient.onPlaybackInactive()
             }
         }

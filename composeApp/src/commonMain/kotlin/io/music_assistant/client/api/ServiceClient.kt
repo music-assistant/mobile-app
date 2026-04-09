@@ -152,6 +152,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
                     connect(connInfo)
                 }
+
                 is BackgroundedConnectionInfo.WebRTC -> {
                     connectWebRTC(savedInfo.remoteId)
                 }
@@ -199,6 +200,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                     val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
                     connect(connInfo)
                 }
+
                 is BackgroundedConnectionInfo.WebRTC -> {
                     connectWebRTC(savedInfo.remoteId)
                 }
@@ -258,14 +260,17 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                             _sessionState.update { SessionState.Disconnected.NoServerData }
                                         }
                                     }
+
                                     ConnectionType.WEBRTC -> {
-                                        val remoteId = mostRecent.remoteId?.let { RemoteId.parse(it) }
+                                        val remoteId =
+                                            mostRecent.remoteId?.let { RemoteId.parse(it) }
                                         if (remoteId != null) {
                                             connectWebRTC(remoteId)
                                         } else {
                                             _sessionState.update { SessionState.Disconnected.NoServerData }
                                         }
                                     }
+
                                     else -> {
                                         settings.connectionInfo.value?.let { connect(it) }
                                             ?: _sessionState.update { SessionState.Disconnected.NoServerData }
@@ -298,7 +303,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                 transport.state.collect { transportState ->
                     when (transportState) {
                         TransportState.Connected -> {
-                            val preserved = (_sessionState.value as? HasConnectionData)?.connectionData ?: ConnectionData()
+                            val preserved =
+                                (_sessionState.value as? HasConnectionData)?.connectionData
+                                    ?: ConnectionData()
                             val wasReconnecting = _sessionState.value is SessionState.Reconnecting
                             _sessionState.update { createConnected(preserved) }
                             if (wasReconnecting) onReconnected()
@@ -312,8 +319,15 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
                                 return@collect
                             }
-                            val preserved = (_sessionState.value as? HasConnectionData)?.connectionData ?: ConnectionData()
-                            _sessionState.update { createReconnecting(transportState.attempt, preserved) }
+                            val preserved =
+                                (_sessionState.value as? HasConnectionData)?.connectionData
+                                    ?: ConnectionData()
+                            _sessionState.update {
+                                createReconnecting(
+                                    transportState.attempt,
+                                    preserved
+                                )
+                            }
                         }
 
                         is TransportState.Failed -> {
@@ -436,7 +450,9 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
 
     private fun disconnect(newState: SessionState.Disconnected) {
         launch {
-            if (newState is SessionState.Disconnected.Backgrounded && (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)) {
+            if (newState is SessionState.Disconnected.Backgrounded
+                && (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)
+            ) {
                 logger.i { "Backgrounded disconnect aborted — app already foregrounded" }
                 return@launch
             }
@@ -521,6 +537,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         currentState.connectionInfo.isTls
                     )
                 }
+
                 is SessionState.Connected.WebRTC -> {
                     settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                 }
@@ -539,7 +556,8 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
         launch {
             try {
                 sendRequest(Request.Auth.logout())
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -573,6 +591,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                                 currentState.connectionInfo.isTls
                             )
                         }
+
                         is SessionState.Connected.WebRTC -> {
                             settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                         }
@@ -609,6 +628,7 @@ class ServiceClient(private val settings: SettingsRepository) : CoroutineScope, 
                         currentState.connectionInfo.isTls
                     )
                 }
+
                 is SessionState.Connected.WebRTC -> {
                     settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
                 }

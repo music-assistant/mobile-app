@@ -23,7 +23,6 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CoroutineScope
@@ -169,14 +168,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                 .mapNotNull { p -> players.value.indexOf(p).takeIf { it >= 0 } }
                 .collect { newIndex -> activePlayerIndex.update { newIndex } }
         }
-        scope.launch {
-            dataSource.sendspinState.collect { state ->
-                val needsWifi = state is SendspinState.Ready
-                        || state is SendspinState.Buffering
-                        || state is SendspinState.Synchronized
-                if (needsWifi) acquireWifiLock() else releaseWifiLock()
-            }
-        }
+        acquireWifiLock()
         registerNotificationDismissReceiver()
     }
 
@@ -186,7 +178,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         wifiLock = wifiManager.createWifiLock(
             WifiManager.WIFI_MODE_FULL_HIGH_PERF,
-            "MusicAssistant:Sendspin"
+            "MusicAssistant:Playback"
         ).apply { acquire() }
         logger.i { "Wi-Fi lock acquired for Sendspin streaming" }
     }
