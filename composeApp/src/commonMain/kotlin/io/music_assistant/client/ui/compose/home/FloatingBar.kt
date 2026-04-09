@@ -1,5 +1,10 @@
 package io.music_assistant.client.ui.compose.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +38,7 @@ fun BoxScope.FloatingBar(
     modifier: Modifier = Modifier,
     expanded: Boolean = false,
     onExpand: (Boolean) -> Unit = {},
-    content: @Composable () -> Unit
+    content: @Composable (expanded: Boolean) -> Unit
 ) {
     BackHandler(enabled = expanded) {
         onExpand(false)
@@ -53,9 +58,21 @@ fun BoxScope.FloatingBar(
             .clickable { onExpand(true) }
     }
 
-    Box(boxModifier) {
+    AnimatedContent(
+        modifier = boxModifier,
+        targetState = expanded,
+        transitionSpec = {
+            slideInVertically(
+                initialOffsetY = { if (targetState) it else -it },
+                animationSpec = tween(300)
+            ) togetherWith slideOutVertically(
+                targetOffsetY = { if (targetState) -it else it },
+                animationSpec = tween(300)
+            )
+        }
+    ) {
         Column {
-            if (expanded) {
+            if (it) {
                 IconButton(
                     onClick = { onExpand(false) },
                     modifier = Modifier.statusBarsPadding().fillMaxWidth().height(36.dp)
@@ -68,7 +85,7 @@ fun BoxScope.FloatingBar(
                 }
             }
 
-            content()
+            content(it)
         }
     }
 }

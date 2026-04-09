@@ -163,14 +163,14 @@ fun HomeScreen(
                 )
             )
 
-            FloatingBar(expanded = playerExpanded, onExpand = { playerExpanded = it}) {
+            FloatingBar(expanded = playerExpanded, onExpand = { playerExpanded = it}) { expanded ->
                 Players(
                     playerPagerState = playerPagerState,
                     state = playersState,
                     serverUrl = serverUrl,
                     homeScreenViewModel = viewModel,
                     actionsViewModel = actionsViewModel,
-                    expanded = playerExpanded,
+                    expanded = expanded,
                     onClose = { playerExpanded = false },
                     isExpandedScreen = isExpandedScreen
                 )
