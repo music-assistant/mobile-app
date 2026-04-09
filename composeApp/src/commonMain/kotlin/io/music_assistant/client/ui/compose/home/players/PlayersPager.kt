@@ -129,7 +129,7 @@ internal fun PlayersPager(
                         Brush.verticalGradient(
                             listOf(
                                 MaterialTheme.colorScheme.surfaceContainerHigh,
-                                dominantColor.copy(alpha = 0.6f)
+                                dominantColor.copy(alpha = 0.4f)
                             )
                         )
                     }
