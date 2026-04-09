@@ -169,6 +169,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                 .collect { newIndex -> activePlayerIndex.update { newIndex } }
         }
         acquireWifiLock()
+        dataSource.apiClient.onPlaybackActive()
         registerNotificationDismissReceiver()
     }
 
@@ -298,6 +299,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         unregisterReceiver(notificationDismissReceiver)
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         logger.i { "Unregistered audio device callback" }
+        dataSource.apiClient.onPlaybackInactive()
         sharedSession.release(isAutoService = false)
         scope.cancel()
         super.onDestroy()
