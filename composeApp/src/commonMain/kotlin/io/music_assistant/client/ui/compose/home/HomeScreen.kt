@@ -55,6 +55,8 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.nav.HomeNavScreen
 import io.music_assistant.client.ui.compose.home.nav.rememberHomeNavBackStack
+import io.music_assistant.client.ui.compose.home.players.PlayersPager
+import io.music_assistant.client.ui.compose.home.players.collapsedPlayerHeight
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold

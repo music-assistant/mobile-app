@@ -1,4 +1,4 @@
-package io.music_assistant.client.ui.compose.home
+package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -25,7 +25,6 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,9 +45,9 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
-import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
-import io.music_assistant.client.ui.compose.home.players.PlayerSelectionLayout
+import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
+import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.utils.formatDuration
 import kotlin.time.DurationUnit
 

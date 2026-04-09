@@ -1,4 +1,4 @@
-package io.music_assistant.client.ui.compose.home
+package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
