@@ -42,24 +42,24 @@ import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
-import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.utils.formatDuration
 import kotlin.time.DurationUnit
 
 @Composable
 fun CompactPlayerItem(
     item: PlayerData,
-    playersState: HomeScreenViewModel.PlayersState.Data,
     serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
     onGroupButton: (() -> Unit)? = null,
-    showAdditionalControls: Boolean = false
+    showAdditionalControls: Boolean = false,
+    sendSpinState: SendspinState?
 ) {
     val track = item.queueInfo?.currentItem?.track
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -162,7 +162,7 @@ fun CompactPlayerItem(
             ) {
                 PlayerSelectionLayout(
                     player = item,
-                    playersState = playersState,
+                    sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton ?: {}
                 )

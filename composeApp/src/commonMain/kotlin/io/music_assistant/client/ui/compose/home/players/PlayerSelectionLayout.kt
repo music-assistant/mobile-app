@@ -28,19 +28,18 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
-import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 
 private val GROUP_BUTTON_SIZE = 34.dp
 
 @Composable
 fun PlayerSelectionLayout(
     player: PlayerData,
-    playersState: HomeScreenViewModel.PlayersState.Data,
+    sendSpinState: SendspinState?,
     onSelectPlayer: () -> Unit = {},
     onGroupButton: () -> Unit = {}
 ) {
-    val isLocalPlayer = player.playerId == playersState.localPlayerId
-    val dotColor = (if (isLocalPlayer) playersState.sendspinState else null)?.toDotColor()
+    val isLocalPlayer = player.isLocal
+    val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
     val hasGroupChildren = player.groupChildren.isNotEmpty()
     val hasBoundChildren = player.groupChildren.any { it.isBound }
 

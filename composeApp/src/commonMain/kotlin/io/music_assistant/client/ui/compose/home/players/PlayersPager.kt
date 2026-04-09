@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
@@ -97,30 +98,32 @@ internal fun PlayersPager(
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
-            var showSelectDialog1 by remember { mutableStateOf(false) }
-            var showGroupDialog1 by remember { mutableStateOf(false) }
-            val onSelectPlayer1 = { showSelectDialog1 = true }
-            val onGroupButton1 = { showGroupDialog1 = true }
-            if (showSelectDialog1) {
+            var showSelectDialog by remember { mutableStateOf(false) }
+            var showGroupDialog by remember { mutableStateOf(false) }
+            val onSelectPlayer = { showSelectDialog = true }
+            val onGroupButton = { showGroupDialog = true }
+            if (showSelectDialog) {
                 SelectPlayerDialog(
                     selectedPlayer = player,
                     players = playerDataList,
-                    onDismissRequest = { showSelectDialog1 = false },
+                    onDismissRequest = { showSelectDialog = false },
                     onMoveToPlayer = { moveToPlayer(it) },
                 )
             }
-            if (showGroupDialog1) {
+            if (showGroupDialog) {
                 GroupSettingsDialog(
                     player = player,
-                    onDismissRequest = { showGroupDialog1 = false },
+                    onDismissRequest = { showGroupDialog = false },
                     groupAction = simplePlayerAction
                 )
             }
-            val imageUrl1 = player.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
-            val dominantColor1 by rememberAnimatedDominantColor(
-                imageUrl = imageUrl1,
+
+            val imageUrl = player.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
+            val dominantColor by rememberAnimatedDominantColor(
+                imageUrl = imageUrl,
                 fallback = MaterialTheme.colorScheme.primaryContainer
             )
+
             Column(
                 Modifier
                     .fillMaxSize()
@@ -136,7 +139,7 @@ internal fun PlayersPager(
                             Brush.verticalGradient(
                                 listOf(
                                     MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    dominantColor1.copy(alpha = 0.2f)
+                                    dominantColor.copy(alpha = 0.2f)
                                 )
                             )
                         }
@@ -144,30 +147,30 @@ internal fun PlayersPager(
             ) {
                 if (expanded) {
                     ExpandedPlayerPage(
-                        player,
-                        playersState,
-                        onSelectPlayer1,
-                        onGroupButton1,
-                        serverUrl,
-                        playerAction,
-                        onFavoriteClick,
-                        onClose,
-                        queueAction,
-                        playerDataList,
-                        moveToPlayer,
-                        page,
-                        playerPagerState,
-                        isExpandedScreen
+                        player = player,
+                        onSelectPlayer = onSelectPlayer,
+                        onGroupButton = onGroupButton,
+                        serverUrl = serverUrl,
+                        playerAction = playerAction,
+                        onFavoriteClick = onFavoriteClick,
+                        onClose = onClose,
+                        queueAction = queueAction,
+                        allPlayers = playerDataList,
+                        moveToPlayer = moveToPlayer,
+                        page = page,
+                        playerPagerState = playerPagerState,
+                        isExpandedScreen = isExpandedScreen,
+                        sendspinState = playersState.sendspinState
                     )
                 } else {
-                    CompactPlayerPage(
-                        isExpandedScreen,
-                        player,
-                        playersState,
-                        onSelectPlayer1,
-                        onGroupButton1,
-                        serverUrl,
-                        playerAction
+                    CollapsedPlayerPage(
+                        isExpandedScreen = isExpandedScreen,
+                        player = player,
+                        sendspinState = playersState.sendspinState,
+                        onSelectPlayer = onSelectPlayer,
+                        onGroupButton = onGroupButton,
+                        serverUrl = serverUrl,
+                        playerAction = playerAction
                     )
                 }
             }
@@ -179,7 +182,6 @@ internal fun PlayersPager(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ExpandedPlayerPage(
     player: PlayerData,
-    playersState: HomeScreenViewModel.PlayersState.Data,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
     serverUrl: String?,
@@ -191,7 +193,8 @@ private fun ExpandedPlayerPage(
     moveToPlayer: (String) -> Unit,
     page: Int,
     playerPagerState: PagerState,
-    isExpandedScreen: Boolean
+    isExpandedScreen: Boolean,
+    sendspinState: SendspinState?
 ) {
     var isQueueExpanded by remember { mutableStateOf(false) }
 
@@ -202,7 +205,7 @@ private fun ExpandedPlayerPage(
         ) {
             PlayerSelectionLayout(
                 player = player,
-                playersState = playersState,
+                sendSpinState = sendspinState,
                 onSelectPlayer = onSelectPlayer,
                 onGroupButton = onGroupButton
             )
@@ -222,12 +225,12 @@ private fun ExpandedPlayerPage(
             ) {
                 CompactPlayerItem(
                     item = player,
-                    playersState = playersState,
                     serverUrl = serverUrl,
                     playerAction = playerAction,
                     onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
                     onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
                     showAdditionalControls = isExpandedScreen,
+                    sendSpinState = sendspinState,
                 )
             }
         }
@@ -356,10 +359,10 @@ private fun ExpandedPlayerPage(
 }
 
 @Composable
-private fun CompactPlayerPage(
+private fun CollapsedPlayerPage(
     isExpandedScreen: Boolean,
     player: PlayerData,
-    playersState: HomeScreenViewModel.PlayersState.Data,
+    sendspinState: SendspinState?,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
     serverUrl: String?,
@@ -372,7 +375,7 @@ private fun CompactPlayerPage(
         ) {
             PlayerSelectionLayout(
                 player = player,
-                playersState = playersState,
+                sendSpinState = sendspinState,
                 onSelectPlayer = onSelectPlayer,
                 onGroupButton = onGroupButton
             )
@@ -381,11 +384,11 @@ private fun CompactPlayerPage(
 
     CompactPlayerItem(
         item = player,
-        playersState = playersState,
         serverUrl = serverUrl,
         playerAction = playerAction,
         onSelectPlayer = if (isExpandedScreen) onSelectPlayer else null,
-        onGroupButton = if (isExpandedScreen) onGroupButton else null
+        onGroupButton = if (isExpandedScreen) onGroupButton else null,
+        sendSpinState = sendspinState
     )
 }
 
