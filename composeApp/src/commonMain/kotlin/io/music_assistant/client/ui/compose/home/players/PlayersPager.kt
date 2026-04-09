@@ -80,6 +80,241 @@ internal fun PlayersPager(
         modifier.height(collapsedPlayerHeight(isExpandedScreen))
     }
 
+    PlayersPagerContainer(
+        modifier,
+        playerPagerState,
+        playersState,
+        expanded,
+        onItemMoved
+    ) { page, player, allPlayers ->
+        var showSelectDialog by remember { mutableStateOf(false) }
+        var showGroupDialog by remember { mutableStateOf(false) }
+        val onSelectPlayer = { showSelectDialog = true }
+        val onGroupButton = { showGroupDialog = true }
+        if (showSelectDialog) {
+            SelectPlayerDialog(
+                selectedPlayer = player,
+                players = allPlayers,
+                onDismissRequest = { showSelectDialog = false },
+                onMoveToPlayer = { moveToPlayer(it) },
+            )
+        }
+        if (showGroupDialog) {
+            GroupSettingsDialog(
+                player = player,
+                onDismissRequest = { showGroupDialog = false },
+                groupAction = simplePlayerAction
+            )
+        }
+
+        var isQueueExpanded by remember { mutableStateOf(false) }
+
+        val imageUrl = player.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
+        val dominantColor by rememberAnimatedDominantColor(
+            imageUrl = imageUrl,
+            fallback = MaterialTheme.colorScheme.primaryContainer
+        )
+
+        Column(
+            Modifier.background(
+                brush = if (player.isLocal) {
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            dominantColor.copy(alpha = 0.6f)
+                        )
+                    )
+                }
+            )
+        ) {
+            if (!isExpandedScreen || expanded) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    PlayerSelectionLayout(
+                        player = player,
+                        playersState = playersState,
+                        onSelectPlayer = onSelectPlayer,
+                        onGroupButton = onGroupButton
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isQueueExpanded.takeIf { expanded } != false,
+                enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .fillMaxWidth()
+                        .wrapContentSize()
+                        .conditional(
+                            expanded,
+                            { clickable { isQueueExpanded = false } }
+                        )
+                ) {
+                    CompactPlayerItem(
+                        item = player,
+                        playersState = playersState,
+                        serverUrl = serverUrl,
+                        playerAction = playerAction,
+                        onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
+                        onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
+                        showAdditionalControls = isExpandedScreen,
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .conditional(
+                        condition = isQueueExpanded.takeIf { expanded } == false,
+                        ifTrue = { weight(1f) },
+                        ifFalse = { wrapContentHeight() }
+                    )
+            ) {
+                AnimatedVisibility(
+                    visible = isQueueExpanded.takeIf { expanded } == false,
+                    enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                    exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
+                ) {
+
+                    FullPlayerItem(
+                        modifier = Modifier.fillMaxSize(),
+                        item = player,
+                        isLocal = player.isLocal,
+                        serverUrl = serverUrl,
+                        playerAction = playerAction,
+                        onFavoriteClick = onFavoriteClick,
+                    )
+                }
+            }
+
+            if (
+                expanded
+                && player.player.isVolumeSliderAccessible
+                && player.player.currentVolume != null
+            ) {
+                if (!player.isLocal) {
+                    var currentVolume by remember(player.player.currentVolume) {
+                        mutableStateOf(player.player.currentVolume)
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                            .padding(horizontal = 64.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .alpha(if (player.player.canMute) 1F else 0.5f)
+                                .clickable(enabled = player.player.canMute) {
+                                    playerAction(
+                                        player,
+                                        PlayerAction.ToggleMute(player.player.volumeMuted)
+                                    )
+                                },
+                            imageVector = if (player.player.volumeMuted)
+                                VolumeMutedIcon
+                            else
+                                VolumeIcon,
+                            contentDescription = "Volume",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Slider(
+                            modifier = Modifier.weight(1f),
+                            value = currentVolume,
+                            valueRange = 0f..100f,
+                            onValueChange = {
+                                currentVolume = it
+                            },
+                            onValueChangeFinished = {
+                                playerAction(
+                                    player,
+                                    if (player.groupChildren.none { it.isBound }) {
+                                        PlayerAction.VolumeSet(currentVolume.toDouble())
+                                    } else {
+                                        PlayerAction.GroupVolumeSet(currentVolume.toDouble())
+                                    }
+                                )
+                            },
+                            thumb = {
+                                SliderDefaults.Thumb(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    thumbSize = DpSize(16.dp, 16.dp),
+                                    colors = SliderDefaults.colors()
+                                        .copy(thumbColor = MaterialTheme.colorScheme.secondary),
+                                )
+                            },
+                            track = { sliderState ->
+                                SliderDefaults.Track(
+                                    sliderState = sliderState,
+                                    thumbTrackGapSize = 0.dp,
+                                    trackInsideCornerSize = 0.dp,
+                                    drawStopIndicator = null,
+                                    modifier = Modifier.height(4.dp)
+                                )
+                            }
+                        )
+                    }
+                } else {
+                    Text(
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        text = "use device buttons to adjust the volume",
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
+
+            player.queue.takeIf { expanded }?.let { queue ->
+                CollapsibleQueue(
+                    modifier = Modifier
+                        .conditional(
+                            condition = isQueueExpanded,
+                            ifTrue = { weight(1f) },
+                            ifFalse = { wrapContentHeight() }
+                        ),
+                    queue = queue,
+                    isQueueExpanded = isQueueExpanded,
+                    onQueueExpandedSwitch = { isQueueExpanded = !isQueueExpanded },
+                    onGoToLibrary = onClose,
+                    serverUrl = serverUrl,
+                    queueAction = queueAction,
+                    players = allPlayers,
+                    onPlayerSelected = { playerId ->
+                        moveToPlayer(playerId)
+                    },
+                    isCurrentPage = page == playerPagerState.currentPage
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayersPagerContainer(
+    modifier: Modifier = Modifier,
+    playerPagerState: PagerState,
+    playersState: HomeScreenViewModel.PlayersState.Data,
+    allowMoving: Boolean,
+    onItemMoved: ((Int) -> Unit)?,
+    content: @Composable (page: Int, player: PlayerData, allPlayers: List<PlayerData>) -> Unit
+) {
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
 
@@ -87,7 +322,7 @@ internal fun PlayersPager(
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 pagerState = playerPagerState,
-                allowMoving = expanded,
+                allowMoving = allowMoving,
                 onItemMoved = onItemMoved
             )
         }
@@ -99,223 +334,7 @@ internal fun PlayersPager(
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
-
-            var showSelectDialog by remember { mutableStateOf(false) }
-            var showGroupDialog by remember { mutableStateOf(false) }
-            val onSelectPlayer = { showSelectDialog = true }
-            val onGroupButton = { showGroupDialog = true }
-            if (showSelectDialog) {
-                SelectPlayerDialog(
-                    selectedPlayer = player,
-                    players = playerDataList,
-                    onDismissRequest = { showSelectDialog = false },
-                    onMoveToPlayer = { moveToPlayer(it) },
-                )
-            }
-            if (showGroupDialog) {
-                GroupSettingsDialog(
-                    player = player,
-                    onDismissRequest = { showGroupDialog = false },
-                    groupAction = simplePlayerAction
-                )
-            }
-
-            var isQueueExpanded by remember { mutableStateOf(false) }
-
-            val imageUrl = player.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
-            val dominantColor by rememberAnimatedDominantColor(
-                imageUrl = imageUrl,
-                fallback = MaterialTheme.colorScheme.primaryContainer
-            )
-
-            Column(
-                Modifier.background(
-                    brush = if (player.isLocal) {
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                MaterialTheme.colorScheme.surfaceContainerLow
-                            )
-                        )
-                    } else {
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                dominantColor.copy(alpha = 0.6f)
-                            )
-                        )
-                    }
-                )
-            ) {
-                if (!isExpandedScreen || expanded) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        PlayerSelectionLayout(
-                            player = player,
-                            playersState = playersState,
-                            onSelectPlayer = onSelectPlayer,
-                            onGroupButton = onGroupButton
-                        )
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = isQueueExpanded.takeIf { expanded } != false,
-                    enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-                    exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 2.dp)
-                            .fillMaxWidth()
-                            .wrapContentSize()
-                            .conditional(
-                                expanded,
-                                { clickable { isQueueExpanded = false } }
-                            )
-                    ) {
-                        CompactPlayerItem(
-                            item = player,
-                            playersState = playersState,
-                            serverUrl = serverUrl,
-                            playerAction = playerAction,
-                            onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
-                            onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
-                            showAdditionalControls = isExpandedScreen,
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .conditional(
-                            condition = isQueueExpanded.takeIf { expanded } == false,
-                            ifTrue = { weight(1f) },
-                            ifFalse = { wrapContentHeight() }
-                        )
-                ) {
-                    AnimatedVisibility(
-                        visible = isQueueExpanded.takeIf { expanded } == false,
-                        enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-                        exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
-                    ) {
-
-                        FullPlayerItem(
-                            modifier = Modifier.fillMaxSize(),
-                            item = player,
-                            isLocal = player.isLocal,
-                            serverUrl = serverUrl,
-                            playerAction = playerAction,
-                            onFavoriteClick = onFavoriteClick,
-                        )
-                    }
-                }
-
-                if (
-                    expanded
-                    && player.player.isVolumeSliderAccessible
-                    && player.player.currentVolume != null
-                ) {
-                    if (!player.isLocal) {
-                        var currentVolume by remember(player.player.currentVolume) {
-                            mutableStateOf(player.player.currentVolume)
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(36.dp)
-                                .padding(horizontal = 64.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .alpha(if (player.player.canMute) 1F else 0.5f)
-                                    .clickable(enabled = player.player.canMute) {
-                                        playerAction(
-                                            player,
-                                            PlayerAction.ToggleMute(player.player.volumeMuted)
-                                        )
-                                    },
-                                imageVector = if (player.player.volumeMuted)
-                                    VolumeMutedIcon
-                                else
-                                    VolumeIcon,
-                                contentDescription = "Volume",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Slider(
-                                modifier = Modifier.weight(1f),
-                                value = currentVolume,
-                                valueRange = 0f..100f,
-                                onValueChange = {
-                                    currentVolume = it
-                                },
-                                onValueChangeFinished = {
-                                    playerAction(
-                                        player,
-                                        if (player.groupChildren.none { it.isBound }) {
-                                            PlayerAction.VolumeSet(currentVolume.toDouble())
-                                        } else {
-                                            PlayerAction.GroupVolumeSet(currentVolume.toDouble())
-                                        }
-                                    )
-                                },
-                                thumb = {
-                                    SliderDefaults.Thumb(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        thumbSize = DpSize(16.dp, 16.dp),
-                                        colors = SliderDefaults.colors()
-                                            .copy(thumbColor = MaterialTheme.colorScheme.secondary),
-                                    )
-                                },
-                                track = { sliderState ->
-                                    SliderDefaults.Track(
-                                        sliderState = sliderState,
-                                        thumbTrackGapSize = 0.dp,
-                                        trackInsideCornerSize = 0.dp,
-                                        drawStopIndicator = null,
-                                        modifier = Modifier.height(4.dp)
-                                    )
-                                }
-                            )
-                        }
-                    } else {
-                        Text(
-                            modifier = Modifier.fillMaxWidth().height(36.dp),
-                            text = "use device buttons to adjust the volume",
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
-
-                player.queue.takeIf { expanded }?.let { queue ->
-                    CollapsibleQueue(
-                        modifier = Modifier
-                            .conditional(
-                                condition = isQueueExpanded,
-                                ifTrue = { weight(1f) },
-                                ifFalse = { wrapContentHeight() }
-                            ),
-                        queue = queue,
-                        isQueueExpanded = isQueueExpanded,
-                        onQueueExpandedSwitch = { isQueueExpanded = !isQueueExpanded },
-                        onGoToLibrary = onClose,
-                        serverUrl = serverUrl,
-                        queueAction = queueAction,
-                        players = playerDataList,
-                        onPlayerSelected = { playerId ->
-                            moveToPlayer(playerId)
-                        },
-                        isCurrentPage = page == playerPagerState.currentPage
-                    )
-                }
-            }
+            content(page, player, playerDataList)
         }
     }
 }
