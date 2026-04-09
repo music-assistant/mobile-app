@@ -63,11 +63,9 @@ fun BoxScope.FloatingBar(
         targetState = expanded,
         transitionSpec = {
             slideInVertically(
-                initialOffsetY = { if (targetState) it else -it },
-                animationSpec = tween(300)
+                initialOffsetY = { if (targetState) it else -it }
             ) togetherWith slideOutVertically(
-                targetOffsetY = { if (targetState) -it else it },
-                animationSpec = tween(300)
+                targetOffsetY = { if (targetState) -it else it }
             )
         }
     ) {
