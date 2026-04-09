@@ -29,13 +29,14 @@ import io.music_assistant.client.utils.WindowClass
 @Composable
 fun AdaptiveNavigationScaffold(
     navigationItems: List<NavigationItem>,
+    showNavBar: Boolean = true,
     content: @Composable (contentPadding: PaddingValues) -> Unit
 ) {
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
 
     Scaffold(
         bottomBar = {
-            if (!isExpandedScreen) {
+            if (showNavBar && !isExpandedScreen) {
                 NavigationBar(modifier = Modifier.height(88.dp)) {
                     navigationItems.forEach {
                         NavigationBarItem(
@@ -51,7 +52,7 @@ fun AdaptiveNavigationScaffold(
         }
     ) { contentPadding ->
         Row {
-            if (isExpandedScreen) {
+            if (showNavBar && isExpandedScreen) {
                 NavigationRail {
                     navigationItems.forEach {
                         NavigationRailItem(

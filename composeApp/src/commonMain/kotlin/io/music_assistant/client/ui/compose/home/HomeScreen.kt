@@ -2,33 +2,22 @@
 
 package io.music_assistant.client.ui.compose.home
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +30,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.entryProvider
@@ -89,8 +77,6 @@ fun HomeScreen(
         }
     }
 
-    var showPlayersView by remember { mutableStateOf(false) }
-
     val recommendationsState = viewModel.recommendationsState.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle()
     val playersState by viewModel.playersState.collectAsStateWithLifecycle()
@@ -103,11 +89,6 @@ fun HomeScreen(
 
     // Nested navigation backstack - hoisted to survive player view transitions
     val homeBackStack = rememberHomeNavBackStack()
-
-    // Handle back when player view is shown
-    BackHandler(enabled = showPlayersView) {
-        showPlayersView = false
-    }
 
     // Bidirectional pager <-> selection sync
     // Selection→pager runs first (data layer priority), then pager→selection watches user swipes
@@ -129,125 +110,70 @@ fun HomeScreen(
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
     // Simple slide transition between main screen and big player
-    AnimatedContent(
-        targetState = showPlayersView,
-        transitionSpec = {
-            slideInVertically(
-                initialOffsetY = { if (targetState) it else -it },
-                animationSpec = tween(300)
-            ) togetherWith slideOutVertically(
-                targetOffsetY = { if (targetState) -it else it },
-                animationSpec = tween(300)
-            )
-        },
-        label = "player_transition"
-    ) { isPlayersViewShown ->
-        val isExpandedScreen = WindowClass.isAtLeastExpanded()
 
-        if (isPlayersViewShown) {
-            Scaffold { contentPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(contentPadding)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                ) {
-                    // Close button
-                    IconButton(
-                        onClick = { showPlayersView = false },
-                        modifier = Modifier.fillMaxWidth().height(36.dp)
-                            .align(Alignment.CenterHorizontally)
-                    ) {
-                        Icon(
-                            Icons.Default.ExpandMore,
-                            "Collapse",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Players(
-                            playerPagerState = playerPagerState,
-                            state = playersState,
-                            serverUrl = serverUrl,
-                            homeScreenViewModel = viewModel,
-                            actionsViewModel = actionsViewModel,
-                            expanded = true,
-                            onClose = { showPlayersView = false },
-                            isExpandedScreen = isExpandedScreen
-                        )
-                    }
-                }
-            }
-        } else {
-            val navigationItems = listOf(
-                NavigationItem(
-                    selected = true,
-                    onClick = { },
-                    Icons.Default.Home
+    val navigationItems = listOf(
+        NavigationItem(
+            selected = true,
+            onClick = { },
+            Icons.Default.Home
+        ),
+        NavigationItem(
+            selected = false,
+            onClick = { goToSettings() },
+            Icons.Default.Settings
+        )
+    )
+
+    var playerExpanded by remember { mutableStateOf(false) }
+    AdaptiveNavigationScaffold(showNavBar = !playerExpanded, navigationItems = navigationItems) { contentPadding ->
+        val isExpandedScreen = WindowClass.isAtLeastExpanded()
+        val bottomPadding = contentPadding.calculateBottomPadding()
+        val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = bottomPadding)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            HomeContent(
+                homeBackStack = homeBackStack,
+                connectionState = connectionState,
+                dataState = dataState,
+                serverUrl = serverUrl,
+                onPlayClick = viewModel::onPlayClick,
+                playlistActions = ActionsViewModel.PlaylistActions(
+                    onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                    onAddToPlaylist = actionsViewModel::addToPlaylist
                 ),
-                NavigationItem(
-                    selected = false,
-                    onClick = { goToSettings() },
-                    Icons.Default.Settings
+                libraryActions = ActionsViewModel.LibraryActions(
+                    onLibraryClick = actionsViewModel::onLibraryClick,
+                    onFavoriteClick = actionsViewModel::onFavoriteClick
+                ),
+                progressActions = ActionsViewModel.ProgressActions(
+                    onMarkPlayed = actionsViewModel::onMarkPlayed,
+                    onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                ),
+                providerIconFetcher = { modifier, provider ->
+                    actionsViewModel.getProviderIcon(provider)
+                        ?.let { ProviderIcon(modifier, it) }
+                },
+                contentPadding = PaddingValues(
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding
                 )
             )
 
-            AdaptiveNavigationScaffold(navigationItems = navigationItems) { contentPadding ->
-                val bottomPadding = contentPadding.calculateBottomPadding()
-                val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = bottomPadding)
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    HomeContent(
-                        homeBackStack = homeBackStack,
-                        connectionState = connectionState,
-                        dataState = dataState,
-                        serverUrl = serverUrl,
-                        onPlayClick = viewModel::onPlayClick,
-                        playlistActions = ActionsViewModel.PlaylistActions(
-                            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                            onAddToPlaylist = actionsViewModel::addToPlaylist
-                        ),
-                        libraryActions = ActionsViewModel.LibraryActions(
-                            onLibraryClick = actionsViewModel::onLibraryClick,
-                            onFavoriteClick = actionsViewModel::onFavoriteClick
-                        ),
-                        progressActions = ActionsViewModel.ProgressActions(
-                            onMarkPlayed = actionsViewModel::onMarkPlayed,
-                            onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                        ),
-                        providerIconFetcher = { modifier, provider ->
-                            actionsViewModel.getProviderIcon(provider)
-                                ?.let { ProviderIcon(modifier, it) }
-                        },
-                        contentPadding = PaddingValues(
-                            bottom = floatingBarHeight + FloatingBarDefaults.padding
-                        )
-                    )
-
-                    FloatingBar(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter),
-                        onClick = { showPlayersView = true }
-                    ) {
-                        Players(
-                            playerPagerState = playerPagerState,
-                            state = playersState,
-                            serverUrl = serverUrl,
-                            homeScreenViewModel = viewModel,
-                            actionsViewModel = actionsViewModel,
-                            expanded = false,
-                            onClose = { showPlayersView = false },
-                            isExpandedScreen = isExpandedScreen
-                        )
-                    }
-                }
+            FloatingBar(expanded = playerExpanded, onExpand = { playerExpanded = it}) {
+                Players(
+                    playerPagerState = playerPagerState,
+                    state = playersState,
+                    serverUrl = serverUrl,
+                    homeScreenViewModel = viewModel,
+                    actionsViewModel = actionsViewModel,
+                    expanded = playerExpanded,
+                    onClose = { playerExpanded = false },
+                    isExpandedScreen = isExpandedScreen
+                )
             }
         }
     }
