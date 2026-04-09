@@ -22,6 +22,7 @@ import coil3.ImageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -57,6 +58,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private lateinit var imageLoader: ImageLoader
     private lateinit var audioManager: AudioManager
     private var wifiLock: WifiManager.WifiLock? = null
+    private var fullyInitialized = false
 
     private val dataSource: MainDataSource by inject()
     private val sharedSession: SharedMediaSessionManager by inject()
@@ -69,7 +71,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private val activePlayerIndex = MutableStateFlow(-1)
     private val currentPlayerData =
         combine(players, activePlayerIndex) { players, index ->
-            // if some player is playing and we still have no valid index, show playing player
+            // if some player is playing, and we still have no valid index, show playing player
             if (index < 0 && players.isNotEmpty()) {
                 activePlayerIndex.update { max(0, players.indexOfFirst { it.player.isPlaying }) }
             }
@@ -142,14 +144,19 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         )
         sessionToken = token
         mediaNotificationManager = MediaNotificationManager(this, token)
-        startForeground(
-            MediaNotificationManager.NOTIFICATION_ID,
-            mediaNotificationManager.createNotification(null)
-        )
-        imageLoader = ImageLoader(this)
-
-        // Register audio device callback to detect when external outputs disconnect
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        imageLoader = ImageLoader(this)
+        try {
+            startForeground(
+                MediaNotificationManager.NOTIFICATION_ID,
+                mediaNotificationManager.createNotification(null)
+            )
+        } catch (e: IllegalStateException) {
+            logger.w(e) { "Cannot start foreground service from background, stopping" }
+            stopSelf()
+            return
+        }
+
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
         logger.i { "Registered audio device callback for routing change detection" }
 
@@ -171,6 +178,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         acquireWifiLock()
         dataSource.apiClient.onPlaybackActive()
         registerNotificationDismissReceiver()
+        fullyInitialized = true
     }
 
     @Suppress("DEPRECATION")
@@ -295,11 +303,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onDestroy() {
-        releaseWifiLock()
-        unregisterReceiver(notificationDismissReceiver)
-        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
-        logger.i { "Unregistered audio device callback" }
-        dataSource.apiClient.onPlaybackInactive()
+        if (fullyInitialized) {
+            releaseWifiLock()
+            unregisterReceiver(notificationDismissReceiver)
+            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+            logger.i { "Unregistered audio device callback" }
+            dataSource.apiClient.onPlaybackInactive()
+        }
         sharedSession.release(isAutoService = false)
         scope.cancel()
         super.onDestroy()
@@ -310,6 +320,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             ((imageLoader.execute(
                 ImageRequest.Builder(this@MainMediaPlaybackService)
                     .data(it)
+                    .allowHardware(false)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .memoryCacheKey(it)
                     .build()

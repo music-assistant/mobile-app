@@ -18,6 +18,7 @@ import coil3.ImageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import io.music_assistant.client.R
 import io.music_assistant.client.auto.AutoLibrary
 import io.music_assistant.client.auto.MediaIds
@@ -378,6 +379,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             ((imageLoader.execute(
                 ImageRequest.Builder(this@AndroidAutoPlaybackService)
                     .data(it)
+                    .allowHardware(false)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .memoryCacheKey(it)
                     .build()
