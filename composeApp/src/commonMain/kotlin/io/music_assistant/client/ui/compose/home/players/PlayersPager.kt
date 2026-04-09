@@ -81,6 +81,8 @@ internal fun PlayersPager(
         modifier.height(collapsedPlayerHeight(isExpandedScreen))
     }
 
+    var isQueueExpanded by remember { mutableStateOf(false) }
+
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
     Column(modifier = modifier) {
@@ -160,7 +162,9 @@ internal fun PlayersPager(
                         page = page,
                         playerPagerState = playerPagerState,
                         isExpandedScreen = isExpandedScreen,
-                        sendspinState = playersState.sendspinState
+                        sendspinState = playersState.sendspinState,
+                        isQueueExpanded = isQueueExpanded,
+                        onExpandQueue = { isQueueExpanded = it }
                     )
                 } else {
                     CollapsedPlayerPage(
@@ -194,10 +198,10 @@ private fun ExpandedPlayerPage(
     page: Int,
     playerPagerState: PagerState,
     isExpandedScreen: Boolean,
-    sendspinState: SendspinState?
+    sendspinState: SendspinState?,
+    isQueueExpanded: Boolean,
+    onExpandQueue: (Boolean) -> Unit
 ) {
-    var isQueueExpanded by remember { mutableStateOf(false) }
-
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -221,7 +225,7 @@ private fun ExpandedPlayerPage(
                     .padding(top = 2.dp)
                     .fillMaxWidth()
                     .wrapContentSize()
-                    .clickable { isQueueExpanded = false }
+                    .clickable { onExpandQueue(false) }
             ) {
                 CompactPlayerItem(
                     item = player,
@@ -345,7 +349,7 @@ private fun ExpandedPlayerPage(
                 ),
             queue = player.queue,
             isQueueExpanded = isQueueExpanded,
-            onQueueExpandedSwitch = { isQueueExpanded = !isQueueExpanded },
+            onQueueExpandedSwitch = { onExpandQueue(!isQueueExpanded) },
             onGoToLibrary = onClose,
             serverUrl = serverUrl,
             queueAction = queueAction,
