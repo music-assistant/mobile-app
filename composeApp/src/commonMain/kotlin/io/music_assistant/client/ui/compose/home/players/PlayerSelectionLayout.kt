@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -22,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 
@@ -56,6 +61,15 @@ fun PlayerSelectionLayout(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                Icon(
+                    imageVector = when {
+                        isLocalPlayer -> Icons.Default.Smartphone
+                        player.player.isGroup -> SpeakerMultipleIcon
+                        else -> Icons.Default.Speaker
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
                 dotColor?.let {
                     Box(
                         modifier = Modifier

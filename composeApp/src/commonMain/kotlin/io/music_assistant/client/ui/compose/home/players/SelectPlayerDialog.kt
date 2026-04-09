@@ -1,5 +1,7 @@
 package io.music_assistant.client.ui.compose.home.players
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,16 +16,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -36,6 +40,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +53,8 @@ import androidx.compose.ui.window.Dialog
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
+import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 
@@ -124,20 +132,34 @@ private fun PlayerSelection(
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
 ) {
+    val plateShape = RoundedCornerShape(12.dp)
+
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
             .selectableGroup()
-            .heightIn(max = MAX_LIST_HEIGHT)
+            .heightIn(max = MAX_LIST_HEIGHT),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         players.forEach {
             item {
                 val selected = it.player.id == selectedPlayer.player.id
+                val borderColor = if (selected)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.outlineVariant
+                val backgroundColor = if (selected)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                else
+                    Color.Transparent
 
                 Row(
                     modifier = Modifier
+                        .padding(horizontal = 16.dp)
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .clip(plateShape)
+                        .background(backgroundColor)
+                        .border(1.dp, borderColor, plateShape)
                         .selectable(
                             selected = selected,
                             onClick = {
@@ -145,24 +167,45 @@ private fun PlayerSelection(
                                 onSelectPlayer(it.player.id)
                             },
                             role = Role.RadioButton
-                        ).padding(horizontal = 16.dp),
+                        )
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    RadioButton(
-                        selected = selected,
-                        onClick = null
+                    val playerIcon = when {
+                        it.isLocal -> Icons.Default.Smartphone
+                        it.player.isGroup -> SpeakerMultipleIcon
+                        else -> Icons.Default.Speaker
+                    }
+                    Icon(
+                        imageVector = playerIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
                     )
-
                     Text(
                         text = it.player.name,
-                        modifier = Modifier.padding(start = 16.dp),
-                        style = MaterialTheme.typography.bodyLarge
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .weight(1f, fill = false),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     it.player.suffix?.let { suffix ->
                         Text(
                             text = suffix,
                             modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                        )
+                    }
+                    if (it.player.isPlaying || it.player.isAnnouncing) {
+                        NowPlayingIcon(
+                            modifier = Modifier.padding(start = 8.dp),
+                            size = 12.dp,
+                            color = if (it.player.isAnnouncing)
+                                Color(0xFFFF9800)
+                            else
+                                Color(0xFF2196F3),
                         )
                     }
                 }

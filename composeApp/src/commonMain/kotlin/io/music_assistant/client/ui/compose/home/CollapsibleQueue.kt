@@ -20,7 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
+import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -120,7 +122,11 @@ fun CollapsibleQueue(
                     options = players.filter { p -> p.player.id != queueId }.map { playerData ->
                         OverflowMenuOption(
                             title = playerData.player.nameAndSuffix,
-                            icon = Icons.Default.Speaker,
+                            icon = when {
+                                playerData.isLocal -> Icons.Default.Smartphone
+                                playerData.player.isGroup -> SpeakerMultipleIcon
+                                else -> Icons.Default.Speaker
+                            },
                             onClick = {
                                 queueAction(
                                     QueueAction.Transfer(
