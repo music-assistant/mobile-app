@@ -5,7 +5,8 @@ import io.music_assistant.client.ui.compose.common.DataState
 data class PlayerData(
     val player: Player,
     val queue: DataState<Queue>,
-    val groupChildren: List<Bind>,
+    val parentBind: ParentBind?,
+    val childrenBinds: List<ChildBind>,
     val isLocal: Boolean = false,
     val pendingPlay: Boolean = false,
 ) {
@@ -45,13 +46,14 @@ data class PlayerData(
 
                 else -> other.queue
             },
-            groupChildren = other.groupChildren,
+            parentBind = other.parentBind,
+            childrenBinds = other.childrenBinds,
             isLocal = other.isLocal,
             pendingPlay = other.pendingPlay,
         )
     }
 
-    data class Bind(
+    data class ChildBind(
         val id: String,
         val parentId: String,
         val volume: Float?,
@@ -60,5 +62,12 @@ data class PlayerData(
         val name: String,
         val isBound: Boolean,
         val isManageable: Boolean,
+    )
+
+    data class ParentBind(
+        val id: String,
+        val name: String,
+        val isPlaying: Boolean,
+        val isGroup: Boolean,
     )
 }

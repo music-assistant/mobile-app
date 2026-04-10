@@ -247,7 +247,7 @@ fun GroupSettings(
             }
 
             // Bound players
-            val boundChildren = item.groupChildren.filter { it.isBound }
+            val boundChildren = item.childrenBinds.filter { it.isBound }
             items(boundChildren, key = { "${it.id}_${it.volume}" }) { child ->
                 GroupPlayerItem(
                     playerId = child.id,
@@ -256,12 +256,12 @@ fun GroupSettings(
                     isVolumeEnabled = child.volumeSliderAccessible,
                     isMuted = child.isMuted,
                     simplePlayerAction = playerAction,
-                    bindItem = child,
+                    childBindItem = child,
                 )
             }
 
             // Unbound players
-            val unboundChildren = item.groupChildren.filter { !it.isBound }
+            val unboundChildren = item.childrenBinds.filter { !it.isBound }
             items(unboundChildren, key = { "${it.id}_${it.volume}" }) { child ->
                 GroupPlayerItem(
                     playerId = child.id,
@@ -270,7 +270,7 @@ fun GroupSettings(
                     isVolumeEnabled = child.volumeSliderAccessible,
                     isMuted = child.isMuted,
                     simplePlayerAction = playerAction,
-                    bindItem = child,
+                    childBindItem = child,
                 )
             }
         }
@@ -299,7 +299,7 @@ private fun GroupPlayerItem(
     isVolumeEnabled: Boolean,
     isMuted: Boolean?,
     simplePlayerAction: (String, PlayerAction) -> Unit,
-    bindItem: PlayerData.Bind? = null,
+    childBindItem: PlayerData.ChildBind? = null,
 ) {
     var currentVolume by remember(volume) {
         mutableStateOf(volume ?: 0f)
@@ -315,7 +315,7 @@ private fun GroupPlayerItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                modifier = Modifier.alpha(if (bindItem?.isBound != false) 1f else 0.4f).weight(1f),
+                modifier = Modifier.alpha(if (childBindItem?.isBound != false) 1f else 0.4f).weight(1f),
                 text = playerName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -325,10 +325,10 @@ private fun GroupPlayerItem(
             )
 
             // Show button only for non-current players (when bindItem is provided)
-            bindItem?.let { bind ->
+            childBindItem?.let { bind ->
                 val itemId = listOf(playerId)
                 IconButton(
-                    enabled = bindItem.isManageable,
+                    enabled = childBindItem.isManageable,
                     onClick = {
                         simplePlayerAction(
                             bind.parentId,
@@ -340,10 +340,10 @@ private fun GroupPlayerItem(
                     }
                 ) {
                     Icon(
-                        modifier = Modifier.alpha(if (bindItem.isManageable) 1f else 0.4f),
-                        imageVector = if (bindItem.isBound) Icons.Default.Remove else Icons.Default.Add,
-                        contentDescription = if (bindItem.isBound) "Remove from group" else "Add to group",
-                        tint = if (bindItem.isBound)
+                        modifier = Modifier.alpha(if (childBindItem.isManageable) 1f else 0.4f),
+                        imageVector = if (childBindItem.isBound) Icons.Default.Remove else Icons.Default.Add,
+                        contentDescription = if (childBindItem.isBound) "Remove from group" else "Add to group",
+                        tint = if (childBindItem.isBound)
                             MaterialTheme.colorScheme.error
                         else
                             MaterialTheme.colorScheme.primary
@@ -352,7 +352,7 @@ private fun GroupPlayerItem(
             }
         }
 
-        val volumeEnabled = isVolumeEnabled && volume != null && bindItem?.isBound != false
+        val volumeEnabled = isVolumeEnabled && volume != null && childBindItem?.isBound != false
         Row {
             isMuted?.let {
                 IconButton(onClick = {

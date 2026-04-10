@@ -125,60 +125,96 @@ internal fun PlayersPager(
                 imageUrl = imageUrl,
                 fallback = MaterialTheme.colorScheme.primaryContainer
             )
-
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = if (player.isLocal) {
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    MaterialTheme.colorScheme.surfaceContainerLow
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = if (player.isLocal) {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        MaterialTheme.colorScheme.surfaceContainerLow
+                                    )
                                 )
-                            )
-                        } else {
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    dominantColor.copy(alpha = 0.2f)
+                            } else {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        dominantColor.copy(alpha = 0.2f)
+                                    )
                                 )
-                            )
-                        }
-                    )
-            ) {
-                if (expanded) {
-                    ExpandedPlayerPage(
-                        player = player,
-                        onSelectPlayer = onSelectPlayer,
-                        onGroupButton = onGroupButton,
-                        serverUrl = serverUrl,
-                        playerAction = playerAction,
-                        onFavoriteClick = onFavoriteClick,
-                        onClose = onClose,
-                        queueAction = queueAction,
-                        allPlayers = playerDataList,
+                            }
+                        )
+                ) {
+                    if (expanded) {
+                        ExpandedPlayerPage(
+                            player = player,
+                            onSelectPlayer = onSelectPlayer,
+                            onGroupButton = onGroupButton,
+                            serverUrl = serverUrl,
+                            playerAction = playerAction,
+                            onFavoriteClick = onFavoriteClick,
+                            onClose = onClose,
+                            queueAction = queueAction,
+                            allPlayers = playerDataList,
+                            moveToPlayer = moveToPlayer,
+                            page = page,
+                            playerPagerState = playerPagerState,
+                            isExpandedScreen = isExpandedScreen,
+                            sendspinState = playersState.sendspinState,
+                            isQueueExpanded = isQueueExpanded,
+                            onExpandQueue = { isQueueExpanded = it }
+                        )
+                    } else {
+                        CollapsedPlayerPage(
+                            isExpandedScreen = isExpandedScreen,
+                            player = player,
+                            sendspinState = playersState.sendspinState,
+                            onSelectPlayer = onSelectPlayer,
+                            onGroupButton = onGroupButton,
+                            serverUrl = serverUrl,
+                            playerAction = playerAction
+                        )
+                    }
+                }
+                player.parentBind?.let {
+                    BoundPlayerInfo(
+                        modifier = Modifier.fillMaxSize(),
+                        playerName = player.player.name,
+                        parent = it,
                         moveToPlayer = moveToPlayer,
-                        page = page,
-                        playerPagerState = playerPagerState,
-                        isExpandedScreen = isExpandedScreen,
-                        sendspinState = playersState.sendspinState,
-                        isQueueExpanded = isQueueExpanded,
-                        onExpandQueue = { isQueueExpanded = it }
-                    )
-                } else {
-                    CollapsedPlayerPage(
-                        isExpandedScreen = isExpandedScreen,
-                        player = player,
-                        sendspinState = playersState.sendspinState,
-                        onSelectPlayer = onSelectPlayer,
-                        onGroupButton = onGroupButton,
-                        serverUrl = serverUrl,
-                        playerAction = playerAction
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BoundPlayerInfo(
+    modifier: Modifier,
+    playerName: String,
+    parent: PlayerData.ParentBind,
+    moveToPlayer: (String) -> Unit,
+) {
+    val status = when {
+        parent.isPlaying -> "playing with${if (parent.isGroup) " group" else ""}"
+        parent.isGroup -> "part of group"
+        else -> "joined to"
+    }
+    Box(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f))
+            .clickable { moveToPlayer(parent.id) },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "$playerName is $status ${parent.name}\n(tap to view)",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     }
 }
 
@@ -301,7 +337,7 @@ private fun ExpandedPlayerPage(
                         onValueChangeFinished = {
                             playerAction(
                                 player,
-                                if (player.groupChildren.none { it.isBound }) {
+                                if (player.childrenBinds.none { it.isBound }) {
                                     PlayerAction.VolumeSet(currentVolume.toDouble())
                                 } else {
                                     PlayerAction.GroupVolumeSet(currentVolume.toDouble())
@@ -354,9 +390,7 @@ private fun ExpandedPlayerPage(
             serverUrl = serverUrl,
             queueAction = queueAction,
             players = allPlayers,
-            onPlayerSelected = { playerId ->
-                moveToPlayer(playerId)
-            },
+            onPlayerSelected = { moveToPlayer(it) },
             isCurrentPage = page == playerPagerState.currentPage
         )
     }

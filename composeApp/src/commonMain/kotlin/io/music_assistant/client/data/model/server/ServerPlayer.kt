@@ -26,7 +26,7 @@ data class ServerPlayer(
     @SerialName("active_source") val activeSource: String? = null,
     //@SerialName("source_list") val sourceList: List<PlayerSource>,
     @SerialName("active_group") val activeGroup: String? = null,
-    //@SerialName("synced_to") val syncedTo: String? = null,
+    @SerialName("synced_to") val syncedTo: String? = null,
     @SerialName("group_volume") val groupVolume: Float? = null,
     @SerialName("display_name") val displayName: String,
     @SerialName("hidden") val hidden: Boolean? = null,

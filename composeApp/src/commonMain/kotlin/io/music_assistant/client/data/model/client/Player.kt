@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client
 
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.model.server.PlayerFeature
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.PlayerType
@@ -22,7 +23,8 @@ data class Player(
     val canGroupWith: List<String>?,
     val groupMembers: Set<String>?,
     val staticGroupMembers: Set<String>?,
-    //val activeGroup: String?,
+    val activeGroup: String?,
+    val syncedTo: String?,
     val groupVolume: Float?,
 ) {
 
@@ -48,10 +50,10 @@ data class Player(
         else -> true
     }
 
-    fun asBindFor(other: Player): PlayerData.Bind? {
+    fun asChildBindFor(other: Player): PlayerData.ChildBind? {
         if (id == other.id) return null
         if (other.canGroupWith?.contains(providerType) != true && other.canGroupWith?.contains(id) != true) return null
-        return PlayerData.Bind(
+        return PlayerData.ChildBind(
             id = id,
             parentId = other.id,
             name = name,
@@ -60,6 +62,15 @@ data class Player(
             isMuted = volumeMuted.takeIf { canMute },
             isBound = other.groupMembers?.contains(id) == true,
             isManageable = other.staticGroupMembers?.contains(id) != true,
+        )
+    }
+
+    fun asParentBind(): PlayerData.ParentBind {
+        return PlayerData.ParentBind(
+            id = id,
+            name = name,
+            isPlaying = isPlaying,
+            isGroup = isGroup,
         )
     }
 
@@ -83,8 +94,11 @@ data class Player(
             canGroupWith = canGroupWith,
             groupMembers = groupMembers,
             staticGroupMembers = staticGroupMembers,
-            //activeGroup = activeGroup,
+            activeGroup = activeGroup,
+            syncedTo = syncedTo,
             groupVolume = groupVolume,
-        )
+        ).also {
+            Logger.e("${it.name} ID: ${it.id}, group ${it.activeGroup}, synced to ${it.syncedTo}")
+        }
     }
 }

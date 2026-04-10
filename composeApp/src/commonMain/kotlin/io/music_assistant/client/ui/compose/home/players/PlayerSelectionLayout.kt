@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
@@ -29,7 +30,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 
-private val GROUP_BUTTON_SIZE = 34.dp
+private val GROUP_BUTTON_SIZE = 36.dp
 
 @Composable
 fun PlayerSelectionLayout(
@@ -40,8 +41,8 @@ fun PlayerSelectionLayout(
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
-    val hasGroupChildren = player.groupChildren.isNotEmpty()
-    val hasBoundChildren = player.groupChildren.any { it.isBound }
+    val hasGroupChildren = player.childrenBinds.isNotEmpty()
+    val hasBoundChildren = player.childrenBinds.any { it.isBound }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -54,6 +55,7 @@ fun PlayerSelectionLayout(
 
         OutlinedButton(
             enabled = true,
+            shape = RoundedCornerShape(GROUP_BUTTON_SIZE / 3),
             onClick = onSelectPlayer
         ) {
             Row(
@@ -89,7 +91,7 @@ fun PlayerSelectionLayout(
         }
 
         if (hasGroupChildren) {
-            val boundCount = player.groupChildren.count { it.isBound }
+            val boundCount = player.childrenBinds.count { it.isBound }
             val groupLabel = when {
                 player.player.isGroup -> "${player.player.groupMembers?.size ?: 0}"
                 boundCount > 0 -> "+$boundCount"
@@ -99,7 +101,7 @@ fun PlayerSelectionLayout(
             Box(
                 modifier = Modifier
                     .size(GROUP_BUTTON_SIZE)
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(GROUP_BUTTON_SIZE / 3))
                     .background(
                         if (hasBoundChildren) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)

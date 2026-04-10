@@ -627,17 +627,19 @@ class MainDataSource(
         oldValues: DataState<List<PlayerData>>
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinClientId.value
-        val groupedPlayersToHide = allPlayers
-            .flatMap { (it.groupMembers ?: emptyList()) - it.id }
-            .filter { it != localPlayerId }
-            .toSet()
         val playerDataList = allPlayers
-            .filter { it.id !in groupedPlayersToHide }
             .map { player ->
                 val isLocal = player.id == localPlayerId
                 val groupChildren =
                     // No grouping for local player
-                    if (isLocal) emptyList() else allPlayers.mapNotNull { it.asBindFor(player) }
+                    if (isLocal) emptyList()
+                    else allPlayers.mapNotNull { it.asChildBindFor(player) }
+                val parent =
+                    // No grouping for local player
+                    if (isLocal) null
+                    else (player.activeGroup ?: player.syncedTo)
+                        ?.let { parentId -> allPlayers.firstOrNull { it.id == parentId } }
+                        ?.asParentBind()
                 if (isLocal && localData != null) {
                     // Repository is source of truth. Overlay interpolated position from tracker
                     // (repository has raw server position; queues has smooth 500ms interpolation).
@@ -653,12 +655,10 @@ class MainDataSource(
                             )
                         }
                     } ?: localData
-                    // TODO check why we need groupChildren if it should be empty for local player?
-                    val enriched = withPosition.copy(groupChildren = groupChildren)
                     // Preserve loaded queue items from previous state
                     (oldValues as? DataState.Data)?.data
                         ?.firstOrNull { it.player.id == player.id }
-                        ?.updateFrom(enriched) ?: enriched
+                        ?.updateFrom(withPosition) ?: withPosition
                 } else {
                     val newData = PlayerData(
                         player = player,
@@ -668,7 +668,8 @@ class MainDataSource(
                                     Queue(info = queueInfo, items = DataState.NoData())
                                 )
                             } ?: DataState.NoData(),
-                        groupChildren = groupChildren,
+                        parentBind = parent,
+                        childrenBinds = groupChildren,
                         isLocal = isLocal
                     )
                     (oldValues as? DataState.Data)?.data
@@ -1596,7 +1597,8 @@ class MainDataSource(
                                                     ?: DataState.Error()
                                             )
                                         ),
-                                        groupChildren = playerData.groupChildren,
+                                        parentBind = playerData.parentBind,
+                                        childrenBinds = playerData.childrenBinds,
                                         isLocal = playerData.player.id == settings.sendspinClientId.value
                                     )
 
