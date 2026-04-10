@@ -37,22 +37,18 @@ fun PlayerControls(
     playerData: PlayerData,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     showAdditionalButtons: Boolean = true,
-    mainButtonSize: Dp = 48.dp,
+    mainButtonSize: Dp,
     showSkip: Boolean = true
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
     val playerEnabled = player.canPlay && !player.isAnnouncing
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
-    val smallButtonSize = (mainButtonSize.value * 0.6).dp
-    val additionalButtonSize = (mainButtonSize.value * 0.4).dp
+    val smallButtonSize = (mainButtonSize.value * 0.5).dp
     Row(
         modifier = modifier
             .wrapContentSize(),
-        horizontalArrangement = Arrangement.spacedBy(
-            8.dp,
-            alignment = Alignment.CenterHorizontally
-        ),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showAdditionalButtons) {
@@ -63,7 +59,7 @@ fun PlayerControls(
                     else
                         ShuffleOffIcon,
                     tint = MaterialTheme.colorScheme.primary,
-                    size = additionalButtonSize,
+                    size = smallButtonSize,
                     enabled = playerEnabled && buttonsEnabled,
                 ) {
                     playerAction(
@@ -129,7 +125,7 @@ fun PlayerControls(
                         null -> RepeatOffIcon
                     },
                     tint = MaterialTheme.colorScheme.primary,
-                    size = additionalButtonSize,
+                    size = smallButtonSize,
                     enabled = playerEnabled && buttonsEnabled && repeatMode != null,
                 ) {
                     repeatMode?.let {
@@ -147,7 +143,7 @@ fun PlayerControls(
 @Composable
 private fun ActionButton(
     icon: ImageVector,
-    size: Dp = 24.dp,
+    size: Dp,
     tint: Color = MaterialTheme.colorScheme.primary,
     enabled: Boolean = true,
     onClick: () -> Unit
@@ -155,7 +151,7 @@ private fun ActionButton(
     IconButton(
         modifier = Modifier
             .alpha(if (enabled) 1F else 0.5f)
-            .size(size),
+            .size(size + 12.dp),
         onClick = onClick,
         enabled = enabled,
     ) {
@@ -176,6 +172,7 @@ private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = tru
             playerData = PlayerDataFixtures.playerData(),
             playerAction = { _, _ -> },
             showSkip = showSkip,
+            mainButtonSize = 48.dp,
             showAdditionalButtons = showAdditionButtons
         )
     }
