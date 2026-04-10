@@ -173,7 +173,7 @@ fun HomeScreen(
             onExpand = {
                 playerExpanded = it
             }
-        ) { expanded ->
+        ) { expanded, contentPadding ->
             Players(
                 playerPagerState = playerPagerState,
                 state = playersState,
@@ -182,7 +182,8 @@ fun HomeScreen(
                 actionsViewModel = actionsViewModel,
                 expanded = expanded,
                 onClose = { playerExpanded = false },
-                isExpandedScreen = isExpandedScreen
+                isExpandedScreen = isExpandedScreen,
+                contentPadding = contentPadding
             )
         }
     }
@@ -337,7 +338,8 @@ private fun Players(
     actionsViewModel: ActionsViewModel,
     expanded: Boolean,
     onClose: () -> Unit,
-    isExpandedScreen: Boolean
+    isExpandedScreen: Boolean,
+    contentPadding: PaddingValues
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         PlayersPager(
@@ -381,7 +383,8 @@ private fun Players(
                     homeScreenViewModel.selectPlayer(player.player)
                 }
             },
-            isExpandedScreen = isExpandedScreen
+            isExpandedScreen = isExpandedScreen,
+            contentPadding = contentPadding
         )
     } else {
         Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {

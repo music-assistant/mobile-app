@@ -9,17 +9,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -81,6 +74,7 @@ fun CollapsibleQueue(
     players: List<PlayerData> = emptyList(),
     onPlayerSelected: ((String) -> Unit)? = null,
     isCurrentPage: Boolean = true,
+    contentPadding: PaddingValues,
 ) {
     Column(
         modifier = modifier
@@ -100,13 +94,11 @@ fun CollapsibleQueue(
             currentPos?.let { "Queue ($it/${list.size})" }
         } ?: "Queue"
 
-        val windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom)
-
         Button(
             modifier = Modifier
                 .let {
                     if (!isQueueExpanded) {
-                        it.windowInsetsPadding(windowInsets)
+                        it.padding(contentPadding)
                     } else {
                         it
                     }
@@ -278,7 +270,7 @@ fun CollapsibleQueue(
                             modifier = Modifier.fillMaxSize(),
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            contentPadding = windowInsets.asPaddingValues() + PaddingValues(bottom = 16.dp)
+                            contentPadding = contentPadding
                         ) {
                             itemsIndexed(
                                 items = internalItems,

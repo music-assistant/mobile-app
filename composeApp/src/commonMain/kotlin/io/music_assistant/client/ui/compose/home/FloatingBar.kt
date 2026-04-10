@@ -9,14 +9,19 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,7 +46,7 @@ fun BoxScope.FloatingBar(
     bottomPadding: Dp = 0.dp,
     expanded: Boolean = false,
     onExpand: (Boolean) -> Unit = {},
-    content: @Composable (expanded: Boolean) -> Unit
+    content: @Composable (expanded: Boolean, contentPadding: PaddingValues) -> Unit
 ) {
     BackHandler(enabled = expanded) {
         onExpand(false)
@@ -81,7 +86,15 @@ fun BoxScope.FloatingBar(
                 }
             }
 
-            content(expanded)
+            val contentPadding = if (expanded) {
+                val windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom)
+                windowInsets.asPaddingValues()
+            } else {
+                PaddingValues()
+            }
+
+
+            content(expanded, contentPadding)
         }
     }
 }
@@ -94,7 +107,7 @@ object FloatingBarDefaults {
 @Composable
 private fun PreviewFloatingBarRow() {
     Box(Modifier.fillMaxSize()) {
-        FloatingBar {
+        FloatingBar { _, _ ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -110,7 +123,7 @@ private fun PreviewFloatingBarRow() {
 @Composable
 private fun PreviewFloatingBarColumn() {
     Box(Modifier.fillMaxSize()) {
-        FloatingBar {
+        FloatingBar { _, _ ->
             Column {
                 Text("Top")
                 Text("Bottom")
@@ -123,7 +136,7 @@ private fun PreviewFloatingBarColumn() {
 @Composable
 private fun PreviewFloatingBarExpanded() {
     Box(Modifier.fillMaxSize()) {
-        FloatingBar(expanded = true) {
+        FloatingBar(expanded = true) { _, _ ->
             Column {
                 Text("Top")
                 Text("Bottom")
