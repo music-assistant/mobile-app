@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -29,12 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.ui.compose.nav.BackHandler
 
 @Composable
 fun BoxScope.FloatingBar(
     modifier: Modifier = Modifier,
+    bottomPadding: Dp = 0.dp,
     expanded: Boolean = false,
     onExpand: (Boolean) -> Unit = {},
     content: @Composable (expanded: Boolean) -> Unit
@@ -45,11 +49,13 @@ fun BoxScope.FloatingBar(
 
     val clip by animateDpAsState(if (expanded) 0.dp else 16.dp)
     val padding by animateDpAsState(if (expanded) 0.dp else FloatingBarDefaults.padding)
+    val paddingValues =
+        PaddingValues(padding) + PaddingValues(bottom = if (expanded) 0.dp else bottomPadding)
 
     Box(
         modifier = modifier
             .align(Alignment.BottomCenter)
-            .padding(padding)
+            .padding(paddingValues)
             .clip(RoundedCornerShape(clip))
             .fillMaxWidth()
             .let {

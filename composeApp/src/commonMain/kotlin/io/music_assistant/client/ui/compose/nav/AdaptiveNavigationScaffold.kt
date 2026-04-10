@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.nav
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -30,7 +31,7 @@ import io.music_assistant.client.utils.WindowClass
 fun AdaptiveNavigationScaffold(
     navigationItems: List<NavigationItem>,
     showNavBar: Boolean = true,
-    content: @Composable (contentPadding: PaddingValues) -> Unit
+    content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit
 ) {
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
 

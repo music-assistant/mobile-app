@@ -7,11 +7,19 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -22,7 +30,6 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
-import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -54,6 +61,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
@@ -92,8 +100,18 @@ fun CollapsibleQueue(
             currentPos?.let { "Queue ($it/${list.size})" }
         } ?: "Queue"
 
+        val windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom)
+
         Button(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .let {
+                    if (!isQueueExpanded) {
+                        it.windowInsetsPadding(windowInsets)
+                    } else {
+                        it
+                    }
+                }
+                .fillMaxWidth(),
             onClick = { onQueueExpandedSwitch() }
         ) {
             Text(
@@ -259,7 +277,8 @@ fun CollapsibleQueue(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             state = listState,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            contentPadding = windowInsets.asPaddingValues() + PaddingValues(bottom = 16.dp)
                         ) {
                             itemsIndexed(
                                 items = internalItems,
