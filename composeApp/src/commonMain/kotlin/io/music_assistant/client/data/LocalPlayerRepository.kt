@@ -260,6 +260,7 @@ class LocalPlayerRepository(
                 }
 
                 is PlayerAction.SeekTo -> {
+                    Logger.e("SeekTo: ${action.position}")
                     commandQueue.removeAll { it.action is PlayerAction.SeekTo }
                     commandQueue.add(entry)
                 }

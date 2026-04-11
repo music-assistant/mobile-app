@@ -44,7 +44,7 @@ fun PlayerControls(
     val queue = playerData.queueInfo
     val playerEnabled = player.canPlay && !player.isAnnouncing
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
-    val smallButtonSize = (mainButtonSize.value * 0.5).dp
+    val smallButtonSize = (mainButtonSize.value * 0.6).dp
     Row(
         modifier = modifier
             .wrapContentSize(),
@@ -151,12 +151,12 @@ private fun ActionButton(
     IconButton(
         modifier = Modifier
             .alpha(if (enabled) 1F else 0.5f)
-            .size(size + 12.dp),
+            .size(size),
         onClick = onClick,
         enabled = enabled,
     ) {
         Icon(
-            modifier = Modifier.size(size),
+            modifier = Modifier.size(size - 12.dp),
             imageVector = icon,
             contentDescription = null,
             tint = tint,
@@ -172,7 +172,7 @@ private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = tru
             playerData = PlayerDataFixtures.playerData(),
             playerAction = { _, _ -> },
             showSkip = showSkip,
-            mainButtonSize = 48.dp,
+            mainButtonSize = 60.dp,
             showAdditionalButtons = showAdditionButtons
         )
     }

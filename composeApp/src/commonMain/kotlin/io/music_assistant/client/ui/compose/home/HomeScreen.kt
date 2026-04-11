@@ -36,7 +36,10 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
@@ -125,6 +128,29 @@ fun HomeScreen(
     )
 
     var playerExpanded by remember { mutableStateOf(false) }
+
+    val playlistActions = remember(actionsViewModel) {
+        ActionsViewModel.PlaylistActions(
+            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+            onAddToPlaylist = actionsViewModel::addToPlaylist
+        )
+    }
+    val libraryActions = remember(actionsViewModel) {
+        ActionsViewModel.LibraryActions(
+            onLibraryClick = actionsViewModel::onLibraryClick,
+            onFavoriteClick = actionsViewModel::onFavoriteClick
+        )
+    }
+    val progressActions = remember(actionsViewModel) {
+        ActionsViewModel.ProgressActions(
+            onMarkPlayed = actionsViewModel::onMarkPlayed,
+            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+        )
+    }
+
+    val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
+    val onClosePlayer = remember { { playerExpanded = false } }
+
     AdaptiveNavigationScaffold(showNavBar = !playerExpanded, navigationItems = navigationItems) { contentPadding ->
         val isExpandedScreen = WindowClass.isAtLeastExpanded()
         val bottomPadding = contentPadding.calculateBottomPadding()
@@ -142,18 +168,9 @@ fun HomeScreen(
                 dataState = dataState,
                 serverUrl = serverUrl,
                 onPlayClick = viewModel::onPlayClick,
-                playlistActions = ActionsViewModel.PlaylistActions(
-                    onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                    onAddToPlaylist = actionsViewModel::addToPlaylist
-                ),
-                libraryActions = ActionsViewModel.LibraryActions(
-                    onLibraryClick = actionsViewModel::onLibraryClick,
-                    onFavoriteClick = actionsViewModel::onFavoriteClick
-                ),
-                progressActions = ActionsViewModel.ProgressActions(
-                    onMarkPlayed = actionsViewModel::onMarkPlayed,
-                    onMarkUnplayed = actionsViewModel::onMarkUnplayed
-                ),
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                progressActions = progressActions,
                 providerIconFetcher = { modifier, provider ->
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
@@ -163,7 +180,7 @@ fun HomeScreen(
                 )
             )
 
-            FloatingBar(expanded = playerExpanded, onExpand = { playerExpanded = it}) { expanded ->
+            FloatingBar(expanded = playerExpanded, onExpand = onExpandPlayer) { expanded ->
                 Players(
                     playerPagerState = playerPagerState,
                     state = playersState,
@@ -171,7 +188,7 @@ fun HomeScreen(
                     homeScreenViewModel = viewModel,
                     actionsViewModel = actionsViewModel,
                     expanded = expanded,
-                    onClose = { playerExpanded = false },
+                    onClose = onClosePlayer,
                     isExpandedScreen = isExpandedScreen
                 )
             }
@@ -331,47 +348,54 @@ private fun Players(
     isExpandedScreen: Boolean
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
+        val simplePlayerAction = remember(homeScreenViewModel) {
+            { playerId: String, action: PlayerAction ->
+                homeScreenViewModel.playerAction(playerId, action)
+            }
+        }
+        val playerAction = remember(homeScreenViewModel) {
+            { playerData: PlayerData, action: PlayerAction ->
+                homeScreenViewModel.playerAction(playerData, action)
+            }
+        }
+        val onFavoriteClick = remember(actionsViewModel) {
+            { item: AppMediaItem -> actionsViewModel.onFavoriteClick(item) }
+        }
+        val queueAction = remember(homeScreenViewModel) {
+            { action: QueueAction -> homeScreenViewModel.queueAction(action) }
+        }
+        val moveToPlayer = remember(state, homeScreenViewModel) {
+            { id: String ->
+                state.playerData.find { it.player.id == id }
+                    ?.let { homeScreenViewModel.selectPlayer(it.player) }
+                Unit
+            }
+        }
+        val onItemMoved = remember(state, homeScreenViewModel, playerPagerState) {
+            { indexShift: Int ->
+                val currentPlayer = state.playerData[playerPagerState.currentPage].player
+                val newIndex = (playerPagerState.currentPage + indexShift)
+                    .coerceIn(0, state.playerData.size - 1)
+                val newPlayers = state.playerData.map { it.player.id }
+                    .toMutableList()
+                    .apply { add(newIndex, removeAt(playerPagerState.currentPage)) }
+                homeScreenViewModel.selectPlayer(currentPlayer)
+                homeScreenViewModel.onPlayersSortChanged(newPlayers)
+            }
+        }
+
         PlayersPager(
             playerPagerState = playerPagerState,
             playersState = state,
             serverUrl = serverUrl,
-            simplePlayerAction = { playerId, action ->
-                homeScreenViewModel.playerAction(playerId, action)
-            },
-            playerAction = { playerData, action ->
-                homeScreenViewModel.playerAction(playerData, action)
-            },
-            onFavoriteClick = actionsViewModel::onFavoriteClick,
+            simplePlayerAction = simplePlayerAction,
+            playerAction = playerAction,
+            onFavoriteClick = onFavoriteClick,
             expanded = expanded,
             onClose = onClose,
-            onItemMoved = { indexShift ->
-                val currentPlayer =
-                    state.playerData[playerPagerState.currentPage].player
-                val newIndex =
-                    (playerPagerState.currentPage + indexShift).coerceIn(
-                        0,
-                        state.playerData.size - 1
-                    )
-                val newPlayers =
-                    state.playerData.map { it.player.id }
-                        .toMutableList()
-                        .apply {
-                            add(
-                                newIndex,
-                                removeAt(playerPagerState.currentPage)
-                            )
-                        }
-                homeScreenViewModel.selectPlayer(currentPlayer)
-                homeScreenViewModel.onPlayersSortChanged(newPlayers)
-            },
-            queueAction = { action -> homeScreenViewModel.queueAction(action) },
-            moveToPlayer = { id: String ->
-                val player =
-                    state.playerData.find { it.player.id == id }
-                if (player != null) {
-                    homeScreenViewModel.selectPlayer(player.player)
-                }
-            },
+            onItemMoved = onItemMoved,
+            queueAction = queueAction,
+            moveToPlayer = moveToPlayer,
             isExpandedScreen = isExpandedScreen
         )
     } else {

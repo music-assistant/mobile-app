@@ -1,6 +1,5 @@
 package io.music_assistant.client.data.model.client
 
-import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.model.server.PlayerFeature
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.PlayerType
@@ -97,8 +96,6 @@ data class Player(
             activeGroup = activeGroup,
             syncedTo = syncedTo,
             groupVolume = groupVolume,
-        ).also {
-            Logger.e("${it.name} ID: ${it.id}, group ${it.activeGroup}, synced to ${it.syncedTo}")
-        }
+        )
     }
 }

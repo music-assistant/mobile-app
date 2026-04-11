@@ -646,6 +646,7 @@ class MainDataSource(
                     val trackedElapsed = queues.find {
                         it.id == player.queueId || it.id == localPlayerId
                     }?.elapsedTime
+                    Logger.e("Elapsed: $trackedElapsed, Repo: ${localData.queueInfo?.elapsedTime}")
                     val withPosition = trackedElapsed?.let {
                         (localData.queue as? DataState.Data)?.let { qd ->
                             localData.copy(
@@ -968,6 +969,7 @@ class MainDataSource(
                 }
 
                 is PlayerAction.SeekTo -> {
+                    Logger.e("SeekTo: ${action.position}")
                     apiClient.sendRequest(
                         Request.Player.seek(
                             queueId = playerId,
@@ -1043,6 +1045,7 @@ class MainDataSource(
             localPlayerRepository.applyOptimisticUpdate(data, action)
             // Optimistic seek: update position tracker immediately
             if (action is PlayerAction.SeekTo) {
+                Logger.e("SeekTo: ${action.position}")
                 data.queueInfo?.id?.let { queueId ->
                     _positionTrackers.update { trackers ->
                         trackers + (queueId to PositionTracker(
@@ -1101,8 +1104,10 @@ class MainDataSource(
                     ?: Request.Player.simpleCommand(playerId = data.playerId, command = "previous")
             }
 
-            is PlayerAction.SeekTo ->
+            is PlayerAction.SeekTo -> {
+                Logger.e("SeekTo: ${action.position}")
                 Request.Player.seek(queueId = data.playerId, position = action.position)
+            }
 
             is PlayerAction.ToggleRepeatMode -> {
                 val queueId = data.queueInfo?.id ?: return null

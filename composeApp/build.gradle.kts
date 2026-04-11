@@ -8,6 +8,10 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+composeCompiler {
+    stabilityConfigurationFile = project.layout.projectDirectory.file("compose-stability.conf")
+}
+
 kotlin {
     androidLibrary {
         namespace = "io.music_assistant.client.shared"
