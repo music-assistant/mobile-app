@@ -34,65 +34,105 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     override val sessionState: StateFlow<SessionState> = _sessionState
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
-        return if (request.command == Request.Auth.providers().command) {
-            Result.success(
-                Answer(
-                    JsonObject(
-                        mapOf(
-                            "message_id" to JsonPrimitive(request.messageId),
-                            "result" to JsonArray(
-                                listOf(
-                                    JsonObject(
-                                        mapOf(
-                                            "provider_id" to JsonPrimitive("builtin"),
-                                            "provider_type" to JsonPrimitive("builtin"),
-                                            "requires_redirect" to JsonPrimitive(false)
+        return when (request.command) {
+            Request.Auth.providers().command -> {
+                Result.success(
+                    Answer(
+                        JsonObject(
+                            mapOf(
+                                "message_id" to JsonPrimitive(request.messageId),
+                                "result" to JsonArray(
+                                    listOf(
+                                        JsonObject(
+                                            mapOf(
+                                                "provider_id" to JsonPrimitive("builtin"),
+                                                "provider_type" to JsonPrimitive("builtin"),
+                                                "requires_redirect" to JsonPrimitive(false)
+                                            )
                                         )
                                     )
-                                )
 
+                                )
                             )
                         )
                     )
                 )
-            )
-        } else if (request.command == Request.Library.recommendations().command) {
-            Result.success(
-                Answer(
-                    JsonObject(
-                        mapOf(
-                            "message_id" to JsonPrimitive(request.messageId),
-                            "result" to JsonArray(
-                                listOf(
-                                    JsonObject(
-                                        mapOf(
-                                            "item_id" to JsonPrimitive("recently_added_albums"),
-                                            "provider" to JsonPrimitive("library"),
-                                            "name" to JsonPrimitive("Recently added albums"),
-                                            "media_type" to JsonPrimitive("folder"),
-                                            "items" to JsonArray(
-                                                albums.map {
-                                                    JsonObject(
-                                                        mapOf(
-                                                            "item_id" to JsonPrimitive(it.itemId),
-                                                            "provider" to JsonPrimitive(it.provider),
-                                                            "name" to JsonPrimitive(it.name),
-                                                            "media_type" to JsonPrimitive("album")
+            }
+
+            Request.Library.recommendations().command -> {
+                Result.success(
+                    Answer(
+                        JsonObject(
+                            mapOf(
+                                "message_id" to JsonPrimitive(request.messageId),
+                                "result" to JsonArray(
+                                    listOf(
+                                        JsonObject(
+                                            mapOf(
+                                                "item_id" to JsonPrimitive("recently_added_albums"),
+                                                "provider" to JsonPrimitive("library"),
+                                                "name" to JsonPrimitive("Recently added albums"),
+                                                "media_type" to JsonPrimitive("folder"),
+                                                "items" to JsonArray(
+                                                    albums.map {
+                                                        JsonObject(
+                                                            mapOf(
+                                                                "item_id" to JsonPrimitive(it.itemId),
+                                                                "provider" to JsonPrimitive(it.provider),
+                                                                "name" to JsonPrimitive(it.name),
+                                                                "media_type" to JsonPrimitive("album")
+                                                            )
                                                         )
-                                                    )
-                                                }
+                                                    }
+                                                )
                                             )
                                         )
                                     )
                                 )
-
                             )
                         )
                     )
                 )
-            )
-        } else {
-            Result.failure(UnsupportedOperationException())
+            }
+
+            Request.Library.search("", emptyList(), libraryOnly = false).command -> {
+                Result.success(
+                    Answer(
+                        JsonObject(
+                            mapOf(
+                                "message_id" to JsonPrimitive(request.messageId),
+                                "result" to JsonObject(
+                                    mapOf(
+                                        "albums" to JsonArray(
+                                            albums.filter {
+                                                it.name.lowercase().contains((request.args!!["search_query"]!! as JsonPrimitive).content.lowercase())
+                                            }.map {
+                                                JsonObject(
+                                                    mapOf(
+                                                        "item_id" to JsonPrimitive(it.itemId),
+                                                        "provider" to JsonPrimitive(it.provider),
+                                                        "name" to JsonPrimitive(it.name),
+                                                        "media_type" to JsonPrimitive("album")
+                                                    )
+                                                )
+                                            }
+                                        ),
+                                        "artists" to JsonArray(emptyList()),
+                                        "tracks" to JsonArray(emptyList()),
+                                        "playlists" to JsonArray(emptyList()),
+                                        "podcasts" to JsonArray(emptyList())
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+
+            else
+                -> {
+                Result.failure(UnsupportedOperationException())
+            }
         }
     }
 

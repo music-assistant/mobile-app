@@ -15,6 +15,7 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -67,7 +68,7 @@ class SearchViewModel(
             _state.map { it.searchState }
                 .distinctUntilChanged()
                 .filter { it.query.trim().length > 2 || it.query.isEmpty() }
-                .debounce { 500 }
+                .debounce { Timings.DEBOUNCE }
                 .collect { searchState ->
                     if (searchState.query.isNotEmpty()) {
                         performSearch(searchState)
