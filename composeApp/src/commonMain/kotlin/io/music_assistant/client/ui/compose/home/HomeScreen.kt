@@ -405,7 +405,7 @@ private fun Players(
             onItemMoved = onItemMoved,
             queueAction = queueAction,
             moveToPlayer = moveToPlayer,
-            isExpandedScreen = isExpandedScreen
+            isExpandedScreen = isExpandedScreen,
             contentPadding = contentPadding
         )
     } else {

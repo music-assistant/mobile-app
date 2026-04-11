@@ -395,7 +395,7 @@ private fun ExpandedPlayerPage(
             queueAction = queueAction,
             players = allPlayers,
             onPlayerSelected = { moveToPlayer(it) },
-            isCurrentPage = page == playerPagerState.currentPage
+            isCurrentPage = page == playerPagerState.currentPage,
             contentPadding = contentPadding
         )
     }
