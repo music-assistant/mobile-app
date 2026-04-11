@@ -4,6 +4,7 @@ import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
@@ -24,6 +25,7 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
 
+    private val albums = mutableListOf<AppMediaItem.Album>()
     val username = "user"
     val password = "password"
 
@@ -45,6 +47,41 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                                             "provider_id" to JsonPrimitive("builtin"),
                                             "provider_type" to JsonPrimitive("builtin"),
                                             "requires_redirect" to JsonPrimitive(false)
+                                        )
+                                    )
+                                )
+
+                            )
+                        )
+                    )
+                )
+            )
+        } else if (request.command == Request.Library.recommendations().command) {
+            Result.success(
+                Answer(
+                    JsonObject(
+                        mapOf(
+                            "message_id" to JsonPrimitive(request.messageId),
+                            "result" to JsonArray(
+                                listOf(
+                                    JsonObject(
+                                        mapOf(
+                                            "item_id" to JsonPrimitive("recently_added_albums"),
+                                            "provider" to JsonPrimitive("library"),
+                                            "name" to JsonPrimitive("Recently added albums"),
+                                            "media_type" to JsonPrimitive("folder"),
+                                            "items" to JsonArray(
+                                                albums.map {
+                                                    JsonObject(
+                                                        mapOf(
+                                                            "item_id" to JsonPrimitive(it.itemId),
+                                                            "provider" to JsonPrimitive(it.provider),
+                                                            "name" to JsonPrimitive(it.name),
+                                                            "media_type" to JsonPrimitive("album")
+                                                        )
+                                                    )
+                                                }
+                                            )
                                         )
                                     )
                                 )
@@ -145,4 +182,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         TODO("Not yet implemented")
     }
 
+    fun addToLibrary(album: AppMediaItem.Album) {
+        albums.add(album)
+    }
 }

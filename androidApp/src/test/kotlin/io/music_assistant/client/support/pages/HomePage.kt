@@ -8,4 +8,8 @@ class HomePage(private val composeTestRule: ComposeTestRule) : Page {
     override fun assert() {
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
     }
+
+    fun assertMediaDisplayed(name: String) {
+        composeTestRule.onNodeWithText(name).assertIsDisplayed()
+    }
 }
