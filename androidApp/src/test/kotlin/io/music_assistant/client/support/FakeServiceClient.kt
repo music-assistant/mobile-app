@@ -5,13 +5,18 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.server.AuthProvider
+import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
@@ -19,9 +24,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
 
@@ -37,22 +43,13 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         return when (request.command) {
             Request.Auth.providers().command -> {
                 Result.success(
-                    Answer(
-                        JsonObject(
-                            mapOf(
-                                "message_id" to JsonPrimitive(request.messageId),
-                                "result" to JsonArray(
-                                    listOf(
-                                        JsonObject(
-                                            mapOf(
-                                                "provider_id" to JsonPrimitive("builtin"),
-                                                "provider_type" to JsonPrimitive("builtin"),
-                                                "requires_redirect" to JsonPrimitive(false)
-                                            )
-                                        )
-                                    )
-
-                                )
+                    answer(
+                        request = request,
+                        result = listOf(
+                            AuthProvider(
+                                id = "builtin",
+                                type = "builtin",
+                                requiresRedirect = false
                             )
                         )
                     )
@@ -61,34 +58,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             Request.Library.recommendations().command -> {
                 Result.success(
-                    Answer(
-                        JsonObject(
-                            mapOf(
-                                "message_id" to JsonPrimitive(request.messageId),
-                                "result" to JsonArray(
-                                    listOf(
-                                        JsonObject(
-                                            mapOf(
-                                                "item_id" to JsonPrimitive("recently_added_albums"),
-                                                "provider" to JsonPrimitive("library"),
-                                                "name" to JsonPrimitive("Recently added albums"),
-                                                "media_type" to JsonPrimitive("folder"),
-                                                "items" to JsonArray(
-                                                    albums.map {
-                                                        JsonObject(
-                                                            mapOf(
-                                                                "item_id" to JsonPrimitive(it.itemId),
-                                                                "provider" to JsonPrimitive(it.provider),
-                                                                "name" to JsonPrimitive(it.name),
-                                                                "media_type" to JsonPrimitive("album")
-                                                            )
-                                                        )
-                                                    }
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
+                    answer(
+                        request = request,
+                        result = listOf(
+                            ServerMediaItem(
+                                itemId = "recently_added_albums",
+                                provider = "library",
+                                name = "Recently added albums",
+                                mediaType = MediaType.FOLDER,
+                                items = albums.toServerMediaItems()
                             )
                         )
                     )
@@ -97,42 +75,34 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             Request.Library.search("", emptyList(), libraryOnly = false).command -> {
                 Result.success(
-                    Answer(
-                        JsonObject(
-                            mapOf(
-                                "message_id" to JsonPrimitive(request.messageId),
-                                "result" to JsonObject(
-                                    mapOf(
-                                        "albums" to JsonArray(
-                                            albums.filter {
-                                                it.name.lowercase().contains((request.args!!["search_query"]!! as JsonPrimitive).content.lowercase())
-                                            }.map {
-                                                JsonObject(
-                                                    mapOf(
-                                                        "item_id" to JsonPrimitive(it.itemId),
-                                                        "provider" to JsonPrimitive(it.provider),
-                                                        "name" to JsonPrimitive(it.name),
-                                                        "media_type" to JsonPrimitive("album")
-                                                    )
-                                                )
-                                            }
-                                        ),
-                                        "artists" to JsonArray(emptyList()),
-                                        "tracks" to JsonArray(emptyList()),
-                                        "playlists" to JsonArray(emptyList()),
-                                        "podcasts" to JsonArray(emptyList())
-                                    )
-                                )
-                            )
+                    answer(
+                        request = request,
+                        result = SearchResult(
+                            artists = emptyList(),
+                            albums = searchItems(request, albums).toServerMediaItems(),
+                            tracks = emptyList(),
+                            playlists = emptyList(),
+                            podcasts = emptyList()
                         )
                     )
                 )
             }
 
-            else
-                -> {
+            else -> {
                 Result.failure(UnsupportedOperationException())
             }
+        }
+    }
+
+    private fun searchItems(
+        request: Request,
+        items: MutableList<AppMediaItem.Album>
+    ): List<AppMediaItem> {
+        return items.filter {
+            it.name.contains(
+                (request.args!!["search_query"]!! as JsonPrimitive).content,
+                ignoreCase = true
+            )
         }
     }
 
@@ -225,4 +195,32 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     fun addToLibrary(album: AppMediaItem.Album) {
         albums.add(album)
     }
+}
+
+private fun answer(request: Request, result: JsonElement): Answer {
+    return Answer(
+        JsonObject(
+            mapOf(
+                "message_id" to JsonPrimitive(request.messageId),
+                "result" to result
+            )
+        )
+    )
+}
+
+private inline fun <reified T> answer(request: Request, result: T): Answer {
+    return answer(request, myJson.encodeToJsonElement(result))
+}
+
+private fun AppMediaItem.toServerMediaItem(): ServerMediaItem {
+    return ServerMediaItem(
+        itemId = this.itemId,
+        provider = this.provider,
+        name = this.name,
+        mediaType = this.mediaType,
+    )
+}
+
+private fun List<AppMediaItem>.toServerMediaItems(): List<ServerMediaItem> {
+    return this.map { it.toServerMediaItem() }
 }
