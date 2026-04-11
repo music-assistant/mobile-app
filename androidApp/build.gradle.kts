@@ -105,4 +105,5 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.robolectric)
+    testImplementation(libs.ktor.client.json)
 }
