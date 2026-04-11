@@ -5,12 +5,13 @@ import io.music_assistant.client.di.androidModule
 import io.music_assistant.client.di.appModule
 import io.music_assistant.client.di.sharedModule
 import io.music_assistant.client.di.webrtcModule
+import io.music_assistant.client.settings.SettingsRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
 class TestApplication : Application() {
 
-    val serviceClient = FakeServiceClient()
+    lateinit var serviceClient: FakeServiceClient
 
     override fun onCreate() {
         super.onCreate()
@@ -18,11 +19,17 @@ class TestApplication : Application() {
         startKoin {
             androidContext(this@TestApplication)
             modules(
-                sharedModule { _ -> FakeServiceClient() },
+                sharedModule(::createFakeServiceClient),
                 webrtcModule,
                 androidModule(),
                 appModule()
             )
+        }
+    }
+
+    private fun createFakeServiceClient(settingsRepository: SettingsRepository): FakeServiceClient {
+        return FakeServiceClient(settingsRepository).also {
+            serviceClient = it
         }
     }
 }

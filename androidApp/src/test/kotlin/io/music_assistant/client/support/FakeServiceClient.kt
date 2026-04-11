@@ -5,6 +5,7 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
@@ -12,9 +13,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class FakeServiceClient : ServiceClient {
-    override val sessionState: StateFlow<SessionState>
-        get() = MutableStateFlow(SessionState.Disconnected.Initial)
+class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
+
+    val username = "user"
+    val password = "password"
+
+    private val _sessionState: MutableStateFlow<SessionState> =
+        MutableStateFlow(SessionState.Disconnected.Initial)
+    override val sessionState: StateFlow<SessionState> = _sessionState
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
         TODO("Not yet implemented")
@@ -59,7 +65,8 @@ class FakeServiceClient : ServiceClient {
     }
 
     override fun connect(connection: ConnectionInfo) {
-        TODO("Not yet implemented")
+        settingsRepository.updateConnectionInfo(connection)
+        _sessionState.value = SessionState.Connected.Direct(connection)
     }
 
     override fun connectWebRTC(remoteId: RemoteId) {
