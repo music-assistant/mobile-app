@@ -151,7 +151,10 @@ fun HomeScreen(
     val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
     val onClosePlayer = remember { { playerExpanded = false } }
 
-    AdaptiveNavigationScaffold(showNavBar = !playerExpanded, navigationItems = navigationItems) { contentPadding ->
+    AdaptiveNavigationScaffold(
+        showNavBar = !playerExpanded,
+        navigationItems = navigationItems
+    ) { contentPadding ->
         val isExpandedScreen = WindowClass.isAtLeastExpanded()
         val bottomPadding = contentPadding.calculateBottomPadding()
         val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
@@ -179,19 +182,24 @@ fun HomeScreen(
                     bottom = floatingBarHeight + FloatingBarDefaults.padding
                 )
             )
+        }
 
-            FloatingBar(expanded = playerExpanded, onExpand = onExpandPlayer) { expanded ->
-                Players(
-                    playerPagerState = playerPagerState,
-                    state = playersState,
-                    serverUrl = serverUrl,
-                    homeScreenViewModel = viewModel,
-                    actionsViewModel = actionsViewModel,
-                    expanded = expanded,
-                    onClose = onClosePlayer,
-                    isExpandedScreen = isExpandedScreen
-                )
-            }
+        FloatingBar(
+            bottomPadding = bottomPadding,
+            expanded = playerExpanded,
+            onExpand = onExpandPlayer
+        ) { expanded, contentPadding ->
+            Players(
+                playerPagerState = playerPagerState,
+                state = playersState,
+                serverUrl = serverUrl,
+                homeScreenViewModel = viewModel,
+                actionsViewModel = actionsViewModel,
+                expanded = expanded,
+                onClose = { playerExpanded = false },
+                isExpandedScreen = isExpandedScreen,
+                contentPadding = contentPadding
+            )
         }
     }
 }
@@ -345,7 +353,8 @@ private fun Players(
     actionsViewModel: ActionsViewModel,
     expanded: Boolean,
     onClose: () -> Unit,
-    isExpandedScreen: Boolean
+    isExpandedScreen: Boolean,
+    contentPadding: PaddingValues
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         val simplePlayerAction = remember(homeScreenViewModel) {
@@ -397,6 +406,7 @@ private fun Players(
             queueAction = queueAction,
             moveToPlayer = moveToPlayer,
             isExpandedScreen = isExpandedScreen
+            contentPadding = contentPadding
         )
     } else {
         Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {
