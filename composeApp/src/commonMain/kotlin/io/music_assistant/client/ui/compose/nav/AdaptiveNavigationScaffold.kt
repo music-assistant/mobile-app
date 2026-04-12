@@ -41,10 +41,10 @@ fun AdaptiveNavigationScaffold(
                 NavigationBar(modifier = Modifier.height(88.dp)) {
                     navigationItems.forEach {
                         NavigationBarItem(
-                            it.selected,
-                            it.onClick,
+                            selected = it.selected,
+                            onClick = it.onClick,
                             icon = {
-                                Icon(it.icon, contentDescription = null)
+                                Icon(it.icon, contentDescription = it.label)
                             }
                         )
                     }
@@ -60,7 +60,7 @@ fun AdaptiveNavigationScaffold(
                             it.selected,
                             it.onClick,
                             icon = {
-                                Icon(it.icon, contentDescription = null)
+                                Icon(it.icon, contentDescription = it.label)
                             }
                         )
                     }
@@ -77,7 +77,8 @@ fun AdaptiveNavigationScaffold(
 data class NavigationItem(
     val selected: Boolean,
     val onClick: () -> Unit,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val label: String? = null
 )
 
 @Preview
@@ -88,12 +89,12 @@ fun PreviewAdaptiveNavigationScaffold() {
             NavigationItem(
                 selected = true,
                 onClick = {},
-                Icons.Default.Home
+                icon = Icons.Default.Home
             ),
             NavigationItem(
                 selected = false,
                 onClick = {},
-                Icons.Default.Settings
+                icon = Icons.Default.Settings
             )
         )
     ) {

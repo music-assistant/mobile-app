@@ -38,9 +38,9 @@ import androidx.navigation3.ui.NavDisplay
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -118,12 +118,14 @@ fun HomeScreen(
         NavigationItem(
             selected = true,
             onClick = { },
-            Icons.Default.Home
+            Icons.Default.Home,
+            label = "Home"
         ),
         NavigationItem(
             selected = false,
             onClick = { goToSettings() },
-            Icons.Default.Settings
+            Icons.Default.Settings,
+            label = "Settings"
         )
     )
 
