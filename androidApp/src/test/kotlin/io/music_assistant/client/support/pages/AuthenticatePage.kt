@@ -4,7 +4,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 
 class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
@@ -15,9 +14,9 @@ class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
     }
 
     fun login(username: String, password: String): HomePage {
-        composeTestRule.onNodeWithText("Username").performScrollTo().assertIsDisplayed().performTextInput(username)
-        composeTestRule.onNodeWithText("Password").performScrollTo().assertIsDisplayed().performTextInput(password)
-        composeTestRule.onNodeWithText("Login").performScrollTo().assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText("Username").assertIsDisplayed().performTextInput(username)
+        composeTestRule.onNodeWithText("Password").assertIsDisplayed().performTextInput(password)
+        composeTestRule.onNodeWithText("Login").assertIsDisplayed().performClick()
         return HomePage(composeTestRule).assertOnPage()
     }
 }
