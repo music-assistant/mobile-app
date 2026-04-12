@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -60,7 +61,8 @@ fun SearchScreen(
     onBack: () -> Unit,
     onNavigateToItem: (String, MediaType, String) -> Unit,
     viewModel: SearchViewModel = koinViewModel(),
-    actionsViewModel: ActionsViewModel = koinViewModel()
+    actionsViewModel: ActionsViewModel = koinViewModel(),
+    contentPadding: PaddingValues
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
@@ -121,7 +123,8 @@ fun SearchScreen(
             providerIconFetcher = { modifier, provider ->
                 actionsViewModel.getProviderIcon(provider)
                     ?.let { ProviderIcon(modifier, it) }
-            }
+            },
+            contentPadding = contentPadding
         )
     }
 }
@@ -158,6 +161,7 @@ private fun SearchContent(
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    contentPadding: PaddingValues,
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -222,7 +226,7 @@ private fun SearchContent(
                         LazyVerticalGrid(
                             modifier = Modifier.fillMaxSize(),
                             columns = GridCells.Adaptive(minSize = 96.dp),
-                            contentPadding = PaddingValues(8.dp),
+                            contentPadding = contentPadding,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {

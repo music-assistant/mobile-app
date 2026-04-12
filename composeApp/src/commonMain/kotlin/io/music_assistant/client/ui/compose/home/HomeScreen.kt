@@ -337,7 +337,8 @@ private fun HomeContent(
                                 providerId = providerId
                             )
                         )
-                    }
+                    },
+                    contentPadding = contentPadding
                 )
             }
         }
