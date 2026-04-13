@@ -7,6 +7,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.TestApplication
 import io.music_assistant.client.support.pages.ConnectPage
+import io.music_assistant.client.support.pages.clickOnMedia
 import io.music_assistant.client.ui.compose.App
 import org.junit.Rule
 import org.junit.Test

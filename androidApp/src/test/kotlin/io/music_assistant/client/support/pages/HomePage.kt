@@ -5,29 +5,17 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import io.music_assistant.client.support.assertNavBar
 import io.music_assistant.client.ui.compose.support.inScrollable
 
-class HomePage(private val composeTestRule: ComposeTestRule) : Page {
+class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
-        composeTestRule.assertNavBar(
-            items = listOf("Home", "Settings"),
-            selected = "Home"
-        )
+        assertNavBar(items = listOf("Home", "Settings"), selected = "Home")
     }
 
     fun assertMediaDisplayed(name: String): HomePage {
         composeTestRule.onNodeWithText(name).assertIsDisplayed()
         return this
-    }
-
-    fun clickOnMedia(name: String): MedaItemPage {
-        composeTestRule.onNodeWithText(name)
-            .assertIsDisplayed()
-            .performClick()
-
-        return MedaItemPage(name, composeTestRule).assertOnPage()
     }
 
     fun clickSearch(): SearchPage {
