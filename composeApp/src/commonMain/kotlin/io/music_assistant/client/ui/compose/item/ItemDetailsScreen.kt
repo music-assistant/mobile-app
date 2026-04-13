@@ -529,8 +529,8 @@ private fun PreviewArtist(isRowMode: Boolean = true) {
                     DataState.Data(artist),
                     DataState.Data(
                         listOf(
-                            AppMediaItemFixtures.album("Album 1", artist),
-                            AppMediaItemFixtures.album("Album 2", artist)
+                            AppMediaItemFixtures.album(name = "Album 1", artist = artist),
+                            AppMediaItemFixtures.album(name = "Album 2", artist = artist)
                         )
                     ),
                     DataState.NoData()
@@ -552,7 +552,7 @@ private fun PreviewArtistGrid() {
 @Composable
 private fun PreviewAlbum(isRowMode: Boolean = true) {
     val artist = AppMediaItemFixtures.artist("Artist")
-    val album = AppMediaItemFixtures.album("Title", artist)
+    val album = AppMediaItemFixtures.album(name = "Title", artist = artist)
 
     AppTheme(darkTheme = false) {
         ItemDetails(

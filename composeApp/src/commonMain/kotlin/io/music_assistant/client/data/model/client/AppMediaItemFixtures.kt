@@ -8,12 +8,13 @@ object AppMediaItemFixtures {
     private val uniqueIdGenerator = UniqueIdGenerator()
 
     fun album(
-        name: String = "Album ${uniqueIdGenerator.nextInt()}",
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Album $itemId",
         artist: AppMediaItem.Artist = artist(),
         version: String? = null
     ): AppMediaItem.Album {
         return AppMediaItem.Album(
-            itemId = "blah",
+            itemId = itemId,
             provider = "blah",
             name = name,
             providerMappings = emptyList(),
@@ -44,7 +45,7 @@ object AppMediaItemFixtures {
         album: AppMediaItem.Album? = null
     ): List<AppMediaItem.Track> {
         return tracks.map {
-            val trackAlbum = album ?: album()
+            val trackAlbum = album ?: album(itemId = "blah")
             val trackArtists = album?.artists ?: listOf(artist())
 
             AppMediaItem.Track(

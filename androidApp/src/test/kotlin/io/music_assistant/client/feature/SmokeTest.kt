@@ -25,8 +25,9 @@ class SmokeTest {
 
     @Test
     fun `can connect and login to server`() {
-        val album = AppMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
+        val album1 = AppMediaItemFixtures.album()
+        val album2 = AppMediaItemFixtures.album()
+        serviceClient.addToLibrary(album1, album2)
 
         composeTestRule.setContent {
             App()
@@ -35,7 +36,8 @@ class SmokeTest {
         ConnectPage(composeTestRule)
             .connect()
             .login(serviceClient.username, serviceClient.password)
-            .assertMediaDisplayed(album.name)
-            .clickOnMedia(album.name)
+            .assertMediaDisplayed(album1.name)
+            .assertMediaDisplayed(album2.name)
+            .clickOnMedia(album1.name)
     }
 }

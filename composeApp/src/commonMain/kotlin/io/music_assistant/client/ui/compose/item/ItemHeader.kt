@@ -361,7 +361,9 @@ private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
 @Preview
 @Composable
 private fun PreviewLongTitle() {
-    Preview(AppMediaItemFixtures.album(name = "A very long title that is very long oh no it's so long"))
+    Preview(AppMediaItemFixtures.album(
+        name = "A very long title that is very long oh no it's so long"
+    ))
 }
 
 @Preview
