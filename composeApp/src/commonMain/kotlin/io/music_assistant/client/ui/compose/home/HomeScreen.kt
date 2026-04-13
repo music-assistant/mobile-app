@@ -91,9 +91,6 @@ fun HomeScreen(
         pageCount = { data?.playerData?.size ?: 0 }
     )
 
-    // Nested navigation backstack - hoisted to survive player view transitions
-    val homeBackStack = rememberHomeNavBackStack()
-
     // Bidirectional pager <-> selection sync
     // Selection→pager runs first (data layer priority), then pager→selection watches user swipes
     LaunchedEffect(playerPagerState, playersState) {
@@ -111,21 +108,25 @@ fun HomeScreen(
         }
     }
 
+    // Nested navigation backstack - hoisted to survive player view transitions
+    val homeBackStack = rememberHomeNavBackStack(HomeNavScreen.Landing)
+    val searchBackStack = rememberHomeNavBackStack(HomeNavScreen.Search)
+
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
     // Simple slide transition between main screen and big player
 
-    val isSearchOpen = homeBackStack.last() == HomeNavScreen.Search
+    var isSearchOpen by remember { mutableStateOf(false) }
     val navigationItems = listOf(
         NavigationItem(
             selected = !isSearchOpen,
-            onClick = { },
+            onClick = { isSearchOpen = false },
             Icons.Default.Home,
             label = "Home"
         ),
         NavigationItem(
             selected = isSearchOpen,
-            onClick = { homeBackStack.add(HomeNavScreen.Search) },
+            onClick = { isSearchOpen = true },
             Icons.Default.Search,
             label = "Search"
         ),
@@ -176,7 +177,7 @@ fun HomeScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             HomeContent(
-                homeBackStack = homeBackStack,
+                homeBackStack = if (isSearchOpen) searchBackStack else homeBackStack,
                 connectionState = connectionState,
                 dataState = dataState,
                 serverUrl = serverUrl,

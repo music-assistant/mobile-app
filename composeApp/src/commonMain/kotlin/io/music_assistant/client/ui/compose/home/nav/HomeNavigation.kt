@@ -29,7 +29,7 @@ sealed interface HomeNavScreen : NavKey {
 }
 
 @Composable
-fun rememberHomeNavBackStack() = rememberNavBackStack(
+fun rememberHomeNavBackStack(bottom: HomeNavScreen) = rememberNavBackStack(
     SavedStateConfiguration(
         from = SavedStateConfiguration.DEFAULT,
         builderAction = {
@@ -46,5 +46,5 @@ fun rememberHomeNavBackStack() = rememberNavBackStack(
             }
         }
     ),
-    HomeNavScreen.Landing
+    bottom
 )

@@ -23,4 +23,8 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
         composeTestRule.onNodeWithText(result).assertIsDisplayed()
         return this
     }
+
+    fun clickOnMedia(name: String) {
+        clickOnMedia(name, "Search")
+    }
 }
