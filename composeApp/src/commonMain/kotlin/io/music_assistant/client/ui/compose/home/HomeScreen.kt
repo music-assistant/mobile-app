@@ -54,6 +54,7 @@ import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.NavigationItem
+import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.WindowClass
@@ -108,26 +109,22 @@ fun HomeScreen(
         }
     }
 
-    // Nested navigation backstack - hoisted to survive player view transitions
-    val homeBackStack = rememberHomeNavBackStack(HomeNavScreen.Landing)
-    val searchBackStack = rememberHomeNavBackStack(HomeNavScreen.Search)
 
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
-    // Simple slide transition between main screen and big player
 
-    var isSearchOpen by remember { mutableStateOf(false) }
+    val homeBackStack = rememberHomeNavBackStack(HomeNavScreen.Landing)
+    val searchBackStack = rememberHomeNavBackStack(HomeNavScreen.Search)
+    val currentBackStack = remember { mutableStateOf(homeBackStack) }
     val navigationItems = listOf(
-        NavigationItem(
-            selected = !isSearchOpen,
-            onClick = { isSearchOpen = false },
-            Icons.Default.Home,
+        currentBackStack.createNavigationItem(
+            backStack = homeBackStack,
+            icon = Icons.Default.Home,
             label = "Home"
         ),
-        NavigationItem(
-            selected = isSearchOpen,
-            onClick = { isSearchOpen = true },
-            Icons.Default.Search,
+        currentBackStack.createNavigationItem(
+            backStack = searchBackStack,
+            icon = Icons.Default.Search,
             label = "Search"
         ),
         NavigationItem(
@@ -177,7 +174,7 @@ fun HomeScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             HomeContent(
-                homeBackStack = if (isSearchOpen) searchBackStack else homeBackStack,
+                homeBackStack = currentBackStack.value,
                 connectionState = connectionState,
                 dataState = dataState,
                 serverUrl = serverUrl,
