@@ -52,7 +52,6 @@ import io.music_assistant.client.ui.compose.home.players.collapsedPlayerHeight
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
-import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
@@ -233,15 +232,9 @@ private fun HomeContent(
 //    val homeDialogStrategy = remember { DialogSceneStrategy<NavKey>() }
     val saveableStateHolderForHome = rememberSaveableStateHolder()
 
-    // Handle back when library is open
-    BackHandler(enabled = typedBackStack.last() !is HomeNavScreen.Landing) {
-        typedBackStack.removeLastOrNull()
-    }
-
     NavDisplay(
         modifier = modifier,
         backStack = typedBackStack,
-        onBack = { typedBackStack.removeLastOrNull() },
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(saveableStateHolderForHome)
         ),
@@ -336,7 +329,6 @@ private fun HomeContent(
 
             entry<HomeNavScreen.Search> {
                 SearchScreen(
-                    onBack = { typedBackStack.removeLastOrNull() },
                     onNavigateToItem = { itemId, mediaType, providerId ->
                         typedBackStack.add(
                             HomeNavScreen.ItemDetails(

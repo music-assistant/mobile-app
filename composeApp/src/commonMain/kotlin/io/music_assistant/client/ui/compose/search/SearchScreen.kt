@@ -11,18 +11,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -58,7 +53,6 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun SearchScreen(
-    onBack: () -> Unit,
     onNavigateToItem: (String, MediaType, String) -> Unit,
     viewModel: SearchViewModel = koinViewModel(),
     actionsViewModel: ActionsViewModel = koinViewModel(),
@@ -80,10 +74,7 @@ fun SearchScreen(
                 scrollBehaviour.state.heightOffset = 0f
             }
 
-            SearchTopBar(
-                onBack = onBack,
-                scrollBehavior = scrollBehaviour,
-            )
+            SearchTopBar(scrollBehavior = scrollBehaviour)
         }
     ) {
         SearchContent(
@@ -131,17 +122,11 @@ fun SearchScreen(
 
 @Composable
 private fun SearchTopBar(
-    onBack: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(
         title = {
             Text(text = "Global search")
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-            }
         },
         scrollBehavior = scrollBehavior
     )
