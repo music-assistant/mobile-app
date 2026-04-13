@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
-        assertNavBar(items = listOf("Home", "Settings"), selected = "Home")
+        assertNavBar(items = listOf("Home", "Search", "Settings"), selected = "Home")
     }
 
     fun assertMediaDisplayed(name: String): HomePage {

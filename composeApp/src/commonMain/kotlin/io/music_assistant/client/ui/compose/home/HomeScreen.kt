@@ -115,15 +115,16 @@ fun HomeScreen(
     val dataState = recommendationsState.value.recommendations
     // Simple slide transition between main screen and big player
 
+    val isSearchOpen = homeBackStack.last() == HomeNavScreen.Search
     val navigationItems = listOf(
         NavigationItem(
-            selected = true,
+            selected = !isSearchOpen,
             onClick = { },
             Icons.Default.Home,
             label = "Home"
         ),
         NavigationItem(
-            selected = false,
+            selected = isSearchOpen,
             onClick = { homeBackStack.add(HomeNavScreen.Search) },
             Icons.Default.Search,
             label = "Search"
