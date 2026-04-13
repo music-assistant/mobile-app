@@ -25,20 +25,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -52,6 +51,7 @@ import io.music_assistant.client.ui.compose.home.players.collapsedPlayerHeight
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
+import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
@@ -112,28 +112,6 @@ fun HomeScreen(
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
 
-    val homeBackStack = rememberHomeNavBackStack(HomeNavScreen.Landing)
-    val searchBackStack = rememberHomeNavBackStack(HomeNavScreen.Search)
-    val currentBackStack = remember { mutableStateOf(homeBackStack) }
-    val navigationItems = listOf(
-        currentBackStack.createNavigationItem(
-            backStack = homeBackStack,
-            icon = Icons.Default.Home,
-            label = "Home"
-        ),
-        currentBackStack.createNavigationItem(
-            backStack = searchBackStack,
-            icon = Icons.Default.Search,
-            label = "Search"
-        ),
-        NavigationItem(
-            selected = false,
-            onClick = { goToSettings() },
-            Icons.Default.Settings,
-            label = "Settings"
-        )
-    )
-
     var playerExpanded by remember { mutableStateOf(false) }
 
     val playlistActions = remember(actionsViewModel) {
@@ -156,7 +134,31 @@ fun HomeScreen(
     }
 
     val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
-    val onClosePlayer = remember { { playerExpanded = false } }
+
+    val backStacks = listOf(
+        rememberHomeNavBackStack(HomeNavScreen.Landing),
+        rememberHomeNavBackStack(HomeNavScreen.Search)
+    )
+    val multiBackStack = remember { MultiBackStack(backStacks) }
+
+    val navigationItems = listOf(
+        multiBackStack.createNavigationItem(
+            backStack = 0,
+            icon = Icons.Default.Home,
+            label = "Home"
+        ),
+        multiBackStack.createNavigationItem(
+            backStack = 1,
+            icon = Icons.Default.Search,
+            label = "Search"
+        ),
+        NavigationItem(
+            selected = false,
+            onClick = { goToSettings() },
+            Icons.Default.Settings,
+            label = "Settings"
+        )
+    )
 
     AdaptiveNavigationScaffold(
         showNavBar = !playerExpanded,
@@ -172,22 +174,24 @@ fun HomeScreen(
                 .padding(bottom = bottomPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            HomeContent(
-                homeBackStack = currentBackStack.value,
-                connectionState = connectionState,
-                dataState = dataState,
-                serverUrl = serverUrl,
-                onPlayClick = viewModel::onPlayClick,
-                playlistActions = playlistActions,
-                libraryActions = libraryActions,
-                progressActions = progressActions,
-                providerIconFetcher = { modifier, provider ->
-                    actionsViewModel.getProviderIcon(provider)
-                        ?.let { ProviderIcon(modifier, it) }
-                },
-                contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
-                )
+            NavDisplay(
+                entries = multiBackStack.toEntries(
+                    entryProvider(
+                        floatingBarHeight,
+                        connectionState,
+                        dataState,
+                        serverUrl,
+                        multiBackStack,
+                        viewModel,
+                        playlistActions,
+                        libraryActions,
+                        progressActions,
+                        actionsViewModel
+                    )
+                ),
+                onBack = {
+                    multiBackStack.removeLastOrNull()
+                }
             )
         }
 
@@ -212,137 +216,133 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeContent(
-    modifier: Modifier = Modifier,
-    homeBackStack: NavBackStack<*>,
+private fun entryProvider(
+    floatingBarHeight: Dp,
     connectionState: SessionState,
     dataState: DataState<List<AppMediaItem.RecommendationFolder>>,
     serverUrl: String?,
-    onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    multiBackStack: MultiBackStack,
+    viewModel: HomeScreenViewModel,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    contentPadding: PaddingValues
-) {
-    @Suppress("UNCHECKED_CAST")
-    val typedBackStack = homeBackStack as NavBackStack<HomeNavScreen>
-
-//    val homeBottomSheetStrategy = remember { BottomSheetSceneStrategy<NavKey>() }
-//    val homeDialogStrategy = remember { DialogSceneStrategy<NavKey>() }
-    val saveableStateHolderForHome = rememberSaveableStateHolder()
-
-    NavDisplay(
-        modifier = modifier,
-        backStack = typedBackStack,
-        entryDecorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator(saveableStateHolderForHome)
-        ),
-        entryProvider = entryProvider {
-            entry<HomeNavScreen.Landing> {
-                LandingPage(
-                    contentPadding = contentPadding,
-                    connectionState = connectionState,
-                    dataState = dataState,
-                    serverUrl = serverUrl,
-                    onNavigateClick = { item ->
-                        when (item) {
-                            is AppMediaItem.Artist,
-                            is AppMediaItem.Album,
-                            is AppMediaItem.Playlist,
-                            is AppMediaItem.Podcast,
-                            is AppMediaItem.Audiobook,
-                            is AppMediaItem.Genre -> {
-                                typedBackStack.add(
-                                    HomeNavScreen.ItemDetails(
-                                        itemId = item.itemId,
-                                        mediaType = item.mediaType,
-                                        providerId = item.provider
-                                    )
+    actionsViewModel: ActionsViewModel
+): (NavKey) -> NavEntry<NavKey> {
+    return entryProvider {
+        entry<HomeNavScreen.Landing> {
+            LandingPage(
+                contentPadding = PaddingValues(
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                ),
+                connectionState = connectionState,
+                dataState = dataState,
+                serverUrl = serverUrl,
+                onNavigateClick = { item ->
+                    when (item) {
+                        is AppMediaItem.Artist,
+                        is AppMediaItem.Album,
+                        is AppMediaItem.Playlist,
+                        is AppMediaItem.Podcast,
+                        is AppMediaItem.Audiobook,
+                        is AppMediaItem.Genre -> {
+                            multiBackStack.add(
+                                HomeNavScreen.ItemDetails(
+                                    itemId = item.itemId,
+                                    mediaType = item.mediaType,
+                                    providerId = item.provider
                                 )
-                            }
-
-                            else -> Unit
-                        }
-                    },
-                    onPlayClick = onPlayClick,
-                    onLibraryItemClick = { type ->
-                        if (type == null) {
-                            typedBackStack.add(HomeNavScreen.Search)
-                        } else {
-                            typedBackStack.add(HomeNavScreen.Library(type))
-                        }
-                    },
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    progressActions = progressActions,
-                    providerIconFetcher = providerIconFetcher
-                )
-            }
-
-            entry<HomeNavScreen.Library> {
-                LibraryScreen(
-                    contentPadding = contentPadding,
-                    initialTabType = it.type,
-                    onBack = { typedBackStack.removeLastOrNull() },
-                    onNavigateClick = { item ->
-                        when (item) {
-                            is AppMediaItem.Artist,
-                            is AppMediaItem.Album,
-                            is AppMediaItem.Playlist,
-                            is AppMediaItem.Podcast,
-                            is AppMediaItem.Audiobook,
-                            is AppMediaItem.Genre -> {
-                                typedBackStack.add(
-                                    HomeNavScreen.ItemDetails(
-                                        itemId = item.itemId,
-                                        mediaType = item.mediaType,
-                                        providerId = item.provider
-                                    )
-                                )
-                            }
-
-                            else -> Unit
-                        }
-                    }
-                )
-            }
-
-            entry<HomeNavScreen.ItemDetails> {
-                ItemDetailsScreen(
-                    contentPadding = contentPadding,
-                    itemId = it.itemId,
-                    mediaType = it.mediaType,
-                    providerId = it.providerId,
-                    onBack = { typedBackStack.removeLastOrNull() },
-                    onNavigateToItem = { itemId, mediaType, providerId ->
-                        typedBackStack.add(
-                            HomeNavScreen.ItemDetails(
-                                itemId = itemId,
-                                mediaType = mediaType,
-                                providerId = providerId
                             )
-                        )
-                    }
-                )
-            }
+                        }
 
-            entry<HomeNavScreen.Search> {
-                SearchScreen(
-                    onNavigateToItem = { itemId, mediaType, providerId ->
-                        typedBackStack.add(
-                            HomeNavScreen.ItemDetails(
-                                itemId = itemId,
-                                mediaType = mediaType,
-                                providerId = providerId
-                            )
-                        )
-                    },
-                    contentPadding = contentPadding
-                )
-            }
+                        else -> Unit
+                    }
+                },
+                onPlayClick = viewModel::onPlayClick,
+                onLibraryItemClick = { type ->
+                    if (type == null) {
+                        multiBackStack.add(HomeNavScreen.Search)
+                    } else {
+                        multiBackStack.add(HomeNavScreen.Library(type))
+                    }
+                },
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                progressActions = progressActions,
+                providerIconFetcher = { modifier, provider ->
+                    actionsViewModel.getProviderIcon(provider)
+                        ?.let { ProviderIcon(modifier, it) }
+                }
+            )
         }
-    )
+
+        entry<HomeNavScreen.Library> {
+            LibraryScreen(
+                contentPadding = PaddingValues(
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                ),
+                initialTabType = it.type,
+                onBack = { multiBackStack.removeLastOrNull() },
+                onNavigateClick = { item ->
+                    when (item) {
+                        is AppMediaItem.Artist,
+                        is AppMediaItem.Album,
+                        is AppMediaItem.Playlist,
+                        is AppMediaItem.Podcast,
+                        is AppMediaItem.Audiobook,
+                        is AppMediaItem.Genre -> {
+                            multiBackStack.add(
+                                HomeNavScreen.ItemDetails(
+                                    itemId = item.itemId,
+                                    mediaType = item.mediaType,
+                                    providerId = item.provider
+                                )
+                            )
+                        }
+
+                        else -> Unit
+                    }
+                }
+            )
+        }
+
+        entry<HomeNavScreen.ItemDetails> {
+            ItemDetailsScreen(
+                contentPadding = PaddingValues(
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                ),
+                itemId = it.itemId,
+                mediaType = it.mediaType,
+                providerId = it.providerId,
+                onBack = { multiBackStack.removeLastOrNull() },
+                onNavigateToItem = { itemId, mediaType, providerId ->
+                    multiBackStack.add(
+                        HomeNavScreen.ItemDetails(
+                            itemId = itemId,
+                            mediaType = mediaType,
+                            providerId = providerId
+                        )
+                    )
+                }
+            )
+        }
+
+        entry<HomeNavScreen.Search> {
+            SearchScreen(
+                onNavigateToItem = { itemId, mediaType, providerId ->
+                    multiBackStack.add(
+                        HomeNavScreen.ItemDetails(
+                            itemId = itemId,
+                            mediaType = mediaType,
+                            providerId = providerId
+                        )
+                    )
+                },
+                contentPadding = PaddingValues(
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                )
+            )
+        }
+    }
 }
 
 @Composable

@@ -16,13 +16,10 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
 import io.music_assistant.client.utils.WindowClass
 
@@ -84,14 +81,14 @@ data class NavigationItem(
     val label: String? = null
 )
 
-fun MutableState<NavBackStack<NavKey>>.createNavigationItem(
-    backStack: NavBackStack<NavKey>,
+fun MultiBackStack.createNavigationItem(
+    backStack: Int,
     icon: ImageVector,
-    label: String,
+    label: String? = null
 ): NavigationItem {
     return NavigationItem(
-        selected = this.value == backStack,
-        onClick = { this.value = backStack },
+        selected = this.currentBackStack == backStack,
+        onClick = { this.currentBackStack = backStack },
         icon = icon,
         label = label
     )
