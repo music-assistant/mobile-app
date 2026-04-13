@@ -17,8 +17,17 @@ class HomePage(private val composeTestRule: ComposeTestRule) : Page {
         )
     }
 
-    fun assertMediaDisplayed(name: String) {
+    fun assertMediaDisplayed(name: String): HomePage {
         composeTestRule.onNodeWithText(name).assertIsDisplayed()
+        return this
+    }
+
+    fun clickOnMedia(name: String): MedaItemPage {
+        composeTestRule.onNodeWithText(name)
+            .assertIsDisplayed()
+            .performClick()
+
+        return MedaItemPage(name, composeTestRule).assertOnPage()
     }
 
     fun clickSearch(): SearchPage {

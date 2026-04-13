@@ -36,5 +36,6 @@ class SmokeTest {
             .connect()
             .login(serviceClient.username, serviceClient.password)
             .assertMediaDisplayed(album.name)
+            .clickOnMedia(album.name)
     }
 }
