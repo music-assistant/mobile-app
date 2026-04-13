@@ -24,7 +24,7 @@ class SearchTest {
         ApplicationProvider.getApplicationContext<TestApplication>().serviceClient
 
     @Test
-    fun `can search for items`() {
+    fun `can navigate to items via search`() {
         val album = AppMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
         serviceClient.addToLibrary(album)
 
@@ -38,5 +38,6 @@ class SearchTest {
             .clickSearch()
             .search("onion")
             .assertResult(album.name)
+            .clickOnMedia(album.name)
     }
 }
