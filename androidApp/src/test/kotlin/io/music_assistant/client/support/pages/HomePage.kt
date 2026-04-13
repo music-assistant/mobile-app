@@ -1,11 +1,8 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import io.music_assistant.client.ui.compose.support.inScrollable
 
 class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
@@ -19,12 +16,7 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     }
 
     fun clickSearch(): SearchPage {
-        composeTestRule.inScrollable("LibraryRow") {
-            onNode(hasContentDescription("Global search"))
-                .assertIsDisplayed()
-                .performClick()
-        }
-
+        clickNavBarItem("Search")
         return SearchPage(composeTestRule).assertOnPage()
     }
 }

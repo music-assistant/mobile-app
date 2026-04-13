@@ -24,3 +24,7 @@ fun ComposePage.assertNavBar(items: List<String>, selected: String) {
         }
     }
 }
+
+fun ComposePage.clickNavBarItem(item: String) {
+    composeTestRule.onNode(isTab(item)).assertIsDisplayed().performClick()
+}

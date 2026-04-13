@@ -14,6 +14,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -120,6 +121,12 @@ fun HomeScreen(
             onClick = { },
             Icons.Default.Home,
             label = "Home"
+        ),
+        NavigationItem(
+            selected = false,
+            onClick = { homeBackStack.add(HomeNavScreen.Search) },
+            Icons.Default.Search,
+            label = "Search"
         ),
         NavigationItem(
             selected = false,
