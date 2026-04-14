@@ -2,427 +2,446 @@
 
 package io.music_assistant.client.ui.compose.home
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.unit.Dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavEntry
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.ui.NavDisplay
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
-import io.music_assistant.client.ui.compose.common.rememberToastState
+import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
+import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
+import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
+import io.music_assistant.client.ui.compose.common.icons.GenreIcon
+import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
+import io.music_assistant.client.ui.compose.common.icons.RadioIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
+import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
+import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
+import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
+import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
+import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
+import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
+import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
+import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
+import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
-import io.music_assistant.client.ui.compose.home.nav.HomeNavScreen
-import io.music_assistant.client.ui.compose.home.nav.rememberHomeNavBackStack
-import io.music_assistant.client.ui.compose.home.players.PlayersPager
-import io.music_assistant.client.ui.compose.home.players.collapsedPlayerHeight
-import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
-import io.music_assistant.client.ui.compose.library.LibraryScreen
-import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
-import io.music_assistant.client.ui.compose.nav.MultiBackStack
-import io.music_assistant.client.ui.compose.nav.NavigationItem
-import io.music_assistant.client.ui.compose.nav.createNavigationItem
-import io.music_assistant.client.ui.compose.search.SearchScreen
+import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.WindowClass
-import kotlinx.coroutines.flow.collectLatest
-import org.koin.compose.viewmodel.koinViewModel
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeScreenViewModel = koinViewModel(),
-    actionsViewModel: ActionsViewModel = koinViewModel(),
-    goToSettings: () -> Unit,
-) {
-    val uriHandler = LocalUriHandler.current
-    val toastState = rememberToastState()
-
-    LaunchedEffect(Unit) {
-        viewModel.links.collectLatest { url -> uriHandler.openUri(url) }
-    }
-
-    // Collect toasts
-    LaunchedEffect(Unit) {
-        actionsViewModel.toasts.collect { toast ->
-            toastState.showToast(toast)
-        }
-    }
-
-    val recommendationsState = viewModel.recommendationsState.collectAsStateWithLifecycle()
-    val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle()
-    val playersState by viewModel.playersState.collectAsStateWithLifecycle()
-    // Single pager state used across all views
-    val data = playersState as? HomeScreenViewModel.PlayersState.Data
-    val playerPagerState = rememberPagerState(
-        initialPage = data?.selectedPlayerIndex ?: 0,
-        pageCount = { data?.playerData?.size ?: 0 }
-    )
-
-    // Bidirectional pager <-> selection sync
-    // Selection→pager runs first (data layer priority), then pager→selection watches user swipes
-    LaunchedEffect(playerPagerState, playersState) {
-        val currentData = playersState as? HomeScreenViewModel.PlayersState.Data
-            ?: return@LaunchedEffect
-        val target = currentData.selectedPlayerIndex ?: return@LaunchedEffect
-        if (!playerPagerState.isScrollInProgress) {
-            playerPagerState.animateScrollToPage(target)
-        }
-
-        snapshotFlow { playerPagerState.settledPage }.collect { currentPage ->
-            currentData.playerData.getOrNull(currentPage)?.let { playerData ->
-                viewModel.selectPlayer(playerData.player)
-            }
-        }
-    }
-
-
-    val connectionState = recommendationsState.value.connectionState
-    val dataState = recommendationsState.value.recommendations
-
-    var playerExpanded by remember { mutableStateOf(false) }
-
-    val playlistActions = remember(actionsViewModel) {
-        ActionsViewModel.PlaylistActions(
-            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-            onAddToPlaylist = actionsViewModel::addToPlaylist
-        )
-    }
-    val libraryActions = remember(actionsViewModel) {
-        ActionsViewModel.LibraryActions(
-            onLibraryClick = actionsViewModel::onLibraryClick,
-            onFavoriteClick = actionsViewModel::onFavoriteClick
-        )
-    }
-    val progressActions = remember(actionsViewModel) {
-        ActionsViewModel.ProgressActions(
-            onMarkPlayed = actionsViewModel::onMarkPlayed,
-            onMarkUnplayed = actionsViewModel::onMarkUnplayed
-        )
-    }
-
-    val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
-
-    val backStacks = listOf(
-        rememberHomeNavBackStack(HomeNavScreen.Landing),
-        rememberHomeNavBackStack(HomeNavScreen.Search)
-    )
-    val multiBackStack = remember { MultiBackStack(backStacks) }
-
-    val navigationItems = listOf(
-        multiBackStack.createNavigationItem(
-            backStack = 0,
-            icon = Icons.Default.Home,
-            label = "Home"
-        ),
-        multiBackStack.createNavigationItem(
-            backStack = 1,
-            icon = Icons.Default.Search,
-            label = "Search"
-        ),
-        NavigationItem(
-            selected = false,
-            onClick = { goToSettings() },
-            Icons.Default.Settings,
-            label = "Settings"
-        )
-    )
-
-    AdaptiveNavigationScaffold(
-        showNavBar = !playerExpanded,
-        navigationItems = navigationItems
-    ) { contentPadding ->
-        val isExpandedScreen = WindowClass.isAtLeastExpanded()
-        val bottomPadding = contentPadding.calculateBottomPadding()
-        val floatingBarHeight = collapsedPlayerHeight(isExpandedScreen)
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = bottomPadding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            NavDisplay(
-                entries = multiBackStack.toEntries(
-                    entryProvider(
-                        floatingBarHeight,
-                        connectionState,
-                        dataState,
-                        serverUrl,
-                        multiBackStack,
-                        viewModel,
-                        playlistActions,
-                        libraryActions,
-                        progressActions,
-                        actionsViewModel
-                    )
-                ),
-                onBack = {
-                    multiBackStack.removeLastOrNull()
-                }
-            )
-        }
-
-        FloatingBar(
-            bottomPadding = bottomPadding,
-            expanded = playerExpanded,
-            onExpand = onExpandPlayer
-        ) { expanded, contentPadding ->
-            Players(
-                playerPagerState = playerPagerState,
-                state = playersState,
-                serverUrl = serverUrl,
-                homeScreenViewModel = viewModel,
-                actionsViewModel = actionsViewModel,
-                expanded = expanded,
-                onClose = { playerExpanded = false },
-                isExpandedScreen = isExpandedScreen,
-                contentPadding = contentPadding
-            )
-        }
-    }
-}
-
-@Composable
-private fun entryProvider(
-    floatingBarHeight: Dp,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues,
     connectionState: SessionState,
     dataState: DataState<List<AppMediaItem.RecommendationFolder>>,
     serverUrl: String?,
-    multiBackStack: MultiBackStack,
-    viewModel: HomeScreenViewModel,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
+    onLibraryItemClick: (MediaType?) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions,
-    actionsViewModel: ActionsViewModel
-): (NavKey) -> NavEntry<NavKey> {
-    return entryProvider {
-        entry<HomeNavScreen.Landing> {
-            LandingPage(
-                contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
-                ),
-                connectionState = connectionState,
-                dataState = dataState,
-                serverUrl = serverUrl,
-                onNavigateClick = { item ->
-                    when (item) {
-                        is AppMediaItem.Artist,
-                        is AppMediaItem.Album,
-                        is AppMediaItem.Playlist,
-                        is AppMediaItem.Podcast,
-                        is AppMediaItem.Audiobook,
-                        is AppMediaItem.Genre -> {
-                            multiBackStack.add(
-                                HomeNavScreen.ItemDetails(
-                                    itemId = item.itemId,
-                                    mediaType = item.mediaType,
-                                    providerId = item.provider
-                                )
-                            )
-                        }
-
-                        else -> Unit
-                    }
-                },
-                onPlayClick = viewModel::onPlayClick,
-                onLibraryItemClick = { type ->
-                    if (type == null) {
-                        multiBackStack.add(HomeNavScreen.Search)
-                    } else {
-                        multiBackStack.add(HomeNavScreen.Library(type))
-                    }
-                },
-                playlistActions = playlistActions,
-                libraryActions = libraryActions,
-                progressActions = progressActions,
-                providerIconFetcher = { modifier, provider ->
-                    actionsViewModel.getProviderIcon(provider)
-                        ?.let { ProviderIcon(modifier, it) }
-                }
-            )
+    progressActions: ActionsViewModel.ProgressActions? = null,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)
+) {
+    val filteredData = remember(dataState) {
+        if (dataState is DataState.Data) {
+            dataState.data.filter {
+                it.items?.any { item ->
+                    item is AppMediaItem.Track
+                            || item is AppMediaItem.Artist
+                            || item is AppMediaItem.Album
+                            || item is AppMediaItem.Playlist
+                            || item is AppMediaItem.Audiobook
+                            || item is AppMediaItem.Podcast
+                            || item is AppMediaItem.PodcastEpisode
+                            || item is AppMediaItem.RadioStation
+                            || item is AppMediaItem.Genre
+                } == true
+            }
+        } else {
+            emptyList()
         }
+    }
 
-        entry<HomeNavScreen.Library> {
-            LibraryScreen(
-                contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
-                ),
-                initialTabType = it.type,
-                onBack = { multiBackStack.removeLastOrNull() },
-                onNavigateClick = { item ->
-                    when (item) {
-                        is AppMediaItem.Artist,
-                        is AppMediaItem.Album,
-                        is AppMediaItem.Playlist,
-                        is AppMediaItem.Podcast,
-                        is AppMediaItem.Audiobook,
-                        is AppMediaItem.Genre -> {
-                            multiBackStack.add(
-                                HomeNavScreen.ItemDetails(
-                                    itemId = item.itemId,
-                                    mediaType = item.mediaType,
-                                    providerId = item.provider
-                                )
-                            )
-                        }
+    val listState = rememberLazyListState()
 
-                        else -> Unit
+    Screen(
+        topBar = { scrollBehavior ->
+            LandingPageTopBar(scrollBehavior)
+        }
+    ) {
+        LazyColumn(
+            state = listState,
+            contentPadding = contentPadding
+        ) {
+            // Your library row
+            item {
+                LibraryRow(onLibraryItemClick = onLibraryItemClick)
+            }
+            if (connectionState !is SessionState.Connected || dataState !is DataState.Data) {
+                item {
+                    Box(
+                        modifier = modifier.fillMaxWidth().height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
                 }
-            )
-        }
-
-        entry<HomeNavScreen.ItemDetails> {
-            ItemDetailsScreen(
-                contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
-                ),
-                itemId = it.itemId,
-                mediaType = it.mediaType,
-                providerId = it.providerId,
-                onBack = { multiBackStack.removeLastOrNull() },
-                onNavigateToItem = { itemId, mediaType, providerId ->
-                    multiBackStack.add(
-                        HomeNavScreen.ItemDetails(
-                            itemId = itemId,
-                            mediaType = mediaType,
-                            providerId = providerId
-                        )
+            } else {
+                items(
+                    items = filteredData,
+                    key = { it.itemId }
+                ) { row ->
+                    CategoryRow(
+                        serverUrl = serverUrl,
+                        row = row,
+                        onNavigateClick = onNavigateClick,
+                        onPlayClick = onPlayClick,
+                        onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
+                        mediaItems = row.items.orEmpty(),
+                        playlistActions = playlistActions,
+                        libraryActions = libraryActions,
+                        progressActions = progressActions,
+                        providerIconFetcher = providerIconFetcher,
                     )
                 }
-            )
-        }
-
-        entry<HomeNavScreen.Search> {
-            SearchScreen(
-                onNavigateToItem = { itemId, mediaType, providerId ->
-                    multiBackStack.add(
-                        HomeNavScreen.ItemDetails(
-                            itemId = itemId,
-                            mediaType = mediaType,
-                            providerId = providerId
-                        )
-                    )
-                },
-                contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
-                )
-            )
+            }
         }
     }
 }
 
 @Composable
-private fun Players(
-    playerPagerState: PagerState,
-    state: HomeScreenViewModel.PlayersState,
-    serverUrl: String?,
-    homeScreenViewModel: HomeScreenViewModel,
-    actionsViewModel: ActionsViewModel,
-    expanded: Boolean,
-    onClose: () -> Unit,
-    isExpandedScreen: Boolean,
-    contentPadding: PaddingValues
+private fun LandingPageTopBar(scrollBehavior: TopAppBarScrollBehavior) {
+    TopAppBar(
+        title = { Text("Home") },
+        scrollBehavior = scrollBehavior
+    )
+}
+
+// --- Common UI Components ---
+
+@Composable
+fun LibraryRow(
+    onLibraryItemClick: (MediaType?) -> Unit
 ) {
-    if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
-        val simplePlayerAction = remember(homeScreenViewModel) {
-            { playerId: String, action: PlayerAction ->
-                homeScreenViewModel.playerAction(playerId, action)
-            }
-        }
-        val playerAction = remember(homeScreenViewModel) {
-            { playerData: PlayerData, action: PlayerAction ->
-                homeScreenViewModel.playerAction(playerData, action)
-            }
-        }
-        val onFavoriteClick = remember(actionsViewModel) {
-            { item: AppMediaItem -> actionsViewModel.onFavoriteClick(item) }
-        }
-        val queueAction = remember(homeScreenViewModel) {
-            { action: QueueAction -> homeScreenViewModel.queueAction(action) }
-        }
-        val moveToPlayer = remember(state, homeScreenViewModel) {
-            { id: String ->
-                state.playerData.find { it.player.id == id }
-                    ?.let { homeScreenViewModel.selectPlayer(it.player) }
-                Unit
-            }
-        }
-        val onItemMoved = remember(state, homeScreenViewModel, playerPagerState) {
-            { indexShift: Int ->
-                val currentPlayer = state.playerData[playerPagerState.currentPage].player
-                val newIndex = (playerPagerState.currentPage + indexShift)
-                    .coerceIn(0, state.playerData.size - 1)
-                val newPlayers = state.playerData.map { it.player.id }
-                    .toMutableList()
-                    .apply { add(newIndex, removeAt(playerPagerState.currentPage)) }
-                homeScreenViewModel.selectPlayer(currentPlayer)
-                homeScreenViewModel.onPlayersSortChanged(newPlayers)
-            }
-        }
-
-        PlayersPager(
-            playerPagerState = playerPagerState,
-            playersState = state,
-            serverUrl = serverUrl,
-            simplePlayerAction = simplePlayerAction,
-            playerAction = playerAction,
-            onFavoriteClick = onFavoriteClick,
-            expanded = expanded,
-            onClose = onClose,
-            onItemMoved = onItemMoved,
-            queueAction = queueAction,
-            moveToPlayer = moveToPlayer,
-            isExpandedScreen = isExpandedScreen,
-            contentPadding = contentPadding
+    val libraryItems = remember {
+        listOf(
+            LibraryItem("Artists", ArtistIcon, MediaType.ARTIST),
+            LibraryItem("Albums", AlbumIcon, MediaType.ALBUM),
+            LibraryItem("Tracks", TrackIcon, MediaType.TRACK),
+            LibraryItem("Playlists", PlaylistIcon, MediaType.PLAYLIST),
+            LibraryItem("Audiobooks", BookAudioIcon, MediaType.AUDIOBOOK),
+            LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
+            LibraryItem("Radio", RadioIcon, MediaType.RADIO),
+            LibraryItem("Genres", GenreIcon, MediaType.GENRE),
+            LibraryItem("Global search", Icons.Default.Search, null),
         )
-    } else {
-        Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {
-            val text = when (state) {
-                is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
-                is HomeScreenViewModel.PlayersState.Data -> "No players available"
-                else -> "No players available"
-            }
+    }
 
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                modifier = Modifier.align(Alignment.Center),
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "Your library",
+                style = MaterialTheme.typography.titleLarge
             )
+        }
+        LazyRow(
+            modifier = Modifier.testTag("LibraryRow"),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(libraryItems) { item ->
+                LibraryItemCard(
+                    modifier = Modifier,
+                    name = item.name,
+                    icon = item.icon,
+                    onClick = { onLibraryItemClick(item.type) }
+                )
+            }
         }
     }
 }
+
+@Composable
+fun LibraryItemCard(
+    modifier: Modifier,
+    name: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val primary = MaterialTheme.colorScheme.primary
+
+    Column(
+        modifier = modifier
+            .wrapContentSize()
+            .clip(RoundedCornerShape(8.dp))
+            .combinedClickable(onClick = onClick)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 96.dp, height = 40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            val placeholder = rememberPlaceholderPainter(
+                backgroundColor = primaryContainer,
+                iconColor = primary,
+                icon = icon
+            )
+            Image(
+                painter = placeholder,
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private data class LibraryItem(
+    val name: String,
+    val icon: ImageVector,
+    val type: MediaType?,
+)
+
+@Composable
+fun CategoryRow(
+    serverUrl: String?,
+    row: AppMediaItem.RecommendationFolder,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
+    onAllClick: () -> Unit,
+    mediaItems: List<AppMediaItem>,
+    playlistActions: ActionsViewModel.PlaylistActions,
+    libraryActions: ActionsViewModel.LibraryActions,
+    progressActions: ActionsViewModel.ProgressActions? = null,
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit)
+) {
+    val rowListState = rememberLazyListState()
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = row.name,
+                style = MaterialTheme.typography.titleLarge
+            )
+            row.rowItemType?.let { type ->
+                val title = allItemsTitle(type)
+                title?.let {
+                    TextButton(
+                        onClick = onAllClick,
+                        contentPadding = PaddingValues(start = 4.dp, end = 4.dp)
+                    ) {
+                        Text(title, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+        LazyRow(
+            state = rowListState,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(
+                items = mediaItems,
+                key = { item ->
+                    when (item) {
+                        is AppMediaItem.Track,
+                        is AppMediaItem.Artist,
+                        is AppMediaItem.Album,
+                        is AppMediaItem.Playlist,
+                        is AppMediaItem.Audiobook,
+                        is AppMediaItem.Podcast,
+                        is AppMediaItem.PodcastEpisode,
+                        is AppMediaItem.RadioStation,
+                        is AppMediaItem.Genre -> "${item::class.simpleName}_${item.itemId}"
+
+                        else -> item.hashCode()
+                    }
+                },
+                contentType = { item ->
+                    when (item) {
+                        is AppMediaItem.Track -> "Track"
+                        is AppMediaItem.Artist -> "Artist"
+                        is AppMediaItem.Album -> "Album"
+                        is AppMediaItem.Playlist -> "Playlist"
+                        is AppMediaItem.Audiobook -> "Audiobook"
+                        is AppMediaItem.Podcast -> "Podcast"
+                        is AppMediaItem.PodcastEpisode -> "Episode"
+                        is AppMediaItem.RadioStation -> "RadioStation"
+                        is AppMediaItem.Genre -> "Genre"
+                        else -> "Unknown"
+                    }
+                }
+            ) { item ->
+                when (item) {
+                    is AppMediaItem.Artist -> ArtistWithMenu(
+                        item = item,
+
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Album -> AlbumWithMenu(
+                        item = item,
+
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Playlist -> PlaylistWithMenu(
+                        item = item,
+
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Podcast -> PodcastWithMenu(
+                        item = item,
+
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Track -> TrackWithMenu(
+                        item = item,
+                        serverUrl = serverUrl,
+                        onPlayOption = onPlayClick,
+                        playlistActions = playlistActions,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
+                        item = item,
+                        serverUrl = serverUrl,
+                        onPlayOption = onPlayClick,
+                        playlistActions = playlistActions,
+                        libraryActions = libraryActions,
+                        progressActions = progressActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Audiobook -> AudiobookWithMenu(
+                        item = item,
+
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        progressActions = progressActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.RadioStation -> RadioWithMenu(
+                        item = item,
+                        serverUrl = serverUrl,
+                        onPlayOption = onPlayClick,
+                        playlistActions = playlistActions,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    is AppMediaItem.Genre -> GenreWithMenu(
+                        item = item,
+
+                        serverUrl = serverUrl,
+                        onNavigateClick = onNavigateClick,
+                        onPlayOption = onPlayClick,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher
+                    )
+
+                    else -> {}
+                }
+            }
+        }
+    }
+}
+
+fun allItemsTitle(type: MediaType) = when (type) {
+    MediaType.TRACK -> "All tracks"
+    MediaType.ALBUM -> "All albums"
+    MediaType.ARTIST -> "All artists"
+    MediaType.PLAYLIST -> "All playlists"
+    MediaType.AUDIOBOOK -> "All audiobooks"
+    MediaType.PODCAST -> "All podcasts"
+    MediaType.RADIO -> "All radio stations"
+    MediaType.GENRE -> "All genres"
+    else -> null
+}
+
+

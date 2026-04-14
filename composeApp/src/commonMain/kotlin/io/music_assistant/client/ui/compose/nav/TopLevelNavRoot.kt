@@ -20,7 +20,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.ui.compose.common.ConnectionStatusBanner
-import io.music_assistant.client.ui.compose.home.HomeScreen
+import io.music_assistant.client.ui.compose.home.MainNavigationRoot
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
 import io.music_assistant.client.utils.BottomSheetSceneStrategy
 import io.music_assistant.client.utils.DataConnectionState
@@ -30,17 +30,9 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.koin.compose.koinInject
 
-sealed interface NavScreen : NavKey {
-    @Serializable
-    data object Home : NavScreen
-
-    @Serializable
-    data object Settings : NavScreen
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NavigationRoot(modifier: Modifier = Modifier) {
+fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val serviceClient: ServiceClient = koinInject()
     val sessionState by serviceClient.sessionState.collectAsStateWithLifecycle()
 
@@ -48,12 +40,12 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
     val initialScreen = when (val state = sessionState) {
         is SessionState.Connected -> {
             when (state.dataConnectionState) {
-                DataConnectionState.Authenticated -> NavScreen.Home
-                else -> NavScreen.Settings
+                DataConnectionState.Authenticated -> Nav.Home
+                else -> Nav.Settings
             }
         }
 
-        else -> NavScreen.Settings
+        else -> Nav.Settings
     }
 
     val backStack = rememberNavBackStack(
@@ -62,8 +54,8 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
             builderAction = {
                 serializersModule = SerializersModule {
                     polymorphic(NavKey::class) {
-                        subclass(NavScreen.Home::class, NavScreen.Home.serializer())
-                        subclass(NavScreen.Settings::class, NavScreen.Settings.serializer())
+                        subclass(Nav.Home::class, Nav.Home.serializer())
+                        subclass(Nav.Settings::class, Nav.Settings.serializer())
                     }
                 }
             }
@@ -84,9 +76,9 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
                 } else {
                     // Navigate to Settings for all other disconnected states
                     // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
-                    if (backStack.last() !is NavScreen.Settings) {
+                    if (backStack.last() !is Nav.Settings) {
                         backStack.clear()
-                        backStack.add(NavScreen.Settings)
+                        backStack.add(Nav.Settings)
                     }
                 }
             }
@@ -97,9 +89,9 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
 
                 // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
                 if (connState == DataConnectionState.Authenticated && connectedState.wasAutoLogin) {
-                    if (backStack.last() !is NavScreen.Home) {
+                    if (backStack.last() !is Nav.Home) {
                         backStack.clear()
-                        backStack.add(NavScreen.Home)
+                        backStack.add(Nav.Home)
                     }
                 }
                 // Don't navigate to Settings here - we handle Disconnected states separately
@@ -126,18 +118,18 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
                 )
             ),
             entryProvider = entryProvider {
-                entry<NavScreen.Home> {
-                    HomeScreen(
-                        goToSettings = { backStack.add(NavScreen.Settings) }
+                entry<Nav.Home> {
+                    MainNavigationRoot(
+                        goToSettings = { backStack.add(Nav.Settings) }
                     )
                 }
 
-                entry<NavScreen.Settings> {
+                entry<Nav.Settings> {
                     SettingsScreen(
                         goHome = {
                             ->
                             backStack.clear()
-                            backStack.add(NavScreen.Home)
+                            backStack.add(Nav.Home)
                         },
                         exitApp = { exitApp() }
                     )
@@ -150,4 +142,12 @@ fun NavigationRoot(modifier: Modifier = Modifier) {
             modifier = Modifier.align(Alignment.TopCenter)
         )
     }
+}
+
+private sealed interface Nav : NavKey {
+    @Serializable
+    data object Home : Nav
+
+    @Serializable
+    data object Settings : Nav
 }

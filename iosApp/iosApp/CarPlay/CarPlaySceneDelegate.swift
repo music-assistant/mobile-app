@@ -51,7 +51,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     // MARK: - UI Construction
 
-    // Match Material Design icons from LandingPage.kt LibraryRow
+    // Match Material Design icons from HomeScreen.kt LibraryRow
     private static let categoryIcons: [(name: String, symbol: String)] = [
         ("Artists", "mic.fill"),                          // Icons.Default.Mic
         ("Albums", "opticaldisc.fill"),                   // Icons.Default.Album
