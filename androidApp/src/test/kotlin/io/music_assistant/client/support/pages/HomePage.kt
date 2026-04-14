@@ -15,12 +15,7 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
         return this
     }
 
-    fun clickSearch(): SearchPage {
-        clickNavBarItem("Search")
-        return SearchPage(composeTestRule).assertOnPage()
-    }
-
-    fun clickOnMedia(name: String) {
-        clickOnMedia(name, "Home")
+    fun clickOnMedia(name: String): MedaItemPage {
+        return clickOnMedia(name, "Home")
     }
 }

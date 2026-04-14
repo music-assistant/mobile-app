@@ -7,7 +7,9 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.TestApplication
 import io.music_assistant.client.support.pages.ConnectPage
-import io.music_assistant.client.support.pages.clickOnMedia
+import io.music_assistant.client.support.pages.MedaItemPage
+import io.music_assistant.client.support.pages.clickHome
+import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.ui.compose.App
 import org.junit.Rule
 import org.junit.Test
@@ -40,5 +42,28 @@ class SearchTest {
             .search("onion")
             .assertResult(album.name)
             .clickOnMedia(album.name)
+    }
+
+    @Test
+    fun `search has its own backstack`() {
+        val album1 = AppMediaItemFixtures.album()
+        val album2 = AppMediaItemFixtures.album()
+        serviceClient.addToLibrary(album1, album2)
+
+        composeTestRule.setContent {
+            App()
+        }
+
+        ConnectPage(composeTestRule)
+            .connect()
+            .login(serviceClient.username, serviceClient.password)
+            .clickOnMedia(album1.name)
+
+            .clickSearch()
+            .search(album2.name.substring(3))
+            .clickOnMedia(album2.name)
+
+            .clickHome(MedaItemPage(album1.name, "Home", composeTestRule))
+            .clickSearch(MedaItemPage(album2.name, "Search", composeTestRule))
     }
 }

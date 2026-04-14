@@ -28,3 +28,18 @@ fun ComposePage.assertNavBar(items: List<String>, selected: String) {
 fun ComposePage.clickNavBarItem(item: String) {
     composeTestRule.onNode(isTab(item)).assertIsDisplayed().performClick()
 }
+
+fun ComposePage.clickSearch(): SearchPage {
+    clickNavBarItem("Search")
+    return SearchPage(composeTestRule).assertOnPage()
+}
+
+fun <T : Page> ComposePage.clickSearch(destination: T): T {
+    clickNavBarItem("Search")
+    return destination.assertOnPage()
+}
+
+fun <T : Page> ComposePage.clickHome(destination: T): T {
+    clickNavBarItem("Home")
+    return destination.assertOnPage()
+}
