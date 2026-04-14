@@ -11,6 +11,15 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 
+/**
+ * Allows multiple [NavBackStack] instances to be treated as one for use with components like
+ * [androidx.navigation3.ui.NavDisplay] (with [toEntries] when combined with a
+ * [androidx.compose.material3.NavigationBar].
+ *
+ * The [NavBackStack] entries are combined to provide "exit through home" style navigation where
+ * navigating backways from the last element of any back stack except the first leads to the top
+ * element of the first back stack.
+ */
 class MultiBackStack(private val backStacks: List<NavBackStack<NavKey>>) {
 
     var currentBackStack by mutableStateOf(0)
