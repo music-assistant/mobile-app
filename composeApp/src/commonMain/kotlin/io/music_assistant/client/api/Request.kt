@@ -223,13 +223,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             forceRefresh: Boolean? = null,
+            orderBy: String? = null,
         ) = Request(
             command = "music/playlists/playlist_tracks",
             args = buildJsonObject {
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
                 forceRefresh?.let { put("force_refresh", JsonPrimitive(it)) }
-
+                orderBy?.let { put("order_by", JsonPrimitive(it)) }
             }
         )
 
@@ -281,9 +282,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
+            orderBy: String? = null,
         ) = Library.subItems(
             "music/podcasts/podcast_episodes",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly
+            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
         )
     }
 
@@ -407,18 +409,20 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
+            orderBy: String? = null,
         ) = Library.subItems(
             "music/artists/artist_albums",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly
+            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
         )
 
         fun getTracks(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
+            orderBy: String? = null,
         ) = Library.subItems(
             "music/artists/artist_tracks",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly
+            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
         )
     }
 
@@ -450,9 +454,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
+            orderBy: String? = null,
         ) = Library.subItems(
             "music/albums/album_tracks",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly
+            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
         )
     }
 
@@ -591,12 +596,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
+            orderBy: String? = null,
         ) = Request(
             command = command,
             args = buildJsonObject {
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
                 put("in_library_only", JsonPrimitive(inLibraryOnly))
+                orderBy?.let { put("order_by", JsonPrimitive(it)) }
             }
         )
     }

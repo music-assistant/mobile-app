@@ -226,7 +226,6 @@ private fun ItemChildren(
                 val item = when (itemState) {
                     is DataState.Data -> itemState.data
                     is DataState.Stale -> itemState.data
-                    else -> return@Box
                 }
 
                 Screen(topBar = { scrollBehaviour ->
