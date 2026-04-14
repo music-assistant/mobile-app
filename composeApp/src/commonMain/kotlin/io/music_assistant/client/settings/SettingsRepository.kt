@@ -2,6 +2,10 @@ package io.music_assistant.client.settings
 
 import com.russhwolf.settings.Settings
 import io.music_assistant.client.api.ConnectionInfo
+import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortField
+import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -287,5 +291,23 @@ class SettingsRepository(
     fun setItemsRowMode(enabled: Boolean) {
         settings.putBoolean("items_row_mode", enabled)
         _itemsRowMode.update { enabled }
+    }
+
+    fun getSortOption(mediaType: MediaType): SortOption {
+        val raw = settings.getStringOrNull("sort_${mediaType.name}")
+            ?: return SortConfig.defaultFor(mediaType)
+        return parseSortOption(raw) ?: SortConfig.defaultFor(mediaType)
+    }
+
+    fun setSortOption(mediaType: MediaType, option: SortOption) {
+        settings.putString("sort_${mediaType.name}", "${option.field.name}:${option.descending}")
+    }
+
+    private fun parseSortOption(raw: String): SortOption? {
+        val parts = raw.split(":")
+        if (parts.size != 2) return null
+        val field = runCatching { SortField.valueOf(parts[0]) }.getOrNull() ?: return null
+        val desc = parts[1].toBooleanStrictOrNull() ?: return null
+        return SortOption(field, desc)
     }
 }

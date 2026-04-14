@@ -9,6 +9,9 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
+import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
@@ -40,7 +43,19 @@ class LibraryViewModel(
     }
 
     enum class Tab {
-        ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES
+        ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES;
+
+        val mediaType: MediaType
+            get() = when (this) {
+                ARTISTS -> MediaType.ARTIST
+                ALBUMS -> MediaType.ALBUM
+                TRACKS -> MediaType.TRACK
+                PLAYLISTS -> MediaType.PLAYLIST
+                AUDIOBOOKS -> MediaType.AUDIOBOOK
+                PODCASTS -> MediaType.PODCAST
+                RADIOS -> MediaType.RADIO
+                GENRES -> MediaType.GENRE
+            }
     }
 
     data class TabState(
@@ -51,7 +66,8 @@ class LibraryViewModel(
         val hasMore: Boolean = true,
         val isLoadingMore: Boolean = false,
         val searchQuery: String = "",
-        val onlyFavorites: Boolean = false
+        val onlyFavorites: Boolean = false,
+        val sortOption: SortOption = SortConfig.defaultFor(tab.mediaType),
     )
 
     data class State(
@@ -78,6 +94,7 @@ class LibraryViewModel(
                     tab = tab,
                     dataState = DataState.Loading(),
                     isSelected = tab == Tab.ARTISTS,
+                    sortOption = settingsRepository.getSortOption(tab.mediaType),
                 )
             }
         )
@@ -100,8 +117,6 @@ class LibraryViewModel(
                     loadPodcasts()
                     loadRadios()
                     loadGenres()
-                    // Tracks tab stays as NoData since there's no API
-                    updateTabState(Tab.TRACKS, DataState.NoData())
                 }
             }
         }
@@ -132,9 +147,11 @@ class LibraryViewModel(
             viewModelScope.launch {
                 _state.map { state ->
                     state.tabs.find { it.tab == tab }.let {
-                        Pair(
+                        Triple(
                             it?.searchQuery ?: "",
-                            it?.onlyFavorites?.takeIf { favs -> favs })
+                            it?.onlyFavorites?.takeIf { favs -> favs },
+                            it?.sortOption
+                        )
                     }
                 }
                     .distinctUntilChanged()
@@ -185,6 +202,16 @@ class LibraryViewModel(
         }
     }
 
+    fun onSortChanged(tab: Tab, sortOption: SortOption) {
+        settingsRepository.setSortOption(tab.mediaType, sortOption)
+        _state.update { s ->
+            s.copy(tabs = s.tabs.map { tabState ->
+                if (tabState.tab == tab) tabState.copy(sortOption = sortOption)
+                else tabState
+            })
+        }
+    }
+
     fun onCreatePlaylistClick() {
         _state.update { it.copy(showCreatePlaylistDialog = true) }
     }
@@ -222,13 +249,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.ARTISTS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.ARTISTS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Artist.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -253,13 +282,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.ALBUMS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.ALBUMS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Album.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -284,13 +315,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.PLAYLISTS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.PLAYLISTS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Playlist.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -315,13 +348,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.TRACKS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.TRACKS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Track.list(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -346,13 +381,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.PODCASTS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.PODCASTS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Podcast.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -377,13 +414,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.AUDIOBOOKS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.AUDIOBOOKS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Audiobook.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -408,13 +447,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.RADIOS }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.RADIOS, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.RadioStation.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -439,13 +480,15 @@ class LibraryViewModel(
             val tabState = _state.value.tabs.find { it.tab == Tab.GENRES }
             val searchQuery = tabState?.searchQuery?.takeIf { it.length >= 0 }
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
+            val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.GENRES, DataState.Loading())
             val result = apiClient.sendRequest(
                 Request.Genre.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
-                    favorite = favoritesOnly
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             )
             result.resultAs<List<ServerMediaItem>>()
@@ -475,6 +518,8 @@ class LibraryViewModel(
 
         viewModelScope.launch {
             val searchQuery = tabState.searchQuery.takeIf { it.length >= 3 }
+            val favoritesOnly = tabState.onlyFavorites.takeIf { it }
+            val orderBy = tabState.sortOption.toServerString()
 
             // Mark as loading more
             _state.update { s ->
@@ -488,7 +533,9 @@ class LibraryViewModel(
                     Request.Artist.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -496,7 +543,9 @@ class LibraryViewModel(
                     Request.Album.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -504,7 +553,9 @@ class LibraryViewModel(
                     Request.Track.list(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -512,7 +563,9 @@ class LibraryViewModel(
                     Request.Playlist.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -520,7 +573,9 @@ class LibraryViewModel(
                     Request.Audiobook.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -528,7 +583,9 @@ class LibraryViewModel(
                     Request.Podcast.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -536,7 +593,9 @@ class LibraryViewModel(
                     Request.RadioStation.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
 
@@ -544,7 +603,9 @@ class LibraryViewModel(
                     Request.Genre.listLibrary(
                         limit = PAGE_SIZE,
                         offset = tabState.offset,
-                        search = searchQuery
+                        search = searchQuery,
+                        favorite = favoritesOnly,
+                        orderBy = orderBy,
                     )
                 )
             }
