@@ -2,22 +2,29 @@
 
 package io.music_assistant.client.ui.compose.library
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -49,6 +56,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortField
+import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
@@ -123,6 +133,7 @@ fun LibraryScreen(
             onLoadMore = viewModel::loadMore,
             onSearchQueryChanged = viewModel::onSearchQueryChanged,
             onOnlyFavoritesClicked = viewModel::onOnlyFavoritesClicked,
+            onSortChanged = viewModel::onSortChanged,
             onDismissCreatePlaylistDialog = viewModel::onDismissCreatePlaylistDialog,
             onCreatePlaylist = viewModel::createPlaylist,
             playlistActions = ActionsViewModel.PlaylistActions(
@@ -212,6 +223,7 @@ private fun Library(
     onLoadMore: (LibraryViewModel.Tab) -> Unit,
     onSearchQueryChanged: (LibraryViewModel.Tab, String) -> Unit,
     onOnlyFavoritesClicked: (LibraryViewModel.Tab) -> Unit,
+    onSortChanged: (LibraryViewModel.Tab, SortOption) -> Unit,
     onDismissCreatePlaylistDialog: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
@@ -248,14 +260,21 @@ private fun Library(
                 } else null,
                 singleLine = true
             )
-            FilterChip(
+            Row(
                 modifier = Modifier.padding(horizontal = 16.dp),
-                selected = selectedTab.onlyFavorites,
-                onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
-                label = {
-                    Text("Favorites")
-                }
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = selectedTab.onlyFavorites,
+                    onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
+                    label = { Text("Favorites") }
+                )
+                SortChip(
+                    currentSort = selectedTab.sortOption,
+                    availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
+                    onSortChanged = { onSortChanged(selectedTab.tab, it) },
+                )
+            }
 
             // Content area
             Box(modifier = Modifier.fillMaxSize()) {
@@ -474,5 +493,55 @@ private fun EmptyState() {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun SortChip(
+    currentSort: SortOption,
+    availableFields: List<SortField>,
+    onSortChanged: (SortOption) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        FilterChip(
+            selected = true,
+            onClick = { expanded = true },
+            label = { Text(currentSort.field.displayName) },
+            trailingIcon = {
+                Icon(
+                    if (currentSort.descending) Icons.Default.ArrowDownward
+                    else Icons.Default.ArrowUpward,
+                    contentDescription = "Sort direction",
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            availableFields.forEach { field ->
+                DropdownMenuItem(
+                    text = { Text(field.displayName) },
+                    onClick = {
+                        expanded = false
+                        if (field == currentSort.field) {
+                            onSortChanged(SortOption(field, !currentSort.descending))
+                        } else {
+                            onSortChanged(SortOption(field))
+                        }
+                    },
+                    trailingIcon = if (field == currentSort.field) {
+                        {
+                            Icon(
+                                if (currentSort.descending) Icons.Default.ArrowUpward
+                                else Icons.Default.ArrowDownward,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    } else null
+                )
+            }
+        }
     }
 }
