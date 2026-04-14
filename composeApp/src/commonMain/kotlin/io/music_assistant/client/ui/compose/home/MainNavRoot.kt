@@ -259,11 +259,7 @@ private fun mainNavEntryProvider(
                 },
                 onPlayClick = viewModel::onPlayClick,
                 onLibraryItemClick = { type ->
-                    if (type == null) {
-                        multiBackStack.add(MainNav.Search)
-                    } else {
-                        multiBackStack.add(MainNav.Library(type))
-                    }
+                    multiBackStack.add(MainNav.Library(type))
                 },
                 playlistActions = playlistActions,
                 libraryActions = libraryActions,
