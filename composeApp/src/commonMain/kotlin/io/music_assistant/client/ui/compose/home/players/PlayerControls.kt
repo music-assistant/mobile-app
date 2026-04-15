@@ -38,7 +38,8 @@ fun PlayerControls(
     playerAction: (PlayerData, PlayerAction) -> Unit,
     showAdditionalButtons: Boolean = true,
     mainButtonSize: Dp,
-    showSkip: Boolean = true
+    showSkip: Boolean = true,
+    tint: Color = MaterialTheme.colorScheme.primary,
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
@@ -58,7 +59,7 @@ fun PlayerControls(
                         ShuffleOnIcon
                     else
                         ShuffleOffIcon,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = tint,
                     size = smallButtonSize,
                     enabled = playerEnabled && buttonsEnabled,
                 ) {
@@ -73,7 +74,7 @@ fun PlayerControls(
         if (showSkip) {
             ActionButton(
                 icon = SkipBackIcon,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = tint,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
             ) { playerAction(playerData, PlayerAction.Previous) }
@@ -89,7 +90,7 @@ fun PlayerControls(
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size((mainButtonSize.value * 0.6).dp),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = tint,
                     strokeWidth = 2.dp,
                 )
             }
@@ -99,7 +100,7 @@ fun PlayerControls(
                     true -> PauseIcon
                     false -> PlayIcon
                 },
-                tint = MaterialTheme.colorScheme.primary,
+                tint = tint,
                 size = mainButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
             ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
@@ -108,7 +109,7 @@ fun PlayerControls(
         if (showSkip) {
             ActionButton(
                 icon = SkipForwardIcon,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = tint,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
             ) { playerAction(playerData, PlayerAction.Next) }
@@ -124,7 +125,7 @@ fun PlayerControls(
                         RepeatMode.OFF,
                         null -> RepeatOffIcon
                     },
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = tint,
                     size = smallButtonSize,
                     enabled = playerEnabled && buttonsEnabled && repeatMode != null,
                 ) {

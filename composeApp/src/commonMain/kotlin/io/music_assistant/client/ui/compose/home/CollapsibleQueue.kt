@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -40,6 +41,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +74,7 @@ fun CollapsibleQueue(
     onGoToLibrary: () -> Unit,
     serverUrl: String?,
     queueAction: (QueueAction) -> Unit,
+    tint: Color,
     players: List<PlayerData> = emptyList(),
     onPlayerSelected: ((String) -> Unit)? = null,
     isCurrentPage: Boolean = true,
@@ -94,6 +98,7 @@ fun CollapsibleQueue(
             currentPos?.let { "Queue ($it/${list.size})" }
         } ?: "Queue"
 
+        val queueButtonContentColor = if (tint.luminance() > 0.5f) Color.Black else Color.White
         Button(
             modifier = Modifier
                 .let {
@@ -104,6 +109,10 @@ fun CollapsibleQueue(
                     }
                 }
                 .fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = tint,
+                contentColor = queueButtonContentColor,
+            ),
             onClick = { onQueueExpandedSwitch() }
         ) {
             Text(

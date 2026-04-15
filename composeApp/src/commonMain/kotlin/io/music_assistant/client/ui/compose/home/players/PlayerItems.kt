@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,14 +47,15 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
+import io.music_assistant.client.ui.compose.common.asControlTint
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
-import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
 import io.music_assistant.client.utils.formatDuration
 import kotlin.time.DurationUnit
 
 @Composable
 fun CompactPlayerItem(
     item: PlayerData,
+    dominantColor: Color,
     serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
@@ -62,13 +64,7 @@ fun CompactPlayerItem(
     sendSpinState: SendspinState?
 ) {
     val track = item.queueInfo?.currentItem?.track
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    val imageUrl = track?.imageInfo?.url(serverUrl)
-    val dominantColor by rememberAnimatedDominantColor(
-        imageUrl = imageUrl,
-        fallback = primaryContainer
-    )
 
     Row(
         modifier = Modifier
@@ -151,7 +147,8 @@ fun CompactPlayerItem(
             playerAction = playerAction,
             showAdditionalButtons = showAdditionalControls,
             mainButtonSize = 48.dp,
-            showSkip = true
+            showSkip = true,
+            tint = dominantColor.asControlTint(),
         )
 
         if (onSelectPlayer != null) {
@@ -177,18 +174,14 @@ fun FullPlayerItem(
     modifier: Modifier,
     item: PlayerData,
     isLocal: Boolean,
+    dominantColor: Color,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happeningÏ
 ) {
     val track = item.queueInfo?.currentItem?.track
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    val imageUrl = track?.imageInfo?.url(serverUrl)
-    val dominantColor by rememberAnimatedDominantColor(
-        imageUrl = imageUrl,
-        fallback = primaryContainer
-    )
+    val controlTint = dominantColor.asControlTint()
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -296,6 +289,10 @@ fun FullPlayerItem(
         // Use user drag position if dragging, otherwise use calculated position
         val sliderPosition = userDragPosition ?: displayPosition
 
+        val progressSliderColors = SliderDefaults.colors().copy(
+            thumbColor = controlTint,
+            activeTrackColor = controlTint,
+        )
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         ) {// Progress bar
@@ -318,8 +315,7 @@ fun FullPlayerItem(
                         SliderDefaults.Thumb(
                             interactionSource = remember { MutableInteractionSource() },
                             thumbSize = DpSize(16.dp, 16.dp),
-                            colors = SliderDefaults.colors()
-                                .copy(thumbColor = MaterialTheme.colorScheme.secondary),
+                            colors = progressSliderColors,
                         )
                     }
                 },
@@ -329,6 +325,7 @@ fun FullPlayerItem(
                     Box {
                         SliderDefaults.Track(
                             sliderState = sliderState,
+                            colors = progressSliderColors,
                             thumbTrackGapSize = 0.dp,
                             trackInsideCornerSize = 0.dp,
                             drawStopIndicator = null,
@@ -381,6 +378,7 @@ fun FullPlayerItem(
             playerData = item,
             playerAction = playerAction,
             mainButtonSize = 60.dp,
+            tint = controlTint,
         )
     }
 }
