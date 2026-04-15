@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
   id-token: write
 
 jobs:
@@ -68,6 +67,17 @@ jobs:
       - name: Build release AAB
         run: ./gradlew :androidApp:bundleRelease
 
+      - name: Generate Play Store release notes
+        run: |
+          mkdir -p distribution/whatsnew
+          PREV_TAG=$(git tag -l 'android-v*' --sort=-v:refname | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
+          else
+            NOTES="Initial release"
+          fi
+          echo "${NOTES:0:500}" > distribution/whatsnew/whatsnew-en-US
+
       - name: Authenticate to Google Cloud
         id: gcloud-auth
         uses: google-github-actions/auth@v3
@@ -82,7 +92,8 @@ jobs:
           packageName: io.music_assistant.client
           releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
           track: internal
-          status: draft
+          status: completed
+          whatsNewDirectory: distribution/whatsnew
 
       - name: Create and push tag
         run: |
@@ -99,6 +110,7 @@ jobs:
 
             - **Version code**: ${{ steps.version.outputs.code }}
             - **Track**: Internal testing (Google Play)
+          generate_release_notes: true
           draft: false
           prerelease: false
         env:
@@ -118,9 +130,7 @@ jobs:
           echo "code=$NEXT_CODE" >> $GITHUB_OUTPUT
           echo "branch=chore/bump-android-v${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Create version bump PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push version bump branch
         run: |
           git fetch origin dev
           git checkout -b "${{ steps.next.outputs.branch }}" origin/dev
@@ -131,12 +141,3 @@ jobs:
           git add androidApp/build.gradle.kts
           git commit -m "chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})"
           git push origin "${{ steps.next.outputs.branch }}"
-
-          gh pr create \
-            --base dev \
-            --head "${{ steps.next.outputs.branch }}" \
-            --title "chore: bump Android version to ${{ steps.next.outputs.version }}" \
-            --body "Automated version bump after releasing \`${{ steps.version.outputs.tag }}\`.
-
-          - versionCode: ${{ steps.version.outputs.code }} → ${{ steps.next.outputs.code }}
-          - versionName: ${{ steps.version.outputs.name }} → ${{ steps.next.outputs.version }}"
