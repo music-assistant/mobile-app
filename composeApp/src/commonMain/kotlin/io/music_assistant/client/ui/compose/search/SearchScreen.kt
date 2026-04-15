@@ -11,24 +11,24 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.intl.Locale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItem
@@ -37,17 +37,10 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
-import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
-import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
-import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
-import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
-import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
-import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
-import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
-import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.home.CategoryRow
 import io.music_assistant.client.ui.compose.nav.Screen
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -90,8 +83,7 @@ fun SearchScreen(
                     is AppMediaItem.Album,
                     is AppMediaItem.Playlist,
                     is AppMediaItem.Podcast,
-                    is AppMediaItem.Audiobook,
-                    is AppMediaItem.Genre -> {
+                    is AppMediaItem.Audiobook -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -154,7 +146,7 @@ private fun SearchContent(
 
             // Search filters (always visible)
             SearchFilters(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
                 searchState = state.searchState,
                 onMediaTypeToggled = onMediaTypeToggled,
                 onLibraryOnlyToggled = onLibraryOnlyToggled
@@ -197,8 +189,7 @@ private fun SearchContent(
                             results.playlists.isNotEmpty() ||
                             results.audiobooks.isNotEmpty() ||
                             results.podcasts.isNotEmpty() ||
-                            results.radios.isNotEmpty() ||
-                            results.genres.isNotEmpty()
+                            results.radios.isNotEmpty()
 
                     if (!hasResults) {
                         Box(
@@ -208,153 +199,36 @@ private fun SearchContent(
                             Text("No results found")
                         }
                     } else {
-                        LazyVerticalGrid(
+                        val sections = listOf(
+                            "Tracks" to results.tracks,
+                            "Artists" to results.artists,
+                            "Albums" to results.albums,
+                            "Playlists" to results.playlists,
+                            "Podcasts" to results.podcasts,
+                            "Audiobooks" to results.audiobooks,
+                            "Radio" to results.radios,
+                        )
+                        LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            columns = GridCells.Adaptive(minSize = 96.dp),
                             contentPadding = contentPadding,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Tracks section
-                            if (results.tracks.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Tracks")
-                                }
-                                items(results.tracks) { track ->
-                                    TrackWithMenu(
-                                        item = track,
-                                        serverUrl = serverUrl,
-                                        onPlayOption = onPlayClick,
-                                        playlistActions = playlistActions,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher,
-                                    )
-                                }
-                            }
-
-                            // Artists section
-                            if (results.artists.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Artists")
-                                }
-                                items(results.artists) { artist ->
-                                    ArtistWithMenu(
-                                        item = artist,
-
-                                        serverUrl = serverUrl,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher
-                                    )
-                                }
-                            }
-
-                            // Albums section
-                            if (results.albums.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Albums")
-                                }
-                                items(results.albums) { album ->
-                                    AlbumWithMenu(
-                                        item = album,
-
-                                        serverUrl = serverUrl,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher
-                                    )
-                                }
-                            }
-
-                            // Playlists section
-                            if (results.playlists.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Playlists")
-                                }
-                                items(results.playlists) { playlist ->
-                                    PlaylistWithMenu(
-                                        item = playlist,
-
-                                        serverUrl = serverUrl,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher
-                                    )
-                                }
-                            }
-
-                            // Podcasts section
-                            if (results.podcasts.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Podcasts")
-                                }
-                                items(results.podcasts) { podcast ->
-                                    PodcastWithMenu(
-                                        item = podcast,
-
-                                        serverUrl = serverUrl,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher
-                                    )
-                                }
-                            }
-
-                            // Audiobooks section
-                            if (results.audiobooks.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Audiobooks")
-                                }
-                                items(results.audiobooks) { audiobook ->
-                                    AudiobookWithMenu(
-                                        item = audiobook,
-
-                                        serverUrl = serverUrl,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        progressActions = progressActions,
-                                        providerIconFetcher = providerIconFetcher,
-                                    )
-                                }
-                            }
-
-                            // Radio section
-                            if (results.radios.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Radio")
-                                }
-                                items(results.radios) { radio ->
-                                    RadioWithMenu(
-                                        item = radio,
-                                        serverUrl = serverUrl,
-                                        onPlayOption = onPlayClick,
-                                        playlistActions = playlistActions,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher,
-                                    )
-                                }
-                            }
-
-                            // Genres section
-                            if (results.genres.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Genres")
-                                }
-                                items(results.genres) { genre ->
-                                    GenreWithMenu(
-                                        item = genre,
-
-                                        serverUrl = serverUrl,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher
-                                    )
+                            sections.forEach { (title, items) ->
+                                if (items.isNotEmpty()) {
+                                    item(key = title, contentType = "category") {
+                                        CategoryRow(
+                                            serverUrl = serverUrl,
+                                            title = title,
+                                            rowItemType = null,
+                                            onNavigateClick = onItemClick,
+                                            onPlayClick = onPlayClick,
+                                            onAllClick = {},
+                                            mediaItems = items,
+                                            playlistActions = playlistActions,
+                                            libraryActions = libraryActions,
+                                            progressActions = progressActions,
+                                            providerIconFetcher = providerIconFetcher,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -390,9 +264,11 @@ private fun SearchFilters(
     onMediaTypeToggled: (MediaType, Boolean) -> Unit,
     onLibraryOnlyToggled: (Boolean) -> Unit,
 ) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
     FlowRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // Media type filter chips
         searchState.mediaTypes.forEach { mediaTypeSelect ->
@@ -422,13 +298,5 @@ private fun SearchFilters(
             }
         )
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(16.dp, 8.dp)
-    )
+    }
 }

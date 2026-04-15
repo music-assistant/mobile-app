@@ -112,7 +112,6 @@ fun HomeScreen(
             state = listState,
             contentPadding = contentPadding
         ) {
-            // Your library row
             item {
                 LibraryRow(onLibraryItemClick = onLibraryItemClick)
             }
@@ -132,7 +131,8 @@ fun HomeScreen(
                 ) { row ->
                     CategoryRow(
                         serverUrl = serverUrl,
-                        row = row,
+                        title = row.name,
+                        rowItemType = row.rowItemType,
                         onNavigateClick = onNavigateClick,
                         onPlayClick = onPlayClick,
                         onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
@@ -260,7 +260,8 @@ private data class LibraryItem(
 @Composable
 fun CategoryRow(
     serverUrl: String?,
-    row: AppMediaItem.RecommendationFolder,
+    title: String,
+    rowItemType: MediaType?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
     onAllClick: () -> Unit,
@@ -281,17 +282,17 @@ fun CategoryRow(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = row.name,
+                text = title,
                 style = MaterialTheme.typography.titleLarge
             )
-            row.rowItemType?.let { type ->
-                val title = allItemsTitle(type)
-                title?.let {
+            rowItemType?.let { type ->
+                val allTitle = allItemsTitle(type)
+                allTitle?.let {
                     TextButton(
                         onClick = onAllClick,
                         contentPadding = PaddingValues(start = 4.dp, end = 4.dp)
                     ) {
-                        Text(title, style = MaterialTheme.typography.labelLarge)
+                        Text(allTitle, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
