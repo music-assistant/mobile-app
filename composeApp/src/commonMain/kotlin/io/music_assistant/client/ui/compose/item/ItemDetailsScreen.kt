@@ -5,6 +5,7 @@ package io.music_assistant.client.ui.compose.item
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,18 +14,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,8 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.client.SortConfig
-import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.server.MediaItemChapter
@@ -50,7 +60,6 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
-import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.theme.AppTheme
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -185,8 +194,29 @@ fun ItemDetails(
         onToggleViewMode = onToggleViewMode,
         onAlbumsSortChanged = onAlbumsSortChanged,
         onPlayableItemsSortChanged = onPlayableItemsSortChanged,
-        contentPadding,
+        contentPadding = contentPadding,
     )
+}
+
+private enum class ItemDetailsTab(val title: String, val sortContext: SubItemContext?) {
+    ARTIST_ALBUMS("Albums", SubItemContext.ARTIST_ALBUMS),
+    ARTIST_TRACKS("Tracks", SubItemContext.ARTIST_TRACKS),
+    ALBUM_TRACKS("Tracks", SubItemContext.ALBUM_TRACKS),
+    PLAYLIST_TRACKS("Tracks", SubItemContext.PLAYLIST_TRACKS),
+    PODCAST_EPISODES("Episodes", SubItemContext.PODCAST_EPISODES),
+    AUDIOBOOK_CHAPTERS("Chapters", null),
+    GENRE_ARTISTS("Artists", null),
+    GENRE_ALBUMS("Albums", null),
+}
+
+private fun tabsFor(item: AppMediaItem): List<ItemDetailsTab> = when (item) {
+    is AppMediaItem.Artist -> listOf(ItemDetailsTab.ARTIST_ALBUMS, ItemDetailsTab.ARTIST_TRACKS)
+    is AppMediaItem.Album -> listOf(ItemDetailsTab.ALBUM_TRACKS)
+    is AppMediaItem.Playlist -> listOf(ItemDetailsTab.PLAYLIST_TRACKS)
+    is AppMediaItem.Podcast -> listOf(ItemDetailsTab.PODCAST_EPISODES)
+    is AppMediaItem.Audiobook -> listOf(ItemDetailsTab.AUDIOBOOK_CHAPTERS)
+    is AppMediaItem.Genre -> listOf(ItemDetailsTab.GENRE_ARTISTS, ItemDetailsTab.GENRE_ALBUMS)
+    else -> emptyList()
 }
 
 @Composable
@@ -212,268 +242,44 @@ private fun ItemChildren(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (val itemState = state.itemState) {
-            is DataState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
+            is DataState.Loading -> CenteredProgress()
 
-            is DataState.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Error loading item",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
+            is DataState.Error -> CenteredText(
+                text = "Error loading item",
+                color = MaterialTheme.colorScheme.error,
+            )
 
             is DataState.Stale,
             is DataState.Data -> {
-                // Handle both Data and Stale - both contain valid item data
                 val item = when (itemState) {
                     is DataState.Data -> itemState.data
                     is DataState.Stale -> itemState.data
                 }
-
-                Screen(topBar = { scrollBehaviour ->
-                    ItemTopBar(
-                        item = item,
-                        isRowMode = isRowMode,
-                        onBack = onBack,
-                        onToggleViewMode = onToggleViewMode,
-                        libraryActions = libraryActions,
-                        playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
-                        scrollBehavior = scrollBehaviour
-                    )
-                }) {
-                    LazyVerticalGrid(
-                        modifier = Modifier.fillMaxWidth()
-                            .testTag("LazyVerticalGrid"),
-                        columns = GridCells.Adaptive(minSize = 96.dp),
-                        contentPadding = contentPadding + PaddingValues(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            ItemHeader(
-                                item = item,
-                                serverUrl = serverUrl,
-                                providerIconFetcher = providerIconFetcher,
-                                onPlayClick = onPlayItemClick
-                            )
-                        }
-
-                        // For Genre: Artists section
-                        if (item is AppMediaItem.Genre) {
-                            when (val artistsState = state.artistsState) {
-                                is DataState.Data -> {
-                                    if (artistsState.data.isNotEmpty()) {
-                                        item(span = { GridItemSpan(maxLineSpan) }) {
-                                            SectionHeader("Artists")
-                                        }
-                                        items(
-                                            artistsState.data,
-                                            span = if (isRowMode) {
-                                                { GridItemSpan(maxLineSpan) }
-                                            } else null
-                                        ) { artist ->
-                                            ArtistWithMenu(
-                                                item = artist,
-                                                rowMode = isRowMode,
-
-                                                serverUrl = serverUrl,
-                                                onNavigateClick = onNavigateClick,
-                                                onPlayOption = onPlayChildClick,
-                                                libraryActions = libraryActions,
-                                                providerIconFetcher = providerIconFetcher
-                                            )
-                                        }
-                                    }
-                                }
-
-                                is DataState.Loading -> {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator()
-                                        }
-                                    }
-                                }
-
-                                else -> Unit
-                            }
-                        }
-
-                        // For Artist or Genre: Albums section
-                        if (item is AppMediaItem.Artist || item is AppMediaItem.Genre) {
-                            when (val albumsState = state.albumsState) {
-                                is DataState.Data -> {
-                                    if (albumsState.data.isNotEmpty()) {
-                                        item(span = { GridItemSpan(maxLineSpan) }) {
-                                            SectionHeader(
-                                                title = "Albums",
-                                                sortOption = state.albumsSortOption,
-                                                sortFields = SortConfig.fieldsFor(SubItemContext.ARTIST_ALBUMS),
-                                                onSortChanged = { onAlbumsSortChanged(SubItemContext.ARTIST_ALBUMS, it) },
-                                            )
-                                        }
-                                        items(
-                                            albumsState.data,
-                                            span = if (isRowMode) {
-                                                { GridItemSpan(maxLineSpan) }
-                                            } else null
-                                        ) { album ->
-                                            AlbumWithMenu(
-                                                item = album,
-                                                rowMode = isRowMode,
-
-                                                serverUrl = serverUrl,
-                                                onNavigateClick = onNavigateClick,
-                                                onPlayOption = onPlayChildClick,
-                                                libraryActions = libraryActions,
-                                                providerIconFetcher = providerIconFetcher
-                                            )
-                                        }
-                                    }
-                                }
-
-                                is DataState.Loading -> {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator()
-                                        }
-                                    }
-                                }
-
-                                else -> Unit
-                            }
-                        }
-
-                        // For Audiobook: Chapters section (from metadata, not a separate API)
-                        if (item is AppMediaItem.Audiobook) {
-                            val chapters = item.chapters
-                            if (!chapters.isNullOrEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    SectionHeader("Chapters")
-                                }
-                                chapters.forEach { chapter ->
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        ChapterRow(
-                                            chapter = chapter,
-                                            onClick = {
-                                                onChapterClick(chapter.position)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Tracks section (all types)
-                        when (val tracksState = state.playableItemsState) {
-                            is DataState.Data -> {
-                                if (tracksState.data.isNotEmpty()) {
-                                    val playableContext = when (item) {
-                                        is AppMediaItem.Artist -> SubItemContext.ARTIST_TRACKS
-                                        is AppMediaItem.Album -> SubItemContext.ALBUM_TRACKS
-                                        is AppMediaItem.Playlist -> SubItemContext.PLAYLIST_TRACKS
-                                        is AppMediaItem.Podcast -> SubItemContext.PODCAST_EPISODES
-                                        else -> null
-                                    }
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        SectionHeader(
-                                            title = when (item) {
-                                                is AppMediaItem.Podcast -> "Episodes"
-                                                else -> "Tracks"
-                                            },
-                                            sortOption = state.playableItemsSortOption,
-                                            sortFields = playableContext?.let { SortConfig.fieldsFor(it) } ?: emptyList(),
-                                            onSortChanged = playableContext?.let { ctx ->
-                                                { opt: SortOption -> onPlayableItemsSortChanged(ctx, opt) }
-                                            },
-                                        )
-                                    }
-                                    tracksState.data.forEachIndexed { index, track ->
-                                        item(
-                                            span = if (isRowMode) {
-                                                { GridItemSpan(maxLineSpan) }
-                                            } else null
-                                        ) {
-                                            when (track) {
-                                                is AppMediaItem.Track -> TrackWithMenu(
-                                                    item = track,
-                                                    serverUrl = serverUrl,
-                                                    rowMode = isRowMode,
-                                                    onPlayOption = onPlayChildClick,
-                                                    playlistActions = playlistActions,
-                                                    // Show "remove from playlist" only for playlist items
-                                                    onRemoveFromPlaylist = if (item is AppMediaItem.Playlist && item.isEditable == true) {
-                                                        {
-                                                            onRemoveFromPlaylist(
-                                                                item.itemId,
-                                                                index
-                                                            )
-                                                        }
-                                                    } else null,
-                                                    libraryActions = libraryActions,
-                                                    providerIconFetcher = providerIconFetcher,
-                                                )
-
-                                                is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
-                                                    item = track,
-                                                    serverUrl = serverUrl,
-                                                    rowMode = isRowMode,
-                                                    onPlayOption = onPlayChildClick,
-                                                    playlistActions = null, // No playlist actions for podcast episodes
-                                                    libraryActions = libraryActions,
-                                                    progressActions = progressActions,
-                                                    providerIconFetcher = providerIconFetcher,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            is DataState.Loading -> {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                }
-                            }
-
-                            else -> Unit
-                        }
-                    }
-                }
+                ItemContent(
+                    item = item,
+                    state = state,
+                    serverUrl = serverUrl,
+                    isRowMode = isRowMode,
+                    onNavigateClick = onNavigateClick,
+                    onPlayItemClick = onPlayItemClick,
+                    onPlayChildClick = onPlayChildClick,
+                    onChapterClick = onChapterClick,
+                    playlistActions = playlistActions,
+                    progressActions = progressActions,
+                    onRemoveFromPlaylist = onRemoveFromPlaylist,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = providerIconFetcher,
+                    onBack = onBack,
+                    onToggleViewMode = onToggleViewMode,
+                    onAlbumsSortChanged = onAlbumsSortChanged,
+                    onPlayableItemsSortChanged = onPlayableItemsSortChanged,
+                    contentPadding = contentPadding,
+                )
             }
 
-            is DataState.NoData -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No data available")
-                }
-            }
+            is DataState.NoData -> CenteredText("No data available")
         }
 
-        // Toast host
         ToastHost(
             toastState = toastState,
             modifier = Modifier
@@ -484,29 +290,458 @@ private fun ItemChildren(
 }
 
 @Composable
-private fun SectionHeader(
-    title: String,
-    sortOption: SortOption? = null,
-    sortFields: List<SortField> = emptyList(),
-    onSortChanged: ((SortOption) -> Unit)? = null,
+private fun ItemContent(
+    item: AppMediaItem,
+    state: ItemDetailsViewModel.State,
+    serverUrl: String?,
+    isRowMode: Boolean,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayItemClick: (QueueOption, Boolean) -> Unit,
+    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onChapterClick: (Int) -> Unit,
+    playlistActions: ActionsViewModel.PlaylistActions,
+    progressActions: ActionsViewModel.ProgressActions?,
+    onRemoveFromPlaylist: (String, Int) -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    onBack: () -> Unit,
+    onToggleViewMode: () -> Unit,
+    onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
+    onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
+    contentPadding: PaddingValues,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+    val tabs = tabsFor(item)
+    var selectedIndex by rememberSaveable(item.mediaType) { mutableStateOf(0) }
+    val safeIndex = selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))
+
+    val heroSlot: @Composable () -> Unit = {
+        ItemHeader(
+            item = item,
+            serverUrl = serverUrl,
+            providerIconFetcher = providerIconFetcher,
+            onPlayClick = onPlayItemClick,
         )
-        if (sortOption != null && onSortChanged != null && sortFields.isNotEmpty()) {
+    }
+
+    Surface {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ItemTopBar(
+                item = item,
+                isRowMode = isRowMode,
+                onBack = onBack,
+                onToggleViewMode = onToggleViewMode,
+                libraryActions = libraryActions,
+                playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
+            )
+
+            if (tabs.isEmpty()) {
+                heroSlot()
+            } else {
+                val currentTab = tabs[safeIndex]
+                val tabsSlot: @Composable () -> Unit = {
+                    TabsBar(
+                        tabs = tabs,
+                        selectedIndex = safeIndex,
+                        onTabSelected = { selectedIndex = it },
+                        albumsSortOption = state.albumsSortOption,
+                        playableItemsSortOption = state.playableItemsSortOption,
+                        onAlbumsSortChanged = onAlbumsSortChanged,
+                        onPlayableItemsSortChanged = onPlayableItemsSortChanged,
+                    )
+                }
+                val gridState = rememberLazyGridState()
+                Box(modifier = Modifier.weight(1f)) {
+                    TabContent(
+                        tab = currentTab,
+                        item = item,
+                        state = state,
+                        serverUrl = serverUrl,
+                        isRowMode = isRowMode,
+                        onNavigateClick = onNavigateClick,
+                        onPlayChildClick = onPlayChildClick,
+                        onChapterClick = onChapterClick,
+                        playlistActions = playlistActions,
+                        progressActions = progressActions,
+                        onRemoveFromPlaylist = onRemoveFromPlaylist,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher,
+                        contentPadding = contentPadding,
+                        heroSlot = heroSlot,
+                        tabsSlot = tabsSlot,
+                        gridState = gridState,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabsBar(
+    tabs: List<ItemDetailsTab>,
+    selectedIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    albumsSortOption: SortOption?,
+    playableItemsSortOption: SortOption?,
+    onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
+    onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
+) {
+    val currentTab = tabs[selectedIndex]
+    val sortCtx = currentTab.sortContext
+    val currentSort: SortOption? = when (sortCtx) {
+        SubItemContext.ARTIST_ALBUMS -> albumsSortOption
+        SubItemContext.ARTIST_TRACKS,
+        SubItemContext.ALBUM_TRACKS,
+        SubItemContext.PLAYLIST_TRACKS,
+        SubItemContext.PODCAST_EPISODES -> playableItemsSortOption
+        null -> null
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PrimaryScrollableTabRow(
+            selectedTabIndex = selectedIndex,
+            containerColor = Color.Transparent,
+            edgePadding = 0.dp,
+            modifier = Modifier.weight(1f),
+        ) {
+            tabs.forEachIndexed { i, tab ->
+                Tab(
+                    selected = i == selectedIndex,
+                    onClick = { onTabSelected(i) },
+                    text = { Text(tab.title) },
+                )
+            }
+        }
+        if (sortCtx != null && currentSort != null) {
             SortChip(
-                currentSort = sortOption,
-                availableFields = sortFields,
-                onSortChanged = onSortChanged,
+                currentSort = currentSort,
+                availableFields = SortConfig.fieldsFor(sortCtx),
+                onSortChanged = { opt ->
+                    if (sortCtx == SubItemContext.ARTIST_ALBUMS) {
+                        onAlbumsSortChanged(sortCtx, opt)
+                    } else {
+                        onPlayableItemsSortChanged(sortCtx, opt)
+                    }
+                },
             )
         }
+    }
+}
+
+@Composable
+private fun TabContent(
+    tab: ItemDetailsTab,
+    item: AppMediaItem,
+    state: ItemDetailsViewModel.State,
+    serverUrl: String?,
+    isRowMode: Boolean,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onChapterClick: (Int) -> Unit,
+    playlistActions: ActionsViewModel.PlaylistActions,
+    progressActions: ActionsViewModel.ProgressActions?,
+    onRemoveFromPlaylist: (String, Int) -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    when (tab) {
+        ItemDetailsTab.ARTIST_ALBUMS,
+        ItemDetailsTab.GENRE_ALBUMS -> AlbumsTabContent(
+            albumsState = state.albumsState,
+            isRowMode = isRowMode,
+            serverUrl = serverUrl,
+            onNavigateClick = onNavigateClick,
+            onPlayChildClick = onPlayChildClick,
+            libraryActions = libraryActions,
+            providerIconFetcher = providerIconFetcher,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+
+        ItemDetailsTab.ARTIST_TRACKS,
+        ItemDetailsTab.ALBUM_TRACKS,
+        ItemDetailsTab.PLAYLIST_TRACKS,
+        ItemDetailsTab.PODCAST_EPISODES -> PlayablesTabContent(
+            playableItemsState = state.playableItemsState,
+            parentItem = item,
+            isRowMode = isRowMode,
+            serverUrl = serverUrl,
+            onPlayChildClick = onPlayChildClick,
+            playlistActions = playlistActions,
+            progressActions = progressActions,
+            onRemoveFromPlaylist = onRemoveFromPlaylist,
+            libraryActions = libraryActions,
+            providerIconFetcher = providerIconFetcher,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+
+        ItemDetailsTab.GENRE_ARTISTS -> ArtistsTabContent(
+            artistsState = state.artistsState,
+            isRowMode = isRowMode,
+            serverUrl = serverUrl,
+            onNavigateClick = onNavigateClick,
+            onPlayChildClick = onPlayChildClick,
+            libraryActions = libraryActions,
+            providerIconFetcher = providerIconFetcher,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+
+        ItemDetailsTab.AUDIOBOOK_CHAPTERS -> ChaptersTabContent(
+            chapters = (item as? AppMediaItem.Audiobook)?.chapters.orEmpty(),
+            onChapterClick = onChapterClick,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+    }
+}
+
+@Composable
+private fun AlbumsTabContent(
+    albumsState: DataState<List<AppMediaItem.Album>>,
+    isRowMode: Boolean,
+    serverUrl: String?,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    LazyVerticalGrid(
+        state = gridState,
+        modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
+        columns = GridCells.Adaptive(minSize = 96.dp),
+        contentPadding = contentPadding + PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
+        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+
+        when (albumsState) {
+            is DataState.Data -> items(
+                albumsState.data,
+                span = if (isRowMode) { { GridItemSpan(maxLineSpan) } } else null,
+            ) { album ->
+                AlbumWithMenu(
+                    item = album,
+                    rowMode = isRowMode,
+                    serverUrl = serverUrl,
+                    onNavigateClick = onNavigateClick,
+                    onPlayOption = onPlayChildClick,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = providerIconFetcher,
+                )
+            }
+
+            is DataState.Loading -> item(span = { GridItemSpan(maxLineSpan) }) {
+                InlineProgress()
+            }
+
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+private fun ArtistsTabContent(
+    artistsState: DataState<List<AppMediaItem.Artist>>,
+    isRowMode: Boolean,
+    serverUrl: String?,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    LazyVerticalGrid(
+        state = gridState,
+        modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
+        columns = GridCells.Adaptive(minSize = 96.dp),
+        contentPadding = contentPadding + PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
+        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+
+        when (artistsState) {
+            is DataState.Data -> items(
+                artistsState.data,
+                span = if (isRowMode) { { GridItemSpan(maxLineSpan) } } else null,
+            ) { artist ->
+                ArtistWithMenu(
+                    item = artist,
+                    rowMode = isRowMode,
+                    serverUrl = serverUrl,
+                    onNavigateClick = onNavigateClick,
+                    onPlayOption = onPlayChildClick,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = providerIconFetcher,
+                )
+            }
+
+            is DataState.Loading -> item(span = { GridItemSpan(maxLineSpan) }) {
+                InlineProgress()
+            }
+
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+private fun PlayablesTabContent(
+    playableItemsState: DataState<List<PlayableItem>>,
+    parentItem: AppMediaItem,
+    isRowMode: Boolean,
+    serverUrl: String?,
+    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    playlistActions: ActionsViewModel.PlaylistActions,
+    progressActions: ActionsViewModel.ProgressActions?,
+    onRemoveFromPlaylist: (String, Int) -> Unit,
+    libraryActions: ActionsViewModel.LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    LazyVerticalGrid(
+        state = gridState,
+        modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
+        columns = GridCells.Adaptive(minSize = 96.dp),
+        contentPadding = contentPadding + PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
+        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+
+        when (playableItemsState) {
+            is DataState.Data -> {
+                playableItemsState.data.forEachIndexed { index, track ->
+                    item(
+                        span = if (isRowMode) { { GridItemSpan(maxLineSpan) } } else null,
+                    ) {
+                        when (track) {
+                            is AppMediaItem.Track -> TrackWithMenu(
+                                item = track,
+                                serverUrl = serverUrl,
+                                rowMode = isRowMode,
+                                onPlayOption = onPlayChildClick,
+                                playlistActions = playlistActions,
+                                onRemoveFromPlaylist = if (parentItem is AppMediaItem.Playlist && parentItem.isEditable == true) {
+                                    { onRemoveFromPlaylist(parentItem.itemId, index) }
+                                } else null,
+                                libraryActions = libraryActions,
+                                providerIconFetcher = providerIconFetcher,
+                            )
+
+                            is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
+                                item = track,
+                                serverUrl = serverUrl,
+                                rowMode = isRowMode,
+                                onPlayOption = onPlayChildClick,
+                                playlistActions = null,
+                                libraryActions = libraryActions,
+                                progressActions = progressActions,
+                                providerIconFetcher = providerIconFetcher,
+                            )
+                        }
+                    }
+                }
+            }
+
+            is DataState.Loading -> item(span = { GridItemSpan(maxLineSpan) }) {
+                InlineProgress()
+            }
+
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+private fun ChaptersTabContent(
+    chapters: List<MediaItemChapter>,
+    onChapterClick: (Int) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    LazyVerticalGrid(
+        state = gridState,
+        modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
+        columns = GridCells.Adaptive(minSize = 96.dp),
+        contentPadding = contentPadding,
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
+        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+
+        chapters.forEach { chapter ->
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ChapterRow(
+                    chapter = chapter,
+                    onClick = { onChapterClick(chapter.position) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CenteredProgress() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun InlineProgress() {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun CenteredText(text: String, color: Color = Color.Unspecified) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = text, color = color)
     }
 }
 
