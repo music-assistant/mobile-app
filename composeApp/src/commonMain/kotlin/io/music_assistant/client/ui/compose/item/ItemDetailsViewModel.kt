@@ -10,6 +10,10 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
 import io.music_assistant.client.data.model.client.PlayableItem
+import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -37,7 +41,12 @@ class ItemDetailsViewModel(
         val albumsState: DataState<List<AppMediaItem.Album>>,
         val playableItemsState: DataState<List<PlayableItem>>,
         val artistsState: DataState<List<AppMediaItem.Artist>> = DataState.Loading(),
+        val albumsSortOption: SortOption? = null,
+        val playableItemsSortOption: SortOption? = null,
     )
+
+    private var rawAlbums: List<AppMediaItem.Album> = emptyList()
+    private var rawPlayableItems: List<PlayableItem> = emptyList()
 
     val serverUrl = apiClient.serverBaseUrl
 
@@ -167,38 +176,70 @@ class ItemDetailsViewModel(
     }
 
     private fun loadSubItems(item: AppMediaItem) {
-
         when (item) {
             is AppMediaItem.Artist -> {
+                _state.update {
+                    it.copy(
+                        albumsSortOption = settingsRepository.getSortOption(SubItemContext.ARTIST_ALBUMS),
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.ARTIST_TRACKS),
+                    )
+                }
                 loadArtistAlbums(item.itemId, item.provider)
                 loadArtistTracks(item.itemId, item.provider)
             }
 
             is AppMediaItem.Album -> {
-                _state.update { it.copy(albumsState = DataState.NoData()) }
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.ALBUM_TRACKS),
+                    )
+                }
                 loadAlbumTracks(item.itemId, item.provider)
             }
 
             is AppMediaItem.Playlist -> {
-                _state.update { it.copy(albumsState = DataState.NoData()) }
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PLAYLIST_TRACKS),
+                    )
+                }
                 loadPlaylistTracks(item.itemId, item.provider)
             }
 
             is AppMediaItem.Podcast -> {
-                _state.update { it.copy(albumsState = DataState.NoData()) }
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PODCAST_EPISODES),
+                    )
+                }
                 loadPodcastEpisodes(item.itemId, item.provider)
             }
 
             is AppMediaItem.Genre -> {
-                _state.update { it.copy(playableItemsState = DataState.NoData()) }
+                _state.update {
+                    it.copy(
+                        playableItemsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = null,
+                    )
+                }
                 loadGenreOverview(item.itemId, item.provider)
             }
 
             is AppMediaItem.Audiobook -> {
-                _state.update { it.copy(albumsState = DataState.NoData()) }
-                // Chapters come from the audiobook's metadata, not a separate API call
                 _state.update {
-                    it.copy(playableItemsState = DataState.NoData())
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsState = DataState.NoData(),
+                        playableItemsSortOption = null,
+                    )
                 }
             }
 
@@ -207,7 +248,9 @@ class ItemDetailsViewModel(
                     it.copy(
                         artistsState = DataState.NoData(),
                         albumsState = DataState.NoData(),
-                        playableItemsState = DataState.NoData()
+                        playableItemsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = null,
                     )
                 }
             }
@@ -230,7 +273,9 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<AppMediaItem.Album>()
                     ?: emptyList()
 
-                _state.update { it.copy(albumsState = DataState.Data(albums)) }
+                rawAlbums = albums
+                val sort = _state.value.albumsSortOption ?: SortConfig.defaultFor(SubItemContext.ARTIST_ALBUMS)
+                _state.update { it.copy(albumsState = DataState.Data(albums.clientSorted(sort))) }
             } catch (e: Exception) {
                 Logger.e("Failed to load artist albums", e)
                 _state.update { it.copy(albumsState = DataState.Error()) }
@@ -254,7 +299,9 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<AppMediaItem.Track>()
                     ?: emptyList()
 
-                _state.update { it.copy(playableItemsState = DataState.Data(tracks)) }
+                rawPlayableItems = tracks
+                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.ARTIST_TRACKS)
+                _state.update { it.copy(playableItemsState = DataState.Data(tracks.clientSorted(sort))) }
             } catch (e: Exception) {
                 Logger.e("Failed to load artist tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -278,7 +325,9 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<AppMediaItem.Track>()
                     ?: emptyList()
 
-                _state.update { it.copy(playableItemsState = DataState.Data(tracks)) }
+                rawPlayableItems = tracks
+                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.ALBUM_TRACKS)
+                _state.update { it.copy(playableItemsState = DataState.Data(tracks.clientSorted(sort))) }
             } catch (e: Exception) {
                 Logger.e("Failed to load album tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -302,7 +351,9 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<AppMediaItem.Track>()
                     ?: emptyList()
 
-                _state.update { it.copy(playableItemsState = DataState.Data(tracks)) }
+                rawPlayableItems = tracks
+                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.PLAYLIST_TRACKS)
+                _state.update { it.copy(playableItemsState = DataState.Data(tracks.clientSorted(sort))) }
             } catch (e: Exception) {
                 Logger.e("Failed to load playlist tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -326,7 +377,9 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<AppMediaItem.PodcastEpisode>()
                     ?: emptyList()
 
-                _state.update { it.copy(playableItemsState = DataState.Data(episodes)) }
+                rawPlayableItems = episodes
+                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.PODCAST_EPISODES)
+                _state.update { it.copy(playableItemsState = DataState.Data(episodes.clientSorted(sort))) }
             } catch (e: Exception) {
                 Logger.e("Failed to load podcast episodes", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -418,8 +471,27 @@ class ItemDetailsViewModel(
         }
     }
 
+    fun onAlbumsSortChanged(context: SubItemContext, sortOption: SortOption) {
+        settingsRepository.setSortOption(context, sortOption)
+        _state.update {
+            it.copy(
+                albumsSortOption = sortOption,
+                albumsState = DataState.Data(rawAlbums.clientSorted(sortOption)),
+            )
+        }
+    }
+
+    fun onPlayableItemsSortChanged(context: SubItemContext, sortOption: SortOption) {
+        settingsRepository.setSortOption(context, sortOption)
+        _state.update {
+            it.copy(
+                playableItemsSortOption = sortOption,
+                playableItemsState = DataState.Data(rawPlayableItems.clientSorted(sortOption)),
+            )
+        }
+    }
+
     fun reload() {
-        // Reload tracks
         (state.value.itemState as? DataState.Data)?.data?.let {
             loadSubItems(it)
         }
@@ -439,7 +511,6 @@ class ItemDetailsViewModel(
             _state.update { it.copy(artistsState = DataState.Data(updatedArtists)) }
         }
 
-        // Update albums list if this item is an album
         val albumsData = (_state.value.albumsState as? DataState.Data)?.data
         if (albumsData != null) {
             val updatedAlbums = albumsData.map { album ->
@@ -449,15 +520,28 @@ class ItemDetailsViewModel(
                     album
                 }
             }
+            rawAlbums = rawAlbums.map { album ->
+                if (album.itemId == serverItem.itemId) {
+                    serverItem.toAppMediaItem() as? AppMediaItem.Album ?: album
+                } else {
+                    album
+                }
+            }
             _state.update { it.copy(albumsState = DataState.Data(updatedAlbums)) }
         }
 
-        // Update tracks list if this item is a track
         val tracksData = (_state.value.playableItemsState as? DataState.Data)?.data
         if (tracksData != null) {
             val updatedTracks = tracksData.map { track ->
                 if (track.itemId == serverItem.itemId) {
                     serverItem.toAppMediaItem() as? AppMediaItem.Track ?: track
+                } else {
+                    track
+                }
+            }
+            rawPlayableItems = rawPlayableItems.map { track ->
+                if (track.itemId == serverItem.itemId) {
+                    serverItem.toAppMediaItem() as? PlayableItem ?: track
                 } else {
                     track
                 }

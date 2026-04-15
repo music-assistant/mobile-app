@@ -11,20 +11,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -62,6 +57,7 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.rememberToastState
@@ -496,52 +492,3 @@ private fun EmptyState() {
     }
 }
 
-@Composable
-private fun SortChip(
-    currentSort: SortOption,
-    availableFields: List<SortField>,
-    onSortChanged: (SortOption) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        FilterChip(
-            selected = true,
-            onClick = { expanded = true },
-            label = { Text(currentSort.field.displayName) },
-            trailingIcon = {
-                Icon(
-                    if (currentSort.descending) Icons.Default.ArrowDownward
-                    else Icons.Default.ArrowUpward,
-                    contentDescription = "Sort direction",
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            availableFields.forEach { field ->
-                DropdownMenuItem(
-                    text = { Text(field.displayName) },
-                    onClick = {
-                        expanded = false
-                        if (field == currentSort.field) {
-                            onSortChanged(SortOption(field, !currentSort.descending))
-                        } else {
-                            onSortChanged(SortOption(field))
-                        }
-                    },
-                    trailingIcon = if (field == currentSort.field) {
-                        {
-                            Icon(
-                                if (currentSort.descending) Icons.Default.ArrowUpward
-                                else Icons.Default.ArrowDownward,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    } else null
-                )
-            }
-        }
-    }
-}

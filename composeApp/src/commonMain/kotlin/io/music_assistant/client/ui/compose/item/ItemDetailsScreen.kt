@@ -32,10 +32,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortField
+import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.server.MediaItemChapter
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
@@ -104,7 +109,9 @@ fun ItemDetailsScreen(
         viewModel::onPlayClick,
         viewModel::toggleItemsRowMode,
         viewModel::onChapterClick,
-        viewModel::onPlayClick
+        viewModel::onPlayClick,
+        viewModel::onAlbumsSortChanged,
+        viewModel::onPlayableItemsSortChanged,
     )
 }
 
@@ -128,7 +135,9 @@ fun ItemDetails(
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
     onToggleViewMode: () -> Unit = {},
     onChapterClick: (Int) -> Unit = {},
-    onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit = { _, _, _ -> }
+    onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit = { _, _, _ -> },
+    onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
+    onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
 ) {
     val playlistActions = ActionsViewModel.PlaylistActions(
         onLoadPlaylists = geEditablePlaylists,
@@ -174,6 +183,8 @@ fun ItemDetails(
         providerIconFetcher = providerIconFetcher,
         onBack = onBack,
         onToggleViewMode = onToggleViewMode,
+        onAlbumsSortChanged = onAlbumsSortChanged,
+        onPlayableItemsSortChanged = onPlayableItemsSortChanged,
         contentPadding,
     )
 }
@@ -195,6 +206,8 @@ private fun ItemChildren(
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
+    onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
+    onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     contentPadding: PaddingValues,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -305,7 +318,12 @@ private fun ItemChildren(
                                 is DataState.Data -> {
                                     if (albumsState.data.isNotEmpty()) {
                                         item(span = { GridItemSpan(maxLineSpan) }) {
-                                            SectionHeader("Albums")
+                                            SectionHeader(
+                                                title = "Albums",
+                                                sortOption = state.albumsSortOption,
+                                                sortFields = SortConfig.fieldsFor(SubItemContext.ARTIST_ALBUMS),
+                                                onSortChanged = { onAlbumsSortChanged(SubItemContext.ARTIST_ALBUMS, it) },
+                                            )
                                         }
                                         items(
                                             albumsState.data,
@@ -366,12 +384,24 @@ private fun ItemChildren(
                         when (val tracksState = state.playableItemsState) {
                             is DataState.Data -> {
                                 if (tracksState.data.isNotEmpty()) {
+                                    val playableContext = when (item) {
+                                        is AppMediaItem.Artist -> SubItemContext.ARTIST_TRACKS
+                                        is AppMediaItem.Album -> SubItemContext.ALBUM_TRACKS
+                                        is AppMediaItem.Playlist -> SubItemContext.PLAYLIST_TRACKS
+                                        is AppMediaItem.Podcast -> SubItemContext.PODCAST_EPISODES
+                                        else -> null
+                                    }
                                     item(span = { GridItemSpan(maxLineSpan) }) {
                                         SectionHeader(
-                                            when (item) {
+                                            title = when (item) {
                                                 is AppMediaItem.Podcast -> "Episodes"
                                                 else -> "Tracks"
-                                            }
+                                            },
+                                            sortOption = state.playableItemsSortOption,
+                                            sortFields = playableContext?.let { SortConfig.fieldsFor(it) } ?: emptyList(),
+                                            onSortChanged = playableContext?.let { ctx ->
+                                                { opt: SortOption -> onPlayableItemsSortChanged(ctx, opt) }
+                                            },
                                         )
                                     }
                                     tracksState.data.forEachIndexed { index, track ->
@@ -454,16 +484,29 @@ private fun ItemChildren(
 }
 
 @Composable
-private fun SectionHeader(title: String) {
+private fun SectionHeader(
+    title: String,
+    sortOption: SortOption? = null,
+    sortFields: List<SortField> = emptyList(),
+    onSortChanged: ((SortOption) -> Unit)? = null,
+) {
     Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
         )
+        if (sortOption != null && onSortChanged != null && sortFields.isNotEmpty()) {
+            SortChip(
+                currentSort = sortOption,
+                availableFields = sortFields,
+                onSortChanged = onSortChanged,
+            )
+        }
     }
 }
 

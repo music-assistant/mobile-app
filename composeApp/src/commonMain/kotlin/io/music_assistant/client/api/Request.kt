@@ -282,10 +282,9 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
-            orderBy: String? = null,
         ) = Library.subItems(
             "music/podcasts/podcast_episodes",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
+            itemId, providerInstanceIdOrDomain, inLibraryOnly,
         )
     }
 
@@ -409,20 +408,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
-            orderBy: String? = null,
         ) = Library.subItems(
             "music/artists/artist_albums",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
+            itemId, providerInstanceIdOrDomain, inLibraryOnly,
         )
 
         fun getTracks(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
-            orderBy: String? = null,
         ) = Library.subItems(
             "music/artists/artist_tracks",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
+            itemId, providerInstanceIdOrDomain, inLibraryOnly,
         )
     }
 
@@ -454,10 +451,9 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
-            orderBy: String? = null,
         ) = Library.subItems(
             "music/albums/album_tracks",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly, orderBy
+            itemId, providerInstanceIdOrDomain, inLibraryOnly
         )
     }
 
@@ -596,14 +592,12 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             inLibraryOnly: Boolean = false,
-            orderBy: String? = null,
         ) = Request(
             command = command,
             args = buildJsonObject {
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
                 put("in_library_only", JsonPrimitive(inLibraryOnly))
-                orderBy?.let { put("order_by", JsonPrimitive(it)) }
             }
         )
     }

@@ -22,6 +22,7 @@ object AppMediaItemFixtures {
             uri = null,
             image = null,
             version = version,
+            year = null,
             artists = listOf(artist)
         )
     }

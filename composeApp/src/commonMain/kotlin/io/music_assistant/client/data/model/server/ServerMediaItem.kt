@@ -22,7 +22,7 @@ data class ServerMediaItem(
     @SerialName("metadata") val metadata: Metadata? = null,
     @SerialName("favorite") val favorite: Boolean? = null,
     @SerialName("media_type") val mediaType: MediaType,
-    //@SerialName("sort_name") val sortName: String? = null,
+    @SerialName("sort_name") val sortName: String? = null,
     @SerialName("uri") val uri: String? = null,
     @SerialName("image") val image: MediaItemImage? = null,
     //@SerialName("is_playable") val isPlayable: Boolean? = null,
@@ -34,7 +34,7 @@ data class ServerMediaItem(
     @SerialName("version") val version: String? = null,
     //@SerialName("external_ids") val externalIds: List<List<String>>? = null,
     //@SerialName("position") val position: Int? = null,
-    //@SerialName("year") val year: Int? = null,
+    @SerialName("year") val year: Int? = null,
     @SerialName("artists") val artists: List<ServerMediaItem>? = null,
     //@SerialName("album_type") val albumType: AlbumType? = null,
     // Playlist only
