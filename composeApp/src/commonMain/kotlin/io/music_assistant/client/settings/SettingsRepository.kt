@@ -2,6 +2,7 @@ package io.music_assistant.client.settings
 
 import com.russhwolf.settings.Settings
 import io.music_assistant.client.api.ConnectionInfo
+import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
@@ -301,6 +302,16 @@ class SettingsRepository(
 
     fun setSortOption(mediaType: MediaType, option: SortOption) {
         settings.putString("sort_${mediaType.name}", "${option.field.name}:${option.descending}")
+    }
+
+    fun getSortOption(context: SubItemContext): SortOption {
+        val raw = settings.getStringOrNull("sort_sub_${context.name}")
+            ?: return SortConfig.defaultFor(context)
+        return parseSortOption(raw) ?: SortConfig.defaultFor(context)
+    }
+
+    fun setSortOption(context: SubItemContext, option: SortOption) {
+        settings.putString("sort_sub_${context.name}", "${option.field.name}:${option.descending}")
     }
 
     private fun parseSortOption(raw: String): SortOption? {

@@ -12,6 +12,7 @@ enum class SortField(val serverKey: String, val displayName: String) {
     YEAR("year", "Year"),
     POSITION("position", "Position"),
     ARTIST_NAME("artist_name", "Artist"),
+    RELEASE_DATE("release_date", "Release date"),
 }
 
 data class SortOption(
@@ -38,4 +39,50 @@ object SortConfig {
         MediaType.PODCAST -> SortOption(SortField.DATE_ADDED, descending = true)
         else -> SortOption(SortField.NAME)
     }
+
+    fun fieldsFor(context: SubItemContext): List<SortField> = when (context) {
+        SubItemContext.ARTIST_ALBUMS -> listOf(SortField.NAME, SortField.YEAR)
+        SubItemContext.ARTIST_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
+        SubItemContext.ALBUM_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
+        SubItemContext.PLAYLIST_TRACKS -> listOf(SortField.NAME, SortField.ARTIST_NAME, SortField.DURATION)
+        SubItemContext.PODCAST_EPISODES -> listOf(SortField.NAME, SortField.RELEASE_DATE, SortField.DURATION)
+    }
+
+    fun defaultFor(context: SubItemContext): SortOption = when (context) {
+        SubItemContext.ARTIST_ALBUMS -> SortOption(SortField.YEAR, descending = true)
+        SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
+        else -> SortOption(SortField.NAME)
+    }
+}
+
+enum class SubItemContext {
+    ARTIST_ALBUMS,
+    ARTIST_TRACKS,
+    ALBUM_TRACKS,
+    PLAYLIST_TRACKS,
+    PODCAST_EPISODES;
+}
+
+fun <T> List<T>.clientSorted(option: SortOption): List<T> {
+    val comparator: Comparator<T> = when (option.field) {
+        SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) {
+            (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.name
+                ?: (it as? PlayableItem)?.name ?: ""
+        }
+        SortField.DURATION -> compareBy { (it as? PlayableItem)?.duration ?: 0.0 }
+        SortField.YEAR -> compareBy { (it as? AppMediaItem.Album)?.year ?: 0 }
+        SortField.RELEASE_DATE -> compareBy(String.CASE_INSENSITIVE_ORDER) {
+            (it as? AppMediaItem.PodcastEpisode)?.releaseDate ?: ""
+        }
+        SortField.ARTIST_NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) {
+            (it as? AppMediaItem.Track)?.artists?.firstOrNull()?.name
+                ?: (it as? AppMediaItem.Album)?.artists?.firstOrNull()?.name
+                ?: ""
+        }
+        else -> compareBy(String.CASE_INSENSITIVE_ORDER) {
+            (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.name
+                ?: (it as? PlayableItem)?.name ?: ""
+        }
+    }
+    return if (option.descending) sortedWith(comparator.reversed()) else sortedWith(comparator)
 }
