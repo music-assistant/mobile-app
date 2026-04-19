@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Music Assistant</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,9 +21,23 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
+	<key>INIntentsSupported</key>
+	<array>
+		<string>INPlayMediaIntent</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Music Assistant does not access the camera. This description is required because an included framework (WebRTC) references camera APIs that this app does not use.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Music Assistant connects to your Music Assistant server on your local network to browse and play your music library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Music Assistant does not access the microphone. This description is required because an included framework (WebRTC) references microphone APIs that this app does not use.</string>
+	<key>NSSiriUsageDescription</key>
+	<string>Search and play music using Siri</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -44,12 +60,6 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
-	</array>
-	<key>NSSiriUsageDescription</key>
-	<string>Search and play music using Siri</string>
-	<key>INIntentsSupported</key>
-	<array>
-		<string>INPlayMediaIntent</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

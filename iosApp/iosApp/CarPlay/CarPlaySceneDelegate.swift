@@ -182,7 +182,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             var sections: [CPListSection] = [browseSection]
 
             for folder in folders {
-                let folderItems = ((folder.items as? [AppMediaItem]) ?? []).filter { $0.uri != nil }
+                let folderItems = (folder.items ?? []).filter { $0.uri != nil }
                 guard !folderItems.isEmpty else { continue }
 
                 let displayItems = Array(folderItems.prefix(maxImages))
@@ -218,116 +218,40 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     // MARK: - Navigation Helpers
 
     private func pushBrowseGrid() {
-        // Use 100x100 for grid button images
         let imageSize = CGSize(width: 100, height: 100)
-        let buttons = Self.categoryIcons.enumerated().map { (index, icon) -> CPGridButton in
+        let manager = CarPlayContentManager.shared
+        let categories: [(title: String, fetcher: (@escaping ([CPListItem]) -> Void) -> Void)] = [
+            ("Artists",    manager.fetchArtists),
+            ("Albums",     manager.fetchAlbums),
+            ("Tracks",     manager.fetchTracks),
+            ("Playlists",  manager.fetchPlaylists),
+            ("Audiobooks", manager.fetchAudiobooks),
+            ("Podcasts",   manager.fetchPodcasts),
+            ("Radio",      manager.fetchRadioStations),
+        ]
+        let buttons = zip(Self.categoryIcons, categories).map { icon, category -> CPGridButton in
             let image = Self.dynamicCategoryImage(symbol: icon.symbol, size: imageSize)
             return CPGridButton(titleVariants: [icon.name], image: image) { [weak self] _ in
-                guard let self = self else { return }
-                switch index {
-                case 0: self.pushArtistsTemplate()
-                case 1: self.pushAlbumsTemplate()
-                case 2: self.pushTracksTemplate()
-                case 3: self.pushPlaylistsTemplate()
-                case 4: self.pushAudiobooksTemplate()
-                case 5: self.pushPodcastsTemplate()
-                case 6: self.pushRadioTemplate()
-                default: break
-                }
+                self?.pushCategoryTemplate(title: category.title, fetcher: category.fetcher)
             }
         }
         let gridTemplate = CPGridTemplate(title: "Browse", gridButtons: buttons)
         self.interfaceController?.pushTemplate(gridTemplate, animated: true, completion: nil)
     }
 
-    private func pushPlaylistsTemplate() {
-        let listTemplate = CPListTemplate(title: "Playlists", sections: [])
+    private func pushCategoryTemplate(
+        title: String,
+        fetcher: (@escaping ([CPListItem]) -> Void) -> Void
+    ) {
+        let template = CPListTemplate(title: title, sections: [])
         let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
+        template.updateSections([CPListSection(items: [loadingItem])])
 
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
+        self.interfaceController?.pushTemplate(template, animated: true, completion: nil)
 
-        CarPlayContentManager.shared.fetchPlaylists { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
-        }
-    }
-
-    private func pushAlbumsTemplate() {
-        let listTemplate = CPListTemplate(title: "Albums", sections: [])
-        let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
-
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
-
-        CarPlayContentManager.shared.fetchAlbums { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
-        }
-    }
-
-    private func pushArtistsTemplate() {
-        let listTemplate = CPListTemplate(title: "Artists", sections: [])
-        let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
-
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
-
-        CarPlayContentManager.shared.fetchArtists { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
-        }
-    }
-
-    private func pushTracksTemplate() {
-        let listTemplate = CPListTemplate(title: "Tracks", sections: [])
-        let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
-
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
-
-        CarPlayContentManager.shared.fetchTracks { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
-        }
-    }
-
-    private func pushPodcastsTemplate() {
-        let listTemplate = CPListTemplate(title: "Podcasts", sections: [])
-        let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
-
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
-
-        CarPlayContentManager.shared.fetchPodcasts { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
-        }
-    }
-
-    private func pushAudiobooksTemplate() {
-        let listTemplate = CPListTemplate(title: "Audiobooks", sections: [])
-        let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
-
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
-
-        CarPlayContentManager.shared.fetchAudiobooks { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
-        }
-    }
-
-    private func pushRadioTemplate() {
-        let listTemplate = CPListTemplate(title: "Radio", sections: [])
-        let loadingItem = CPListItem(text: "Loading...", detailText: nil)
-        listTemplate.updateSections([CPListSection(items: [loadingItem])])
-
-        self.interfaceController?.pushTemplate(listTemplate, animated: true, completion: nil)
-
-        CarPlayContentManager.shared.fetchRadioStations { items in
-            self.attachHandlers(to: items)
-            listTemplate.updateSections([CPListSection(items: items)])
+        fetcher { [weak self] items in
+            self?.attachHandlers(to: items)
+            template.updateSections([CPListSection(items: items)])
         }
     }
 

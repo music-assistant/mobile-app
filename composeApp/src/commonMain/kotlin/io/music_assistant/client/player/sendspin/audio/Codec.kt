@@ -17,9 +17,9 @@ enum class Codec(
     }
 }
 
-object Codecs {
-    val default = Codec.OPUS
-    val list: List<Codec> = listOf(Codec.OPUS, Codec.FLAC, Codec.PCM)
+expect object Codecs {
+    val default: Codec
+    val list: List<Codec>
 }
 
 fun codecByName(name: String): Codec? =

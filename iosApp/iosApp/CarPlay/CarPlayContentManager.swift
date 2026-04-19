@@ -37,45 +37,11 @@ class CarPlayImageLoader {
 class CarPlayContentManager {
     static let shared = CarPlayContentManager()
 
-    private let dataSource = KmpHelper.shared.mainDataSource
-    private let apiClient = KmpHelper.shared.serviceClient
-    
     // MARK: - API Calls
-    
-    /// Fetch Recommendations (Recently Played / Home)
+
     func fetchRecommendations(completion: @escaping ([CPListItem]) -> Void) {
-        // iOS KMP interop: access Flow via suspend function or callbacks wrapper
-        // For simplicity in this plan, accessing request directly
-        
-        let request = Request.Library.shared.recommendations()
-        
-        apiClient.sendRequest(request: request) { result, error in
-            guard let result = result else {
-                print("CP: Error fetching recommendations: \(String(describing: error))")
-                completion([])
-                return
-            }
-            
-            // Parse result to [ServerMediaItem] -> [AppMediaItem] -> [CPListItem]
-            // This requires some manual bridging if not using KMP flow helpers
-            
-            // NOTE: In a full implementation we would use a proper KMP-Swift Flow collector
-            // But for "Build Now", we use the callback approach
-            
-            // Assuming result can be cast/parsed.
-            // Since `sendRequest` returns generic Result, we need to handle parsing.
-            
-            // Strategy: Use a helper on Kotlin side?
-            // Or assume KMP generates ObjC generics properly?
-            
-            // Let's assume we get a list of objects we can map
-            // Realistically, direct mapping from `Any?` in Swift is hard.
-            // Better approach: Use KmpHelper to expose specific methods for Swift
-            
-            KmpHelper.shared.fetchRecommendations { items in
-                let cpItems = items.compactMap { self.mapToCPListItem($0) }
-                completion(cpItems)
-            }
+        KmpHelper.shared.fetchRecommendations { items in
+            completion(items.compactMap { self.mapToCPListItem($0) })
         }
     }
     
@@ -134,13 +100,8 @@ class CarPlayContentManager {
     }
     
     // MARK: - Action Handling
-    
+
     func playItem(_ item: AppMediaItem) {
-        // Trigger play via DataSource
-        // We'll need to know which player is selected
-        // For now, use the first available or last selected
-        
-        // This functionality needs KMP exposure too
         KmpHelper.shared.playMediaItem(item: item)
     }
     

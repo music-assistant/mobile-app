@@ -15,11 +15,11 @@
 		C85119282F18C7A900185678 /* Opus in Frameworks */ = {isa = PBXBuildFile; productRef = C85119272F18C7A900185678 /* Opus */; };
 		C851192B2F18C88B00185678 /* FLAC in Frameworks */ = {isa = PBXBuildFile; productRef = C851192A2F18C88B00185678 /* FLAC */; };
 		C851192E2F18C8A200185678 /* ogg in Frameworks */ = {isa = PBXBuildFile; productRef = C851192D2F18C8A200185678 /* ogg */; };
+		C8CP00012F1A000000000001 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */; };
+		C8CP00022F1A000000000002 /* CarPlayContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00042F1A000000000002 /* CarPlayContentManager.swift */; };
 		C8FCC1922F17C6A9005E8312 /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1912F17C6A9005E8312 /* NowPlayingManager.swift */; };
 		C8FCC1952F17E001005E8312 /* NativeAudioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1962F17E001005E8312 /* NativeAudioController.swift */; };
 		C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1982F17E001005E8312 /* AudioDecoders.swift */; };
-		C8CP00012F1A000000000001 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */; };
-		C8CP00022F1A000000000002 /* CarPlayContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00042F1A000000000002 /* CarPlayContentManager.swift */; };
 		C8SI00012F1B000000000001 /* SiriIntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8SI00022F1B000000000001 /* SiriIntentHandler.swift */; };
 /* End PBXBuildFile section */
 
@@ -31,11 +31,11 @@
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AB3632DC29227652001CCB65 /* Config.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
+		C8CP00042F1A000000000002 /* CarPlayContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayContentManager.swift; sourceTree = "<group>"; };
 		C8FCC1912F17C6A9005E8312 /* NowPlayingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingManager.swift; sourceTree = "<group>"; };
 		C8FCC1962F17E001005E8312 /* NativeAudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAudioController.swift; sourceTree = "<group>"; };
 		C8FCC1982F17E001005E8312 /* AudioDecoders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoders.swift; sourceTree = "<group>"; };
-		C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
-		C8CP00042F1A000000000002 /* CarPlayContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayContentManager.swift; sourceTree = "<group>"; };
 		C8SI00022F1B000000000001 /* SiriIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriIntentHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -103,6 +103,14 @@
 			path = iosApp;
 			sourceTree = "<group>";
 		};
+		AB1DB47929225F7C00F7AF9C /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				AB3632DC29227652001CCB65 /* Config.xcconfig */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
 		C8CP00052F1A000000000003 /* CarPlay */ = {
 			isa = PBXGroup;
 			children = (
@@ -111,14 +119,6 @@
 				C8SI00022F1B000000000001 /* SiriIntentHandler.swift */,
 			);
 			path = CarPlay;
-			sourceTree = "<group>";
-		};
-		AB1DB47929225F7C00F7AF9C /* Configuration */ = {
-			isa = PBXGroup;
-			children = (
-				AB3632DC29227652001CCB65 /* Config.xcconfig */,
-			);
-			path = Configuration;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -156,7 +156,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 1130;
-				LastUpgradeCheck = 1540;
+				LastUpgradeCheck = 2640;
 				ORGANIZATIONNAME = orgName;
 				TargetAttributes = {
 					7555FF7A242A565900829871 = {
@@ -202,6 +202,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		F36B1CEB2AD83DDC00CB74D5 /* Compile Kotlin Framework */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -275,6 +276,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "$(TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -297,6 +299,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -338,6 +341,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "$(TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -353,6 +357,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -367,7 +372,6 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = "$(TEAM_ID)";
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -395,7 +399,6 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = "$(TEAM_ID)";
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
