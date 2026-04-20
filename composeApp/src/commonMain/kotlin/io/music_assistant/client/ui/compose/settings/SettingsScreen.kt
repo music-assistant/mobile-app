@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -193,8 +194,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
                 when (sessionState) {
                     is SessionState.Disconnected -> {
-                        // State 1 & 2: Disconnected (with or without token)
-                        // Show connection method tabs
+                        AboutSection()
                         ConnectionMethodTabs(
                             viewModel = viewModel,
                             ipAddress = ipAddress,
@@ -341,6 +341,27 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(bottom = 12.dp)
     )
+}
+
+@Composable
+private fun AboutSection() {
+    val uriHandler = LocalUriHandler.current
+    SectionCard {
+        Text(
+            text = "Music Assistant is a free, open-source, self-hosted music server. " +
+                    "Connect to your server below to browse your library and control " +
+                    "playback throughout your home.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.size(4.dp))
+        Text(
+            text = "Learn more at music-assistant.io →",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.io") },
+        )
+    }
 }
 
 @Composable
