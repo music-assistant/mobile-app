@@ -2,6 +2,7 @@ package io.music_assistant.client.di
 
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
@@ -21,6 +22,7 @@ import org.koin.core.component.inject
 object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
+    val authManager: AuthenticationManager by inject()
     
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
