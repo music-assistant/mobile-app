@@ -275,6 +275,11 @@ class MainDataSource(
                                                 DataState.Data(currentState.data)
                                             }
 
+                                            // Refresh queue items for the selected player.
+                                            // selectedPlayerIndex won't re-emit (same value),
+                                            // so the collector at line ~582 won't fire.
+                                            refreshSelectedPlayerQueueItems()
+
                                             // CRITICAL: Re-authenticate the server session
                                             // New WebSocket connection needs auth command sent
                                             launch {
@@ -342,6 +347,7 @@ class MainDataSource(
                                     log.w { "Connected while already in Data state - refreshing anyway" }
                                     updateProvidersManifests()
                                     updatePlayersAndQueues()
+                                    refreshSelectedPlayerQueueItems()
                                     // Safety net: reinit Sendspin if it's not already connected
                                     sendspinClientFactory.onFreshWebRTCConnection()
                                     launch { initSendspinIfEnabled() }
@@ -646,7 +652,6 @@ class MainDataSource(
                     val trackedElapsed = queues.find {
                         it.id == player.queueId || it.id == localPlayerId
                     }?.elapsedTime
-                    Logger.e("Elapsed: $trackedElapsed, Repo: ${localData.queueInfo?.elapsedTime}")
                     val withPosition = trackedElapsed?.let {
                         (localData.queue as? DataState.Data)?.let { qd ->
                             localData.copy(
@@ -1562,6 +1567,23 @@ class MainDataSource(
                     }
                     _providersIcons.update { map }
                 }
+        }
+    }
+
+    /**
+     * Refresh queue items for the currently selected player.
+     * Used after reconnection when selectedPlayerIndex doesn't re-emit
+     * (same index value before and after reconnect).
+     */
+    private fun refreshSelectedPlayerQueueItems() {
+        val players = when (val pd = _playersData.value) {
+            is DataState.Data -> pd.data
+            is DataState.Stale -> pd.data
+            else -> return
+        }
+        _selectedPlayerId.value?.let { selectedId ->
+            players.firstOrNull { it.playerId == selectedId }
+                ?.let { refreshPlayerQueueItems(it) }
         }
     }
 

@@ -177,7 +177,7 @@ fun FullPlayerItem(
     dominantColor: Color,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happeningÏ
+    onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
 ) {
     val track = item.queueInfo?.currentItem?.track
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -360,7 +360,8 @@ fun FullPlayerItem(
             ) {
                 Text(
                     text = sliderPosition.takeIf { track != null }
-                        .formatDuration(DurationUnit.SECONDS).takeIf { duration != null } ?: "",
+                        .formatDuration(DurationUnit.SECONDS)
+                        .takeIf { duration != null } ?: "",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
