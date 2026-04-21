@@ -33,7 +33,7 @@ data class ServerMediaItem(
     // Album
     @SerialName("version") val version: String? = null,
     //@SerialName("external_ids") val externalIds: List<List<String>>? = null,
-    //@SerialName("position") val position: Int? = null,
+    @SerialName("position") val position: Int? = null,
     @SerialName("year") val year: Int? = null,
     @SerialName("artists") val artists: List<ServerMediaItem>? = null,
     //@SerialName("album_type") val albumType: AlbumType? = null,
@@ -45,8 +45,8 @@ data class ServerMediaItem(
     //@SerialName("isrc") val isrc: String? = null,
     // album track only
     @SerialName("album") val album: ServerMediaItem? = null,
-    //@SerialName("disc_number") val discNumber: Int? = null,
-    //@SerialName("track_number") val trackNumber: Int? = null,
+    @SerialName("disc_number") val discNumber: Int? = null,
+    @SerialName("track_number") val trackNumber: Int? = null,
     // podcast episode only
     @SerialName("podcast") val podcast: ServerMediaItem? = null,
     // Audiobook only

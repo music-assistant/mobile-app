@@ -3,6 +3,7 @@ package io.music_assistant.client.data.model.client
 import io.music_assistant.client.data.model.server.MediaType
 
 enum class SortField(val serverKey: String, val displayName: String) {
+    ORIGINAL("original", "Original"),
     NAME("sort_name", "Name"),
     DURATION("duration", "Duration"),
     DATE_ADDED("timestamp_added", "Date added"),
@@ -43,13 +44,15 @@ object SortConfig {
     fun fieldsFor(context: SubItemContext): List<SortField> = when (context) {
         SubItemContext.ARTIST_ALBUMS -> listOf(SortField.NAME, SortField.YEAR)
         SubItemContext.ARTIST_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
-        SubItemContext.ALBUM_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
-        SubItemContext.PLAYLIST_TRACKS -> listOf(SortField.NAME, SortField.ARTIST_NAME, SortField.DURATION)
+        SubItemContext.ALBUM_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
+        SubItemContext.PLAYLIST_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.ARTIST_NAME, SortField.DURATION)
         SubItemContext.PODCAST_EPISODES -> listOf(SortField.NAME, SortField.RELEASE_DATE, SortField.DURATION)
     }
 
     fun defaultFor(context: SubItemContext): SortOption = when (context) {
         SubItemContext.ARTIST_ALBUMS -> SortOption(SortField.YEAR, descending = true)
+        SubItemContext.ALBUM_TRACKS -> SortOption(SortField.ORIGINAL)
+        SubItemContext.PLAYLIST_TRACKS -> SortOption(SortField.ORIGINAL)
         SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
         else -> SortOption(SortField.NAME)
     }
@@ -65,6 +68,11 @@ enum class SubItemContext {
 
 fun <T> List<T>.clientSorted(option: SortOption): List<T> {
     val comparator: Comparator<T> = when (option.field) {
+        SortField.ORIGINAL -> compareBy<T, Int?>(nullsLast()) {
+            (it as? AppMediaItem.Track)?.discNumber
+        }.thenBy(nullsLast()) {
+            (it as? AppMediaItem.Track)?.trackNumber
+        }
         SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) {
             (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.name
                 ?: (it as? PlayableItem)?.name ?: ""

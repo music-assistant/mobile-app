@@ -61,6 +61,8 @@ object AppMediaItemFixtures {
                 duration = null,
                 artists = trackArtists,
                 album = trackAlbum,
+                discNumber = null,
+                trackNumber = null,
             )
         }
     }

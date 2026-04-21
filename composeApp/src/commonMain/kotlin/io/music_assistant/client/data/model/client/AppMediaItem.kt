@@ -252,10 +252,10 @@ abstract class AppMediaItem(
         val artists: List<Artist>?,
 // album track only
         val album: Album?,
-//        val discNumber: Int?,
-//        val trackNumber: Int?,
+        val discNumber: Int?,
+        val trackNumber: Int?,
 // playlist track only
-//        val position: Int?,
+        val position: Int?,
     ) : AppMediaItem(
         itemId = itemId,
         provider = provider,
@@ -513,9 +513,9 @@ abstract class AppMediaItem(
 //                    isrc = isrc,
                     artists = artists?.mapNotNull { it.toAppMediaItem() as? Artist },
                     album = album?.let { it.toAppMediaItem() as? Album },
-//                    discNumber = discNumber,
-//                    trackNumber = trackNumber,
-//                    position = position,
+                    discNumber = discNumber,
+                    trackNumber = trackNumber,
+                    position = position,
                 )
 
                 MediaType.PLAYLIST -> Playlist(

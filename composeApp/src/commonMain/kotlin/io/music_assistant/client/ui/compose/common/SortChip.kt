@@ -33,14 +33,16 @@ fun SortChip(
             selected = true,
             onClick = { expanded = true },
             label = { Text(currentSort.field.displayName) },
-            trailingIcon = {
-                Icon(
-                    if (currentSort.descending) Icons.Default.ArrowDownward
-                    else Icons.Default.ArrowUpward,
-                    contentDescription = "Sort direction",
-                    modifier = Modifier.size(16.dp),
-                )
-            }
+            trailingIcon = if (currentSort.field != SortField.ORIGINAL) {
+                {
+                    Icon(
+                        if (currentSort.descending) Icons.Default.ArrowDownward
+                        else Icons.Default.ArrowUpward,
+                        contentDescription = "Sort direction",
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            } else null
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             availableFields.forEach { field ->
@@ -48,13 +50,15 @@ fun SortChip(
                     text = { Text(field.displayName) },
                     onClick = {
                         expanded = false
-                        if (field == currentSort.field) {
+                        if (field == SortField.ORIGINAL) {
+                            onSortChanged(SortOption(field))
+                        } else if (field == currentSort.field) {
                             onSortChanged(SortOption(field, !currentSort.descending))
                         } else {
                             onSortChanged(SortOption(field))
                         }
                     },
-                    trailingIcon = if (field == currentSort.field) {
+                    trailingIcon = if (field == currentSort.field && field != SortField.ORIGINAL) {
                         {
                             Icon(
                                 if (currentSort.descending) Icons.Default.ArrowUpward
