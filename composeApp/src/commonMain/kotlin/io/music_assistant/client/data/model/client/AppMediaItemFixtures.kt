@@ -63,6 +63,7 @@ object AppMediaItemFixtures {
                 album = trackAlbum,
                 discNumber = null,
                 trackNumber = null,
+                position = null,
             )
         }
     }
