@@ -6,10 +6,9 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
-import io.music_assistant.client.support.pages.ConnectPage
+import io.music_assistant.client.support.launchApp
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.rules.createTestRuleChain
-import io.music_assistant.client.ui.compose.App
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,11 +33,7 @@ class SmokeTest {
         val album2 = AppMediaItemFixtures.album()
         serviceClient.addToLibrary(album1, album2)
 
-        composeTestRule.setContent {
-            App()
-        }
-
-        ConnectPage(composeTestRule)
+        launchApp(composeTestRule)
             .connect()
             .login(serviceClient.username, serviceClient.password)
             .assertMediaDisplayed(album1.name)

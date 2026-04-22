@@ -6,6 +6,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
+import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ConnectPage
 import io.music_assistant.client.support.pages.MedaItemPage
 import io.music_assistant.client.support.pages.clickHome
@@ -35,13 +36,7 @@ class SearchTest {
         val album = AppMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
         serviceClient.addToLibrary(album)
 
-        composeTestRule.setContent {
-            App()
-        }
-
-        ConnectPage(composeTestRule)
-            .connect()
-            .login(serviceClient.username, serviceClient.password)
+        launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
             .search("onion")
             .assertResult(album.name)
