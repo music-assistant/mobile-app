@@ -59,4 +59,17 @@ class LibraryTest {
             .clickHome(MedaItemPage(album1.name, "Home", composeTestRule))
             .clickLibrary(MedaItemPage(album2.name, "Library", composeTestRule))
     }
+
+    @Test
+    fun `clicking library while on it clears backstack`() {
+        val album = AppMediaItemFixtures.album()
+        serviceClient.addToLibrary(album)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickAlbums()
+            .clickOnMedia(album.name)
+
+            .clickLibrary()
+    }
 }

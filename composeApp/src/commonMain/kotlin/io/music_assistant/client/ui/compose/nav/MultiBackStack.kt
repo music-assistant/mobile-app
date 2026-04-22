@@ -24,6 +24,18 @@ class MultiBackStack(private val backStacks: List<NavBackStack<NavKey>>) {
 
     var currentBackStack by mutableStateOf(0)
 
+    private val originalItems = backStacks.map { it.toList() }
+
+    /**
+     * Clear the current back stack and reset it back to its original state
+     */
+    fun resetCurrentBackStack() {
+        backStacks[currentBackStack].apply {
+            clear()
+            addAll(originalItems[currentBackStack])
+        }
+    }
+
     fun add(element: NavKey) {
         backStacks[currentBackStack].add(element)
     }

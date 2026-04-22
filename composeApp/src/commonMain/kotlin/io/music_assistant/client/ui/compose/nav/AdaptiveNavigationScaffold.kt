@@ -87,8 +87,14 @@ fun MultiBackStack.createNavigationItem(
     label: String? = null
 ): NavigationItem {
     return NavigationItem(
-        selected = this.currentBackStack == backStack,
-        onClick = { this.currentBackStack = backStack },
+        selected = currentBackStack == backStack,
+        onClick = {
+            if (this.currentBackStack == backStack) {
+                resetCurrentBackStack()
+            } else {
+                currentBackStack = backStack
+            }
+        },
         icon = icon,
         label = label
     )
