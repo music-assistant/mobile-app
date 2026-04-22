@@ -1,4 +1,4 @@
-package io.music_assistant.client.support.koin
+package io.music_assistant.client.support.rules
 
 import androidx.test.core.app.ApplicationProvider
 import io.music_assistant.client.di.androidModule

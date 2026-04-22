@@ -6,8 +6,8 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
-import io.music_assistant.client.support.koin.createKoinTestRule
 import io.music_assistant.client.support.pages.ConnectPage
+import io.music_assistant.client.support.rules.createTestRuleChain
 import io.music_assistant.client.ui.compose.App
 import org.junit.Rule
 import org.junit.Test
@@ -20,10 +20,10 @@ import org.robolectric.annotation.Config
 class SmokeTest {
 
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val testRuleChain = createTestRuleChain()
 
     @get:Rule
-    val koinTestRule = createKoinTestRule()
+    val composeTestRule = createComposeRule()
 
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
