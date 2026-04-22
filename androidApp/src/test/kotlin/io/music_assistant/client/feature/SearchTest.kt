@@ -7,12 +7,10 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.launchLoggedInApp
-import io.music_assistant.client.support.pages.ConnectPage
 import io.music_assistant.client.support.pages.MedaItemPage
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.rules.createTestRuleChain
-import io.music_assistant.client.ui.compose.App
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

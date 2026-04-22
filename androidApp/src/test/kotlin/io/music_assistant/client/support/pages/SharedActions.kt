@@ -49,6 +49,11 @@ fun ComposePage.clickLibrary(): LibraryPage {
     return LibraryPage("Artists", composeTestRule).assertOnPage()
 }
 
+fun <T : Page> ComposePage.clickLibrary(destination: T): T {
+    clickNavBarItem("Library")
+    return destination.assertOnPage()
+}
+
 fun <T : ComposePage> T.assertMediaDisplayed(name: String): T {
     composeTestRule.onNodeWithText(name).assertIsDisplayed()
     return this

@@ -15,4 +15,8 @@ class LibraryPage(private val type: String, composeTestRule: ComposeTestRule) : 
         composeTestRule.onNode(isTab("Albums")).performClick()
         return LibraryPage("Albums", composeTestRule).assertOnPage()
     }
+
+    fun clickOnMedia(name: String): MedaItemPage {
+        return clickOnMedia(name, "Library")
+    }
 }
