@@ -8,6 +8,7 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertMediaDisplayed
+import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -34,7 +35,8 @@ class LibraryTest {
         serviceClient.addToLibrary(album1, album2)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickOnAlbums()
+            .clickLibrary()
+            .clickAlbums()
             .assertMediaDisplayed(album1.name)
             .assertMediaDisplayed(album2.name)
     }

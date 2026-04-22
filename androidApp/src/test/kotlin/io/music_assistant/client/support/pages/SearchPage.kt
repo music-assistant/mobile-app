@@ -8,7 +8,7 @@ import androidx.compose.ui.test.performTextInput
 class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
         composeTestRule.onNodeWithText("Start searching...").assertIsDisplayed()
-        assertNavBar(items = listOf("Home", "Search", "Settings"), selected = "Search")
+        assertNavBar(items = listOf("Home", "Library", "Search", "Settings"), selected = "Search")
     }
 
     fun search(query: String): SearchPage {
