@@ -106,4 +106,5 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.robolectric)
     testImplementation(libs.ktor.client.json)
+    testImplementation(libs.koin.test)
 }
