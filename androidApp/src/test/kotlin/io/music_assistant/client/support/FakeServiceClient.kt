@@ -97,6 +97,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
+            Request.Album.listLibrary().command -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = albums.toServerMediaItems()
+                    )
+                )
+            }
+
             else -> {
                 Result.failure(UnsupportedOperationException())
             }

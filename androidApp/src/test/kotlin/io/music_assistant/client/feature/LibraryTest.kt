@@ -6,10 +6,9 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
-import io.music_assistant.client.support.pages.ConnectPage
+import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.rules.createTestRuleChain
-import io.music_assistant.client.ui.compose.App
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,7 +17,7 @@ import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = Qualifiers.MEDIUM_PHONE)
-class SmokeTest {
+class LibraryTest {
 
     @get:Rule
     val testRuleChain = createTestRuleChain()
@@ -29,18 +28,13 @@ class SmokeTest {
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
-    fun `can connect and login to server`() {
+    fun `can browse albums`() {
         val album1 = AppMediaItemFixtures.album()
         val album2 = AppMediaItemFixtures.album()
         serviceClient.addToLibrary(album1, album2)
 
-        composeTestRule.setContent {
-            App()
-        }
-
-        ConnectPage(composeTestRule)
-            .connect()
-            .login(serviceClient.username, serviceClient.password)
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnAlbums()
             .assertMediaDisplayed(album1.name)
             .assertMediaDisplayed(album2.name)
     }
