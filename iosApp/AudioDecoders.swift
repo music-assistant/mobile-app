@@ -241,9 +241,19 @@ class FLACLibDecoder: NativeAudioDecoder {
         }
     }
     
+    /// Maximum pending buffer size (1 MB). If exceeded, the buffer is reset to
+    /// prevent unbounded memory growth from malformed or undecodable data.
+    private let maxPendingSize = 1_048_576
+
     func decode(_ data: Data) throws -> Data {
         // Append new data to pending buffer
         pendingData.append(data)
+
+        if pendingData.count > maxPendingSize {
+            print("🎵 FLACLibDecoder: ⚠️ Pending buffer exceeded \(maxPendingSize) bytes (\(pendingData.count)), resetting")
+            pendingData.removeAll(keepingCapacity: true)
+            readOffset = 0
+        }
         decodedSamples.removeAll(keepingCapacity: true)
         lastError = nil
         
