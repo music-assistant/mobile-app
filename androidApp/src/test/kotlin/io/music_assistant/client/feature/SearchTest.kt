@@ -49,13 +49,7 @@ class SearchTest {
         val album2 = AppMediaItemFixtures.album()
         serviceClient.addToLibrary(album1, album2)
 
-        composeTestRule.setContent {
-            App()
-        }
-
-        ConnectPage(composeTestRule)
-            .connect()
-            .login(serviceClient.username, serviceClient.password)
+        launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album1.name)
 
             .clickSearch()
