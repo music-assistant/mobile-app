@@ -14,6 +14,8 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +40,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -137,6 +140,7 @@ fun MainNavigationRoot(
 
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
+        rememberMainNavBackStack(MainNav.Library(MediaType.ARTIST)),
         rememberMainNavBackStack(MainNav.Search)
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }
@@ -149,6 +153,11 @@ fun MainNavigationRoot(
         ),
         multiBackStack.createNavigationItem(
             backStack = 1,
+            icon = Icons.Default.LibraryMusic,
+            label = "Library"
+        ),
+        multiBackStack.createNavigationItem(
+            backStack = 2,
             icon = Icons.Default.Search,
             label = "Search"
         ),
