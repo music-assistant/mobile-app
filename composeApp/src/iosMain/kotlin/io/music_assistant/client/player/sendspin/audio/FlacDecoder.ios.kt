@@ -4,12 +4,14 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
 
 actual class FlacDecoder : AudioDecoder {
+    private var bitDepth: Int = 16
+
     actual override fun configure(config: AudioFormatSpec, codecHeader: String?) {
-        // Pass-through: No configuration needed for raw stream passing
+        bitDepth = config.bitDepth
     }
 
     actual override fun decode(encodedData: ByteArray): ByteArray {
-        // Pass-through: Return raw flac data to be handled by MPV
+        // Pass-through: raw FLAC data decoded by native Swift FLACLibDecoder
         return encodedData
     }
 
@@ -22,5 +24,5 @@ actual class FlacDecoder : AudioDecoder {
     }
 
     actual override fun getOutputCodec(): AudioCodec = AudioCodec.FLAC
-    actual override fun getOutputBitDepth(): Int = 16 // Pass-through; native handles bit depth
+    actual override fun getOutputBitDepth(): Int = bitDepth
 }

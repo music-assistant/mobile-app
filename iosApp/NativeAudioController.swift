@@ -218,8 +218,15 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         audioFormat.mFramesPerPacket = 1
         audioFormat.mChannelsPerFrame = UInt32(currentChannels)
         
-        // For 24-bit, decoder outputs 32-bit Int32
-        let effectiveBitDepth = (currentBitDepth == 24) ? 32 : currentBitDepth
+        // FLAC decoder always outputs Int32 (scaled to full range).
+        // PCM 24-bit is unpacked to Int32 by PCMPassthroughDecoder.
+        // All other cases use the negotiated bit depth directly.
+        let effectiveBitDepth: Int32
+        if currentCodec == "flac" || currentBitDepth == 24 {
+            effectiveBitDepth = 32
+        } else {
+            effectiveBitDepth = currentBitDepth
+        }
         let bytesPerSample = effectiveBitDepth / 8
         
         audioFormat.mBitsPerChannel = UInt32(effectiveBitDepth)

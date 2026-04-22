@@ -176,8 +176,8 @@ class FLACLibDecoder: NativeAudioDecoder {
     private var pendingData: Data = Data()
     private var readOffset: Int = 0
     
-    // Buffer for decoded samples
-    private var decodedSamples: [Int16] = []
+    // Buffer for decoded samples (Int32 to preserve native bit depth)
+    private var decodedSamples: [Int32] = []
     private var lastError: FLAC__StreamDecoderErrorStatus?
     
     init(sampleRate: Int, channels: Int, bitDepth: Int, header: Data?) throws {
@@ -282,7 +282,7 @@ class FLACLibDecoder: NativeAudioDecoder {
             readOffset = startOffset
         }
         
-        // Return decoded samples as Data (Int16 format)
+        // Return decoded samples as Data (Int32 format, scaled to full range)
         return decodedSamples.withUnsafeBytes { Data($0) }
     }
     
@@ -313,33 +313,22 @@ class FLACLibDecoder: NativeAudioDecoder {
         guard let frame = frame, let buffer = buffer else {
             return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT
         }
-        
+
         let blocksize = Int(frame.pointee.header.blocksize)
-        
+        // Scale samples to fill Int32 range: shift left by (32 - source bit depth)
+        let shift = Int32(32 - bitDepth)
+
         // FLAC outputs int32 samples per channel
-        // Interleave channels and convert to Int16
+        // Interleave channels and scale to Int32 range
         for i in 0..<blocksize {
             for channel in 0..<channels {
                 guard let channelBuffer = buffer[channel] else {
                     return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT
                 }
-                let sample = channelBuffer[i]
-                
-                // Convert based on bit depth to Int16
-                let int16Sample: Int16
-                if bitDepth == 16 {
-                    int16Sample = Int16(truncatingIfNeeded: sample)
-                } else if bitDepth == 24 {
-                    // 24-bit: shift right 8 bits to fit in 16-bit
-                    int16Sample = Int16(truncatingIfNeeded: sample >> 8)
-                } else {
-                    int16Sample = Int16(truncatingIfNeeded: sample)
-                }
-                
-                decodedSamples.append(int16Sample)
+                decodedSamples.append(channelBuffer[i] << shift)
             }
         }
-        
+
         return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE
     }
     
