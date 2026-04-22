@@ -124,6 +124,9 @@ class SendspinClientFactory(
 
         log.i { "Creating Sendspin client over WebRTC data channel" }
 
+        // WebRTC SCTP can deliver out-of-order — need deep reorder buffer
+        pipeline.reorderDepth = 32
+
         val config = SendspinConfig(
             clientId = settings.sendspinClientId.value,
             deviceName = settings.sendspinDeviceName.value,
@@ -180,6 +183,9 @@ class SendspinClientFactory(
             mainConnection = mainConnection,
             authToken = authToken
         )
+
+        // WebSocket over TCP is ordered — minimal reorder buffer, just scheduling jitter
+        pipeline.reorderDepth = 2
 
         log.i { "Creating Sendspin client over WebSocket (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
         val client = SendspinClient(

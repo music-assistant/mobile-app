@@ -97,7 +97,15 @@ class AudioStreamManager(
 
     private val queue = ArrayList<RawFrame>(64)
     private val queueLock = Mutex()
-    private val reorderDepth = 32  // minimum queue depth before consumer starts draining
+
+    /**
+     * Minimum queue depth before consumer starts draining.
+     * WebSocket (TCP, ordered): low value (2) — just enough to absorb scheduling jitter.
+     * WebRTC (SCTP, unordered): high value (32) — absorbs out-of-order delivery.
+     * Set by [SendspinClientFactory] before each connection based on transport type.
+     */
+    @Volatile
+    var reorderDepth: Int = 32
 
     // Network disconnection tracking for starvation handling
     private var isNetworkDisconnected = false
