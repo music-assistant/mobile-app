@@ -22,4 +22,5 @@ actual class FlacDecoder : AudioDecoder {
     }
 
     actual override fun getOutputCodec(): AudioCodec = AudioCodec.FLAC
+    actual override fun getOutputBitDepth(): Int = 16 // Pass-through; native handles bit depth
 }

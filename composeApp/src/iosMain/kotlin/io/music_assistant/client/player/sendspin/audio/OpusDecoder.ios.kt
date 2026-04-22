@@ -22,4 +22,5 @@ actual class OpusDecoder : AudioDecoder {
     }
 
     actual override fun getOutputCodec(): AudioCodec = AudioCodec.OPUS
+    actual override fun getOutputBitDepth(): Int = 16 // Pass-through; native handles bit depth
 }

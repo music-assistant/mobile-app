@@ -15,11 +15,20 @@ interface AudioDecoder {
      * - OPUS/FLAC/etc: Decoder passes through encoded data (iOS passthrough to MPV)
      */
     fun getOutputCodec(): AudioCodec
+
+    /**
+     * Returns the actual bit depth of the decoded output.
+     * May differ from the configured bit depth if the decoder cannot produce the
+     * requested depth (e.g., Opus always outputs 16-bit).
+     * Only meaningful when [getOutputCodec] returns [AudioCodec.PCM].
+     * Must be called after [configure].
+     */
+    fun getOutputBitDepth(): Int
 }
 
-class PcmDecoder : AudioDecoder {
+class PcmDecoder(private var bitDepth: Int = 16) : AudioDecoder {
     override fun configure(config: AudioFormatSpec, codecHeader: String?) {
-        // PCM needs no configuration
+        bitDepth = config.bitDepth
     }
 
     override fun decode(encodedData: ByteArray): ByteArray {
@@ -36,6 +45,7 @@ class PcmDecoder : AudioDecoder {
     }
 
     override fun getOutputCodec(): AudioCodec = AudioCodec.PCM
+    override fun getOutputBitDepth(): Int = bitDepth
 }
 
 // Platform-specific decoders for FLAC and OPUS
@@ -45,6 +55,7 @@ expect class FlacDecoder() : AudioDecoder {
     override fun reset()
     override fun release()
     override fun getOutputCodec(): AudioCodec
+    override fun getOutputBitDepth(): Int
 }
 
 expect class OpusDecoder() : AudioDecoder {
@@ -53,4 +64,5 @@ expect class OpusDecoder() : AudioDecoder {
     override fun reset()
     override fun release()
     override fun getOutputCodec(): AudioCodec
+    override fun getOutputBitDepth(): Int
 }

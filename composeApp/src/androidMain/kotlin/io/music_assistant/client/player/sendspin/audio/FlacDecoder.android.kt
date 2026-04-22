@@ -5,10 +5,11 @@ import android.media.MediaFormat
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
+import android.media.AudioFormat
+import android.os.Build
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -18,8 +19,10 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * Uses the platform's native FLAC decoder (available on API 26+) to decode
  * FLAC-encoded audio chunks into raw PCM data for AudioTrack playback.
  *
- * Note: MediaCodec FLAC decoder always outputs 16-bit PCM samples. Conversion
- * to 24/32-bit formats is performed but doesn't increase audio quality.
+ * Requests the source bit depth via KEY_PCM_ENCODING so MediaCodec outputs
+ * native-depth PCM (16/24/32-bit) without manual conversion. The actual
+ * output encoding is read from INFO_OUTPUT_FORMAT_CHANGED and exposed via
+ * [getOutputBitDepth] so AudioTrack can be configured to match.
  *
  * Thread safety: All public methods are synchronized via decoderLock to prevent
  * concurrent access between decode() and release()/reset() from different coroutines.
@@ -34,10 +37,8 @@ actual class FlacDecoder : AudioDecoder {
     // MediaCodec instance - access must be synchronized via decoderLock
     private var codec: MediaCodec? = null
 
-    // Configuration
-    private var channels: Int = 0
-    private var sampleRate: Int = 0
-    private var bitDepth: Int = 0
+    // Actual bit depth MediaCodec outputs — determined after INFO_OUTPUT_FORMAT_CHANGED
+    private var outputBitDepth: Int = 16
 
     // Timeout for MediaCodec operations (microseconds)
     private val TIMEOUT_US = 10_000L // 10ms
@@ -73,10 +74,8 @@ actual class FlacDecoder : AudioDecoder {
                 codec = null
             }
 
-            // Store configuration
-            sampleRate = config.sampleRate
-            channels = config.channels
-            bitDepth = config.bitDepth
+            // Default to requested bit depth; updated when INFO_OUTPUT_FORMAT_CHANGED fires
+            outputBitDepth = config.bitDepth
 
             try {
                 // Create MediaCodec for FLAC
@@ -85,11 +84,27 @@ actual class FlacDecoder : AudioDecoder {
                 // Create MediaFormat
                 val format = MediaFormat.createAudioFormat(
                     MediaFormat.MIMETYPE_AUDIO_FLAC,
-                    sampleRate,
-                    channels
+                    config.sampleRate,
+                    config.channels
                 ).apply {
                     // Set max input size (conservative estimate for FLAC frames)
                     setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
+
+                    // Request output PCM encoding matching source bit depth.
+                    // API 24+ supports KEY_PCM_ENCODING; 24/32-bit encodings require API 31+.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val pcmEncoding = when (config.bitDepth) {
+                            24 -> AudioFormat.ENCODING_PCM_24BIT_PACKED
+                            32 -> AudioFormat.ENCODING_PCM_32BIT
+                            else -> AudioFormat.ENCODING_PCM_16BIT
+                        }
+                        setInteger(MediaFormat.KEY_PCM_ENCODING, pcmEncoding)
+                        logger.i { "Requested PCM encoding for ${config.bitDepth}-bit output" }
+                    } else {
+                        // Pre-S: MediaCodec will output 16-bit regardless
+                        outputBitDepth = 16
+                        logger.i { "API ${Build.VERSION.SDK_INT} < 31, falling back to 16-bit output" }
+                    }
 
                     // FLAC requires the STREAMINFO metadata block as CSD-0.
                     // The server sends codec_header as a base64-encoded string containing
@@ -117,7 +132,7 @@ actual class FlacDecoder : AudioDecoder {
                 // Executing state when visible to other threads
                 codec = newCodec
 
-                logger.i { "FLAC decoder initialized successfully" }
+                logger.i { "FLAC decoder initialized (outputBitDepth=$outputBitDepth)" }
 
             } catch (e: IOException) {
                 logger.e(e) { "Failed to create FLAC decoder - codec not available" }
@@ -192,15 +207,9 @@ actual class FlacDecoder : AudioDecoder {
                 // 2. Drain all available output buffers
                 drainOutput(currentCodec, outputStream)
 
-                val pcm16bit = outputStream.toByteArray()
-                logger.d { "Decoded ${pcm16bit.size} PCM bytes (16-bit)" }
-
-                // Convert to target bit depth if needed
-                if (pcm16bit.isNotEmpty()) {
-                    convertPcmBitDepth(pcm16bit)
-                } else {
-                    pcm16bit
-                }
+                val pcmData = outputStream.toByteArray()
+                logger.d { "Decoded ${pcmData.size} PCM bytes (${outputBitDepth}-bit)" }
+                pcmData
 
             } catch (e: IllegalStateException) {
                 logger.e(e) { "MediaCodec error during decode" }
@@ -240,6 +249,16 @@ actual class FlacDecoder : AudioDecoder {
                 outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                     val format = codec.outputFormat
                     logger.i { "Output format changed: $format" }
+                    // Read actual PCM encoding the codec chose
+                    if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                        outputBitDepth = when (format.getInteger(MediaFormat.KEY_PCM_ENCODING)) {
+                            AudioFormat.ENCODING_PCM_24BIT_PACKED -> 24
+                            AudioFormat.ENCODING_PCM_32BIT -> 32
+                            AudioFormat.ENCODING_PCM_FLOAT -> 32
+                            else -> 16
+                        }
+                        logger.i { "MediaCodec actual output: ${outputBitDepth}-bit" }
+                    }
                     // Continue draining — there may be more output buffers
                 }
 
@@ -253,63 +272,6 @@ actual class FlacDecoder : AudioDecoder {
                     // INFO_TRY_AGAIN_LATER or unknown: no more output available
                     break
                 }
-            }
-        }
-    }
-
-    /**
-     * Converts decoded PCM samples (16-bit ByteArray) to target bit depth.
-     *
-     * MediaCodec FLAC decoder always outputs 16-bit samples. For 24-bit and 32-bit
-     * output, we shift the 16-bit samples to the upper bits, but this doesn't
-     * increase audio quality.
-     *
-     * @param pcm16bit The decoded PCM samples (16-bit, little-endian)
-     * @return ByteArray in little-endian format with target bit depth
-     */
-    private fun convertPcmBitDepth(pcm16bit: ByteArray): ByteArray {
-        // Input: 16-bit PCM (little-endian)
-        // Output: 16/24/32-bit PCM based on bitDepth config
-
-        val sampleCount = pcm16bit.size / 2 // 2 bytes per 16-bit sample
-
-        return when (bitDepth) {
-            16 -> {
-                // Already 16-bit, pass through
-                pcm16bit
-            }
-
-            24 -> {
-                // Convert 16-bit to 24-bit (shift left 8 bits)
-                val buffer = ByteBuffer.allocate(sampleCount * 3)
-                buffer.order(ByteOrder.LITTLE_ENDIAN)
-
-                val shortBuffer = ByteBuffer.wrap(pcm16bit).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
-                repeat(sampleCount) { i ->
-                    val sample24 = shortBuffer.get(i).toInt() shl 8
-                    buffer.put((sample24 and 0xFF).toByte())
-                    buffer.put(((sample24 shr 8) and 0xFF).toByte())
-                    buffer.put(((sample24 shr 16) and 0xFF).toByte())
-                }
-                buffer.array()
-            }
-
-            32 -> {
-                // Convert 16-bit to 32-bit (shift left 16 bits)
-                val buffer = ByteBuffer.allocate(sampleCount * 4)
-                buffer.order(ByteOrder.LITTLE_ENDIAN)
-
-                val shortBuffer = ByteBuffer.wrap(pcm16bit).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
-                repeat(sampleCount) { i ->
-                    val sample32 = shortBuffer.get(i).toInt() shl 16
-                    buffer.putInt(sample32)
-                }
-                buffer.array()
-            }
-
-            else -> {
-                logger.e { "Unsupported bit depth: $bitDepth, using 16-bit" }
-                pcm16bit
             }
         }
     }
@@ -366,4 +328,5 @@ actual class FlacDecoder : AudioDecoder {
     }
 
     actual override fun getOutputCodec(): AudioCodec = AudioCodec.PCM
+    actual override fun getOutputBitDepth(): Int = outputBitDepth
 }

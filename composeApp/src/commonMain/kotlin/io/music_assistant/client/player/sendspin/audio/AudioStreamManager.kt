@@ -128,7 +128,7 @@ class AudioStreamManager(
         streamConfig = config
         isStreaming = true
         // Create and configure decoder atomically under lock
-        val outputCodec = decoderLock.withLock {
+        val (outputCodec, outputBitDepth) = decoderLock.withLock {
             audioDecoder?.release()
             audioDecoder = null
 
@@ -141,12 +141,12 @@ class AudioStreamManager(
             )
             newDecoder.configure(formatSpec, config.codecHeader)
             audioDecoder = newDecoder
-            newDecoder.getOutputCodec()
+            newDecoder.getOutputCodec() to newDecoder.getOutputBitDepth()
         }
 
         // Reuse existing AudioTrack if format unchanged (avoids click on track transitions)
         val newSinkConfig =
-            SinkConfig(outputCodec, config.sampleRate, config.channels, config.bitDepth)
+            SinkConfig(outputCodec, config.sampleRate, config.channels, outputBitDepth)
         if (newSinkConfig == currentSinkConfig) {
             logger.i { "Reusing existing AudioTrack (same format: $newSinkConfig)" }
             mediaPlayerController.flush()
@@ -157,7 +157,7 @@ class AudioStreamManager(
                 codec = outputCodec,
                 sampleRate = config.sampleRate,
                 channels = config.channels,
-                bitDepth = config.bitDepth,
+                bitDepth = outputBitDepth,
                 codecHeader = config.codecHeader,
                 listener = object : MediaPlayerListener {
                     override fun onReady() {

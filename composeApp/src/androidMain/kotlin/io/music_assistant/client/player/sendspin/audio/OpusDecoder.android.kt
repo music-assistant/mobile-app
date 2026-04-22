@@ -12,10 +12,7 @@ import java.nio.ByteOrder
  * Android implementation of Opus audio decoder using the Concentus library.
  *
  * Concentus is a pure Java/Kotlin port of libopus, providing Opus decoding
- * without requiring JNI or native libraries.
- *
- * Note: Opus always decodes to 16-bit PCM samples. Conversion to 24/32-bit
- * formats is performed but doesn't increase audio quality.
+ * without requiring JNI or native libraries. Always outputs 16-bit PCM.
  */
 actual class OpusDecoder : AudioDecoder {
     private val logger = Logger.withTag("OpusDecoder")
@@ -26,7 +23,6 @@ actual class OpusDecoder : AudioDecoder {
     // Configuration
     private var channels: Int = 0
     private var sampleRate: Int = 0
-    private var bitDepth: Int = 0
 
     // Decoding buffer (reused to avoid allocations in hot path)
     private var pcmBuffer: ShortArray? = null
@@ -51,7 +47,6 @@ actual class OpusDecoder : AudioDecoder {
         // Store configuration
         sampleRate = config.sampleRate
         channels = config.channels
-        bitDepth = config.bitDepth
 
         // Note: Decoder pooling disabled for consistency with FlacDecoder
         // Can be re-enabled if needed (Concentus is pure Java/Kotlin, no state machine issues)
@@ -119,8 +114,13 @@ actual class OpusDecoder : AudioDecoder {
 
                 logger.d { "Decoded $samplesDecoded samples/channel ($totalSamples total samples)" }
 
-                // Convert ShortArray (16-bit PCM) to ByteArray based on target bit depth
-                convertShortArrayToByteArray(currentPcmBuffer, totalSamples)
+                // Convert ShortArray to 16-bit PCM ByteArray (Concentus only outputs 16-bit)
+                val buffer = ByteBuffer.allocate(totalSamples * 2)
+                buffer.order(ByteOrder.LITTLE_ENDIAN)
+                for (i in 0 until totalSamples) {
+                    buffer.putShort(currentPcmBuffer[i])
+                }
+                buffer.array()
 
             } catch (e: OpusException) {
                 logger.e(e) { "Opus decoding error" }
@@ -129,67 +129,6 @@ actual class OpusDecoder : AudioDecoder {
             } catch (e: Exception) {
                 logger.e(e) { "Unexpected error during decode" }
                 return@synchronized ByteArray(0)
-            }
-        }
-    }
-
-    /**
-     * Converts decoded PCM samples (ShortArray) to ByteArray with specified bit depth.
-     *
-     * Opus always decodes to 16-bit samples. For 24-bit and 32-bit output, we shift
-     * the 16-bit samples to the upper bits, but this doesn't increase audio quality.
-     *
-     * @param samples The decoded PCM samples (16-bit shorts)
-     * @param sampleCount Number of samples to convert
-     * @return ByteArray in little-endian format with target bit depth
-     */
-    private fun convertShortArrayToByteArray(samples: ShortArray, sampleCount: Int): ByteArray {
-        return when (bitDepth) {
-            16 -> {
-                // 16-bit: 2 bytes per sample (little-endian)
-                val buffer = ByteBuffer.allocate(sampleCount * 2)
-                buffer.order(ByteOrder.LITTLE_ENDIAN)
-                for (i in 0 until sampleCount) {
-                    buffer.putShort(samples[i])
-                }
-                buffer.array()
-            }
-
-            24 -> {
-                // 24-bit: 3 bytes per sample (little-endian)
-                // Convert 16-bit to 24-bit by shifting left 8 bits
-                val buffer = ByteBuffer.allocate(sampleCount * 3)
-                buffer.order(ByteOrder.LITTLE_ENDIAN)
-                for (i in 0 until sampleCount) {
-                    val sample24 = samples[i].toInt() shl 8  // Shift to upper 16 bits of 24-bit
-                    buffer.put((sample24 and 0xFF).toByte())
-                    buffer.put(((sample24 shr 8) and 0xFF).toByte())
-                    buffer.put(((sample24 shr 16) and 0xFF).toByte())
-                }
-                buffer.array()
-            }
-
-            32 -> {
-                // 32-bit: 4 bytes per sample (little-endian)
-                // Convert 16-bit to 32-bit by shifting left 16 bits
-                val buffer = ByteBuffer.allocate(sampleCount * 4)
-                buffer.order(ByteOrder.LITTLE_ENDIAN)
-                for (i in 0 until sampleCount) {
-                    val sample32 = samples[i].toInt() shl 16  // Shift to upper 16 bits of 32-bit
-                    buffer.putInt(sample32)
-                }
-                buffer.array()
-            }
-
-            else -> {
-                logger.e { "Unsupported bit depth: $bitDepth, defaulting to 16-bit" }
-                // Fallback to 16-bit
-                val buffer = ByteBuffer.allocate(sampleCount * 2)
-                buffer.order(ByteOrder.LITTLE_ENDIAN)
-                for (i in 0 until sampleCount) {
-                    buffer.putShort(samples[i])
-                }
-                buffer.array()
             }
         }
     }
@@ -217,4 +156,5 @@ actual class OpusDecoder : AudioDecoder {
     }
 
     actual override fun getOutputCodec(): AudioCodec = AudioCodec.PCM
+    actual override fun getOutputBitDepth(): Int = 16 // Concentus always decodes to 16-bit
 }
