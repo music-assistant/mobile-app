@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,7 +38,8 @@ fun PlayerSelectionLayout(
     player: PlayerData,
     sendSpinState: SendspinState?,
     onSelectPlayer: () -> Unit = {},
-    onGroupButton: () -> Unit = {}
+    onGroupButton: () -> Unit = {},
+    onDspButton: (() -> Unit)? = null,
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
@@ -48,8 +50,24 @@ fun PlayerSelectionLayout(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Invisible counterweight so the player button stays centered
-        if (hasGroupChildren) {
+        // Left slot: DSP button or invisible counterweight for centering
+        if (onDspButton != null) {
+            Box(
+                modifier = Modifier
+                    .size(GROUP_BUTTON_SIZE)
+                    .clip(RoundedCornerShape(GROUP_BUTTON_SIZE / 3))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                    .clickable(onClick = onDspButton),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = "DSP Settings",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        } else if (hasGroupChildren) {
             Spacer(modifier = Modifier.size(GROUP_BUTTON_SIZE))
         }
 
@@ -90,6 +108,7 @@ fun PlayerSelectionLayout(
             }
         }
 
+        // Right slot: group button or invisible counterweight for centering
         if (hasGroupChildren) {
             val boundCount = player.childrenBinds.count { it.isBound }
             val groupLabel = when {
@@ -120,6 +139,8 @@ fun PlayerSelectionLayout(
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )
             }
+        } else if (onDspButton != null) {
+            Spacer(modifier = Modifier.size(GROUP_BUTTON_SIZE))
         }
     }
 }

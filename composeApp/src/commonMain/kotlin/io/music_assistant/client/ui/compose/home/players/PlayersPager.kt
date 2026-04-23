@@ -106,8 +106,10 @@ internal fun PlayersPager(
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
             var showSelectDialog by remember { mutableStateOf(false) }
             var showGroupDialog by remember { mutableStateOf(false) }
+            var showDspDialog by remember { mutableStateOf(false) }
             val onSelectPlayer = { showSelectDialog = true }
             val onGroupButton = { showGroupDialog = true }
+            val onDspButton = { showDspDialog = true }
             if (showSelectDialog) {
                 SelectPlayerDialog(
                     selectedPlayer = player,
@@ -121,6 +123,12 @@ internal fun PlayersPager(
                     player = player,
                     onDismissRequest = { showGroupDialog = false },
                     groupAction = simplePlayerAction
+                )
+            }
+            if (showDspDialog) {
+                DspSettingsDialog(
+                    playerId = player.player.id,
+                    onDismissRequest = { showDspDialog = false },
                 )
             }
 
@@ -157,6 +165,7 @@ internal fun PlayersPager(
                             dominantColor = dominantColor,
                             onSelectPlayer = onSelectPlayer,
                             onGroupButton = onGroupButton,
+                            onDspButton = onDspButton.takeIf { !player.player.isGroup },
                             serverUrl = serverUrl,
                             playerAction = playerAction,
                             onFavoriteClick = onFavoriteClick,
@@ -232,6 +241,7 @@ private fun ExpandedPlayerPage(
     dominantColor: Color,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
+    onDspButton: (() -> Unit)?,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
@@ -256,7 +266,8 @@ private fun ExpandedPlayerPage(
                 player = player,
                 sendSpinState = sendspinState,
                 onSelectPlayer = onSelectPlayer,
-                onGroupButton = onGroupButton
+                onGroupButton = onGroupButton,
+                onDspButton = onDspButton,
             )
         }
 

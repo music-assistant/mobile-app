@@ -1,5 +1,6 @@
 package io.music_assistant.client.api
 
+import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.RepeatMode
@@ -632,5 +633,24 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("device_name", JsonPrimitive(deviceName))
             }
         )
+    }
+
+    data object Dsp {
+        fun getPlayerConfig(playerId: String) = Request(
+            command = "config/players/dsp/get",
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+            }
+        )
+
+        fun savePlayerConfig(playerId: String, config: DspConfig) = Request(
+            command = "config/players/dsp/save",
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("config", myJson.encodeToJsonElement(DspConfig.serializer(), config))
+            }
+        )
+
+        fun getPresets() = Request(command = "config/dsp_presets/get")
     }
 }

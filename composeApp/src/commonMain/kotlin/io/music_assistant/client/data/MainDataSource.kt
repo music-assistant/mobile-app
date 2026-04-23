@@ -13,6 +13,8 @@ import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.QueueInfo.Companion.toQueue
 import io.music_assistant.client.data.model.client.QueueTrack.Companion.toQueueTrack
+import io.music_assistant.client.data.model.server.DspConfig
+import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.data.model.server.ServerPlayer
@@ -916,6 +918,19 @@ class MainDataSource(
         sendspinClientFactory.destroyPipeline()
     }
 
+
+    suspend fun getDspConfig(playerId: String): DspConfig? =
+        apiClient.sendRequest(Request.Dsp.getPlayerConfig(playerId))
+            .getOrNull()?.resultAs<DspConfig>()
+
+    suspend fun saveDspConfig(playerId: String, config: DspConfig): DspConfig? {
+        return apiClient.sendRequest(Request.Dsp.savePlayerConfig(playerId, config))
+            .getOrNull()?.resultAs<DspConfig>()
+    }
+
+    suspend fun getDspPresets(): List<DspConfigPreset> =
+        apiClient.sendRequest(Request.Dsp.getPresets())
+            .getOrNull()?.resultAs<List<DspConfigPreset>>() ?: emptyList()
 
     fun selectPlayer(player: Player) {
         _selectedPlayerId.update { player.id }
