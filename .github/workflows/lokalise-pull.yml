@@ -8,26 +8,32 @@ on:
 jobs:
   pull-translations:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Pull from Lokalise
-        uses: lokalise/pull-action@v1
+        uses: lokalise/lokalise-pull-action@v5.2.0
         with:
           api_token: ${{ secrets.LOKALISE_API_TOKEN }}
           project_id: ${{ secrets.LOKALISE_PROJECT_ID }}
-          format: xml
-          output_dir: composeApp/src/commonMain/composeResources/
-          directory_prefix: values-%LANG_ISO%
-          export_empty_as: skip
-
-      - name: Create PR with translations
-        uses: peter-evans/create-pull-request@v7
-        with:
-          title: 'chore: update translations from Lokalise'
-          branch: chore/update-translations
-          commit-message: 'chore: update translations from Lokalise'
-          body: |
-            Automated translation update from Lokalise.
-
-            This PR was created by the `lokalise-pull` workflow.
+          base_lang: en
+          file_format: xml
+          translations_path: |
+            composeApp/src/commonMain/composeResources
+          file_ext: |
+            xml
+          additional_params: >
+            {
+              "export_empty_as": "skip",
+              "export_sort": "a_z"
+            }
+          pr_title: "chore: update translations from Lokalise"
+          pr_body: "Automated translation update from Lokalise."
+          pr_labels: "translations,automated"

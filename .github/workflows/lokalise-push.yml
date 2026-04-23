@@ -9,15 +9,22 @@ on:
 jobs:
   push-strings:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Push to Lokalise
-        uses: lokalise/push-action@v1
+        uses: lokalise/lokalise-push-action@v5.3.0
         with:
           api_token: ${{ secrets.LOKALISE_API_TOKEN }}
           project_id: ${{ secrets.LOKALISE_PROJECT_ID }}
-          file: composeApp/src/commonMain/composeResources/values/strings.xml
-          lang_iso: en
-          replace_modified: true
-          cleanup_mode: true
+          base_lang: en
+          translations_path: |
+            composeApp/src/commonMain/composeResources
+          file_ext: |
+            xml
