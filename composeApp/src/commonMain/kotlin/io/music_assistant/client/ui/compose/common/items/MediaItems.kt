@@ -42,6 +42,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
@@ -207,7 +210,7 @@ private fun AlbumImage(
 
         Image(
             painter = vinylRecord,
-            contentDescription = "Vinyl Record",
+            contentDescription = stringResource(Res.string.cd_vinyl_record),
             modifier = Modifier.fillMaxSize().clip(CircleShape)
         )
 
@@ -838,7 +841,7 @@ fun Badges(
         Icon(
             modifier = modifier,
             imageVector = Icons.Filled.Favorite,
-            contentDescription = "Favorite",
+            contentDescription = stringResource(Res.string.cd_favorite),
             tint = Color(0xFFEF7BC4)
         )
     } else {
@@ -868,7 +871,7 @@ fun BoxScope.ProgressBadge(
                     )
                     .padding(2.dp),
                 imageVector = Icons.Default.Check,
-                contentDescription = "Fully played",
+                contentDescription = stringResource(Res.string.cd_fully_played),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
@@ -883,7 +886,7 @@ fun BoxScope.ProgressBadge(
                     )
                     .padding(2.dp),
                 imageVector = Icons.Default.Schedule,
-                contentDescription = "In progress",
+                contentDescription = stringResource(Res.string.cd_in_progress),
                 tint = MaterialTheme.colorScheme.tertiary
             )
         }

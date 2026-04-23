@@ -11,6 +11,9 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Composable to render a provider icon based on its type
@@ -27,7 +30,7 @@ fun ProviderIcon(
         is ProviderIconModel.Mdi -> {
             Icon(
                 imageVector = providerIconModel.icon,
-                contentDescription = "Provider Icon",
+                contentDescription = stringResource(Res.string.cd_provider_icon),
                 modifier = modifier,
                 tint = providerIconModel.tint
             )
@@ -44,7 +47,7 @@ fun ProviderIcon(
                 model = ImageRequest.Builder(context)
                     .data(providerIconModel.imageBytes)
                     .build(),
-                contentDescription = "Provider Icon",
+                contentDescription = stringResource(Res.string.cd_provider_icon),
                 imageLoader = imageLoader,
                 modifier = modifier,
                 contentScale = ContentScale.Fit
@@ -62,7 +65,7 @@ fun ProviderIcon(
                 model = ImageRequest.Builder(context)
                     .data(providerIconModel.svgBytes)
                     .build(),
-                contentDescription = "Provider Icon",
+                contentDescription = stringResource(Res.string.cd_provider_icon),
                 imageLoader = imageLoader,
                 modifier = modifier,
                 contentScale = ContentScale.Fit

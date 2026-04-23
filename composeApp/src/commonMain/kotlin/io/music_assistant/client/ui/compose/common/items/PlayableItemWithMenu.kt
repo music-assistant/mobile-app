@@ -42,6 +42,9 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TrackWithMenu(
@@ -208,7 +211,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
             onDismissRequest = { expandedItemId = null }
         ) {
             DropdownMenuItem(
-                text = { Text("Play now") },
+                text = { Text(stringResource(Res.string.action_play_now)) },
                 onClick = {
                     onPlayOption(item, QueueOption.REPLACE, false)
                     expandedItemId = null
@@ -216,12 +219,12 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = PlayIcon,
-                        contentDescription = "Play now"
+                        contentDescription = stringResource(Res.string.action_play_now)
                     )
                 }
             )
             DropdownMenuItem(
-                text = { Text("Insert next and play") },
+                text = { Text(stringResource(Res.string.action_insert_next_and_play)) },
                 onClick = {
                     onPlayOption(item, QueueOption.PLAY, false)
                     expandedItemId = null
@@ -229,12 +232,12 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.PlaylistAddCircle,
-                        contentDescription = "Insert next and play"
+                        contentDescription = stringResource(Res.string.action_insert_next_and_play)
                     )
                 }
             )
             DropdownMenuItem(
-                text = { Text("Insert next") },
+                text = { Text(stringResource(Res.string.action_insert_next)) },
                 onClick = {
                     onPlayOption(item, QueueOption.NEXT, false)
                     expandedItemId = null
@@ -242,12 +245,12 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.QueuePlayNext,
-                        contentDescription = "Insert next"
+                        contentDescription = stringResource(Res.string.action_insert_next)
                     )
                 }
             )
             DropdownMenuItem(
-                text = { Text("Add to bottom") },
+                text = { Text(stringResource(Res.string.action_add_to_bottom)) },
                 onClick = {
                     onPlayOption(item, QueueOption.ADD, false)
                     expandedItemId = null
@@ -255,13 +258,13 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.AddToQueue,
-                        contentDescription = "Add to bottom"
+                        contentDescription = stringResource(Res.string.action_add_to_bottom)
                     )
                 }
             )
             if (item.canStartRadio) {
                 DropdownMenuItem(
-                    text = { Text("Start radio") },
+                    text = { Text(stringResource(Res.string.action_start_radio)) },
                     onClick = {
                         onPlayOption(item, QueueOption.REPLACE, true)
                         expandedItemId = null
@@ -269,13 +272,13 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Radio,
-                            contentDescription = "Start radio"
+                            contentDescription = stringResource(Res.string.action_start_radio)
                         )
                     }
                 )
             }
 
-            val libText = if (item.isInLibrary) "Remove from library" else "Add to library"
+            val libText = if (item.isInLibrary) stringResource(Res.string.action_remove_from_library) else stringResource(Res.string.action_add_to_library)
             DropdownMenuItem(
                 text = { Text(libText) },
                 onClick = {
@@ -295,7 +298,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
 
             // Favorite management (only for library items)
             if (item.isInLibrary) {
-                val favText = if (item.favorite == true) "Unfavorite" else "Favorite"
+                val favText = if (item.favorite == true) stringResource(Res.string.action_unfavorite) else stringResource(Res.string.action_favorite)
                 DropdownMenuItem(
                     text = { Text(favText) },
                     onClick = {
@@ -315,7 +318,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
 
             if (playlistActions != null && item is AppMediaItem.Track) {
                 DropdownMenuItem(
-                    text = { Text("Add to playlist") },
+                    text = { Text(stringResource(Res.string.action_add_to_playlist)) },
                     onClick = {
                         showPlaylistDialog = true
                         expandedItemId = null
@@ -329,14 +332,14 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
-                            contentDescription = "Add to playlist"
+                            contentDescription = stringResource(Res.string.action_add_to_playlist)
                         )
                     }
                 )
             }
             if (onRemoveFromPlaylist != null) {
                 DropdownMenuItem(
-                    text = { Text("Remove from playlist") },
+                    text = { Text(stringResource(Res.string.action_remove_from_playlist)) },
                     onClick = {
                         onRemoveFromPlaylist()
                         expandedItemId = null
@@ -344,7 +347,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Remove from playlist"
+                            contentDescription = stringResource(Res.string.action_remove_from_playlist)
                         )
                     }
                 )
@@ -354,7 +357,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
             if (progressActions != null && item is AppMediaItem.PodcastEpisode) {
                 val isPlayed = item.fullyPlayed == true
                 DropdownMenuItem(
-                    text = { Text(if (isPlayed) "Mark as unplayed" else "Mark as played") },
+                    text = { Text(if (isPlayed) stringResource(Res.string.action_mark_unplayed) else stringResource(Res.string.action_mark_played)) },
                     onClick = {
                         if (isPlayed) {
                             progressActions.onMarkUnplayed(item as AppMediaItem)
@@ -366,7 +369,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = if (isPlayed) Icons.Default.Replay else Icons.Default.Check,
-                            contentDescription = if (isPlayed) "Mark as unplayed" else "Mark as played"
+                            contentDescription = if (isPlayed) stringResource(Res.string.action_mark_unplayed) else stringResource(Res.string.action_mark_played)
                         )
                     }
                 )
@@ -381,7 +384,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     playlists = emptyList()
                     isLoadingPlaylists = false
                 },
-                title = { Text("Add to Playlist") },
+                title = { Text(stringResource(Res.string.playlist_add_to_title)) },
                 text = {
                     if (isLoadingPlaylists) {
                         Box(
@@ -391,7 +394,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                             CircularProgressIndicator()
                         }
                     } else if (playlists.isEmpty()) {
-                        Text("No editable playlists available")
+                        Text(stringResource(Res.string.playlist_no_editable))
                     } else {
                         LazyColumn {
                             items(
@@ -422,7 +425,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                         playlists = emptyList()
                         isLoadingPlaylists = false
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(Res.string.common_cancel))
                     }
                 }
             )

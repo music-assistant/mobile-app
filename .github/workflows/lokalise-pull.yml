@@ -1,0 +1,33 @@
+name: Pull translations from Lokalise
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly on Monday at 6 AM UTC
+
+jobs:
+  pull-translations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull from Lokalise
+        uses: lokalise/pull-action@v1
+        with:
+          api_token: ${{ secrets.LOKALISE_API_TOKEN }}
+          project_id: ${{ secrets.LOKALISE_PROJECT_ID }}
+          format: xml
+          output_dir: composeApp/src/commonMain/composeResources/
+          directory_prefix: values-%LANG_ISO%
+          export_empty_as: skip
+
+      - name: Create PR with translations
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: 'chore: update translations from Lokalise'
+          branch: chore/update-translations
+          commit-message: 'chore: update translations from Lokalise'
+          body: |
+            Automated translation update from Lokalise.
+
+            This PR was created by the `lokalise-pull` workflow.

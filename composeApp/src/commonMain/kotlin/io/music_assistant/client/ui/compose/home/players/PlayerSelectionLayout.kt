@@ -28,6 +28,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.PlayerData
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 
@@ -62,7 +65,7 @@ fun PlayerSelectionLayout(
             ) {
                 Icon(
                     imageVector = Icons.Default.Tune,
-                    contentDescription = "DSP Settings",
+                    contentDescription = stringResource(Res.string.cd_dsp_settings),
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )

@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.server.DspConfigPreset
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -53,7 +56,7 @@ fun DspSettingsDialog(
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
                     Text(
-                        "DSP settings",
+                        stringResource(Res.string.dsp_title),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
@@ -72,7 +75,7 @@ fun DspSettingsDialog(
 
                         is DspSettingsViewModel.DspDialogState.Error -> {
                             Text(
-                                "Failed to load DSP configuration",
+                                stringResource(Res.string.dsp_error),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(16.dp)
@@ -108,7 +111,7 @@ private fun DspContent(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                "Enable DSP",
+                stringResource(Res.string.dsp_enable),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Switch(
@@ -121,7 +124,7 @@ private fun DspContent(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             Text(
-                "Presets",
+                stringResource(Res.string.dsp_presets),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
@@ -148,7 +151,7 @@ private fun DspContent(
                             if (isApplied) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Applied",
+                                    contentDescription = stringResource(Res.string.cd_applied),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(iconSize)
                                 )

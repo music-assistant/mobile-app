@@ -63,6 +63,7 @@ import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -72,6 +73,9 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.publicvalue.multiplatform.qrcode.CameraPosition
 import org.publicvalue.multiplatform.qrcode.CodeType
@@ -102,7 +106,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     Screen(
         topBar = { scrollBehavior ->
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(Res.string.nav_settings)) },
                 actions = {
                     ThemeChooser(
                         modifier = Modifier.padding(end = 16.dp),
@@ -114,7 +118,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 navigationIcon = {
                     if (isAuthenticated) {
                         IconButton(onClick = goHome) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
                         }
                     }
                 },
@@ -188,7 +192,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     horizontalArrangement = Arrangement.Center
                 ) {
                     if (!isAuthenticated) {
-                        OutlinedButton(onClick = exitApp) { Text("EXIT APP") }
+                        OutlinedButton(onClick = exitApp) { Text(stringResource(Res.string.settings_exit_app)) }
                     }
                 }
 
@@ -286,12 +290,12 @@ private fun MiscSection(
     onDeleteCrashLog: () -> Unit
 ) {
     SectionCard {
-        SectionTitle("Misc")
+        SectionTitle(stringResource(Res.string.settings_misc))
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
             onClick = onShareLogs
         ) {
-            Text("Share logs")
+            Text(stringResource(Res.string.settings_share_logs))
         }
         if (hasCrashLog) {
             Spacer(modifier = Modifier.size(8.dp))
@@ -303,10 +307,10 @@ private fun MiscSection(
                     modifier = Modifier.weight(1f),
                     onClick = onShareCrashLog
                 ) {
-                    Text("Share crash logs")
+                    Text(stringResource(Res.string.settings_share_crash_logs))
                 }
                 OutlinedButton(onClick = onDeleteCrashLog) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete crash logs")
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.cd_delete_crash_logs))
                 }
             }
         }
@@ -348,15 +352,13 @@ private fun AboutSection() {
     val uriHandler = LocalUriHandler.current
     SectionCard {
         Text(
-            text = "Music Assistant is a free, open-source, self-hosted music server. " +
-                    "Connect to your server below to browse your library and control " +
-                    "playback throughout your home.",
+            text = stringResource(Res.string.settings_about_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.size(4.dp))
         Text(
-            text = "Learn more at music-assistant.io →",
+            text = stringResource(Res.string.settings_about_learn_more),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.io") },
@@ -389,7 +391,7 @@ private fun ConnectionMethodTabs(
             viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
 
     SectionCard {
-        SectionTitle("Connection Method")
+        SectionTitle(stringResource(Res.string.settings_connection_method))
 
         // Tabs
         PrimaryTabRow(
@@ -400,12 +402,12 @@ private fun ConnectionMethodTabs(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { viewModel.setPreferredConnectionMethod("direct") },
-                text = { Text("Direct") }
+                text = { Text(stringResource(Res.string.settings_connection_direct)) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { viewModel.setPreferredConnectionMethod("webrtc") },
-                text = { Text("WebRTC") }
+                text = { Text(stringResource(Res.string.settings_connection_webrtc)) }
             )
         }
 
@@ -490,7 +492,7 @@ private fun DirectConnectionContent(
             .padding(bottom = 12.dp),
         value = ipAddress,
         onValueChange = onIpAddressChange,
-        label = { Text("Server host") },
+        label = { Text(stringResource(Res.string.settings_server_host)) },
         placeholder = { Text("homeassistant.local") },
         singleLine = true,
         colors = TextFieldDefaults.colors(
@@ -506,7 +508,7 @@ private fun DirectConnectionContent(
             .padding(bottom = 12.dp),
         value = port,
         onValueChange = onPortChange,
-        label = { Text("Port") },
+        label = { Text(stringResource(Res.string.settings_port)) },
         placeholder = { Text("8095") },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -527,7 +529,7 @@ private fun DirectConnectionContent(
             checked = isTls,
             onCheckedChange = onTlsChange
         )
-        Text("Use TLS (wss://)")
+        Text(stringResource(Res.string.settings_use_tls))
     }
 
     // Connect button + history icon
@@ -540,12 +542,12 @@ private fun DirectConnectionContent(
             onClick = onConnect,
             enabled = enabled,
         ) {
-            Text(if (hasToken) "Connect with saved credentials" else "Connect")
+            Text(if (hasToken) stringResource(Res.string.settings_connect_saved) else stringResource(Res.string.settings_connect))
         }
         IconButton(onClick = onShowHistory) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.List,
-                contentDescription = "Connection history",
+                contentDescription = stringResource(Res.string.cd_connection_history),
             )
         }
     }
@@ -566,7 +568,7 @@ private fun WebRTCConnectionContent(
     var showQrDialog by remember { mutableStateOf(false) }
 
     Text(
-        text = "Connect from anywhere without port forwarding",
+        text = stringResource(Res.string.settings_webrtc_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(bottom = 12.dp)
@@ -580,7 +582,7 @@ private fun WebRTCConnectionContent(
                 .padding(bottom = 8.dp),
             value = remoteId,
             onValueChange = onRemoteIdChange,
-            label = { Text("Remote ID") },
+            label = { Text(stringResource(Res.string.settings_remote_id)) },
             placeholder = { Text("XXXXXXXX-XXXXX-XXXXX-XXXXXXXX") },
             singleLine = true,
             colors = TextFieldDefaults.colors(
@@ -589,7 +591,7 @@ private fun WebRTCConnectionContent(
             ),
             supportingText = {
                 Text(
-                    text = "Enter the Remote ID from your Music Assistant server settings",
+                    text = stringResource(Res.string.settings_remote_id_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -600,7 +602,7 @@ private fun WebRTCConnectionContent(
         IconButton(onClick = { showQrDialog = true }) {
             Icon(
                 imageVector = Icons.Default.QrCodeScanner,
-                contentDescription = "Scan QR code",
+                contentDescription = stringResource(Res.string.cd_scan_qr_code),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
@@ -609,7 +611,7 @@ private fun WebRTCConnectionContent(
     // Validation message
     if (isInvalidRemoteId) {
         Text(
-            text = "Invalid Remote ID format",
+            text = stringResource(Res.string.settings_remote_id_invalid),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -618,7 +620,7 @@ private fun WebRTCConnectionContent(
 
     // Info text about WebRTC
     Text(
-        text = "WebRTC uses cloud signaling with end-to-end encryption. Works through most firewalls and NATs.",
+        text = stringResource(Res.string.settings_webrtc_info),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
         modifier = Modifier.padding(bottom = 12.dp)
@@ -636,17 +638,17 @@ private fun WebRTCConnectionContent(
         ) {
             Text(
                 when {
-                    isConnected -> "Connected"
-                    isConnecting -> "Connecting..."
-                    hasToken -> "Connect with saved credentials"
-                    else -> "Connect via WebRTC"
+                    isConnected -> stringResource(Res.string.settings_connected)
+                    isConnecting -> stringResource(Res.string.settings_connecting)
+                    hasToken -> stringResource(Res.string.settings_connect_saved)
+                    else -> stringResource(Res.string.settings_connect_webrtc)
                 }
             )
         }
         IconButton(onClick = onShowHistory) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.List,
-                contentDescription = "Connection history",
+                contentDescription = stringResource(Res.string.cd_connection_history),
             )
         }
     }
@@ -687,7 +689,7 @@ private fun QrScanDialog(
             ) {
                 Text(
                     style = MaterialTheme.typography.bodyLarge,
-                    text = "Scan QR code"
+                    text = stringResource(Res.string.settings_scan_qr)
                 )
                 ScannerWithPermissions(
                     modifier = Modifier.heightIn(120.dp, 360.dp),
@@ -703,7 +705,7 @@ private fun QrScanDialog(
                     modifier = Modifier.align(Alignment.End),
                     onClick = onDismiss
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.common_cancel))
                 }
             }
         },
@@ -718,9 +720,9 @@ private fun ConnectingSection(
     onCancel: () -> Unit
 ) {
     val text = if (preferredMethod == "webrtc") {
-        "Connecting to remote server..."
+        stringResource(Res.string.settings_connecting_remote)
     } else {
-        "Connecting to $ipAddress:$port..."
+        stringResource(Res.string.settings_connecting_to, ipAddress, port)
     }
     SectionCard {
         Column(
@@ -738,7 +740,7 @@ private fun ConnectingSection(
                 onClick = onCancel,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Cancel")
+                Text(stringResource(Res.string.common_cancel))
             }
         }
     }
@@ -752,12 +754,12 @@ private fun ServerInfoSection(
     onDisconnect: () -> Unit
 ) {
     SectionCard {
-        SectionTitle("Server")
+        SectionTitle(stringResource(Res.string.settings_server))
 
         val connectionText = if (isWebRTC) {
-            "Connected via WebRTC"
+            stringResource(Res.string.settings_connected_webrtc)
         } else {
-            connectionInfo?.let { "Connected to ${it.host}:${it.port}" }
+            connectionInfo?.let { stringResource(Res.string.settings_connected_to, it.host, it.port) }
         }
         connectionText?.let {
             Text(
@@ -770,7 +772,7 @@ private fun ServerInfoSection(
 
         serverInfo?.let { server ->
             Text(
-                text = "Version ${server.serverVersion}, Schema ${server.schemaVersion}",
+                text = stringResource(Res.string.settings_version_info, server.serverVersion ?: "", server.schemaVersion?.toString() ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -781,7 +783,7 @@ private fun ServerInfoSection(
             modifier = Modifier.fillMaxWidth(),
             onClick = onDisconnect
         ) {
-            Text("Disconnect")
+            Text(stringResource(Res.string.settings_disconnect))
         }
     }
 }
@@ -789,7 +791,7 @@ private fun ServerInfoSection(
 @Composable
 private fun LoginSection(user: User?) {
     SectionCard {
-        SectionTitle("Authentication")
+        SectionTitle(stringResource(Res.string.auth_title))
 
         AuthenticationPanel(
             modifier = Modifier.fillMaxWidth(),
@@ -811,7 +813,7 @@ private fun SendspinSection(
     val sendspinCodecPreference by viewModel.sendspinCodecPreference.collectAsStateWithLifecycle()
 
     SectionCard(modifier = modifier) {
-        SectionTitle("Local player ${if (sendspinEnabled) "enabled" else "(Sendspin protocol)"}")
+        SectionTitle(if (sendspinEnabled) stringResource(Res.string.settings_local_player_enabled) else stringResource(Res.string.settings_local_player_disabled))
 
         // Text fields on top - disabled when player is running
         TextField(
@@ -820,7 +822,7 @@ private fun SendspinSection(
                 .padding(bottom = 12.dp),
             value = sendspinDeviceName,
             onValueChange = { viewModel.setSendspinDeviceName(it) },
-            label = { Text("Player name") },
+            label = { Text(stringResource(Res.string.settings_player_name)) },
             singleLine = true,
             enabled = !sendspinEnabled,
             colors = TextFieldDefaults.colors(
@@ -834,7 +836,7 @@ private fun SendspinSection(
         OverflowMenu(
             options = Codecs.list.map { item ->
                 OverflowMenuOption(
-                    title = item.uiTitle()
+                    title = item.localizedTitle()
                 ) { viewModel.setSendspinCodecPreference(item) }
             },
             buttonContent = { onClick ->
@@ -848,12 +850,12 @@ private fun SendspinSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Codec preference",
+                            text = stringResource(Res.string.settings_codec_preference),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = sendspinCodecPreference.uiTitle(),
+                            text = sendspinCodecPreference.localizedTitle(),
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (sendspinEnabled)
                                 MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
@@ -864,7 +866,7 @@ private fun SendspinSection(
                     Icon(
                         modifier = Modifier.size(24.dp),
                         imageVector = Icons.Default.ExpandMore,
-                        contentDescription = "Select codec",
+                        contentDescription = stringResource(Res.string.cd_select_codec),
                         tint = if (sendspinEnabled)
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         else
@@ -888,7 +890,7 @@ private fun SendspinSection(
                 enabled = !sendspinEnabled
             )
             Text(
-                text = "Custom Sendspin connection",
+                text = stringResource(Res.string.settings_custom_sendspin),
                 color = if (sendspinEnabled)
                     MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 else
@@ -907,7 +909,7 @@ private fun SendspinSection(
                     .padding(bottom = 12.dp),
                 value = sendspinHost,
                 onValueChange = { viewModel.setSendspinHost(it) },
-                label = { Text("Host") },
+                label = { Text(stringResource(Res.string.settings_host)) },
                 singleLine = true,
                 enabled = !sendspinEnabled,
                 colors = TextFieldDefaults.colors(
@@ -929,7 +931,7 @@ private fun SendspinSection(
                     onValueChange = {
                         it.toIntOrNull()?.let { port -> viewModel.setSendspinPort(port) }
                     },
-                    label = { Text("Port (8095 by default)") },
+                    label = { Text(stringResource(Res.string.settings_port_default)) },
                     singleLine = true,
                     enabled = !sendspinEnabled,
                     colors = TextFieldDefaults.colors(
@@ -945,7 +947,7 @@ private fun SendspinSection(
                         .padding(bottom = 12.dp),
                     value = sendspinPath,
                     onValueChange = { viewModel.setSendspinPath(it) },
-                    label = { Text("Path") },
+                    label = { Text(stringResource(Res.string.settings_path)) },
                     singleLine = true,
                     enabled = !sendspinEnabled,
                     colors = TextFieldDefaults.colors(
@@ -968,7 +970,7 @@ private fun SendspinSection(
                     enabled = !sendspinEnabled
                 )
                 Text(
-                    text = "Use secure connection (WSS/TLS)",
+                    text = stringResource(Res.string.settings_use_tls_wss),
                     color = if (sendspinEnabled)
                         MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     else
@@ -983,14 +985,14 @@ private fun SendspinSection(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { viewModel.setSendspinEnabled(false) },
             ) {
-                Text("Disable local player")
+                Text(stringResource(Res.string.settings_disable_local_player))
             }
         } else {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { viewModel.setSendspinEnabled(true) },
             ) {
-                Text("Enable local player")
+                Text(stringResource(Res.string.settings_enable_local_player))
             }
         }
     }
@@ -1013,10 +1015,10 @@ private fun ConnectionHistoryDialog(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Saved Connections", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(Res.string.settings_saved_connections), style = MaterialTheme.typography.titleMedium)
             if (history.isEmpty()) {
                 Text(
-                    "No saved connections yet",
+                    stringResource(Res.string.settings_no_saved_connections),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1046,8 +1048,8 @@ private fun ConnectionHistoryDialog(
                                 )
                                 Text(
                                     text = when (entry.type) {
-                                        ConnectionType.DIRECT -> "Direct"
-                                        ConnectionType.WEBRTC -> "WebRTC (Remote Access)"
+                                        ConnectionType.DIRECT -> stringResource(Res.string.settings_history_direct)
+                                        ConnectionType.WEBRTC -> stringResource(Res.string.settings_history_webrtc)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1056,7 +1058,7 @@ private fun ConnectionHistoryDialog(
                             IconButton(onClick = { onDelete(entry) }) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
+                                    contentDescription = stringResource(Res.string.common_delete),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -1065,7 +1067,7 @@ private fun ConnectionHistoryDialog(
                 }
             }
             OutlinedButton(modifier = Modifier.align(Alignment.End), onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.common_cancel))
             }
         }
     }

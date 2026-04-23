@@ -37,6 +37,9 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -60,7 +63,7 @@ fun AuthenticationPanel(
     Column(modifier = modifier.fillMaxWidth()) {
         user?.let {
             Text(
-                text = "Logged in as ${user.description}",
+                text = stringResource(Res.string.auth_logged_in_as, user.description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -70,7 +73,7 @@ fun AuthenticationPanel(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { viewModel.logout() }
             ) {
-                Text("Logout")
+                Text(stringResource(Res.string.auth_logout))
             }
         } ?: run {
             // Show provider selection and auth UI
@@ -114,7 +117,7 @@ fun AuthenticationPanel(
                             onClick = { viewModel.login(provider) },
                             enabled = authState !is AuthState.Loading
                         ) {
-                            Text("Authorize with Home Assistant")
+                            Text(stringResource(Res.string.auth_authorize_ha))
                         }
 
                         else -> Unit
@@ -124,14 +127,14 @@ fun AuthenticationPanel(
                 // No providers loaded yet - show loading or retry
                 Text(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    text = "Loading authentication providers...",
+                    text = stringResource(Res.string.auth_loading_providers),
                     textAlign = TextAlign.Center
                 )
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { viewModel.loadProviders() }
                 ) {
-                    Text("Retry Loading Providers")
+                    Text(stringResource(Res.string.auth_retry_providers))
                 }
             }
 
@@ -140,7 +143,7 @@ fun AuthenticationPanel(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     modifier = Modifier.fillMaxWidth(),
-                    text = "Authenticating...",
+                    text = stringResource(Res.string.auth_authenticating),
                     textAlign = TextAlign.Center
                 )
             }
@@ -170,7 +173,7 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             value = username,
             onValueChange = { viewModel.username.value = it },
-            label = { Text("Username") },
+            label = { Text(stringResource(Res.string.auth_username)) },
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -182,7 +185,7 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             value = password,
             onValueChange = { viewModel.password.value = it },
-            label = { Text("Password") },
+            label = { Text(stringResource(Res.string.auth_password)) },
             visualTransformation = if (isPasswordVisible)
                 VisualTransformation.None
             else
@@ -193,9 +196,9 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
                 else
                     Icons.Filled.Visibility
                 val description = if (isPasswordVisible)
-                    "Hide password"
+                    stringResource(Res.string.auth_hide_password)
                 else
-                    "Show password"
+                    stringResource(Res.string.auth_show_password)
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(imageVector = icon, contentDescription = description)
                 }
@@ -213,7 +216,7 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
             onClick = { viewModel.login(provider) },
             enabled = username.isNotEmpty() && password.isNotEmpty()
         ) {
-            Text("Login")
+            Text(stringResource(Res.string.auth_login))
         }
     }
 }

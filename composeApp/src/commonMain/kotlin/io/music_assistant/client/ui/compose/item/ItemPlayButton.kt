@@ -25,6 +25,9 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -36,15 +39,16 @@ fun ItemPlayButton(
     SplitButtonLayout(
         modifier = modifier,
         leadingButton = {
+            val playNowText = stringResource(Res.string.cd_play_now)
             LeadingButton(
-                modifier = Modifier.semantics { contentDescription = "Play now" },
+                modifier = Modifier.semantics { contentDescription = playNowText },
                 onClick = { onPlayClick(QueueOption.REPLACE, false) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = PlayIcon,
                         contentDescription = null
                     )
-                    Text(modifier = Modifier.padding(start = 8.dp), text = "Play")
+                    Text(modifier = Modifier.padding(start = 8.dp), text = stringResource(Res.string.action_play))
                 }
             }
         },
@@ -58,7 +62,7 @@ fun ItemPlayButton(
                 ) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,
-                        contentDescription = "Play options"
+                        contentDescription = stringResource(Res.string.cd_play_options)
                     )
                 }
             }
@@ -76,19 +80,19 @@ private fun PlayOverflow(
         options = buildList {
             add(
                 OverflowMenuOption(
-                    title = "Play now",
+                    title = stringResource(Res.string.action_play_now),
                     icon = Icons.Default.PlaylistAddCircle
                 ) { onPlayClick(QueueOption.PLAY, false) })
             add(
                 OverflowMenuOption(
-                    title = "Play next",
+                    title = stringResource(Res.string.action_play_next),
                     icon = Icons.Default.QueuePlayNext
                 ) {
                     onPlayClick(QueueOption.NEXT, false)
                 })
             add(
                 OverflowMenuOption(
-                    title = "Add to queue",
+                    title = stringResource(Res.string.action_add_to_queue),
                     icon = Icons.Default.AddToQueue
                 ) {
                     onPlayClick(
@@ -98,7 +102,7 @@ private fun PlayOverflow(
             if (item.canStartRadio) {
                 add(
                     OverflowMenuOption(
-                        title = "Start radio",
+                        title = stringResource(Res.string.action_start_radio),
                         icon = Icons.Default.Radio
                     ) {
                         onPlayClick(QueueOption.REPLACE, true)

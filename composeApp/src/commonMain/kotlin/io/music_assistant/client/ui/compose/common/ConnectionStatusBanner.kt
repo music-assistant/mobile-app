@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.utils.SessionState
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 /**
@@ -91,7 +94,7 @@ private fun ReconnectingBanner(
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
-                    text = "Reconnecting... (attempt $attempt)",
+                    text = stringResource(Res.string.banner_reconnecting, attempt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -100,7 +103,7 @@ private fun ReconnectingBanner(
                 onClick = onCancel
             ) {
                 Text(
-                    text = "Cancel",
+                    text = stringResource(Res.string.common_cancel),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )

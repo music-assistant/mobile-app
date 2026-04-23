@@ -57,6 +57,9 @@ import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -74,7 +77,7 @@ fun SelectPlayerDialog(
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
                     Text(
-                        "Players",
+                        stringResource(Res.string.players_title),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
@@ -107,7 +110,7 @@ fun GroupSettingsDialog(
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
                     Text(
-                        "Group settings",
+                        stringResource(Res.string.players_group_settings),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
@@ -280,7 +283,7 @@ fun GroupSettings(
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(Res.string.common_done))
             }
         }
     }
@@ -342,7 +345,7 @@ private fun GroupPlayerItem(
                     Icon(
                         modifier = Modifier.alpha(if (childBindItem.isManageable) 1f else 0.4f),
                         imageVector = if (childBindItem.isBound) Icons.Default.Remove else Icons.Default.Add,
-                        contentDescription = if (childBindItem.isBound) "Remove from group" else "Add to group",
+                        contentDescription = if (childBindItem.isBound) stringResource(Res.string.cd_remove_from_group) else stringResource(Res.string.cd_add_to_group),
                         tint = if (childBindItem.isBound)
                             MaterialTheme.colorScheme.error
                         else
@@ -363,7 +366,7 @@ private fun GroupPlayerItem(
                 }, enabled = volumeEnabled) {
                     Icon(
                         imageVector = if (isMuted) VolumeMutedIcon else VolumeIcon,
-                        contentDescription = if (isMuted) "Unmute" else "Mute"
+                        contentDescription = if (isMuted) stringResource(Res.string.cd_unmute) else stringResource(Res.string.cd_mute)
                     )
                 }
             }

@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SortChip(
@@ -32,13 +35,13 @@ fun SortChip(
         FilterChip(
             selected = true,
             onClick = { expanded = true },
-            label = { Text(currentSort.field.displayName) },
+            label = { Text(currentSort.field.localizedName()) },
             trailingIcon = if (currentSort.field != SortField.ORIGINAL) {
                 {
                     Icon(
                         if (currentSort.descending) Icons.Default.ArrowDownward
                         else Icons.Default.ArrowUpward,
-                        contentDescription = "Sort direction",
+                        contentDescription = stringResource(Res.string.cd_sort_direction),
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -47,7 +50,7 @@ fun SortChip(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             availableFields.forEach { field ->
                 DropdownMenuItem(
-                    text = { Text(field.displayName) },
+                    text = { Text(field.localizedName()) },
                     onClick = {
                         expanded = false
                         if (field == SortField.ORIGINAL) {
@@ -72,4 +75,19 @@ fun SortChip(
             }
         }
     }
+}
+
+@Composable
+private fun SortField.localizedName(): String = when (this) {
+    SortField.ORIGINAL -> stringResource(Res.string.sort_original)
+    SortField.NAME -> stringResource(Res.string.sort_name)
+    SortField.DURATION -> stringResource(Res.string.sort_duration)
+    SortField.DATE_ADDED -> stringResource(Res.string.sort_date_added)
+    SortField.DATE_MODIFIED -> stringResource(Res.string.sort_date_modified)
+    SortField.LAST_PLAYED -> stringResource(Res.string.sort_last_played)
+    SortField.PLAY_COUNT -> stringResource(Res.string.sort_play_count)
+    SortField.YEAR -> stringResource(Res.string.sort_year)
+    SortField.POSITION -> stringResource(Res.string.sort_position)
+    SortField.ARTIST_NAME -> stringResource(Res.string.sort_artist)
+    SortField.RELEASE_DATE -> stringResource(Res.string.sort_release_date)
 }

@@ -61,6 +61,9 @@ import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -90,13 +93,14 @@ fun CollapsibleQueue(
         val queueData = queue as? DataState.Data
         val items = (queueData?.data?.items as? DataState.Data)?.data
 
+        val defaultLabel = stringResource(Res.string.queue_label)
         val queueLabel = items?.let { list ->
             val currentId = queueData?.data?.info?.currentItem?.id
             val currentPos = currentId?.let { id -> list.indexOfFirst { it.id == id } }
                 ?.takeIf { it >= 0 }
                 ?.let { it + 1 }
-            currentPos?.let { "Queue ($it/${list.size})" }
-        } ?: "Queue"
+            currentPos?.let { stringResource(Res.string.queue_label_with_position, it, list.size) }
+        } ?: defaultLabel
 
         val queueButtonContentColor = if (tint.luminance() > 0.5f) Color.Black else Color.White
         Button(
@@ -124,7 +128,7 @@ fun CollapsibleQueue(
             )
             Icon(
                 imageVector = if (isQueueExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                contentDescription = "Toggle Queue"
+                contentDescription = stringResource(Res.string.cd_toggle_queue)
             )
         }
         val hasItems = items?.isNotEmpty() == true
@@ -160,14 +164,14 @@ fun CollapsibleQueue(
                     }.ifEmpty {
                         listOf(
                             OverflowMenuOption(
-                                title = "No other players available",
+                                title = stringResource(Res.string.queue_no_other_players),
                                 onClick = { /* No-op */ }
                             )
                         )
                     },
                     buttonContent = {
                         OutlinedButton(onClick = it) {
-                            Text("Transfer")
+                            Text(stringResource(Res.string.common_transfer))
                         }
                     }
                 )
@@ -176,7 +180,7 @@ fun CollapsibleQueue(
                 OutlinedButton(
                     onClick = { queueAction(QueueAction.ClearQueue(queueId)) }
                 ) {
-                    Text("Clear")
+                    Text(stringResource(Res.string.common_clear))
                 }
             }
         }
@@ -187,21 +191,21 @@ fun CollapsibleQueue(
                 contentAlignment = Alignment.Center
             ) {
                 val message: String? = when (queue) {
-                    is DataState.Error -> "Error loading queue"
-                    is DataState.Loading -> "Loading queue..."
-                    is DataState.NoData -> "No items"
+                    is DataState.Error -> stringResource(Res.string.queue_error)
+                    is DataState.Loading -> stringResource(Res.string.queue_loading)
+                    is DataState.NoData -> stringResource(Res.string.queue_no_items)
                     is DataState.Stale -> when (queue.data.items) {
-                        is DataState.Error -> "Error loading queue"
-                        is DataState.Loading -> "Loading queue..."
-                        is DataState.NoData -> "Not loaded"
+                        is DataState.Error -> stringResource(Res.string.queue_error)
+                        is DataState.Loading -> stringResource(Res.string.queue_loading)
+                        is DataState.NoData -> stringResource(Res.string.queue_not_loaded)
                         is DataState.Data -> null
                         is DataState.Stale -> null
                     }
 
                     is DataState.Data -> when (queue.data.items) {
-                        is DataState.Error -> "Error loading queue"
-                        is DataState.Loading -> "Loading queue..."
-                        is DataState.NoData -> "Not loaded"
+                        is DataState.Error -> stringResource(Res.string.queue_error)
+                        is DataState.Loading -> stringResource(Res.string.queue_loading)
+                        is DataState.NoData -> stringResource(Res.string.queue_not_loaded)
                         is DataState.Data -> null
                         is DataState.Stale -> null
                     }
@@ -232,14 +236,14 @@ fun CollapsibleQueue(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
-                                text = "Queue is empty",
+                                text = stringResource(Res.string.queue_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             OutlinedButton(
                                 onClick = onGoToLibrary
                             ) {
-                                Text("BROWSE LIBRARY")
+                                Text(stringResource(Res.string.queue_browse_library))
                             }
                         }
                     } else {
@@ -384,7 +388,7 @@ fun CollapsibleQueue(
                                                     text = if (isPlayable) {
                                                         item.track.subtitle ?: "Unknown"
                                                     } else {
-                                                        "Cannot play this item"
+                                                        stringResource(Res.string.queue_cannot_play)
                                                     },
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
@@ -423,7 +427,7 @@ fun CollapsibleQueue(
                                             onDismissRequest = { menuItemId = null }
                                         ) {
                                             DropdownMenuItem(
-                                                text = { Text("Delete") },
+                                                text = { Text(stringResource(Res.string.common_delete)) },
                                                 onClick = {
                                                     queueAction(
                                                         QueueAction.RemoveItems(

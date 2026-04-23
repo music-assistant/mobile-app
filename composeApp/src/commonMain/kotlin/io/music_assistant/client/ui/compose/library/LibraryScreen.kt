@@ -63,6 +63,9 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 @Composable
@@ -171,14 +174,14 @@ private fun LibraryTopBar(
                         text = {
                             Text(
                                 when (tabState.tab) {
-                                    LibraryViewModel.Tab.ARTISTS -> "Artists"
-                                    LibraryViewModel.Tab.ALBUMS -> "Albums"
-                                    LibraryViewModel.Tab.TRACKS -> "Tracks"
-                                    LibraryViewModel.Tab.PLAYLISTS -> "Playlists"
-                                    LibraryViewModel.Tab.AUDIOBOOKS -> "Audiobooks"
-                                    LibraryViewModel.Tab.PODCASTS -> "Podcasts"
-                                    LibraryViewModel.Tab.RADIOS -> "Radio"
-                                    LibraryViewModel.Tab.GENRES -> "Genres"
+                                    LibraryViewModel.Tab.ARTISTS -> stringResource(Res.string.media_type_artists)
+                                    LibraryViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
+                                    LibraryViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
+                                    LibraryViewModel.Tab.PLAYLISTS -> stringResource(Res.string.media_type_playlists)
+                                    LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(Res.string.media_type_audiobooks)
+                                    LibraryViewModel.Tab.PODCASTS -> stringResource(Res.string.media_type_podcasts)
+                                    LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
+                                    LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
                                 }
                             )
                         }
@@ -188,14 +191,14 @@ private fun LibraryTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
             }
         },
         actions = {
             IconButton(onClick = onToggleViewMode) {
                 Icon(
                     imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                    contentDescription = "Toggle view mode"
+                    contentDescription = stringResource(Res.string.cd_toggle_view_mode)
                 )
             }
         },
@@ -242,14 +245,14 @@ private fun Library(
                 value = selectedTab.searchQuery,
                 onValueChange = { onSearchQueryChanged(selectedTab.tab, it) },
                 label = {
-                    Text(text = "Quick search")
+                    Text(text = stringResource(Res.string.library_quick_search))
                 },
                 trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
                     {
                         IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = "Clear"
+                                contentDescription = stringResource(Res.string.common_clear)
                             )
                         }
                     }
@@ -263,7 +266,7 @@ private fun Library(
                 FilterChip(
                     selected = selectedTab.onlyFavorites,
                     onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
-                    label = { Text("Favorites") }
+                    label = { Text(stringResource(Res.string.action_favorite)) }
                 )
                 SortChip(
                     currentSort = selectedTab.sortOption,
@@ -322,13 +325,13 @@ private fun CreatePlaylistDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create New Playlist") },
+        title = { Text(stringResource(Res.string.playlist_create_title)) },
         text = {
             OutlinedTextField(
                 modifier = Modifier.focusRequester(focusRequester),
                 value = playlistName,
                 onValueChange = { playlistName = it },
-                label = { Text("Playlist name") },
+                label = { Text(stringResource(Res.string.playlist_name_label)) },
                 singleLine = true,
             )
         },
@@ -341,12 +344,12 @@ private fun CreatePlaylistDialog(
                 },
                 enabled = playlistName.trim().isNotEmpty()
             ) {
-                Text("Create")
+                Text(stringResource(Res.string.common_create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.common_cancel))
             }
         }
     )
@@ -423,9 +426,9 @@ private fun TabContent(
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 onClick = onCreatePlaylistClick
                             ) {
-                                Icon(TablerIcons.Plus, contentDescription = "Add playlist")
+                                Icon(TablerIcons.Plus, contentDescription = stringResource(Res.string.cd_add_playlist))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Add new")
+                                Text(stringResource(Res.string.playlist_add_new))
                             }
                         }
                         gridStates[tabState.tab]?.let {
@@ -471,7 +474,7 @@ private fun ErrorState() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Error loading data",
+            text = stringResource(Res.string.library_error),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.error
         )
@@ -485,7 +488,7 @@ private fun EmptyState() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "No items found",
+            text = stringResource(Res.string.library_empty),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

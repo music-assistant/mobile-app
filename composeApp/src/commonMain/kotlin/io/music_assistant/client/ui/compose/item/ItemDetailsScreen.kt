@@ -61,6 +61,9 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.theme.AppTheme
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -245,7 +248,7 @@ private fun ItemChildren(
             is DataState.Loading -> CenteredProgress()
 
             is DataState.Error -> CenteredText(
-                text = "Error loading item",
+                text = stringResource(Res.string.item_error),
                 color = MaterialTheme.colorScheme.error,
             )
 
@@ -277,7 +280,7 @@ private fun ItemChildren(
                 )
             }
 
-            is DataState.NoData -> CenteredText("No data available")
+            is DataState.NoData -> CenteredText(stringResource(Res.string.item_no_data))
         }
 
         ToastHost(

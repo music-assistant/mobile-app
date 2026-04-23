@@ -42,6 +42,9 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.utils.SessionState
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun HomeScreen(
@@ -125,7 +128,7 @@ fun HomeScreen(
 @Composable
 private fun LandingPageTopBar(scrollBehavior: TopAppBarScrollBehavior) {
     TopAppBar(
-        title = { Text("Home") },
+        title = { Text(stringResource(Res.string.nav_home)) },
         scrollBehavior = scrollBehavior
     )
 }
@@ -306,15 +309,16 @@ fun CategoryRow(
     }
 }
 
+@Composable
 fun allItemsTitle(type: MediaType) = when (type) {
-    MediaType.TRACK -> "All tracks"
-    MediaType.ALBUM -> "All albums"
-    MediaType.ARTIST -> "All artists"
-    MediaType.PLAYLIST -> "All playlists"
-    MediaType.AUDIOBOOK -> "All audiobooks"
-    MediaType.PODCAST -> "All podcasts"
-    MediaType.RADIO -> "All radio stations"
-    MediaType.GENRE -> "All genres"
+    MediaType.TRACK -> stringResource(Res.string.all_tracks)
+    MediaType.ALBUM -> stringResource(Res.string.all_albums)
+    MediaType.ARTIST -> stringResource(Res.string.all_artists)
+    MediaType.PLAYLIST -> stringResource(Res.string.all_playlists)
+    MediaType.AUDIOBOOK -> stringResource(Res.string.all_audiobooks)
+    MediaType.PODCAST -> stringResource(Res.string.all_podcasts)
+    MediaType.RADIO -> stringResource(Res.string.all_radio)
+    MediaType.GENRE -> stringResource(Res.string.all_genres)
     else -> null
 }
 

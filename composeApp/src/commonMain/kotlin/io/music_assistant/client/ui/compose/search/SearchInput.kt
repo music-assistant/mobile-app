@@ -20,6 +20,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SearchInput(
@@ -42,9 +45,9 @@ fun SearchInput(
         value = query,
         onValueChange = onQueryChanged,
         maxLines = 1,
-        label = { Text(if (query.trim().length < 3) "Type at least 3 characters to search" else "Search query") },
+        label = { Text(if (query.trim().length < 3) stringResource(Res.string.search_min_chars) else stringResource(Res.string.search_query_label)) },
         trailingIcon = if (query.isNotEmpty()) {
-            { IconButton(onClick = { onQueryChanged("") }) { Icon(Icons.Default.Clear, contentDescription = "Clear") } }
+            { IconButton(onClick = { onQueryChanged("") }) { Icon(Icons.Default.Clear, contentDescription = stringResource(Res.string.common_clear)) } }
         } else null,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {

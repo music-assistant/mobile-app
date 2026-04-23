@@ -42,6 +42,9 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CategoryRow
 import io.music_assistant.client.ui.compose.nav.Screen
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -118,7 +121,7 @@ private fun SearchTopBar(
 ) {
     TopAppBar(
         title = {
-            Text(text = "Global search")
+            Text(text = stringResource(Res.string.search_title))
         },
         scrollBehavior = scrollBehavior
     )
@@ -169,7 +172,7 @@ private fun SearchContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Error loading search results",
+                            text = stringResource(Res.string.search_error),
                             color = MaterialTheme.colorScheme.error
                         )
                     }
@@ -196,17 +199,17 @@ private fun SearchContent(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No results found")
+                            Text(stringResource(Res.string.search_no_results))
                         }
                     } else {
                         val sections = listOf(
-                            "Tracks" to results.tracks,
-                            "Artists" to results.artists,
-                            "Albums" to results.albums,
-                            "Playlists" to results.playlists,
-                            "Podcasts" to results.podcasts,
-                            "Audiobooks" to results.audiobooks,
-                            "Radio" to results.radios,
+                            stringResource(Res.string.media_type_tracks) to results.tracks,
+                            stringResource(Res.string.media_type_artists) to results.artists,
+                            stringResource(Res.string.media_type_albums) to results.albums,
+                            stringResource(Res.string.media_type_playlists) to results.playlists,
+                            stringResource(Res.string.media_type_podcasts) to results.podcasts,
+                            stringResource(Res.string.media_type_audiobooks) to results.audiobooks,
+                            stringResource(Res.string.media_type_radio) to results.radios,
                         )
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -240,7 +243,7 @@ private fun SearchContent(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Start searching...")
+                        Text(stringResource(Res.string.search_start))
                     }
                 }
             }
@@ -294,7 +297,7 @@ private fun SearchFilters(
             selected = searchState.libraryOnly,
             onClick = { onLibraryOnlyToggled(!searchState.libraryOnly) },
             label = {
-                Text(text = "In library only", style = MaterialTheme.typography.bodySmall)
+                Text(text = stringResource(Res.string.search_in_library_only), style = MaterialTheme.typography.bodySmall)
             }
         )
     }

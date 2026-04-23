@@ -61,6 +61,9 @@ import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.flow.collectLatest
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -149,23 +152,23 @@ fun MainNavigationRoot(
         multiBackStack.createNavigationItem(
             backStack = 0,
             icon = Icons.Default.Home,
-            label = "Home"
+            label = stringResource(Res.string.nav_home)
         ),
         multiBackStack.createNavigationItem(
             backStack = 1,
             icon = Icons.Default.LibraryMusic,
-            label = "Library"
+            label = stringResource(Res.string.nav_library)
         ),
         multiBackStack.createNavigationItem(
             backStack = 2,
             icon = Icons.Default.Search,
-            label = "Search"
+            label = stringResource(Res.string.nav_search)
         ),
         NavigationItem(
             selected = false,
             onClick = { goToSettings() },
             Icons.Default.Settings,
-            label = "Settings"
+            label = stringResource(Res.string.nav_settings)
         )
     )
 

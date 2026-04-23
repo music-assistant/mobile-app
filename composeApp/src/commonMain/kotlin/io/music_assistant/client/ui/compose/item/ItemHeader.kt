@@ -63,6 +63,9 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.launch
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -127,7 +130,7 @@ internal fun ItemTopBar(
         title = {},
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
             }
         },
         actions = {
@@ -165,8 +168,8 @@ private fun ItemOverflow(
                     add(
                         OverflowMenuOption(
                             title =
-                                if (item.isInLibrary) "Remove from library"
-                                else "Add to library",
+                                if (item.isInLibrary) stringResource(Res.string.action_remove_from_library)
+                                else stringResource(Res.string.action_add_to_library),
                             icon =
                                 if (item.isInLibrary) TablerIcons.FolderMinus
                                 else TablerIcons.FolderPlus
@@ -176,8 +179,8 @@ private fun ItemOverflow(
                     add(
                         OverflowMenuOption(
                             title =
-                                if (item.favorite == true) "Unfavorite"
-                                else "Favorite",
+                                if (item.favorite == true) stringResource(Res.string.action_unfavorite)
+                                else stringResource(Res.string.action_favorite),
                             icon =
                                 if (item.favorite == true) TablerIcons.HeartBroken
                                 else TablerIcons.Heart
@@ -188,7 +191,7 @@ private fun ItemOverflow(
             playlistActions?.let {
                 add(
                     OverflowMenuOption(
-                        title = "Add to Playlist",
+                        title = stringResource(Res.string.playlist_add_to_title),
                         icon = Icons.AutoMirrored.Filled.PlaylistAdd
                     ) {
                         showPlaylistDialog = true
@@ -203,7 +206,7 @@ private fun ItemOverflow(
 
             add(
                 OverflowMenuOption(
-                    title = "Toggle view mode",
+                    title = stringResource(Res.string.action_toggle_view_mode),
                     icon = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
                     onClick = onToggleViewMode
                 )
@@ -212,7 +215,7 @@ private fun ItemOverflow(
             if (goToArtist != null) {
                 add(
                     OverflowMenuOption(
-                        title = "Go to artist",
+                        title = stringResource(Res.string.action_go_to_artist),
                         icon = Icons.Default.Person,
                         onClick = goToArtist
                     )
@@ -221,7 +224,7 @@ private fun ItemOverflow(
         }
     ) { onClick ->
         IconButton(onClick = onClick) {
-            Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
+            Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(Res.string.cd_more))
         }
     }
 
@@ -232,7 +235,7 @@ private fun ItemOverflow(
                 playlists = emptyList()
                 isLoadingPlaylists = false
             },
-            title = { Text("Add to Playlist") },
+            title = { Text(stringResource(Res.string.playlist_add_to_title)) },
             text = {
                 if (isLoadingPlaylists) {
                     Box(
@@ -242,7 +245,7 @@ private fun ItemOverflow(
                         CircularProgressIndicator()
                     }
                 } else if (playlists.isEmpty()) {
-                    Text("No editable playlists available")
+                    Text(stringResource(Res.string.playlist_no_editable))
                 } else {
                     Column {
                         playlists.forEach { playlist ->
@@ -270,7 +273,7 @@ private fun ItemOverflow(
                     playlists = emptyList()
                     isLoadingPlaylists = false
                 }) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.common_cancel))
                 }
             }
         )

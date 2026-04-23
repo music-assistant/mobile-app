@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -351,7 +354,7 @@ private fun ExpandedPlayerPage(
                             VolumeMutedIcon
                         else
                             VolumeIcon,
-                        contentDescription = "Volume",
+                        contentDescription = stringResource(Res.string.cd_volume),
                         tint = controlTint,
                     )
                     Slider(
