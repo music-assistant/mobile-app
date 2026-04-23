@@ -207,7 +207,7 @@ private fun ItemOverflow(
         }
     ) { onClick ->
         IconButton(onClick = onClick) {
-            Icon(imageVector = Icons.Default.MoreVert, null)
+            Icon(imageVector = Icons.Default.MoreVert, contentDescription = "More")
         }
     }
 
@@ -361,9 +361,11 @@ private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
 @Preview
 @Composable
 private fun PreviewLongTitle() {
-    Preview(AppMediaItemFixtures.album(
-        name = "A very long title that is very long oh no it's so long"
-    ))
+    Preview(
+        AppMediaItemFixtures.album(
+            name = "A very long title that is very long oh no it's so long"
+        )
+    )
 }
 
 @Preview

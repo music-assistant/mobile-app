@@ -24,7 +24,7 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
         return this
     }
 
-    fun clickOnMedia(name: String): MedaItemPage {
+    fun clickOnMedia(name: String): MediaItemPage {
         return clickOnMedia(name, "Search")
     }
 }

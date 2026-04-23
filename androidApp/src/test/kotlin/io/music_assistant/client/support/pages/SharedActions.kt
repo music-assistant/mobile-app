@@ -7,12 +7,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.support.isTab
 
-fun ComposePage.clickOnMedia(name: String, navigationItem: String): MedaItemPage {
+fun ComposePage.clickOnMedia(name: String, navigationItem: String): MediaItemPage {
     composeTestRule.onNodeWithText(name)
         .assertIsDisplayed()
         .performClick()
 
-    return MedaItemPage(name, navigationItem, composeTestRule).assertOnPage()
+    return MediaItemPage(name, navigationItem, composeTestRule).assertOnPage()
 }
 
 fun ComposePage.assertNavBar(items: List<String>, selected: String) {

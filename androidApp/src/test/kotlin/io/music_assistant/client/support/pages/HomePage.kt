@@ -10,7 +10,7 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
         assertNavBar(items = listOf("Home", "Library", "Search", "Settings"), selected = "Home")
     }
 
-    fun clickOnMedia(name: String): MedaItemPage {
+    fun clickOnMedia(name: String): MediaItemPage {
         return clickOnMedia(name, "Home")
     }
 }

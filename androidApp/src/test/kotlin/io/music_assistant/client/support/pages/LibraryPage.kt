@@ -16,7 +16,7 @@ class LibraryPage(private val type: String, composeTestRule: ComposeTestRule) : 
         return LibraryPage("Albums", composeTestRule).assertOnPage()
     }
 
-    fun clickOnMedia(name: String): MedaItemPage {
+    fun clickOnMedia(name: String): MediaItemPage {
         return clickOnMedia(name, "Library")
     }
 }

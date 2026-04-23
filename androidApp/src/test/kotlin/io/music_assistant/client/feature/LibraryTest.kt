@@ -7,7 +7,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.launchLoggedInApp
-import io.music_assistant.client.support.pages.MedaItemPage
+import io.music_assistant.client.support.pages.MediaItemPage
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickLibrary
@@ -56,8 +56,8 @@ class LibraryTest {
             .clickAlbums()
             .clickOnMedia(album2.name)
 
-            .clickHome(MedaItemPage(album1.name, "Home", composeTestRule))
-            .clickLibrary(MedaItemPage(album2.name, "Library", composeTestRule))
+            .clickHome(MediaItemPage(album1.name, "Home", composeTestRule))
+            .clickLibrary(MediaItemPage(album2.name, "Library", composeTestRule))
     }
 
     @Test
