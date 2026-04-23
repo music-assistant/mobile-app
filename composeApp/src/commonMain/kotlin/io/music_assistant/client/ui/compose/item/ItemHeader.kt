@@ -121,7 +121,7 @@ internal fun ItemTopBar(
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    goToArtist: () -> Unit
+    goToArtist: (() -> Unit)?
 ) {
     TopAppBar(
         title = {},
@@ -151,7 +151,7 @@ private fun ItemOverflow(
     onToggleViewMode: () -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
-    goToArtist: () -> Unit
+    goToArtist: (() -> Unit)?
 ) {
     val coroutineScope = rememberCoroutineScope()
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
@@ -209,13 +209,15 @@ private fun ItemOverflow(
                 )
             )
 
-            add(
-                OverflowMenuOption(
-                    title = "Go to artist",
-                    icon = Icons.Default.Person,
-                    onClick = goToArtist
+            if (goToArtist != null) {
+                add(
+                    OverflowMenuOption(
+                        title = "Go to artist",
+                        icon = Icons.Default.Person,
+                        onClick = goToArtist
+                    )
                 )
-            )
+            }
         }
     ) { onClick ->
         IconButton(onClick = onClick) {

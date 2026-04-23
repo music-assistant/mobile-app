@@ -213,7 +213,7 @@ abstract class AppMediaItem(
 //        val musicbrainzId: String?,
         val version: String?,
         val year: Int?,
-        val artists: List<Artist>?,
+        val artists: List<Artist>,
 //        val albumType: AlbumType?,
     ) : AppMediaItem(
         itemId = itemId,
@@ -489,7 +489,7 @@ abstract class AppMediaItem(
 //                    musicbrainzId = musicbrainzId,
                     version = version,
                     year = year,
-                    artists = artists?.mapNotNull { it.toAppMediaItem() as? Artist },
+                    artists = artists?.mapNotNull { it.toAppMediaItem() as? Artist } ?: emptyList(),
 //                    albumType = albumType,
                 )
 

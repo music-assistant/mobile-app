@@ -332,7 +332,11 @@ private fun ItemContent(
                 onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
-                goToArtist = { onNavigateClick((item as AppMediaItem.Album).artists!![0]) }
+                goToArtist = if (item is AppMediaItem.Album && item.artists.isNotEmpty()) {
+                    { onNavigateClick(item.artists[0]) }
+                } else {
+                    null
+                }
             )
 
             if (tabs.isEmpty()) {

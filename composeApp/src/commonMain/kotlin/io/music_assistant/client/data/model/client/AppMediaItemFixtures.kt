@@ -10,7 +10,7 @@ object AppMediaItemFixtures {
     fun album(
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Album $itemId",
-        artist: AppMediaItem.Artist = artist(),
+        artist: AppMediaItem.Artist? = artist(),
         version: String? = null
     ): AppMediaItem.Album {
         return AppMediaItem.Album(
@@ -24,7 +24,11 @@ object AppMediaItemFixtures {
             image = null,
             version = version,
             year = null,
-            artists = listOf(artist)
+            artists = if (artist != null) {
+                listOf(artist)
+            } else {
+                emptyList()
+            }
         )
     }
 

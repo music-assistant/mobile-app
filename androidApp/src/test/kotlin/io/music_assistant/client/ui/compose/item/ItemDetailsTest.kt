@@ -2,10 +2,13 @@ package io.music_assistant.client.ui.compose.item
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
@@ -93,6 +96,24 @@ class ItemDetailsTest {
         }
 
         composeTestRule.onAllNodes(hasText(album.version!!)).onFirst().assertIsDisplayed()
+    }
+
+    @Test
+    fun `does not show go to artist button if there are none`() {
+        val album = AppMediaItemFixtures.album(artist = null)
+
+        composeTestRule.setContent {
+            ItemDetails(
+                state = ItemDetailsViewModel.State(
+                    itemState = DataState.Data(album),
+                    albumsState = DataState.NoData(),
+                    playableItemsState = DataState.Data(emptyList())
+                ),
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More").performClick()
+        composeTestRule.onNodeWithText("Go to artist").assertIsNotDisplayed()
     }
 
     @Test
