@@ -16,7 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,6 +97,9 @@ class AudioStreamManager(
 
     private val queue = ArrayList<RawFrame>(64)
     private val queueLock = Mutex()
+    // Signal from producer to consumer: "new frame available". Channel(1) with DROP_OLDEST
+    // coalesces multiple signals into one wakeup — consumer drains all ready frames per wakeup.
+    private val frameSignal = Channel<Unit>(Channel.CONFLATED)
 
     /**
      * Minimum queue depth before consumer starts draining.
@@ -219,12 +222,13 @@ class AudioStreamManager(
 
         val ts = binaryMessage.timestamp
 
-        // Sorted insert into reorder queue
+        // Sorted insert into reorder queue, then signal consumer
         val frame = RawFrame(ts, binaryMessage.data)
         queueLock.withLock {
             val pos = queue.binarySearchBy(frame.timestamp) { it.timestamp }
             queue.add(if (pos < 0) -(pos + 1) else pos, frame)
         }
+        frameSignal.trySend(Unit)
     }
 
     /**
@@ -238,17 +242,23 @@ class AudioStreamManager(
 
             try {
                 while (isActive && isStreaming) {
-                    val frame = queueLock.withLock {
-                        if (queue.size > reorderDepth) queue.removeAt(0) else null
-                    }
+                    // Drain all ready frames before suspending
+                    var drained = false
+                    while (isActive && isStreaming) {
+                        val frame = queueLock.withLock {
+                            if (queue.size > reorderDepth) queue.removeAt(0) else null
+                        } ?: break
 
-                    if (frame != null) {
+                        drained = true
                         val pcmData = decoderLock.withLock {
                             audioDecoder?.decode(frame.data) ?: continue
                         }
                         mediaPlayerController.writeRawPcm(pcmData)
-                    } else {
-                        delay(2)
+                    }
+
+                    if (!drained) {
+                        // No frames ready — suspend until producer signals
+                        frameSignal.receive()
                     }
                 }
             } catch (_: CancellationException) {
