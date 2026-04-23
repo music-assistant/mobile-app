@@ -273,7 +273,7 @@ private fun ItemChildren(
                     onToggleViewMode = onToggleViewMode,
                     onAlbumsSortChanged = onAlbumsSortChanged,
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
-                    contentPadding = contentPadding,
+                    contentPadding = contentPadding
                 )
             }
 
@@ -308,7 +308,7 @@ private fun ItemContent(
     onToggleViewMode: () -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
-    contentPadding: PaddingValues,
+    contentPadding: PaddingValues
 ) {
     val tabs = tabsFor(item)
     var selectedIndex by rememberSaveable(item.mediaType) { mutableStateOf(0) }
@@ -319,7 +319,7 @@ private fun ItemContent(
             item = item,
             serverUrl = serverUrl,
             providerIconFetcher = providerIconFetcher,
-            onPlayClick = onPlayItemClick,
+            onPlayClick = onPlayItemClick
         )
     }
 
@@ -332,6 +332,7 @@ private fun ItemContent(
                 onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
+                goToArtist = { onNavigateClick((item as AppMediaItem.Album).artists!![0]) }
             )
 
             if (tabs.isEmpty()) {
@@ -394,6 +395,7 @@ private fun TabsBar(
         SubItemContext.ALBUM_TRACKS,
         SubItemContext.PLAYLIST_TRACKS,
         SubItemContext.PODCAST_EPISODES -> playableItemsSortOption
+
         null -> null
     }
 
@@ -542,7 +544,9 @@ private fun AlbumsTabContent(
         when (albumsState) {
             is DataState.Data -> items(
                 albumsState.data,
-                span = if (isRowMode) { { GridItemSpan(maxLineSpan) } } else null,
+                span = if (isRowMode) {
+                    { GridItemSpan(maxLineSpan) }
+                } else null,
             ) { album ->
                 AlbumWithMenu(
                     item = album,
@@ -592,7 +596,9 @@ private fun ArtistsTabContent(
         when (artistsState) {
             is DataState.Data -> items(
                 artistsState.data,
-                span = if (isRowMode) { { GridItemSpan(maxLineSpan) } } else null,
+                span = if (isRowMode) {
+                    { GridItemSpan(maxLineSpan) }
+                } else null,
             ) { artist ->
                 ArtistWithMenu(
                     item = artist,
@@ -646,7 +652,9 @@ private fun PlayablesTabContent(
             is DataState.Data -> {
                 playableItemsState.data.forEachIndexed { index, track ->
                     item(
-                        span = if (isRowMode) { { GridItemSpan(maxLineSpan) } } else null,
+                        span = if (isRowMode) {
+                            { GridItemSpan(maxLineSpan) }
+                        } else null,
                     ) {
                         when (track) {
                             is AppMediaItem.Track -> TrackWithMenu(

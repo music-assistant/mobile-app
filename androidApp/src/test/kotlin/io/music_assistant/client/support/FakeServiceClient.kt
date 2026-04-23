@@ -227,6 +227,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     fun addToLibrary(vararg items: ServerMediaItem) {
         this.items.addAll(items)
+        items.forEach { item ->
+            item.artists?.let {
+                this.items.addAll(it)
+            }
+        }
     }
 
     private fun findItem(
