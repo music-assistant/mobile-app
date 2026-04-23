@@ -40,6 +40,21 @@ class MultiBackStack(private val backStacks: List<NavBackStack<NavKey>>) {
         backStacks[currentBackStack].add(element)
     }
 
+    /**
+     * Switch to [index] back stack, optionally replacing its contents with a single
+     * [replacementBottom] entry. Used to redirect navigation into another tab's stack
+     * (e.g. tapping "All Albums" on Home jumps to the Library tab rooted at Albums).
+     */
+    fun switchTo(index: Int, replacementBottom: NavKey? = null) {
+        currentBackStack = index
+        replacementBottom?.let {
+            backStacks[index].apply {
+                clear()
+                add(it)
+            }
+        }
+    }
+
     fun removeLastOrNull(): NavKey? {
         return if (currentBackStack != 0 && backStacks[currentBackStack].size == 1) {
             currentBackStack = 0

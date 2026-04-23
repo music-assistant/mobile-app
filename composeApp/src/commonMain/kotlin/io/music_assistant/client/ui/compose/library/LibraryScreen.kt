@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
@@ -40,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +52,6 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.SortConfig
-import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
@@ -64,18 +63,37 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.action_favorite
+import musicassistantclient.composeapp.generated.resources.cd_add_playlist
+import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
+import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.common_clear
+import musicassistantclient.composeapp.generated.resources.common_create
+import musicassistantclient.composeapp.generated.resources.library_empty
+import musicassistantclient.composeapp.generated.resources.library_error
+import musicassistantclient.composeapp.generated.resources.library_quick_search
+import musicassistantclient.composeapp.generated.resources.media_type_albums
+import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
+import musicassistantclient.composeapp.generated.resources.media_type_genres
+import musicassistantclient.composeapp.generated.resources.media_type_playlists
+import musicassistantclient.composeapp.generated.resources.media_type_podcasts
+import musicassistantclient.composeapp.generated.resources.media_type_radio
+import musicassistantclient.composeapp.generated.resources.media_type_tracks
+import musicassistantclient.composeapp.generated.resources.playlist_add_new
+import musicassistantclient.composeapp.generated.resources.playlist_create_title
+import musicassistantclient.composeapp.generated.resources.playlist_name_label
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun LibraryScreen(
     contentPadding: PaddingValues,
     initialTabType: MediaType?,
-    onBack: () -> Unit,
     onNavigateClick: (AppMediaItem) -> Unit,
 ) {
-    val viewModel: LibraryViewModel = koinInject()
+    val viewModel: LibraryViewModel = koinViewModel()
     val actionsViewModel: ActionsViewModel = koinInject()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
@@ -96,9 +114,15 @@ fun LibraryScreen(
         else -> LibraryViewModel.Tab.ARTISTS
     }
 
-    // Set initial tab
+    // Apply initialTab once per NavEntry lifetime. A fresh Library NavKey (e.g. "All Albums"
+    // from Home) instantiates a new entry with a reset flag; popping back from ItemDetails
+    // restores the flag, so the user's in-library tab selection is preserved.
+    var initialTabApplied by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(initialTab) {
-        viewModel.onTabSelected(initialTab)
+        if (!initialTabApplied) {
+            viewModel.onTabSelected(initialTab)
+            initialTabApplied = true
+        }
     }
 
     // Collect toasts
@@ -111,7 +135,6 @@ fun LibraryScreen(
     Screen(
         topBar = { scrollBehavior ->
             LibraryTopBar(
-                onBack = onBack,
                 tabs = state.tabs,
                 onTabSelected = viewModel::onTabSelected,
                 isRowMode = isRowMode,
@@ -153,7 +176,6 @@ fun LibraryScreen(
 
 @Composable
 private fun LibraryTopBar(
-    onBack: () -> Unit,
     tabs: List<LibraryViewModel.TabState>,
     onTabSelected: (LibraryViewModel.Tab) -> Unit,
     isRowMode: Boolean,
@@ -187,11 +209,6 @@ private fun LibraryTopBar(
                         }
                     )
                 }
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
             }
         },
         actions = {

@@ -15,7 +15,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,7 +61,10 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.flow.collectLatest
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.nav_settings
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -271,7 +273,7 @@ private fun mainNavEntryProvider(
                 },
                 onPlayClick = viewModel::onPlayClick,
                 onLibraryItemClick = { type ->
-                    multiBackStack.add(MainNav.Library(type))
+                    multiBackStack.switchTo(1, MainNav.Library(type))
                 },
                 playlistActions = playlistActions,
                 libraryActions = libraryActions,
@@ -289,7 +291,6 @@ private fun mainNavEntryProvider(
                     bottom = floatingBarHeight + FloatingBarDefaults.padding
                 ),
                 initialTabType = it.type,
-                onBack = { multiBackStack.removeLastOrNull() },
                 onNavigateClick = { item ->
                     when (item) {
                         is AppMediaItem.Artist,
