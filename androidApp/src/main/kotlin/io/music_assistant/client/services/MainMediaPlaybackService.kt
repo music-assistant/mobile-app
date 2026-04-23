@@ -295,11 +295,10 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     ) = Unit
 
     private fun switchPlayer() {
-        activePlayerIndex.update {
-            if (players.value.size > 1) {
-                (it + 1) % players.value.size
-            } else 0
-        }
+        val list = players.value
+        if (list.size <= 1) return
+        val newIndex = (activePlayerIndex.value + 1) % list.size
+        dataSource.selectPlayer(list[newIndex].player)
     }
 
     override fun onDestroy() {
