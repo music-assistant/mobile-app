@@ -3,9 +3,9 @@ package io.music_assistant.client.feature
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
-import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
+import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.MediaItemPage
 import io.music_assistant.client.support.pages.assertMediaDisplayed
@@ -32,8 +32,8 @@ class LibraryTest {
 
     @Test
     fun `can browse albums`() {
-        val album1 = AppMediaItemFixtures.album()
-        val album2 = AppMediaItemFixtures.album()
+        val album1 = ServerMediaItemFixtures.album()
+        val album2 = ServerMediaItemFixtures.album()
         serviceClient.addToLibrary(album1, album2)
 
         launchLoggedInApp(composeTestRule, serviceClient)
@@ -45,8 +45,8 @@ class LibraryTest {
 
     @Test
     fun `library has its own backstack`() {
-        val album1 = AppMediaItemFixtures.album()
-        val album2 = AppMediaItemFixtures.album()
+        val album1 = ServerMediaItemFixtures.album()
+        val album2 = ServerMediaItemFixtures.album()
         serviceClient.addToLibrary(album1, album2)
 
         launchLoggedInApp(composeTestRule, serviceClient)
@@ -62,7 +62,7 @@ class LibraryTest {
 
     @Test
     fun `clicking library while on it clears backstack`() {
-        val album = AppMediaItemFixtures.album()
+        val album = ServerMediaItemFixtures.album()
         serviceClient.addToLibrary(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)

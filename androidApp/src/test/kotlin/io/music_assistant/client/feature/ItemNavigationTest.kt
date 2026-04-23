@@ -3,9 +3,9 @@ package io.music_assistant.client.feature
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
-import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
+import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
@@ -28,8 +28,8 @@ class ItemNavigationTest {
 
     @Test
     fun `can navigate from album to artist`() {
-        val artist = AppMediaItemFixtures.artist()
-        val album = AppMediaItemFixtures.album()
+        val artist = ServerMediaItemFixtures.artist()
+        val album = ServerMediaItemFixtures.album(artist = artist)
         serviceClient.addToLibrary(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
