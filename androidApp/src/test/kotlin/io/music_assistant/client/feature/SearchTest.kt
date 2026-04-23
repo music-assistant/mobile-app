@@ -38,7 +38,7 @@ class SearchTest {
             .clickSearch()
             .search("onion")
             .assertResult(album.name)
-            .clickOnMedia(album.name)
+            .clickOnMedia(album)
     }
 
     @Test
@@ -48,13 +48,21 @@ class SearchTest {
         serviceClient.addToLibrary(album1, album2)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickOnMedia(album1.name)
+            .clickOnMedia(album1)
 
             .clickSearch()
             .search(album2.name.substring(3))
-            .clickOnMedia(album2.name)
+            .clickOnMedia(album2)
 
-            .clickHome(MediaItemPage(album1.name, "Home", composeTestRule))
-            .clickSearch(MediaItemPage(album2.name, "Search", composeTestRule))
+            .clickHome(MediaItemPage(
+                album1,
+                navigationItem = "Home",
+                composeTestRule = composeTestRule
+            ))
+            .clickSearch(MediaItemPage(
+                album2,
+                navigationItem = "Search",
+                composeTestRule = composeTestRule
+            ))
     }
 }

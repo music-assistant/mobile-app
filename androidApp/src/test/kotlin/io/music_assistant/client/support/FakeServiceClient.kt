@@ -30,7 +30,17 @@ import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
 
-    private val albums = mutableListOf<ServerMediaItem>()
+    private val items = mutableListOf<ServerMediaItem>()
+    private val albums: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.ALBUM }
+        }
+
+    private val artists: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.ARTIST }
+        }
+
     val username = "user"
     val password = "password"
 
@@ -78,7 +88,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         request = request,
                         result = SearchResult(
                             artists = emptyList(),
-                            albums = searchItems(request, albums),
+                            albums = searchItems(request, items),
                             tracks = emptyList(),
                             playlists = emptyList(),
                             podcasts = emptyList()
@@ -101,6 +111,24 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     answer(
                         request = request,
                         result = albums
+                    )
+                )
+            }
+
+            Request.Artist.get("", "").command -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = findItem(request, artists)
+                    )
+                )
+            }
+
+            Request.Artist.listLibrary().command -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = artists
                     )
                 )
             }
@@ -197,8 +225,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         TODO("Not yet implemented")
     }
 
-    fun addToLibrary(vararg albums: ServerMediaItem) {
-        this.albums.addAll(albums)
+    fun addToLibrary(vararg items: ServerMediaItem) {
+        this.items.addAll(items)
     }
 
     private fun findItem(

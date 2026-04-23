@@ -5,14 +5,23 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.isTab
 
-fun ComposePage.clickOnMedia(name: String, navigationItem: String): MediaItemPage {
+fun ComposePage.clickOnMedia(
+    serverMediaItem: ServerMediaItem,
+    navigationItem: String
+): MediaItemPage {
+    return clickOnMedia(serverMediaItem.name, serverMediaItem.mediaType, navigationItem)
+}
+
+fun ComposePage.clickOnMedia(name: String, type: MediaType, navigationItem: String): MediaItemPage {
     composeTestRule.onNodeWithText(name)
         .assertIsDisplayed()
         .performClick()
 
-    return MediaItemPage(name, navigationItem, composeTestRule).assertOnPage()
+    return MediaItemPage(name, type, navigationItem, composeTestRule).assertOnPage()
 }
 
 fun ComposePage.assertNavBar(items: List<String>, selected: String) {

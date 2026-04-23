@@ -44,20 +44,42 @@ class LibraryTest {
     }
 
     @Test
+    fun `can browse artists`() {
+        val artist1 = ServerMediaItemFixtures.artist()
+        val artist2 = ServerMediaItemFixtures.artist()
+        serviceClient.addToLibrary(artist1, artist2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickArtists()
+            .assertMediaDisplayed(artist1.name)
+            .assertMediaDisplayed(artist2.name)
+            .clickOnMedia(artist1)
+    }
+
+    @Test
     fun `library has its own backstack`() {
         val album1 = ServerMediaItemFixtures.album()
         val album2 = ServerMediaItemFixtures.album()
         serviceClient.addToLibrary(album1, album2)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickOnMedia(album1.name)
+            .clickOnMedia(album1)
 
             .clickLibrary()
             .clickAlbums()
-            .clickOnMedia(album2.name)
+            .clickOnMedia(album2)
 
-            .clickHome(MediaItemPage(album1.name, "Home", composeTestRule))
-            .clickLibrary(MediaItemPage(album2.name, "Library", composeTestRule))
+            .clickHome(MediaItemPage(
+                album1,
+                navigationItem = "Home",
+                composeTestRule = composeTestRule
+            ))
+            .clickLibrary(MediaItemPage(
+                album2,
+                navigationItem = "Library",
+                composeTestRule = composeTestRule
+            ))
     }
 
     @Test
@@ -68,7 +90,7 @@ class LibraryTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickLibrary()
             .clickAlbums()
-            .clickOnMedia(album.name)
+            .clickOnMedia(album)
 
             .clickLibrary()
     }

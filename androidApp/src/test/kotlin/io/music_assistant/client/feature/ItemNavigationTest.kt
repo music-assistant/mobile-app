@@ -33,7 +33,7 @@ class ItemNavigationTest {
         serviceClient.addToLibrary(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickOnMedia(album.name)
+            .clickOnMedia(album)
             .clickGoToArtist(artist.name)
     }
 }

@@ -8,14 +8,22 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.isTab
 
 class MediaItemPage(
     private val name: String,
+    private val type: MediaType,
     private val navigationItem: String,
-    composeTestRule: ComposeTestRule,
-    private val type: MediaType = MediaType.ALBUM
+    composeTestRule: ComposeTestRule
 ) : ComposePage(composeTestRule) {
+
+    constructor(
+        serverMediaItem: ServerMediaItem,
+        navigationItem: String,
+        composeTestRule: ComposeTestRule
+    ) : this(serverMediaItem.name, serverMediaItem.mediaType, navigationItem, composeTestRule)
+
     override fun assert() {
         composeTestRule.onNodeWithText(name).assertIsDisplayed()
         composeTestRule.onNodeWithText("Play").assertIsDisplayed().assertHasClickAction()
@@ -54,9 +62,9 @@ class MediaItemPage(
         composeTestRule.onNodeWithText("Go to artist").performClick()
         return MediaItemPage(
             artist,
+            MediaType.ARTIST,
             navigationItem,
-            composeTestRule,
-            MediaType.ARTIST
+            composeTestRule
         ).assertOnPage()
     }
 }

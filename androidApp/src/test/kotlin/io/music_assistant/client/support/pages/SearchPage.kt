@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
+import io.music_assistant.client.data.model.server.ServerMediaItem
 
 class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
@@ -24,7 +25,7 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
         return this
     }
 
-    fun clickOnMedia(name: String): MediaItemPage {
-        return clickOnMedia(name, "Search")
+    fun clickOnMedia(item: ServerMediaItem): MediaItemPage {
+        return clickOnMedia(item, "Search")
     }
 }
