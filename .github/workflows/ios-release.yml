@@ -2,23 +2,29 @@ name: iOS Release
 
 on:
   workflow_dispatch:
-  # Temporary: GitHub doesn't register a workflow_dispatch workflow until it
-  # exists on the default branch OR has run at least once from some other
-  # trigger. This push trigger is scoped to the CI-setup branch itself so
-  # each push while iterating on this workflow produces a test run. Remove
-  # before merging to dev.
-  push:
-    branches: [ci/ios-release-workflow]
+
+permissions:
+  contents: write
 
 jobs:
   release:
-    runs-on: macos-15
+    # macos-26 ships Xcode 26.2 by default, which builds against the iOS 26 SDK.
+    # Apple requires iOS 26 SDK for all App Store Connect uploads starting
+    # April 28, 2026 (ITMS-90725). macos-15 only has Xcode 16.x / iOS 18.5 SDK
+    # and would get rejected after that date.
+    runs-on: macos-26
 
     steps:
-      - name: Checkout
+      - name: Checkout dev
         uses: actions/checkout@v6
         with:
+          ref: dev
           fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -73,6 +79,15 @@ jobs:
           echo "Shipping iOS $VERSION_NAME ($BUILD_NUM)"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
+          echo "tag=ios-v${VERSION_NAME}-build-${BUILD_NUM}" >> "$GITHUB_OUTPUT"
+
+      - name: Guard against duplicate tag
+        run: |
+          git fetch --tags
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump CFBundleVersion in iosApp/iosApp/Info.plist before releasing."
+            exit 1
+          fi
 
       - name: Import signing cert and provisioning profile
         env:
@@ -157,6 +172,57 @@ jobs:
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID"
 
+      - name: Create and push tag
+        run: |
+          git tag -a "${{ steps.version.outputs.tag }}" \
+            -m "iOS v${{ steps.version.outputs.name }} build ${{ steps.version.outputs.build }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          PREV_TAG=$(git tag -l 'ios-v*' --sort=-v:refname | grep -v "^${{ steps.version.outputs.tag }}$" | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            # Only commits that touched iOS-relevant paths since the last iOS tag
+            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD -- iosApp composeApp ':!.github' ':!androidApp' || true)
+          else
+            NOTES="Initial iOS release"
+          fi
+          # Fallback if the path filter produced nothing
+          if [ -z "$NOTES" ]; then
+            NOTES="No iOS-specific changes since $PREV_TAG"
+          fi
+          # Write to a file so multi-line content survives the GITHUB_OUTPUT delimiter
+          printf '%s' "$NOTES" > /tmp/release-notes.md
+          echo "file=/tmp/release-notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "iOS ${{ steps.version.outputs.name }} (${{ steps.version.outputs.build }})"
+          body_path: ${{ steps.notes.outputs.file }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute next build number
+        id: next
+        run: |
+          NEXT_BUILD=$(( ${{ steps.version.outputs.build }} + 1 ))
+          echo "build=$NEXT_BUILD" >> "$GITHUB_OUTPUT"
+          echo "branch=chore/bump-ios-build-${NEXT_BUILD}" >> "$GITHUB_OUTPUT"
+
+      - name: Push version bump branch
+        run: |
+          git fetch origin dev
+          git checkout -b "${{ steps.next.outputs.branch }}" origin/dev
+          plutil -replace CFBundleVersion -string "${{ steps.next.outputs.build }}" iosApp/iosApp/Info.plist
+          git add iosApp/iosApp/Info.plist
+          git commit -m "chore: bump iOS build to ${{ steps.next.outputs.build }}"
+          git push origin "${{ steps.next.outputs.branch }}"
+
       - name: Summary
         if: success()
         run: |
@@ -164,7 +230,8 @@ jobs:
             echo "## iOS Release — success"
             echo ""
             echo "- **Version**: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.build }})"
-            echo "- **IPA**: \`$(ls build/ipa/*.ipa)\`"
+            echo "- **Tag**: [\`${{ steps.version.outputs.tag }}\`](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }})"
+            echo "- **Next build bump branch**: [\`${{ steps.next.outputs.branch }}\`](https://github.com/${{ github.repository }}/compare/dev...${{ steps.next.outputs.branch }}?expand=1) — open a PR to prepare the next release"
             echo "- Build should appear in App Store Connect → TestFlight → Builds within a few minutes."
           } >> "$GITHUB_STEP_SUMMARY"
 
