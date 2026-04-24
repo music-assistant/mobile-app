@@ -2,6 +2,13 @@ name: iOS Release
 
 on:
   workflow_dispatch:
+  # Temporary: GitHub doesn't register a workflow_dispatch workflow until it
+  # exists on the default branch OR has run at least once from some other
+  # trigger. This push trigger is scoped to the CI-setup branch itself so
+  # each push while iterating on this workflow produces a test run. Remove
+  # before merging to dev.
+  push:
+    branches: [ci/ios-release-workflow]
 
 jobs:
   release:
