@@ -1,0 +1,144 @@
+name: iOS Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Extract current version
+        id: version
+        run: |
+          VERSION_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" iosApp/iosApp/Info.plist)
+          BUILD_NUM=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" iosApp/iosApp/Info.plist)
+          echo "Shipping iOS $VERSION_NAME ($BUILD_NUM)"
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD_NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Import signing cert and provisioning profile
+        env:
+          CERT_B64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          CERT_PASS: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          PROFILE_B64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          KC_PASS: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          # Decode secrets into files
+          echo "$CERT_B64" | base64 -d > /tmp/dist.p12
+          echo "$PROFILE_B64" | base64 -d > /tmp/profile.mobileprovision
+
+          # Create & unlock an ephemeral keychain. Put it at the front of the
+          # user search list so xcodebuild/codesign find our identity before
+          # the default login keychain.
+          KEYCHAIN=/tmp/build.keychain-db
+          security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+
+          # Import the .p12 (cert + private key in one blob)
+          security import /tmp/dist.p12 \
+            -k "$KEYCHAIN" \
+            -P "$CERT_PASS" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productsign
+
+          # Authorize codesign to use the private key without a GUI prompt —
+          # required because security import alone leaves the key unusable.
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s \
+            -k "$KC_PASS" \
+            "$KEYCHAIN"
+
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+
+          # Install the provisioning profile where xcodebuild looks for it.
+          # We use the traditional ~/Library/MobileDevice path; xcodebuild CLI
+          # reads from here regardless of Xcode version.
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+          # Sanity check — we should see our Apple Distribution identity
+          security find-identity -v -p codesigning "$KEYCHAIN"
+
+      - name: Archive
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/iosApp.xcarchive" \
+            archive
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/iosApp.xcarchive" \
+            -exportOptionsPlist iosApp/ExportOptions.plist \
+            -exportPath "$PWD/build/ipa"
+          ls -la build/ipa/
+
+      - name: Upload to App Store Connect
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/private_keys
+          # altool looks for the key at ~/private_keys/AuthKey_<KEY_ID>.p8
+          printf '%s' "$KEY_P8" > ~/private_keys/AuthKey_${KEY_ID}.p8
+          IPA=$(ls build/ipa/*.ipa | head -1)
+          echo "Uploading $IPA"
+          xcrun altool --upload-app \
+            -f "$IPA" \
+            -t ios \
+            --apiKey "$KEY_ID" \
+            --apiIssuer "$ISSUER_ID"
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## iOS Release — success"
+            echo ""
+            echo "- **Version**: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.build }})"
+            echo "- **IPA**: \`$(ls build/ipa/*.ipa)\`"
+            echo "- Build should appear in App Store Connect → TestFlight → Builds within a few minutes."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain /tmp/build.keychain-db 2>/dev/null || true
+          rm -f /tmp/dist.p12 /tmp/profile.mobileprovision
+          rm -rf ~/private_keys
