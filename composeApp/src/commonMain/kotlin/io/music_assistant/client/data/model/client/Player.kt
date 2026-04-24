@@ -80,7 +80,11 @@ data class Player(
             id = playerId,
             name = displayName,
             provider = provider,
-            type = type,
+            // Unknown/new server-side player types (coerced to null by myJson) are
+            // treated as regular players so they still show up and aren't mistaken
+            // for a group. If the server adds a genuinely new group-like type we
+            // can surface it explicitly once the mobile app learns about it.
+            type = type ?: PlayerType.PLAYER,
             shouldBeShown = available && enabled && (hidden != true),
             canSetVolume = supportedFeatures.contains(PlayerFeature.VOLUME_SET),
             volumeLevel = volumeLevel,

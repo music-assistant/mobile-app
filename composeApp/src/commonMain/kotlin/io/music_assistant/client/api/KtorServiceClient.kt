@@ -7,6 +7,7 @@ import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
+import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
@@ -645,10 +647,18 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
             rpcEngine.handleResponse(message) -> return
 
             message.containsKey("server_id") -> {
-                _sessionState.update {
-                    (it as? SessionState.Connected)?.update(
-                        serverInfo = myJson.decodeFromJsonElement(message)
-                    ) ?: it
+                val serverInfo = try {
+                    myJson.decodeFromJsonElement<ServerInfo>(message)
+                } catch (e: SerializationException) {
+                    logger.w(e) {
+                        "Failed to decode ServerInfo handshake: ${message.toString().take(500)}"
+                    }
+                    null
+                }
+                if (serverInfo != null) {
+                    _sessionState.update {
+                        (it as? SessionState.Connected)?.update(serverInfo = serverInfo) ?: it
+                    }
                 }
             }
 

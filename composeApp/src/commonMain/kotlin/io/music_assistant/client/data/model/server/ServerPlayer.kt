@@ -3,17 +3,31 @@ package io.music_assistant.client.data.model.server
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Server-side player payload.
+ *
+ * This arrives from a server that evolves independently of the app: new player
+ * types, new volume-control identifiers, new providers can all appear without a
+ * client update. Non-essential fields carry safe defaults so a single
+ * missing-or-renamed field doesn't take down deserialization of the whole
+ * `ServerPlayer` (and by extension, whatever event or RPC carries it). Combined
+ * with `coerceInputValues = true` in [myJson], unknown enum variants degrade to
+ * `null` rather than aborting the decode.
+ *
+ * `playerId` is the one field kept required — without it there's no identity
+ * and nothing useful we can do with the payload.
+ */
 @Serializable
 data class ServerPlayer(
     @SerialName("player_id") val playerId: String,
-    @SerialName("provider") val provider: String,
-    @SerialName("type") val type: PlayerType,
+    @SerialName("provider") val provider: String = "",
+    @SerialName("type") val type: PlayerType? = null,
     //@SerialName("name") val name: String,
     @SerialName("available") val available: Boolean = false,
     //@SerialName("device_info") val deviceInfo: DeviceInfo,
-    @SerialName("supported_features") val supportedFeatures: List<String>,
+    @SerialName("supported_features") val supportedFeatures: List<String> = emptyList(),
     @SerialName("can_group_with") val canGroupWith: List<String>? = null,
-    @SerialName("enabled") val enabled: Boolean,
+    @SerialName("enabled") val enabled: Boolean = true,
     //@SerialName("elapsed_time") val elapsedTime: Double? = null,
     //@SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double? = null,
     @SerialName("current_media") val currentMedia: PlayerMedia? = null,
@@ -28,11 +42,11 @@ data class ServerPlayer(
     @SerialName("active_group") val activeGroup: String? = null,
     @SerialName("synced_to") val syncedTo: String? = null,
     @SerialName("group_volume") val groupVolume: Float? = null,
-    @SerialName("display_name") val displayName: String,
+    @SerialName("display_name") val displayName: String = "",
     @SerialName("hidden") val hidden: Boolean? = null,
     //@SerialName("icon") val icon: String,
     //@SerialName("power_control") val powerControl: String,
-    @SerialName("volume_control") val volumeControl: String,
+    @SerialName("volume_control") val volumeControl: String = "",
     @SerialName("mute_control") val muteControl: String? = null,
     //@SerialName("enabled_by_default") val enabledByDefault: Boolean? = null,
     //@SerialName("needs_poll") val needsPoll: Boolean? = null,
