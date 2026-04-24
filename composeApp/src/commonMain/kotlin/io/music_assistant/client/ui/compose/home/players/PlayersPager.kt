@@ -76,7 +76,7 @@ internal fun PlayersPager(
     onFavoriteClick: (AppMediaItem) -> Unit,
     expanded: Boolean,
     onClose: () -> Unit,
-    onItemMoved: ((Int) -> Unit)?,
+    onPlayersReorder: (List<String>) -> Unit,
     queueAction: (QueueAction) -> Unit,
     moveToPlayer: (String) -> Unit,
     isExpandedScreen: Boolean,
@@ -92,12 +92,27 @@ internal fun PlayersPager(
 
     // Extract playerData list to ensure proper recomposition
     val playerDataList = playersState.playerData
+
+    // Select-player dialog is hoisted out of the pager so that reordering-induced
+    // pager scrolls don't tear down the dialog's composable.
+    var selectDialogPlayerId by remember { mutableStateOf<String?>(null) }
+    val selectDialogPlayer = selectDialogPlayerId?.let { id ->
+        playerDataList.firstOrNull { it.player.id == id }
+    }
+    if (selectDialogPlayer != null) {
+        SelectPlayerDialog(
+            selectedPlayer = selectDialogPlayer,
+            players = playerDataList,
+            onDismissRequest = { selectDialogPlayerId = null },
+            onMoveToPlayer = { moveToPlayer(it) },
+            onReorder = onPlayersReorder,
+        )
+    }
+
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 pagerState = playerPagerState,
-                allowMoving = expanded,
-                onItemMoved = onItemMoved
             )
         }
 
@@ -107,20 +122,11 @@ internal fun PlayersPager(
             key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
         ) { page ->
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
-            var showSelectDialog by remember { mutableStateOf(false) }
             var showGroupDialog by remember { mutableStateOf(false) }
             var showDspDialog by remember { mutableStateOf(false) }
-            val onSelectPlayer = { showSelectDialog = true }
+            val onSelectPlayer = { selectDialogPlayerId = player.player.id }
             val onGroupButton = { showGroupDialog = true }
             val onDspButton = { showDspDialog = true }
-            if (showSelectDialog) {
-                SelectPlayerDialog(
-                    selectedPlayer = player,
-                    players = playerDataList,
-                    onDismissRequest = { showSelectDialog = false },
-                    onMoveToPlayer = { moveToPlayer(it) },
-                )
-            }
             if (showGroupDialog) {
                 GroupSettingsDialog(
                     player = player,

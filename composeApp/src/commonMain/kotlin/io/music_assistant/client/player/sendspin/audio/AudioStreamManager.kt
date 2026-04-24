@@ -233,7 +233,7 @@ class AudioStreamManager(
     }
 
     /**
-     * Consumer: decode oldest frame from sorted queue and write PCM to AudioTrack.
+     * Consumer: decode the oldest frame from sorted queue and write PCM to AudioTrack.
      * Runs on high-priority [audioDispatcher]. Paced by blocking AudioTrack.write().
      */
     private fun startPlaybackThread() {

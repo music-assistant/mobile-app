@@ -25,8 +25,8 @@ import kotlin.coroutines.CoroutineContext
 class SendspinClient(
     private val config: SendspinConfig,
     private val mediaPlayerController: MediaPlayerController,
-    private val externalPipeline: AudioPipeline? = null,
-    private val externalClockSynchronizer: ClockSynchronizer? = null,
+    private val audioPipeline: AudioPipeline,
+    private val clockSynchronizer: ClockSynchronizer,
     private val networkAvailable: StateFlow<Boolean>? = null
 ) : CoroutineScope {
 
@@ -35,12 +35,6 @@ class SendspinClient(
 
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisorJob
-
-    // If external pipeline/clock provided, use them; otherwise own them
-    private val ownsAudioPipeline = externalPipeline == null
-    private val clockSynchronizer = externalClockSynchronizer ?: ClockSynchronizer()
-    private val audioPipeline: AudioPipeline =
-        externalPipeline ?: AudioStreamManager(clockSynchronizer, mediaPlayerController)
 
     // Components
     private var transport: SendspinTransport? = null
@@ -406,11 +400,6 @@ class SendspinClient(
     }
 
     private suspend fun disconnectFromServer() {
-        // Only stop the audio pipeline if we own it.
-        // External (shared) pipelines keep playing from their buffer during reconnection.
-        if (ownsAudioPipeline) {
-            audioPipeline.stopStream()
-        }
         stateReporter?.close()
         stateReporter = null
         messageDispatcher?.stop()
@@ -420,18 +409,10 @@ class SendspinClient(
         transport?.disconnect()
         transport?.close()
         transport = null
-
-        // Only reset clock sync if we own it.
-        if (ownsAudioPipeline) {
-            clockSynchronizer.reset()
-        }
     }
 
     fun close() {
         logger.i { "Closing Sendspin client" }
-        if (ownsAudioPipeline) {
-            audioPipeline.close()
-        }
         supervisorJob.cancel()
     }
 }

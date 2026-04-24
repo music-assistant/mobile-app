@@ -390,16 +390,9 @@ private fun Players(
                 Unit
             }
         }
-        val onItemMoved = remember(state, homeScreenViewModel, playerPagerState) {
-            { indexShift: Int ->
-                val currentPlayer = state.playerData[playerPagerState.currentPage].player
-                val newIndex = (playerPagerState.currentPage + indexShift)
-                    .coerceIn(0, state.playerData.size - 1)
-                val newPlayers = state.playerData.map { it.player.id }
-                    .toMutableList()
-                    .apply { add(newIndex, removeAt(playerPagerState.currentPage)) }
-                homeScreenViewModel.selectPlayer(currentPlayer)
-                homeScreenViewModel.onPlayersSortChanged(newPlayers)
+        val onPlayersReorder = remember(homeScreenViewModel) {
+            { newPlayerIds: List<String> ->
+                homeScreenViewModel.onPlayersSortChanged(newPlayerIds)
             }
         }
 
@@ -412,7 +405,7 @@ private fun Players(
             onFavoriteClick = onFavoriteClick,
             expanded = expanded,
             onClose = onClose,
-            onItemMoved = onItemMoved,
+            onPlayersReorder = onPlayersReorder,
             queueAction = queueAction,
             moveToPlayer = moveToPlayer,
             isExpandedScreen = isExpandedScreen,

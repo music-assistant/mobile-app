@@ -142,8 +142,8 @@ class SendspinClientFactory(
         val client = SendspinClient(
             config = config,
             mediaPlayerController = mediaPlayerController,
-            externalPipeline = pipeline,
-            externalClockSynchronizer = clockSync,
+            audioPipeline = pipeline,
+            clockSynchronizer = clockSync,
             networkAvailable = networkMonitor.isAvailable
         )
         val transport = WebRTCDataChannelTransport(webrtcChannel)
@@ -191,8 +191,8 @@ class SendspinClientFactory(
         val client = SendspinClient(
             config = config,
             mediaPlayerController = mediaPlayerController,
-            externalPipeline = pipeline,
-            externalClockSynchronizer = clockSync,
+            audioPipeline = pipeline,
+            clockSynchronizer = clockSync,
             networkAvailable = networkMonitor.isAvailable
         )
         client.start()

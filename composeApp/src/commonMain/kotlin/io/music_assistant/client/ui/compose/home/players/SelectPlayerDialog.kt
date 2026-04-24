@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,6 +52,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import compose.icons.TablerIcons
+import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -60,6 +64,8 @@ import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -68,6 +74,7 @@ fun SelectPlayerDialog(
     players: List<PlayerData>,
     onDismissRequest: () -> Unit = {},
     onMoveToPlayer: (String) -> Unit = {},
+    onReorder: (List<String>) -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -87,7 +94,8 @@ fun SelectPlayerDialog(
                             players,
                             selectedPlayer,
                             onDismissRequest,
-                            onMoveToPlayer
+                            onMoveToPlayer,
+                            onReorder,
                         )
                     }
                 }
@@ -134,28 +142,44 @@ private fun PlayerSelection(
     selectedPlayer: PlayerData,
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
+    onReorder: (List<String>) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
+
+    var internalPlayers by remember(players) { mutableStateOf(players) }
+    var dragEndIndex by remember { mutableStateOf<Int?>(null) }
+    val listState = rememberLazyListState()
+    val reorderableLazyListState =
+        rememberReorderableLazyListState(listState) { from, to ->
+            internalPlayers = internalPlayers.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+            dragEndIndex = to.index
+        }
 
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
             .selectableGroup()
             .heightIn(max = MAX_LIST_HEIGHT),
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        players.forEach {
-            item {
-                val selected = it.player.id == selectedPlayer.player.id
-                val borderColor = if (selected)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.outlineVariant
-                val backgroundColor = if (selected)
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                else
-                    Color.Transparent
+        itemsIndexed(
+            items = internalPlayers,
+            key = { _, item -> item.player.id },
+        ) { _, item ->
+            val selected = item.player.id == selectedPlayer.player.id
+            val borderColor = if (selected)
+                MaterialTheme.colorScheme.primary
+            else
+                MaterialTheme.colorScheme.outlineVariant
+            val backgroundColor = if (selected)
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+            else
+                Color.Transparent
 
+            ReorderableItem(state = reorderableLazyListState, key = item.player.id) {
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
@@ -167,7 +191,7 @@ private fun PlayerSelection(
                             selected = selected,
                             onClick = {
                                 onDismissRequest()
-                                onSelectPlayer(it.player.id)
+                                onSelectPlayer(item.player.id)
                             },
                             role = Role.RadioButton
                         )
@@ -175,8 +199,8 @@ private fun PlayerSelection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val playerIcon = when {
-                        it.isLocal -> Icons.Default.Smartphone
-                        it.player.isGroup -> SpeakerMultipleIcon
+                        item.isLocal -> Icons.Default.Smartphone
+                        item.player.isGroup -> SpeakerMultipleIcon
                         else -> Icons.Default.Speaker
                     }
                     Icon(
@@ -185,15 +209,15 @@ private fun PlayerSelection(
                         modifier = Modifier.size(20.dp),
                     )
                     Text(
-                        text = it.player.name,
+                        text = item.player.name,
                         modifier = Modifier
                             .padding(start = 8.dp)
-                            .weight(1f, fill = false),
+                            .weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    it.player.suffix?.let { suffix ->
+                    item.player.suffix?.let { suffix ->
                         Text(
                             text = suffix,
                             modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
@@ -201,16 +225,31 @@ private fun PlayerSelection(
                             maxLines = 1,
                         )
                     }
-                    if (it.player.isPlaying || it.player.isAnnouncing) {
+                    if (item.player.isPlaying || item.player.isAnnouncing) {
                         NowPlayingIcon(
                             modifier = Modifier.padding(start = 8.dp),
                             size = 12.dp,
-                            color = if (it.player.isAnnouncing)
+                            color = if (item.player.isAnnouncing)
                                 Color(0xFFFF9800)
                             else
                                 Color(0xFF2196F3),
                         )
                     }
+                    Icon(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .draggableHandle(
+                                onDragStopped = {
+                                    dragEndIndex?.let {
+                                        onReorder(internalPlayers.map { p -> p.player.id })
+                                    }
+                                }
+                            )
+                            .size(16.dp),
+                        imageVector = TablerIcons.GripVertical,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
                 }
             }
         }
