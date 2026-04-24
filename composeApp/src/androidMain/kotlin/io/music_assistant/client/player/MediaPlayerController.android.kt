@@ -246,7 +246,10 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             listener.onError(IllegalStateException("Audio configuration not supported by device: $errorName"))
             return
         }
-        val bufferSize = minBufferSize * 16 // Large buffer to absorb decode/scheduling jitter
+        // 4× minimum absorbs decode/scheduling jitter while keeping steady-state fill low.
+        // Larger multipliers (the previous 16×) add hundreds of ms of audible latency — unacceptable
+        // for group-sync use. Bump back up if we start seeing underruns on weaker devices.
+        val bufferSize = minBufferSize * 4
 
         logger.i { "AudioTrack config: sampleRate=$sampleRate, channels=$channels, bitDepth=$bitDepth" }
         logger.i { "AudioTrack buffer: $bufferSize bytes (min: $minBufferSize)" }
@@ -268,6 +271,9 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
                 )
                 .setBufferSizeInBytes(bufferSize)
                 .setTransferMode(AudioTrack.MODE_STREAM)
+                // Hint to Android to route to the low-latency output path where available.
+                // Falls back silently on devices that can't honor it.
+                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                 .build()
 
             // Record creation time to help ignore spurious focus changes during transitions

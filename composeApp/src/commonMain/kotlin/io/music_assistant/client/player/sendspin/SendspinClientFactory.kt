@@ -33,6 +33,13 @@ class SendspinClientFactory(
 ) {
     private val log = Logger.withTag("SendspinClientFactory")
 
+    private companion object {
+        // Base static_delay_ms values chosen empirically per transport. The user's
+        // signed adjustment slider is added on top. Not exposed in the UI.
+        const val BASE_STATIC_DELAY_MS_WEBSOCKET = 250
+        const val BASE_STATIC_DELAY_MS_WEBRTC = 500
+    }
+
     // Shared audio pipeline — persists across SendspinClient reconnections
     private var sharedClockSynchronizer: ClockSynchronizer? = null
     private var sharedPipeline: AudioStreamManager? = null
@@ -44,7 +51,9 @@ class SendspinClientFactory(
      */
     fun getOrCreatePipeline(): Pair<AudioStreamManager, ClockSynchronizer> {
         val cs = sharedClockSynchronizer ?: ClockSynchronizer().also { sharedClockSynchronizer = it }
-        val pipeline = sharedPipeline ?: AudioStreamManager(cs, mediaPlayerController).also { sharedPipeline = it }
+        val pipeline = sharedPipeline ?: AudioStreamManager(cs, mediaPlayerController).also {
+            sharedPipeline = it
+        }
         return Pair(pipeline, cs)
     }
 
@@ -124,8 +133,10 @@ class SendspinClientFactory(
 
         log.i { "Creating Sendspin client over WebRTC data channel" }
 
-        // WebRTC SCTP can deliver out-of-order — need deep reorder buffer
-        pipeline.reorderDepth = 32
+        // WebRTC SCTP can deliver out-of-order — reorder buffer covers it.
+        // 8 frames (~160 ms) is plenty for LAN-class SCTP; the previous 32 added ~640 ms
+        // of group-sync lag. Raise if audible glitches appear on noisier links.
+        pipeline.reorderDepth = 8
 
         val config = SendspinConfig(
             clientId = settings.sendspinClientId.value,
@@ -144,7 +155,11 @@ class SendspinClientFactory(
             mediaPlayerController = mediaPlayerController,
             externalPipeline = pipeline,
             externalClockSynchronizer = clockSync,
-            networkAvailable = networkMonitor.isAvailable
+            networkAvailable = networkMonitor.isAvailable,
+            staticDelayProvider = {
+                (BASE_STATIC_DELAY_MS_WEBRTC + settings.sendspinGroupDelayAdjustmentMs.value)
+                    .coerceIn(0, 5000)
+            }
         )
         val transport = WebRTCDataChannelTransport(webrtcChannel)
         client.connectWithTransport(transport)
@@ -193,7 +208,11 @@ class SendspinClientFactory(
             mediaPlayerController = mediaPlayerController,
             externalPipeline = pipeline,
             externalClockSynchronizer = clockSync,
-            networkAvailable = networkMonitor.isAvailable
+            networkAvailable = networkMonitor.isAvailable,
+            staticDelayProvider = {
+                (BASE_STATIC_DELAY_MS_WEBSOCKET + settings.sendspinGroupDelayAdjustmentMs.value)
+                    .coerceIn(0, 5000)
+            }
         )
         client.start()
         log.i { "Sendspin client started via WebSocket" }

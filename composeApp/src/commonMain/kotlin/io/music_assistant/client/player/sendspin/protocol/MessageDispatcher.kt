@@ -54,7 +54,8 @@ import kotlin.time.Duration.Companion.seconds
 class MessageDispatcher(
     private val transport: SendspinTransport,
     private val clockSynchronizer: ClockSynchronizer,
-    private val config: MessageDispatcherConfig
+    private val config: MessageDispatcherConfig,
+    private val staticDelayProvider: () -> Int = { 0 }
 ) : CoroutineScope {
 
     // Convenience accessors for config properties
@@ -290,7 +291,8 @@ class MessageDispatcher(
         val initialState = PlayerStateObject(
             state = PlayerStateValue.SYNCHRONIZED,
             volume = initialVolume,
-            muted = false
+            muted = false,
+            staticDelayMs = staticDelayProvider()
         )
         sendState(initialState)
     }

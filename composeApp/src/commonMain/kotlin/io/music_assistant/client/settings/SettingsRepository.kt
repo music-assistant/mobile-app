@@ -190,6 +190,19 @@ class SettingsRepository(
         _sendspinUseTls.update { enabled }
     }
 
+    // Signed fine-tune added on top of the transport-specific base static_delay_ms
+    // that [SendspinClientFactory] ships to the server. Slider range in the UI.
+    private val _sendspinGroupDelayAdjustmentMs = MutableStateFlow(
+        settings.getInt("sendspin_group_delay_adjustment_ms", 0).coerceIn(-200, 200)
+    )
+    val sendspinGroupDelayAdjustmentMs = _sendspinGroupDelayAdjustmentMs.asStateFlow()
+
+    fun setSendspinGroupDelayAdjustmentMs(ms: Int) {
+        val clamped = ms.coerceIn(-200, 200)
+        settings.putInt("sendspin_group_delay_adjustment_ms", clamped)
+        _sendspinGroupDelayAdjustmentMs.update { clamped }
+    }
+
     // Migration logic: if user has custom host or non-default port, they're using custom connection
     private val _sendspinUseCustomConnection = MutableStateFlow(
         settings.getBooleanOrNull("sendspin_use_custom_connection") ?: run {

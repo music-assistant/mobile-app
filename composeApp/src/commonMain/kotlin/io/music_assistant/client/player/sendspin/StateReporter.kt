@@ -22,7 +22,8 @@ class StateReporter(
     private val messageDispatcher: MessageDispatcher,
     private val volumeProvider: () -> Int,
     private val mutedProvider: () -> Boolean,
-    private val stateProvider: () -> SendspinState
+    private val stateProvider: () -> SendspinState,
+    private val staticDelayProvider: () -> Int = { 0 }
 ) : CoroutineScope {
 
     private val logger = Logger.withTag("StateReporter")
@@ -83,14 +84,16 @@ class StateReporter(
     suspend fun reportNow(state: PlayerStateValue) {
         val volume = volumeProvider()
         val muted = mutedProvider()
+        val staticDelay = staticDelayProvider()
 
         val playerState = PlayerStateObject(
             state = state,
             volume = volume,
-            muted = muted
+            muted = muted,
+            staticDelayMs = staticDelay
         )
 
-        logger.d { "Reporting state: state=$state, volume=$volume, muted=$muted" }
+        logger.d { "Reporting state: state=$state, volume=$volume, muted=$muted, staticDelayMs=$staticDelay" }
         messageDispatcher.sendState(playerState)
     }
 

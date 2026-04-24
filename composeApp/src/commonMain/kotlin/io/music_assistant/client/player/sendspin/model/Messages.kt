@@ -190,10 +190,12 @@ data class ServerStateMessage(
 data class PlayerStateObject(
     val state: PlayerStateValue,
     val volume: Int? = null,
-    val muted: Boolean? = null
+    val muted: Boolean? = null,
+    @SerialName("static_delay_ms") val staticDelayMs: Int = 0
 ) {
     init {
         volume?.let { require(it in 0..100) { "Volume must be between 0 and 100" } }
+        require(staticDelayMs in 0..5000) { "static_delay_ms must be between 0 and 5000" }
     }
 }
 

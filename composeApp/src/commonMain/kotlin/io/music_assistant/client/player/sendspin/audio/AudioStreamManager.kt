@@ -49,10 +49,9 @@ import kotlin.coroutines.CoroutineContext
  * - Takes oldest frame once queue depth exceeds [reorderDepth]
  * - Decodes (Opus/FLAC → PCM) under [decoderLock]
  * - Writes PCM to [MediaPlayerController] — AudioTrack.write() blocks until
- *   the hardware ring buffer accepts data, which IS the playback clock
- *
- * No wall-clock scheduling, no adaptive thresholds, no prebuffer wait.
- * The blocking write is the only pacing mechanism needed.
+ *   the hardware ring buffer accepts data, which IS the playback clock.
+ *   Group-sync alignment is handled entirely server-side via the reported
+ *   `static_delay_ms` (see [SendspinClientFactory]); the client writes on arrival.
  *
  * @see AudioPipeline for public interface
  * @see ClockSynchronizer for time synchronization

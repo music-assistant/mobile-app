@@ -34,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -42,6 +43,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -811,6 +813,7 @@ private fun SendspinSection(
     val sendspinPort by viewModel.sendspinPort.collectAsStateWithLifecycle()
     val sendspinPath by viewModel.sendspinPath.collectAsStateWithLifecycle()
     val sendspinCodecPreference by viewModel.sendspinCodecPreference.collectAsStateWithLifecycle()
+    val sendspinGroupDelayAdjustmentMs by viewModel.sendspinGroupDelayAdjustmentMs.collectAsStateWithLifecycle()
 
     SectionCard(modifier = modifier) {
         SectionTitle(if (sendspinEnabled) stringResource(Res.string.settings_local_player_enabled) else stringResource(Res.string.settings_local_player_disabled))
@@ -978,6 +981,50 @@ private fun SendspinSection(
                 )
             }
         }
+
+        // Signed adjustment added on top of the transport-specific base static_delay_ms.
+        // Range -200..+200 ms, 25 ms steps. Only commit on release so we don't
+        // flood the server with state reports (each change triggers a brief
+        // server-side stream reshuffle).
+        var sliderDraftMs by remember { mutableFloatStateOf(sendspinGroupDelayAdjustmentMs.toFloat()) }
+        LaunchedEffect(sendspinGroupDelayAdjustmentMs) {
+            sliderDraftMs = sendspinGroupDelayAdjustmentMs.toFloat()
+        }
+        val displayedMs = sliderDraftMs.toInt()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.settings_group_delay_adjustment),
+                color = if (sendspinEnabled)
+                    MaterialTheme.colorScheme.onBackground
+                else
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            )
+            Text(
+                text = "${if (displayedMs >= 0) "+" else ""}$displayedMs ms",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (sendspinEnabled)
+                    MaterialTheme.colorScheme.onBackground
+                else
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            )
+        }
+        Slider(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            value = sliderDraftMs,
+            onValueChange = { sliderDraftMs = it },
+            onValueChangeFinished = {
+                viewModel.setSendspinGroupDelayAdjustmentMs(sliderDraftMs.toInt())
+            },
+            valueRange = -200f..200f,
+            steps = 15,
+            enabled = sendspinEnabled,
+        )
 
         // Toggle button on the bottom
         if (sendspinEnabled) {
