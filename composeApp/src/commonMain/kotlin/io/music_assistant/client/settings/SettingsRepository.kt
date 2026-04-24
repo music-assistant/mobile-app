@@ -190,17 +190,23 @@ class SettingsRepository(
         _sendspinUseTls.update { enabled }
     }
 
-    // Signed fine-tune added on top of the transport-specific base static_delay_ms
-    // that [SendspinClientFactory] ships to the server. Slider range in the UI.
-    private val _sendspinGroupDelayAdjustmentMs = MutableStateFlow(
-        settings.getInt("sendspin_group_delay_adjustment_ms", 0).coerceIn(-200, 200)
+    // User-tuned client-side playback delay (ms). Fed into AudioStreamManager's
+    // wall-clock gate as a subtraction from each chunk's local target time:
+    //   target = serverTimeToLocal(ts) - userDelay*1000
+    // Positive → play earlier to compensate for downstream pipeline lag (the
+    // normal case; ~250 ms is typical for Android AudioTrack + DAC). Negative
+    // → play later (escape hatch if this device somehow leads the group).
+    // We don't report this to the server — it's purely client-side scheduling.
+    // Range ±2000 ms; default 250.
+    private val _sendspinStaticDelayMs = MutableStateFlow(
+        settings.getInt("sendspin_static_delay_ms", 250).coerceIn(-2000, 2000)
     )
-    val sendspinGroupDelayAdjustmentMs = _sendspinGroupDelayAdjustmentMs.asStateFlow()
+    val sendspinStaticDelayMs = _sendspinStaticDelayMs.asStateFlow()
 
-    fun setSendspinGroupDelayAdjustmentMs(ms: Int) {
-        val clamped = ms.coerceIn(-200, 200)
-        settings.putInt("sendspin_group_delay_adjustment_ms", clamped)
-        _sendspinGroupDelayAdjustmentMs.update { clamped }
+    fun setSendspinStaticDelayMs(ms: Int) {
+        val clamped = ms.coerceIn(-2000, 2000)
+        settings.putInt("sendspin_static_delay_ms", clamped)
+        _sendspinStaticDelayMs.update { clamped }
     }
 
     // Migration logic: if user has custom host or non-default port, they're using custom connection

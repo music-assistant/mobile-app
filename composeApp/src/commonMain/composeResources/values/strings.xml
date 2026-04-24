@@ -200,7 +200,6 @@
     <string name="settings_port_default">Port (8095 by default)</string>
     <string name="settings_path">Path</string>
     <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
-    <string name="settings_group_delay_adjustment">Group delay adjustment</string>
     <string name="settings_disable_local_player">Disable local player</string>
     <string name="settings_enable_local_player">Enable local player</string>
 

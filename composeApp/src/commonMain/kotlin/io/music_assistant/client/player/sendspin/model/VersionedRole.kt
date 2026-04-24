@@ -22,10 +22,6 @@ data class VersionedRole(
 
     companion object {
         val PLAYER_V1 = VersionedRole("player", "v1")
-        val CONTROLLER_V1 = VersionedRole("controller", "v1")
-        val METADATA_V1 = VersionedRole("metadata", "v1")
-        val ARTWORK_V1 = VersionedRole("artwork", "v1")
-        val VISUALIZER_V1 = VersionedRole("visualizer", "v1")
     }
 
     override fun equals(other: Any?): Boolean {

@@ -69,7 +69,6 @@ class SettingsViewModel(
     val sendspinCodecPreference = settings.sendspinCodecPreference
     val sendspinHost = settings.sendspinHost
     val sendspinUseTls = settings.sendspinUseTls
-    val sendspinGroupDelayAdjustmentMs = settings.sendspinGroupDelayAdjustmentMs
 
     fun setSendspinEnabled(enabled: Boolean) = settings.setSendspinEnabled(enabled)
     fun setSendspinDeviceName(name: String) = settings.setSendspinDeviceName(name)
@@ -81,7 +80,6 @@ class SettingsViewModel(
     fun setSendspinCodecPreference(codec: Codec) = settings.setSendspinCodecPreference(codec)
     fun setSendspinHost(host: String) = settings.setSendspinHost(host)
     fun setSendspinUseTls(enabled: Boolean) = settings.setSendspinUseTls(enabled)
-    fun setSendspinGroupDelayAdjustmentMs(ms: Int) = settings.setSendspinGroupDelayAdjustmentMs(ms)
 
     // Connection method preference
     val preferredConnectionMethod = settings.preferredConnectionMethod

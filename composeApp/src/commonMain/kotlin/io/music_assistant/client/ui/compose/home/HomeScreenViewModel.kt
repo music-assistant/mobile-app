@@ -51,6 +51,15 @@ class HomeScreenViewModel(
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
 
+    // Local (Sendspin) player identity — used by the group dialog to decide
+    // whether to show the playback-delay adjuster.
+    val localPlayerId: String
+        get() = settings.sendspinClientId.value
+
+    fun adjustSendspinStaticDelayMs(deltaMs: Int) {
+        settings.setSendspinStaticDelayMs(settings.sendspinStaticDelayMs.value + deltaMs)
+    }
+
 
     private val _recommendationsState = MutableStateFlow(
         RecommendationsState(

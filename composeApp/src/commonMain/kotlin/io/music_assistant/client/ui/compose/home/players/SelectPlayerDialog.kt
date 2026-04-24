@@ -101,6 +101,8 @@ fun GroupSettingsDialog(
     player: PlayerData,
     onDismissRequest: () -> Unit = {},
     groupAction: (String, PlayerAction) -> Unit = { _, _ -> },
+    localPlayerId: String? = null,
+    onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -119,7 +121,9 @@ fun GroupSettingsDialog(
                         GroupSettings(
                             item = player,
                             onDismiss = onDismissRequest,
-                            playerAction = groupAction
+                            playerAction = groupAction,
+                            localPlayerId = localPlayerId,
+                            onAdjustPlaybackDelay = onAdjustPlaybackDelay,
                         )
                     }
                 }
@@ -221,12 +225,21 @@ private fun PlayerSelection(
 fun GroupSettings(
     item: PlayerData,
     onDismiss: () -> Unit,
-    playerAction: (String, PlayerAction) -> Unit
+    playerAction: (String, PlayerAction) -> Unit,
+    localPlayerId: String? = null,
+    onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
 ) {
+    // Is the local (Sendspin) player joined to anything visible in this dialog?
+    // True when local is the pivot of a group with at least one bound child, OR
+    // when local appears as a bound child under a non-local pivot.
+    val localBoundToGroup = localPlayerId != null && (
+            (item.player.id == localPlayerId && item.childrenBinds.any { it.isBound }) ||
+                    item.childrenBinds.any { it.id == localPlayerId && it.isBound }
+            )
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
     ) {
-        // Scrollable list of players
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -234,7 +247,7 @@ fun GroupSettings(
                 .weight(1f, false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Current player at the very top
+            // Pivot first, then children (bound before unbound).
             item {
                 GroupPlayerItem(
                     playerId = item.player.id,
@@ -246,12 +259,14 @@ fun GroupSettings(
                     isVolumeEnabled = item.player.isVolumeSliderAccessible,
                     isMuted = item.player.volumeMuted.takeIf { item.player.canMute },
                     simplePlayerAction = playerAction,
+                    localPlayerId = localPlayerId,
+                    localBoundToGroup = localBoundToGroup,
+                    onAdjustPlaybackDelay = onAdjustPlaybackDelay,
                 )
             }
 
-            // Bound players
-            val boundChildren = item.childrenBinds.filter { it.isBound }
-            items(boundChildren, key = { "${it.id}_${it.volume}" }) { child ->
+            val sortedChildren = item.childrenBinds.sortedByDescending { it.isBound }
+            items(sortedChildren, key = { "${it.id}_${it.volume}" }) { child ->
                 GroupPlayerItem(
                     playerId = child.id,
                     playerName = child.name,
@@ -260,20 +275,9 @@ fun GroupSettings(
                     isMuted = child.isMuted,
                     simplePlayerAction = playerAction,
                     childBindItem = child,
-                )
-            }
-
-            // Unbound players
-            val unboundChildren = item.childrenBinds.filter { !it.isBound }
-            items(unboundChildren, key = { "${it.id}_${it.volume}" }) { child ->
-                GroupPlayerItem(
-                    playerId = child.id,
-                    playerName = child.name,
-                    volume = child.volume,
-                    isVolumeEnabled = child.volumeSliderAccessible,
-                    isMuted = child.isMuted,
-                    simplePlayerAction = playerAction,
-                    childBindItem = child,
+                    localPlayerId = localPlayerId,
+                    localBoundToGroup = localBoundToGroup,
+                    onAdjustPlaybackDelay = onAdjustPlaybackDelay,
                 )
             }
         }
@@ -290,7 +294,12 @@ fun GroupSettings(
 }
 
 /**
- * Group player item with name and volume
+ * Group player item with name and (volume | playback-delay) row.
+ *
+ * For the local (Sendspin) player the volume/mute slider is replaced with a
+ * row of playback-delay delta buttons — volume has no meaning for the
+ * phone-speaker player. The row stays visible even when the local player
+ * isn't joined to the group; the name dims and the delta buttons disable.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -303,10 +312,14 @@ private fun GroupPlayerItem(
     isMuted: Boolean?,
     simplePlayerAction: (String, PlayerAction) -> Unit,
     childBindItem: PlayerData.ChildBind? = null,
+    localPlayerId: String? = null,
+    localBoundToGroup: Boolean = false,
+    onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
 ) {
-    var currentVolume by remember(volume) {
-        mutableStateOf(volume ?: 0f)
-    }
+    val isLocalRow = localPlayerId != null && playerId == localPlayerId
+    // "In the group" means: the local row is bound to the group, or any other
+    // child bind is bound, or this row is the pivot (no childBindItem).
+    val inGroup = if (isLocalRow) localBoundToGroup else childBindItem?.isBound ?: true
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -318,7 +331,11 @@ private fun GroupPlayerItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                modifier = Modifier.alpha(if (childBindItem?.isBound != false) 1f else 0.4f).weight(1f),
+                // Dim only the name when out-of-group. +/- icon and Material3
+                // disabled states carry their own visuals and must stay opaque.
+                modifier = Modifier
+                    .weight(1f)
+                    .alpha(if (inGroup) 1f else 0.4f),
                 text = playerName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -327,11 +344,11 @@ private fun GroupPlayerItem(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Show button only for non-current players (when bindItem is provided)
+            // Join/leave button is only shown for child-bind rows (pivot has none).
             childBindItem?.let { bind ->
                 val itemId = listOf(playerId)
                 IconButton(
-                    enabled = childBindItem.isManageable,
+                    enabled = bind.isManageable,
                     onClick = {
                         simplePlayerAction(
                             bind.parentId,
@@ -343,10 +360,10 @@ private fun GroupPlayerItem(
                     }
                 ) {
                     Icon(
-                        modifier = Modifier.alpha(if (childBindItem.isManageable) 1f else 0.4f),
-                        imageVector = if (childBindItem.isBound) Icons.Default.Remove else Icons.Default.Add,
-                        contentDescription = if (childBindItem.isBound) stringResource(Res.string.cd_remove_from_group) else stringResource(Res.string.cd_add_to_group),
-                        tint = if (childBindItem.isBound)
+                        modifier = Modifier.alpha(if (bind.isManageable) 1f else 0.4f),
+                        imageVector = if (bind.isBound) Icons.Default.Remove else Icons.Default.Add,
+                        contentDescription = if (bind.isBound) stringResource(Res.string.cd_remove_from_group) else stringResource(Res.string.cd_add_to_group),
+                        tint = if (bind.isBound)
                             MaterialTheme.colorScheme.error
                         else
                             MaterialTheme.colorScheme.primary
@@ -355,55 +372,115 @@ private fun GroupPlayerItem(
             }
         }
 
-        val volumeEnabled = isVolumeEnabled && volume != null && childBindItem?.isBound != false
-        Row {
-            isMuted?.let {
-                IconButton(onClick = {
-                    simplePlayerAction(
-                        playerId,
-                        PlayerAction.ToggleMute(isMuted)
-                    )
-                }, enabled = volumeEnabled) {
-                    Icon(
-                        imageVector = if (isMuted) VolumeMutedIcon else VolumeIcon,
-                        contentDescription = if (isMuted) stringResource(Res.string.cd_unmute) else stringResource(Res.string.cd_mute)
-                    )
-                }
-            }
-            Slider(
-                modifier = Modifier.fillMaxWidth().alpha(if (volumeEnabled) 1f else 0.4f),
-                value = currentVolume,
-                valueRange = 0f..100f,
-                enabled = volumeEnabled,
-                onValueChange = {
-                    currentVolume = it
-                },
-                onValueChangeFinished = {
-                    simplePlayerAction(
-                        playerId,
-                        if (useGroupVolume) PlayerAction.GroupVolumeSet(currentVolume.toDouble())
-                        else PlayerAction.VolumeSet(currentVolume.toDouble())
-                    )
-                },
-                thumb = {
-                    SliderDefaults.Thumb(
-                        interactionSource = remember { MutableInteractionSource() },
-                        thumbSize = DpSize(16.dp, 16.dp),
-                        colors = SliderDefaults.colors()
-                            .copy(thumbColor = MaterialTheme.colorScheme.secondary),
-                    )
-                },
-                track = { sliderState ->
-                    SliderDefaults.Track(
-                        sliderState = sliderState,
-                        thumbTrackGapSize = 0.dp,
-                        trackInsideCornerSize = 0.dp,
-                        drawStopIndicator = null,
-                        modifier = Modifier.height(4.dp)
-                    )
-                }
+        if (isLocalRow) {
+            PlaybackDelayButtons(
+                enabled = inGroup && onAdjustPlaybackDelay != null,
+                onAdjust = onAdjustPlaybackDelay,
+            )
+        } else {
+            VolumeRow(
+                playerId = playerId,
+                useGroupVolume = useGroupVolume,
+                volume = volume,
+                isMuted = isMuted,
+                enabled = isVolumeEnabled && volume != null && inGroup,
+                simplePlayerAction = simplePlayerAction,
             )
         }
+    }
+}
+
+@Composable
+private fun PlaybackDelayButtons(
+    enabled: Boolean,
+    onAdjust: ((Int) -> Unit)?,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        listOf(
+            "-100ms" to -100,
+            "-10ms" to -10,
+            "-1ms" to -1,
+            "+1ms" to 1,
+            "+10ms" to 10,
+            "+100ms" to 100,
+        ).forEach { (label, delta) ->
+            androidx.compose.material3.OutlinedButton(
+                onClick = { onAdjust?.invoke(delta) },
+                enabled = enabled,
+                modifier = Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 0.dp,
+                    vertical = 4.dp,
+                ),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VolumeRow(
+    playerId: String,
+    useGroupVolume: Boolean,
+    volume: Float?,
+    isMuted: Boolean?,
+    enabled: Boolean,
+    simplePlayerAction: (String, PlayerAction) -> Unit,
+) {
+    var currentVolume by remember(volume) { mutableStateOf(volume ?: 0f) }
+
+    Row {
+        isMuted?.let {
+            IconButton(
+                onClick = { simplePlayerAction(playerId, PlayerAction.ToggleMute(isMuted)) },
+                enabled = enabled,
+            ) {
+                Icon(
+                    imageVector = if (isMuted) VolumeMutedIcon else VolumeIcon,
+                    contentDescription = if (isMuted) stringResource(Res.string.cd_unmute) else stringResource(Res.string.cd_mute)
+                )
+            }
+        }
+        Slider(
+            modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.4f),
+            value = currentVolume,
+            valueRange = 0f..100f,
+            enabled = enabled,
+            onValueChange = { currentVolume = it },
+            onValueChangeFinished = {
+                simplePlayerAction(
+                    playerId,
+                    if (useGroupVolume) PlayerAction.GroupVolumeSet(currentVolume.toDouble())
+                    else PlayerAction.VolumeSet(currentVolume.toDouble())
+                )
+            },
+            thumb = {
+                SliderDefaults.Thumb(
+                    interactionSource = remember { MutableInteractionSource() },
+                    thumbSize = DpSize(16.dp, 16.dp),
+                    colors = SliderDefaults.colors()
+                        .copy(thumbColor = MaterialTheme.colorScheme.secondary),
+                )
+            },
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    thumbTrackGapSize = 0.dp,
+                    trackInsideCornerSize = 0.dp,
+                    drawStopIndicator = null,
+                    modifier = Modifier.height(4.dp)
+                )
+            }
+        )
     }
 }
 

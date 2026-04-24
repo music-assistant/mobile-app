@@ -4,7 +4,6 @@ import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
 import io.music_assistant.client.player.sendspin.model.ClientHelloPayload
 import io.music_assistant.client.player.sendspin.model.DeviceInfo
-import io.music_assistant.client.player.sendspin.model.MetadataSupport
 import io.music_assistant.client.player.sendspin.model.PlayerSupport
 import io.music_assistant.client.player.sendspin.model.VersionedRole
 
@@ -17,18 +16,12 @@ object SendspinCapabilities {
             version = 1,
             supportedRoles = listOf(
                 VersionedRole.PLAYER_V1,
-                VersionedRole.METADATA_V1
             ),
             playerV1Support = PlayerSupport(
                 supportedFormats = buildSupportedFormats(codecPreference),
                 bufferCapacity = config.bufferCapacityMicros,
                 supportedCommands = listOf()
             ),
-            metadataV1Support = MetadataSupport(
-                supportedPictureFormats = emptyList()
-            ),
-            artworkV1Support = null,
-            visualizerV1Support = null
         )
     }
 

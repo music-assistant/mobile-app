@@ -50,10 +50,7 @@ data class ClientHelloPayload(
     @SerialName("device_info") val deviceInfo: DeviceInfo?,
     val version: Int,
     @SerialName("supported_roles") val supportedRoles: List<VersionedRole>,
-    @SerialName("player_support") val playerV1Support: PlayerSupport?,
-    @SerialName("metadata_support") val metadataV1Support: MetadataSupport?,
-    @SerialName("artwork_support") val artworkV1Support: ArtworkSupport?,
-    @SerialName("visualizer_support") val visualizerV1Support: VisualizerSupport?
+    @SerialName("player@v1_support") val playerV1Support: PlayerSupport?,
 )
 
 @Serializable
@@ -96,19 +93,6 @@ data class PlayerSupport(
 data class MetadataSupport(
     @SerialName("supported_picture_formats") val supportedPictureFormats: List<String> = emptyList()
 )
-
-@Serializable
-data class ArtworkSupport(val dummy: Int = 0) // Empty struct placeholder
-
-@Serializable
-data class VisualizerSupport(val dummy: Int = 0) // Empty struct placeholder
-
-// MARK: - Server Messages
-
-@Serializable
-data class ServerAuthOkMessage(
-    override val type: String = "auth_ok"
-) : SendspinMessage
 
 @Serializable
 data class ServerHelloMessage(
@@ -188,16 +172,8 @@ data class ServerStateMessage(
 
 @Serializable
 data class PlayerStateObject(
-    val state: PlayerStateValue,
-    val volume: Int? = null,
-    val muted: Boolean? = null,
-    @SerialName("static_delay_ms") val staticDelayMs: Int = 0
-) {
-    init {
-        volume?.let { require(it in 0..100) { "Volume must be between 0 and 100" } }
-        require(staticDelayMs in 0..5000) { "static_delay_ms must be between 0 and 5000" }
-    }
-}
+    val state: PlayerStateValue
+)
 
 // MARK: - Stream Messages
 

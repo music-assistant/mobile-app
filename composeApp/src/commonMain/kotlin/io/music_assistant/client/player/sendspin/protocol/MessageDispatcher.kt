@@ -54,13 +54,11 @@ import kotlin.time.Duration.Companion.seconds
 class MessageDispatcher(
     private val transport: SendspinTransport,
     private val clockSynchronizer: ClockSynchronizer,
-    private val config: MessageDispatcherConfig,
-    private val staticDelayProvider: () -> Int = { 0 }
+    private val config: MessageDispatcherConfig
 ) : CoroutineScope {
 
     // Convenience accessors for config properties
     private val clientCapabilities: ClientHelloPayload get() = config.clientCapabilities
-    private val initialVolume: Int get() = config.initialVolume
     private val authToken: String? get() = config.authToken
     private val requiresAuth: Boolean get() = config.requiresAuth
 
@@ -242,7 +240,7 @@ class MessageDispatcher(
             payload = ClientStatePayload(player = state)
         )
         val json = myJson.encodeToString(message)
-        logger.d { "Sending client/state: $json" }
+        logger.i { "Sending client/state: $json" }
         transport.sendText(json)
     }
 
@@ -287,13 +285,8 @@ class MessageDispatcher(
     }
 
     private suspend fun sendInitialState() {
-        // Send initial player state as SYNCHRONIZED with current system volume
-        val initialState = PlayerStateObject(
-            state = PlayerStateValue.SYNCHRONIZED,
-            volume = initialVolume,
-            muted = false,
-            staticDelayMs = staticDelayProvider()
-        )
+        // Send initial player state as SYNCHRONIZED.
+        val initialState = PlayerStateObject(state = PlayerStateValue.SYNCHRONIZED)
         sendState(initialState)
     }
 

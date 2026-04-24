@@ -2,6 +2,7 @@
 
 package io.music_assistant.client.player.sendspin
 
+import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -21,26 +22,27 @@ data class ClockStats(
 
 class ClockSynchronizer {
     // Shared monotonic time base — created once so MessageDispatcher and AudioStreamManager
-    // both read from the same epoch, keeping serverLoopOriginLocal and currentLocalTime
-    // in the same time domain.
+    // both read from the same epoch, keeping currentLocalTime in the same domain used
+    // by the Kalman-smoothed offset.
     private val startMark = TimeSource.Monotonic.markNow()
 
     fun getCurrentTimeMicros(): Long = startMark.elapsedNow().inWholeMicroseconds
 
-    // Clock synchronization state
-    private var offset: Long = 0 // μs (server - client)
+    // Clock synchronization state.
+    // @Volatile so the audio consumer thread sees Kalman updates from the dispatcher
+    // coroutine without synchronization. Long writes on the JVM are already atomic
+    // under @Volatile, so no tearing.
+    @Volatile
+    private var offset: Long = 0 // μs (server - client), Kalman-smoothed after sample 2+
     private var drift: Double = 0.0 // μs/μs
     private var rawOffset: Long = 0
     private var rtt: Long = 0
+    @Volatile
     private var quality: SyncQuality = SyncQuality.LOST
     private var lastSyncTime: Instant? = null
     private var lastSyncMicros: Long = 0
     private var sampleCount: Int = 0
     private val smoothingRate: Double = 0.1
-
-    // Server loop origin tracking - use monotonic time base
-    // This represents the local time (in microseconds since start) when server time was 0
-    private var serverLoopOriginLocal: Long = 0
 
     val currentOffset: Long get() = offset
     val currentQuality: SyncQuality get() = quality
@@ -69,13 +71,6 @@ class ClockSynchronizer {
         if (sampleCount == 0) {
             offset = measuredOffset
             lastSyncMicros = clientReceived
-            // Calculate where server time 0 would be in local time
-            // serverLoopOriginLocal = clientReceived - (serverReceived - offset/2)
-            // But offset = (serverRx - clientTx + serverTx - clientRx) / 2
-            // We want: local_time = serverLoopOriginLocal + server_time
-            // So: serverLoopOriginLocal = local_time - server_time
-            // At clientReceived time, server was at serverTransmitted
-            serverLoopOriginLocal = clientReceived - serverTransmitted
             sampleCount++
             quality = SyncQuality.GOOD
             return
@@ -89,7 +84,6 @@ class ClockSynchronizer {
             }
             offset = measuredOffset
             lastSyncMicros = clientReceived
-            serverLoopOriginLocal = clientReceived - serverTransmitted
             sampleCount++
             quality = SyncQuality.GOOD
             return
@@ -112,7 +106,6 @@ class ClockSynchronizer {
 
         lastSyncMicros = clientReceived
         sampleCount++
-        serverLoopOriginLocal = clientReceived - serverTransmitted
 
         quality = if (calculatedRtt < 50_000) SyncQuality.GOOD else SyncQuality.DEGRADED
     }
@@ -128,20 +121,19 @@ class ClockSynchronizer {
         return rtt to offset
     }
 
+    // Server clock is ahead of local by [offset] microseconds (Kalman-smoothed).
+    // Mapping is therefore: local = server − offset,  server = local + offset.
+    // Using the smoothed [offset] — not per-sample raw values — keeps the audio
+    // consumer's wall-clock gate stable across stream starts; each new sync
+    // sample no longer throws network-jitter straight into the mapping.
     fun serverTimeToLocal(serverTime: Long): Long {
-        if (sampleCount == 0) {
-            // Before first sync, can't convert accurately
-            return 0
-        }
-        return serverLoopOriginLocal + serverTime
+        if (sampleCount == 0) return 0
+        return serverTime - offset
     }
 
     fun localTimeToServer(localTime: Long): Long {
-        if (sampleCount == 0) {
-            // Before first sync, can't convert accurately
-            return 0
-        }
-        return localTime - serverLoopOriginLocal
+        if (sampleCount == 0) return 0
+        return localTime + offset
     }
 
     fun checkQuality(): SyncQuality {
@@ -162,7 +154,6 @@ class ClockSynchronizer {
         quality = SyncQuality.LOST
         lastSyncTime = null
         lastSyncMicros = 0
-        serverLoopOriginLocal = 0
         sampleCount = 0
     }
 }

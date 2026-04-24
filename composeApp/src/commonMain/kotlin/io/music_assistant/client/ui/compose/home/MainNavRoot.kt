@@ -416,7 +416,9 @@ private fun Players(
             queueAction = queueAction,
             moveToPlayer = moveToPlayer,
             isExpandedScreen = isExpandedScreen,
-            contentPadding = contentPadding
+            contentPadding = contentPadding,
+            localPlayerId = homeScreenViewModel.localPlayerId,
+            onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
         )
     } else {
         Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {

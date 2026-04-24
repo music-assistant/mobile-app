@@ -27,8 +27,7 @@ class SendspinClient(
     private val mediaPlayerController: MediaPlayerController,
     private val externalPipeline: AudioPipeline? = null,
     private val externalClockSynchronizer: ClockSynchronizer? = null,
-    private val networkAvailable: StateFlow<Boolean>? = null,
-    private val staticDelayProvider: () -> Int = { 0 }
+    private val networkAvailable: StateFlow<Boolean>? = null
 ) : CoroutineScope {
 
     private val logger = Logger.withTag("SendspinClient")
@@ -113,25 +112,20 @@ class SendspinClient(
             val capabilities = SendspinCapabilities.buildClientHello(config, config.codecPreference)
             val dispatcherConfig = MessageDispatcherConfig(
                 clientCapabilities = capabilities,
-                initialVolume = currentVolume,
                 authToken = config.authToken,
                 requiresAuth = config.requiresAuth
             )
             val dispatcher = MessageDispatcher(
                 transport = sendspinTransport,
                 clockSynchronizer = clockSynchronizer,
-                config = dispatcherConfig,
-                staticDelayProvider = staticDelayProvider
+                config = dispatcherConfig
             )
             messageDispatcher = dispatcher
 
             // Create state reporter (uses unified state)
             val reporter = StateReporter(
                 messageDispatcher = dispatcher,
-                volumeProvider = { currentVolume },
-                mutedProvider = { currentMuted },
-                stateProvider = { _state.value },
-                staticDelayProvider = staticDelayProvider
+                stateProvider = { _state.value }
             )
             stateReporter = reporter
 

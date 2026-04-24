@@ -5,6 +5,7 @@ import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.MediaPlayerListener
 import io.music_assistant.client.player.sendspin.BufferState
 import io.music_assistant.client.player.sendspin.ClockSynchronizer
+import io.music_assistant.client.player.sendspin.SyncQuality
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
 import io.music_assistant.client.player.sendspin.model.BinaryMessage
@@ -17,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,10 +50,16 @@ import kotlin.coroutines.CoroutineContext
  * **Consumer** (dedicated high-priority [audioDispatcher] thread):
  * - Takes oldest frame once queue depth exceeds [reorderDepth]
  * - Decodes (Opus/FLAC → PCM) under [decoderLock]
- * - Writes PCM to [MediaPlayerController] — AudioTrack.write() blocks until
- *   the hardware ring buffer accepts data, which IS the playback clock.
- *   Group-sync alignment is handled entirely server-side via the reported
- *   `static_delay_ms` (see [SendspinClientFactory]); the client writes on arrival.
+ * - **Wall-clock gate**: waits until `serverTimeToLocal(frame.timestamp) - userDelayMicros`
+ *   before writing, compensating for downstream pipeline lag (AudioTrack buffer,
+ *   DAC, speakers). Drops chunks that are >100 ms late (per Sendspin spec).
+ * - Writes PCM to [MediaPlayerController] — AudioTrack.write() then blocks on
+ *   the hardware ring buffer, which keeps subsequent chunks self-paced.
+ *
+ * [userDelayMicros] is driven by [SendspinClientFactory] from the user's
+ * playback-delay setting. Positive → play earlier in server time (compensates
+ * for pipeline lag — the normal case, since downstream always adds delay).
+ * Negative → play later (escape hatch if this device somehow leads).
  *
  * @see AudioPipeline for public interface
  * @see ClockSynchronizer for time synchronization
@@ -109,6 +117,16 @@ class AudioStreamManager(
      */
     @Volatile
     var reorderDepth: Int = 32
+
+    /**
+     * User's playback-delay knob in microseconds. Applied per-chunk in the consumer:
+     *   target_local = serverTimeToLocal(ts) - userDelayMicros
+     * Positive values play earlier in server time to compensate for downstream
+     * pipeline lag (AudioTrack buffer, DAC, external speakers). Set by
+     * [SendspinClientFactory] from the user's setting. Hot-tunable.
+     */
+    @Volatile
+    var userDelayMicros: Long = 0L
 
     // Network disconnection tracking for starvation handling
     private var isNetworkDisconnected = false
@@ -238,7 +256,16 @@ class AudioStreamManager(
     private fun startPlaybackThread() {
         playbackJob?.cancel()
         playbackJob = CoroutineScope(audioDispatcher + SupervisorJob()).launch {
-            logger.i { "Playback consumer started (reorderDepth=$reorderDepth)" }
+            logger.i {
+                "Playback consumer started (reorderDepth=$reorderDepth, " +
+                        "userDelayMs=${userDelayMicros / 1000})"
+            }
+
+            // Track the userDelay we last phase-aligned to. When it changes, flush
+            // AudioTrack so the gate's new waitUs drives output timing instead of
+            // being absorbed by the ~40–120 ms of buffer inertia. Without this,
+            // ±10 ms tweaks don't produce audible shifts.
+            var lastAppliedUserDelay = userDelayMicros
 
             try {
                 while (isActive && isStreaming) {
@@ -250,10 +277,47 @@ class AudioStreamManager(
                         } ?: break
 
                         drained = true
+
+                        val currentUserDelay = userDelayMicros
+                        if (currentUserDelay != lastAppliedUserDelay) {
+                            logger.i {
+                                "userDelayMs changed ${lastAppliedUserDelay / 1000} → " +
+                                        "${currentUserDelay / 1000} — flushing AudioTrack"
+                            }
+                            // AudioTrack.flush() is a no-op in PLAYING state — must pause first.
+                            // pause + flush + resume drains the ring buffer so the gate's new
+                            // waitUs actually sets fresh phase instead of being absorbed.
+                            mediaPlayerController.pauseSink()
+                            mediaPlayerController.flush()
+                            mediaPlayerController.resumeSink()
+                            lastAppliedUserDelay = currentUserDelay
+                        }
+
+                        // Wall-clock gate — only when clock sync is reliable.
+                        // Decode still happens either way so the codec keeps state.
+                        val shouldPlay = if (clockSynchronizer.currentQuality != SyncQuality.LOST) {
+                            val target = clockSynchronizer.serverTimeToLocal(frame.timestamp) -
+                                    currentUserDelay
+                            val waitUs = target - clockSynchronizer.getCurrentTimeMicros()
+                            when {
+                                waitUs > 1_000 -> {
+                                    delay(waitUs / 1000)
+                                    true
+                                }
+                                waitUs < -100_000 -> {
+                                    logger.d { "Dropped late chunk: lateBy=${-waitUs / 1000}ms" }
+                                    false
+                                }
+                                else -> true
+                            }
+                        } else true
+
                         val pcmData = decoderLock.withLock {
                             audioDecoder?.decode(frame.data) ?: continue
                         }
-                        mediaPlayerController.writeRawPcm(pcmData)
+                        if (shouldPlay) {
+                            mediaPlayerController.writeRawPcm(pcmData)
+                        }
                     }
 
                     if (!drained) {
@@ -285,8 +349,12 @@ class AudioStreamManager(
 
         queueLock.withLock { queue.clear() }
         decoderLock.withLock { audioDecoder?.reset() }
-        mediaPlayerController.stopRawPcmStream()
-        currentSinkConfig = null
+        // Pause+flush (don't release). Keeps HW warmed up so the next startStream
+        // can reuse the AudioTrack with deterministic latency instead of paying a
+        // variable hardware warm-up cost that shifts phase across pause/resume.
+        // Full release happens in close().
+        mediaPlayerController.pauseSink()
+        mediaPlayerController.flush()
         _playbackPosition.update { 0L }
         _bufferState.update { BufferState(0L, false, 0) }
     }
@@ -294,6 +362,9 @@ class AudioStreamManager(
     override fun close() {
         logger.i { "Closing AudioStreamManager" }
         playbackJob?.cancel()
+        // Full HW release now that we're done with this pipeline.
+        mediaPlayerController.stopRawPcmStream()
+        currentSinkConfig = null
         runBlocking {
             decoderLock.withLock {
                 audioDecoder?.release()

@@ -290,6 +290,22 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             audioTrack = track
             logger.i { "AudioTrack created: STATE_INITIALIZED" }
 
+            // Default start threshold is the full bufferSize — HW waits for the
+            // buffer to fill completely before emitting a single sample. Our
+            // wall-clock gate paces writes at HW rate, so the buffer would just
+            // sit at that threshold forever, adding ~100–400 ms of pure latency
+            // that drifts as the buffer slowly drains. Set threshold to 1 frame
+            // so HW starts emitting immediately and effective pipeline lag is
+            // just the HAL/HW latency, which is stable.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    track.setStartThresholdInFrames(1)
+                    logger.i { "AudioTrack startThreshold set to 1 frame" }
+                } catch (e: Exception) {
+                    logger.w(e) { "Failed to set startThresholdInFrames" }
+                }
+            }
+
             track.play()
 
             if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
