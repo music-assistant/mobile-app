@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalForeignApi::class)
+@file:OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 
 package io.music_assistant.client.webrtc
 
@@ -6,7 +6,10 @@ import WebRTC.RTCDataBuffer
 import co.touchlab.kermit.Logger
 import com.shepeliev.webrtckmp.DataChannel
 import com.shepeliev.webrtckmp.DataChannelState
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import platform.Foundation.NSData
+import platform.Foundation.create
 
 /**
  * iOS implementation of DataChannelWrapper using webrtc-kmp library.
@@ -97,9 +101,11 @@ actual class DataChannelWrapper(
 
         // CRITICAL FIX: webrtc-kmp sends BINARY frames on iOS, but Music Assistant server expects TEXT.
         // We bypass webrtc-kmp and use the native RTCDataChannel API to send as TEXT (isBinary=false).
-        val nsData = data.toNSData()
-        val buffer = RTCDataBuffer(nsData, false)
-        dataChannel.ios.sendData(buffer)
+        val buffer = RTCDataBuffer(data.toNSData(), false)
+        val success = dataChannel.ios.sendData(buffer)
+        if (!success) {
+            logger.e { "Native send failed on channel $label (state=${_state.value})" }
+        }
     }
 
     actual fun sendBinary(data: ByteArray) {
@@ -115,9 +121,14 @@ actual class DataChannelWrapper(
         _state.update { DataChannelState.Closed }
     }
 
+    // Pin the Kotlin-heap ByteArray long enough for NSData.create(bytes:length:) to copy out of it.
+    // NSData.create maps to +[NSData dataWithBytes:length:], a copying constructor, so the pin is
+    // only needed across the call; after usePinned returns, NSData owns its own buffer.
+    // An empty ByteArray has no stable address from addressOf(0), so short-circuit to an empty NSData.
     private fun ByteArray.toNSData(): NSData {
-        // TODO: Proper NSData creation from ByteArray requires more extensive Foundation bindings
-        // For now, return empty NSData - the actual message data is handled through webrtc-kmp
-        return NSData()
+        if (isEmpty()) return NSData()
+        return usePinned { pinned ->
+            NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
+        }
     }
 }
