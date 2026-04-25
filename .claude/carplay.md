@@ -48,8 +48,9 @@ Browse uses a `CPGridTemplate` with SF Symbol icons and adaptive theming:
 | `iosApp/iosApp/CarPlay/CarPlaySceneDelegate.swift` | Scene delegate, template creation, navigation |
 | `iosApp/iosApp/CarPlay/CarPlayContentManager.swift` | Data fetching bridge, maps `AppMediaItem` → `CPListItem`, image loading |
 | `iosApp/iosApp/CarPlay/SiriIntentHandler.swift` | `INPlayMediaIntentHandling` — resolve search + handle playback via Siri |
-| `iosApp/iosApp/iOSApp.swift` | `AppDelegate` for CarPlay scene routing + KMP ready notification |
+| `iosApp/iosApp/iOSApp.swift` | `AppDelegate` for CarPlay scene routing; calls `bootstrapKmp()` from `iOSApp.init()` before any scene connects |
 | `iosApp/NowPlayingManager.swift` | Control Center / lock screen / Now Playing artwork via `MPNowPlayingInfoCenter` |
+| `composeApp/src/iosMain/.../MainViewController.kt` | Hosts `bootstrapKmp()` (idempotent KMP/Koin init) and `MainViewController()` for the SwiftUI Compose bridge |
 | `composeApp/src/iosMain/.../KmpHelper.kt` | iOS-only bridge: fetch methods for all categories, recommendations, search, playback |
 | `iosApp/iosApp/CarPlay.entitlements` | `com.apple.developer.carplay-audio` entitlement |
 | `iosApp/iosApp/Info.plist` | `CPTemplateApplicationSceneSessionRoleApplication` scene config |
@@ -74,13 +75,11 @@ Swift-accessible methods in `KmpHelper.kt` (iosMain only):
 
 ## Koin Initialization Timing
 
-CarPlay scene may connect before the main SwiftUI view renders (which triggers `initKoin` via `MainViewController`). The solution:
+A cold launch from CarPlay (tapping the icon on the head unit) connects only the `CPTemplateApplicationScene` — SwiftUI's `WindowGroup` scene never connects, so `ContentView.onAppear` never fires. Anything tied to the SwiftUI lifecycle is therefore unreachable on this path.
 
-1. `iOSApp.swift` posts `Notification.Name("KMPReadyNotification")` when `ContentView` appears
-2. `CarPlaySceneDelegate` checks `KmpState.isReady` on connect
-3. If not ready, observes the notification and defers template setup
+`iOSApp.init()` calls `MainViewControllerKt.bootstrapKmp()` before any scene-delegate `didConnect` runs. `bootstrapKmp()` is idempotent — backed by a `Unit by lazy` because `startKoin` (inside `initKoin`) throws if invoked twice — so `MainViewController()`'s `ComposeUIViewController` configure block can still call it on the SwiftUI-only path without conflict.
 
-No core/common Kotlin files are modified — the guard is entirely in Swift.
+`KmpState.isReady` and `KMPReadyNotification` remain in `iOSApp.swift` for `SiriIntentHandler`, which can be invoked outside the scene lifecycle.
 
 ## Item Selection Flow
 

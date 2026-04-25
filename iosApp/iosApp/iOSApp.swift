@@ -4,8 +4,6 @@ import UIKit
 import CarPlay
 import Intents
 
-/// Tracks Koin/KMP initialization state for CarPlay.
-/// ContentView triggers MainViewController which calls initKoin on first render.
 enum KmpState {
     static var isReady = false
     static let readyNotification = Notification.Name("KMPReadyNotification")
@@ -79,6 +77,13 @@ struct iOSApp: App {
         // work that iOS rejects.
         _ = ComposeRenderingGuard.shared
 
+        // Must precede any scene-delegate `didConnect`: both the default
+        // SwiftUI scene and `CarPlaySceneDelegate` resolve Koin in their
+        // connect callbacks.
+        MainViewControllerKt.bootstrapKmp()
+        KmpState.isReady = true
+        NotificationCenter.default.post(name: KmpState.readyNotification, object: nil)
+
         // Required for apps to appear in Control Center
         // Must be called for remote control events to work
         UIApplication.shared.beginReceivingRemoteControlEvents()
@@ -88,17 +93,10 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onAppear {
-                    // Koin is initialized by MainViewController's configure block
-                    // (called when ContentView first renders). Notify CarPlay.
-                    KmpState.isReady = true
-                    NotificationCenter.default.post(name: KmpState.readyNotification, object: nil)
-
-                    // Wire OAuth: Android does the equivalent in MainActivity.onCreate.
-                    // Must happen after Koin init, which onAppear guarantees.
+                    // OAuthHandler presents `ASWebAuthenticationSession`;
+                    // requires a live scene, so can't move to `init()`.
                     KmpHelper.shared.authManager.oauthHandler = OAuthHandler()
 
-                    // If a cold-launch OAuth callback arrived before Koin was ready,
-                    // replay it now.
                     if let pending = PendingOAuthCallback.url {
                         PendingOAuthCallback.url = nil
                         handleOAuthCallback(pending)

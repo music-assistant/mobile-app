@@ -5,42 +5,19 @@ import ComposeApp
 class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     var interfaceController: CPInterfaceController?
-    private var kmpReadyObserver: NSObjectProtocol?
 
     // MARK: - CPTemplateApplicationSceneDelegate
 
     func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
         self.interfaceController = interfaceController
         print("CP: Connected to CarPlay")
-
-        // Koin/KMP is initialized when ContentView renders (MainViewController configure block).
-        // CarPlay may connect before that, so check the shared flag first.
-        if KmpState.isReady {
-            KmpHelper.shared.onExternalConsumerActive()
-            setupTemplates()
-        } else {
-            kmpReadyObserver = NotificationCenter.default.addObserver(
-                forName: KmpState.readyNotification, object: nil, queue: .main
-            ) { [weak self] _ in
-                KmpHelper.shared.onExternalConsumerActive()
-                self?.setupTemplates()
-                if let observer = self?.kmpReadyObserver {
-                    NotificationCenter.default.removeObserver(observer)
-                    self?.kmpReadyObserver = nil
-                }
-            }
-        }
+        KmpHelper.shared.onExternalConsumerActive()
+        setupTemplates()
     }
 
     func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didDisconnectInterfaceController interfaceController: CPInterfaceController) {
         self.interfaceController = nil
-        if let observer = kmpReadyObserver {
-            NotificationCenter.default.removeObserver(observer)
-            kmpReadyObserver = nil
-        }
-        if KmpState.isReady {
-            KmpHelper.shared.onExternalConsumerInactive()
-        }
+        KmpHelper.shared.onExternalConsumerInactive()
         print("CP: Disconnected from CarPlay")
     }
 

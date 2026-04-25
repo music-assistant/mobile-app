@@ -16,12 +16,20 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.writeToFile
 
+fun bootstrapKmp() {
+    kmpBootstrap
+}
+
+// `by lazy` because `startKoin` (in `initKoin`) throws if invoked twice;
+// callers from both Swift `iOSApp.init()` and `MainViewController()` below.
+private val kmpBootstrap: Unit by lazy {
+    initKoin(iosModule())
+    cleanupStaleLogFile()
+    installCrashHandler()
+}
+
 fun MainViewController() = ComposeUIViewController(
-    configure = {
-        initKoin(iosModule())
-        cleanupStaleLogFile()
-        installCrashHandler()
-    }
+    configure = { bootstrapKmp() }
 ) { App() }
 
 private fun cleanupStaleLogFile() {
