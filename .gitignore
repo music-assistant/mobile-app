@@ -58,5 +58,11 @@ gha-creds-*.json
 .claude/settings.local.json
 .mcp.json
 
+# Always use a venv for Python
+.venv/
+
+# Local TestFlight crash reports and tester feedback
+testflight-reports/
+
 # Downloaded binary frameworks (too large for git, see ios_build_instructions.md step 5)
 iosApp/Frameworks/
