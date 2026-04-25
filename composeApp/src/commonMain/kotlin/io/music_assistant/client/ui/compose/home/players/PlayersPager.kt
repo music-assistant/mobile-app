@@ -48,9 +48,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
-import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.*
-import org.jetbrains.compose.resources.stringResource
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -63,6 +60,9 @@ import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.utils.conditional
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_volume
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +111,14 @@ internal fun PlayersPager(
         )
     }
 
+    val dominantColors = playerDataList.associateWith {
+        val imageUrl = it.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
+        rememberAnimatedDominantColor(
+            imageUrl = imageUrl,
+            fallback = MaterialTheme.colorScheme.primaryContainer
+        )
+    }
+
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
@@ -145,11 +153,8 @@ internal fun PlayersPager(
                 )
             }
 
-            val imageUrl = player.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
-            val dominantColor by rememberAnimatedDominantColor(
-                imageUrl = imageUrl,
-                fallback = MaterialTheme.colorScheme.primaryContainer
-            )
+            val dominantColor by dominantColors.getValue(player)
+
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                     Modifier
