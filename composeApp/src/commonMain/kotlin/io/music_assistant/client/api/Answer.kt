@@ -28,11 +28,18 @@ data class Answer(
         return try {
             myJson.decodeFromJsonElement<T>(payload)
         } catch (e: SerializationException) {
-            Logger.withTag("Answer").w(e) {
+            logger.w(e) {
                 val preview = payload.toString().take(500)
                 "Failed to decode RPC result as ${T::class.simpleName}: $preview"
             }
             null
         }
+    }
+
+    companion object {
+        // `@PublishedApi internal` (not `private`) is required so the inline
+        // `resultAs` above can reference this from call-site bytecode.
+        @PublishedApi
+        internal val logger = Logger.withTag("Answer")
     }
 }
