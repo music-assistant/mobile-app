@@ -24,6 +24,8 @@ import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
+private const val MIN_SEARCH_QUERY_LENGTH = 3
+
 @Composable
 fun SearchInput(
     query: String,
@@ -47,7 +49,7 @@ fun SearchInput(
         maxLines = 1,
         label = {
             Text(
-            if (query.trim().length < 3) {
+            if (query.trim().length < MIN_SEARCH_QUERY_LENGTH) {
                 stringResource(
                     Res.string.search_min_chars,
                 )

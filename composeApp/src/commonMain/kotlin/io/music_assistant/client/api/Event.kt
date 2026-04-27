@@ -1,3 +1,6 @@
+// Log-payload truncation length is a debugging aid, not a protocol value.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
@@ -39,6 +42,7 @@ data class Event(
      * Kotlin/Native process, so one malformed event must not take the app
      * down with it.
      */
+    @Suppress("MemberNameEqualsClassName") // TODO: rename to `decode()` (touches several callers)
     fun event(): Event<out Any>? = try {
         when (type) {
             EventType.PLAYER_ADDED -> myJson.decodeFromJsonElement<PlayerAddedEvent>(json)

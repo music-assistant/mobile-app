@@ -1,3 +1,7 @@
+// PCM bit-depth literals (16/24/32) and FLAC frame size hints are audio-format standards.
+// Timing/retry values live as named constants in the private companion object below.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.player.sendspin.audio
 
 import android.media.AudioFormat
@@ -39,16 +43,6 @@ actual class FlacDecoder : AudioDecoder {
 
     // Actual bit depth MediaCodec outputs — determined after INFO_OUTPUT_FORMAT_CHANGED
     private var outputBitDepth: Int = 16
-
-    // Timeout for MediaCodec operations (microseconds)
-    private val TIMEOUT_US = 10_000L // 10ms
-
-    /**
-     * Maximum number of retry attempts when no input buffer is available.
-     * Each retry waits TIMEOUT_US (10ms), so 3 retries = up to 40ms total.
-     * Between retries we drain output to free slots.
-     */
-    private val MAX_INPUT_RETRIES = 3
 
     actual override fun configure(config: AudioFormatSpec, codecHeader: String?) {
         synchronized(decoderLock) {
@@ -177,7 +171,7 @@ actual class FlacDecoder : AudioDecoder {
                     val inputIndex = currentCodec.dequeueInputBuffer(TIMEOUT_US)
                     if (inputIndex >= 0) {
                         val inputBuffer = currentCodec.getInputBuffer(inputIndex)
-                            ?: throw IllegalStateException("Input buffer is null")
+                            ?: error("Input buffer is null")
 
                         inputBuffer.clear()
                         inputBuffer.put(encodedData)
@@ -327,4 +321,16 @@ actual class FlacDecoder : AudioDecoder {
 
     actual override fun getOutputCodec(): AudioCodec = AudioCodec.PCM
     actual override fun getOutputBitDepth(): Int = outputBitDepth
+
+    private companion object {
+        // Timeout for MediaCodec operations (microseconds) — 10ms
+        const val TIMEOUT_US = 10_000L
+
+        /**
+         * Maximum number of retry attempts when no input buffer is available.
+         * Each retry waits TIMEOUT_US (10ms), so 3 retries = up to 40ms total.
+         * Between retries we drain output to free slots.
+         */
+        const val MAX_INPUT_RETRIES = 3
+    }
 }

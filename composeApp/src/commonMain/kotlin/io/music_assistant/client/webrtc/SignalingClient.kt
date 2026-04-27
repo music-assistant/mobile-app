@@ -114,7 +114,7 @@ class SignalingClient(
         val currentSession = session
         if (currentSession == null) {
             logger.e { "Cannot send message: not connected to signaling server" }
-            throw IllegalStateException("Not connected to signaling server")
+            error("Not connected to signaling server")
         }
 
         try {

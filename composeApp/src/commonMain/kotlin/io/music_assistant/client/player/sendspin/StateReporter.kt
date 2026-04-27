@@ -1,3 +1,6 @@
+// Reporting interval inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.player.sendspin
 
 import co.touchlab.kermit.Logger

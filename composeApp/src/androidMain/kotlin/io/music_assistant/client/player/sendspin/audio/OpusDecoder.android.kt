@@ -78,10 +78,10 @@ actual class OpusDecoder : AudioDecoder {
     actual override fun decode(encodedData: ByteArray): ByteArray {
         return synchronized(decoderLock) {
             val currentDecoder = decoder
-                ?: throw IllegalStateException("Decoder not configured. Call configure() first.")
+                ?: error("Decoder not configured. Call configure() first.")
 
             val currentPcmBuffer = pcmBuffer
-                ?: throw IllegalStateException("PCM buffer not allocated")
+                ?: error("PCM buffer not allocated")
 
             if (encodedData.isEmpty()) {
                 logger.w { "Received empty encoded data" }

@@ -1,3 +1,6 @@
+// Compose layout values (sizes, alphas) are visual design tokens.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.foundation.Canvas

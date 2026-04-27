@@ -1,3 +1,6 @@
+// Position update intervals and debounce values inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.data
 
 import androidx.compose.ui.graphics.Color
@@ -489,7 +492,8 @@ class MainDataSource(
                                             (currentState as? DataState.Stale)?.disconnectedAt
                                                 ?: currentTimeMillis()
 
-                                        log.w { "Persistent connection error - preserving ${(data as? List<*>)?.size ?: 0} players as stale" }
+                                        val staleCount = (data as? List<*>)?.size ?: 0
+                                        log.w { "Persistent connection error - preserving $staleCount players as stale" }
                                         _serverPlayers.update {
                                             DataState.Stale(
                                                 data = data,

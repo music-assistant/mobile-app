@@ -1,3 +1,6 @@
+// Reconnection delay constants inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.webrtc
 
 import co.touchlab.kermit.Logger

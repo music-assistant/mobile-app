@@ -95,9 +95,16 @@ abstract class AppMediaItem(
                 43 * (uri?.hashCode() ?: 0)
     }
 
-    override fun toString(): String {
-        return "AppMediaItem(itemId='$itemId', provider='$provider', name='$name', favorite=$favorite, mediaType=$mediaType, providerMappings=$providerMappings, uri=$uri)"
-    }
+    override fun toString(): String =
+        "AppMediaItem(" +
+            "itemId='$itemId', " +
+            "provider='$provider', " +
+            "name='$name', " +
+            "favorite=$favorite, " +
+            "mediaType=$mediaType, " +
+            "providerMappings=$providerMappings, " +
+            "uri=$uri" +
+            ")"
 
     val imageInfo: ImageInfo? = (image ?: metadata?.images?.getOrNull(0))
         ?.let { image ->

@@ -666,7 +666,7 @@ private fun WebRTCConnectionContent(
             onDismiss = { showQrDialog = false },
             onScanned = { scannedText ->
                 onRemoteIdChange(
-                    (scannedText.indexOf(webRtcUrlPrefix) + webRtcUrlPrefix.length)
+                    (scannedText.indexOf(WEB_RTC_URL_PREFIX) + WEB_RTC_URL_PREFIX.length)
                         .takeIf { it < scannedText.length }
                         ?.let { scannedText.substring(it) }
                         ?: scannedText,
@@ -1096,4 +1096,4 @@ private fun ConnectionHistoryDialog(
     }
 }
 
-const val webRtcUrlPrefix = "https://app.music-assistant.io/?remote_id="
+const val WEB_RTC_URL_PREFIX = "https://app.music-assistant.io/?remote_id="

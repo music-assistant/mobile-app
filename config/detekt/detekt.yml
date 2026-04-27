@@ -159,8 +159,9 @@ naming:
   VariableNaming:
     active: true
   MatchingDeclarationName:
-    active: true
-    mustBeFirst: false  # KMP `expect` files often have a top-level fun before the type
+    active: false  # Conflicts with Compose convention: files are named after the primary
+                   # @Composable function (which the rule doesn't count), not after sibling
+                   # classes/objects like FooDefaults that share the file.
   MemberNameEqualsClassName:
     active: true
     ignoreOverridden: true
@@ -184,7 +185,7 @@ style:
   active: true
   MagicNumber:
     active: true
-    ignoreNumbers: ['-1', '0', '1', '2', '100', '1000']
+    ignoreNumbers: ['-1', '0', '1', '2', '60', '100', '1000']  # 60 = seconds/min, minutes/hr
     ignoreHashCodeFunction: true
     ignorePropertyDeclaration: true            # `const val FOO = 5_000` is fine
     ignoreLocalVariableDeclaration: true       # `val timeoutMs = 5_000; delay(timeoutMs)` — name in the val
@@ -204,7 +205,10 @@ style:
       - '**/*Tests.kt'
   MaxLineLength:
     active: true
-    maxLineLength: 120
+    # 140 instead of the conventional 120: most violations are log statements with interpolated
+    # context (e.g. `logger.i { "Foo: $a $b $c" }`) where wrapping reduces readability for the
+    # ~5-10% of lines that genuinely need the breathing room.
+    maxLineLength: 140
     excludePackageStatements: true
     excludeImportStatements: true
     excludeCommentStatements: true
@@ -215,10 +219,17 @@ style:
     excludes:
       - '**/test/**'
       - '**/*Test.kt'
+    # Compose Multiplatform's generated resources package: each consuming screen typically
+    # references many entries (Res.string.x, Res.drawable.y, ...). Wildcard is correct here.
+    excludeImports:
+      - 'musicassistantclient.composeapp.generated.resources.*'
   NewLineAtEndOfFile:
     active: true
   UnusedPrivateMember:
     active: true
+    # Allow private @Preview @Composable functions — they're unused at runtime but consumed
+    # by the IDE preview tooling. By project convention these are named `Preview*`.
+    allowedNames: '(_|ignored|expected|serialVersionUID|Preview.*)'
   UnusedParameter:
     active: true
     allowedNames: '_|ignored|expected'

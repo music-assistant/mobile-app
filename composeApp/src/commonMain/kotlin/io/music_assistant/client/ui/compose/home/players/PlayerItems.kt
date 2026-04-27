@@ -177,7 +177,7 @@ fun FullPlayerItem(
     dominantColor: Color,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
+    @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
 ) {
     val track = item.queueInfo?.currentItem?.track
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer

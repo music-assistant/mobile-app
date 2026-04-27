@@ -156,7 +156,7 @@ class SendspinWsHandler(
     suspend fun sendText(message: String) {
         val currentSession = session
         if (currentSession == null || !currentSession.isActive) {
-            throw IllegalStateException("WebSocket not connected")
+            error("WebSocket not connected")
         }
 
         try {
@@ -171,7 +171,7 @@ class SendspinWsHandler(
     suspend fun sendBinary(data: ByteArray) {
         val currentSession = session
         if (currentSession == null || !currentSession.isActive) {
-            throw IllegalStateException("WebSocket not connected")
+            error("WebSocket not connected")
         }
 
         try {

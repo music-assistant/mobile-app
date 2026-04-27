@@ -106,7 +106,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val bottomSheetStrategy = remember { BottomSheetSceneStrategy<NavKey>() }
     val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
 
-    Box {
+    Box(modifier = modifier) {
         // Main navigation content
         NavDisplay(
             modifier = Modifier.fillMaxSize(),

@@ -86,7 +86,6 @@ fun AdaptiveMediaGrid(
                 null
             },
         ) { item ->
-            val rowModifier = if (isRowMode) Modifier.fillMaxWidth() else Modifier
             when (item) {
                 is AppMediaItem.Artist -> ArtistWithMenu(
                     item = item,

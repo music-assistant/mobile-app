@@ -1,3 +1,6 @@
+// Log-payload truncation length is a debugging aid, not a protocol value.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.player.sendspin.protocol
 
 import co.touchlab.kermit.Logger

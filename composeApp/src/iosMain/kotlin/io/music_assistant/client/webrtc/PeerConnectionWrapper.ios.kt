@@ -122,7 +122,7 @@ actual class PeerConnectionWrapper actual constructor() {
     }
 
     actual suspend fun createOffer(): io.music_assistant.client.webrtc.model.SessionDescription {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Creating SDP offer" }
 
         val options = OfferAnswerOptions(
@@ -142,7 +142,7 @@ actual class PeerConnectionWrapper actual constructor() {
     }
 
     actual suspend fun setRemoteAnswer(answer: io.music_assistant.client.webrtc.model.SessionDescription) {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Setting remote answer" }
 
         val sdp = SessionDescription(
@@ -155,7 +155,7 @@ actual class PeerConnectionWrapper actual constructor() {
     }
 
     actual suspend fun addIceCandidate(candidate: IceCandidateData) {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Adding ICE candidate" }
 
         val iceCandidate = IceCandidate(
@@ -178,14 +178,14 @@ actual class PeerConnectionWrapper actual constructor() {
         ordered: Boolean,
         maxRetransmits: Int,
     ): DataChannelWrapper {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Creating data channel: $label (ordered=$ordered, maxRetransmits=$maxRetransmits)" }
 
         val dataChannel = pc.createDataChannel(
             label = label,
             ordered = ordered,
             maxRetransmits = maxRetransmits,
-        ) ?: throw IllegalStateException("Failed to create data channel")
+        ) ?: error("Failed to create data channel")
 
         return DataChannelWrapper(dataChannel)
     }

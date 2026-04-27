@@ -179,8 +179,8 @@ class HomeScreenViewModel(
 
     private fun loadRecommendations(): Job = viewModelScope.launch {
         _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
-        repeat(3) { attempt ->
-            if (attempt > 0) delay(2_000L)
+        repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
+            if (attempt > 0) delay(RECOMMENDATION_RETRY_DELAY_MS)
             getList<AppMediaItem.RecommendationFolder>(Request.Library.recommendations())
                 ?.let { items ->
                     _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
@@ -348,5 +348,10 @@ class HomeScreenViewModel(
             val localPlayerId: String? = null,
             val sendspinState: SendspinState? = null,
         ) : PlayersState()
+    }
+
+    private companion object {
+        const val MAX_RECOMMENDATION_ATTEMPTS = 3
+        const val RECOMMENDATION_RETRY_DELAY_MS = 2_000L
     }
 }

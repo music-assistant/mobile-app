@@ -1,3 +1,6 @@
+// Service-level timing values (debounce intervals, retry delays) are inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.services
 
 import android.app.ForegroundServiceStartNotAllowedException

@@ -95,7 +95,7 @@ class WebRTCDataChannelTransport(
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
             logger.w { "Attempted to send text while channel not open (state: $currentState)" }
-            throw IllegalStateException("Channel not open (state: $currentState)")
+            error("Channel not open (state: $currentState)")
         }
 
         dataChannelWrapper.send(message)
@@ -109,7 +109,7 @@ class WebRTCDataChannelTransport(
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
             logger.w { "Attempted to send binary while channel not open (state: $currentState)" }
-            throw IllegalStateException("Channel not open (state: $currentState)")
+            error("Channel not open (state: $currentState)")
         }
 
         dataChannelWrapper.sendBinary(data)

@@ -1,3 +1,6 @@
+// Drawing geometry / hex color literals — values are inherent to the painter's visual design.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.common.painters
 
 import androidx.compose.runtime.Composable

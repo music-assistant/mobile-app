@@ -39,22 +39,20 @@ enum class RepeatMode {
     ALL,
 }
 
-class PlayerFeature {
-    companion object {
-        const val POWER = "power"
-        const val VOLUME_SET = "volume_set"
-        const val VOLUME_MUTE = "volume_mute"
-        const val PAUSE = "pause"
-        const val SET_MEMBERS = "set_members"
-        const val MULTI_DEVICE_DSP = "multi_device_dsp"
-        const val SEEK = "seek"
-        const val NEXT_PREVIOUS = "next_previous"
-        const val PLAY_ANNOUNCEMENT = "play_announcement"
-        const val ENQUEUE = "enqueue"
-        const val GAPLESS_PLAYBACK = "gapless_playback"
-        const val GAPLESS_DIFFERENT_SAMPLERATE = "gapless_different_samplerate"
-        const val SELECT_SOURCE = "select_source"
-    }
+object PlayerFeature {
+    const val POWER = "power"
+    const val VOLUME_SET = "volume_set"
+    const val VOLUME_MUTE = "volume_mute"
+    const val PAUSE = "pause"
+    const val SET_MEMBERS = "set_members"
+    const val MULTI_DEVICE_DSP = "multi_device_dsp"
+    const val SEEK = "seek"
+    const val NEXT_PREVIOUS = "next_previous"
+    const val PLAY_ANNOUNCEMENT = "play_announcement"
+    const val ENQUEUE = "enqueue"
+    const val GAPLESS_PLAYBACK = "gapless_playback"
+    const val GAPLESS_DIFFERENT_SAMPLERATE = "gapless_different_samplerate"
+    const val SELECT_SOURCE = "select_source"
 }
 
 @Serializable

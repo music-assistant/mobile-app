@@ -1,3 +1,6 @@
+// Log-payload truncation lengths and connection delays are inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
@@ -154,7 +157,7 @@ class WebRTCTransport(
     }
 
     override suspend fun send(message: JsonObject) {
-        val mgr = manager ?: throw IllegalStateException("Not connected")
+        val mgr = manager ?: error("Not connected")
         val jsonString = myJson.encodeToString(JsonObject.serializer(), message)
         mgr.send(jsonString)
     }

@@ -162,7 +162,8 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         logger.i { "Registered audio device callback for routing change detection" }
 
         scope.launch {
-            mediaNotificationData.debounce(200).collect { updatePlaybackState(it) }
+            // 200ms debounce coalesces rapid notification updates without delaying perceptibly.
+            mediaNotificationData.debounce(timeoutMillis = 200).collect { updatePlaybackState(it) }
         }
         scope.launch {
             // Block until everything is stopped, then bail

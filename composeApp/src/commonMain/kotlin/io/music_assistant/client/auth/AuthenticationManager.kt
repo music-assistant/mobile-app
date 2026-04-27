@@ -129,6 +129,7 @@ class AuthenticationManager(
         }
     }
 
+    @Suppress("UnusedParameter") // providerId reserved — current server login API doesn't yet route per-provider
     suspend fun loginWithCredentials(
         providerId: String,
         username: String,
@@ -194,7 +195,7 @@ class AuthenticationManager(
             // Wait for connection to be established if app was backgrounded
             // Try for up to 10 seconds
             var attempts = 0
-            while (attempts < 40) { // 40 * 250ms = 10 seconds
+            while (attempts < CONNECT_POLL_MAX_ATTEMPTS) {
                 val currentState = serviceClient.sessionState.value
 
                 if (currentState is SessionState.Connected &&
@@ -214,7 +215,7 @@ class AuthenticationManager(
                 }
 
                 Logger.d("Waiting for connection... attempt ${attempts + 1}")
-                delay(250)
+                delay(CONNECT_POLL_INTERVAL_MS)
                 attempts++
             }
 
@@ -263,5 +264,11 @@ class AuthenticationManager(
 
     fun close() {
         scope.cancel()
+    }
+
+    private companion object {
+        // Auto-login waits up to 10s for the connection to fully establish: 40 * 250ms.
+        const val CONNECT_POLL_MAX_ATTEMPTS = 40
+        const val CONNECT_POLL_INTERVAL_MS = 250L
     }
 }

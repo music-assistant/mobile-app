@@ -81,7 +81,7 @@ class RpcEngine(private val onAuthError: () -> Unit) {
         val answer = Answer(finalMessage)
         if (answer.json.containsKey("error_code")) {
             logger.e { "RPC error for message $messageId: $answer" }
-            if (answer.json["error_code"]?.jsonPrimitive?.int == 20) {
+            if (answer.json["error_code"]?.jsonPrimitive?.int == ERROR_CODE_AUTH_REQUIRED) {
                 onAuthError()
             }
         }
@@ -105,6 +105,11 @@ class RpcEngine(private val onAuthError: () -> Unit) {
     fun clear() {
         pendingResponses.store(emptyMap())
         partialResults.store(emptyMap())
+    }
+
+    private companion object {
+        // Server emits this error_code when the session needs to re-auth (token expired, etc.).
+        const val ERROR_CODE_AUTH_REQUIRED = 20
     }
 }
 

@@ -1,3 +1,6 @@
+// Compose layout values (dot size, spacing) are visual design tokens.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.home
 
 import androidx.compose.foundation.background

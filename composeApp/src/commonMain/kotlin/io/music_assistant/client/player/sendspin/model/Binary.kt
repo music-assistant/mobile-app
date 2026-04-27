@@ -27,8 +27,11 @@ data class BinaryMessage(
     val data: ByteArray,
 ) {
     companion object {
+        // 1 byte type + 8 byte big-endian int64 timestamp
+        private const val HEADER_SIZE = 9
+
         fun decode(data: ByteArray): BinaryMessage? {
-            if (data.size < 9) return null
+            if (data.size < HEADER_SIZE) return null
 
             val typeValue = data[0].toUByte()
             val type = BinaryMessageType.fromValue(typeValue) ?: return null
@@ -41,7 +44,7 @@ data class BinaryMessage(
             // Validate timestamp is non-negative
             if (timestamp < 0) return null
 
-            val payload = data.copyOfRange(9, data.size)
+            val payload = data.copyOfRange(HEADER_SIZE, data.size)
 
             return BinaryMessage(type, timestamp, payload)
         }

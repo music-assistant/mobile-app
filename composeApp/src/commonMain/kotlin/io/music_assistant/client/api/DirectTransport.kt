@@ -74,7 +74,8 @@ class DirectTransport(
                     messageCounter++
                     _messages.emit(message)
                 }
-            } catch (e: ClosedReceiveChannelException) {
+            } catch (@Suppress("SwallowedException") e: ClosedReceiveChannelException) {
+                // Expected on graceful close — the channel-closed exception type IS the signal.
                 logger.d { "WebSocket connection closed" }
             } finally {
                 session = null
@@ -142,7 +143,7 @@ class DirectTransport(
     }
 
     override suspend fun send(message: JsonObject) {
-        val s = session ?: throw IllegalStateException("Not connected")
+        val s = session ?: error("Not connected")
         s.sendSerialized(message)
     }
 

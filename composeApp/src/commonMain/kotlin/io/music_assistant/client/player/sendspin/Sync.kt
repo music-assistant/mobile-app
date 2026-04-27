@@ -1,4 +1,6 @@
 @file:OptIn(ExperimentalTime::class)
+// RTT/quality thresholds (50ms in microseconds, 5s timeout) inline-documented at use site.
+@file:Suppress("MagicNumber")
 
 package io.music_assistant.client.player.sendspin
 

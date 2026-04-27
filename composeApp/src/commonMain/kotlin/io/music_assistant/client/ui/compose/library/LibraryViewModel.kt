@@ -39,6 +39,7 @@ class LibraryViewModel(
 ) : ViewModel() {
     companion object Companion {
         private const val PAGE_SIZE = 50
+        const val LIBRARY_SORT_DEBOUNCE_MS = 500L
     }
 
     enum class Tab {
@@ -154,7 +155,7 @@ class LibraryViewModel(
                     }
                 }
                     .distinctUntilChanged()
-                    .debounce { 500 }
+                    .debounce { LIBRARY_SORT_DEBOUNCE_MS }
                     .collect {
                         when (tab) {
                             Tab.ARTISTS -> loadArtists()

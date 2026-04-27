@@ -1,4 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
+// Compose layout values (sizes, alphas, animation durations) are visual design tokens.
+@file:Suppress("MagicNumber")
 
 package io.music_assistant.client.ui.compose.item
 

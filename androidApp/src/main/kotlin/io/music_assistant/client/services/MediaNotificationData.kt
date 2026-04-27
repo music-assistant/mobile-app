@@ -3,6 +3,9 @@ package io.music_assistant.client.services
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.server.RepeatMode
 
+// Elapsed time can drift up to 10s before we treat it as a real position change.
+private const val ELAPSED_TIME_DRIFT_TOLERANCE_MS = 10_000
+
 data class MediaNotificationData(
     val multiplePlayers: Boolean,
     val longItemId: Long?,
@@ -48,7 +51,7 @@ data class MediaNotificationData(
             if (old.elapsedTime > new.elapsedTime) {
                 return false
             }
-            if (new.elapsedTime - old.elapsedTime > 10000) {
+            if (new.elapsedTime - old.elapsedTime > ELAPSED_TIME_DRIFT_TOLERANCE_MS) {
                 return false
             }
             return true

@@ -1,3 +1,7 @@
+// PCM bit-depth literals (16/24/32) and sample-rate bounds are audio-format standards;
+// naming them `BIT_DEPTH_16` etc. doesn't add clarity over the literal.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.player.sendspin.model
 
 import kotlinx.serialization.SerialName

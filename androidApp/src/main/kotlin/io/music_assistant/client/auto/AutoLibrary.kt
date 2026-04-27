@@ -51,7 +51,7 @@ class AutoLibrary(
             searchFlow
                 .filterNotNull()
                 .filter { it.first.isNotEmpty() }
-                .debounce(500)
+                .debounce(SEARCH_DEBOUNCE_MS)
                 .collect { (query, result) ->
                     val answer = apiClient.sendRequest(
                         request = Request.Library.search(
@@ -167,7 +167,7 @@ class AutoLibrary(
 
             else -> {
                 val parts = id.split("__")
-                if (parts.size != 4) {
+                if (parts.size != ITEM_ID_PART_COUNT) {
                     result.sendResult(null)
                     return
                 }
@@ -192,7 +192,7 @@ class AutoLibrary(
     }
 
     private suspend fun waitForCorrectState(): Boolean =
-        withTimeoutOrNull(30_000) {
+        withTimeoutOrNull(WAIT_FOR_AUTHENTICATED_TIMEOUT_MS) {
             apiClient.sessionState
                 .mapNotNull { it as? SessionState.Connected }
                 .mapNotNull { it.dataConnectionState as? DataConnectionState.Authenticated }
@@ -319,6 +319,14 @@ class AutoLibrary(
                 .build(),
                     MediaItem.FLAG_BROWSABLE,
         )
+
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 500L
+        const val WAIT_FOR_AUTHENTICATED_TIMEOUT_MS = 30_000L
+
+        // Encoded media item IDs are `tab__type__provider__providerItemId` — exactly 4 parts.
+        const val ITEM_ID_PART_COUNT = 4
+    }
 }
 
 internal object MediaIds {

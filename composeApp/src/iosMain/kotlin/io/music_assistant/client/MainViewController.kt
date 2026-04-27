@@ -28,6 +28,9 @@ private val kmpBootstrap: Unit by lazy {
     installCrashHandler()
 }
 
+@Suppress(
+    "FunctionNaming",
+) // iOS factory function intentionally PascalCase; called from Swift as if it were a constructor
 fun MainViewController() = ComposeUIViewController(
     configure = { bootstrapKmp() },
 ) { App() }

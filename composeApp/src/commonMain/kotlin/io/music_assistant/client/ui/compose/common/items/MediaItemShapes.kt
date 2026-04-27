@@ -1,3 +1,6 @@
+// Shape geometry constants (cut ratios, hole radius factors) — visually-driven values.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.ui.geometry.Offset
@@ -19,7 +22,7 @@ import kotlin.math.sin
  * Shape that cuts a vertical strip from the right side.
  * Used for album vinyl record effect.
  */
-class CutStripShape() : Shape {
+class CutStripShape : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
@@ -42,7 +45,7 @@ class CutStripShape() : Shape {
  * Shape that cuts a circular hole in the center.
  * Used for album vinyl record effect.
  */
-class HoleShape() : Shape {
+class HoleShape : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
@@ -82,7 +85,7 @@ class HoleShape() : Shape {
  * Shape that cuts a vertical strip from the left side.
  * Used for notebook/playlist spiral binding effect.
  */
-class NotebookCutShape() : Shape {
+class NotebookCutShape : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
@@ -107,7 +110,7 @@ class NotebookCutShape() : Shape {
  * Shape that cuts the top-left corner.
  * Used for podcast concentric circles effect.
  */
-class CornerCutShape() : Shape {
+class CornerCutShape : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,

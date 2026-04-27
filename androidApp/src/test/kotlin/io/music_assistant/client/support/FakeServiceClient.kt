@@ -156,7 +156,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     )
                 }
 
-                else -> throw IllegalStateException()
+                else -> error("Unhandled request type in FakeServiceClient")
             }
         }
     }
