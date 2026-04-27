@@ -281,7 +281,8 @@ private fun mainNavEntryProvider(
                 providerIconFetcher = { modifier, provider ->
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
-                }
+                },
+                onRefresh = { viewModel.loadRecommendations() }
             )
         }
 

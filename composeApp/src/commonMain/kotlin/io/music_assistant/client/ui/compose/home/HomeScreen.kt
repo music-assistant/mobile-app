@@ -14,8 +14,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +63,8 @@ fun HomeScreen(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit)
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    onRefresh: () -> Unit
 ) {
     val filteredData = remember(dataState) {
         if (dataState is DataState.Data) {
@@ -85,7 +90,7 @@ fun HomeScreen(
 
     Screen(
         topBar = { scrollBehavior ->
-            LandingPageTopBar(scrollBehavior)
+            LandingPageTopBar(scrollBehavior = scrollBehavior, onRefresh = onRefresh)
         }
     ) {
         LazyColumn(
@@ -126,10 +131,18 @@ fun HomeScreen(
 }
 
 @Composable
-private fun LandingPageTopBar(scrollBehavior: TopAppBarScrollBehavior) {
+private fun LandingPageTopBar(scrollBehavior: TopAppBarScrollBehavior, onRefresh: () -> Unit) {
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(Res.string.refresh)
+                )
+            }
+        }
     )
 }
 
