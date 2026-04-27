@@ -165,6 +165,16 @@ abstract class AppMediaItem(
             "favorite_playlists" -> MediaType.PLAYLIST
             else -> null
         }
+
+        override fun equals(other: Any?): Boolean {
+            return other is RecommendationFolder
+                    && super.equals(other)
+                    && items == other.items
+        }
+
+        override fun hashCode(): Int {
+            return super.hashCode() + items.hashCode()
+        }
     }
 
     class Artist(
