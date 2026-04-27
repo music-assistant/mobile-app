@@ -92,27 +92,36 @@ class PCMPassthroughDecoder: NativeAudioDecoder {
 
 // MARK: - Opus Decoder using swift-opus
 
-/// Opus decoder using swift-opus (libopus wrapper)
+/// Opus decoder using swift-opus (libopus wrapper).
+///
+/// Outputs interleaved Int16 PCM directly — matches AudioQueue's configured
+/// format (kLinearPCMFormatFlagIsSignedInteger, 16-bit) so no float→int16
+/// conversion is needed.
+///
+/// One inbound `Data` is expected to be exactly one complete Opus packet —
+/// swift-opus calls `opus_decode` per packet. The KMP layer's
+/// `AudioStreamManager` preserves frame boundaries by sending one binary
+/// message per packet, so this contract holds.
 class OpusLibDecoder: NativeAudioDecoder {
     private let decoder: Opus.Decoder
     private let channels: Int
     private let sampleRate: Int
-    
+
     init(sampleRate: Int, channels: Int, bitDepth: Int) throws {
         self.channels = channels
         self.sampleRate = sampleRate
-        
-        // Create AVAudioFormat for the decoder output
+
+        // swift-opus REQUIRES interleaved layout for stereo (see
+        // AVAudioFormat.isValidOpusPCMFormat), and AudioQueue wants Int16.
+        // Use the helper that picks the right interleaved flag per channel count.
         guard let format = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
+            opusPCMFormat: .int16,
             sampleRate: Double(sampleRate),
-            channels: AVAudioChannelCount(channels),
-            interleaved: true
+            channels: AVAudioChannelCount(channels)
         ) else {
             throw AudioDecoderError.decodingFailed("Failed to create audio format for Opus")
         }
-        
-        // Create opus decoder
+
         do {
             self.decoder = try Opus.Decoder(format: format)
             print("🎵 OpusLibDecoder: ✅ Created decoder for \(sampleRate)Hz, \(channels)ch")
@@ -120,46 +129,28 @@ class OpusLibDecoder: NativeAudioDecoder {
             throw AudioDecoderError.decodingFailed("Opus decoder: \(error.localizedDescription)")
         }
     }
-    
+
     func decode(_ data: Data) throws -> Data {
-        // Decode Opus packet to AVAudioPCMBuffer
+        // Decode one Opus packet → AVAudioPCMBuffer of Int16 PCM.
         let pcmBuffer: AVAudioPCMBuffer
         do {
             pcmBuffer = try decoder.decode(data)
         } catch {
             throw AudioDecoderError.decodingFailed("Opus decode failed: \(error.localizedDescription)")
         }
-        
-        // swift-opus outputs float32 in AVAudioPCMBuffer
-        // Convert float32 → int16 for AudioQueue
-        guard let floatChannelData = pcmBuffer.floatChannelData else {
-            throw AudioDecoderError.decodingFailed("No float channel data in decoded buffer")
+
+        guard let int16ChannelData = pcmBuffer.int16ChannelData else {
+            throw AudioDecoderError.decodingFailed("No int16 channel data in decoded buffer")
         }
-        
+
         let frameLength = Int(pcmBuffer.frameLength)
         let totalSamples = frameLength * channels
-        var int16Samples = [Int16](repeating: 0, count: totalSamples)
-        
-        // Convert interleaved float32 samples to int16
-        if channels == 1 {
-            let floatData = floatChannelData[0]
-            for i in 0..<frameLength {
-                let floatSample = max(-1.0, min(1.0, floatData[i]))
-                int16Samples[i] = Int16(floatSample * Float(Int16.max))
-            }
-        } else {
-            // Stereo or multi-channel: interleave
-            for channel in 0..<channels {
-                let floatData = floatChannelData[channel]
-                for frame in 0..<frameLength {
-                    let floatSample = max(-1.0, min(1.0, floatData[frame]))
-                    let sampleIndex = frame * channels + channel
-                    int16Samples[sampleIndex] = Int16(floatSample * Float(Int16.max))
-                }
-            }
-        }
-        
-        return int16Samples.withUnsafeBytes { Data($0) }
+
+        // For mono and interleaved stereo, AVAudioPCMBuffer exposes a single
+        // channel pointer at [0] containing `frameLength * channels` Int16
+        // samples (interleaved as L, R, L, R, ... for stereo).
+        let buffer = UnsafeBufferPointer(start: int16ChannelData[0], count: totalSamples)
+        return Data(buffer: buffer)
     }
 }
 
