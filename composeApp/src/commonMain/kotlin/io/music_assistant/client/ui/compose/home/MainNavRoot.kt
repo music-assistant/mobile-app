@@ -282,6 +282,7 @@ private fun mainNavEntryProvider(
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
+                onRefresh = { viewModel.loadRecommendations() },
             )
         }
 

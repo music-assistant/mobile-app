@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.Timings.DEBOUNCE
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -177,10 +178,10 @@ class HomeScreenViewModel(
         }
     }
 
-    private fun loadRecommendations(): Job = viewModelScope.launch {
+    fun loadRecommendations(): Job = viewModelScope.launch {
         _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
         repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
-            if (attempt > 0) delay(RECOMMENDATION_RETRY_DELAY_MS)
+            if (attempt > 0) delay(DEBOUNCE)
             getList<AppMediaItem.RecommendationFolder>(Request.Library.recommendations())
                 ?.let { items ->
                     _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
@@ -352,6 +353,5 @@ class HomeScreenViewModel(
 
     private companion object {
         const val MAX_RECOMMENDATION_ATTEMPTS = 3
-        const val RECOMMENDATION_RETRY_DELAY_MS = 2_000L
     }
 }

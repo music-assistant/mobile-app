@@ -25,6 +25,7 @@
     <string name="action_play">Play</string>
     <string name="action_play_next">Play next</string>
     <string name="action_add_to_queue">Add to queue</string>
+    <string name="refresh">Refresh</string>
 
     <!-- Common UI -->
     <string name="common_cancel">Cancel</string>
