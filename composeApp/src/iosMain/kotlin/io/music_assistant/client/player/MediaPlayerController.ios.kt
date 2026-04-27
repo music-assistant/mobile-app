@@ -13,7 +13,7 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
  */
 actual class MediaPlayerController actual constructor(platformContext: PlatformContext) {
     private var isPrepared: Boolean = false
-    
+
     // Callback for remote commands from Control Center
     actual var onRemoteCommand: ((String) -> Unit)? = null
 
@@ -24,13 +24,13 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         channels: Int,
         bitDepth: Int,
         codecHeader: String?,
-        listener: MediaPlayerListener
+        listener: MediaPlayerListener,
     ) {
         val player = PlatformPlayerProvider.player
         if (player != null) {
             player.prepareStream(codec.name.lowercase(), sampleRate, channels, bitDepth, codecHeader, listener)
             isPrepared = true
-            
+
             // Set up remote command handler for Control Center buttons
             player.setRemoteCommandHandler(object : RemoteCommandHandler {
                 override fun onCommand(command: String) {
@@ -78,7 +78,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         // Return a default volume value - actual system volume control is managed by iOS
         return 100
     }
-    
+
     // Now Playing (Control Center / Lock Screen)
     actual fun updateNowPlaying(
         title: String?,
@@ -87,17 +87,23 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         artworkUrl: String?,
         duration: Double,
         elapsedTime: Double,
-        playbackRate: Double
+        playbackRate: Double,
     ) {
         PlatformPlayerProvider.player?.updateNowPlaying(
-            title, artist, album, artworkUrl, duration, elapsedTime, playbackRate
+            title,
+            artist,
+            album,
+            artworkUrl,
+            duration,
+            elapsedTime,
+            playbackRate,
         )
     }
-    
+
     actual fun clearNowPlaying() {
         PlatformPlayerProvider.player?.clearNowPlaying()
     }
-    
+
     fun setRemoteCommandHandler(handler: RemoteCommandHandler?) {
         PlatformPlayerProvider.player?.setRemoteCommandHandler(handler)
     }

@@ -66,7 +66,7 @@ import kotlinx.coroutines.sync.withLock
  */
 class WebRTCConnectionManager(
     private val signalingClient: SignalingClient,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
 ) {
     private val logger = Logger.withTag("WebRTCConnectionManager")
     private val mutex = Mutex()
@@ -131,11 +131,10 @@ class WebRTCConnectionManager(
             startConnectionTimeout()
 
             // Subsequent steps handled in signaling message handlers
-
         } catch (e: Exception) {
             logger.e(e) { "Failed to connect to signaling server" }
             _connectionState.value = WebRTCConnectionState.Error(
-                WebRTCError.SignalingError("Failed to connect to signaling server", e)
+                WebRTCError.SignalingError("Failed to connect to signaling server", e),
             )
             cleanup()
         }
@@ -198,7 +197,7 @@ class WebRTCConnectionManager(
             if (_connectionState.value !is WebRTCConnectionState.Connected) {
                 logger.e { "Connection timeout: failed to establish WebRTC connection within 30s" }
                 _connectionState.value = WebRTCConnectionState.Error(
-                    WebRTCError.ConnectionError("Connection timeout")
+                    WebRTCError.ConnectionError("Connection timeout"),
                 )
                 cleanup()
             }
@@ -236,8 +235,8 @@ class WebRTCConnectionManager(
                             SignalingMessage.IceCandidate(
                                 remoteId = currentRemoteId!!.rawId,
                                 sessionId = message.sessionId ?: "",
-                                data = candidate
-                            )
+                                data = candidate,
+                            ),
                         )
                     }
                 } catch (e: Exception) {
@@ -270,7 +269,7 @@ class WebRTCConnectionManager(
                             PeerConnectionStateValue.FAILED -> {
                                 logger.e { "ICE connection failed" }
                                 _connectionState.value = WebRTCConnectionState.Error(
-                                    WebRTCError.ConnectionError("ICE connection failed")
+                                    WebRTCError.ConnectionError("ICE connection failed"),
                                 )
                                 cleanup()
                             }
@@ -280,7 +279,7 @@ class WebRTCConnectionManager(
                                 // Treat disconnected as immediate failure to enable fast reconnection
                                 // Even if temporary, reconnection will succeed quickly
                                 _connectionState.value = WebRTCConnectionState.Error(
-                                    WebRTCError.ConnectionError("ICE connection disconnected")
+                                    WebRTCError.ConnectionError("ICE connection disconnected"),
                                 )
                                 cleanup()
                             }
@@ -289,7 +288,7 @@ class WebRTCConnectionManager(
                                 logger.i { "ICE connection closed" }
                                 if (_connectionState.value !is WebRTCConnectionState.Idle) {
                                     _connectionState.value = WebRTCConnectionState.Error(
-                                        WebRTCError.ConnectionError("ICE connection closed")
+                                        WebRTCError.ConnectionError("ICE connection closed"),
                                     )
                                     cleanup()
                                 }
@@ -311,7 +310,7 @@ class WebRTCConnectionManager(
             val channel = pc.createDataChannel(
                 label = "ma-api",
                 ordered = true,
-                maxRetransmits = -1  // unlimited retransmits for reliability
+                maxRetransmits = -1,  // unlimited retransmits for reliability
             )
             setupDataChannel(channel, message.sessionId ?: "")
 
@@ -323,7 +322,7 @@ class WebRTCConnectionManager(
             // ByteArray in DataChannelWrapper before emitting.
             val sendspinChannel = pc.createDataChannel(
                 label = "sendspin",
-                ordered = true
+                ordered = true,
             )
             setupSendspinDataChannel(sendspinChannel)
 
@@ -337,17 +336,16 @@ class WebRTCConnectionManager(
                 SignalingMessage.Offer(
                     remoteId = currentRemoteId!!.rawId,
                     sessionId = message.sessionId ?: "",
-                    data = offer
-                )
+                    data = offer,
+                ),
             )
 
             _connectionState.value =
                 WebRTCConnectionState.GatheringIceCandidates(message.sessionId ?: "")
-
         } catch (e: Exception) {
             logger.e(e) { "Failed to initialize peer connection" }
             _connectionState.value = WebRTCConnectionState.Error(
-                WebRTCError.PeerConnectionError("Failed to initialize peer connection", e)
+                WebRTCError.PeerConnectionError("Failed to initialize peer connection", e),
             )
             cleanup()
         }
@@ -371,7 +369,7 @@ class WebRTCConnectionManager(
         } catch (e: Exception) {
             logger.e(e) { "Failed to set remote answer" }
             _connectionState.value = WebRTCConnectionState.Error(
-                WebRTCError.PeerConnectionError("Failed to set remote answer", e)
+                WebRTCError.PeerConnectionError("Failed to set remote answer", e),
             )
             cleanup()
         }
@@ -399,7 +397,7 @@ class WebRTCConnectionManager(
     private fun handleSignalingError(message: SignalingMessage.Error) {
         logger.e { "Signaling error: ${message.error}" }
         _connectionState.value = WebRTCConnectionState.Error(
-            WebRTCError.SignalingError(message.error)
+            WebRTCError.SignalingError(message.error),
         )
         scope.launch { cleanup() }
     }
@@ -410,7 +408,7 @@ class WebRTCConnectionManager(
     private fun handlePeerDisconnected(message: SignalingMessage.PeerDisconnected) {
         logger.w { "Remote peer disconnected: ${message.sessionId}" }
         _connectionState.value = WebRTCConnectionState.Error(
-            WebRTCError.ConnectionError("Remote peer disconnected")
+            WebRTCError.ConnectionError("Remote peer disconnected"),
         )
         scope.launch { cleanup() }
     }
@@ -447,7 +445,7 @@ class WebRTCConnectionManager(
                     if (state == DataChannelState.Open) {
                         _connectionState.value = WebRTCConnectionState.Connected(
                             sessionId = sessionId,
-                            remoteId = currentRemoteId!!
+                            remoteId = currentRemoteId!!,
                         )
                     }
                 }

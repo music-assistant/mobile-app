@@ -2,10 +2,10 @@ package io.music_assistant.client.settings
 
 import com.russhwolf.settings.Settings
 import io.music_assistant.client.api.ConnectionInfo
-import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.audio.Codecs
@@ -18,13 +18,12 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class SettingsRepository(
-    private val settings: Settings
+    private val settings: Settings,
 ) {
-
     private val _theme = MutableStateFlow(
         ThemeSetting.valueOf(
-            settings.getString("theme", ThemeSetting.FollowSystem.name)
-        )
+            settings.getString("theme", ThemeSetting.FollowSystem.name),
+        ),
     )
     val theme = _theme.asStateFlow()
 
@@ -38,7 +37,7 @@ class SettingsRepository(
             settings.getIntOrNull("port")?.takeIf { it > 0 }?.let { port ->
                 ConnectionInfo(host, port, settings.getBoolean("isTls", false))
             }
-        }
+        },
     )
     val connectionInfo = _connectionInfo.asStateFlow()
 
@@ -93,11 +92,11 @@ class SettingsRepository(
                 val name = "KMP app ${Uuid.random()}"
                 settings.putString("deviceName", name)
                 name
-            }
+            },
     ).asStateFlow()
 
     private val _playersSorting = MutableStateFlow(
-        settings.getStringOrNull("players_sort")?.split(",")
+        settings.getStringOrNull("players_sort")?.split(","),
     )
     val playersSorting = _playersSorting.asStateFlow()
 
@@ -108,7 +107,7 @@ class SettingsRepository(
 
     // Sendspin settings
     private val _sendspinEnabled = MutableStateFlow(
-        settings.getBoolean("sendspin_enabled", false)
+        settings.getBoolean("sendspin_enabled", false),
     )
     val sendspinEnabled = _sendspinEnabled.asStateFlow()
 
@@ -121,12 +120,12 @@ class SettingsRepository(
     private val _sendspinClientId = MutableStateFlow(
         settings.getStringOrNull("sendspin_client_id") ?: Uuid.random().toString().also {
             settings.putString("sendspin_client_id", it)
-        }
+        },
     )
     val sendspinClientId = _sendspinClientId.asStateFlow()
 
     private val _sendspinDeviceName = MutableStateFlow(
-        settings.getStringOrNull("sendspin_device_name") ?: "My Phone"
+        settings.getStringOrNull("sendspin_device_name") ?: "My Phone",
     )
     val sendspinDeviceName = _sendspinDeviceName.asStateFlow()
 
@@ -136,7 +135,7 @@ class SettingsRepository(
     }
 
     private val _sendspinPort = MutableStateFlow(
-        settings.getInt("sendspin_port", 8095)
+        settings.getInt("sendspin_port", 8095),
     )
     val sendspinPort = _sendspinPort.asStateFlow()
 
@@ -146,7 +145,7 @@ class SettingsRepository(
     }
 
     private val _sendspinPath = MutableStateFlow(
-        settings.getString("sendspin_path", "/sendspin")
+        settings.getString("sendspin_path", "/sendspin"),
     )
     val sendspinPath = _sendspinPath.asStateFlow()
 
@@ -159,9 +158,9 @@ class SettingsRepository(
         Codec.valueOf(
             settings.getString(
                 "sendspin_codec_preference",
-                (Codecs.list.getOrNull(0) ?: Codecs.default).name
-            ).uppercase()
-        )
+                (Codecs.list.getOrNull(0) ?: Codecs.default).name,
+            ).uppercase(),
+        ),
     )
     val sendspinCodecPreference = _sendspinCodecPreference.asStateFlow()
 
@@ -171,7 +170,7 @@ class SettingsRepository(
     }
 
     private val _sendspinHost = MutableStateFlow(
-        settings.getString("sendspin_host", "")
+        settings.getString("sendspin_host", ""),
     )
     val sendspinHost = _sendspinHost.asStateFlow()
 
@@ -181,7 +180,7 @@ class SettingsRepository(
     }
 
     private val _sendspinUseTls = MutableStateFlow(
-        settings.getBoolean("sendspin_use_tls", false)
+        settings.getBoolean("sendspin_use_tls", false),
     )
     val sendspinUseTls = _sendspinUseTls.asStateFlow()
 
@@ -199,7 +198,7 @@ class SettingsRepository(
     // We don't report this to the server — it's purely client-side scheduling.
     // Range ±2000 ms; default 250.
     private val _sendspinStaticDelayMs = MutableStateFlow(
-        settings.getInt("sendspin_static_delay_ms", 250).coerceIn(-2000, 2000)
+        settings.getInt("sendspin_static_delay_ms", 250).coerceIn(-2000, 2000),
     )
     val sendspinStaticDelayMs = _sendspinStaticDelayMs.asStateFlow()
 
@@ -217,7 +216,7 @@ class SettingsRepository(
             val useCustom = hasCustomHost || hasCustomPort
             settings.putBoolean("sendspin_use_custom_connection", useCustom)
             useCustom
-        }
+        },
     )
     val sendspinUseCustomConnection = _sendspinUseCustomConnection.asStateFlow()
 
@@ -228,7 +227,7 @@ class SettingsRepository(
 
     // Connection method preference
     private val _preferredConnectionMethod = MutableStateFlow(
-        settings.getString("preferred_connection_method", "direct")
+        settings.getString("preferred_connection_method", "direct"),
     )
     val preferredConnectionMethod = _preferredConnectionMethod.asStateFlow()
 
@@ -239,7 +238,7 @@ class SettingsRepository(
 
     // WebRTC Remote Access settings
     private val _webrtcRemoteId = MutableStateFlow(
-        settings.getString("webrtc_remote_id", "")
+        settings.getString("webrtc_remote_id", ""),
     )
     val webrtcRemoteId = _webrtcRemoteId.asStateFlow()
 
@@ -251,7 +250,7 @@ class SettingsRepository(
     // Last successful connection mode ("direct" or "webrtc")
     // Used for autoconnect - reconnects using the last mode that worked
     private val _lastConnectionMode = MutableStateFlow(
-        settings.getStringOrNull("last_connection_mode")
+        settings.getStringOrNull("last_connection_mode"),
     )
     val lastConnectionMode = _lastConnectionMode.asStateFlow()
 
@@ -279,10 +278,14 @@ class SettingsRepository(
             else -> {
                 val host = settings.getStringOrNull("host")?.takeIf { it.isNotBlank() } ?: return emptyList()
                 val port = settings.getIntOrNull("port")?.takeIf { it > 0 } ?: return emptyList()
-                listOf(ConnectionHistoryEntry(
-                    type = ConnectionType.DIRECT, host = host, port = port,
-                    isTls = settings.getBoolean("isTls", false)
-                ))
+                listOf(
+                    ConnectionHistoryEntry(
+                    type = ConnectionType.DIRECT,
+                    host = host,
+                    port = port,
+                    isTls = settings.getBoolean("isTls", false),
+                ),
+                )
             }
         }
     }
@@ -304,7 +307,7 @@ class SettingsRepository(
 
     // UI preferences
     private val _itemsRowMode = MutableStateFlow(
-        settings.getBoolean("items_row_mode", false)
+        settings.getBoolean("items_row_mode", false),
     )
     val itemsRowMode = _itemsRowMode.asStateFlow()
 

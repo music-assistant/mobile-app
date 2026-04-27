@@ -43,7 +43,6 @@ class HomeScreenViewModel(
     private val dataSource: MainDataSource,
     private val settings: SettingsRepository,
 ) : ViewModel() {
-
     private val jobs = mutableListOf<Job>()
     private var recommendationsJob: Job? = null
 
@@ -60,12 +59,11 @@ class HomeScreenViewModel(
         settings.setSendspinStaticDelayMs(settings.sendspinStaticDelayMs.value + deltaMs)
     }
 
-
     private val _recommendationsState = MutableStateFlow(
         RecommendationsState(
             connectionState = SessionState.Disconnected.Initial,
-            recommendations = DataState.Loading()
-        )
+            recommendations = DataState.Loading(),
+        ),
     )
     val recommendationsState = _recommendationsState.asStateFlow()
 
@@ -103,7 +101,8 @@ class HomeScreenViewModel(
                             is DataConnectionState.AwaitingAuth -> {
                                 when (connState.authProcessState) {
                                     AuthProcessState.NotStarted,
-                                    AuthProcessState.InProgress -> {
+                                    AuthProcessState.InProgress,
+                                    -> {
                                         if (_playersState.value !is PlayersState.Data) {
                                             _playersState.update { PlayersState.Loading }
                                         }
@@ -111,7 +110,8 @@ class HomeScreenViewModel(
                                     }
 
                                     AuthProcessState.LoggedOut,
-                                    is AuthProcessState.Failed -> {
+                                    is AuthProcessState.Failed,
+                                    -> {
                                         _playersState.update { PlayersState.NoAuth }
                                         stopJobs()
                                     }
@@ -140,7 +140,8 @@ class HomeScreenViewModel(
                         when (connection) {
                             is SessionState.Disconnected.Error,
                             SessionState.Disconnected.Initial,
-                            SessionState.Disconnected.ByUser -> {
+                            SessionState.Disconnected.ByUser,
+                            -> {
                                 _playersState.update { PlayersState.Disconnected }
                                 stopJobs()
                             }
@@ -154,7 +155,6 @@ class HomeScreenViewModel(
                                 // Preserve current state for instant foreground reconnect
                             }
                         }
-
                     }
                 }
             }
@@ -166,7 +166,8 @@ class HomeScreenViewModel(
                 when (event) {
                     is MediaItemUpdatedEvent,
                     is MediaItemAddedEvent,
-                    is MediaItemDeletedEvent -> {
+                    is MediaItemDeletedEvent,
+                    -> {
                         event.data?.let { updateRecommendationsIfNeeded(it) }
                     }
 
@@ -198,8 +199,8 @@ class HomeScreenViewModel(
                             media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio && item !is AppMediaItem.Genre
-                        )
+                            radioMode = radio && item !is AppMediaItem.Genre,
+                        ),
                     )
                 }
             }
@@ -227,7 +228,7 @@ class HomeScreenViewModel(
                         providerMappings = row.providerMappings,
                         uri = row.uri,
                         image = row.image,
-                        items = updatedItems
+                        items = updatedItems,
                     )
                 } ?: row
             }
@@ -245,7 +246,7 @@ class HomeScreenViewModel(
     private fun watchPlayersData(): Job = viewModelScope.launch {
         combine(
             dataSource.playersData,
-            dataSource.sendspinState
+            dataSource.sendspinState,
         ) { playerData, sendspinState ->
             playerData to sendspinState
         }.collect { (playerData, sendspinState) ->
@@ -260,21 +261,20 @@ class HomeScreenViewModel(
                             playerData.data,
                             dataSource.selectedPlayerIndex.value,
                             dataSource.localPlayer.value?.playerId,
-                            sendspinState
+                            sendspinState,
                         )
 
                         is DataState.Stale -> PlayersState.Data(
                             playerData.data,  // Show stale data as normal data
                             dataSource.selectedPlayerIndex.value,
                             dataSource.localPlayer.value?.playerId,
-                            sendspinState
+                            sendspinState,
                         )
 
                         is DataState.Error -> PlayersState.Error
                         is DataState.Loading -> PlayersState.Loading
                         is DataState.NoData -> PlayersState.Data(emptyList())
                     }
-
                 }
             }
         }
@@ -306,14 +306,19 @@ class HomeScreenViewModel(
 
     private fun currentServerToken(): String? = when (val state = apiClient.sessionState.value) {
         is SessionState.Connected.Direct ->
-            settings.getTokenForServer(settings.getDirectServerIdentifier(state.connectionInfo.host, state.connectionInfo.port, state.connectionInfo.isTls))
+            settings.getTokenForServer(
+                settings.getDirectServerIdentifier(
+                    state.connectionInfo.host,
+                    state.connectionInfo.port,
+                    state.connectionInfo.isTls,
+                ),
+            )
         is SessionState.Connected.WebRTC ->
             settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
         else -> null
     }
 
     private fun onOpenExternalLink(url: String) = viewModelScope.launch { _links.emit(url) }
-
 
     @Suppress("UNCHECKED_CAST")
     private suspend fun <T : AppMediaItem> getList(
@@ -328,7 +333,7 @@ class HomeScreenViewModel(
 
     data class RecommendationsState(
         val connectionState: SessionState,
-        val recommendations: DataState<List<AppMediaItem.RecommendationFolder>>
+        val recommendations: DataState<List<AppMediaItem.RecommendationFolder>>,
     )
 
     sealed class PlayersState {
@@ -341,7 +346,7 @@ class HomeScreenViewModel(
             val playerData: List<PlayerData>,
             val selectedPlayerIndex: Int? = null,
             val localPlayerId: String? = null,
-            val sendspinState: SendspinState? = null
+            val sendspinState: SendspinState? = null,
         ) : PlayersState()
     }
 }

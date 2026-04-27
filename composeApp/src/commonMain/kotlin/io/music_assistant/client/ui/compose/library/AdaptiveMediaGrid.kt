@@ -75,14 +75,16 @@ fun AdaptiveMediaGrid(
         columns = GridCells.Adaptive(minSize = 96.dp),
         contentPadding = contentPadding + PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             items = items,
             key = { it.itemId },
             span = if (isRowMode) {
                 { GridItemSpan(maxLineSpan) }
-            } else null
+            } else {
+                null
+            },
         ) { item ->
             val rowModifier = if (isRowMode) Modifier.fillMaxWidth() else Modifier
             when (item) {
@@ -94,7 +96,7 @@ fun AdaptiveMediaGrid(
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.Album -> AlbumWithMenu(
@@ -105,7 +107,7 @@ fun AdaptiveMediaGrid(
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.Playlist -> PlaylistWithMenu(
@@ -116,7 +118,7 @@ fun AdaptiveMediaGrid(
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.Podcast -> PodcastWithMenu(
@@ -127,7 +129,7 @@ fun AdaptiveMediaGrid(
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.Track -> TrackWithMenu(
@@ -137,7 +139,7 @@ fun AdaptiveMediaGrid(
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
@@ -148,7 +150,7 @@ fun AdaptiveMediaGrid(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     progressActions = progressActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.Audiobook -> AudiobookWithMenu(
@@ -160,7 +162,7 @@ fun AdaptiveMediaGrid(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     progressActions = progressActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.Genre -> GenreWithMenu(
@@ -171,7 +173,7 @@ fun AdaptiveMediaGrid(
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 is AppMediaItem.RadioStation -> RadioWithMenu(
@@ -181,7 +183,7 @@ fun AdaptiveMediaGrid(
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
-                    providerIconFetcher = null
+                    providerIconFetcher = null,
                 )
 
                 else -> {
@@ -197,7 +199,7 @@ fun AdaptiveMediaGrid(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
                 }

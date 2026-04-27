@@ -37,7 +37,6 @@ class LibraryViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     companion object Companion {
         private const val PAGE_SIZE = 50
     }
@@ -73,7 +72,7 @@ class LibraryViewModel(
     data class State(
         val tabs: List<TabState>,
         val connectionState: SessionState,
-        val showCreatePlaylistDialog: Boolean = false
+        val showCreatePlaylistDialog: Boolean = false,
     )
 
     private val connectionState = apiClient.sessionState
@@ -96,8 +95,8 @@ class LibraryViewModel(
                     isSelected = tab == Tab.ARTISTS,
                     sortOption = settingsRepository.getSortOption(tab.mediaType),
                 )
-            }
-        )
+            },
+        ),
     )
     val state = _state.asStateFlow()
 
@@ -150,7 +149,7 @@ class LibraryViewModel(
                         Triple(
                             it?.searchQuery ?: "",
                             it?.onlyFavorites?.takeIf { favs -> favs },
-                            it?.sortOption
+                            it?.sortOption,
                         )
                     }
                 }
@@ -180,35 +179,44 @@ class LibraryViewModel(
 
     fun onSearchQueryChanged(tab: Tab, query: String) {
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { tabState ->
+            s.copy(
+                tabs = s.tabs.map { tabState ->
                 if (tabState.tab == tab) {
                     tabState.copy(searchQuery = query)
                 } else {
                     tabState
                 }
-            })
+            },
+            )
         }
     }
 
     fun onOnlyFavoritesClicked(tab: Tab) {
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { tabState ->
+            s.copy(
+                tabs = s.tabs.map { tabState ->
                 if (tabState.tab == tab) {
                     tabState.copy(onlyFavorites = !tabState.onlyFavorites)
                 } else {
                     tabState
                 }
-            })
+            },
+            )
         }
     }
 
     fun onSortChanged(tab: Tab, sortOption: SortOption) {
         settingsRepository.setSortOption(tab.mediaType, sortOption)
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { tabState ->
-                if (tabState.tab == tab) tabState.copy(sortOption = sortOption)
-                else tabState
-            })
+            s.copy(
+                tabs = s.tabs.map { tabState ->
+                if (tabState.tab == tab) {
+                    tabState.copy(sortOption = sortOption)
+                } else {
+                    tabState
+                }
+            },
+            )
         }
     }
 
@@ -237,8 +245,8 @@ class LibraryViewModel(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && item !is AppMediaItem.Genre
-                    )
+                        radioMode = radio && item !is AppMediaItem.Genre,
+                    ),
                 )
             }
         }
@@ -258,7 +266,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -268,7 +276,7 @@ class LibraryViewModel(
                         tab = Tab.ARTISTS,
                         items = artists,
                         offset = PAGE_SIZE,
-                        hasMore = artists.size >= PAGE_SIZE
+                        hasMore = artists.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading artists:", result.exceptionOrNull())
@@ -291,7 +299,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -301,7 +309,7 @@ class LibraryViewModel(
                         tab = Tab.ALBUMS,
                         items = albums,
                         offset = PAGE_SIZE,
-                        hasMore = albums.size >= PAGE_SIZE
+                        hasMore = albums.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading albums:", result.exceptionOrNull())
@@ -324,7 +332,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -334,7 +342,7 @@ class LibraryViewModel(
                         tab = Tab.PLAYLISTS,
                         items = playlists,
                         offset = PAGE_SIZE,
-                        hasMore = playlists.size >= PAGE_SIZE
+                        hasMore = playlists.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading playlists:", result.exceptionOrNull())
@@ -357,7 +365,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -367,7 +375,7 @@ class LibraryViewModel(
                         tab = Tab.TRACKS,
                         items = tracks,
                         offset = PAGE_SIZE,
-                        hasMore = tracks.size >= PAGE_SIZE
+                        hasMore = tracks.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading tracks:", result.exceptionOrNull())
@@ -390,7 +398,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -400,7 +408,7 @@ class LibraryViewModel(
                         tab = Tab.PODCASTS,
                         items = podcasts,
                         offset = PAGE_SIZE,
-                        hasMore = podcasts.size >= PAGE_SIZE
+                        hasMore = podcasts.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading podcasts:", result.exceptionOrNull())
@@ -423,7 +431,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -433,7 +441,7 @@ class LibraryViewModel(
                         tab = Tab.AUDIOBOOKS,
                         items = audiobooks,
                         offset = PAGE_SIZE,
-                        hasMore = audiobooks.size >= PAGE_SIZE
+                        hasMore = audiobooks.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading audiobooks:", result.exceptionOrNull())
@@ -456,7 +464,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -466,7 +474,7 @@ class LibraryViewModel(
                         tab = Tab.RADIOS,
                         items = radios,
                         offset = PAGE_SIZE,
-                        hasMore = radios.size >= PAGE_SIZE
+                        hasMore = radios.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading radios:", result.exceptionOrNull())
@@ -489,7 +497,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.resultAs<List<ServerMediaItem>>()
                 ?.toAppMediaItemList()
@@ -499,7 +507,7 @@ class LibraryViewModel(
                         tab = Tab.GENRES,
                         items = genres,
                         offset = PAGE_SIZE,
-                        hasMore = genres.size >= PAGE_SIZE
+                        hasMore = genres.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading genres:", result.exceptionOrNull())
@@ -523,9 +531,11 @@ class LibraryViewModel(
 
             // Mark as loading more
             _state.update { s ->
-                s.copy(tabs = s.tabs.map { ts ->
+                s.copy(
+                    tabs = s.tabs.map { ts ->
                     if (ts.tab == tab) ts.copy(isLoadingMore = true) else ts
-                })
+                },
+                )
             }
 
             val result = when (tab) {
@@ -536,7 +546,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.ALBUMS -> apiClient.sendRequest(
@@ -546,7 +556,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.TRACKS -> apiClient.sendRequest(
@@ -556,7 +566,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.PLAYLISTS -> apiClient.sendRequest(
@@ -566,7 +576,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.AUDIOBOOKS -> apiClient.sendRequest(
@@ -576,7 +586,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.PODCASTS -> apiClient.sendRequest(
@@ -586,7 +596,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.RADIOS -> apiClient.sendRequest(
@@ -596,7 +606,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
 
                 Tab.GENRES -> apiClient.sendRequest(
@@ -606,7 +616,7 @@ class LibraryViewModel(
                         search = searchQuery,
                         favorite = favoritesOnly,
                         orderBy = orderBy,
-                    )
+                    ),
                 )
             }
 
@@ -619,15 +629,17 @@ class LibraryViewModel(
                         tab = tab,
                         items = allItems,
                         offset = tabState.offset + PAGE_SIZE,
-                        hasMore = newItems.size >= PAGE_SIZE
+                        hasMore = newItems.size >= PAGE_SIZE,
                     )
                 } ?: run {
                 Logger.e("Error loading more for $tab:", result.exceptionOrNull())
                 // Stop loading more on error
                 _state.update { s ->
-                    s.copy(tabs = s.tabs.map { ts ->
+                    s.copy(
+                        tabs = s.tabs.map { ts ->
                         if (ts.tab == tab) ts.copy(isLoadingMore = false, hasMore = false) else ts
-                    })
+                    },
+                    )
                 }
             }
         }
@@ -635,13 +647,15 @@ class LibraryViewModel(
 
     private fun updateTabState(tab: Tab, dataState: DataState<List<AppMediaItem>>) {
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { tabState ->
+            s.copy(
+                tabs = s.tabs.map { tabState ->
                 if (tabState.tab == tab) {
                     tabState.copy(dataState = dataState)
                 } else {
                     tabState
                 }
-            })
+            },
+            )
         }
     }
 
@@ -649,27 +663,30 @@ class LibraryViewModel(
         tab: Tab,
         items: List<AppMediaItem>,
         offset: Int,
-        hasMore: Boolean
+        hasMore: Boolean,
     ) {
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { tabState ->
+            s.copy(
+                tabs = s.tabs.map { tabState ->
                 if (tabState.tab == tab) {
                     tabState.copy(
                         dataState = DataState.Data(items),
                         offset = offset,
                         hasMore = hasMore,
-                        isLoadingMore = false
+                        isLoadingMore = false,
                     )
                 } else {
                     tabState
                 }
-            })
+            },
+            )
         }
     }
 
     private fun updateItemInTabs(newItem: AppMediaItem, modification: ListModification) {
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { tabState ->
+            s.copy(
+                tabs = s.tabs.map { tabState ->
                 val shouldUpdate = when (newItem) {
                     is AppMediaItem.Artist -> tabState.tab == Tab.ARTISTS
                     is AppMediaItem.Album -> tabState.tab == Tab.ALBUMS
@@ -705,7 +722,8 @@ class LibraryViewModel(
                 } else {
                     tabState
                 }
-            })
+            },
+            )
         }
     }
 

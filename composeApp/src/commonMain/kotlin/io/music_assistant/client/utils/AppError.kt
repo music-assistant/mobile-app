@@ -6,14 +6,14 @@ package io.music_assistant.client.utils
  */
 sealed class AppError(
     open val message: String,
-    open val cause: Throwable? = null
+    open val cause: Throwable? = null,
 ) {
     /**
      * Network-related errors (connectivity, timeouts, etc.)
      */
     data class Network(
         override val message: String,
-        override val cause: Throwable? = null
+        override val cause: Throwable? = null,
     ) : AppError(message, cause)
 
     /**
@@ -22,7 +22,7 @@ sealed class AppError(
     data class Auth(
         override val message: String,
         val errorCode: String? = null,
-        override val cause: Throwable? = null
+        override val cause: Throwable? = null,
     ) : AppError(message, cause)
 
     /**
@@ -30,7 +30,7 @@ sealed class AppError(
      */
     data class Parsing(
         override val message: String,
-        override val cause: Throwable? = null
+        override val cause: Throwable? = null,
     ) : AppError(message, cause)
 
     /**
@@ -39,7 +39,7 @@ sealed class AppError(
     data class Server(
         override val message: String,
         val statusCode: Int? = null,
-        override val cause: Throwable? = null
+        override val cause: Throwable? = null,
     ) : AppError(message, cause)
 
     /**
@@ -47,7 +47,7 @@ sealed class AppError(
      */
     data class NotFound(
         override val message: String,
-        val resourceType: String? = null
+        val resourceType: String? = null,
     ) : AppError(message)
 
     /**
@@ -55,7 +55,7 @@ sealed class AppError(
      */
     data class Unknown(
         override val message: String,
-        override val cause: Throwable? = null
+        override val cause: Throwable? = null,
     ) : AppError(message, cause)
 
     /**

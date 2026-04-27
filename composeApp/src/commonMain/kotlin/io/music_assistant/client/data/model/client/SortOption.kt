@@ -26,11 +26,38 @@ data class SortOption(
 object SortConfig {
     fun fieldsFor(mediaType: MediaType): List<SortField> = when (mediaType) {
         MediaType.ARTIST -> listOf(SortField.NAME, SortField.DATE_ADDED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
-        MediaType.ALBUM -> listOf(SortField.NAME, SortField.ARTIST_NAME, SortField.YEAR, SortField.DATE_ADDED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
-        MediaType.TRACK -> listOf(SortField.NAME, SortField.ARTIST_NAME, SortField.DURATION, SortField.YEAR, SortField.DATE_ADDED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
-        MediaType.PLAYLIST -> listOf(SortField.NAME, SortField.DATE_ADDED, SortField.DATE_MODIFIED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
+        MediaType.ALBUM -> listOf(
+            SortField.NAME,
+            SortField.ARTIST_NAME,
+            SortField.YEAR,
+            SortField.DATE_ADDED,
+            SortField.LAST_PLAYED,
+            SortField.PLAY_COUNT,
+        )
+        MediaType.TRACK -> listOf(
+            SortField.NAME,
+            SortField.ARTIST_NAME,
+            SortField.DURATION,
+            SortField.YEAR,
+            SortField.DATE_ADDED,
+            SortField.LAST_PLAYED,
+            SortField.PLAY_COUNT,
+        )
+        MediaType.PLAYLIST -> listOf(
+            SortField.NAME,
+            SortField.DATE_ADDED,
+            SortField.DATE_MODIFIED,
+            SortField.LAST_PLAYED,
+            SortField.PLAY_COUNT,
+        )
         MediaType.AUDIOBOOK -> listOf(SortField.NAME, SortField.DATE_ADDED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
-        MediaType.PODCAST -> listOf(SortField.NAME, SortField.DATE_ADDED, SortField.DATE_MODIFIED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
+        MediaType.PODCAST -> listOf(
+            SortField.NAME,
+            SortField.DATE_ADDED,
+            SortField.DATE_MODIFIED,
+            SortField.LAST_PLAYED,
+            SortField.PLAY_COUNT,
+        )
         MediaType.RADIO -> listOf(SortField.NAME, SortField.DATE_ADDED, SortField.LAST_PLAYED, SortField.PLAY_COUNT)
         MediaType.GENRE -> listOf(SortField.NAME, SortField.DATE_ADDED, SortField.PLAY_COUNT)
         else -> listOf(SortField.NAME)
@@ -45,7 +72,12 @@ object SortConfig {
         SubItemContext.ARTIST_ALBUMS -> listOf(SortField.NAME, SortField.YEAR)
         SubItemContext.ARTIST_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
         SubItemContext.ALBUM_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
-        SubItemContext.PLAYLIST_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.ARTIST_NAME, SortField.DURATION)
+        SubItemContext.PLAYLIST_TRACKS -> listOf(
+            SortField.ORIGINAL,
+            SortField.NAME,
+            SortField.ARTIST_NAME,
+            SortField.DURATION,
+        )
         SubItemContext.PODCAST_EPISODES -> listOf(SortField.NAME, SortField.RELEASE_DATE, SortField.DURATION)
     }
 
@@ -63,7 +95,7 @@ enum class SubItemContext {
     ARTIST_TRACKS,
     ALBUM_TRACKS,
     PLAYLIST_TRACKS,
-    PODCAST_EPISODES;
+    PODCAST_EPISODES,
 }
 
 fun <T> List<T>.clientSorted(option: SortOption): List<T> {

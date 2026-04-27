@@ -26,7 +26,6 @@ data class Player(
     val syncedTo: String?,
     val groupVolume: Float?,
 ) {
-
     val isGroup = type == PlayerType.GROUP
     val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true
 

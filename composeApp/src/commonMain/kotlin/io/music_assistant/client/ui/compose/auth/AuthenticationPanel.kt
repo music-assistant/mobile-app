@@ -37,8 +37,8 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -46,7 +46,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun AuthenticationPanel(
     viewModel: AuthenticationViewModel = koinViewModel(),
     modifier: Modifier = Modifier,
-    user: User?
+    user: User?,
 ) {
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val authState by viewModel.authState.collectAsStateWithLifecycle()
@@ -66,12 +66,12 @@ fun AuthenticationPanel(
                 text = stringResource(Res.string.auth_logged_in_as, user.description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier.padding(bottom = 12.dp),
             )
 
             OutlinedButton(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { viewModel.logout() }
+                onClick = { viewModel.logout() },
             ) {
                 Text(stringResource(Res.string.auth_logout))
             }
@@ -81,7 +81,7 @@ fun AuthenticationPanel(
                 var selectedTab by remember(key1 = providers) { mutableIntStateOf(0) }
                 // Provider tabs
                 PrimaryTabRow(
-                    selectedTabIndex = selectedTab
+                    selectedTabIndex = selectedTab,
                 ) {
                     providers.forEachIndexed { index, provider ->
                         when (provider.type) {
@@ -90,7 +90,7 @@ fun AuthenticationPanel(
                                 onClick = { selectedTab = index },
                                 text = {
                                     Text("Music Assistant")
-                                }
+                                },
                             )
 
                             "homeassistant" -> Tab(
@@ -98,7 +98,7 @@ fun AuthenticationPanel(
                                 onClick = { selectedTab = index },
                                 text = {
                                     Text("Home Assistant")
-                                }
+                                },
                             )
 
                             else -> Unit
@@ -115,7 +115,7 @@ fun AuthenticationPanel(
                         "homeassistant" -> Button(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { viewModel.login(provider) },
-                            enabled = authState !is AuthState.Loading
+                            enabled = authState !is AuthState.Loading,
                         ) {
                             Text(stringResource(Res.string.auth_authorize_ha))
                         }
@@ -128,11 +128,11 @@ fun AuthenticationPanel(
                 Text(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     text = stringResource(Res.string.auth_loading_providers),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { viewModel.loadProviders() }
+                    onClick = { viewModel.loadProviders() },
                 ) {
                     Text(stringResource(Res.string.auth_retry_providers))
                 }
@@ -144,7 +144,7 @@ fun AuthenticationPanel(
                 Text(
                     modifier = Modifier.fillMaxWidth(),
                     text = stringResource(Res.string.auth_authenticating),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -156,7 +156,7 @@ fun AuthenticationPanel(
                 modifier = Modifier.fillMaxWidth(),
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -178,7 +178,7 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
             colors = TextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            )
+            ),
         )
 
         TextField(
@@ -186,19 +186,22 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
             value = password,
             onValueChange = { viewModel.password.value = it },
             label = { Text(stringResource(Res.string.auth_password)) },
-            visualTransformation = if (isPasswordVisible)
+            visualTransformation = if (isPasswordVisible) {
                 VisualTransformation.None
-            else
-                PasswordVisualTransformation(),
+            } else {
+                PasswordVisualTransformation()
+            },
             trailingIcon = {
-                val icon = if (isPasswordVisible)
+                val icon = if (isPasswordVisible) {
                     Icons.Filled.VisibilityOff
-                else
+                } else {
                     Icons.Filled.Visibility
-                val description = if (isPasswordVisible)
+                }
+                val description = if (isPasswordVisible) {
                     stringResource(Res.string.auth_hide_password)
-                else
+                } else {
                     stringResource(Res.string.auth_show_password)
+                }
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(imageVector = icon, contentDescription = description)
                 }
@@ -208,13 +211,13 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
             colors = TextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            )
+            ),
         )
 
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { viewModel.login(provider) },
-            enabled = username.isNotEmpty() && password.isNotEmpty()
+            enabled = username.isNotEmpty() && password.isNotEmpty(),
         ) {
             Text(stringResource(Res.string.auth_login))
         }

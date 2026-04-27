@@ -7,13 +7,12 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.UniqueIdGenerator
 
 object PlayerDataFixtures {
-
     private val uniqueIdGenerator = UniqueIdGenerator()
 
     fun playerData(
         queueId: String = "queue${uniqueIdGenerator.nextInt()}",
         name: String = "Player ${uniqueIdGenerator.nextInt()}",
-        groupChildren: List<ChildBind> = emptyList()
+        groupChildren: List<ChildBind> = emptyList(),
     ): PlayerData {
         return PlayerData(
             player = Player(
@@ -47,8 +46,8 @@ object PlayerDataFixtures {
                         elapsedTime = 100.0,
                         currentItem = null,
                     ),
-                    items = DataState.NoData()
-                )
+                    items = DataState.NoData(),
+                ),
             ),
             parentBind = null,
             childrenBinds = groupChildren,
@@ -64,7 +63,7 @@ object PlayerDataFixtures {
             isMuted = null,
             name = "Player ${uniqueIdGenerator.nextInt()}",
             isBound = false,
-            isManageable = true
+            isManageable = true,
         )
     }
 }

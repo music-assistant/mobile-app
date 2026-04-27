@@ -13,8 +13,11 @@ data class ConnectionHistoryEntry(
     val lastUsedAt: Long = 0L,
 ) {
     val connectionInfo: ConnectionInfo?
-        get() = if (type == ConnectionType.DIRECT && host != null && port != null)
-            ConnectionInfo(host, port, isTls ?: false) else null
+        get() = if (type == ConnectionType.DIRECT && host != null && port != null) {
+            ConnectionInfo(host, port, isTls ?: false)
+        } else {
+            null
+        }
 
     val serverIdentifier: String
         get() = when (type) {

@@ -40,7 +40,7 @@ fun rememberAnimatedDominantColor(
 
     return animateColorAsState(
         targetValue = targetColor,
-        animationSpec = tween(durationMillis = 500)
+        animationSpec = tween(durationMillis = 500),
     )
 }
 

@@ -16,9 +16,8 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val apiClient: ServiceClient,
     private val settings: SettingsRepository,
-    private val logSharer: LogSharer
+    private val logSharer: LogSharer,
 ) : ViewModel() {
-
     val savedConnectionInfo = settings.connectionInfo
     val sessionState = apiClient.sessionState
 

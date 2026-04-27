@@ -1,12 +1,12 @@
 package io.music_assistant.client.player.sendspin.audio
 
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaFormat
+import android.os.Build
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
-import android.media.AudioFormat
-import android.os.Build
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -85,7 +85,7 @@ actual class FlacDecoder : AudioDecoder {
                 val format = MediaFormat.createAudioFormat(
                     MediaFormat.MIMETYPE_AUDIO_FLAC,
                     config.sampleRate,
-                    config.channels
+                    config.channels,
                 ).apply {
                     // Set max input size (conservative estimate for FLAC frames)
                     setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
@@ -133,14 +133,13 @@ actual class FlacDecoder : AudioDecoder {
                 codec = newCodec
 
                 logger.i { "FLAC decoder initialized (outputBitDepth=$outputBitDepth)" }
-
             } catch (e: IOException) {
                 logger.e(e) { "Failed to create FLAC decoder - codec not available" }
                 throw IllegalStateException(
                     "FLAC decoder not available on this device. " +
                             "This is unexpected on Android API 26+. " +
                             "Please report this device model.",
-                    e
+                    e,
                 )
             } catch (e: IllegalStateException) {
                 logger.e(e) { "Failed to configure FLAC decoder" }
@@ -188,7 +187,7 @@ actual class FlacDecoder : AudioDecoder {
                             0,                     // offset
                             encodedData.size,      // size
                             0,                     // presentation time
-                            0                      // flags
+                            0,                      // flags
                         )
                         submitted = true
                         break
@@ -208,9 +207,8 @@ actual class FlacDecoder : AudioDecoder {
                 drainOutput(currentCodec, outputStream)
 
                 val pcmData = outputStream.toByteArray()
-                logger.d { "Decoded ${pcmData.size} PCM bytes (${outputBitDepth}-bit)" }
+                logger.d { "Decoded ${pcmData.size} PCM bytes ($outputBitDepth-bit)" }
                 pcmData
-
             } catch (e: IllegalStateException) {
                 logger.e(e) { "MediaCodec error during decode" }
                 ByteArray(0)
@@ -257,7 +255,7 @@ actual class FlacDecoder : AudioDecoder {
                             AudioFormat.ENCODING_PCM_FLOAT -> 32
                             else -> 16
                         }
-                        logger.i { "MediaCodec actual output: ${outputBitDepth}-bit" }
+                        logger.i { "MediaCodec actual output: $outputBitDepth-bit" }
                     }
                     // Continue draining — there may be more output buffers
                 }

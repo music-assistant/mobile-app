@@ -20,9 +20,8 @@ import kotlin.coroutines.CoroutineContext
  */
 class StateReporter(
     private val messageDispatcher: MessageDispatcher,
-    private val stateProvider: () -> SendspinState
+    private val stateProvider: () -> SendspinState,
 ) : CoroutineScope {
-
     private val logger = Logger.withTag("StateReporter")
     private val supervisorJob = SupervisorJob()
 
@@ -47,7 +46,8 @@ class StateReporter(
                     // Only report if we're still streaming
                     when (stateProvider()) {
                         is SendspinState.Synchronized,
-                        is SendspinState.Buffering -> {
+                        is SendspinState.Buffering,
+                        -> {
                             logger.d { "Periodic state report: SYNCHRONIZED" }
                             reportNow(PlayerStateValue.SYNCHRONIZED)
                         }

@@ -20,7 +20,7 @@ object SendspinCapabilities {
             playerV1Support = PlayerSupport(
                 supportedFormats = buildSupportedFormats(codecPreference),
                 bufferCapacity = config.bufferCapacityMicros,
-                supportedCommands = listOf()
+                supportedCommands = listOf(),
             ),
         )
     }
@@ -39,8 +39,8 @@ object SendspinCapabilities {
                             codec = codecPreference.sendspinAudioCodec,
                             channels = 2,
                             sampleRate = sampleRate,
-                            bitDepth = bitDepth
-                        )
+                            bitDepth = bitDepth,
+                        ),
                     )
                 }
             }

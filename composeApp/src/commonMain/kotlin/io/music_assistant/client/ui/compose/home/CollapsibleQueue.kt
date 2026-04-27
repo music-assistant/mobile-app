@@ -61,8 +61,8 @@ import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -117,18 +117,18 @@ fun CollapsibleQueue(
                 containerColor = tint,
                 contentColor = queueButtonContentColor,
             ),
-            onClick = { onQueueExpandedSwitch() }
+            onClick = { onQueueExpandedSwitch() },
         ) {
             Text(
                 text = queueLabel,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             Icon(
                 imageVector = if (isQueueExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                contentDescription = stringResource(Res.string.cd_toggle_queue)
+                contentDescription = stringResource(Res.string.cd_toggle_queue),
             )
         }
         val hasItems = items?.isNotEmpty() == true
@@ -138,7 +138,7 @@ fun CollapsibleQueue(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Transfer button
                 OverflowMenu(
@@ -155,30 +155,30 @@ fun CollapsibleQueue(
                                     QueueAction.Transfer(
                                         queueId,
                                         playerData.player.id,
-                                        playerData.player.isPlaying
-                                    )
+                                        playerData.player.isPlaying,
+                                    ),
                                 )
                                 onPlayerSelected?.invoke(playerData.player.id)
-                            }
+                            },
                         )
                     }.ifEmpty {
                         listOf(
                             OverflowMenuOption(
                                 title = stringResource(Res.string.queue_no_other_players),
-                                onClick = { /* No-op */ }
-                            )
+                                onClick = { /* No-op */ },
+                            ),
                         )
                     },
                     buttonContent = {
                         OutlinedButton(onClick = it) {
                             Text(stringResource(Res.string.common_transfer))
                         }
-                    }
+                    },
                 )
 
                 // Clear button
                 OutlinedButton(
-                    onClick = { queueAction(QueueAction.ClearQueue(queueId)) }
+                    onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
                 ) {
                     Text(stringResource(Res.string.common_clear))
                 }
@@ -188,7 +188,7 @@ fun CollapsibleQueue(
         if (isQueueExpanded) {
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 val message: String? = when (queue) {
                     is DataState.Error -> stringResource(Res.string.queue_error)
@@ -233,7 +233,7 @@ fun CollapsibleQueue(
                     if (items.isEmpty()) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             Text(
                                 text = stringResource(Res.string.queue_empty),
@@ -241,7 +241,7 @@ fun CollapsibleQueue(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             OutlinedButton(
-                                onClick = onGoToLibrary
+                                onClick = onGoToLibrary,
                             ) {
                                 Text(stringResource(Res.string.queue_browse_library))
                             }
@@ -274,7 +274,7 @@ fun CollapsibleQueue(
                                 // Center the current item in the viewport
                                 listState.animateScrollToItem(
                                     index = currentItemIndex,
-                                    scrollOffset = -100 // Offset to show some items above
+                                    scrollOffset = -100, // Offset to show some items above
                                 )
                             }
                         }
@@ -283,11 +283,12 @@ fun CollapsibleQueue(
                             modifier = Modifier.fillMaxSize(),
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            contentPadding = contentPadding
+                            contentPadding = contentPadding,
                         ) {
                             itemsIndexed(
                                 items = internalItems,
-                                key = { _, item -> item.id }) { index, item ->
+                                key = { _, item -> item.id },
+                            ) { index, item ->
                                 val isCurrent = item.id == currentItemId
                                 val isPlayed = index < currentItemIndex
                                 val isPlayable = item.isPlayable
@@ -306,7 +307,7 @@ fun CollapsibleQueue(
                                                         !isPlayable -> 0.3f  // Gray out unplayable items
                                                         isPlayed -> 0.5f
                                                         else -> 1f
-                                                    }
+                                                    },
                                                 )
                                                 .fillMaxWidth()
                                                 .clip(shape = RoundedCornerShape(8.dp))
@@ -316,8 +317,8 @@ fun CollapsibleQueue(
                                                         clickable(isPlayable) {  // Only clickable if playable
                                                             queueAction(
                                                                 QueueAction.PlayQueueItem(
-                                                                    queueData.info.id, item.id
-                                                                )
+                                                                    queueData.info.id, item.id,
+                                                                ),
                                                             )
                                                         }
                                                     },
@@ -328,8 +329,8 @@ fun CollapsibleQueue(
                                                                     queueAction(
                                                                         QueueAction.PlayQueueItem(
                                                                             queueData.info.id,
-                                                                            item.id
-                                                                        )
+                                                                            item.id,
+                                                                        ),
                                                                     )
                                                                 }
                                                             },
@@ -337,16 +338,16 @@ fun CollapsibleQueue(
                                                                 menuItemId = item.id
                                                             },
                                                         )
-                                                    }
+                                                    },
                                                 )
                                                 .padding(horizontal = 12.dp, vertical = 2.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Start
+                                            horizontalArrangement = Arrangement.Start,
                                         ) {
                                             val placeholder = rememberPlaceholderPainter(
                                                 backgroundColor = MaterialTheme.colorScheme.background,
                                                 iconColor = MaterialTheme.colorScheme.secondary,
-                                                icon = TrackIcon
+                                                icon = TrackIcon,
                                             )
                                             AsyncImage(
                                                 modifier = Modifier
@@ -369,7 +370,7 @@ fun CollapsibleQueue(
                                                 )
                                             }
                                             Column(
-                                                modifier = Modifier.weight(1f).wrapContentHeight()
+                                                modifier = Modifier.weight(1f).wrapContentHeight(),
                                             ) {
                                                 Text(
                                                     modifier = Modifier.fillMaxWidth(),
@@ -381,7 +382,7 @@ fun CollapsibleQueue(
                                                     fontWeight = when {
                                                         isCurrent -> FontWeight.Bold
                                                         else -> FontWeight.Normal
-                                                    }
+                                                    },
                                                 )
                                                 Text(
                                                     modifier = Modifier.fillMaxWidth().alpha(0.7f),
@@ -407,11 +408,11 @@ fun CollapsibleQueue(
                                                                             queueData.info.id,
                                                                             item.id,
                                                                             from = index,
-                                                                            to = to
-                                                                        )
+                                                                            to = to,
+                                                                        ),
                                                                     )
                                                                 }
-                                                            }
+                                                            },
                                                         )
                                                         .size(16.dp),
                                                     imageVector = TablerIcons.GripVertical,
@@ -424,7 +425,7 @@ fun CollapsibleQueue(
                                         // Long-click menu
                                         DropdownMenu(
                                             expanded = menuItemId == item.id,
-                                            onDismissRequest = { menuItemId = null }
+                                            onDismissRequest = { menuItemId = null },
                                         ) {
                                             DropdownMenuItem(
                                                 text = { Text(stringResource(Res.string.common_delete)) },
@@ -432,11 +433,11 @@ fun CollapsibleQueue(
                                                     queueAction(
                                                         QueueAction.RemoveItems(
                                                             queueData.info.id,
-                                                            listOf(item.id)
-                                                        )
+                                                            listOf(item.id),
+                                                        ),
                                                     )
                                                     menuItemId = null
-                                                }
+                                                },
                                             )
                                         }
                                     }

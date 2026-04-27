@@ -15,9 +15,8 @@ data class MediaNotificationData(
     val imageUrl: String?,
     val elapsedTime: Long?,
     val playerName: String?,
-    val duration: Long?
+    val duration: Long?,
 ) {
-
     companion object {
         fun from(serverUrl: String?, playerData: PlayerData, multiplePlayers: Boolean) =
             MediaNotificationData(
@@ -33,9 +32,8 @@ data class MediaNotificationData(
                 elapsedTime = playerData.queueInfo?.elapsedTime?.toLong()?.let { it * 1000 },
                 playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
                 duration = playerData.queueInfo?.currentItem?.track?.duration?.toLong()
-                    ?.let { it * 1000 }
+                    ?.let { it * 1000 },
             )
-
 
         fun areTooSimilarToUpdate(old: MediaNotificationData, new: MediaNotificationData): Boolean {
             if (old.copy(elapsedTime = null) != new.copy(elapsedTime = null)) {

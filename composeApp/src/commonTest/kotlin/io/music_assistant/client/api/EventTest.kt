@@ -26,7 +26,6 @@ import kotlin.test.assertTrue
  *    `Event` constructor.
  */
 class EventTest {
-
     private fun parse(raw: String): Event =
         Event(Json.parseToJsonElement(raw) as JsonObject)
 

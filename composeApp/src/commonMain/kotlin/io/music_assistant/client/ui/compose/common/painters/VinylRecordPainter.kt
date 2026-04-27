@@ -16,9 +16,8 @@ class VinylRecordPainter(
     private val labelColor: Color,
     private val holeColor: Color,
     private val grooveColor: Color = labelColor.copy(alpha = 0.4f), // Subtle white for grooves
-    private val grooveCount: Int = 6 // Number of grooves to draw
+    private val grooveCount: Int = 6, // Number of grooves to draw
 ) : Painter() {
-
     private var cachedSize: Size? = null
     private var cachedGrooveRadii: List<Float>? = null
 
@@ -33,7 +32,7 @@ class VinylRecordPainter(
             color = recordColor,
             radius = radius,
             center = center,
-            style = Fill
+            style = Fill,
         )
 
         val labelRadius = radius * 0.45f
@@ -41,7 +40,7 @@ class VinylRecordPainter(
             color = labelColor,
             radius = labelRadius,
             center = center,
-            style = Fill
+            style = Fill,
         )
 
         val innerCircleRadius = radius * 0.38f
@@ -49,21 +48,21 @@ class VinylRecordPainter(
             color = recordColor,
             radius = innerCircleRadius,
             center = center,
-            style = Fill
+            style = Fill,
         )
 
         drawCircle(
             color = labelColor,
             radius = innerCircleRadius * 0.8f,
             center = center,
-            style = Fill
+            style = Fill,
         )
 
         drawCircle(
             color = holeColor,
             radius = radius * 0.08f,
             center = center,
-            style = Fill
+            style = Fill,
         )
 
         val cache = cachedGrooveRadii
@@ -82,7 +81,7 @@ class VinylRecordPainter(
                 color = grooveColor,
                 radius = grooveRadius,
                 center = center,
-                style = Stroke(width = strokeWidth)
+                style = Stroke(width = strokeWidth),
             )
         }
     }
@@ -110,6 +109,6 @@ fun rememberVinylRecordPainter(
     VinylRecordPainter(
         recordColor = Color.DarkGray,
         labelColor = labelColor,
-        holeColor = backgroundColor
+        holeColor = backgroundColor,
     )
 }

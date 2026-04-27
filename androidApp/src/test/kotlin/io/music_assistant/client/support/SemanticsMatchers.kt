@@ -9,7 +9,7 @@ import androidx.compose.ui.test.hasText
 
 fun hasRole(role: Role): SemanticsMatcher {
     return SemanticsMatcher(
-        description = "has role '$role'"
+        description = "has role '$role'",
     ) { node ->
         node.config.getOrNull(SemanticsProperties.Role) == role
     }

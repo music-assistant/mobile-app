@@ -16,7 +16,6 @@ import platform.Network.nw_path_status_satisfied
 import platform.darwin.dispatch_queue_create
 
 actual class NetworkMonitor actual constructor(@Suppress("UNUSED_PARAMETER") platformContext: PlatformContext) {
-
     private val _isAvailable = MutableStateFlow(true)
     actual val isAvailable: StateFlow<Boolean> = _isAvailable.asStateFlow()
 

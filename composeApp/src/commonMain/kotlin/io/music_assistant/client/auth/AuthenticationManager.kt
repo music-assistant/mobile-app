@@ -63,7 +63,7 @@ class AuthenticationManager(
                                                 settings.getDirectServerIdentifier(
                                                     state.connectionInfo.host,
                                                     state.connectionInfo.port,
-                                                    state.connectionInfo.isTls
+                                                    state.connectionInfo.isTls,
                                                 )
                                             is SessionState.Connected.WebRTC ->
                                                 settings.getWebRTCServerIdentifier(state.remoteId.rawId)
@@ -132,7 +132,7 @@ class AuthenticationManager(
     suspend fun loginWithCredentials(
         providerId: String,
         username: String,
-        password: String
+        password: String,
     ): Result<Unit> {
         return try {
             _isLoggingOut.value = false  // Reset flag when user explicitly logs in
@@ -149,7 +149,7 @@ class AuthenticationManager(
     suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String> {
         return try {
             val response = serviceClient.sendRequest(
-                Request.Auth.authorizationUrl(providerId, returnUrl)
+                Request.Auth.authorizationUrl(providerId, returnUrl),
             )
 
             if (response.isFailure) {
@@ -244,7 +244,7 @@ class AuthenticationManager(
                         settings.getDirectServerIdentifier(
                             currentState.connectionInfo.host,
                             currentState.connectionInfo.port,
-                            currentState.connectionInfo.isTls
+                            currentState.connectionInfo.isTls,
                         )
                     is SessionState.Connected.WebRTC ->
                         settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)

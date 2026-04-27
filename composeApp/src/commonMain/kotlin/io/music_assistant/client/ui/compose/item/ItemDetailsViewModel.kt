@@ -35,7 +35,6 @@ class ItemDetailsViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     data class State(
         val itemState: DataState<AppMediaItem>,
         val albumsState: DataState<List<AppMediaItem.Album>>,
@@ -64,7 +63,7 @@ class ItemDetailsViewModel(
             itemState = DataState.Loading(),
             albumsState = DataState.Loading(),
             playableItemsState = DataState.Loading(),
-        )
+        ),
     )
     val state = _state.asStateFlow()
 
@@ -113,7 +112,7 @@ class ItemDetailsViewModel(
                                             itemId = provider.itemId,
                                             provider = provider.providerInstance,
                                             favorite = null,
-                                            uri = "${provider.providerInstance}://${it.mediaType.name.lowercase()}/${provider.itemId}"
+                                            uri = "${provider.providerInstance}://${it.mediaType.name.lowercase()}/${provider.itemId}",
 
                                         )
                                     }
@@ -158,7 +157,7 @@ class ItemDetailsViewModel(
     private suspend fun getItemById(
         itemId: String,
         mediaType: MediaType,
-        providerId: String
+        providerId: String,
     ): AppMediaItem? {
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.get(itemId, providerId)
@@ -266,8 +265,8 @@ class ItemDetailsViewModel(
                     Request.Artist.getAlbums(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
-                        inLibraryOnly = false
-                    )
+                        inLibraryOnly = false,
+                    ),
                 ).resultAs<List<ServerMediaItem>>()
                     ?.toAppMediaItemList()
                     ?.filterIsInstance<AppMediaItem.Album>()
@@ -292,8 +291,8 @@ class ItemDetailsViewModel(
                     Request.Artist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
-                        inLibraryOnly = false
-                    )
+                        inLibraryOnly = false,
+                    ),
                 ).resultAs<List<ServerMediaItem>>()
                     ?.toAppMediaItemList()
                     ?.filterIsInstance<AppMediaItem.Track>()
@@ -318,8 +317,8 @@ class ItemDetailsViewModel(
                     Request.Album.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                        inLibraryOnly = false
-                    )
+                        inLibraryOnly = false,
+                    ),
                 ).resultAs<List<ServerMediaItem>>()
                     ?.toAppMediaItemList()
                     ?.filterIsInstance<AppMediaItem.Track>()
@@ -344,8 +343,8 @@ class ItemDetailsViewModel(
                     Request.Playlist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                        forceRefresh = null
-                    )
+                        forceRefresh = null,
+                    ),
                 ).resultAs<List<ServerMediaItem>>()
                     ?.toAppMediaItemList()
                     ?.filterIsInstance<AppMediaItem.Track>()
@@ -370,8 +369,8 @@ class ItemDetailsViewModel(
                     Request.Podcast.getEpisodes(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                        inLibraryOnly = false
-                    )
+                        inLibraryOnly = false,
+                    ),
                 ).resultAs<List<ServerMediaItem>>()
                     ?.toAppMediaItemList()
                     ?.filterIsInstance<AppMediaItem.PodcastEpisode>()
@@ -392,7 +391,7 @@ class ItemDetailsViewModel(
             _state.update {
                 it.copy(
                     artistsState = DataState.Loading(),
-                    albumsState = DataState.Loading()
+                    albumsState = DataState.Loading(),
                 )
             }
 
@@ -401,7 +400,7 @@ class ItemDetailsViewModel(
                     Request.Genre.overview(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                    )
+                    ),
                 ).resultAs<List<ServerMediaItem>>()
                     ?.toAppMediaItemList()
                     ?.filterIsInstance<AppMediaItem.RecommendationFolder>()
@@ -414,7 +413,7 @@ class ItemDetailsViewModel(
                 _state.update {
                     it.copy(
                         artistsState = DataState.Data(artists),
-                        albumsState = DataState.Data(albums)
+                        albumsState = DataState.Data(albums),
                     )
                 }
             } catch (e: Exception) {
@@ -422,7 +421,7 @@ class ItemDetailsViewModel(
                 _state.update {
                     it.copy(
                         artistsState = DataState.Error(),
-                        albumsState = DataState.Error()
+                        albumsState = DataState.Error(),
                     )
                 }
             }
@@ -444,8 +443,8 @@ class ItemDetailsViewModel(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && track !is AppMediaItem.Genre
-                    )
+                        radioMode = radio && track !is AppMediaItem.Genre,
+                    ),
                 )
             }
         }
@@ -462,8 +461,8 @@ class ItemDetailsViewModel(
                                 queueOrPlayerId = queueId,
                                 option = QueueOption.REPLACE,
                                 radioMode = false,
-                                startItem = chapterPosition.toString()
-                            )
+                                startItem = chapterPosition.toString(),
+                            ),
                         )
                     }
                 }

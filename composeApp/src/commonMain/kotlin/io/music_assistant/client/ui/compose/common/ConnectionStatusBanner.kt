@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.utils.SessionState
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -31,7 +31,7 @@ import org.koin.compose.koinInject
  */
 @Composable
 fun ConnectionStatusBanner(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val serviceClient: ServiceClient = koinInject()
     val sessionState by serviceClient.sessionState.collectAsStateWithLifecycle()
@@ -51,13 +51,13 @@ fun ConnectionStatusBanner(
     AnimatedVisibility(
         visible = bannerState != null,
         enter = expandVertically(),
-        exit = shrinkVertically()
+        exit = shrinkVertically(),
     ) {
         bannerState?.let { state ->
             ReconnectingBanner(
                 attempt = state.attempt,
                 onCancel = { serviceClient.disconnectByUser() },
-                modifier = modifier
+                modifier = modifier,
             )
         }
     }
@@ -71,41 +71,41 @@ private sealed interface BannerState {
 private fun ReconnectingBanner(
     attempt: Int,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.secondaryContainer)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.padding(end = 8.dp).size(16.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
                 Text(
                     text = stringResource(Res.string.banner_reconnecting, attempt),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
             androidx.compose.material3.TextButton(
-                onClick = onCancel
+                onClick = onCancel,
             ) {
                 Text(
                     text = stringResource(Res.string.common_cancel),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
         }

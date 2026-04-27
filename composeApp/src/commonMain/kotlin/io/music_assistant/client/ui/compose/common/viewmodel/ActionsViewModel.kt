@@ -21,7 +21,6 @@ class ActionsViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
 ) : ViewModel() {
-
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
 
@@ -33,7 +32,7 @@ class ActionsViewModel(
         viewModelScope.launch {
             if (item.isInLibrary) {
                 apiClient.sendRequest(
-                    Request.Library.remove(item.itemId, item.mediaType)
+                    Request.Library.remove(item.itemId, item.mediaType),
                 )
             } else {
                 item.uri?.let {
@@ -54,7 +53,7 @@ class ActionsViewModel(
                 }
             } else {
                 apiClient.sendRequest(
-                    Request.Library.removeFavorite(item.itemId, item.mediaType)
+                    Request.Library.removeFavorite(item.itemId, item.mediaType),
                 )
             }
         }
@@ -71,7 +70,7 @@ class ActionsViewModel(
 
     fun addToPlaylist(
         mediaItem: AppMediaItem,
-        playlist: AppMediaItem.Playlist
+        playlist: AppMediaItem.Playlist,
     ) {
         viewModelScope.launch {
             val itemUri = mediaItem.uri
@@ -83,7 +82,7 @@ class ActionsViewModel(
                 Request.Playlist.addTracks(
                     playlistId = playlist.itemId,
                     trackUris = listOf(itemUri),
-                )
+                ),
             )
                 .map { "Added to ${playlist.name}" }
                 .onSuccess { message ->
@@ -104,8 +103,8 @@ class ActionsViewModel(
             apiClient.sendRequest(
                 Request.Playlist.removeTracks(
                     playlistId = playlistId,
-                    positions = listOf(position + 1) // +1 because server uses 1-based indexing
-                )
+                    positions = listOf(position + 1), // +1 because server uses 1-based indexing
+                ),
             ).onSuccess {
                 onSuccess()
             }
@@ -142,7 +141,7 @@ class ActionsViewModel(
 
     data class PlaylistActions(
         val onLoadPlaylists: suspend () -> List<AppMediaItem.Playlist>,
-        val onAddToPlaylist: (AppMediaItem, AppMediaItem.Playlist) -> Unit
+        val onAddToPlaylist: (AppMediaItem, AppMediaItem.Playlist) -> Unit,
     )
 
     data class LibraryActions(
@@ -154,5 +153,4 @@ class ActionsViewModel(
         val onMarkPlayed: ((AppMediaItem) -> Unit),
         val onMarkUnplayed: ((AppMediaItem) -> Unit),
     )
-
 }

@@ -22,7 +22,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 private val logger = Logger.withTag("Event")
 
 data class Event(
-    val json: JsonObject
+    val json: JsonObject,
 ) {
     private val type: EventType? = runCatching {
         parseEventType(myJson.decodeFromJsonElement<GenericEvent>(json).eventType)
@@ -63,7 +63,8 @@ data class Event(
             EventType.CONNECTED,
             EventType.DISCONNECTED,
             EventType.ALL,
-            null -> {
+            null,
+            -> {
                 logger.w { "Unparsed event: $json" }
                 null
             }
@@ -78,5 +79,4 @@ data class Event(
 
     private fun parseEventType(value: String): EventType? =
         EventType.entries.find { it.name.equals(value, ignoreCase = true) }
-
 }

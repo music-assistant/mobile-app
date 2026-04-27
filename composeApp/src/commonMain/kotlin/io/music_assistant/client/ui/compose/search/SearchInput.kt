@@ -20,15 +20,15 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SearchInput(
     query: String,
     onQueryChanged: (String) -> Unit,
-    focusManager: FocusManager = LocalFocusManager.current
+    focusManager: FocusManager = LocalFocusManager.current,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -45,14 +45,30 @@ fun SearchInput(
         value = query,
         onValueChange = onQueryChanged,
         maxLines = 1,
-        label = { Text(if (query.trim().length < 3) stringResource(Res.string.search_min_chars) else stringResource(Res.string.search_query_label)) },
+        label = {
+            Text(
+            if (query.trim().length < 3) {
+                stringResource(
+                    Res.string.search_min_chars,
+                )
+            } else {
+                stringResource(Res.string.search_query_label)
+            },
+        )
+        },
         trailingIcon = if (query.isNotEmpty()) {
-            { IconButton(onClick = { onQueryChanged("") }) { Icon(Icons.Default.Clear, contentDescription = stringResource(Res.string.common_clear)) } }
-        } else null,
+            {
+                IconButton(
+                onClick = { onQueryChanged("") },
+            ) { Icon(Icons.Default.Clear, contentDescription = stringResource(Res.string.common_clear)) }
+            }
+        } else {
+            null
+        },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {
             onQueryChanged(query)
             focusManager.clearFocus()
-        })
+        }),
     )
 }

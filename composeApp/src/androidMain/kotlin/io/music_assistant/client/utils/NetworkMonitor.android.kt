@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 actual class NetworkMonitor actual constructor(platformContext: PlatformContext) {
-
     private val _isAvailable = MutableStateFlow(true)
     actual val isAvailable: StateFlow<Boolean> = _isAvailable.asStateFlow()
 

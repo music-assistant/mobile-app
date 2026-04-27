@@ -22,7 +22,7 @@ data class SendspinConfig(
 
     // Auth settings (for proxy mode)
     val authToken: String? = null,
-    val mainConnectionPort: Int? = null
+    val mainConnectionPort: Int? = null,
 ) {
     fun buildServerUrl(): String {
         return if (serverHost.isNotEmpty()) {

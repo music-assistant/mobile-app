@@ -31,11 +31,10 @@ data class AuthorizationResponse(
 data class AuthProvider(
     @SerialName("provider_id") val id: String,
     @SerialName("provider_type") val type: String,
-    @SerialName("requires_redirect") val requiresRedirect: Boolean
+    @SerialName("requires_redirect") val requiresRedirect: Boolean,
 )
 
 @Serializable
 data class OauthUrl(
-    @SerialName("authorization_url") val url: String
+    @SerialName("authorization_url") val url: String,
 )
-

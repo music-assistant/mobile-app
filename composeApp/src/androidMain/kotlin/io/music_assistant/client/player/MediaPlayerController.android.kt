@@ -13,7 +13,6 @@ import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Build
 import co.touchlab.kermit.Logger
-
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 
 /**
@@ -23,7 +22,6 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
  * Built-in player (ExoPlayer) has been removed - Sendspin is now the only playback method.
  */
 actual class MediaPlayerController actual constructor(platformContext: PlatformContext) {
-    
     // Callback for remote commands - currently unused on Android (handled via different mechanism if needed)
     actual var onRemoteCommand: ((String) -> Unit)? = null
     private val logger = Logger.withTag("MediaPlayerController")
@@ -39,6 +37,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
 
     // AudioFocus management for Android Auto
     private var audioFocusRequest: AudioFocusRequest? = null
+
     @Volatile private var hasAudioFocus = false
 
     // Playback state - controls whether we should write audio data
@@ -194,7 +193,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         channels: Int,
         bitDepth: Int,
         codecHeader: String?,
-        listener: MediaPlayerListener
+        listener: MediaPlayerListener,
     ) {
         // Android ignores codecHeader - it's only for iOS/MPV pass-through
         logger.i { "Preparing raw PCM stream: ${sampleRate}Hz, ${channels}ch, ${bitDepth}bit" }
@@ -260,14 +259,14 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
+                        .build(),
                 )
                 .setAudioFormat(
                     AudioFormat.Builder()
                         .setSampleRate(sampleRate)
                         .setChannelMask(channelConfig)
                         .setEncoding(encoding)
-                        .build()
+                        .build(),
                 )
                 .setBufferSizeInBytes(bufferSize)
                 .setTransferMode(AudioTrack.MODE_STREAM)
@@ -319,7 +318,6 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             applyVolume()
 
             listener.onReady()
-
         } catch (e: Exception) {
             logger.e(e) { "Failed to create AudioTrack" }
             listener.onError(e)
@@ -472,7 +470,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             }
         }
     }
-    
+
     // Now Playing - no-op on Android (uses MediaSession instead)
     actual fun updateNowPlaying(
         title: String?,
@@ -481,11 +479,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         artworkUrl: String?,
         duration: Double,
         elapsedTime: Double,
-        playbackRate: Double
+        playbackRate: Double,
     ) {
         // Android handles Now Playing via MediaSession, not implemented here
     }
-    
+
     actual fun clearNowPlaying() {
         // Android handles Now Playing via MediaSession, not implemented here
     }

@@ -32,7 +32,7 @@ fun HorizontalPagerIndicator(
     Row(
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 12.dp),
         horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (pageCount <= 15) {
             repeat(pageCount) { index ->
@@ -42,13 +42,14 @@ fun HorizontalPagerIndicator(
                         .size(if (index == pagerState.currentPage) 4.dp else 2.dp)
                         .clip(CircleShape)
                         .background(
-                            if (index == pagerState.currentPage)
+                            if (index == pagerState.currentPage) {
                                 MaterialTheme.colorScheme.primary
-                            else
+                            } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                    alpha = 0.3f
+                                    alpha = 0.3f,
                                 )
-                        )
+                            },
+                        ),
                 )
             }
         } else {

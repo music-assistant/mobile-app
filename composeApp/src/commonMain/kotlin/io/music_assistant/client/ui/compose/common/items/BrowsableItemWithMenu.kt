@@ -40,8 +40,8 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -53,7 +53,7 @@ fun AlbumWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?
+    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
@@ -70,7 +70,7 @@ fun AlbumWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         } else {
             AlbumGridItem(
@@ -78,7 +78,7 @@ fun AlbumWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         }
     }
@@ -93,7 +93,7 @@ fun ArtistWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?
+    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
@@ -110,7 +110,7 @@ fun ArtistWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         } else {
             ArtistGridItem(
@@ -118,7 +118,7 @@ fun ArtistWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         }
     }
@@ -133,7 +133,7 @@ fun PlaylistWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?
+    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
@@ -150,7 +150,7 @@ fun PlaylistWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         } else {
             PlaylistGridItem(
@@ -158,7 +158,7 @@ fun PlaylistWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         }
     }
@@ -174,7 +174,7 @@ fun AudiobookWithMenu(
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?
+    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
@@ -192,7 +192,7 @@ fun AudiobookWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         } else {
             AudiobookGridItem(
@@ -200,7 +200,7 @@ fun AudiobookWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         }
     }
@@ -215,7 +215,7 @@ fun GenreWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?
+    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
@@ -232,7 +232,7 @@ fun GenreWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         } else {
             GenreGridItem(
@@ -240,7 +240,7 @@ fun GenreWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         }
     }
@@ -255,7 +255,7 @@ fun PodcastWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?
+    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
@@ -272,7 +272,7 @@ fun PodcastWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         } else {
             PodcastGridItem(
@@ -280,12 +280,11 @@ fun PodcastWithMenu(
                 serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                providerIconFetcher = providerIconFetcher
+                providerIconFetcher = providerIconFetcher,
             )
         }
     }
 }
-
 
 @Composable
 private fun <T : AppMediaItem> BrowsableItemWithMenu(
@@ -300,7 +299,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         modifier: Modifier,
         onClick: (T) -> Unit,
         onLongClick: (T) -> Unit,
-    ) -> Unit
+    ) -> Unit,
 ) {
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
@@ -310,12 +309,12 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     Box(modifier = modifier) {
         itemComposable(
             Modifier.align(Alignment.Center),
-            onNavigateClick
+            onNavigateClick,
         ) { expandedItemId = item.itemId }
 
         DropdownMenu(
             expanded = expandedItemId == item.itemId,
-            onDismissRequest = { expandedItemId = null }
+            onDismissRequest = { expandedItemId = null },
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_play_now)) },
@@ -326,9 +325,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = PlayIcon,
-                        contentDescription = stringResource(Res.string.action_play_now)
+                        contentDescription = stringResource(Res.string.action_play_now),
                     )
-                }
+                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_insert_next_and_play)) },
@@ -339,9 +338,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.PlaylistAddCircle,
-                        contentDescription = stringResource(Res.string.action_insert_next_and_play)
+                        contentDescription = stringResource(Res.string.action_insert_next_and_play),
                     )
-                }
+                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_insert_next)) },
@@ -352,9 +351,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.QueuePlayNext,
-                        contentDescription = stringResource(Res.string.action_insert_next)
+                        contentDescription = stringResource(Res.string.action_insert_next),
                     )
-                }
+                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_add_to_bottom)) },
@@ -365,9 +364,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.AddToQueue,
-                        contentDescription = stringResource(Res.string.action_add_to_bottom)
+                        contentDescription = stringResource(Res.string.action_add_to_bottom),
                     )
-                }
+                },
             )
             if (item.canStartRadio) {
                 DropdownMenuItem(
@@ -379,15 +378,21 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Radio,
-                            contentDescription = stringResource(Res.string.action_start_radio)
+                            contentDescription = stringResource(Res.string.action_start_radio),
                         )
-                    }
+                    },
                 )
             }
             libraryActions?.let { actions ->
                 if (item !is AppMediaItem.Genre) {
                     val libText =
-                        if (item.isInLibrary) stringResource(Res.string.action_remove_from_library) else stringResource(Res.string.action_add_to_library)
+                        if (item.isInLibrary) {
+                            stringResource(
+                                Res.string.action_remove_from_library,
+                            )
+                        } else {
+                            stringResource(Res.string.action_add_to_library)
+                        }
                     DropdownMenuItem(
                         text = { Text(libText) },
                         onClick = {
@@ -397,17 +402,26 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                         leadingIcon = {
                             Icon(
                                 imageVector =
-                                    if (item.isInLibrary) TablerIcons.FolderMinus
-                                    else TablerIcons.FolderPlus,
-                                contentDescription = libText
+                                    if (item.isInLibrary) {
+                                        TablerIcons.FolderMinus
+                                    } else {
+                                        TablerIcons.FolderPlus
+                                    },
+                                contentDescription = libText,
                             )
-                        }
+                        },
                     )
                 }
 
                 // Favorite management (only for library items)
                 if (item.isInLibrary) {
-                    val favText = if (item.favorite == true) stringResource(Res.string.action_unfavorite) else stringResource(Res.string.action_favorite)
+                    val favText = if (item.favorite == true) {
+                        stringResource(
+                            Res.string.action_unfavorite,
+                        )
+                    } else {
+                        stringResource(Res.string.action_favorite)
+                    }
                     DropdownMenuItem(
                         text = { Text(favText) },
                         onClick = {
@@ -417,11 +431,14 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                         leadingIcon = {
                             Icon(
                                 imageVector =
-                                    if (item.favorite == true) TablerIcons.HeartBroken
-                                    else TablerIcons.Heart,
-                                contentDescription = favText
+                                    if (item.favorite == true) {
+                                        TablerIcons.HeartBroken
+                                    } else {
+                                        TablerIcons.Heart
+                                    },
+                                contentDescription = favText,
                             )
-                        }
+                        },
                     )
                 }
             }
@@ -442,9 +459,9 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
-                            contentDescription = stringResource(Res.string.action_add_to_playlist)
+                            contentDescription = stringResource(Res.string.action_add_to_playlist),
                         )
-                    }
+                    },
                 )
             }
 
@@ -452,7 +469,17 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
             if (progressActions != null && item is AppMediaItem.Audiobook) {
                 val isPlayed = item.fullyPlayed == true
                 DropdownMenuItem(
-                    text = { Text(if (isPlayed) stringResource(Res.string.action_mark_unplayed) else stringResource(Res.string.action_mark_played)) },
+                    text = {
+                        Text(
+                            if (isPlayed) {
+                                stringResource(
+                                    Res.string.action_mark_unplayed,
+                                )
+                            } else {
+                                stringResource(Res.string.action_mark_played)
+                            },
+                        )
+                    },
                     onClick = {
                         if (isPlayed) {
                             progressActions.onMarkUnplayed(item)
@@ -464,9 +491,15 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = if (isPlayed) Icons.Default.Replay else Icons.Default.Check,
-                            contentDescription = if (isPlayed) stringResource(Res.string.action_mark_unplayed) else stringResource(Res.string.action_mark_played)
+                            contentDescription = if (isPlayed) {
+                                stringResource(
+                                    Res.string.action_mark_unplayed,
+                                )
+                            } else {
+                                stringResource(Res.string.action_mark_played)
+                            },
                         )
-                    }
+                    },
                 )
             }
         }
@@ -484,7 +517,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     if (isLoadingPlaylists) {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator()
                         }
@@ -494,7 +527,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                         LazyColumn {
                             items(
                                 items = playlists,
-                                key = { p -> p.itemId }) { playlist ->
+                                key = { p -> p.itemId },
+                            ) { playlist ->
                                 TextButton(
                                     onClick = {
                                         playlistActions?.onAddToPlaylist
@@ -502,11 +536,11 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                                         showPlaylistDialog = false
                                         playlists = emptyList()
                                     },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Text(
                                         text = playlist.name,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                             }
@@ -522,10 +556,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     }) {
                         Text(stringResource(Res.string.common_cancel))
                     }
-                }
+                },
             )
         }
     }
 }
-
-

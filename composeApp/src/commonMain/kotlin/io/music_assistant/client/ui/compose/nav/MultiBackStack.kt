@@ -21,7 +21,6 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
  * element of the first back stack.
  */
 class MultiBackStack(private val backStacks: List<NavBackStack<NavKey>>) {
-
     var currentBackStack by mutableStateOf(0)
 
     private val originalItems = backStacks.map { it.toList() }
@@ -77,9 +76,9 @@ class MultiBackStack(private val backStacks: List<NavBackStack<NavKey>>) {
             rememberDecoratedNavEntries(
                 backStack = it,
                 entryDecorators = listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(saveableStateHolderForHome)
+                    rememberSaveableStateHolderNavEntryDecorator(saveableStateHolderForHome),
                 ),
-                entryProvider = entryProvider
+                entryProvider = entryProvider,
             )
         }
     }

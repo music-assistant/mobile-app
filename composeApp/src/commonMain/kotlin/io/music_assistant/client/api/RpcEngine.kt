@@ -1,8 +1,6 @@
 package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
-import kotlin.concurrent.atomics.AtomicReference
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -10,6 +8,8 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * Handles RPC request/response correlation for the Music Assistant API.
@@ -34,7 +34,6 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 @OptIn(ExperimentalAtomicApi::class)
 class RpcEngine(private val onAuthError: () -> Unit) {
-
     private val logger = Logger.withTag("RpcEngine")
 
     private val pendingResponses =

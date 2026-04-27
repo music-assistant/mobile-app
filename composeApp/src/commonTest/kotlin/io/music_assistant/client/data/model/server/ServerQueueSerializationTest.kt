@@ -13,7 +13,6 @@ import kotlin.test.assertEquals
  * queue-listing decode.
  */
 class ServerQueueSerializationTest {
-
     @Test
     fun deserializesWithOnlyQueueIdPresent() {
         val json = """{"queue_id": "q1"}"""

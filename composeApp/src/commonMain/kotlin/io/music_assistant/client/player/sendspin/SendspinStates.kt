@@ -54,5 +54,5 @@ data class BufferState(
     val currentPrebufferThreshold: Long = 0L, // Current prebuffer threshold
     val smoothedRTT: Double = 0.0, // Smoothed RTT in microseconds
     val jitter: Double = 0.0, // Jitter (RTT std dev) in microseconds
-    val dropRate: Double = 0.0 // Recent chunk drop rate [0.0, 1.0]
+    val dropRate: Double = 0.0, // Recent chunk drop rate [0.0, 1.0]
 )

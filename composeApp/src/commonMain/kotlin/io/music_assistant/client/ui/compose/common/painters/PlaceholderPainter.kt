@@ -14,9 +14,8 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 private class PlaceholderPainter(
     private val backgroundColor: Color = Color(0xFFE8E8E8),
     private val iconColor: Color = Color(0xFF9E9E9E),
-    private val iconPainter: Painter
+    private val iconPainter: Painter,
 ) : Painter() {
-
     override val intrinsicSize: Size = Size.Unspecified
 
     override fun DrawScope.onDraw() {
@@ -26,7 +25,7 @@ private class PlaceholderPainter(
         // Draw background
         drawRect(
             color = backgroundColor,
-            size = Size(canvasWidth, canvasHeight)
+            size = Size(canvasWidth, canvasHeight),
         )
 
         // Draw icon centered
@@ -38,7 +37,7 @@ private class PlaceholderPainter(
             with(iconPainter) {
                 draw(
                     size = Size(iconSize, iconSize),
-                    colorFilter = ColorFilter.tint(iconColor)
+                    colorFilter = ColorFilter.tint(iconColor),
                 )
             }
         }
@@ -56,7 +55,7 @@ fun rememberPlaceholderPainter(
         PlaceholderPainter(
             backgroundColor = backgroundColor,
             iconColor = iconColor,
-            iconPainter = vectorPainter
+            iconPainter = vectorPainter,
         )
     }
 }

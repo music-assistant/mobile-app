@@ -36,7 +36,6 @@ class SearchViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
 ) : ViewModel() {
-
     val serverUrl = apiClient.serverBaseUrl
 
     val searchJob = AtomicReference<Job?>(null)
@@ -54,10 +53,10 @@ class SearchViewModel(
                     MediaTypeSelect(MediaType.PODCAST, false),
                     MediaTypeSelect(MediaType.RADIO, false),
                 ),
-                libraryOnly = false
+                libraryOnly = false,
             ),
-            resultsState = DataState.NoData()
-        )
+            resultsState = DataState.NoData(),
+        ),
     )
     val state = _state.asStateFlow()
 
@@ -83,7 +82,8 @@ class SearchViewModel(
                 when (event) {
                     is MediaItemUpdatedEvent,
                     is MediaItemAddedEvent,
-                    is MediaItemDeletedEvent -> {
+                    is MediaItemDeletedEvent,
+                    -> {
                         event.data?.let { updateSearchResultsIfNeeded(it) }
                     }
 
@@ -107,8 +107,8 @@ class SearchViewModel(
                         } else {
                             mediaTypeSelect
                         }
-                    }
-                )
+                    },
+                ),
             )
         }
     }
@@ -126,8 +126,8 @@ class SearchViewModel(
                             media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio && track !is AppMediaItem.Genre
-                        )
+                            radioMode = radio && track !is AppMediaItem.Genre,
+                        ),
                     )
                 }
             }
@@ -160,8 +160,8 @@ class SearchViewModel(
                         query = searchState.query,
                         mediaTypes = searchState.selectedMediaTypes,
                         limit = 200,
-                        libraryOnly = searchState.libraryOnly
-                    )
+                        libraryOnly = searchState.libraryOnly,
+                    ),
                 )
                 if (isActive) {
                     result.getOrNull()?.resultAs<SearchResult>()?.toAppMediaItemList()
@@ -182,13 +182,13 @@ class SearchViewModel(
                         _state.update { it.copy(resultsState = DataState.Error()) }
                     }
                 }
-            }
+            },
         )?.cancel()
     }
 
     data class State(
         val searchState: SearchState,
-        val resultsState: DataState<SearchResults>
+        val resultsState: DataState<SearchResults>,
     )
 
     data class SearchState(
@@ -201,7 +201,7 @@ class SearchViewModel(
 
     data class MediaTypeSelect(
         val type: MediaType,
-        val isSelected: Boolean
+        val isSelected: Boolean,
     )
 
     data class SearchResults(

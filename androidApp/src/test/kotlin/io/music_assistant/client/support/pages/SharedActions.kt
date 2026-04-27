@@ -11,7 +11,7 @@ import io.music_assistant.client.support.isTab
 
 fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
-    navigationItem: String
+    navigationItem: String,
 ): MediaItemPage {
     return clickOnMedia(serverMediaItem.name, serverMediaItem.mediaType, navigationItem)
 }

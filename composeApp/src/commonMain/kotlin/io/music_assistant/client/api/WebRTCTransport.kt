@@ -25,9 +25,8 @@ class WebRTCTransport(
     private val remoteId: RemoteId,
     private val scope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
-    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS
+    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
 ) : Transport {
-
     private val logger = Logger.withTag("WebRTCTransport")
 
     private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
@@ -76,7 +75,7 @@ class WebRTCTransport(
                 is WebRTCConnectionState.Error -> {
                     if (!isReconnect) {
                         _state.value = TransportState.Failed(
-                            Exception("WebRTC connection failed: ${result.error}")
+                            Exception("WebRTC connection failed: ${result.error}"),
                         )
                     }
                 }
@@ -134,7 +133,7 @@ class WebRTCTransport(
                 logger.i { "WebRTC reconnect attempt $attempt/$maxReconnectAttempts" }
                 connectInternal(isReconnect = true)
                 _state.value == TransportState.Connected
-            }
+            },
         )
         if (!reconnected) {
             _state.value = TransportState.Failed(Exception("Max WebRTC reconnect attempts reached"))

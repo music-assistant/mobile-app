@@ -12,5 +12,5 @@ enum class AudioCodec {
     FLAC,
 
     @SerialName("pcm")
-    PCM
+    PCM,
 }

@@ -25,12 +25,12 @@ import kotlinx.coroutines.delay
 
 enum class ToastDuration(val millis: Long) {
     SHORT(2000L),
-    LONG(3500L)
+    LONG(3500L),
 }
 
 data class ToastData(
     val message: String,
-    val duration: ToastDuration = ToastDuration.SHORT
+    val duration: ToastDuration = ToastDuration.SHORT,
 )
 
 class ToastState {
@@ -54,7 +54,7 @@ fun rememberToastState(): ToastState {
 @Composable
 fun ToastHost(
     toastState: ToastState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val currentToast by toastState.currentToast
 
@@ -68,21 +68,21 @@ fun ToastHost(
 
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.BottomCenter
+        contentAlignment = Alignment.BottomCenter,
     ) {
         AnimatedVisibility(
             visible = currentToast != null,
             enter = slideInVertically(
-                initialOffsetY = { it }
+                initialOffsetY = { it },
             ) + fadeIn(),
             exit = slideOutVertically(
-                targetOffsetY = { it }
-            ) + fadeOut()
+                targetOffsetY = { it },
+            ) + fadeOut(),
         ) {
             currentToast?.let { toast ->
                 ToastItem(
                     message = toast.message,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 )
             }
         }
@@ -92,15 +92,15 @@ fun ToastHost(
 @Composable
 private fun ToastItem(
     message: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .background(
                 color = Color.Black.copy(alpha = 0.8f),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
             text = message,

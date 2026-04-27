@@ -15,13 +15,12 @@ class MediaItemPage(
     private val name: String,
     private val type: MediaType,
     private val navigationItem: String,
-    composeTestRule: ComposeTestRule
+    composeTestRule: ComposeTestRule,
 ) : ComposePage(composeTestRule) {
-
     constructor(
         serverMediaItem: ServerMediaItem,
         navigationItem: String,
-        composeTestRule: ComposeTestRule
+        composeTestRule: ComposeTestRule,
     ) : this(serverMediaItem.name, serverMediaItem.mediaType, navigationItem, composeTestRule)
 
     override fun assert() {
@@ -29,7 +28,7 @@ class MediaItemPage(
         composeTestRule.onNodeWithText("Play").assertIsDisplayed().assertHasClickAction()
         assertNavBar(
             items = listOf("Home", "Search", "Library", "Settings"),
-            selected = navigationItem
+            selected = navigationItem,
         )
 
         when (type) {
@@ -64,7 +63,7 @@ class MediaItemPage(
             artist,
             MediaType.ARTIST,
             navigationItem,
-            composeTestRule
+            composeTestRule,
         ).assertOnPage()
     }
 }

@@ -4,14 +4,13 @@ import io.music_assistant.client.data.model.server.MediaItemChapter
 import io.music_assistant.client.utils.UniqueIdGenerator
 
 object AppMediaItemFixtures {
-
     private val uniqueIdGenerator = UniqueIdGenerator()
 
     fun album(
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Album $itemId",
         artist: AppMediaItem.Artist? = artist(),
-        version: String? = null
+        version: String? = null,
     ): AppMediaItem.Album {
         return AppMediaItem.Album(
             itemId = itemId,
@@ -28,7 +27,7 @@ object AppMediaItemFixtures {
                 listOf(artist)
             } else {
                 emptyList()
-            }
+            },
         )
     }
 
@@ -41,13 +40,13 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            image = null
+            image = null,
         )
     }
 
     fun tracks(
         tracks: List<String>,
-        album: AppMediaItem.Album? = null
+        album: AppMediaItem.Album? = null,
     ): List<AppMediaItem.Track> {
         return tracks.map {
             val trackAlbum = album ?: album(itemId = "blah")
@@ -82,7 +81,7 @@ object AppMediaItemFixtures {
             favorite = null,
             uri = null,
             isEditable = null,
-            image = null
+            image = null,
         )
     }
 
@@ -95,13 +94,13 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            image = null
+            image = null,
         )
     }
 
     fun episodes(
         episodes: List<String>,
-        podcast: AppMediaItem.Podcast = podcast()
+        podcast: AppMediaItem.Podcast = podcast(),
     ): List<AppMediaItem.PodcastEpisode> {
         return episodes.map {
             AppMediaItem.PodcastEpisode(
@@ -116,14 +115,14 @@ object AppMediaItemFixtures {
                 duration = null,
                 podcast = podcast,
                 fullyPlayed = null,
-                resumePositionMs = null
+                resumePositionMs = null,
             )
         }
     }
 
     fun audiobook(
         name: String = "Audiobook ${uniqueIdGenerator.nextInt()}",
-        chapters: List<String> = emptyList()
+        chapters: List<String> = emptyList(),
     ): AppMediaItem.Audiobook {
         return AppMediaItem.Audiobook(
             itemId = "blah",
@@ -139,7 +138,7 @@ object AppMediaItemFixtures {
             narrators = null,
             chapters = chapters(chapters),
             fullyPlayed = null,
-            resumePositionMs = null
+            resumePositionMs = null,
         )
     }
 
@@ -149,7 +148,7 @@ object AppMediaItemFixtures {
                 position = index,
                 chapter,
                 start = index.toDouble(),
-                end = (index + 1).toDouble()
+                end = (index + 1).toDouble(),
             )
         }
     }

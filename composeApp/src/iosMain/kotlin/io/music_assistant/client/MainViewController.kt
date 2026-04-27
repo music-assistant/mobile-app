@@ -29,13 +29,13 @@ private val kmpBootstrap: Unit by lazy {
 }
 
 fun MainViewController() = ComposeUIViewController(
-    configure = { bootstrapKmp() }
+    configure = { bootstrapKmp() },
 ) { App() }
 
 private fun cleanupStaleLogFile() {
     NSFileManager.defaultManager.removeItemAtPath(
         "${NSTemporaryDirectory()}ma_client_logs.txt",
-        error = null
+        error = null,
     )
 }
 
@@ -49,6 +49,6 @@ private fun installCrashHandler() {
             val nsString = NSString.create(string = text)
             nsString.writeToFile(path, atomically = true, encoding = NSUTF8StringEncoding, error = null)
             Unit
-        }
+        },
     )
 }

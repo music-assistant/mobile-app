@@ -55,17 +55,18 @@ fun PlayerControls(
         if (showAdditionalButtons) {
             queue?.let {
                 ActionButton(
-                    icon = if (it.shuffleEnabled)
+                    icon = if (it.shuffleEnabled) {
                         ShuffleOnIcon
-                    else
-                        ShuffleOffIcon,
+                    } else {
+                        ShuffleOffIcon
+                    },
                     tint = tint,
                     size = smallButtonSize,
                     enabled = playerEnabled && buttonsEnabled,
                 ) {
                     playerAction(
                         playerData,
-                        PlayerAction.ToggleShuffle(current = it.shuffleEnabled)
+                        PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
                     )
                 }
             }
@@ -79,7 +80,6 @@ fun PlayerControls(
                 enabled = playerEnabled && buttonsEnabled,
             ) { playerAction(playerData, PlayerAction.Previous) }
         }
-
 
         if (playerData.pendingPlay && player.isPlaying) {
             IconButton(
@@ -123,7 +123,8 @@ fun PlayerControls(
                         RepeatMode.ONE -> RepeatOneIcon
                         RepeatMode.ALL -> RepeatOnIcon
                         RepeatMode.OFF,
-                        null -> RepeatOffIcon
+                        null,
+                        -> RepeatOffIcon
                     },
                     tint = tint,
                     size = smallButtonSize,
@@ -132,7 +133,7 @@ fun PlayerControls(
                     repeatMode?.let {
                         playerAction(
                             playerData,
-                            PlayerAction.ToggleRepeatMode(current = repeatMode)
+                            PlayerAction.ToggleRepeatMode(current = repeatMode),
                         )
                     }
                 }
@@ -147,7 +148,7 @@ private fun ActionButton(
     size: Dp,
     tint: Color = MaterialTheme.colorScheme.primary,
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     IconButton(
         modifier = Modifier
@@ -174,7 +175,7 @@ private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = tru
             playerAction = { _, _ -> },
             showSkip = showSkip,
             mainButtonSize = 60.dp,
-            showAdditionalButtons = showAdditionButtons
+            showAdditionalButtons = showAdditionButtons,
         )
     }
 }

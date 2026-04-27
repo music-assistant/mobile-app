@@ -10,14 +10,14 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable(with = VersionedRoleSerializer::class)
 data class VersionedRole(
     val role: String,
-    val version: String
+    val version: String,
 ) {
     val identifier: String
         get() = "$role@$version"
 
     constructor(stringLiteral: String) : this(
         role = stringLiteral.substringBefore('@', stringLiteral),
-        version = stringLiteral.substringAfter('@', "v1")
+        version = stringLiteral.substringAfter('@', "v1"),
     )
 
     companion object {

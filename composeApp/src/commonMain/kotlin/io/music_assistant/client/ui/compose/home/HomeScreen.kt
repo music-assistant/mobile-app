@@ -42,8 +42,8 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.utils.SessionState
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -59,21 +59,21 @@ fun HomeScreen(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit)
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
 ) {
     val filteredData = remember(dataState) {
         if (dataState is DataState.Data) {
             dataState.data.filter {
                 it.items?.any { item ->
-                    item is AppMediaItem.Track
-                            || item is AppMediaItem.Artist
-                            || item is AppMediaItem.Album
-                            || item is AppMediaItem.Playlist
-                            || item is AppMediaItem.Audiobook
-                            || item is AppMediaItem.Podcast
-                            || item is AppMediaItem.PodcastEpisode
-                            || item is AppMediaItem.RadioStation
-                            || item is AppMediaItem.Genre
+                    item is AppMediaItem.Track ||
+                            item is AppMediaItem.Artist ||
+                            item is AppMediaItem.Album ||
+                            item is AppMediaItem.Playlist ||
+                            item is AppMediaItem.Audiobook ||
+                            item is AppMediaItem.Podcast ||
+                            item is AppMediaItem.PodcastEpisode ||
+                            item is AppMediaItem.RadioStation ||
+                            item is AppMediaItem.Genre
                 } == true
             }
         } else {
@@ -86,17 +86,17 @@ fun HomeScreen(
     Screen(
         topBar = { scrollBehavior ->
             LandingPageTopBar(scrollBehavior)
-        }
+        },
     ) {
         LazyColumn(
             state = listState,
-            contentPadding = contentPadding
+            contentPadding = contentPadding,
         ) {
             if (connectionState !is SessionState.Connected || dataState !is DataState.Data) {
                 item {
                     Box(
                         modifier = modifier.fillMaxWidth().height(200.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
@@ -104,7 +104,7 @@ fun HomeScreen(
             } else {
                 items(
                     items = filteredData,
-                    key = { it.itemId }
+                    key = { it.itemId },
                 ) { row ->
                     CategoryRow(
                         serverUrl = serverUrl,
@@ -129,7 +129,7 @@ fun HomeScreen(
 private fun LandingPageTopBar(scrollBehavior: TopAppBarScrollBehavior) {
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
 
@@ -147,7 +147,7 @@ fun CategoryRow(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit)
+    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
 ) {
     val rowListState = rememberLazyListState()
 
@@ -157,18 +157,18 @@ fun CategoryRow(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             rowItemType?.let { type ->
                 val allTitle = allItemsTitle(type)
                 allTitle?.let {
                     TextButton(
                         onClick = onAllClick,
-                        contentPadding = PaddingValues(start = 4.dp, end = 4.dp)
+                        contentPadding = PaddingValues(start = 4.dp, end = 4.dp),
                     ) {
                         Text(allTitle, style = MaterialTheme.typography.labelLarge)
                     }
@@ -178,7 +178,7 @@ fun CategoryRow(
         LazyRow(
             state = rowListState,
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             items(
                 items = mediaItems,
@@ -192,7 +192,8 @@ fun CategoryRow(
                         is AppMediaItem.Podcast,
                         is AppMediaItem.PodcastEpisode,
                         is AppMediaItem.RadioStation,
-                        is AppMediaItem.Genre -> "${item::class.simpleName}_${item.itemId}"
+                        is AppMediaItem.Genre,
+                        -> "${item::class.simpleName}_${item.itemId}"
 
                         else -> item.hashCode()
                     }
@@ -210,7 +211,7 @@ fun CategoryRow(
                         is AppMediaItem.Genre -> "Genre"
                         else -> "Unknown"
                     }
-                }
+                },
             ) { item ->
                 when (item) {
                     is AppMediaItem.Artist -> ArtistWithMenu(
@@ -220,7 +221,7 @@ fun CategoryRow(
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.Album -> AlbumWithMenu(
@@ -230,7 +231,7 @@ fun CategoryRow(
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.Playlist -> PlaylistWithMenu(
@@ -240,7 +241,7 @@ fun CategoryRow(
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.Podcast -> PodcastWithMenu(
@@ -250,7 +251,7 @@ fun CategoryRow(
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.Track -> TrackWithMenu(
@@ -259,7 +260,7 @@ fun CategoryRow(
                         onPlayOption = onPlayClick,
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
@@ -269,7 +270,7 @@ fun CategoryRow(
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
                         progressActions = progressActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.Audiobook -> AudiobookWithMenu(
@@ -280,7 +281,7 @@ fun CategoryRow(
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
                         progressActions = progressActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.RadioStation -> RadioWithMenu(
@@ -289,7 +290,7 @@ fun CategoryRow(
                         onPlayOption = onPlayClick,
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     is AppMediaItem.Genre -> GenreWithMenu(
@@ -299,7 +300,7 @@ fun CategoryRow(
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher
+                        providerIconFetcher = providerIconFetcher,
                     )
 
                     else -> {}
@@ -321,5 +322,3 @@ fun allItemsTitle(type: MediaType) = when (type) {
     MediaType.GENRE -> stringResource(Res.string.all_genres)
     else -> null
 }
-
-

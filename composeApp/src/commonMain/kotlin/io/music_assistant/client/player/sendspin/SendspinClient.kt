@@ -3,7 +3,6 @@ package io.music_assistant.client.player.sendspin
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.audio.AudioPipeline
-import io.music_assistant.client.player.sendspin.audio.AudioStreamManager
 import io.music_assistant.client.player.sendspin.model.CommandValue
 import io.music_assistant.client.player.sendspin.model.PlayerStateValue
 import io.music_assistant.client.player.sendspin.model.ServerCommandMessage
@@ -27,9 +26,8 @@ class SendspinClient(
     private val mediaPlayerController: MediaPlayerController,
     private val audioPipeline: AudioPipeline,
     private val clockSynchronizer: ClockSynchronizer,
-    private val networkAvailable: StateFlow<Boolean>? = null
+    private val networkAvailable: StateFlow<Boolean>? = null,
 ) : CoroutineScope {
-
     private val logger = Logger.withTag("SendspinClient")
     private val supervisorJob = SupervisorJob()
 
@@ -71,7 +69,7 @@ class SendspinClient(
             val sendspinTransport =
                 io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport(
                     serverUrl,
-                    networkAvailable
+                    networkAvailable,
                 )
             connectWithTransport(sendspinTransport)
         } catch (e: Exception) {
@@ -80,8 +78,8 @@ class SendspinClient(
                 SendspinState.Error(
                     SendspinError.Permanent(
                         cause = e,
-                        userAction = "Check Sendspin settings and server connection"
-                    )
+                        userAction = "Check Sendspin settings and server connection",
+                    ),
                 )
             }
         }
@@ -107,19 +105,19 @@ class SendspinClient(
             val dispatcherConfig = MessageDispatcherConfig(
                 clientCapabilities = capabilities,
                 authToken = config.authToken,
-                requiresAuth = config.requiresAuth
+                requiresAuth = config.requiresAuth,
             )
             val dispatcher = MessageDispatcher(
                 transport = sendspinTransport,
                 clockSynchronizer = clockSynchronizer,
-                config = dispatcherConfig
+                config = dispatcherConfig,
             )
             messageDispatcher = dispatcher
 
             // Create state reporter (uses unified state)
             val reporter = StateReporter(
                 messageDispatcher = dispatcher,
-                stateProvider = { _state.value }
+                stateProvider = { _state.value },
             )
             stateReporter = reporter
 
@@ -134,15 +132,14 @@ class SendspinClient(
 
             // Run the unified state machine
             runStateMachine(sendspinTransport, dispatcher)
-
         } catch (e: Exception) {
             logger.e(e) { "Failed to connect to server" }
             _state.update {
                 SendspinState.Error(
                     SendspinError.Permanent(
                         cause = e,
-                        userAction = "Verify server is running and accessible"
-                    )
+                        userAction = "Verify server is running and accessible",
+                    ),
                 )
             }
         }
@@ -161,7 +158,7 @@ class SendspinClient(
      */
     private fun runStateMachine(
         sendspinTransport: SendspinTransport,
-        dispatcher: MessageDispatcher
+        dispatcher: MessageDispatcher,
     ) {
         // --- Transport state ---
         launch {
@@ -210,8 +207,8 @@ class SendspinClient(
                                 SendspinState.Error(
                                     SendspinError.Permanent(
                                         cause = wsState.error,
-                                        userAction = "Check network connection and server availability"
-                                    )
+                                        userAction = "Check network connection and server availability",
+                                    ),
                                 )
                             }
                         } else {
@@ -219,8 +216,8 @@ class SendspinClient(
                                 SendspinState.Error(
                                     SendspinError.Transient(
                                         cause = wsState.error,
-                                        willRetry = false
-                                    )
+                                        willRetry = false,
+                                    ),
                                 )
                             }
                         }
@@ -249,7 +246,7 @@ class SendspinClient(
                     _state.update {
                         SendspinState.Ready(
                             serverId = payload.serverId,
-                            serverName = payload.name
+                            serverName = payload.name,
                         )
                     }
                 } else {

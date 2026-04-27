@@ -25,24 +25,24 @@ data class ServerMediaItem(
     @SerialName("sort_name") val sortName: String? = null,
     @SerialName("uri") val uri: String? = null,
     @SerialName("image") val image: MediaItemImage? = null,
-    //@SerialName("is_playable") val isPlayable: Boolean? = null,
-    //@SerialName("timestamp_added") val timestampAdded: Long? = null,
-    //@SerialName("timestamp_modified") val timestampModified: Long? = null,
+    // @SerialName("is_playable") val isPlayable: Boolean? = null,
+    // @SerialName("timestamp_added") val timestampAdded: Long? = null,
+    // @SerialName("timestamp_modified") val timestampModified: Long? = null,
     // various subtypes
-    //@SerialName("musicbrainz_id") val musicbrainzId: String? = null,
+    // @SerialName("musicbrainz_id") val musicbrainzId: String? = null,
     // Album
     @SerialName("version") val version: String? = null,
-    //@SerialName("external_ids") val externalIds: List<List<String>>? = null,
+    // @SerialName("external_ids") val externalIds: List<List<String>>? = null,
     @SerialName("position") val position: Int? = null,
     @SerialName("year") val year: Int? = null,
     @SerialName("artists") val artists: List<ServerMediaItem>? = null,
-    //@SerialName("album_type") val albumType: AlbumType? = null,
+    // @SerialName("album_type") val albumType: AlbumType? = null,
     // Playlist only
-    //@SerialName("owner") val owner: String? = null,
+    // @SerialName("owner") val owner: String? = null,
     @SerialName("is_editable") val isEditable: Boolean? = null,
     // Track only
     @SerialName("duration") val duration: Double? = null,
-    //@SerialName("isrc") val isrc: String? = null,
+    // @SerialName("isrc") val isrc: String? = null,
     // album track only
     @SerialName("album") val album: ServerMediaItem? = null,
     @SerialName("disc_number") val discNumber: Int? = null,
@@ -74,22 +74,22 @@ data class Metadata(
     @SerialName("copyright") val copyright: String? = null,
     @SerialName("lyrics") val lyrics: String? = null,
     @SerialName("label") val label: String? = null,
-    //@SerialName("links") val links: List<String>? = null,
-    //@SerialName("performers") val performers: List<String>? = null,
+    // @SerialName("links") val links: List<String>? = null,
+    // @SerialName("performers") val performers: List<String>? = null,
     @SerialName("preview") val preview: String? = null,
     @SerialName("popularity") val popularity: Int? = null,
     @SerialName("release_date") val releaseDate: String? = null,
-    //@SerialName("languages") val languages: List<String>? = null,
+    // @SerialName("languages") val languages: List<String>? = null,
     @SerialName("chapters") val chapters: List<MediaItemChapter>? = null,
-    @SerialName("last_refresh") val lastRefresh: Long?
+    @SerialName("last_refresh") val lastRefresh: Long?,
 )
 
 @Serializable
 data class MediaItemImage(
-    //@SerialName("type") val type: String,
+    // @SerialName("type") val type: String,
     @SerialName("path") val path: String,
     @SerialName("provider") val provider: String,
-    @SerialName("remotely_accessible") val remotelyAccessible: Boolean
+    @SerialName("remotely_accessible") val remotelyAccessible: Boolean,
 )
 
 @Serializable
@@ -133,5 +133,5 @@ data class AudioFormat(
     @SerialName("bit_depth") val bitDepth: Int? = null,
     @SerialName("channels") val channels: Int? = null,
     @SerialName("output_format_str") val outputFormatStr: String? = null,
-    @SerialName("bit_rate") val bitRate: Int? = null
+    @SerialName("bit_rate") val bitRate: Int? = null,
 )

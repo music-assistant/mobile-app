@@ -22,7 +22,6 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = Qualifiers.MEDIUM_PHONE)
 class LibraryTest {
-
     @get:Rule
     val testRuleChain = createTestRuleChain()
 
@@ -66,21 +65,23 @@ class LibraryTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album1)
-
             .clickLibrary()
             .clickAlbums()
             .clickOnMedia(album2)
-
-            .clickHome(MediaItemPage(
+            .clickHome(
+                MediaItemPage(
                 album1,
                 navigationItem = "Home",
-                composeTestRule = composeTestRule
-            ))
-            .clickLibrary(MediaItemPage(
+                composeTestRule = composeTestRule,
+            ),
+            )
+            .clickLibrary(
+                MediaItemPage(
                 album2,
                 navigationItem = "Library",
-                composeTestRule = composeTestRule
-            ))
+                composeTestRule = composeTestRule,
+            ),
+            )
     }
 
     @Test
@@ -92,7 +93,6 @@ class LibraryTest {
             .clickLibrary()
             .clickAlbums()
             .clickOnMedia(album)
-
             .clickLibrary(LibraryPage("Albums", composeTestRule))
     }
 }

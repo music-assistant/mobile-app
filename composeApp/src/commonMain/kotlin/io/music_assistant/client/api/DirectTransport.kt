@@ -27,9 +27,8 @@ class DirectTransport(
     private val connectionInfoProvider: () -> ConnectionInfo,
     private val scope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
-    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS
+    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
 ) : Transport {
-
     private val logger = Logger.withTag("DirectTransport")
 
     private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
@@ -101,12 +100,11 @@ class DirectTransport(
                         openWebSocket(connectionInfoProvider())
                         // Returned normally = was connected, then dropped — signal success for fresh cycle
                         true
-                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (e: Exception) {
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                         logger.w { "Reconnect attempt $attempt failed: ${e.message}" }
                         false
                     }
-                }
+                },
             )
             if (!reconnected) {
                 _state.value = TransportState.Failed(Exception("Max reconnect attempts reached"))

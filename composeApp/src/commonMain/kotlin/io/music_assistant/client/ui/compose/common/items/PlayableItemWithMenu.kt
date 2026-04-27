@@ -42,8 +42,8 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -72,7 +72,7 @@ fun TrackWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    providerIconFetcher = providerIconFetcher
+                    providerIconFetcher = providerIconFetcher,
                 )
             } else {
                 TrackGridItem(
@@ -81,10 +81,10 @@ fun TrackWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    providerIconFetcher = providerIconFetcher
+                    providerIconFetcher = providerIconFetcher,
                 )
             }
-        }
+        },
     )
 }
 
@@ -116,7 +116,7 @@ fun PodcastEpisodeWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    providerIconFetcher = providerIconFetcher
+                    providerIconFetcher = providerIconFetcher,
                 )
             } else {
                 PodcastEpisodeGridItem(
@@ -125,10 +125,10 @@ fun PodcastEpisodeWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    providerIconFetcher = providerIconFetcher
+                    providerIconFetcher = providerIconFetcher,
                 )
             }
-        }
+        },
     )
 }
 
@@ -158,7 +158,7 @@ fun RadioWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    providerIconFetcher = providerIconFetcher
+                    providerIconFetcher = providerIconFetcher,
                 )
             } else {
                 RadioGridItem(
@@ -167,10 +167,10 @@ fun RadioWithMenu(
                     serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    providerIconFetcher = providerIconFetcher
+                    providerIconFetcher = providerIconFetcher,
                 )
             }
-        }
+        },
     )
 }
 
@@ -193,7 +193,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
         modifier: Modifier,
         onClick: (T) -> Unit,
         onLongClick: (T) -> Unit,
-    ) -> Unit
+    ) -> Unit,
 ) {
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
@@ -208,7 +208,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
         )
         DropdownMenu(
             expanded = expandedItemId == item.itemId,
-            onDismissRequest = { expandedItemId = null }
+            onDismissRequest = { expandedItemId = null },
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_play_now)) },
@@ -219,9 +219,9 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = PlayIcon,
-                        contentDescription = stringResource(Res.string.action_play_now)
+                        contentDescription = stringResource(Res.string.action_play_now),
                     )
-                }
+                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_insert_next_and_play)) },
@@ -232,9 +232,9 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.PlaylistAddCircle,
-                        contentDescription = stringResource(Res.string.action_insert_next_and_play)
+                        contentDescription = stringResource(Res.string.action_insert_next_and_play),
                     )
-                }
+                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_insert_next)) },
@@ -245,9 +245,9 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.QueuePlayNext,
-                        contentDescription = stringResource(Res.string.action_insert_next)
+                        contentDescription = stringResource(Res.string.action_insert_next),
                     )
-                }
+                },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.action_add_to_bottom)) },
@@ -258,9 +258,9 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.AddToQueue,
-                        contentDescription = stringResource(Res.string.action_add_to_bottom)
+                        contentDescription = stringResource(Res.string.action_add_to_bottom),
                     )
-                }
+                },
             )
             if (item.canStartRadio) {
                 DropdownMenuItem(
@@ -272,13 +272,19 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Radio,
-                            contentDescription = stringResource(Res.string.action_start_radio)
+                            contentDescription = stringResource(Res.string.action_start_radio),
                         )
-                    }
+                    },
                 )
             }
 
-            val libText = if (item.isInLibrary) stringResource(Res.string.action_remove_from_library) else stringResource(Res.string.action_add_to_library)
+            val libText = if (item.isInLibrary) {
+                stringResource(
+                    Res.string.action_remove_from_library,
+                )
+            } else {
+                stringResource(Res.string.action_add_to_library)
+            }
             DropdownMenuItem(
                 text = { Text(libText) },
                 onClick = {
@@ -288,17 +294,25 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 leadingIcon = {
                     Icon(
                         imageVector =
-                            if (item.isInLibrary) TablerIcons.FolderMinus
-                            else TablerIcons.FolderPlus,
-                        contentDescription = libText
+                            if (item.isInLibrary) {
+                                TablerIcons.FolderMinus
+                            } else {
+                                TablerIcons.FolderPlus
+                            },
+                        contentDescription = libText,
                     )
-                }
+                },
             )
-
 
             // Favorite management (only for library items)
             if (item.isInLibrary) {
-                val favText = if (item.favorite == true) stringResource(Res.string.action_unfavorite) else stringResource(Res.string.action_favorite)
+                val favText = if (item.favorite == true) {
+                    stringResource(
+                        Res.string.action_unfavorite,
+                    )
+                } else {
+                    stringResource(Res.string.action_favorite)
+                }
                 DropdownMenuItem(
                     text = { Text(favText) },
                     onClick = {
@@ -308,11 +322,14 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector =
-                                if (item.favorite == true) TablerIcons.HeartBroken
-                                else TablerIcons.Heart,
-                            contentDescription = favText
+                                if (item.favorite == true) {
+                                    TablerIcons.HeartBroken
+                                } else {
+                                    TablerIcons.Heart
+                                },
+                            contentDescription = favText,
                         )
-                    }
+                    },
                 )
             }
 
@@ -332,9 +349,9 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
-                            contentDescription = stringResource(Res.string.action_add_to_playlist)
+                            contentDescription = stringResource(Res.string.action_add_to_playlist),
                         )
-                    }
+                    },
                 )
             }
             if (onRemoveFromPlaylist != null) {
@@ -347,9 +364,9 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(Res.string.action_remove_from_playlist)
+                            contentDescription = stringResource(Res.string.action_remove_from_playlist),
                         )
-                    }
+                    },
                 )
             }
 
@@ -357,7 +374,17 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
             if (progressActions != null && item is AppMediaItem.PodcastEpisode) {
                 val isPlayed = item.fullyPlayed == true
                 DropdownMenuItem(
-                    text = { Text(if (isPlayed) stringResource(Res.string.action_mark_unplayed) else stringResource(Res.string.action_mark_played)) },
+                    text = {
+                        Text(
+                        if (isPlayed) {
+                            stringResource(
+                                Res.string.action_mark_unplayed,
+                            )
+                        } else {
+                            stringResource(Res.string.action_mark_played)
+                        },
+                    )
+                    },
                     onClick = {
                         if (isPlayed) {
                             progressActions.onMarkUnplayed(item as AppMediaItem)
@@ -369,9 +396,15 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     leadingIcon = {
                         Icon(
                             imageVector = if (isPlayed) Icons.Default.Replay else Icons.Default.Check,
-                            contentDescription = if (isPlayed) stringResource(Res.string.action_mark_unplayed) else stringResource(Res.string.action_mark_played)
+                            contentDescription = if (isPlayed) {
+                                stringResource(
+                                    Res.string.action_mark_unplayed,
+                                )
+                            } else {
+                                stringResource(Res.string.action_mark_played)
+                            },
                         )
-                    }
+                    },
                 )
             }
         }
@@ -389,7 +422,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     if (isLoadingPlaylists) {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator()
                         }
@@ -399,7 +432,8 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                         LazyColumn {
                             items(
                                 items = playlists,
-                                key = { p -> p.itemId }) { playlist ->
+                                key = { p -> p.itemId },
+                            ) { playlist ->
                                 TextButton(
                                     onClick = {
                                         playlistActions?.onAddToPlaylist
@@ -407,11 +441,11 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                                         showPlaylistDialog = false
                                         playlists = emptyList()
                                     },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Text(
                                         text = playlist.name,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                             }
@@ -427,10 +461,8 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     }) {
                         Text(stringResource(Res.string.common_cancel))
                     }
-                }
+                },
             )
         }
     }
 }
-
-

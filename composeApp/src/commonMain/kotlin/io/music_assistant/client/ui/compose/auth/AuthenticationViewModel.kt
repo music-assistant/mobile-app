@@ -18,9 +18,8 @@ import kotlinx.coroutines.launch
 
 class AuthenticationViewModel(
     private val authManager: AuthenticationManager,
-    serviceClient: ServiceClient
+    serviceClient: ServiceClient,
 ) : ViewModel() {
-
     private val _providers = MutableStateFlow<List<AuthProvider>>(emptyList())
     val providers: StateFlow<List<AuthProvider>> = _providers.asStateFlow()
 
@@ -130,7 +129,7 @@ class AuthenticationViewModel(
             val builtinProvider = AuthProvider(
                 id = "builtin",
                 type = "builtin",
-                requiresRedirect = false
+                requiresRedirect = false,
             )
             _providers.update { listOf(builtinProvider) }
             // Clear job reference since we're done (synchronous)
@@ -161,13 +160,12 @@ class AuthenticationViewModel(
 
     fun login(provider: AuthProvider) {
         viewModelScope.launch {
-
             when (provider.type) {
                 "builtin" -> {
                     authManager.loginWithCredentials(
                         provider.id,
                         username.value,
-                        password.value
+                        password.value,
                     )
                 }
 

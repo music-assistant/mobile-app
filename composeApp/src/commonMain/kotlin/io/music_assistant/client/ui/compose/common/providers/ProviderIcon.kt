@@ -11,8 +11,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -32,7 +32,7 @@ fun ProviderIcon(
                 imageVector = providerIconModel.icon,
                 contentDescription = stringResource(Res.string.cd_provider_icon),
                 modifier = modifier,
-                tint = providerIconModel.tint
+                tint = providerIconModel.tint,
             )
         }
 
@@ -50,7 +50,7 @@ fun ProviderIcon(
                 contentDescription = stringResource(Res.string.cd_provider_icon),
                 imageLoader = imageLoader,
                 modifier = modifier,
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Fit,
             )
         }
 
@@ -68,7 +68,7 @@ fun ProviderIcon(
                 contentDescription = stringResource(Res.string.cd_provider_icon),
                 imageLoader = imageLoader,
                 modifier = modifier,
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Fit,
             )
         }
 

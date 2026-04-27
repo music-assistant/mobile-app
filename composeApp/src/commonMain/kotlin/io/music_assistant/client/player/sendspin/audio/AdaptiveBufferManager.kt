@@ -16,7 +16,7 @@ import kotlin.math.sqrt
  * Based on industry best practices from WebRTC NetEQ and RTP/VoIP adaptive playout algorithms.
  */
 class AdaptiveBufferManager(
-    private val clockSynchronizer: ClockSynchronizer
+    private val clockSynchronizer: ClockSynchronizer,
 ) {
     private val logger = Logger.withTag("AdaptiveBufferManager")
 
@@ -37,7 +37,7 @@ class AdaptiveBufferManager(
         lastAdjustmentTime = 0L,
         lastDirection = Direction.NONE,
         consecutiveSameDirection = 0,
-        cooldownUntil = 0L
+        cooldownUntil = 0L,
     )
 
     // Current thresholds
@@ -146,7 +146,7 @@ class AdaptiveBufferManager(
             rttStdDev = jitterEstimator.getStdDev(),
             syncQuality = clockSynchronizer.currentQuality,
             dropRate = dropRate,
-            recentUnderruns = recentUnderruns
+            recentUnderruns = recentUnderruns,
         )
     }
 
@@ -218,7 +218,7 @@ class AdaptiveBufferManager(
             } else {
                 1
             },
-            cooldownUntil = currentTime + INCREASE_COOLDOWN
+            cooldownUntil = currentTime + INCREASE_COOLDOWN,
         )
 
         logger.i {
@@ -246,7 +246,7 @@ class AdaptiveBufferManager(
             } else {
                 1
             },
-            cooldownUntil = currentTime + DECREASE_COOLDOWN
+            cooldownUntil = currentTime + DECREASE_COOLDOWN,
         )
 
         logger.i {
@@ -430,7 +430,7 @@ data class NetworkStats(
     val rttStdDev: Double,          // Std dev of RTT (jitter estimate) in microseconds
     val syncQuality: SyncQuality,   // Current sync quality state
     val dropRate: Double,           // Proportion of dropped chunks [0.0, 1.0]
-    val recentUnderruns: Int        // Count in last 60 seconds
+    val recentUnderruns: Int,        // Count in last 60 seconds
 )
 
 /**
@@ -440,7 +440,7 @@ data class AdaptationState(
     val lastAdjustmentTime: Long,      // Microseconds since start
     val lastDirection: Direction,       // INCREASE, DECREASE, NONE
     val consecutiveSameDirection: Int,  // Count of same-direction adjustments
-    val cooldownUntil: Long            // Don't adjust before this time
+    val cooldownUntil: Long,            // Don't adjust before this time
 )
 
 /**
@@ -449,5 +449,5 @@ data class AdaptationState(
 enum class Direction {
     INCREASE,
     DECREASE,
-    NONE
+    NONE,
 }

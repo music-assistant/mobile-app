@@ -19,7 +19,7 @@ sealed class WebRTCConnectionState {
     /** WebRTC peer connection established and data channels open */
     data class Connected(
         val sessionId: String,
-        val remoteId: RemoteId
+        val remoteId: RemoteId,
     ) : WebRTCConnectionState()
 
     /** Connection failed or error occurred */

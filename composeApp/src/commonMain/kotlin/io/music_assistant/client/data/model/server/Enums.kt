@@ -12,7 +12,7 @@ enum class PlayerType {
     GROUP,
 
     @SerialName("stereo_pair")
-    STEREO_PAIR
+    STEREO_PAIR,
 }
 
 @Serializable
@@ -24,7 +24,7 @@ enum class PlayerState {
     PAUSED,
 
     @SerialName("playing")
-    PLAYING
+    PLAYING,
 }
 
 @Serializable
@@ -36,7 +36,7 @@ enum class RepeatMode {
     ONE,
 
     @SerialName("all")
-    ALL
+    ALL,
 }
 
 class PlayerFeature {
@@ -123,16 +123,16 @@ enum class EventType {
     DISCONNECTED,
 
     @SerialName("*")
-    ALL
+    ALL,
 }
 
-//enum class AlbumType {
+// enum class AlbumType {
 //    @SerialName("album") ALBUM,
 //    @SerialName("single") SINGLE,
 //    @SerialName("compilation") COMPILATION,
 //    @SerialName("ep") EP,
 //    @SerialName("unknown") UNKNOWN,
-//}
+// }
 
 enum class QueueOption {
     @SerialName("play")
@@ -144,7 +144,7 @@ enum class QueueOption {
     @SerialName("next")
     NEXT,
 
-    //@SerialName("replace_next") REPLACE_NEXT,
+    // @SerialName("replace_next") REPLACE_NEXT,
     @SerialName("add")
     ADD,
 }

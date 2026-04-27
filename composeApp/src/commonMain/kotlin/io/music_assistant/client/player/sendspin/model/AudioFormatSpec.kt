@@ -8,7 +8,7 @@ data class AudioFormatSpec(
     @SerialName("codec") val codec: AudioCodec,
     @SerialName("channels") val channels: Int,
     @SerialName("sample_rate") val sampleRate: Int,
-    @SerialName("bit_depth") val bitDepth: Int
+    @SerialName("bit_depth") val bitDepth: Int,
 ) {
     init {
         require(channels in 1..32) { "Channels must be between 1 and 32" }

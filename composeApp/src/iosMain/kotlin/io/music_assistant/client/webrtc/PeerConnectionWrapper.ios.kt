@@ -53,7 +53,7 @@ actual class PeerConnectionWrapper actual constructor() {
                 RtcIceServer(
                     urls = server.urls,
                     username = server.username ?: "",
-                    password = server.credential ?: ""
+                    password = server.credential ?: "",
                 )
             }
 
@@ -70,8 +70,8 @@ actual class PeerConnectionWrapper actual constructor() {
                             IceCandidateData(
                                 candidate = candidate.candidate,
                                 sdpMid = candidate.sdpMid,
-                                sdpMLineIndex = candidate.sdpMLineIndex
-                            )
+                                sdpMLineIndex = candidate.sdpMLineIndex,
+                            ),
                         )
                     }
                 } catch (e: Exception) {
@@ -127,7 +127,7 @@ actual class PeerConnectionWrapper actual constructor() {
 
         val options = OfferAnswerOptions(
             offerToReceiveAudio = false,
-            offerToReceiveVideo = false
+            offerToReceiveVideo = false,
         )
 
         val offer = pc.createOffer(options)
@@ -137,7 +137,7 @@ actual class PeerConnectionWrapper actual constructor() {
 
         return io.music_assistant.client.webrtc.model.SessionDescription(
             sdp = offer.sdp,
-            type = "offer"
+            type = "offer",
         )
     }
 
@@ -147,7 +147,7 @@ actual class PeerConnectionWrapper actual constructor() {
 
         val sdp = SessionDescription(
             type = SessionDescriptionType.Answer,
-            sdp = answer.sdp
+            sdp = answer.sdp,
         )
 
         pc.setRemoteDescription(sdp)
@@ -161,7 +161,7 @@ actual class PeerConnectionWrapper actual constructor() {
         val iceCandidate = IceCandidate(
             sdpMid = candidate.sdpMid ?: "",
             sdpMLineIndex = candidate.sdpMLineIndex ?: 0,
-            candidate = candidate.candidate
+            candidate = candidate.candidate,
         )
 
         val success = pc.addIceCandidate(iceCandidate)
@@ -176,7 +176,7 @@ actual class PeerConnectionWrapper actual constructor() {
     actual fun createDataChannel(
         label: String,
         ordered: Boolean,
-        maxRetransmits: Int
+        maxRetransmits: Int,
     ): DataChannelWrapper {
         val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
         logger.d { "Creating data channel: $label (ordered=$ordered, maxRetransmits=$maxRetransmits)" }
@@ -184,7 +184,7 @@ actual class PeerConnectionWrapper actual constructor() {
         val dataChannel = pc.createDataChannel(
             label = label,
             ordered = ordered,
-            maxRetransmits = maxRetransmits
+            maxRetransmits = maxRetransmits,
         ) ?: throw IllegalStateException("Failed to create data channel")
 
         return DataChannelWrapper(dataChannel)

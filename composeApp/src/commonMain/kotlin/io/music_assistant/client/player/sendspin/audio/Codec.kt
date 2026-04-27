@@ -4,11 +4,12 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
 
 enum class Codec(
     val decoderInitializer: () -> AudioDecoder,
-    val sendspinAudioCodec: AudioCodec
+    val sendspinAudioCodec: AudioCodec,
 ) {
     PCM({ PcmDecoder() }, AudioCodec.PCM),
     FLAC({ FlacDecoder() }, AudioCodec.FLAC),
-    OPUS({ OpusDecoder() }, AudioCodec.OPUS);
+    OPUS({ OpusDecoder() }, AudioCodec.OPUS),
+    ;
 
     fun uiTitle() = when (this) {
         OPUS -> "Opus (compressed, lowest bandwidth)"

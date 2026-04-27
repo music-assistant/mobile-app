@@ -10,7 +10,7 @@ data class QueueInfo(
     val shuffleEnabled: Boolean,
     val repeatMode: RepeatMode?,
     val elapsedTime: Double?,
-    val currentItem: QueueTrack?
+    val currentItem: QueueTrack?,
 ) {
     companion object Companion {
         fun ServerQueue.toQueue() = QueueInfo(
@@ -19,7 +19,7 @@ data class QueueInfo(
             shuffleEnabled = shuffleEnabled,
             repeatMode = repeatMode,
             elapsedTime = elapsedTime,
-            currentItem = currentItem?.toQueueTrack()
+            currentItem = currentItem?.toQueueTrack(),
         )
     }
 }

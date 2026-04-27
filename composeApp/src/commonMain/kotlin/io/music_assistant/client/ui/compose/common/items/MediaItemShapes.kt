@@ -23,16 +23,18 @@ class CutStripShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
-        density: Density
+        density: Density,
     ): Outline {
-        return Outline.Generic(Path().apply {
+        return Outline.Generic(
+            Path().apply {
             // Defines the album cover area, excluding the rightmost strip
             moveTo(0f, 0f)
             lineTo(size.width * 0.9f, 0f)
             lineTo(size.width * 0.9f, size.height)
             lineTo(0f, size.height)
             close()
-        })
+        },
+        )
     }
 }
 
@@ -44,7 +46,7 @@ class HoleShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
-        density: Density
+        density: Density,
     ): Outline {
         val radiusPx = size.width * 0.17f
         val center = size.width * 0.5f
@@ -60,7 +62,7 @@ class HoleShape() : Shape {
                 left = center - radiusPx,
                 top = center - radiusPx,
                 right = center + radiusPx,
-                bottom = center + radiusPx
+                bottom = center + radiusPx,
             )
             addOval(oval = rect)
         }
@@ -69,7 +71,7 @@ class HoleShape() : Shape {
         val finalPath = Path.combine(
             operation = PathOperation.Difference,
             path1 = coverPath,
-            path2 = holePath
+            path2 = holePath,
         )
 
         return Outline.Generic(finalPath)
@@ -84,9 +86,10 @@ class NotebookCutShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
-        density: Density
+        density: Density,
     ): Outline {
-        return Outline.Generic(Path().apply {
+        return Outline.Generic(
+            Path().apply {
             val stripPx = size.width * 0.1f
 
             // Defines the content area, excluding the leftmost strip
@@ -95,7 +98,8 @@ class NotebookCutShape() : Shape {
             lineTo(size.width, size.height)
             lineTo(stripPx, size.height)
             close()
-        })
+        },
+        )
     }
 }
 
@@ -107,9 +111,10 @@ class CornerCutShape() : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
-        density: Density
+        density: Density,
     ): Outline {
-        return Outline.Generic(Path().apply {
+        return Outline.Generic(
+            Path().apply {
             val cutPx = size.width / 3f
 
             // Start from top-left corner after the cut
@@ -119,7 +124,8 @@ class CornerCutShape() : Shape {
             lineTo(0f, size.height)
             lineTo(0f, cutPx)
             close()
-        })
+        },
+        )
     }
 }
 
@@ -131,9 +137,10 @@ class BookSpineShape(private val spineWidth: Dp) : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
-        density: Density
+        density: Density,
     ): Outline {
-        return Outline.Generic(Path().apply {
+        return Outline.Generic(
+            Path().apply {
             val spinePx = with(density) { spineWidth.toPx() }
 
             // Content area excluding the spine strip on the left
@@ -142,7 +149,8 @@ class BookSpineShape(private val spineWidth: Dp) : Shape {
             lineTo(size.width, size.height)
             lineTo(spinePx, size.height)
             close()
-        })
+        },
+        )
     }
 }
 
@@ -154,9 +162,10 @@ class WavyHexagonShape : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
-        density: Density
+        density: Density,
     ): Outline {
-        return Outline.Generic(Path().apply {
+        return Outline.Generic(
+            Path().apply {
             val width = size.width
             val height = size.height
             val centerX = width / 2f
@@ -168,7 +177,7 @@ class WavyHexagonShape : Shape {
                 val angle = (i * 60f - 30f) * (PI / 180f).toFloat()
                 Offset(
                     centerX + radius * cos(angle),
-                    centerY + radius * sin(angle)
+                    centerY + radius * sin(angle),
                 )
             }
 
@@ -205,6 +214,7 @@ class WavyHexagonShape : Shape {
             }
 
             close()
-        })
+        },
+        )
     }
 }

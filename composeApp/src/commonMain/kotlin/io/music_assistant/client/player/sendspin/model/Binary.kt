@@ -11,7 +11,8 @@ enum class BinaryMessageType(val value: UByte) {
     ARTWORK_CHANNEL_3(11u),
 
     // Visualizer role (16-23)
-    VISUALIZER_DATA(16u);
+    VISUALIZER_DATA(16u),
+    ;
 
     companion object {
         fun fromValue(value: UByte): BinaryMessageType? {
@@ -23,7 +24,7 @@ enum class BinaryMessageType(val value: UByte) {
 data class BinaryMessage(
     val type: BinaryMessageType,
     val timestamp: Long,
-    val data: ByteArray
+    val data: ByteArray,
 ) {
     companion object {
         fun decode(data: ByteArray): BinaryMessage? {

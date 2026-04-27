@@ -17,7 +17,7 @@ fun createKoinTestRule(): KoinTestRule {
             sharedModule(::createFakeServiceClient),
             webrtcModule,
             androidModule(),
-            appModule()
+            appModule(),
         )
     }
 }

@@ -24,7 +24,9 @@ enum class PeerConnectionStateValue {
     FAILED,
 
     /** Peer connection was closed */
-    CLOSED;
+    CLOSED,
+
+    ;
 
     override fun toString(): String = name.lowercase()
 }

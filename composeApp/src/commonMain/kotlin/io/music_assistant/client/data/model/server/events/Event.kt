@@ -12,5 +12,5 @@ interface Event<T> {
 
 @Serializable
 data class GenericEvent(
-    @SerialName("event") val eventType: String
+    @SerialName("event") val eventType: String,
 )

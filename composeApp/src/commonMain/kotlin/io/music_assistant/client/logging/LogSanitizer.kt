@@ -6,7 +6,6 @@ package io.music_assistant.client.logging
  * should also avoid logging sensitive data in the first place.
  */
 object LogSanitizer {
-
     private data class RedactionRule(val pattern: Regex, val replacement: String)
 
     private val rules = listOf(
@@ -19,7 +18,10 @@ object LogSanitizer {
         // Remote IDs (26-char base32 uppercase alphanumeric, derived from DTLS fingerprint)
         RedactionRule(Regex("""\b[A-Z0-9]{26}\b"""), "[REDACTED_REMOTE_ID]"),
         // UUIDs (session IDs, etc.)
-        RedactionRule(Regex("""\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"""), "[REDACTED_ID]"),
+        RedactionRule(
+            Regex("""\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"""),
+            "[REDACTED_ID]",
+        ),
         // Email addresses
         RedactionRule(Regex("""\b[\w.+-]+@[\w.-]+\.\w{2,}\b"""), "[REDACTED_EMAIL]"),
     )

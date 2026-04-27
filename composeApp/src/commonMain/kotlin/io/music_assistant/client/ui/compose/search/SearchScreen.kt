@@ -42,8 +42,8 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CategoryRow
 import io.music_assistant.client.ui.compose.nav.Screen
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -52,7 +52,7 @@ fun SearchScreen(
     onNavigateToItem: (String, MediaType, String) -> Unit,
     viewModel: SearchViewModel = koinViewModel(),
     actionsViewModel: ActionsViewModel = koinViewModel(),
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
@@ -71,7 +71,7 @@ fun SearchScreen(
             }
 
             SearchTopBar(scrollBehavior = scrollBehaviour)
-        }
+        },
     ) {
         SearchContent(
             state = state,
@@ -86,7 +86,8 @@ fun SearchScreen(
                     is AppMediaItem.Album,
                     is AppMediaItem.Playlist,
                     is AppMediaItem.Podcast,
-                    is AppMediaItem.Audiobook -> {
+                    is AppMediaItem.Audiobook,
+                    -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -96,21 +97,21 @@ fun SearchScreen(
             onPlayClick = viewModel::onPlayClick,
             playlistActions = ActionsViewModel.PlaylistActions(
                 onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                onAddToPlaylist = actionsViewModel::addToPlaylist
+                onAddToPlaylist = actionsViewModel::addToPlaylist,
             ),
             libraryActions = ActionsViewModel.LibraryActions(
                 onLibraryClick = actionsViewModel::onLibraryClick,
-                onFavoriteClick = actionsViewModel::onFavoriteClick
+                onFavoriteClick = actionsViewModel::onFavoriteClick,
             ),
             progressActions = ActionsViewModel.ProgressActions(
                 onMarkPlayed = actionsViewModel::onMarkPlayed,
-                onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                onMarkUnplayed = actionsViewModel::onMarkUnplayed,
             ),
             providerIconFetcher = { modifier, provider ->
                 actionsViewModel.getProviderIcon(provider)
                     ?.let { ProviderIcon(modifier, it) }
             },
-            contentPadding = contentPadding
+            contentPadding = contentPadding,
         )
     }
 }
@@ -123,7 +124,7 @@ private fun SearchTopBar(
         title = {
             Text(text = stringResource(Res.string.search_title))
         },
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
 
@@ -152,7 +153,7 @@ private fun SearchContent(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
                 searchState = state.searchState,
                 onMediaTypeToggled = onMediaTypeToggled,
-                onLibraryOnlyToggled = onLibraryOnlyToggled
+                onLibraryOnlyToggled = onLibraryOnlyToggled,
             )
 
             // Results
@@ -160,7 +161,7 @@ private fun SearchContent(
                 is DataState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
@@ -169,17 +170,18 @@ private fun SearchContent(
                 is DataState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = stringResource(Res.string.search_error),
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
 
                 is DataState.Stale,
-                is DataState.Data -> {
+                is DataState.Data,
+                -> {
                     // Handle both Data and Stale - both contain valid search results
                     val results = when (resultsState) {
                         is DataState.Data -> resultsState.data
@@ -197,7 +199,7 @@ private fun SearchContent(
                     if (!hasResults) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(stringResource(Res.string.search_no_results))
                         }
@@ -241,7 +243,7 @@ private fun SearchContent(
                 is DataState.NoData -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(stringResource(Res.string.search_start))
                     }
@@ -254,7 +256,7 @@ private fun SearchContent(
             toastState = toastState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp)
+                .padding(bottom = 48.dp),
         )
     }
 }
@@ -280,7 +282,7 @@ private fun SearchFilters(
                 onClick = {
                     onMediaTypeToggled(
                         mediaTypeSelect.type,
-                        !mediaTypeSelect.isSelected
+                        !mediaTypeSelect.isSelected,
                     )
                 },
                 label = {
@@ -288,7 +290,7 @@ private fun SearchFilters(
                         text = mediaTypeSelect.type.name.lowercase().capitalize(Locale.current),
                         style = MaterialTheme.typography.bodySmall,
                     )
-                }
+                },
             )
         }
 
@@ -297,8 +299,11 @@ private fun SearchFilters(
             selected = searchState.libraryOnly,
             onClick = { onLibraryOnlyToggled(!searchState.libraryOnly) },
             label = {
-                Text(text = stringResource(Res.string.search_in_library_only), style = MaterialTheme.typography.bodySmall)
-            }
+                Text(
+                    text = stringResource(Res.string.search_in_library_only),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            },
         )
     }
     }

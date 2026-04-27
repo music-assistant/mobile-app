@@ -31,7 +31,7 @@ import io.music_assistant.client.utils.WindowClass
 fun AdaptiveNavigationScaffold(
     navigationItems: List<NavigationItem>,
     showNavBar: Boolean = true,
-    content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit
+    content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit,
 ) {
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
 
@@ -45,12 +45,12 @@ fun AdaptiveNavigationScaffold(
                             onClick = it.onClick,
                             icon = {
                                 Icon(it.icon, contentDescription = it.label)
-                            }
+                            },
                         )
                     }
                 }
             }
-        }
+        },
     ) { contentPadding ->
         Row {
             if (showNavBar && isExpandedScreen) {
@@ -61,7 +61,7 @@ fun AdaptiveNavigationScaffold(
                             it.onClick,
                             icon = {
                                 Icon(it.icon, contentDescription = it.label)
-                            }
+                            },
                         )
                     }
                 }
@@ -78,13 +78,13 @@ data class NavigationItem(
     val selected: Boolean,
     val onClick: () -> Unit,
     val icon: ImageVector,
-    val label: String? = null
+    val label: String? = null,
 )
 
 fun MultiBackStack.createNavigationItem(
     backStack: Int,
     icon: ImageVector,
-    label: String? = null
+    label: String? = null,
 ): NavigationItem {
     return NavigationItem(
         selected = currentBackStack == backStack,
@@ -96,7 +96,7 @@ fun MultiBackStack.createNavigationItem(
             }
         },
         icon = icon,
-        label = label
+        label = label,
     )
 }
 
@@ -108,14 +108,14 @@ fun PreviewAdaptiveNavigationScaffold() {
             NavigationItem(
                 selected = true,
                 onClick = {},
-                icon = Icons.Default.Home
+                icon = Icons.Default.Home,
             ),
             NavigationItem(
                 selected = false,
                 onClick = {},
-                icon = Icons.Default.Settings
-            )
-        )
+                icon = Icons.Default.Settings,
+            ),
+        ),
     ) {
         Text("Content")
     }
@@ -123,7 +123,7 @@ fun PreviewAdaptiveNavigationScaffold() {
 
 @Preview(
     widthDp = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND,
-    heightDp = WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND
+    heightDp = WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND,
 )
 @Composable
 fun PreviewAdaptiveNavigationScaffoldExpanded() {

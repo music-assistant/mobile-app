@@ -26,27 +26,27 @@ import io.music_assistant.client.ui.theme.ThemeSetting
 fun ThemeChooser(
     modifier: Modifier = Modifier,
     currentTheme: ThemeSetting,
-    onThemeChange: (ThemeSetting) -> Unit
+    onThemeChange: (ThemeSetting) -> Unit,
 ) {
     Row(
         modifier = modifier
             .background(MaterialTheme.colorScheme.onSecondary, RoundedCornerShape(6.dp)),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         ThemeToggleButton(
             icon = FontAwesomeIcons.Solid.Sun,
             selected = currentTheme == ThemeSetting.Light,
-            onClick = { onThemeChange(ThemeSetting.Light) }
+            onClick = { onThemeChange(ThemeSetting.Light) },
         )
         ThemeToggleButton(
             icon = FontAwesomeIcons.Brands.Adn,
             selected = currentTheme == ThemeSetting.FollowSystem,
-            onClick = { onThemeChange(ThemeSetting.FollowSystem) }
+            onClick = { onThemeChange(ThemeSetting.FollowSystem) },
         )
         ThemeToggleButton(
             icon = FontAwesomeIcons.Solid.Moon,
             selected = currentTheme == ThemeSetting.Dark,
-            onClick = { onThemeChange(ThemeSetting.Dark) }
+            onClick = { onThemeChange(ThemeSetting.Dark) },
         )
     }
 }
@@ -55,7 +55,7 @@ fun ThemeChooser(
 fun ThemeToggleButton(
     icon: ImageVector,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Icon(
         modifier = Modifier
@@ -63,7 +63,7 @@ fun ThemeToggleButton(
             .clickable { onClick() }
             .background(
                 if (selected) MaterialTheme.colorScheme.secondary else Color.Transparent,
-                RoundedCornerShape(12.dp)
+                RoundedCornerShape(12.dp),
             )
             .padding(4.dp),
         imageVector = icon,

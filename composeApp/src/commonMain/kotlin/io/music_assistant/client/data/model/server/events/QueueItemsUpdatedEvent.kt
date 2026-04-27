@@ -10,11 +10,7 @@ import kotlinx.serialization.Serializable
 data class QueueItemsUpdatedEvent(
     @SerialName("event") override val event: EventType,
     @SerialName("object_id") override val objectId: String,
-    @SerialName("data") override val data: ServerQueue
+    @SerialName("data") override val data: ServerQueue,
 ) : Event<ServerQueue> {
     fun queue() = data.toQueue()
 }
-
-
-
-

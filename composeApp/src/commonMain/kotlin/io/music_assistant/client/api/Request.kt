@@ -18,19 +18,19 @@ import kotlin.uuid.Uuid
 data class Request @OptIn(ExperimentalUuidApi::class) constructor(
     @SerialName("command") val command: String,
     @SerialName("args") val args: JsonObject? = null,
-    @SerialName("message_id") val messageId: String = Uuid.random().toString()
+    @SerialName("message_id") val messageId: String = Uuid.random().toString(),
 ) {
     data object Player {
         fun all() = Request(command = "players/all")
 
         fun simpleCommand(
             playerId: String,
-            command: String
+            command: String,
         ) = Request(
             command = "players/cmd/$command",
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
-            }
+            },
         )
 
         fun seek(
@@ -41,7 +41,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(queueId))
                 put("position", JsonPrimitive(position))
-            })
+            },
+        )
 
         fun setVolume(
             playerId: String,
@@ -51,7 +52,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("volume_level", JsonPrimitive(volumeLevel))
-            }
+            },
         )
 
         fun setGroupVolume(
@@ -62,7 +63,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("volume_level", JsonPrimitive(volumeLevel))
-            }
+            },
         )
 
         fun setMute(
@@ -73,7 +74,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("muted", JsonPrimitive(muted))
-            }
+            },
         )
 
         fun setGroupMembers(
@@ -87,21 +88,20 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 playersToAdd?.let {
                     put(
                         "player_ids_to_add",
-                        myJson.decodeFromString<JsonArray>(myJson.encodeToString(it))
+                        myJson.decodeFromString<JsonArray>(myJson.encodeToString(it)),
                     )
                 }
                 playersToRemove?.let {
                     put(
                         "player_ids_to_remove",
-                        myJson.decodeFromString<JsonArray>(myJson.encodeToString(it))
+                        myJson.decodeFromString<JsonArray>(myJson.encodeToString(it)),
                     )
                 }
-            }
+            },
         )
     }
 
     data object Queue {
-
         fun all() = Request(command = "player_queues/all")
 
         fun items(
@@ -114,7 +114,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("queue_id", JsonPrimitive(queueId))
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
-            })
+            },
+        )
 
         fun moveItem(
             queueId: String,
@@ -126,7 +127,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("queue_id", JsonPrimitive(queueId))
                 put("queue_item_id", JsonPrimitive(queueItemId))
                 put("pos_shift", JsonPrimitive(positionShift))
-            })
+            },
+        )
 
         fun removeItem(
             queueId: String,
@@ -136,7 +138,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
                 put("item_id_or_index", JsonPrimitive(queueItemId))
-            })
+            },
+        )
 
         fun clear(
             queueId: String,
@@ -144,7 +147,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = "player_queues/clear",
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
-            })
+            },
+        )
 
         fun playIndex(
             queueId: String,
@@ -154,7 +158,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
                 put("index", JsonPrimitive(queueItemId))
-            })
+            },
+        )
 
         fun transfer(
             sourceId: String,
@@ -166,7 +171,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("source_queue_id", JsonPrimitive(sourceId))
                 put("target_queue_id", JsonPrimitive(targetId))
                 put("auto_play", JsonPrimitive(autoplay))
-            })
+            },
+        )
 
         fun setRepeatMode(
             queueId: String,
@@ -176,7 +182,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
                 put("repeat_mode", JsonPrimitive(repeatMode.name.lowercase()))
-            })
+            },
+        )
 
         fun setShuffle(
             queueId: String,
@@ -186,11 +193,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
                 put("shuffle_enabled", JsonPrimitive(enabled))
-            })
+            },
+        )
     }
 
     data object Playlist {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -210,14 +217,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun create(name: String) = Request(
             command = "music/playlists/create_playlist",
             args = buildJsonObject {
                 put("name", JsonPrimitive(name.trim()))
-            }
+            },
         )
 
         fun getTracks(
@@ -232,7 +239,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
                 forceRefresh?.let { put("force_refresh", JsonPrimitive(it)) }
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun addTracks(playlistId: String, trackUris: List<String>) = Request(
@@ -240,7 +247,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("db_playlist_id", JsonPrimitive(playlistId))
                 put("uris", myJson.decodeFromString<JsonArray>(myJson.encodeToString(trackUris)))
-            }
+            },
         )
 
         fun removeTracks(playlistId: String, positions: List<Int>) = Request(
@@ -249,14 +256,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("db_playlist_id", JsonPrimitive(playlistId))
                 put(
                     "positions_to_remove",
-                    myJson.decodeFromString<JsonArray>(myJson.encodeToString(positions))
+                    myJson.decodeFromString<JsonArray>(myJson.encodeToString(positions)),
                 )
-            }
+            },
         )
     }
 
     data object Podcast {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -276,7 +282,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun getEpisodes(
@@ -285,12 +291,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             "music/podcasts/podcast_episodes",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly,
+            itemId,
+            providerInstanceIdOrDomain,
+            inLibraryOnly,
         )
     }
 
     data object RadioStation {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -310,12 +317,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
     }
 
     data object Audiobook {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -335,12 +341,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
     }
 
     data object Genre {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -360,7 +365,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun overview(
@@ -375,12 +380,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                     put("provider_instance_id_or_domain", JsonPrimitive(it))
                 }
                 put("limit", JsonPrimitive(limit))
-            }
+            },
         )
     }
 
     data object Artist {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -402,7 +406,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
                 put("album_artists_only", JsonPrimitive(albumArtistsOnly))
-            }
+            },
         )
 
         fun getAlbums(
@@ -411,7 +415,9 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             "music/artists/artist_albums",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly,
+            itemId,
+            providerInstanceIdOrDomain,
+            inLibraryOnly,
         )
 
         fun getTracks(
@@ -420,12 +426,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             "music/artists/artist_tracks",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly,
+            itemId,
+            providerInstanceIdOrDomain,
+            inLibraryOnly,
         )
     }
 
     data object Album {
-
         fun get(
             itemId: String,
             providerInstanceIdOrDomain: String,
@@ -445,7 +452,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun getTracks(
@@ -454,12 +461,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             "music/albums/album_tracks",
-            itemId, providerInstanceIdOrDomain, inLibraryOnly
+            itemId,
+            providerInstanceIdOrDomain,
+            inLibraryOnly,
         )
     }
 
     data object Track {
-
         fun list(
             favorite: Boolean? = null,
             search: String? = null,
@@ -474,12 +482,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("limit", JsonPrimitive(limit))
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
-            }
+            },
         )
     }
 
     data object Library {
-
         internal fun get(
             kind: String,
             itemId: String,
@@ -489,7 +496,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
-            }
+            },
         )
 
         fun add(
@@ -498,7 +505,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = "music/library/add_item",
             args = buildJsonObject {
                 put("item", JsonPrimitive(itemUri))
-            }
+            },
         )
 
         fun remove(
@@ -509,7 +516,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("library_item_id", JsonPrimitive(itemId))
                 put("media_type", JsonPrimitive(mediaType.name.lowercase()))
-            }
+            },
         )
 
         fun play(
@@ -526,7 +533,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("radio_mode", JsonPrimitive(radioMode))
                 put("queue_id", JsonPrimitive(queueOrPlayerId))
                 startItem?.let { put("start_item", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun addFavorite(
@@ -535,7 +542,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = "music/favorites/add_item",
             args = buildJsonObject {
                 put("item", JsonPrimitive(itemUri))
-            }
+            },
         )
 
         fun removeFavorite(
@@ -546,7 +553,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("library_item_id", JsonPrimitive(itemId))
                 put("media_type", JsonPrimitive(mediaType.name.lowercase()))
-            })
+            },
+        )
 
         fun markPlayed(
             itemUri: String,
@@ -554,7 +562,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = "music/mark_item_played",
             args = buildJsonObject {
                 put("media_item", JsonPrimitive(itemUri))
-            }
+            },
         )
 
         fun markUnplayed(
@@ -563,25 +571,25 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = "music/mark_item_unplayed",
             args = buildJsonObject {
                 put("media_item", JsonPrimitive(itemUri))
-            }
+            },
         )
 
         fun search(
             query: String,
             mediaTypes: List<MediaType>,
             limit: Int = 20,
-            libraryOnly: Boolean
+            libraryOnly: Boolean,
         ) = Request(
             command = "music/search",
             args = buildJsonObject {
                 put("search_query", JsonPrimitive(query.replace("-", " ")))
                 put(
                     "media_types",
-                    myJson.decodeFromString<JsonArray>(myJson.encodeToString(mediaTypes))
+                    myJson.decodeFromString<JsonArray>(myJson.encodeToString(mediaTypes)),
                 )
                 put("limit", JsonPrimitive(limit))
                 put("library_only", JsonPrimitive(libraryOnly))
-            }
+            },
         )
 
         fun recommendations() = Request(command = "music/recommendations")
@@ -599,12 +607,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
                 put("in_library_only", JsonPrimitive(inLibraryOnly))
-            }
+            },
         )
     }
 
     data object Auth {
-
         fun providers() = Request("auth/providers")
 
         fun authorizationUrl(providerId: String, returnUrl: String? = null) = Request(
@@ -612,7 +619,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("provider_id", JsonPrimitive(providerId))
                 returnUrl?.let { put("return_url", JsonPrimitive(it)) }
-            }
+            },
         )
 
         fun login(username: String, password: String, deviceName: String) = Request(
@@ -621,7 +628,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("username", JsonPrimitive(username))
                 put("password", JsonPrimitive(password))
                 put("device_name", JsonPrimitive(deviceName))
-            }
+            },
         )
 
         fun logout() = Request(command = "auth/logout")
@@ -631,7 +638,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("token", JsonPrimitive(token))
                 put("device_name", JsonPrimitive(deviceName))
-            }
+            },
         )
     }
 
@@ -640,7 +647,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = "config/players/dsp/get",
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
-            }
+            },
         )
 
         fun savePlayerConfig(playerId: String, config: DspConfig) = Request(
@@ -648,7 +655,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("config", myJson.encodeToJsonElement(DspConfig.serializer(), config))
-            }
+            },
         )
 
         fun getPresets() = Request(command = "config/dsp_presets/get")

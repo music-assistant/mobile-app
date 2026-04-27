@@ -23,7 +23,6 @@ import kotlin.test.assertTrue
  *    being silently misclassified as a group.
  */
 class ServerPlayerSerializationTest {
-
     @Test
     fun deserializesWithOnlyPlayerIdPresent() {
         val json = """{"player_id": "pl1"}"""
@@ -88,7 +87,7 @@ class ServerPlayerSerializationTest {
     @Test
     fun toPlayerPreservesKnownGroupType() {
         val server = myJson.decodeFromString<ServerPlayer>(
-            """{"player_id": "pl1", "type": "group"}"""
+            """{"player_id": "pl1", "type": "group"}""",
         )
 
         val player = server.toPlayer()

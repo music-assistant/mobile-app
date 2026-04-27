@@ -8,7 +8,6 @@ import io.music_assistant.client.player.PlatformContext
 import java.io.File
 
 actual class LogSharer actual constructor(private val platformContext: PlatformContext) {
-
     private val context get() = platformContext.applicationContext
 
     private fun logFile() = File(context.cacheDir, "ma_client_logs.txt")
@@ -39,15 +38,17 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
-            file
+            file,
         )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        context.startActivity(Intent.createChooser(intent, "Share logs").apply {
+        context.startActivity(
+            Intent.createChooser(intent, "Share logs").apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
+        },
+        )
     }
 }

@@ -17,9 +17,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * is instantiated. The connect() method simply waits for the channel to be ready.
  */
 class WebRTCDataChannelTransport(
-    private val dataChannelWrapper: DataChannelWrapper
+    private val dataChannelWrapper: DataChannelWrapper,
 ) : SendspinTransport {
-
     private val logger = Logger.withTag("WebRTCDataChannelTransport")
 
     init {

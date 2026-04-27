@@ -106,7 +106,7 @@ expect class PeerConnectionWrapper() {
     fun createDataChannel(
         label: String,
         ordered: Boolean = true,
-        maxRetransmits: Int = -1
+        maxRetransmits: Int = -1,
     ): DataChannelWrapper
 
     /**

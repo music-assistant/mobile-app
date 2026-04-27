@@ -45,12 +45,11 @@ abstract class AppMediaItem(
     val sortName: String?,
     val uri: String?,
     val image: MediaItemImage?,
-    //val isPlayable: Boolean?,
-    //val timestampAdded: Long?,
-    //val timestampModified: Long?,
-    val canStartRadio: Boolean = false
+    // val isPlayable: Boolean?,
+    // val timestampAdded: Long?,
+    // val timestampModified: Long?,
+    val canStartRadio: Boolean = false,
 ) {
-
     open val subtitle: String? = null
     val longId = itemId.hashCode().toLong()
 
@@ -73,18 +72,18 @@ abstract class AppMediaItem(
     fun hasAnyMappingFrom(other: ServerMediaItem): Boolean =
         mappingsHashes
             .intersect(
-                other.providerMappings?.map { it.toHash().hashCode() }?.toSet() ?: emptySet()
+                other.providerMappings?.map { it.toHash().hashCode() }?.toSet() ?: emptySet(),
             )
             .isNotEmpty()
 
     override fun equals(other: Any?): Boolean {
-        return other is AppMediaItem
-                && itemId == other.itemId
-                && name == other.name
-                && mediaType == other.mediaType
-                && provider == other.provider
-                && favorite == other.favorite
-                && uri == other.uri
+        return other is AppMediaItem &&
+                itemId == other.itemId &&
+                name == other.name &&
+                mediaType == other.mediaType &&
+                provider == other.provider &&
+                favorite == other.favorite &&
+                uri == other.uri
     }
 
     override fun hashCode(): Int {
@@ -105,7 +104,7 @@ abstract class AppMediaItem(
             ImageInfo(
                 image.path,
                 image.remotelyAccessible,
-                image.provider
+                image.provider,
             )
         }
 
@@ -123,7 +122,7 @@ abstract class AppMediaItem(
                         parameters.apply {
                             append(
                                 "path",
-                                path.encodeURLQueryComponent()
+                                path.encodeURLQueryComponent(),
                             ) // TODO check if needed twice
                             append("provider", provider)
                             append("checksum", "")
@@ -246,7 +245,7 @@ abstract class AppMediaItem(
 //        timestampAdded: Long?,
 //        timestampModified: Long?,
 //        val musicbrainzId: String?,
-        //val version: String?,
+        // val version: String?,
         override val duration: Double?,
 //        val isrc: String?,
         val artists: List<Artist>?,
@@ -268,7 +267,8 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
         canStartRadio = true,
-    ), PlayableItem {
+    ),
+    PlayableItem {
         override val subtitle = artists?.joinToString(separator = ", ") { it.name }
         override val parentName: String? = album?.name
         override val defaultIcon = TrackIcon
@@ -281,14 +281,14 @@ abstract class AppMediaItem(
         providerMappings: List<ProviderMapping>?,
         metadata: Metadata?,
         favorite: Boolean?,
-        //mediaType: MediaType,
+        // mediaType: MediaType,
         sortName: String? = null,
         uri: String?,
         image: MediaItemImage?,
-        //isPlayable: Boolean?,
+        // isPlayable: Boolean?,
 //        timestampAdded: Long?,
 //        timestampModified: Long?,
-        //val owner: String?,
+        // val owner: String?,
         val isEditable: Boolean?,
     ) : AppMediaItem(
         itemId = itemId,
@@ -357,7 +357,8 @@ abstract class AppMediaItem(
         sortName = sortName,
         uri = uri,
         image = image,
-    ), PlayableItem {
+    ),
+    PlayableItem {
         override val subtitle = metadata?.releaseDate?.let(::formatIsoDate)
         override val parentName: String? = podcast?.name
         override val defaultIcon = Icons.Default.Podcasts
@@ -384,7 +385,8 @@ abstract class AppMediaItem(
         sortName = sortName,
         uri = uri,
         image = image,
-    ), PlayableItem {
+    ),
+    PlayableItem {
         override val duration: Double? = null  // Radio stations have no duration
         override val subtitle: String = "Radio"
         override val parentName: String? = null  // No parent item
@@ -445,7 +447,8 @@ abstract class AppMediaItem(
         sortName = sortName,
         uri = uri,
         image = image,
-    ), PlayableItem {
+    ),
+    PlayableItem {
         override val subtitle =
             authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
         override val parentName: String? = authors?.firstOrNull()
@@ -508,7 +511,7 @@ abstract class AppMediaItem(
 //                    timestampAdded = timestampAdded,
 //                    timestampModified = timestampModified,
 //                    musicbrainzId = musicbrainzId,
-                    //version = version,
+                    // version = version,
                     duration = duration,
 //                    isrc = isrc,
                     artists = artists?.mapNotNull { it.toAppMediaItem() as? Artist },
@@ -529,7 +532,7 @@ abstract class AppMediaItem(
                     sortName = sortName,
                     uri = uri,
                     image = image,
-                    //isPlayable = isPlayable,
+                    // isPlayable = isPlayable,
 //                    timestampAdded = timestampAdded,
 //                    timestampModified = timestampModified,
 //                    owner = owner,
@@ -543,7 +546,7 @@ abstract class AppMediaItem(
                     providerMappings = providerMappings,
                     uri = uri,
                     image = image,
-                    items = items?.toAppMediaItemList()
+                    items = items?.toAppMediaItemList(),
                 )
 
                 MediaType.PODCAST -> Podcast(
@@ -620,7 +623,8 @@ abstract class AppMediaItem(
                 MediaType.FLOW_STREAM,
                 MediaType.ANNOUNCEMENT,
                 MediaType.GENRE,
-                MediaType.UNKNOWN -> null
+                MediaType.UNKNOWN,
+                -> null
             }
 
         fun List<ServerMediaItem>.toAppMediaItemList() =

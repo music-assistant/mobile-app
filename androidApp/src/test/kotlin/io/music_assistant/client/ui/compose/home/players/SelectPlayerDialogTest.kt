@@ -12,7 +12,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SelectPlayerDialogTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -25,7 +24,7 @@ class SelectPlayerDialogTest {
         composeTestRule.setContent {
             SelectPlayerDialog(
                 selectedPlayer = players[0],
-                players
+                players,
             )
         }
 

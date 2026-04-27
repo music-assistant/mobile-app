@@ -33,9 +33,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class SendspinWsHandler(
     private val serverUrl: String,
-    private val networkAvailable: StateFlow<Boolean>? = null
+    private val networkAvailable: StateFlow<Boolean>? = null,
 ) : CoroutineScope {
-
     private val logger = Logger.withTag("SendspinWsHandler")
     private val supervisorJob = SupervisorJob()
 
@@ -231,13 +230,13 @@ class SendspinWsHandler(
                         logger.w(e) { "Reconnect attempt $attempt failed" }
                         false
                     }
-                }
+                },
             )
             if (!reconnected) {
                 logger.e { "Max reconnect attempts ($maxReconnectAttempts) reached, giving up" }
                 session = null
                 _connectionState.value = WebSocketState.Error(
-                    Exception("Failed to reconnect after $maxReconnectAttempts attempts")
+                    Exception("Failed to reconnect after $maxReconnectAttempts attempts"),
                 )
             }
         }
