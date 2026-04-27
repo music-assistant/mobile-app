@@ -42,9 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.*
-import org.jetbrains.compose.resources.stringResource
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
@@ -56,6 +53,12 @@ import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_favorite
+import musicassistantclient.composeapp.generated.resources.cd_fully_played
+import musicassistantclient.composeapp.generated.resources.cd_in_progress
+import musicassistantclient.composeapp.generated.resources.cd_vinyl_record
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Artist media item with circular image.
@@ -790,7 +793,8 @@ private fun AudiobookImage(
 private fun GridPlayableItemLabels(item: PlayableItem) {
     Spacer(Modifier.height(4.dp))
     Text(
-        text = item.name,
+        text = "${item.name}${item.version
+            ?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}",
         style = MaterialTheme.typography.bodyMedium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -875,6 +879,7 @@ fun BoxScope.ProgressBadge(
                 tint = MaterialTheme.colorScheme.primary
             )
         }
+
         resumePositionMs != null && resumePositionMs > 0 -> {
             Icon(
                 modifier = Modifier
@@ -908,7 +913,8 @@ internal fun TrackRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.name,
+        name = "${item.name}${item.version
+            ?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}",
         subtitle = item.subtitle,
         imageContent = {
             TrackImage(item, serverUrl)

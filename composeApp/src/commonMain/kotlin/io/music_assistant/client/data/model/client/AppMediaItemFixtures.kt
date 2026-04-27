@@ -68,6 +68,7 @@ object AppMediaItemFixtures {
                 discNumber = null,
                 trackNumber = null,
                 position = null,
+                version = null,
             )
         }
     }
@@ -116,7 +117,8 @@ object AppMediaItemFixtures {
                 duration = null,
                 podcast = podcast,
                 fullyPlayed = null,
-                resumePositionMs = null
+                resumePositionMs = null,
+                version = null,
             )
         }
     }
@@ -139,7 +141,8 @@ object AppMediaItemFixtures {
             narrators = null,
             chapters = chapters(chapters),
             fullyPlayed = null,
-            resumePositionMs = null
+            resumePositionMs = null,
+            version = null,
         )
     }
 

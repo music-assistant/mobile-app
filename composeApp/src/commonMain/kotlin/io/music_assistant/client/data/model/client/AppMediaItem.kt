@@ -23,6 +23,7 @@ interface PlayableItem {
     val parentName: String?
     val itemId: String
     val name: String
+    val version: String?
     val duration: Double?
     val uri: String?
     val subtitle: String?
@@ -238,7 +239,7 @@ abstract class AppMediaItem(
         image = image,
         canStartRadio = true,
     ) {
-        override val subtitle = artists?.joinToString(separator = ", ") { it.name }
+        override val subtitle = artists.joinToString(separator = ", ") { it.name }
     }
 
     class Track(
@@ -266,6 +267,7 @@ abstract class AppMediaItem(
         val trackNumber: Int?,
 // playlist track only
         val position: Int?,
+        override val version: String?,
     ) : AppMediaItem(
         itemId = itemId,
         provider = provider,
@@ -356,6 +358,7 @@ abstract class AppMediaItem(
         val fullyPlayed: Boolean?,
         val resumePositionMs: Long?,
         val releaseDate: String? = null,
+        override val version: String?,
     ) : AppMediaItem(
         itemId = itemId,
         provider = provider,
@@ -383,6 +386,7 @@ abstract class AppMediaItem(
         sortName: String? = null,
         uri: String?,
         image: MediaItemImage?,
+        override val version: String?,
     ) : AppMediaItem(
         itemId = itemId,
         provider = provider,
@@ -444,6 +448,7 @@ abstract class AppMediaItem(
         val chapters: List<io.music_assistant.client.data.model.server.MediaItemChapter>?,
         val fullyPlayed: Boolean?,
         val resumePositionMs: Long?,
+        override val version: String?,
     ) : AppMediaItem(
         itemId = itemId,
         provider = provider,
@@ -526,6 +531,7 @@ abstract class AppMediaItem(
                     discNumber = discNumber,
                     trackNumber = trackNumber,
                     position = position,
+                    version = version,
                 )
 
                 MediaType.PLAYLIST -> Playlist(
@@ -583,6 +589,7 @@ abstract class AppMediaItem(
                     fullyPlayed = fullyPlayed,
                     resumePositionMs = resumePositionMs,
                     releaseDate = metadata?.releaseDate,
+                    version = version,
                 )
 
                 MediaType.RADIO -> RadioStation(
@@ -595,6 +602,7 @@ abstract class AppMediaItem(
                     sortName = sortName,
                     uri = uri,
                     image = image,
+                    version = version,
                 )
 
                 MediaType.AUDIOBOOK -> Audiobook(
@@ -613,6 +621,7 @@ abstract class AppMediaItem(
                     chapters = metadata?.chapters,
                     fullyPlayed = fullyPlayed,
                     resumePositionMs = resumePositionMs,
+                    version = version,
                 )
 
                 MediaType.GENRE -> Genre(
