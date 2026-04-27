@@ -1,0 +1,44 @@
+name: Check PR (Lint)
+
+# Detekt + ktlint (via detekt-formatting plugin) covers commonMain, androidMain,
+# and iosMain Kotlin sources. No path filtering: any Kotlin source change should
+# re-lint, regardless of platform target.
+
+on:
+  pull_request:
+    branches: [ dev ]
+  push:
+    branches: [ dev ]
+
+jobs:
+  detekt:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-lint-${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-lint-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # CI=true is set automatically by GitHub Actions; the root build.gradle.kts
+      # disables autoCorrect under CI so detekt reports findings instead of
+      # silently rewriting the workspace.
+      - name: Run detekt
+        run: ./gradlew detektAll

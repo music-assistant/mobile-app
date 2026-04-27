@@ -16,6 +16,11 @@ plugins {
 val detektVersion = libs.versions.detekt.get()
 val detektFormatting = libs.detekt.formatting
 
+// CI mode: when running under GitHub Actions / generic CI (`CI=true` env var), do NOT
+// auto-correct (we want the build to fail loudly on any finding, not silently
+// rewrite the runner's workspace). Locally, autoCorrect stays on for convenience.
+val isCi = (System.getenv("CI") ?: "").equals("true", ignoreCase = true)
+
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
 
@@ -23,10 +28,10 @@ subprojects {
         toolVersion = detektVersion
         config.setFrom(rootProject.files("config/detekt/detekt.yml"))
         buildUponDefaultConfig = true
-        autoCorrect = true
-        // No baseline - we commit to clean and gate config rules instead.
-        // Don't fail the build during initial cleanup pass; flip to true once we're at zero.
-        ignoreFailures = true
+        autoCorrect = !isCi
+        // No baseline — we commit to clean. Any finding fails the build (locally,
+        // autoCorrect runs first so this only fires on non-fixable rules).
+        ignoreFailures = false
         parallel = true
     }
 
