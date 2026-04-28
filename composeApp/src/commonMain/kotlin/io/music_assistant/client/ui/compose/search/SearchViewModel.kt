@@ -27,6 +27,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.media_type_albums
+import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
+import musicassistantclient.composeapp.generated.resources.media_type_genres
+import musicassistantclient.composeapp.generated.resources.media_type_playlists
+import musicassistantclient.composeapp.generated.resources.media_type_podcasts
+import musicassistantclient.composeapp.generated.resources.media_type_radio
+import musicassistantclient.composeapp.generated.resources.media_type_tracks
+import org.jetbrains.compose.resources.StringResource
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
@@ -51,7 +61,9 @@ class SearchViewModel(
                     MediaType.AUDIOBOOK,
                     MediaType.PODCAST,
                     MediaType.RADIO,
-                    MediaType.GENRE
+                    // TODO server doesn't return genre in this endpoint yet,
+                    //  need to fetch separately if we want to show it
+                    //MediaType.GENRE,
                 ).map { MediaTypeSelect(it, false) },
                 libraryOnly = false,
             ),
@@ -83,7 +95,7 @@ class SearchViewModel(
                     is MediaItemUpdatedEvent,
                     is MediaItemAddedEvent,
                     is MediaItemDeletedEvent,
-                    -> {
+                        -> {
                         event.data?.let { updateSearchResultsIfNeeded(it) }
                     }
 
@@ -205,11 +217,21 @@ class SearchViewModel(
         val radios: List<AppMediaItem.RadioStation>,
         val genres: List<AppMediaItem.Genre>,
     ) {
-        val isEmpty =
-            artists.isEmpty() && albums.isEmpty()
-                    && tracks.isEmpty() && playlists.isEmpty()
-                    && audiobooks.isEmpty() && podcasts.isEmpty()
-                    && radios.isEmpty() && genres.isEmpty()
+        val nonEmptyLists = listOf(
+            Item(Res.string.media_type_tracks, tracks),
+            Item(Res.string.media_type_artists, artists),
+            Item(Res.string.media_type_albums, albums),
+            Item(Res.string.media_type_playlists, playlists),
+            Item(Res.string.media_type_podcasts, podcasts),
+            Item(Res.string.media_type_audiobooks, audiobooks),
+            Item(Res.string.media_type_radio, radios),
+            Item(Res.string.media_type_genres, genres),
+        ).filter { it.items.isNotEmpty() }
+
+        data class Item(
+            val mediaTypeName: StringResource,
+            val items: List<AppMediaItem>,
+        )
     }
 
     private fun SearchResult.toAppSearchResults() = SearchResults(

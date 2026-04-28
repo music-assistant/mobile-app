@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,13 +40,25 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
+import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
+import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
+import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
+import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
+import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
+import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
+import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CategoryRow
 import io.music_assistant.client.ui.compose.nav.Screen
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.search_error
+import musicassistantclient.composeapp.generated.resources.search_in_library_only
+import musicassistantclient.composeapp.generated.resources.search_no_results
+import musicassistantclient.composeapp.generated.resources.search_start
+import musicassistantclient.composeapp.generated.resources.search_title
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -87,7 +102,7 @@ fun SearchScreen(
                     is AppMediaItem.Playlist,
                     is AppMediaItem.Podcast,
                     is AppMediaItem.Audiobook,
-                    -> {
+                        -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
 
@@ -181,53 +196,144 @@ private fun SearchContent(
 
                 is DataState.Stale,
                 is DataState.Data,
-                -> {
+                    -> {
                     // Handle both Data and Stale - both contain valid search results
                     val results = when (resultsState) {
                         is DataState.Data -> resultsState.data
                         is DataState.Stale -> resultsState.data
                         else -> return@Column
                     }
-                    if (results.isEmpty) {
-                        Box(
+                    when (results.nonEmptyLists.size) {
+                        0 -> Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(stringResource(Res.string.search_no_results))
                         }
-                    } else {
-                        val sections = listOf(
-                            stringResource(Res.string.media_type_tracks) to results.tracks,
-                            stringResource(Res.string.media_type_artists) to results.artists,
-                            stringResource(Res.string.media_type_albums) to results.albums,
-                            stringResource(Res.string.media_type_playlists) to results.playlists,
-                            stringResource(Res.string.media_type_podcasts) to results.podcasts,
-                            stringResource(Res.string.media_type_audiobooks) to results.audiobooks,
-                            stringResource(Res.string.media_type_radio) to results.radios,
-                            // TODO server doesn't return genre in this endpoint yet,
-                            //  need to fetch separately if we want to show it
-                            //stringResource(Res.string.media_type_genres) to results.genres,
-                        )
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+
+                        1 -> LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(16.dp),
                             contentPadding = contentPadding,
                         ) {
-                            sections.forEach { (title, items) ->
-                                if (items.isNotEmpty()) {
-                                    item(key = title, contentType = "category") {
-                                        CategoryRow(
-                                            serverUrl = serverUrl,
-                                            title = title,
-                                            rowItemType = null,
-                                            onNavigateClick = onItemClick,
-                                            onPlayClick = onPlayClick,
-                                            onAllClick = {},
-                                            mediaItems = items,
-                                            playlistActions = playlistActions,
-                                            libraryActions = libraryActions,
-                                            progressActions = progressActions,
-                                            providerIconFetcher = providerIconFetcher,
-                                        )
+                            val (title, items) = results.nonEmptyLists.first()
+                            item {
+                                Text(
+                                    text = stringResource(title),
+                                    style = MaterialTheme.typography.titleLarge,
+                                )
+                            }
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                            items(items = items, key = { it.itemId }) { item ->
+                                when (item) {
+                                    is AppMediaItem.Track -> TrackWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.Artist -> ArtistWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.Album -> AlbumWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.Playlist -> PlaylistWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.Podcast -> PodcastWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.Audiobook -> AudiobookWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.RadioStation -> RadioWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is AppMediaItem.Genre -> GenreWithMenu(
+                                        serverUrl = serverUrl,
+                                        rowMode = true,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    else -> Unit
+                                }
+                            }
+                        }
+
+                        else -> {
+                            val preparedItems = results.nonEmptyLists
+                                .map { (title, items) -> Pair(stringResource(title), items) }
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = contentPadding,
+                            ) {
+                                preparedItems.forEach { (stringTitle, items) ->
+                                    if (items.isNotEmpty()) {
+                                        item(key = stringTitle, contentType = "category") {
+                                            CategoryRow(
+                                                serverUrl = serverUrl,
+                                                title = stringTitle,
+                                                rowItemType = null,
+                                                onNavigateClick = onItemClick,
+                                                onPlayClick = onPlayClick,
+                                                onAllClick = {},
+                                                mediaItems = items,
+                                                playlistActions = playlistActions,
+                                                libraryActions = libraryActions,
+                                                progressActions = progressActions,
+                                                providerIconFetcher = providerIconFetcher,
+                                            )
+                                        }
                                     }
                                 }
                             }

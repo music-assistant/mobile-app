@@ -229,7 +229,6 @@ fun CategoryRow(
                 when (item) {
                     is AppMediaItem.Artist -> ArtistWithMenu(
                         item = item,
-
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -239,7 +238,6 @@ fun CategoryRow(
 
                     is AppMediaItem.Album -> AlbumWithMenu(
                         item = item,
-
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -249,7 +247,6 @@ fun CategoryRow(
 
                     is AppMediaItem.Playlist -> PlaylistWithMenu(
                         item = item,
-
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -259,7 +256,6 @@ fun CategoryRow(
 
                     is AppMediaItem.Podcast -> PodcastWithMenu(
                         item = item,
-
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -288,7 +284,6 @@ fun CategoryRow(
 
                     is AppMediaItem.Audiobook -> AudiobookWithMenu(
                         item = item,
-
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
@@ -308,7 +303,6 @@ fun CategoryRow(
 
                     is AppMediaItem.Genre -> GenreWithMenu(
                         item = item,
-
                         serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
