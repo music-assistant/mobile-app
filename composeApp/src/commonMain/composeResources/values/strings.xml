@@ -58,7 +58,6 @@
     <string name="cd_fully_played">Fully played</string>
     <string name="cd_in_progress">In progress</string>
     <string name="cd_provider_icon">Provider Icon</string>
-    <string name="cd_volume">Volume</string>
     <string name="cd_dsp_settings">DSP Settings</string>
 
     <!-- Playlist dialog -->

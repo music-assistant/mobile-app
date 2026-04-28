@@ -5,6 +5,7 @@ package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
@@ -65,11 +66,18 @@ import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_add_to_group
+import musicassistantclient.composeapp.generated.resources.cd_mute
+import musicassistantclient.composeapp.generated.resources.cd_remove_from_group
+import musicassistantclient.composeapp.generated.resources.cd_unmute
+import musicassistantclient.composeapp.generated.resources.common_done
+import musicassistantclient.composeapp.generated.resources.players_group_settings
+import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -187,10 +195,10 @@ private fun PlayerSelection(
         state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        itemsIndexed(
+        items(
             items = internalPlayers,
-            key = { _, item -> item.player.id },
-        ) { _, item ->
+            key = { item -> item.player.id },
+        ) { item ->
             val selected = item.player.id == selectedPlayer.player.id
             val borderColor = if (selected) {
                 MaterialTheme.colorScheme.primary
@@ -408,11 +416,12 @@ private fun GroupPlayerItem(
             )
 
             // Join/leave button is only shown for child-bind rows (pivot has none).
-            childBindItem?.let { bind ->
-                val itemId = listOf(playerId)
-                IconButton(
-                    enabled = bind.isManageable,
-                    onClick = {
+            val itemId = listOf(playerId)
+            IconButton(
+                modifier = Modifier.alpha(if (childBindItem == null) 0f else 1f),
+                enabled = childBindItem?.isManageable == true,
+                onClick = {
+                    childBindItem?.let { bind ->
                         simplePlayerAction(
                             bind.parentId,
                             PlayerAction.GroupManage(
@@ -420,8 +429,10 @@ private fun GroupPlayerItem(
                                 toRemove = itemId.takeIf { bind.isBound },
                             ),
                         )
-                    },
-                ) {
+                    }
+                },
+            ) {
+                childBindItem?.let { bind ->
                     Icon(
                         modifier = Modifier.alpha(if (bind.isManageable) 1f else 0.4f),
                         imageVector = if (bind.isBound) Icons.Default.Remove else Icons.Default.Add,
@@ -508,26 +519,35 @@ private fun VolumeRow(
 ) {
     var currentVolume by remember(volume) { mutableStateOf(volume ?: 0f) }
 
-    Row {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         isMuted?.let {
-            IconButton(
-                onClick = { simplePlayerAction(playerId, PlayerAction.ToggleMute(isMuted)) },
-                enabled = enabled,
-            ) {
-                Icon(
-                    imageVector = if (isMuted) VolumeMutedIcon else VolumeIcon,
-                    contentDescription = if (isMuted) {
-                        stringResource(
-                            Res.string.cd_unmute,
-                        )
-                    } else {
-                        stringResource(Res.string.cd_mute)
+            Icon(
+                modifier = Modifier
+                    .size(24.dp)
+                    .alpha(if (enabled) 1F else 0.5f)
+                    .clickable(enabled = enabled) {
+                        simplePlayerAction(playerId, PlayerAction.ToggleMute(isMuted))
                     },
-                )
-            }
+                imageVector = if (isMuted) {
+                    VolumeMutedIcon
+                } else {
+                    VolumeIcon
+                },
+                contentDescription = if (isMuted) {
+                    stringResource(
+                        Res.string.cd_unmute,
+                    )
+                } else {
+                    stringResource(Res.string.cd_mute)
+                },
+            )
         }
         Slider(
-            modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.4f),
+            modifier = Modifier.weight(1f).alpha(if (enabled) 1f else 0.4f),
             value = currentVolume,
             valueRange = 0f..100f,
             enabled = enabled,
@@ -559,6 +579,12 @@ private fun VolumeRow(
                     modifier = Modifier.height(4.dp),
                 )
             },
+        )
+        Text(
+            text = currentVolume.roundToInt().toString(),
+            modifier = Modifier.alpha(if (enabled) 1f else 0.4f),
+            textAlign = TextAlign.End,
+            style = MaterialTheme.typography.labelMedium,
         )
     }
 }

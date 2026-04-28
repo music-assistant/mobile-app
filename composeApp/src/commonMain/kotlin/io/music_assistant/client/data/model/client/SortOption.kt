@@ -36,9 +36,7 @@ object SortConfig {
         )
         MediaType.TRACK -> listOf(
             SortField.NAME,
-            SortField.ARTIST_NAME,
             SortField.DURATION,
-            SortField.YEAR,
             SortField.DATE_ADDED,
             SortField.LAST_PLAYED,
             SortField.PLAY_COUNT,

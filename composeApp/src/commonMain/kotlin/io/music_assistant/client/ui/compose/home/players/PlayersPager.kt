@@ -63,8 +63,10 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.cd_volume
+import musicassistantclient.composeapp.generated.resources.cd_mute
+import musicassistantclient.composeapp.generated.resources.cd_unmute
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -372,7 +374,13 @@ private fun ExpandedPlayerPage(
                         } else {
                             VolumeIcon
                         },
-                        contentDescription = stringResource(Res.string.cd_volume),
+                        contentDescription = if (player.player.volumeMuted) {
+                            stringResource(
+                                Res.string.cd_unmute,
+                            )
+                        } else {
+                            stringResource(Res.string.cd_mute)
+                        },
                         tint = controlTint,
                     )
                     Slider(
@@ -409,6 +417,12 @@ private fun ExpandedPlayerPage(
                                 modifier = Modifier.height(4.dp),
                             )
                         },
+                    )
+                    Text(
+                        text = currentVolume.roundToInt().toString(),
+                        textAlign = TextAlign.End,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = controlTint,
                     )
                 }
             } else {
