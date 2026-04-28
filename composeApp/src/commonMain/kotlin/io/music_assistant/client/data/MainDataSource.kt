@@ -40,6 +40,7 @@ import io.music_assistant.client.player.sendspin.SendspinError
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.player.sendspin.WebRTCSendspinChannelExhausted
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.StaleReason
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -230,7 +231,7 @@ class MainDataSource(
                 _queueInfos,
                 localPlayerRepository.localPlayerData,
             ) { players, queues, localData -> Triple(players, queues, localData) }
-                .debounce(50L) // Small debounce to batch rapid updates, but don't delay initial load
+                .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { (playersState, queues, localData) ->
                     _playersData.update { oldValues ->
                         when (playersState) {

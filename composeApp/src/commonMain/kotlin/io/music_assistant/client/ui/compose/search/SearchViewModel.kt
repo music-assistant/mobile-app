@@ -78,7 +78,7 @@ class SearchViewModel(
             _state.map { it.searchState }
                 .distinctUntilChanged()
                 .filter { it.query.trim().length > 2 || it.query.isEmpty() }
-                .debounce { Timings.DEBOUNCE }
+                .debounce { Timings.INPUT_DEBOUNCE }
                 .collect { searchState ->
                     if (searchState.query.isNotEmpty()) {
                         performSearch(searchState)

@@ -12,7 +12,9 @@ class TestStateRule : TestRule {
     ): Statement {
         return object : Statement() {
             override fun evaluate() {
-                Timings.DEBOUNCE = 0
+                Timings.INPUT_DEBOUNCE = 0
+                Timings.EVENT_DEBOUNCE = 0
+                Timings.RETRY_DEBOUNCE = 0
                 base.evaluate()
             }
         }

@@ -20,6 +20,7 @@ import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
@@ -51,7 +52,7 @@ class AutoLibrary(
             searchFlow
                 .filterNotNull()
                 .filter { it.first.isNotEmpty() }
-                .debounce(SEARCH_DEBOUNCE_MS)
+                .debounce(Timings.INPUT_DEBOUNCE)
                 .collect { (query, result) ->
                     val answer = apiClient.sendRequest(
                         request = Request.Library.search(
@@ -321,7 +322,6 @@ class AutoLibrary(
         )
 
     private companion object {
-        const val SEARCH_DEBOUNCE_MS = 500L
         const val WAIT_FOR_AUTHENTICATED_TIMEOUT_MS = 30_000L
 
         // Encoded media item IDs are `tab__type__provider__providerItemId` — exactly 4 parts.
