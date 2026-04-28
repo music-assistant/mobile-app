@@ -63,7 +63,7 @@ class SearchViewModel(
                     MediaType.RADIO,
                     // TODO server doesn't return genre in this endpoint yet,
                     //  need to fetch separately if we want to show it
-                    //MediaType.GENRE,
+                    // MediaType.GENRE,
                 ).map { MediaTypeSelect(it, false) },
                 libraryOnly = false,
             ),

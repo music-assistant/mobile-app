@@ -402,9 +402,9 @@ private fun SearchFilters(
                 label = {
                     Text(
                         text = stringResource(Res.string.search_in_library_only),
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
                     )
-                }
+                },
             )
         }
     }
