@@ -16,7 +16,7 @@ import kotlin.math.sqrt
  * Based on industry best practices from WebRTC NetEQ and RTP/VoIP adaptive playout algorithms.
  */
 class AdaptiveBufferManager(
-    private val clockSynchronizer: ClockSynchronizer
+    private val clockSynchronizer: ClockSynchronizer,
 ) {
     private val logger = Logger.withTag("AdaptiveBufferManager")
 
@@ -37,7 +37,7 @@ class AdaptiveBufferManager(
         lastAdjustmentTime = 0L,
         lastDirection = Direction.NONE,
         consecutiveSameDirection = 0,
-        cooldownUntil = 0L
+        cooldownUntil = 0L,
     )
 
     // Current thresholds
@@ -73,7 +73,11 @@ class AdaptiveBufferManager(
     /**
      * Updates network statistics with new RTT and quality measurements.
      * Call this on every sync message (approximately every 1 second).
+     *
+     * NOTE: `quality` is currently informational only — sync quality is consumed
+     * directly from `clockSynchronizer.currentQuality` in [calculateNetworkStats].
      */
+    @Suppress("UnusedParameter")
     suspend fun updateNetworkStats(rtt: Long, quality: SyncQuality) {
         // Update RTT history
         rttHistory.add(rtt)
@@ -146,10 +150,11 @@ class AdaptiveBufferManager(
             rttStdDev = jitterEstimator.getStdDev(),
             syncQuality = clockSynchronizer.currentQuality,
             dropRate = dropRate,
-            recentUnderruns = recentUnderruns
+            recentUnderruns = recentUnderruns,
         )
     }
 
+    @Suppress("UnusedParameter") // currentTime kept symmetric with shouldDecreaseBuffer; reserved for time-based gating
     private suspend fun shouldIncreaseBuffer(stats: NetworkStats, currentTime: Long): Boolean {
         // Immediate increase conditions
         if (stats.recentUnderruns > 0) return true
@@ -180,14 +185,14 @@ class AdaptiveBufferManager(
         // Check sustained good conditions (rest unchanged)
         val timeSinceLastIncrease = currentTime - adaptationState.lastAdjustmentTime
         if (adaptationState.lastDirection == Direction.INCREASE &&
-            timeSinceLastIncrease < 60_000_000L
+            timeSinceLastIncrease < MIN_INTERVAL_AFTER_INCREASE_US
         ) {
             return false
         }
 
         // Only decrease if conditions have been good and we're over-buffering
-        if (smoothedRTT < 30_000 && stats.rttStdDev < 10_000) {
-            if (_targetBufferDuration > IDEAL_BUFFER * 1.5) {
+        if (smoothedRTT < LOW_RTT_THRESHOLD_US && stats.rttStdDev < LOW_JITTER_THRESHOLD_US) {
+            if (_targetBufferDuration > IDEAL_BUFFER * OVER_BUFFER_FACTOR) {
                 return true
             }
         }
@@ -218,7 +223,7 @@ class AdaptiveBufferManager(
             } else {
                 1
             },
-            cooldownUntil = currentTime + INCREASE_COOLDOWN
+            cooldownUntil = currentTime + INCREASE_COOLDOWN,
         )
 
         logger.i {
@@ -229,6 +234,7 @@ class AdaptiveBufferManager(
         }
     }
 
+    @Suppress("UnusedParameter") // stats kept symmetric with increaseBuffer; reserved for stats-driven decrement
     private suspend fun decreaseBuffer(stats: NetworkStats, currentTime: Long) {
         // Decrease gradually toward ideal
         val decreaseMagnitude = (_targetBufferDuration - IDEAL_BUFFER) / 4
@@ -246,7 +252,7 @@ class AdaptiveBufferManager(
             } else {
                 1
             },
-            cooldownUntil = currentTime + DECREASE_COOLDOWN
+            cooldownUntil = currentTime + DECREASE_COOLDOWN,
         )
 
         logger.i {
@@ -288,7 +294,7 @@ class AdaptiveBufferManager(
         _currentPrebufferThreshold = basePrebuffer.coerceIn(MIN_PREBUFFER, MAX_PREBUFFER)
 
         // Update early threshold (target buffer + 100ms headroom, was +500ms)
-        _currentEarlyThreshold = (_targetBufferDuration + 100_000L)
+        _currentEarlyThreshold = (_targetBufferDuration + EARLY_THRESHOLD_HEADROOM_US)
             .coerceIn(MIN_EARLY_THRESHOLD, MAX_EARLY_THRESHOLD)
     }
 
@@ -331,6 +337,15 @@ class AdaptiveBufferManager(
         const val DROP_RATE_THRESHOLD = 0.05 // 5%
         const val RTT_INCREASE_RATIO = 1.5 // 50% increase
         const val HIGH_JITTER_THRESHOLD = 50_000.0 // 50ms std dev
+
+        // Decrease guards
+        const val MIN_INTERVAL_AFTER_INCREASE_US = 60_000_000L // 60s — wait this long after an increase before decreasing
+        const val LOW_RTT_THRESHOLD_US = 30_000L // 30ms — RTT must be below this to consider decrease
+        const val LOW_JITTER_THRESHOLD_US = 10_000L // 10ms — jitter must be below this too
+        const val OVER_BUFFER_FACTOR = 1.5 // decrease only when target > IDEAL * this
+
+        // Derived-threshold tuning
+        const val EARLY_THRESHOLD_HEADROOM_US = 100_000L // 100ms headroom over target buffer
     }
 }
 
@@ -430,7 +445,7 @@ data class NetworkStats(
     val rttStdDev: Double,          // Std dev of RTT (jitter estimate) in microseconds
     val syncQuality: SyncQuality,   // Current sync quality state
     val dropRate: Double,           // Proportion of dropped chunks [0.0, 1.0]
-    val recentUnderruns: Int        // Count in last 60 seconds
+    val recentUnderruns: Int,        // Count in last 60 seconds
 )
 
 /**
@@ -440,7 +455,7 @@ data class AdaptationState(
     val lastAdjustmentTime: Long,      // Microseconds since start
     val lastDirection: Direction,       // INCREASE, DECREASE, NONE
     val consecutiveSameDirection: Int,  // Count of same-direction adjustments
-    val cooldownUntil: Long            // Don't adjust before this time
+    val cooldownUntil: Long,            // Don't adjust before this time
 )
 
 /**
@@ -449,5 +464,5 @@ data class AdaptationState(
 enum class Direction {
     INCREASE,
     DECREASE,
-    NONE
+    NONE,
 }

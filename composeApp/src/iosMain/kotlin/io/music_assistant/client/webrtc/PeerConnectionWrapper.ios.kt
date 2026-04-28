@@ -53,7 +53,7 @@ actual class PeerConnectionWrapper actual constructor() {
                 RtcIceServer(
                     urls = server.urls,
                     username = server.username ?: "",
-                    password = server.credential ?: ""
+                    password = server.credential ?: "",
                 )
             }
 
@@ -70,8 +70,8 @@ actual class PeerConnectionWrapper actual constructor() {
                             IceCandidateData(
                                 candidate = candidate.candidate,
                                 sdpMid = candidate.sdpMid,
-                                sdpMLineIndex = candidate.sdpMLineIndex
-                            )
+                                sdpMLineIndex = candidate.sdpMLineIndex,
+                            ),
                         )
                     }
                 } catch (e: Exception) {
@@ -122,12 +122,12 @@ actual class PeerConnectionWrapper actual constructor() {
     }
 
     actual suspend fun createOffer(): io.music_assistant.client.webrtc.model.SessionDescription {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Creating SDP offer" }
 
         val options = OfferAnswerOptions(
             offerToReceiveAudio = false,
-            offerToReceiveVideo = false
+            offerToReceiveVideo = false,
         )
 
         val offer = pc.createOffer(options)
@@ -137,17 +137,17 @@ actual class PeerConnectionWrapper actual constructor() {
 
         return io.music_assistant.client.webrtc.model.SessionDescription(
             sdp = offer.sdp,
-            type = "offer"
+            type = "offer",
         )
     }
 
     actual suspend fun setRemoteAnswer(answer: io.music_assistant.client.webrtc.model.SessionDescription) {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Setting remote answer" }
 
         val sdp = SessionDescription(
             type = SessionDescriptionType.Answer,
-            sdp = answer.sdp
+            sdp = answer.sdp,
         )
 
         pc.setRemoteDescription(sdp)
@@ -155,13 +155,13 @@ actual class PeerConnectionWrapper actual constructor() {
     }
 
     actual suspend fun addIceCandidate(candidate: IceCandidateData) {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Adding ICE candidate" }
 
         val iceCandidate = IceCandidate(
             sdpMid = candidate.sdpMid ?: "",
             sdpMLineIndex = candidate.sdpMLineIndex ?: 0,
-            candidate = candidate.candidate
+            candidate = candidate.candidate,
         )
 
         val success = pc.addIceCandidate(iceCandidate)
@@ -176,16 +176,16 @@ actual class PeerConnectionWrapper actual constructor() {
     actual fun createDataChannel(
         label: String,
         ordered: Boolean,
-        maxRetransmits: Int
+        maxRetransmits: Int,
     ): DataChannelWrapper {
-        val pc = peerConnection ?: throw IllegalStateException("Peer connection not initialized")
+        val pc = peerConnection ?: error("Peer connection not initialized")
         logger.d { "Creating data channel: $label (ordered=$ordered, maxRetransmits=$maxRetransmits)" }
 
         val dataChannel = pc.createDataChannel(
             label = label,
             ordered = ordered,
-            maxRetransmits = maxRetransmits
-        ) ?: throw IllegalStateException("Failed to create data channel")
+            maxRetransmits = maxRetransmits,
+        ) ?: error("Failed to create data channel")
 
         return DataChannelWrapper(dataChannel)
     }

@@ -24,7 +24,6 @@ import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
 class ItemDetailsTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 
@@ -33,7 +32,7 @@ class ItemDetailsTest {
         val artist = AppMediaItemFixtures.artist()
         val albums = listOf(
             AppMediaItemFixtures.album(artist = artist),
-            AppMediaItemFixtures.album(artist = artist)
+            AppMediaItemFixtures.album(artist = artist),
         )
 
         composeTestRule.setContent {
@@ -41,7 +40,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     DataState.Data(artist),
                     DataState.Data(albums),
-                    DataState.NoData()
+                    DataState.NoData(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -65,7 +64,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
                     albumsState = DataState.NoData(),
-                    playableItemsState = DataState.Data(tracks)
+                    playableItemsState = DataState.Data(tracks),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -89,7 +88,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
                     albumsState = DataState.NoData(),
-                    playableItemsState = DataState.Data(emptyList())
+                    playableItemsState = DataState.Data(emptyList()),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -107,7 +106,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
                     albumsState = DataState.NoData(),
-                    playableItemsState = DataState.Data(emptyList())
+                    playableItemsState = DataState.Data(emptyList()),
                 ),
             )
         }
@@ -126,7 +125,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(playlist),
                     albumsState = DataState.NoData(),
-                    playableItemsState = DataState.Data(tracks)
+                    playableItemsState = DataState.Data(tracks),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -152,7 +151,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(podcast),
                     albumsState = DataState.NoData(),
-                    playableItemsState = DataState.Data(episodes)
+                    playableItemsState = DataState.Data(episodes),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -174,7 +173,7 @@ class ItemDetailsTest {
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(audiobook),
                     albumsState = DataState.NoData(),
-                    playableItemsState = DataState.NoData()
+                    playableItemsState = DataState.NoData(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -194,8 +193,8 @@ class ItemDetailsTest {
             ItemDetailsViewModel.State(
                 itemState = DataState.Loading(),
                 albumsState = DataState.Loading(),
-                playableItemsState = DataState.Loading()
-            )
+                playableItemsState = DataState.Loading(),
+            ),
         )
 
         val onPlayClick = MockFunction2<QueueOption, Boolean>()
@@ -213,14 +212,14 @@ class ItemDetailsTest {
             AppMediaItemFixtures.album(),
             AppMediaItemFixtures.playlist(),
             AppMediaItemFixtures.podcast(),
-            AppMediaItemFixtures.audiobook()
+            AppMediaItemFixtures.audiobook(),
         ).forEach {
             onPlayClick.reset()
 
             state.value = ItemDetailsViewModel.State(
                 itemState = DataState.Data(it),
                 albumsState = DataState.NoData(),
-                playableItemsState = DataState.NoData()
+                playableItemsState = DataState.NoData(),
             )
 
             composeTestRule.onAllNodes(hasContentDescription("Play now")).onFirst().performClick()
@@ -236,8 +235,8 @@ class ItemDetailsTest {
             ItemDetailsViewModel.State(
                 itemState = DataState.Loading(),
                 albumsState = DataState.Loading(),
-                playableItemsState = DataState.Loading()
-            )
+                playableItemsState = DataState.Loading(),
+            ),
         )
 
         composeTestRule.setContent {
@@ -253,14 +252,14 @@ class ItemDetailsTest {
             AppMediaItemFixtures.album(),
             AppMediaItemFixtures.playlist(),
             AppMediaItemFixtures.podcast(),
-            AppMediaItemFixtures.audiobook()
+            AppMediaItemFixtures.audiobook(),
         ).forEach {
             onBack.reset()
 
             state.value = ItemDetailsViewModel.State(
                 itemState = DataState.Data(it),
                 albumsState = DataState.NoData(),
-                playableItemsState = DataState.NoData()
+                playableItemsState = DataState.NoData(),
             )
 
             composeTestRule.onNode(hasContentDescription("Back")).performClick()

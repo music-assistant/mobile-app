@@ -1,4 +1,6 @@
 @file:OptIn(ExperimentalTime::class)
+// RTT/quality thresholds (50ms in microseconds, 5s timeout) inline-documented at use site.
+@file:Suppress("MagicNumber")
 
 package io.music_assistant.client.player.sendspin
 
@@ -11,13 +13,13 @@ import kotlin.time.TimeSource
 enum class SyncQuality {
     GOOD,
     DEGRADED,
-    LOST
+    LOST,
 }
 
 data class ClockStats(
     val offset: Long,
     val rtt: Long,
-    val quality: SyncQuality
+    val quality: SyncQuality,
 )
 
 class ClockSynchronizer {
@@ -37,6 +39,7 @@ class ClockSynchronizer {
     private var drift: Double = 0.0 // μs/μs
     private var rawOffset: Long = 0
     private var rtt: Long = 0
+
     @Volatile
     private var quality: SyncQuality = SyncQuality.LOST
     private var lastSyncTime: Instant? = null
@@ -53,11 +56,13 @@ class ClockSynchronizer {
         clientTransmitted: Long, // t1
         serverReceived: Long, // t2
         serverTransmitted: Long, // t3
-        clientReceived: Long // t4
+        clientReceived: Long, // t4
     ) {
         val (calculatedRtt, measuredOffset) = calculateOffset(
-            clientTransmitted, serverReceived,
-            serverTransmitted, clientReceived
+            clientTransmitted,
+            serverReceived,
+            serverTransmitted,
+            clientReceived,
         )
 
         rtt = calculatedRtt
@@ -114,7 +119,7 @@ class ClockSynchronizer {
         clientTx: Long,
         serverRx: Long,
         serverTx: Long,
-        clientRx: Long
+        clientRx: Long,
     ): Pair<Long, Long> {
         val rtt = (clientRx - clientTx) - (serverTx - serverRx)
         val offset = ((serverRx - clientTx) + (serverTx - clientRx)) / 2

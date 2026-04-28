@@ -66,9 +66,8 @@ import kotlin.coroutines.CoroutineContext
  */
 class AudioStreamManager(
     private val clockSynchronizer: ClockSynchronizer,
-    private val mediaPlayerController: MediaPlayerController
+    private val mediaPlayerController: MediaPlayerController,
 ) : AudioPipeline, CoroutineScope {
-
     private val logger = Logger.withTag("AudioStreamManager")
     private val supervisorJob = SupervisorJob()
 
@@ -105,6 +104,7 @@ class AudioStreamManager(
 
     private val queue = ArrayList<RawFrame>(64)
     private val queueLock = Mutex()
+
     // Signal from producer to consumer: "new frame available". Channel(1) with DROP_OLDEST
     // coalesces multiple signals into one wakeup — consumer drains all ready frames per wakeup.
     private val frameSignal = Channel<Unit>(Channel.CONFLATED)
@@ -136,7 +136,7 @@ class AudioStreamManager(
         val outputCodec: AudioCodec,
         val sampleRate: Int,
         val channels: Int,
-        val bitDepth: Int
+        val bitDepth: Int,
     )
 
     private var currentSinkConfig: SinkConfig? = null
@@ -166,7 +166,7 @@ class AudioStreamManager(
                 codec = AudioCodec.valueOf(config.codec.uppercase()),
                 channels = config.channels,
                 sampleRate = config.sampleRate,
-                bitDepth = config.bitDepth
+                bitDepth = config.bitDepth,
             )
             newDecoder.configure(formatSpec, config.codecHeader)
             audioDecoder = newDecoder
@@ -204,7 +204,7 @@ class AudioStreamManager(
                             stopStream()
                         }
                     }
-                }
+                },
             )
             currentSinkConfig = newSinkConfig
         }
@@ -310,7 +310,9 @@ class AudioStreamManager(
                                 }
                                 else -> true
                             }
-                        } else true
+                        } else {
+                            true
+                        }
 
                         val pcmData = decoderLock.withLock {
                             audioDecoder?.decode(frame.data) ?: continue

@@ -13,7 +13,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -35,7 +34,6 @@ import kotlin.test.assertTrue
  * its bucket array and throw `ArrayIndexOutOfBoundsException`.
  */
 class RpcEngineTest {
-
     private fun engine(onAuthError: () -> Unit = {}): RpcEngine = RpcEngine(onAuthError)
 
     private fun message(raw: String): JsonObject =
@@ -48,7 +46,7 @@ class RpcEngineTest {
         engine.registerCallback("m1") { received = it }
 
         val handled = engine.handleResponse(
-            message("""{"message_id": "m1", "result": {"ok": true}}""")
+            message("""{"message_id": "m1", "result": {"ok": true}}"""),
         )
 
         assertTrue(handled)
@@ -62,7 +60,7 @@ class RpcEngineTest {
         val engine = engine()
 
         val handled = engine.handleResponse(
-            message("""{"event": "player_updated"}""")
+            message("""{"event": "player_updated"}"""),
         )
 
         assertFalse(handled, "Events must not be consumed by RpcEngine")
@@ -75,13 +73,13 @@ class RpcEngineTest {
         engine.registerCallback("m1") { received = it }
 
         engine.handleResponse(
-            message("""{"message_id": "m1", "partial": true, "result": [1, 2]}""")
+            message("""{"message_id": "m1", "partial": true, "result": [1, 2]}"""),
         )
         engine.handleResponse(
-            message("""{"message_id": "m1", "partial": true, "result": [3, 4]}""")
+            message("""{"message_id": "m1", "partial": true, "result": [3, 4]}"""),
         )
         engine.handleResponse(
-            message("""{"message_id": "m1", "result": [5]}""")
+            message("""{"message_id": "m1", "result": [5]}"""),
         )
 
         val seen = received
@@ -96,7 +94,7 @@ class RpcEngineTest {
         engine.registerCallback("m1") { fired = true }
 
         engine.handleResponse(
-            message("""{"message_id": "m1", "partial": true, "result": [1]}""")
+            message("""{"message_id": "m1", "partial": true, "result": [1]}"""),
         )
 
         assertFalse(fired, "Callback must wait for the non-partial final frame")
@@ -110,7 +108,7 @@ class RpcEngineTest {
 
         engine.removeCallback("m1")
         engine.handleResponse(
-            message("""{"message_id": "m1", "result": {}}""")
+            message("""{"message_id": "m1", "result": {}}"""),
         )
 
         assertFalse(fired, "Cancelled request must not receive a late response")
@@ -123,7 +121,7 @@ class RpcEngineTest {
 
         // Accumulate partials, then cancel.
         engine.handleResponse(
-            message("""{"message_id": "m1", "partial": true, "result": [1, 2]}""")
+            message("""{"message_id": "m1", "partial": true, "result": [1, 2]}"""),
         )
         engine.removeCallback("m1")
 
@@ -133,7 +131,7 @@ class RpcEngineTest {
         var received: Answer? = null
         engine.registerCallback("m1") { received = it }
         engine.handleResponse(
-            message("""{"message_id": "m1", "result": [99]}""")
+            message("""{"message_id": "m1", "result": [99]}"""),
         )
 
         val seen = received
@@ -162,7 +160,7 @@ class RpcEngineTest {
         val engine = engine()
 
         val handled = engine.handleResponse(
-            message("""{"message_id": "ghost", "result": {}}""")
+            message("""{"message_id": "ghost", "result": {}}"""),
         )
 
         assertTrue(handled, "Still 'handled' in the RPC sense — not an event")
@@ -175,7 +173,7 @@ class RpcEngineTest {
         engine.registerCallback("m1") { /* ignore */ }
 
         engine.handleResponse(
-            message("""{"message_id": "m1", "error_code": 20, "error_message": "expired"}""")
+            message("""{"message_id": "m1", "error_code": 20, "error_message": "expired"}"""),
         )
 
         assertEquals(1, authErrors)
@@ -188,7 +186,7 @@ class RpcEngineTest {
         engine.registerCallback("m1") { /* ignore */ }
 
         engine.handleResponse(
-            message("""{"message_id": "m1", "error_code": 500, "error_message": "server"}""")
+            message("""{"message_id": "m1", "error_code": 500, "error_message": "server"}"""),
         )
 
         assertEquals(0, authErrors)
@@ -258,12 +256,12 @@ class RpcEngineTest {
                     repeat(10) { batch ->
                         engine.handleResponse(
                             message(
-                                """{"message_id": "$id", "partial": true, "result": [$batch]}"""
-                            )
+                                """{"message_id": "$id", "partial": true, "result": [$batch]}""",
+                            ),
                         )
                     }
                     engine.handleResponse(
-                        message("""{"message_id": "$id", "result": [999]}""")
+                        message("""{"message_id": "$id", "result": [999]}"""),
                     )
                     idx
                 }
@@ -283,7 +281,7 @@ class RpcEngineTest {
     private fun CoroutineScope.respondAsync(engine: RpcEngine, id: String) {
         launch(Dispatchers.Default) {
             engine.handleResponse(
-                message("""{"message_id": "$id", "result": {"ok": true}}""")
+                message("""{"message_id": "$id", "result": {"ok": true}}"""),
             )
         }
     }

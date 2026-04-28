@@ -1,3 +1,6 @@
+// Service-level timing values (debounce intervals, retry delays) are inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.services
 
 import android.app.ForegroundServiceStartNotAllowedException
@@ -63,7 +66,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             MediaNotificationData.from(
                 dataSource.apiClient.serverBaseUrl.value,
                 it,
-                false
+                false,
             )
         }
         .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }
@@ -74,7 +77,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         super.onCreate()
         val token = sharedSession.acquire(
             callback = createCallback(),
-            isAutoService = true
+            isAutoService = true,
         )
         sessionToken = token
         imageLoader = ImageLoader(this)
@@ -99,15 +102,17 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         when (val queueItems = queueData.data.items) {
                             is DataState.Data -> {
                                 val baseUrl = dataSource.apiClient.serverBaseUrl.value
-                                sharedSession.updateQueue(queueItems.data.map { queueTrack ->
+                                sharedSession.updateQueue(
+                                    queueItems.data.map { queueTrack ->
                                     QueueItem(
                                         (queueTrack.track as AppMediaItem).toMediaDescription(
                                             baseUrl,
-                                            defaultIconUri
+                                            defaultIconUri,
                                         ),
-                                        queueTrack.track.longId
+                                        queueTrack.track.longId,
                                     )
-                                })
+                                },
+                                )
                             }
 
                             else -> sharedSession.updateQueue(emptyList())
@@ -139,7 +144,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         library.play(
                             it,
                             extras,
-                            playerData.queueInfo?.id ?: playerData.player.id
+                            playerData.queueInfo?.id ?: playerData.player.id,
                         )
                     }
                 }
@@ -180,8 +185,8 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                                             QueueAction.PlayQueueItem(
                                                 playerData.queueInfo?.id
                                                     ?: playerData.player.id,
-                                                queueItemId
-                                            )
+                                                queueItemId,
+                                            ),
                                         )
                                     }
                                 }
@@ -207,7 +212,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         playerData.queueInfo?.let {
                             dataSource.playerAction(
                                 playerData,
-                                PlayerAction.ToggleShuffle(current = it.shuffleEnabled)
+                                PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
                             )
                         }
                     }
@@ -216,7 +221,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         playerData.queueInfo?.repeatMode?.let { repeatMode ->
                             dataSource.playerAction(
                                 playerData,
-                                PlayerAction.ToggleRepeatMode(current = repeatMode)
+                                PlayerAction.ToggleRepeatMode(current = repeatMode),
                             )
                         }
                     }
@@ -229,11 +234,11 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
             putInt(
                 MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
-                MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
             )
             putInt(
                 MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
-                MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
             )
         }
         return BrowserRoot(MediaIds.ROOT, extras)
@@ -241,14 +246,13 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onLoadChildren(
         parentId: String,
-        result: Result<List<MediaBrowserCompat.MediaItem>>
+        result: Result<List<MediaBrowserCompat.MediaItem>>,
     ) = library.getItems(parentId, result)
-
 
     override fun onSearch(
         query: String,
         extras: Bundle?,
-        result: Result<List<MediaBrowserCompat.MediaItem>>
+        result: Result<List<MediaBrowserCompat.MediaItem>>,
     ) = library.search(query, result)
 
     /**
@@ -281,7 +285,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         wasAuthenticated = false
                         sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                            "Reconnecting..."
+                            "Reconnecting...",
                         )
                     }
 
@@ -289,7 +293,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         wasAuthenticated = false
                         sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                            "Connection lost"
+                            "Connection lost",
                         )
                     }
 
@@ -307,7 +311,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         scope.launch {
             combine(
                 dataSource.apiClient.sessionState,
-                currentPlayerData
+                currentPlayerData,
             ) { sessionState, playerData ->
                 val isAuthenticated = (sessionState as? SessionState.Connected)
                     ?.dataConnectionState is DataConnectionState.Authenticated
@@ -321,14 +325,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                             ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
                         val pendingIntent = launchIntent?.let {
                             PendingIntent.getActivity(
-                                this@AndroidAutoPlaybackService, 0, it,
-                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                                this@AndroidAutoPlaybackService,
+                                0,
+                                it,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                             )
                         }
                         sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
                             "Local player is not enabled",
-                            pendingIntent
+                            pendingIntent,
                         )
                     }
                 } else if (playerData != null) {
@@ -355,12 +361,14 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                     try {
                         startForegroundService(intent)
                     } catch (e: Exception) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                            && e is ForegroundServiceStartNotAllowedException
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                            e is ForegroundServiceStartNotAllowedException
                         ) {
                             Logger.withTag("AndroidAutoPlaybackService")
                                 .w("Cannot start MainMediaPlaybackService from background")
-                        } else throw e
+                        } else {
+                            throw e
+                        }
                     }
                 }
             }
@@ -376,13 +384,17 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     private suspend fun loadBitmap(data: MediaNotificationData): android.graphics.Bitmap? =
         data.imageUrl?.let {
-            ((imageLoader.execute(
+            (
+                (
+                    imageLoader.execute(
                 ImageRequest.Builder(this@AndroidAutoPlaybackService)
                     .data(it)
                     .allowHardware(false)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .memoryCacheKey(it)
-                    .build()
-            ) as? SuccessResult)?.image as? BitmapImage)?.bitmap
+                    .build(),
+            ) as? SuccessResult
+                )?.image as? BitmapImage
+            )?.bitmap
         }
 }

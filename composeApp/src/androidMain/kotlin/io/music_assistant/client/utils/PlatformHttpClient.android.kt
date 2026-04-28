@@ -5,5 +5,5 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.okhttp.OkHttp
 
 actual fun createPlatformHttpClient(
-    block: HttpClientConfig<*>.() -> Unit
+    block: HttpClientConfig<*>.() -> Unit,
 ): HttpClient = HttpClient(OkHttp, block)

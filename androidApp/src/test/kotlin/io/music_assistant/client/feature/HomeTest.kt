@@ -18,7 +18,6 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = Qualifiers.MEDIUM_PHONE)
 class HomeTest {
-
     @get:Rule
     val testRuleChain = createTestRuleChain()
 

@@ -60,9 +60,8 @@ sealed class SignalingState {
 class SignalingClient(
     private val client: HttpClient,
     private val scope: CoroutineScope,
-    private val signalingUrl: String = DEFAULT_SIGNALING_URL
+    private val signalingUrl: String = DEFAULT_SIGNALING_URL,
 ) {
-
     private val logger = Logger.withTag("SignalingClient")
     private val mutex = Mutex()
 
@@ -99,7 +98,6 @@ class SignalingClient(
 
             // Start listening for incoming messages
             startReceiving()
-
         } catch (e: Exception) {
             logger.e(e) { "Failed to connect to signaling server" }
             _connectionState.value = SignalingState.Error(e)
@@ -116,7 +114,7 @@ class SignalingClient(
         val currentSession = session
         if (currentSession == null) {
             logger.e { "Cannot send message: not connected to signaling server" }
-            throw IllegalStateException("Not connected to signaling server")
+            error("Not connected to signaling server")
         }
 
         try {
@@ -125,52 +123,52 @@ class SignalingClient(
             val json = when (message) {
                 is SignalingMessage.ConnectRequest -> signalingJson.encodeToString(
                     SignalingMessage.ConnectRequest.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Connected -> signalingJson.encodeToString(
                     SignalingMessage.Connected.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Offer -> signalingJson.encodeToString(
                     SignalingMessage.Offer.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Answer -> signalingJson.encodeToString(
                     SignalingMessage.Answer.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.IceCandidate -> signalingJson.encodeToString(
                     SignalingMessage.IceCandidate.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Error -> signalingJson.encodeToString(
                     SignalingMessage.Error.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.PeerDisconnected -> signalingJson.encodeToString(
                     SignalingMessage.PeerDisconnected.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Ping -> signalingJson.encodeToString(
                     SignalingMessage.Ping.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Pong -> signalingJson.encodeToString(
                     SignalingMessage.Pong.serializer(),
-                    message
+                    message,
                 )
 
                 is SignalingMessage.Unknown -> signalingJson.encodeToString(
                     SignalingMessage.Unknown.serializer(),
-                    message
+                    message,
                 )
             }
             logger.d { "Sending signaling message: ${message.type}" }

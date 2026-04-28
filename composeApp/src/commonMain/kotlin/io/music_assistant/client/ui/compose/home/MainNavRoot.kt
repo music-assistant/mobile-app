@@ -96,7 +96,7 @@ fun MainNavigationRoot(
     val data = playersState as? HomeScreenViewModel.PlayersState.Data
     val playerPagerState = rememberPagerState(
         initialPage = data?.selectedPlayerIndex ?: 0,
-        pageCount = { data?.playerData?.size ?: 0 }
+        pageCount = { data?.playerData?.size ?: 0 },
     )
 
     // Bidirectional pager <-> selection sync
@@ -116,7 +116,6 @@ fun MainNavigationRoot(
         }
     }
 
-
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
 
@@ -125,19 +124,19 @@ fun MainNavigationRoot(
     val playlistActions = remember(actionsViewModel) {
         ActionsViewModel.PlaylistActions(
             onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-            onAddToPlaylist = actionsViewModel::addToPlaylist
+            onAddToPlaylist = actionsViewModel::addToPlaylist,
         )
     }
     val libraryActions = remember(actionsViewModel) {
         ActionsViewModel.LibraryActions(
             onLibraryClick = actionsViewModel::onLibraryClick,
-            onFavoriteClick = actionsViewModel::onFavoriteClick
+            onFavoriteClick = actionsViewModel::onFavoriteClick,
         )
     }
     val progressActions = remember(actionsViewModel) {
         ActionsViewModel.ProgressActions(
             onMarkPlayed = actionsViewModel::onMarkPlayed,
-            onMarkUnplayed = actionsViewModel::onMarkUnplayed
+            onMarkUnplayed = actionsViewModel::onMarkUnplayed,
         )
     }
 
@@ -146,7 +145,7 @@ fun MainNavigationRoot(
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
         rememberMainNavBackStack(MainNav.Library(MediaType.ARTIST)),
-        rememberMainNavBackStack(MainNav.Search)
+        rememberMainNavBackStack(MainNav.Search),
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }
 
@@ -154,29 +153,29 @@ fun MainNavigationRoot(
         multiBackStack.createNavigationItem(
             backStack = 0,
             icon = Icons.Default.Home,
-            label = stringResource(Res.string.nav_home)
+            label = stringResource(Res.string.nav_home),
         ),
         multiBackStack.createNavigationItem(
             backStack = 1,
             icon = Icons.Default.LibraryMusic,
-            label = stringResource(Res.string.nav_library)
+            label = stringResource(Res.string.nav_library),
         ),
         multiBackStack.createNavigationItem(
             backStack = 2,
             icon = Icons.Default.Search,
-            label = stringResource(Res.string.nav_search)
+            label = stringResource(Res.string.nav_search),
         ),
         NavigationItem(
             selected = false,
             onClick = { goToSettings() },
             Icons.Default.Settings,
-            label = stringResource(Res.string.nav_settings)
-        )
+            label = stringResource(Res.string.nav_settings),
+        ),
     )
 
     AdaptiveNavigationScaffold(
         showNavBar = !playerExpanded,
-        navigationItems = navigationItems
+        navigationItems = navigationItems,
     ) { contentPadding ->
         val isExpandedScreen = WindowClass.isAtLeastExpanded()
         val bottomPadding = contentPadding.calculateBottomPadding()
@@ -186,7 +185,7 @@ fun MainNavigationRoot(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = bottomPadding)
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.background),
         ) {
             NavDisplay(
                 entries = multiBackStack.toEntries(
@@ -200,19 +199,19 @@ fun MainNavigationRoot(
                         playlistActions,
                         libraryActions,
                         progressActions,
-                        actionsViewModel
-                    )
+                        actionsViewModel,
+                    ),
                 ),
                 onBack = {
                     multiBackStack.removeLastOrNull()
-                }
+                },
             )
         }
 
         FloatingBar(
             bottomPadding = bottomPadding,
             expanded = playerExpanded,
-            onExpand = onExpandPlayer
+            onExpand = onExpandPlayer,
         ) { expanded, contentPadding ->
             Players(
                 playerPagerState = playerPagerState,
@@ -223,7 +222,7 @@ fun MainNavigationRoot(
                 expanded = expanded,
                 onClose = { playerExpanded = false },
                 isExpandedScreen = isExpandedScreen,
-                contentPadding = contentPadding
+                contentPadding = contentPadding,
             )
         }
     }
@@ -240,13 +239,13 @@ private fun mainNavEntryProvider(
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions,
-    actionsViewModel: ActionsViewModel
+    actionsViewModel: ActionsViewModel,
 ): (NavKey) -> NavEntry<NavKey> {
     return entryProvider {
         entry<MainNav.Landing> {
             HomeScreen(
                 contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding,
                 ),
                 connectionState = connectionState,
                 dataState = dataState,
@@ -258,13 +257,14 @@ private fun mainNavEntryProvider(
                         is AppMediaItem.Playlist,
                         is AppMediaItem.Podcast,
                         is AppMediaItem.Audiobook,
-                        is AppMediaItem.Genre -> {
+                        is AppMediaItem.Genre,
+                        -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
                                     itemId = item.itemId,
                                     mediaType = item.mediaType,
-                                    providerId = item.provider
-                                )
+                                    providerId = item.provider,
+                                ),
                             )
                         }
 
@@ -282,14 +282,14 @@ private fun mainNavEntryProvider(
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
-                onRefresh = { viewModel.loadRecommendations() }
+                onRefresh = { viewModel.loadRecommendations() },
             )
         }
 
         entry<MainNav.Library> {
             LibraryScreen(
                 contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding,
                 ),
                 initialTabType = it.type,
                 onNavigateClick = { item ->
@@ -299,26 +299,27 @@ private fun mainNavEntryProvider(
                         is AppMediaItem.Playlist,
                         is AppMediaItem.Podcast,
                         is AppMediaItem.Audiobook,
-                        is AppMediaItem.Genre -> {
+                        is AppMediaItem.Genre,
+                        -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
                                     itemId = item.itemId,
                                     mediaType = item.mediaType,
-                                    providerId = item.provider
-                                )
+                                    providerId = item.provider,
+                                ),
                             )
                         }
 
                         else -> Unit
                     }
-                }
+                },
             )
         }
 
         entry<MainNav.ItemDetails> {
             ItemDetailsScreen(
                 contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding,
                 ),
                 itemId = it.itemId,
                 mediaType = it.mediaType,
@@ -329,10 +330,10 @@ private fun mainNavEntryProvider(
                         MainNav.ItemDetails(
                             itemId = itemId,
                             mediaType = mediaType,
-                            providerId = providerId
-                        )
+                            providerId = providerId,
+                        ),
                     )
-                }
+                },
             )
         }
 
@@ -343,13 +344,13 @@ private fun mainNavEntryProvider(
                         MainNav.ItemDetails(
                             itemId = itemId,
                             mediaType = mediaType,
-                            providerId = providerId
-                        )
+                            providerId = providerId,
+                        ),
                     )
                 },
                 contentPadding = PaddingValues(
-                    bottom = floatingBarHeight + FloatingBarDefaults.padding
-                )
+                    bottom = floatingBarHeight + FloatingBarDefaults.padding,
+                ),
             )
         }
     }
@@ -365,34 +366,44 @@ private fun Players(
     expanded: Boolean,
     onClose: () -> Unit,
     isExpandedScreen: Boolean,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         val simplePlayerAction = remember(homeScreenViewModel) {
-            { playerId: String, action: PlayerAction ->
+            {
+                playerId: String, action: PlayerAction ->
                 homeScreenViewModel.playerAction(playerId, action)
             }
         }
         val playerAction = remember(homeScreenViewModel) {
-            { playerData: PlayerData, action: PlayerAction ->
+            {
+                playerData: PlayerData, action: PlayerAction ->
                 homeScreenViewModel.playerAction(playerData, action)
             }
         }
         val onFavoriteClick = remember(actionsViewModel) {
-            { item: AppMediaItem -> actionsViewModel.onFavoriteClick(item) }
+            {
+                item: AppMediaItem ->
+                    actionsViewModel.onFavoriteClick(item)
+                }
         }
         val queueAction = remember(homeScreenViewModel) {
-            { action: QueueAction -> homeScreenViewModel.queueAction(action) }
+            {
+                action: QueueAction ->
+                    homeScreenViewModel.queueAction(action)
+                }
         }
         val moveToPlayer = remember(state, homeScreenViewModel) {
-            { id: String ->
+            {
+                id: String ->
                 state.playerData.find { it.player.id == id }
                     ?.let { homeScreenViewModel.selectPlayer(it.player) }
                 Unit
             }
         }
         val onPlayersReorder = remember(homeScreenViewModel) {
-            { newPlayerIds: List<String> ->
+            {
+                newPlayerIds: List<String> ->
                 homeScreenViewModel.onPlayersSortChanged(newPlayerIds)
             }
         }

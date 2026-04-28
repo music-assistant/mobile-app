@@ -23,10 +23,10 @@ object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
-    
+
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    
+
     fun getServerUrl(): String? {
         return serviceClient.serverBaseUrl.value
     }
@@ -37,7 +37,7 @@ object KmpHelper : KoinComponent {
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
 
     // MARK: - Swift Helpers for Data Fetching
-    
+
     fun fetchRecommendations(completion: (List<AppMediaItem>) -> Unit) {
         mainScope.launch {
             val result = serviceClient.sendRequest(Request.Library.recommendations())
@@ -55,7 +55,7 @@ object KmpHelper : KoinComponent {
             completion(folders)
         }
     }
-    
+
     fun fetchPlaylists(completion: (List<AppMediaItem>) -> Unit) {
         mainScope.launch {
              val result = serviceClient.sendRequest(Request.Playlist.listLibrary())
@@ -63,7 +63,7 @@ object KmpHelper : KoinComponent {
              completion(items)
         }
     }
-    
+
     fun fetchAlbums(completion: (List<AppMediaItem>) -> Unit) {
         mainScope.launch {
             val result = serviceClient.sendRequest(Request.Album.listLibrary())
@@ -71,7 +71,7 @@ object KmpHelper : KoinComponent {
             completion(items)
         }
     }
-    
+
     fun fetchArtists(completion: (List<AppMediaItem>) -> Unit) {
         mainScope.launch {
             val result = serviceClient.sendRequest(Request.Artist.listLibrary())
@@ -123,29 +123,29 @@ object KmpHelper : KoinComponent {
                         io.music_assistant.client.data.model.server.MediaType.TRACK,
                         io.music_assistant.client.data.model.server.MediaType.PLAYLIST,
                         io.music_assistant.client.data.model.server.MediaType.AUDIOBOOK,
-                        io.music_assistant.client.data.model.server.MediaType.RADIO
+                        io.music_assistant.client.data.model.server.MediaType.RADIO,
                     ),
                     limit = 10,
-                    libraryOnly = false
-                )
+                    libraryOnly = false,
+                ),
             )
             val searchResult = result.resultAs<io.music_assistant.client.data.model.server.SearchResult>()
             val items = searchResult?.toAppMediaItemList() ?: emptyList()
             completion(items)
         }
     }
-    
+
     // MARK: - Playback
-    
+
     fun playMediaItem(item: AppMediaItem) {
         // Use selected player from MainDataSource
         val playerId = mainDataSource.selectedPlayerIndex.value?.let { index ->
              (mainDataSource.playersData.value as? io.music_assistant.client.ui.compose.common.DataState.Data)?.data?.get(index)?.playerId
         } ?: return
-        
+
         playItem(item, playerId, QueueOption.PLAY)
     }
-    
+
     private fun playItem(item: AppMediaItem, queueOrPlayerId: String, option: QueueOption) {
         item.mediaUri?.let { mediaUri ->
             mainScope.launch {
@@ -154,8 +154,8 @@ object KmpHelper : KoinComponent {
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueOrPlayerId,
                         option = option,
-                        radioMode = false
-                    )
+                        radioMode = false,
+                    ),
                 )
             }
         }

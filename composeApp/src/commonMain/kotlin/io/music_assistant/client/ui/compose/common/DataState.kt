@@ -12,7 +12,7 @@ sealed class DataState<T> {
     data class Stale<T>(
         val data: T,
         val disconnectedAt: Long,  // Timestamp when first entered stale state
-        val reason: StaleReason
+        val reason: StaleReason,
     ) : DataState<T>()
 }
 

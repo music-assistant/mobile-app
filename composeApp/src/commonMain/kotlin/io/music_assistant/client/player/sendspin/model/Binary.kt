@@ -11,7 +11,8 @@ enum class BinaryMessageType(val value: UByte) {
     ARTWORK_CHANNEL_3(11u),
 
     // Visualizer role (16-23)
-    VISUALIZER_DATA(16u);
+    VISUALIZER_DATA(16u),
+    ;
 
     companion object {
         fun fromValue(value: UByte): BinaryMessageType? {
@@ -23,11 +24,14 @@ enum class BinaryMessageType(val value: UByte) {
 data class BinaryMessage(
     val type: BinaryMessageType,
     val timestamp: Long,
-    val data: ByteArray
+    val data: ByteArray,
 ) {
     companion object {
+        // 1 byte type + 8 byte big-endian int64 timestamp
+        private const val HEADER_SIZE = 9
+
         fun decode(data: ByteArray): BinaryMessage? {
-            if (data.size < 9) return null
+            if (data.size < HEADER_SIZE) return null
 
             val typeValue = data[0].toUByte()
             val type = BinaryMessageType.fromValue(typeValue) ?: return null
@@ -40,7 +44,7 @@ data class BinaryMessage(
             // Validate timestamp is non-negative
             if (timestamp < 0) return null
 
-            val payload = data.copyOfRange(9, data.size)
+            val payload = data.copyOfRange(HEADER_SIZE, data.size)
 
             return BinaryMessage(type, timestamp, payload)
         }

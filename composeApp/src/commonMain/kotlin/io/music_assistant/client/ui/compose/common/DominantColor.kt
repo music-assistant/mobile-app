@@ -1,3 +1,8 @@
+// Color analysis tuning constants (luminance thresholds, blend ratios) — extracting them to
+// named constants doesn't aid readability; the values are tuning knobs that only make sense
+// when read alongside the formula.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.common
 
 import androidx.compose.animation.animateColorAsState
@@ -40,7 +45,7 @@ fun rememberAnimatedDominantColor(
 
     return animateColorAsState(
         targetValue = targetColor,
-        animationSpec = tween(durationMillis = 500)
+        animationSpec = tween(durationMillis = 500),
     )
 }
 

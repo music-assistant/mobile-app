@@ -17,9 +17,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * is instantiated. The connect() method simply waits for the channel to be ready.
  */
 class WebRTCDataChannelTransport(
-    private val dataChannelWrapper: DataChannelWrapper
+    private val dataChannelWrapper: DataChannelWrapper,
 ) : SendspinTransport {
-
     private val logger = Logger.withTag("WebRTCDataChannelTransport")
 
     init {
@@ -96,7 +95,7 @@ class WebRTCDataChannelTransport(
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
             logger.w { "Attempted to send text while channel not open (state: $currentState)" }
-            throw IllegalStateException("Channel not open (state: $currentState)")
+            error("Channel not open (state: $currentState)")
         }
 
         dataChannelWrapper.send(message)
@@ -110,7 +109,7 @@ class WebRTCDataChannelTransport(
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
             logger.w { "Attempted to send binary while channel not open (state: $currentState)" }
-            throw IllegalStateException("Channel not open (state: $currentState)")
+            error("Channel not open (state: $currentState)")
         }
 
         dataChannelWrapper.sendBinary(data)

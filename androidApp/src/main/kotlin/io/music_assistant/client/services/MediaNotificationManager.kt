@@ -15,24 +15,28 @@ import io.music_assistant.client.services.MainMediaPlaybackService.Companion.ACT
 
 class MediaNotificationManager(
     private val context: Context,
-    private val sessionToken: MediaSessionCompat.Token
+    private val sessionToken: MediaSessionCompat.Token,
 ) {
-
     fun createNotification(bitmap: Bitmap?): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val dismissIntent = Intent(ACTION_NOTIFICATION_DISMISSED).apply {
             setPackage("io.music_assistant.client")
         }
         val dismissPendingIntent = PendingIntent.getBroadcast(
-            context, 0, dismissIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            context,
+            0,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -40,7 +44,7 @@ class MediaNotificationManager(
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
-                    .setMediaSession(sessionToken)
+                    .setMediaSession(sessionToken),
             )
             .setPriority(NotificationManager.IMPORTANCE_HIGH)
             .setOngoing(true)

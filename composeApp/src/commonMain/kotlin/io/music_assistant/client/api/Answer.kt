@@ -9,7 +9,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 
 data class Answer(
-    val json: JsonObject
+    val json: JsonObject,
 ) {
     val messageId: String? = json["message_id"]?.jsonPrimitive?.content
     val result: JsonElement? = json["result"]

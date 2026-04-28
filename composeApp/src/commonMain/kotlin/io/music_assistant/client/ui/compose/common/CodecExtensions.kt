@@ -2,8 +2,8 @@ package io.music_assistant.client.ui.compose.common
 
 import androidx.compose.runtime.Composable
 import io.music_assistant.client.player.sendspin.audio.Codec
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

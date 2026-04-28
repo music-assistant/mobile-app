@@ -11,7 +11,6 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
  * Built-in player (ExoPlayer) has been removed - Sendspin is now the only playback method.
  */
 expect class MediaPlayerController(platformContext: PlatformContext) {
-
     // Callback for remote commands (e.g. from iOS Control Center)
     // Common code can set this to receive commands like "play", "pause", "next", "previous"
     var onRemoteCommand: ((String) -> Unit)?
@@ -23,7 +22,7 @@ expect class MediaPlayerController(platformContext: PlatformContext) {
         channels: Int,
         bitDepth: Int,
         codecHeader: String?,
-        listener: MediaPlayerListener
+        listener: MediaPlayerListener,
     )
 
     fun writeRawPcm(data: ByteArray): Int
@@ -54,7 +53,7 @@ expect class MediaPlayerController(platformContext: PlatformContext) {
         artworkUrl: String?,
         duration: Double,
         elapsedTime: Double,
-        playbackRate: Double
+        playbackRate: Double,
     )
 
     fun clearNowPlaying()

@@ -19,8 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -39,13 +39,18 @@ fun SortChip(
             trailingIcon = if (currentSort.field != SortField.ORIGINAL) {
                 {
                     Icon(
-                        if (currentSort.descending) Icons.Default.ArrowDownward
-                        else Icons.Default.ArrowUpward,
+                        if (currentSort.descending) {
+                            Icons.Default.ArrowDownward
+                        } else {
+                            Icons.Default.ArrowUpward
+                        },
                         contentDescription = stringResource(Res.string.cd_sort_direction),
                         modifier = Modifier.size(16.dp),
                     )
                 }
-            } else null
+            } else {
+                null
+            },
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             availableFields.forEach { field ->
@@ -64,13 +69,18 @@ fun SortChip(
                     trailingIcon = if (field == currentSort.field && field != SortField.ORIGINAL) {
                         {
                             Icon(
-                                if (currentSort.descending) Icons.Default.ArrowUpward
-                                else Icons.Default.ArrowDownward,
+                                if (currentSort.descending) {
+                                    Icons.Default.ArrowUpward
+                                } else {
+                                    Icons.Default.ArrowDownward
+                                },
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                             )
                         }
-                    } else null
+                    } else {
+                        null
+                    },
                 )
             }
         }

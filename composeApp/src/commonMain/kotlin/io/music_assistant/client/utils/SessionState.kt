@@ -16,7 +16,7 @@ sealed class SessionState {
          */
         data class Direct(
             val connectionInfo: ConnectionInfo,
-            override val connectionData: ConnectionData = ConnectionData()
+            override val connectionData: ConnectionData = ConnectionData(),
         ) : Connected()
 
         /**
@@ -24,7 +24,7 @@ sealed class SessionState {
          */
         data class WebRTC(
             val remoteId: RemoteId,
-            override val connectionData: ConnectionData = ConnectionData()
+            override val connectionData: ConnectionData = ConnectionData(),
         ) : Connected()
     }
 
@@ -43,7 +43,7 @@ sealed class SessionState {
         data class Direct(
             override val attempt: Int,
             val connectionInfo: ConnectionInfo,
-            override val connectionData: ConnectionData = ConnectionData()
+            override val connectionData: ConnectionData = ConnectionData(),
         ) : Reconnecting()
 
         /**
@@ -52,7 +52,7 @@ sealed class SessionState {
         data class WebRTC(
             override val attempt: Int,
             val remoteId: RemoteId,
-            override val connectionData: ConnectionData = ConnectionData()
+            override val connectionData: ConnectionData = ConnectionData(),
         ) : Reconnecting()
     }
 
@@ -70,7 +70,7 @@ sealed class SessionState {
  * Works for both Direct and WebRTC subclasses.
  */
 fun SessionState.Connected.update(
-    connectionData: ConnectionData = this.connectionData
+    connectionData: ConnectionData = this.connectionData,
 ): SessionState.Connected = when (this) {
     is SessionState.Connected.Direct -> copy(connectionData = connectionData)
     is SessionState.Connected.WebRTC -> copy(connectionData = connectionData)
@@ -83,9 +83,9 @@ fun SessionState.Connected.update(
     serverInfo: ServerInfo? = this.serverInfo,
     user: User? = this.user,
     authProcessState: AuthProcessState = this.authProcessState,
-    wasAutoLogin: Boolean = this.wasAutoLogin
+    wasAutoLogin: Boolean = this.wasAutoLogin,
 ): SessionState.Connected = update(
-    connectionData = ConnectionData(serverInfo, user, authProcessState, wasAutoLogin)
+    connectionData = ConnectionData(serverInfo, user, authProcessState, wasAutoLogin),
 )
 
 /**
@@ -102,7 +102,7 @@ val SessionState.Connected.connectionInfo: ConnectionInfo?
  * Helper extension to update ConnectionData on Reconnecting instances.
  */
 fun SessionState.Reconnecting.update(
-    connectionData: ConnectionData = this.connectionData
+    connectionData: ConnectionData = this.connectionData,
 ): SessionState.Reconnecting = when (this) {
     is SessionState.Reconnecting.Direct -> copy(connectionData = connectionData)
     is SessionState.Reconnecting.WebRTC -> copy(connectionData = connectionData)
@@ -115,9 +115,9 @@ fun SessionState.Reconnecting.update(
     serverInfo: ServerInfo? = this.serverInfo,
     user: User? = this.user,
     authProcessState: AuthProcessState = this.authProcessState,
-    wasAutoLogin: Boolean = this.wasAutoLogin
+    wasAutoLogin: Boolean = this.wasAutoLogin,
 ): SessionState.Reconnecting = update(
-    connectionData = ConnectionData(serverInfo, user, authProcessState, wasAutoLogin)
+    connectionData = ConnectionData(serverInfo, user, authProcessState, wasAutoLogin),
 )
 
 /**

@@ -16,7 +16,7 @@ fun launchApp(composeTestRule: ComposeContentTestRule): ConnectPage {
 
 fun launchLoggedInApp(
     composeTestRule: ComposeContentTestRule,
-    fakeServiceClient: FakeServiceClient
+    fakeServiceClient: FakeServiceClient,
 ): HomePage {
     return launchApp(composeTestRule)
         .connect()

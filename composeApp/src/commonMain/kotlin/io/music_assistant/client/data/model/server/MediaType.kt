@@ -42,5 +42,5 @@ enum class MediaType {
     ANNOUNCEMENT,
 
     @SerialName("unknown")
-    UNKNOWN;
+    UNKNOWN,
 }

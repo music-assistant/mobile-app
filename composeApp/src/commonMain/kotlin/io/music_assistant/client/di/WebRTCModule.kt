@@ -36,7 +36,7 @@ val webrtcModule = module {
     factory { (scope: CoroutineScope) ->
         SignalingClient(
             client = get(named("webrtcHttpClient")),
-            scope = scope
+            scope = scope,
         )
     }
 }

@@ -1,9 +1,9 @@
 package io.music_assistant.client.utils
 
 import kotlin.test.Test
-import kotlin.test.assertTrue
-import kotlin.test.assertFalse
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -22,7 +22,7 @@ class ExtTest {
             "example.com",
             "sub.domain.co.uk",
             "my-server",
-            "a123-b456"
+            "a123-b456",
         )
         for (host in validHosts) {
             assertTrue(host.isValidHost(), "Expected $host to be recognised as a valid host")
@@ -49,7 +49,7 @@ class ExtTest {
             "endingdot.",
             "toolonglabeltoolonglabeltoolonglabeltoolonglabeltoolonglabeltoolonglabeltoolonglabeltoolonglabel.com",
             "has space.com",
-            "invalid_underscore.com"
+            "invalid_underscore.com",
         )
         for (host in invalidHosts) {
             assertFalse(host.isValidHost(), "Expected $host to be recognised as an invalid host")

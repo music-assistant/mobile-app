@@ -30,7 +30,7 @@ sealed interface SignalingMessage {
     @Serializable
     @SerialName("connect-request")
     data class ConnectRequest(
-        @SerialName("remoteId") val remoteId: String
+        @SerialName("remoteId") val remoteId: String,
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "connect-request"
@@ -45,7 +45,7 @@ sealed interface SignalingMessage {
     data class Connected(
         @SerialName("sessionId") val sessionId: String? = null,
         @SerialName("remoteId") val remoteId: String? = null,
-        @SerialName("iceServers") val iceServers: List<IceServer> = emptyList()
+        @SerialName("iceServers") val iceServers: List<IceServer> = emptyList(),
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "connected"
@@ -60,7 +60,7 @@ sealed interface SignalingMessage {
     data class Offer(
         @SerialName("remoteId") val remoteId: String,
         @SerialName("sessionId") val sessionId: String,
-        @SerialName("data") val data: SessionDescription
+        @SerialName("data") val data: SessionDescription,
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "offer"
@@ -74,7 +74,7 @@ sealed interface SignalingMessage {
     @SerialName("answer")
     data class Answer(
         @SerialName("sessionId") val sessionId: String,
-        @SerialName("data") val data: SessionDescription
+        @SerialName("data") val data: SessionDescription,
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "answer"
@@ -91,7 +91,7 @@ sealed interface SignalingMessage {
     data class IceCandidate(
         @SerialName("remoteId") val remoteId: String? = null,
         @SerialName("sessionId") val sessionId: String,
-        @SerialName("data") val data: IceCandidateData
+        @SerialName("data") val data: IceCandidateData,
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "ice-candidate"
@@ -105,7 +105,7 @@ sealed interface SignalingMessage {
     @SerialName("error")
     data class Error(
         @SerialName("error") val error: String,
-        @SerialName("sessionId") val sessionId: String? = null
+        @SerialName("sessionId") val sessionId: String? = null,
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "error"
@@ -118,7 +118,7 @@ sealed interface SignalingMessage {
     @Serializable
     @SerialName("peer-disconnected")
     data class PeerDisconnected(
-        @SerialName("sessionId") val sessionId: String? = null
+        @SerialName("sessionId") val sessionId: String? = null,
     ) : SignalingMessage {
         @SerialName("type")
         override val type: String = "peer-disconnected"
@@ -132,7 +132,7 @@ sealed interface SignalingMessage {
     @SerialName("ping")
     data class Ping(
         @SerialName("type")
-        override val type: String = "ping"
+        override val type: String = "ping",
     ) : SignalingMessage
 
     /**
@@ -143,7 +143,7 @@ sealed interface SignalingMessage {
     @SerialName("pong")
     data class Pong(
         @SerialName("type")
-        override val type: String = "pong"
+        override val type: String = "pong",
     ) : SignalingMessage
 
     /**
@@ -153,7 +153,7 @@ sealed interface SignalingMessage {
      */
     @Serializable
     data class Unknown(
-        override val type: String
+        override val type: String,
     ) : SignalingMessage
 }
 
@@ -189,7 +189,7 @@ data class IceServer(
     @Serializable(with = FlexibleUrlListSerializer::class)
     @SerialName("urls") val urls: List<String>,
     @SerialName("username") val username: String? = null,
-    @SerialName("credential") val credential: String? = null
+    @SerialName("credential") val credential: String? = null,
 )
 
 /**
@@ -198,7 +198,7 @@ data class IceServer(
 @Serializable
 data class SessionDescription(
     @SerialName("sdp") val sdp: String,
-    @SerialName("type") val type: String // "offer" or "answer"
+    @SerialName("type") val type: String, // "offer" or "answer"
 )
 
 /**
@@ -211,5 +211,5 @@ data class SessionDescription(
 data class IceCandidateData(
     @SerialName("candidate") val candidate: String,
     @SerialName("sdpMid") val sdpMid: String?,
-    @SerialName("sdpMLineIndex") val sdpMLineIndex: Int?
+    @SerialName("sdpMLineIndex") val sdpMLineIndex: Int?,
 )

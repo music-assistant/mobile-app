@@ -61,8 +61,8 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.theme.AppTheme
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -111,7 +111,7 @@ fun ItemDetailsScreen(
             actionsViewModel.removeFromPlaylist(
                 id,
                 pos,
-                viewModel::reload
+                viewModel::reload,
             )
         },
         { modifier, provider ->
@@ -153,17 +153,17 @@ fun ItemDetails(
 ) {
     val playlistActions = ActionsViewModel.PlaylistActions(
         onLoadPlaylists = geEditablePlaylists,
-        onAddToPlaylist = addToPlaylist
+        onAddToPlaylist = addToPlaylist,
     )
 
     val libraryActions = ActionsViewModel.LibraryActions(
         onLibraryClick = onLibraryClick,
-        onFavoriteClick = onFavoriteClick
+        onFavoriteClick = onFavoriteClick,
     )
 
     val progressActions = ActionsViewModel.ProgressActions(
         onMarkPlayed = onMarkPlayed,
-        onMarkUnplayed = onMarkUnplayed
+        onMarkUnplayed = onMarkUnplayed,
     )
 
     ItemChildren(
@@ -178,7 +178,8 @@ fun ItemDetails(
                 is AppMediaItem.Playlist,
                 is AppMediaItem.Podcast,
                 is AppMediaItem.Audiobook,
-                is AppMediaItem.Genre -> {
+                is AppMediaItem.Genre,
+                -> {
                     onNavigateToItem(item.itemId, item.mediaType, item.provider)
                 }
 
@@ -253,7 +254,8 @@ private fun ItemChildren(
             )
 
             is DataState.Stale,
-            is DataState.Data -> {
+            is DataState.Data,
+            -> {
                 val item = when (itemState) {
                     is DataState.Data -> itemState.data
                     is DataState.Stale -> itemState.data
@@ -276,7 +278,7 @@ private fun ItemChildren(
                     onToggleViewMode = onToggleViewMode,
                     onAlbumsSortChanged = onAlbumsSortChanged,
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
-                    contentPadding = contentPadding
+                    contentPadding = contentPadding,
                 )
             }
 
@@ -287,7 +289,7 @@ private fun ItemChildren(
             toastState = toastState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp)
+                .padding(bottom = 48.dp),
         )
     }
 }
@@ -311,7 +313,7 @@ private fun ItemContent(
     onToggleViewMode: () -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
 ) {
     val tabs = tabsFor(item)
     var selectedIndex by rememberSaveable(item.mediaType) { mutableStateOf(0) }
@@ -322,7 +324,7 @@ private fun ItemContent(
             item = item,
             serverUrl = serverUrl,
             providerIconFetcher = providerIconFetcher,
-            onPlayClick = onPlayItemClick
+            onPlayClick = onPlayItemClick,
         )
     }
 
@@ -339,7 +341,7 @@ private fun ItemContent(
                     { onNavigateClick(item.artists[0]) }
                 } else {
                     null
-                }
+                },
             )
 
             if (tabs.isEmpty()) {
@@ -401,7 +403,8 @@ private fun TabsBar(
         SubItemContext.ARTIST_TRACKS,
         SubItemContext.ALBUM_TRACKS,
         SubItemContext.PLAYLIST_TRACKS,
-        SubItemContext.PODCAST_EPISODES -> playableItemsSortOption
+        SubItemContext.PODCAST_EPISODES,
+        -> playableItemsSortOption
 
         null -> null
     }
@@ -464,7 +467,8 @@ private fun TabContent(
 ) {
     when (tab) {
         ItemDetailsTab.ARTIST_ALBUMS,
-        ItemDetailsTab.GENRE_ALBUMS -> AlbumsTabContent(
+        ItemDetailsTab.GENRE_ALBUMS,
+        -> AlbumsTabContent(
             albumsState = state.albumsState,
             isRowMode = isRowMode,
             serverUrl = serverUrl,
@@ -481,7 +485,8 @@ private fun TabContent(
         ItemDetailsTab.ARTIST_TRACKS,
         ItemDetailsTab.ALBUM_TRACKS,
         ItemDetailsTab.PLAYLIST_TRACKS,
-        ItemDetailsTab.PODCAST_EPISODES -> PlayablesTabContent(
+        ItemDetailsTab.PODCAST_EPISODES,
+        -> PlayablesTabContent(
             playableItemsState = state.playableItemsState,
             parentItem = item,
             isRowMode = isRowMode,
@@ -553,7 +558,9 @@ private fun AlbumsTabContent(
                 albumsState.data,
                 span = if (isRowMode) {
                     { GridItemSpan(maxLineSpan) }
-                } else null,
+                } else {
+                    null
+                },
             ) { album ->
                 AlbumWithMenu(
                     item = album,
@@ -605,7 +612,9 @@ private fun ArtistsTabContent(
                 artistsState.data,
                 span = if (isRowMode) {
                     { GridItemSpan(maxLineSpan) }
-                } else null,
+                } else {
+                    null
+                },
             ) { artist ->
                 ArtistWithMenu(
                     item = artist,
@@ -661,7 +670,9 @@ private fun PlayablesTabContent(
                     item(
                         span = if (isRowMode) {
                             { GridItemSpan(maxLineSpan) }
-                        } else null,
+                        } else {
+                            null
+                        },
                     ) {
                         when (track) {
                             is AppMediaItem.Track -> TrackWithMenu(
@@ -672,7 +683,9 @@ private fun PlayablesTabContent(
                                 playlistActions = playlistActions,
                                 onRemoveFromPlaylist = if (parentItem is AppMediaItem.Playlist && parentItem.isEditable == true) {
                                     { onRemoveFromPlaylist(parentItem.itemId, index) }
-                                } else null,
+                                } else {
+                                    null
+                                },
                                 libraryActions = libraryActions,
                                 providerIconFetcher = providerIconFetcher,
                             )
@@ -771,14 +784,14 @@ private fun ChapterRow(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = chapter.name,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
         val durationMinutes = (chapter.duration / 60).toInt()
         if (durationMinutes > 0) {
@@ -786,7 +799,7 @@ private fun ChapterRow(
                 text = "${durationMinutes}m",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 8.dp),
             )
         }
     }
@@ -801,7 +814,7 @@ private fun PreviewLoading() {
                 state = ItemDetailsViewModel.State(
                     DataState.Loading(),
                     DataState.Loading(),
-                    DataState.Loading()
+                    DataState.Loading(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
             )
@@ -822,10 +835,10 @@ private fun PreviewArtist(isRowMode: Boolean = true) {
                     DataState.Data(
                         listOf(
                             AppMediaItemFixtures.album(name = "Album 1", artist = artist),
-                            AppMediaItemFixtures.album(name = "Album 2", artist = artist)
-                        )
+                            AppMediaItemFixtures.album(name = "Album 2", artist = artist),
+                        ),
                     ),
-                    DataState.NoData()
+                    DataState.NoData(),
                 ),
                 isRowMode = isRowMode,
                 geEditablePlaylists = suspend { emptyList() },
@@ -854,9 +867,9 @@ private fun PreviewAlbum(isRowMode: Boolean = true) {
                 DataState.Data(
                     AppMediaItemFixtures.tracks(
                         listOf("Track 1", "Track 2"),
-                        album = album
-                    )
-                )
+                        album = album,
+                    ),
+                ),
             ),
             isRowMode = isRowMode,
             geEditablePlaylists = suspend { emptyList() },
@@ -878,7 +891,7 @@ private fun PreviewPlaylist(isRowMode: Boolean = true) {
             state = ItemDetailsViewModel.State(
                 DataState.Data(AppMediaItemFixtures.playlist("Title")),
                 DataState.NoData(),
-                DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2")))
+                DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"))),
             ),
             isRowMode = isRowMode,
             geEditablePlaylists = suspend { emptyList() },
@@ -904,9 +917,9 @@ private fun PreviewPodcast(isRowMode: Boolean = true) {
                 DataState.Data(
                     AppMediaItemFixtures.episodes(
                         listOf("Episode 1", "Episode 2"),
-                        podcast = podcast
-                    )
-                )
+                        podcast = podcast,
+                    ),
+                ),
             ),
             isRowMode = isRowMode,
             geEditablePlaylists = suspend { emptyList() },
@@ -929,11 +942,11 @@ private fun PreviewAudiobook(isRowMode: Boolean = true) {
                 DataState.Data(
                     AppMediaItemFixtures.audiobook(
                         "Title",
-                        listOf("Chapter 1", "Chapter 2")
-                    )
+                        listOf("Chapter 1", "Chapter 2"),
+                    ),
                 ),
                 DataState.NoData(),
-                DataState.NoData()
+                DataState.NoData(),
             ),
             isRowMode = isRowMode,
             geEditablePlaylists = suspend { emptyList() },

@@ -1,3 +1,8 @@
+// The values in this file ARE the data — the backoff ladder is self-documenting in its
+// `when (attempt)` form (see KDoc on reconnectBackoffMs). Extracting each rung to a named
+// constant would make it less readable, not more.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.api
 
 import kotlinx.coroutines.delay

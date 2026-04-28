@@ -27,9 +27,8 @@ class DirectTransport(
     private val connectionInfoProvider: () -> ConnectionInfo,
     private val scope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
-    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS
+    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
 ) : Transport {
-
     private val logger = Logger.withTag("DirectTransport")
 
     private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
@@ -75,7 +74,8 @@ class DirectTransport(
                     messageCounter++
                     _messages.emit(message)
                 }
-            } catch (e: ClosedReceiveChannelException) {
+            } catch (@Suppress("SwallowedException") e: ClosedReceiveChannelException) {
+                // Expected on graceful close — the channel-closed exception type IS the signal.
                 logger.d { "WebSocket connection closed" }
             } finally {
                 session = null
@@ -101,12 +101,11 @@ class DirectTransport(
                         openWebSocket(connectionInfoProvider())
                         // Returned normally = was connected, then dropped — signal success for fresh cycle
                         true
-                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (e: Exception) {
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                         logger.w { "Reconnect attempt $attempt failed: ${e.message}" }
                         false
                     }
-                }
+                },
             )
             if (!reconnected) {
                 _state.value = TransportState.Failed(Exception("Max reconnect attempts reached"))
@@ -144,7 +143,7 @@ class DirectTransport(
     }
 
     override suspend fun send(message: JsonObject) {
-        val s = session ?: throw IllegalStateException("Not connected")
+        val s = session ?: error("Not connected")
         s.sendSerialized(message)
     }
 

@@ -14,7 +14,7 @@ sealed class SendspinError {
      */
     data class Transient(
         val cause: Throwable,
-        val willRetry: Boolean
+        val willRetry: Boolean,
     ) : SendspinError()
 
     /**
@@ -26,7 +26,7 @@ sealed class SendspinError {
      */
     data class Permanent(
         val cause: Throwable,
-        val userAction: String
+        val userAction: String,
     ) : SendspinError()
 
     /**
@@ -38,6 +38,6 @@ sealed class SendspinError {
      */
     data class Degraded(
         val reason: String,
-        val impact: String
+        val impact: String,
     ) : SendspinError()
 }

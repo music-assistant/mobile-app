@@ -1,4 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
+// Compose layout values (sizes, alphas, animation durations) are visual design tokens.
+@file:Suppress("MagicNumber")
 
 package io.music_assistant.client.ui.compose.item
 
@@ -63,8 +65,8 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.launch
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -73,7 +75,7 @@ fun ItemHeader(
     item: AppMediaItem,
     serverUrl: String? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
-    onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> }
+    onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val image = @Composable {
@@ -89,14 +91,14 @@ fun ItemHeader(
             ItemPlayButton(
                 item,
                 onPlayClick = onPlayClick,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 16.dp),
             )
         }
 
         if (WindowClass.isAtLeastExpanded()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 image()
                 Column(modifier = Modifier.padding(start = 32.dp)) {
@@ -106,7 +108,7 @@ fun ItemHeader(
         } else {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 image()
                 textAndControls(TextAlign.Center)
@@ -124,7 +126,7 @@ internal fun ItemTopBar(
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    goToArtist: (() -> Unit)?
+    goToArtist: (() -> Unit)?,
 ) {
     TopAppBar(
         title = {},
@@ -140,10 +142,10 @@ internal fun ItemTopBar(
                 onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions,
-                goToArtist = goToArtist
+                goToArtist = goToArtist,
             )
         },
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
 
@@ -154,7 +156,7 @@ private fun ItemOverflow(
     onToggleViewMode: () -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
-    goToArtist: (() -> Unit)?
+    goToArtist: (() -> Unit)?,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
@@ -168,23 +170,37 @@ private fun ItemOverflow(
                     add(
                         OverflowMenuOption(
                             title =
-                                if (item.isInLibrary) stringResource(Res.string.action_remove_from_library)
-                                else stringResource(Res.string.action_add_to_library),
+                                if (item.isInLibrary) {
+                                    stringResource(Res.string.action_remove_from_library)
+                                } else {
+                                    stringResource(Res.string.action_add_to_library)
+                                },
                             icon =
-                                if (item.isInLibrary) TablerIcons.FolderMinus
-                                else TablerIcons.FolderPlus
-                        ) { actions.onLibraryClick(item) })
+                                if (item.isInLibrary) {
+                                    TablerIcons.FolderMinus
+                                } else {
+                                    TablerIcons.FolderPlus
+                                },
+                        ) { actions.onLibraryClick(item) },
+                    )
                 }
                 if (item.isInLibrary) {
                     add(
                         OverflowMenuOption(
                             title =
-                                if (item.favorite == true) stringResource(Res.string.action_unfavorite)
-                                else stringResource(Res.string.action_favorite),
+                                if (item.favorite == true) {
+                                    stringResource(Res.string.action_unfavorite)
+                                } else {
+                                    stringResource(Res.string.action_favorite)
+                                },
                             icon =
-                                if (item.favorite == true) TablerIcons.HeartBroken
-                                else TablerIcons.Heart
-                        ) { actions.onFavoriteClick(item) })
+                                if (item.favorite == true) {
+                                    TablerIcons.HeartBroken
+                                } else {
+                                    TablerIcons.Heart
+                                },
+                        ) { actions.onFavoriteClick(item) },
+                    )
                 }
             }
 
@@ -192,7 +208,7 @@ private fun ItemOverflow(
                 add(
                     OverflowMenuOption(
                         title = stringResource(Res.string.playlist_add_to_title),
-                        icon = Icons.AutoMirrored.Filled.PlaylistAdd
+                        icon = Icons.AutoMirrored.Filled.PlaylistAdd,
                     ) {
                         showPlaylistDialog = true
                         // Load playlists when dialog opens
@@ -201,15 +217,16 @@ private fun ItemOverflow(
                             playlists = it.onLoadPlaylists()
                             isLoadingPlaylists = false
                         }
-                    })
+                    },
+                )
             }
 
             add(
                 OverflowMenuOption(
                     title = stringResource(Res.string.action_toggle_view_mode),
                     icon = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                    onClick = onToggleViewMode
-                )
+                    onClick = onToggleViewMode,
+                ),
             )
 
             if (goToArtist != null) {
@@ -217,11 +234,11 @@ private fun ItemOverflow(
                     OverflowMenuOption(
                         title = stringResource(Res.string.action_go_to_artist),
                         icon = Icons.Default.Person,
-                        onClick = goToArtist
-                    )
+                        onClick = goToArtist,
+                    ),
                 )
             }
-        }
+        },
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(Res.string.cd_more))
@@ -240,7 +257,7 @@ private fun ItemOverflow(
                 if (isLoadingPlaylists) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
@@ -255,11 +272,11 @@ private fun ItemOverflow(
                                     showPlaylistDialog = false
                                     playlists = emptyList()
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(
                                     text = playlist.name,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
                         }
@@ -275,14 +292,16 @@ private fun ItemOverflow(
                 }) {
                     Text(stringResource(Res.string.common_cancel))
                 }
-            }
+            },
         )
     }
 }
 
 @Composable
 private fun ItemText(
-    item: AppMediaItem, textAlign: TextAlign, modifier: Modifier
+    item: AppMediaItem,
+    textAlign: TextAlign,
+    modifier: Modifier,
 ) {
     val horizontalAlignment = if (textAlign == TextAlign.Center) {
         Alignment.CenterHorizontally
@@ -292,12 +311,12 @@ private fun ItemText(
 
     Column(
         modifier = modifier,
-        horizontalAlignment = horizontalAlignment
+        horizontalAlignment = horizontalAlignment,
     ) {
         Text(
             item.name,
             textAlign = textAlign,
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
         )
 
         (item as? AppMediaItem.Album)?.version?.let {
@@ -306,7 +325,7 @@ private fun ItemText(
                     it,
                     textAlign = textAlign,
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
@@ -316,7 +335,7 @@ private fun ItemText(
                 it,
                 textAlign = textAlign,
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 12.dp)
+                modifier = Modifier.padding(top = 12.dp),
             )
         }
     }
@@ -332,12 +351,12 @@ private fun Image(
         modifier = Modifier
             .widthIn(max = 300.dp)
             .fillMaxWidth(0.7f)
-            .aspectRatio(1f)
+            .aspectRatio(1f),
     ) {
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = MaterialTheme.colorScheme.background,
             iconColor = MaterialTheme.colorScheme.secondary,
-            icon = TrackIcon
+            icon = TrackIcon,
         )
 
         val shape = if (item is AppMediaItem.Artist) {
@@ -355,7 +374,7 @@ private fun Image(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .clip(shape)
+                .clip(shape),
         )
 
         Badges(
@@ -364,7 +383,7 @@ private fun Image(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 8.dp, bottom = 8.dp)
-                .size(24.dp)
+                .size(24.dp),
         )
     }
 }
@@ -380,8 +399,8 @@ private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
 private fun PreviewLongTitle() {
     Preview(
         AppMediaItemFixtures.album(
-            name = "A very long title that is very long oh no it's so long"
-        )
+            name = "A very long title that is very long oh no it's so long",
+        ),
     )
 }
 
@@ -393,7 +412,7 @@ private fun PreviewAlbumVersion() {
 
 @Preview(
     widthDp = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND,
-    heightDp = WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND
+    heightDp = WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND,
 )
 @Composable
 private fun PreviewAlbumMediumWindow() {
@@ -402,7 +421,7 @@ private fun PreviewAlbumMediumWindow() {
 
 @Preview(
     widthDp = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND,
-    heightDp = WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND
+    heightDp = WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND,
 )
 @Composable
 private fun PreviewAlbumExpandedWindow() {

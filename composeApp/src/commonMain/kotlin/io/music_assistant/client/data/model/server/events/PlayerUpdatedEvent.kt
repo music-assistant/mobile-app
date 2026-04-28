@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 data class PlayerUpdatedEvent(
     @SerialName("event") override val event: EventType,
     @SerialName("object_id") override val objectId: String? = null,
-    @SerialName("data") override val data: ServerPlayer
+    @SerialName("data") override val data: ServerPlayer,
 ) : Event<ServerPlayer> {
     fun player() = data.toPlayer()
 }

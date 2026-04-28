@@ -141,7 +141,7 @@ fun LibraryScreen(
                 onToggleViewMode = viewModel::toggleItemsRowMode,
                 scrollBehavior = scrollBehavior,
             )
-        }
+        },
     ) {
         Library(
             contentPadding = contentPadding,
@@ -160,15 +160,15 @@ fun LibraryScreen(
             onCreatePlaylist = viewModel::createPlaylist,
             playlistActions = ActionsViewModel.PlaylistActions(
                 onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                onAddToPlaylist = actionsViewModel::addToPlaylist
+                onAddToPlaylist = actionsViewModel::addToPlaylist,
             ),
             libraryActions = ActionsViewModel.LibraryActions(
                 onLibraryClick = actionsViewModel::onLibraryClick,
-                onFavoriteClick = actionsViewModel::onFavoriteClick
+                onFavoriteClick = actionsViewModel::onFavoriteClick,
             ),
             progressActions = ActionsViewModel.ProgressActions(
                 onMarkPlayed = actionsViewModel::onMarkPlayed,
-                onMarkUnplayed = actionsViewModel::onMarkUnplayed
+                onMarkUnplayed = actionsViewModel::onMarkUnplayed,
             ),
         )
     }
@@ -187,7 +187,7 @@ private fun LibraryTopBar(
             PrimaryScrollableTabRow(
                 containerColor = Color.Transparent,
                 edgePadding = 0.dp,
-                selectedTabIndex = tabs.indexOfFirst { it.isSelected }
+                selectedTabIndex = tabs.indexOfFirst { it.isSelected },
             ) {
                 tabs.forEach { tabState ->
                     Tab(
@@ -204,9 +204,9 @@ private fun LibraryTopBar(
                                     LibraryViewModel.Tab.PODCASTS -> stringResource(Res.string.media_type_podcasts)
                                     LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
                                     LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
-                                }
+                                },
                             )
-                        }
+                        },
                     )
                 }
             }
@@ -215,14 +215,14 @@ private fun LibraryTopBar(
             IconButton(onClick = onToggleViewMode) {
                 Icon(
                     imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                    contentDescription = stringResource(Res.string.cd_toggle_view_mode)
+                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
                 )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
 
@@ -252,7 +252,7 @@ private fun Library(
     Box(modifier = modifier) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxSize(),
         ) {
             // Quick search input
             OutlinedTextField(
@@ -269,12 +269,14 @@ private fun Library(
                         IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = stringResource(Res.string.common_clear)
+                                contentDescription = stringResource(Res.string.common_clear),
                             )
                         }
                     }
-                } else null,
-                singleLine = true
+                } else {
+                    null
+                },
+                singleLine = true,
             )
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -283,7 +285,7 @@ private fun Library(
                 FilterChip(
                     selected = selectedTab.onlyFavorites,
                     onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
-                    label = { Text(stringResource(Res.string.action_favorite)) }
+                    label = { Text(stringResource(Res.string.action_favorite)) },
                 )
                 SortChip(
                     currentSort = selectedTab.sortOption,
@@ -305,7 +307,7 @@ private fun Library(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     progressActions = progressActions,
-                    contentPadding
+                    contentPadding,
                 )
             }
         }
@@ -315,14 +317,14 @@ private fun Library(
             toastState = toastState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp)
+                .padding(bottom = 48.dp),
         )
 
         // Create Playlist Dialog
         if (state.showCreatePlaylistDialog) {
             CreatePlaylistDialog(
                 onDismiss = onDismissCreatePlaylistDialog,
-                onCreate = onCreatePlaylist
+                onCreate = onCreatePlaylist,
             )
         }
     }
@@ -359,7 +361,7 @@ private fun CreatePlaylistDialog(
                         onCreate(playlistName.trim())
                     }
                 },
-                enabled = playlistName.trim().isNotEmpty()
+                enabled = playlistName.trim().isNotEmpty(),
             ) {
                 Text(stringResource(Res.string.common_create))
             }
@@ -368,7 +370,7 @@ private fun CreatePlaylistDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(Res.string.common_cancel))
             }
-        }
+        },
     )
 }
 
@@ -405,7 +407,7 @@ private fun TabContent(
             audiobooksGridState,
             podcastsGridState,
             radiosGridState,
-            genresGridState
+            genresGridState,
         ) {
             mapOf(
                 LibraryViewModel.Tab.ARTISTS to artistsGridState,
@@ -415,7 +417,7 @@ private fun TabContent(
                 LibraryViewModel.Tab.AUDIOBOOKS to audiobooksGridState,
                 LibraryViewModel.Tab.PODCASTS to podcastsGridState,
                 LibraryViewModel.Tab.RADIOS to radiosGridState,
-                LibraryViewModel.Tab.GENRES to genresGridState
+                LibraryViewModel.Tab.GENRES to genresGridState,
             )
         }
 
@@ -424,7 +426,8 @@ private fun TabContent(
         is DataState.Error -> ErrorState()
         is DataState.NoData -> EmptyState()
         is DataState.Stale,
-        is DataState.Data -> {
+        is DataState.Data,
+        -> {
             // Handle both Data and Stale - both contain valid library data
             val items = when (dataState) {
                 is DataState.Data -> dataState.data
@@ -441,7 +444,7 @@ private fun TabContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                                onClick = onCreatePlaylistClick
+                                onClick = onCreatePlaylistClick,
                             ) {
                                 Icon(TablerIcons.Plus, contentDescription = stringResource(Res.string.cd_add_playlist))
                                 Spacer(Modifier.width(4.dp))
@@ -463,10 +466,9 @@ private fun TabContent(
                                 playlistActions = playlistActions,
                                 libraryActions = libraryActions,
                                 progressActions = progressActions,
-                                contentPadding = contentPadding
+                                contentPadding = contentPadding,
                             )
                         }
-
                     }
                 }
             }
@@ -478,7 +480,7 @@ private fun TabContent(
 private fun LoadingState() {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator()
     }
@@ -488,12 +490,12 @@ private fun LoadingState() {
 private fun ErrorState() {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(Res.string.library_error),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
         )
     }
 }
@@ -502,13 +504,12 @@ private fun ErrorState() {
 private fun EmptyState() {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(Res.string.library_empty),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
-

@@ -1,3 +1,6 @@
+// Log-payload truncation length is a debugging aid, not a protocol value.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.player.sendspin.protocol
 
 import co.touchlab.kermit.Logger
@@ -54,9 +57,8 @@ import kotlin.time.Duration.Companion.seconds
 class MessageDispatcher(
     private val transport: SendspinTransport,
     private val clockSynchronizer: ClockSynchronizer,
-    private val config: MessageDispatcherConfig
+    private val config: MessageDispatcherConfig,
 ) : CoroutineScope {
-
     // Convenience accessors for config properties
     private val clientCapabilities: ClientHelloPayload get() = config.clientCapabilities
     private val authToken: String? get() = config.authToken
@@ -212,7 +214,7 @@ class MessageDispatcher(
 
         val message = ClientAuthMessage(
             token = token,
-            clientId = clientCapabilities.clientId
+            clientId = clientCapabilities.clientId,
         )
         val json = myJson.encodeToString(message)
         transport.sendText(json)
@@ -229,7 +231,7 @@ class MessageDispatcher(
     suspend fun sendTime() {
         val clientTransmitted = getCurrentTimeMicros()
         val message = ClientTimeMessage(
-            payload = ClientTimePayload(clientTransmitted = clientTransmitted)
+            payload = ClientTimePayload(clientTransmitted = clientTransmitted),
         )
         val json = myJson.encodeToString(message)
         transport.sendText(json)
@@ -237,7 +239,7 @@ class MessageDispatcher(
 
     suspend fun sendState(state: PlayerStateObject) {
         val message = ClientStateMessage(
-            payload = ClientStatePayload(player = state)
+            payload = ClientStatePayload(player = state),
         )
         val json = myJson.encodeToString(message)
         logger.i { "Sending client/state: $json" }
@@ -247,7 +249,7 @@ class MessageDispatcher(
     suspend fun sendGoodbye(reason: String) {
         logger.i { "Sending client/goodbye: $reason" }
         val message = ClientGoodbyeMessage(
-            payload = GoodbyePayload(reason = reason)
+            payload = GoodbyePayload(reason = reason),
         )
         val json = myJson.encodeToString(message)
         transport.sendText(json)
@@ -256,7 +258,7 @@ class MessageDispatcher(
     suspend fun sendCommand(command: String, value: CommandValue?) {
         logger.d { "Sending client/command: $command" }
         val message = ClientCommandMessage(
-            payload = CommandPayload(command = command, value = value)
+            payload = CommandPayload(command = command, value = value),
         )
         val json = myJson.encodeToString(message)
         transport.sendText(json)
@@ -318,7 +320,7 @@ class MessageDispatcher(
             clientTransmitted = payload.clientTransmitted,
             serverReceived = payload.serverReceived,
             serverTransmitted = payload.serverTransmitted,
-            clientReceived = clientReceived
+            clientReceived = clientReceived,
         )
 
         logger.d { "Clock sync: offset=${clockSynchronizer.currentOffset}μs, quality=${clockSynchronizer.currentQuality}" }
@@ -352,7 +354,7 @@ class MessageDispatcher(
                 title = metadata.title,
                 artist = metadata.artist,
                 album = metadata.album,
-                artworkUrl = metadata.artworkUrl
+                artworkUrl = metadata.artworkUrl,
             )
         }
     }
@@ -388,7 +390,7 @@ class MessageDispatcher(
                             title = title,
                             artist = artist,
                             album = album,
-                            artworkUrl = artworkUrl
+                            artworkUrl = artworkUrl,
                         )
                         logger.d { "Updated stream metadata from server/state: $title by $artist" }
                     }

@@ -1,8 +1,6 @@
 package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
-import kotlin.concurrent.atomics.AtomicReference
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -10,6 +8,8 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * Handles RPC request/response correlation for the Music Assistant API.
@@ -34,7 +34,6 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 @OptIn(ExperimentalAtomicApi::class)
 class RpcEngine(private val onAuthError: () -> Unit) {
-
     private val logger = Logger.withTag("RpcEngine")
 
     private val pendingResponses =
@@ -82,7 +81,7 @@ class RpcEngine(private val onAuthError: () -> Unit) {
         val answer = Answer(finalMessage)
         if (answer.json.containsKey("error_code")) {
             logger.e { "RPC error for message $messageId: $answer" }
-            if (answer.json["error_code"]?.jsonPrimitive?.int == 20) {
+            if (answer.json["error_code"]?.jsonPrimitive?.int == ERROR_CODE_AUTH_REQUIRED) {
                 onAuthError()
             }
         }
@@ -106,6 +105,11 @@ class RpcEngine(private val onAuthError: () -> Unit) {
     fun clear() {
         pendingResponses.store(emptyMap())
         partialResults.store(emptyMap())
+    }
+
+    private companion object {
+        // Server emits this error_code when the session needs to re-auth (token expired, etc.).
+        const val ERROR_CODE_AUTH_REQUIRED = 20
     }
 }
 

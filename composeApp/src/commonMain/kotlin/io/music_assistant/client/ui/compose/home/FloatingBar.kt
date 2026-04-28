@@ -46,7 +46,7 @@ fun BoxScope.FloatingBar(
     bottomPadding: Dp = 0.dp,
     expanded: Boolean = false,
     onExpand: (Boolean) -> Unit = {},
-    content: @Composable (expanded: Boolean, contentPadding: PaddingValues) -> Unit
+    content: @Composable (expanded: Boolean, contentPadding: PaddingValues) -> Unit,
 ) {
     BackHandler(enabled = expanded) {
         onExpand(false)
@@ -76,12 +76,12 @@ fun BoxScope.FloatingBar(
             if (expanded) {
                 IconButton(
                     onClick = { onExpand(false) },
-                    modifier = Modifier.statusBarsPadding().fillMaxWidth().height(36.dp)
+                    modifier = Modifier.statusBarsPadding().fillMaxWidth().height(36.dp),
                 ) {
                     Icon(
                         Icons.Default.ExpandMore,
                         "Collapse",
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     )
                 }
             }
@@ -92,7 +92,6 @@ fun BoxScope.FloatingBar(
             } else {
                 PaddingValues()
             }
-
 
             content(expanded, contentPadding)
         }
@@ -110,7 +109,7 @@ private fun PreviewFloatingBarRow() {
         FloatingBar { _, _ ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("Left")
                 Text("Right")
@@ -144,4 +143,3 @@ private fun PreviewFloatingBarExpanded() {
         }
     }
 }
-

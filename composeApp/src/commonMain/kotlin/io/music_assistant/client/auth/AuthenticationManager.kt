@@ -63,7 +63,7 @@ class AuthenticationManager(
                                                 settings.getDirectServerIdentifier(
                                                     state.connectionInfo.host,
                                                     state.connectionInfo.port,
-                                                    state.connectionInfo.isTls
+                                                    state.connectionInfo.isTls,
                                                 )
                                             is SessionState.Connected.WebRTC ->
                                                 settings.getWebRTCServerIdentifier(state.remoteId.rawId)
@@ -129,10 +129,11 @@ class AuthenticationManager(
         }
     }
 
+    @Suppress("UnusedParameter") // providerId reserved — current server login API doesn't yet route per-provider
     suspend fun loginWithCredentials(
         providerId: String,
         username: String,
-        password: String
+        password: String,
     ): Result<Unit> {
         return try {
             _isLoggingOut.value = false  // Reset flag when user explicitly logs in
@@ -149,7 +150,7 @@ class AuthenticationManager(
     suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String> {
         return try {
             val response = serviceClient.sendRequest(
-                Request.Auth.authorizationUrl(providerId, returnUrl)
+                Request.Auth.authorizationUrl(providerId, returnUrl),
             )
 
             if (response.isFailure) {
@@ -194,7 +195,7 @@ class AuthenticationManager(
             // Wait for connection to be established if app was backgrounded
             // Try for up to 10 seconds
             var attempts = 0
-            while (attempts < 40) { // 40 * 250ms = 10 seconds
+            while (attempts < CONNECT_POLL_MAX_ATTEMPTS) {
                 val currentState = serviceClient.sessionState.value
 
                 if (currentState is SessionState.Connected &&
@@ -214,7 +215,7 @@ class AuthenticationManager(
                 }
 
                 Logger.d("Waiting for connection... attempt ${attempts + 1}")
-                delay(250)
+                delay(CONNECT_POLL_INTERVAL_MS)
                 attempts++
             }
 
@@ -244,7 +245,7 @@ class AuthenticationManager(
                         settings.getDirectServerIdentifier(
                             currentState.connectionInfo.host,
                             currentState.connectionInfo.port,
-                            currentState.connectionInfo.isTls
+                            currentState.connectionInfo.isTls,
                         )
                     is SessionState.Connected.WebRTC ->
                         settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
@@ -263,5 +264,11 @@ class AuthenticationManager(
 
     fun close() {
         scope.cancel()
+    }
+
+    private companion object {
+        // Auto-login waits up to 10s for the connection to fully establish: 40 * 250ms.
+        const val CONNECT_POLL_MAX_ATTEMPTS = 40
+        const val CONNECT_POLL_INTERVAL_MS = 250L
     }
 }

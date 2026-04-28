@@ -1,3 +1,6 @@
+// Pipeline tuning value (reorder depth) inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.player.sendspin
 
 import co.touchlab.kermit.Logger
@@ -36,7 +39,7 @@ class SendspinClientFactory(
     private val settings: SettingsRepository,
     private val mediaPlayerController: MediaPlayerController,
     private val serviceClient: ServiceClient,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
 ) {
     private val log = Logger.withTag("SendspinClientFactory")
 
@@ -101,19 +104,19 @@ class SendspinClientFactory(
      */
     suspend fun createIfEnabled(
         mainConnection: ConnectionInfo?,
-        authToken: String?
+        authToken: String?,
     ): Result<SendspinClient> {
         // Validate: Sendspin enabled
         if (!settings.sendspinEnabled.value) {
             return Result.failure(
-                IllegalStateException("Sendspin disabled in settings")
+                IllegalStateException("Sendspin disabled in settings"),
             )
         }
 
         // Validate device name (required for protocol)
         if (settings.sendspinDeviceName.value.isBlank()) {
             return Result.failure(
-                IllegalStateException("Sendspin device name cannot be empty")
+                IllegalStateException("Sendspin device name cannot be empty"),
             )
         }
 
@@ -138,7 +141,7 @@ class SendspinClientFactory(
     private suspend fun createWebRTCClient(
         webrtcChannel: DataChannelWrapper,
         pipeline: AudioStreamManager,
-        clockSync: ClockSynchronizer
+        clockSync: ClockSynchronizer,
     ): Result<SendspinClient> {
         if (webrtcSendspinUsed) {
             log.i { "Sendspin channel exhausted — need WebRTC reconnect" }
@@ -162,7 +165,7 @@ class SendspinClientFactory(
             serverHost = "",
             serverPort = 0,
             mainConnectionPort = null,
-            authToken = null
+            authToken = null,
         )
 
         val client = SendspinClient(
@@ -170,7 +173,7 @@ class SendspinClientFactory(
             mediaPlayerController = mediaPlayerController,
             audioPipeline = pipeline,
             clockSynchronizer = clockSync,
-            networkAvailable = networkMonitor.isAvailable
+            networkAvailable = networkMonitor.isAvailable,
         )
         val transport = WebRTCDataChannelTransport(webrtcChannel)
         client.connectWithTransport(transport)
@@ -182,16 +185,16 @@ class SendspinClientFactory(
         mainConnection: ConnectionInfo?,
         authToken: String?,
         pipeline: AudioStreamManager,
-        clockSync: ClockSynchronizer
+        clockSync: ClockSynchronizer,
     ): Result<SendspinClient> {
         if (mainConnection == null) {
             return Result.failure(
-                IllegalStateException("No connection info available for WebSocket Sendspin")
+                IllegalStateException("No connection info available for WebSocket Sendspin"),
             )
         }
         if (authToken == null) {
             return Result.failure(
-                IllegalStateException("No auth token available - user must be logged in")
+                IllegalStateException("No auth token available - user must be logged in"),
             )
         }
 
@@ -200,26 +203,28 @@ class SendspinClientFactory(
         } catch (e: Exception) {
             log.e(e) { "Failed to parse server URL" }
             return Result.failure(
-                IllegalArgumentException("Invalid server URL", e)
+                IllegalArgumentException("Invalid server URL", e),
             )
         }
 
         val config = buildConfig(
             serverHost = serverHost,
             mainConnection = mainConnection,
-            authToken = authToken
+            authToken = authToken,
         )
 
         // WebSocket over TCP is ordered — minimal reorder buffer, just scheduling jitter
         pipeline.reorderDepth = 2
 
-        log.i { "Creating Sendspin client over WebSocket (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)" }
+        log.i {
+            "Creating Sendspin client over WebSocket (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)"
+        }
         val client = SendspinClient(
             config = config,
             mediaPlayerController = mediaPlayerController,
             audioPipeline = pipeline,
             clockSynchronizer = clockSync,
-            networkAvailable = networkMonitor.isAvailable
+            networkAvailable = networkMonitor.isAvailable,
         )
         client.start()
         log.i { "Sendspin client started via WebSocket" }
@@ -233,7 +238,7 @@ class SendspinClientFactory(
     private fun buildConfig(
         serverHost: String,
         mainConnection: ConnectionInfo,
-        authToken: String
+        authToken: String,
     ): SendspinConfig {
         val useCustomConnection = settings.sendspinUseCustomConnection.value
 
@@ -251,7 +256,7 @@ class SendspinClientFactory(
                 useTls = settings.sendspinUseTls.value,
                 useCustomConnection = true,
                 authToken = authToken,
-                mainConnectionPort = mainConnection.port
+                mainConnectionPort = mainConnection.port,
             )
         } else {
             // Proxy mode: use main connection settings with /sendspin path
@@ -267,7 +272,7 @@ class SendspinClientFactory(
                 useTls = mainConnection.isTls,
                 useCustomConnection = false,
                 authToken = authToken,
-                mainConnectionPort = mainConnection.port
+                mainConnectionPort = mainConnection.port,
             )
         }
     }

@@ -1,0 +1,368 @@
+# Detekt config — Music Assistant Mobile App
+#
+# This config is layered on top of detekt's default config (buildUponDefaultConfig = true).
+# We only override what we want to differ.
+#
+# Philosophy:
+#   * Catch real bugs (swallowed exceptions, dead code, generic catches).
+#   * Catch architectural smells (long methods, complex methods) but tune the thresholds for a
+#     Compose codebase where 100-line composables and many-param functions are normal.
+#   * Disable purely cosmetic style rules that fight project conventions
+#     (PackageNaming with `io.music_assistant.client`, FunctionNaming for Composables).
+#   * Use the formatting plugin (== ktlint) for whitespace/formatting and run it with --auto-correct.
+
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+  checkExhaustiveness: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+  exclude:
+    - 'ProjectStatisticsReport'
+    - 'ComplexityReport'
+    - 'NotificationReport'
+    - 'FindingsReport'
+    - 'FileBasedFindingsReport'
+
+output-reports:
+  active: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Comments — all default-on, mostly fine.
+# ─────────────────────────────────────────────────────────────────────────────
+comments:
+  active: true
+  CommentOverPrivateFunction:
+    active: false
+  CommentOverPrivateProperty:
+    active: false
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  UndocumentedPublicProperty:
+    active: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Complexity — tune for Compose.
+# ─────────────────────────────────────────────────────────────────────────────
+complexity:
+  active: true
+  # ── Architectural rules deferred to follow-up PRs (see docs at top of file).
+  #    Each is currently violated by N+ existing call sites. We're committing to a
+  #    clean baseline at config-time rather than via baseline.xml; flip these back
+  #    on once the existing violations are addressed.
+  CyclomaticComplexMethod:
+    active: false   # TODO: ~13 existing violations — re-enable after refactor PR
+    threshold: 20
+  LongMethod:
+    active: false   # TODO: ~31 existing violations — re-enable after refactor PR
+    threshold: 80
+  LongParameterList:
+    active: false   # TODO: ~10 existing violations — re-enable after refactor PR
+    functionThreshold: 8
+    constructorThreshold: 8
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+    ignoreAnnotated:
+      - 'Composable'
+  LargeClass:
+    active: false   # TODO: ~2 existing violations — re-enable after refactor PR
+    threshold: 600
+  TooManyFunctions:
+    active: false   # TODO: 1 existing violation — re-enable after refactor PR
+    thresholdInFiles: 25
+    thresholdInClasses: 25
+    thresholdInInterfaces: 15
+    thresholdInObjects: 25
+    thresholdInEnums: 15
+    ignoreDeprecated: true
+    ignorePrivate: true
+    ignoreOverridden: true
+  ComplexCondition:
+    active: true
+    threshold: 5
+  NestedBlockDepth:
+    active: true
+    threshold: 5
+  MethodOverloading:
+    active: false  # @Composable overloading is normal
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Coroutines — keep all default-on.
+# ─────────────────────────────────────────────────────────────────────────────
+coroutines:
+  active: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Empty blocks — keep on, but allow intentional empties via @Suppress.
+# ─────────────────────────────────────────────────────────────────────────────
+empty-blocks:
+  active: true
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true   # Listener no-ops on overridden methods are common
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Exceptions — these are the real value.
+# ─────────────────────────────────────────────────────────────────────────────
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false  # TODO: ~86 existing violations — narrow exception types per call site, then re-enable
+    exceptionNames:
+      - ArrayIndexOutOfBoundsException
+      - Error
+      - Exception
+      - NullPointerException
+      - IndexOutOfBoundsException
+      - RuntimeException
+      - Throwable
+    allowedExceptionNameRegex: '_|(ignore|expected).*'
+  SwallowedException:
+    active: true   # 1 existing violation — fixing it in this PR via @Suppress
+  InstanceOfCheckForException:
+    active: false  # TODO: 3 existing violations — refactor catch hierarchies, then re-enable
+  TooGenericExceptionThrown:
+    active: true
+  ThrowingExceptionInMain:
+    active: false  # main() can throw; not all our entrypoints can wrap
+  PrintStackTrace:
+    active: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Naming — tuned for the project's conventions.
+# ─────────────────────────────────────────────────────────────────────────────
+naming:
+  active: true
+  PackageNaming:
+    active: false  # `io.music_assistant.client` is the project's chosen namespace; renaming = behavioral
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-z][a-zA-Z0-9]*'
+    excludeClassPattern: '$^'
+    ignoreAnnotated:
+      - 'Composable'  # Composable functions are PascalCase by convention
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][_A-Z0-9]*'
+    propertyPattern: '[A-Za-z][_A-Za-z0-9]*'
+    privatePropertyPattern: '_?[A-Za-z][_A-Za-z0-9]*'
+  VariableNaming:
+    active: true
+  MatchingDeclarationName:
+    active: false  # Conflicts with Compose convention: files are named after the primary
+                   # @Composable function (which the rule doesn't count), not after sibling
+                   # classes/objects like FooDefaults that share the file.
+  MemberNameEqualsClassName:
+    active: true
+    ignoreOverridden: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Performance — keep default.
+# ─────────────────────────────────────────────────────────────────────────────
+performance:
+  active: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Potential bugs — keep all on.
+# ─────────────────────────────────────────────────────────────────────────────
+potential-bugs:
+  active: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Style — selectively tuned.
+# ─────────────────────────────────────────────────────────────────────────────
+style:
+  active: true
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2', '60', '100', '1000']  # 60 = seconds/min, minutes/hr
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true            # `const val FOO = 5_000` is fine
+    ignoreLocalVariableDeclaration: true       # `val timeoutMs = 5_000; delay(timeoutMs)` — name in the val
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreConstantDeclaration: true
+    ignoreEnums: true
+    ignoreRanges: true
+    ignoreNamedArgument: true                  # `delay(timeMillis = 500)` — name is in the arg
+    ignoreAnnotation: true                     # `@Size(min = 5)` annotation params
+    excludes:
+      - '**/icons/**'
+      - '**/theme/Color.kt'
+      - '**/test/**'                           # tests use literals constantly
+      - '**/Test.kt'
+      - '**/Tests.kt'
+      - '**/*Test.kt'
+      - '**/*Tests.kt'
+  MaxLineLength:
+    active: true
+    # 140 instead of the conventional 120: most violations are log statements with interpolated
+    # context (e.g. `logger.i { "Foo: $a $b $c" }`) where wrapping reduces readability for the
+    # ~5-10% of lines that genuinely need the breathing room.
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: true
+  ForbiddenComment:
+    active: false  # we use TODO/FIXME deliberately
+  WildcardImport:
+    active: true
+    excludes:
+      - '**/test/**'
+      - '**/*Test.kt'
+    # Compose Multiplatform's generated resources package: each consuming screen typically
+    # references many entries (Res.string.x, Res.drawable.y, ...). Wildcard is correct here.
+    excludeImports:
+      - 'musicassistantclient.composeapp.generated.resources.*'
+  NewLineAtEndOfFile:
+    active: true
+  UnusedPrivateMember:
+    active: true
+    # Allow private @Preview @Composable functions — they're unused at runtime but consumed
+    # by the IDE preview tooling. By project convention these are named `Preview*`.
+    allowedNames: '(_|ignored|expected|serialVersionUID|Preview.*)'
+  UnusedParameter:
+    active: true
+    allowedNames: '_|ignored|expected'
+  UnusedImports:
+    active: true
+  ReturnCount:
+    active: false  # TODO: ~7 existing violations — review case-by-case, then re-enable
+    max: 4
+  LoopWithTooManyJumpStatements:
+    active: false  # TODO: 2 existing violations — re-enable after refactor
+  UseCheckOrError:
+    active: true
+  UseRequire:
+    active: true
+  ThrowsCount:
+    active: true
+    max: 4
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Formatting (ktlint plugin embedded in detekt 1.23.x).
+#
+# IMPORTANT: detekt 1.23.8 ships with an OLDER ktlint than current upstream ktlint.
+# The embedded ktlint's autocorrect for some "modern" rules (MultilineExpressionWrapping,
+# FunctionSignature, ClassSignature, Indentation) oscillates instead of converging,
+# either due to bugs or because the rules were stabilized post-1.0. We disable those
+# here. When detekt 2.x ships with a fresher ktlint, revisit and re-enable.
+# ─────────────────────────────────────────────────────────────────────────────
+formatting:
+  active: true
+  android: false
+  autoCorrect: true
+
+  # ── Column-alignment-eaters — disabled to preserve hand-aligned trailing comments
+  #    on argument-per-line calls like `0,                  // offset`.
+  NoMultipleSpaces:
+    active: false   # collapses `0,    // x` into `0, // x` — kills column alignment
+
+  # ── Bad-rewrap rules — disabled because their auto-fix produces uglier code.
+  AnnotationOnSeparateLine:
+    active: false   # in `when` blocks, breaks `@Suppress(...)\noutputIndex == X -> {` into broken multi-line form
+
+  # ── Project conventions — must disable.
+  PackageName:
+    active: false   # underscores in `io.music_assistant.client` are intentional
+  Filename:
+    active: false   # `provideSettings.ios.kt` etc. are intentional KMP `expect/actual` filenames
+  FunctionName:
+    active: false   # Composables are PascalCase; this rule has no @Composable allowlist in the formatting plugin
+
+  # ── Embedded-ktlint disagreements — disabled because autocorrect oscillates.
+  MultilineExpressionWrapping:
+    active: false
+  FunctionSignature:
+    active: false
+  ClassSignature:
+    active: false
+  Indentation:
+    active: false   # the embedded ktlint version is overly aggressive; rely on IDE formatting
+
+  # ── Duplicates of detekt's own rules — disable to avoid double-reporting.
+  MaximumLineLength:
+    active: false   # detekt's style.MaxLineLength already covers this
+  NoWildcardImports:
+    active: false   # detekt's style.WildcardImport covers this with allowlist support
+
+  # ── Safe auto-fixable formatting — keep on.
+  TrailingCommaOnCallSite:
+    active: true
+    autoCorrect: true
+    useTrailingCommaOnCallSite: true
+  TrailingCommaOnDeclarationSite:
+    active: true
+    autoCorrect: true
+    useTrailingCommaOnDeclarationSite: true
+  ArgumentListWrapping:
+    active: true
+    autoCorrect: true
+  Wrapping:
+    active: true
+    autoCorrect: true
+  WhenEntryBracing:
+    active: true
+    autoCorrect: true
+  BlankLineBeforeDeclaration:
+    active: true
+    autoCorrect: true
+  BlankLineBetweenWhenConditions:
+    active: true
+    autoCorrect: true
+  FinalNewline:
+    active: true
+    autoCorrect: true
+    insertFinalNewLine: true
+  NoEmptyFirstLineInClassBody:
+    active: true
+    autoCorrect: true
+  MultilineIfElse:
+    active: true
+    autoCorrect: true
+  IfElseWrapping:
+    active: true
+    autoCorrect: true
+  FunctionExpressionBody:
+    active: true
+    autoCorrect: true
+  CommentSpacing:
+    active: true
+    autoCorrect: true
+  # NoMultipleSpaces is configured at the top of this section — note its name spelling.
+  NoConsecutiveBlankLines:
+    active: true
+    autoCorrect: true
+  StatementWrapping:
+    active: true
+    autoCorrect: true
+  NoBlankLineBeforeRbrace:
+    active: true
+    autoCorrect: true
+  ChainWrapping:
+    active: true
+    autoCorrect: true
+  NoTrailingSpaces:
+    active: true
+    autoCorrect: true
+  FunctionLiteral:
+    active: true
+    autoCorrect: true
+  ImportOrdering:
+    active: true
+    autoCorrect: true
+  SpacingBetweenDeclarationsWithComments:
+    active: true
+    autoCorrect: true
+  ChainMethodContinuation:
+    active: true
+    autoCorrect: true

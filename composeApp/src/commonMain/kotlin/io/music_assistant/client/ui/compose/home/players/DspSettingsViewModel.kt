@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 class DspSettingsViewModel(
     private val dataSource: MainDataSource,
 ) : ViewModel() {
-
     sealed class DspDialogState {
         data object Loading : DspDialogState()
         data class Content(

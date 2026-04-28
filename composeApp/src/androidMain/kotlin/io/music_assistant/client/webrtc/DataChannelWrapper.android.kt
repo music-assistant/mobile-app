@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -22,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Android implementation of DataChannelWrapper using webrtc-kmp library.
  */
 actual class DataChannelWrapper(
-    private val dataChannel: DataChannel
+    private val dataChannel: DataChannel,
 ) {
     private val logger = Logger.withTag("DataChannelWrapper[Android]")
     private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -90,7 +89,7 @@ actual class DataChannelWrapper(
 
         val buffer = org.webrtc.DataChannel.Buffer(
             ByteBuffer.wrap(data),
-            false
+            false,
         )
         if (!dataChannel.android.send(buffer)) {
             logger.e { "Native send failed on channel $label (state=${_state.value})" }

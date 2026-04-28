@@ -19,4 +19,3 @@ actual fun SystemAppearance(isDarkTheme: Boolean) {
         }
     }
 }
-

@@ -1,12 +1,12 @@
 package io.music_assistant.client.player.sendspin.audio
 
 import co.touchlab.kermit.Logger
+import io.github.jaredmdobson.concentus.OpusException
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 import io.music_assistant.client.player.sendspin.model.AudioFormatSpec
-import io.github.jaredmdobson.concentus.OpusDecoder as ConcentusOpusDecoder
-import io.github.jaredmdobson.concentus.OpusException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import io.github.jaredmdobson.concentus.OpusDecoder as ConcentusOpusDecoder
 
 /**
  * Android implementation of Opus audio decoder using the Concentus library.
@@ -62,7 +62,6 @@ actual class OpusDecoder : AudioDecoder {
             pcmBuffer = ShortArray(maxFrameSize * channels)
 
             logger.i { "Opus decoder initialized successfully" }
-
         } catch (e: OpusException) {
             logger.e(e) { "Failed to initialize Opus decoder" }
             throw IllegalStateException("Opus decoder initialization failed", e)
@@ -79,10 +78,10 @@ actual class OpusDecoder : AudioDecoder {
     actual override fun decode(encodedData: ByteArray): ByteArray {
         return synchronized(decoderLock) {
             val currentDecoder = decoder
-                ?: throw IllegalStateException("Decoder not configured. Call configure() first.")
+                ?: error("Decoder not configured. Call configure() first.")
 
             val currentPcmBuffer = pcmBuffer
-                ?: throw IllegalStateException("PCM buffer not allocated")
+                ?: error("PCM buffer not allocated")
 
             if (encodedData.isEmpty()) {
                 logger.w { "Received empty encoded data" }
@@ -101,7 +100,7 @@ actual class OpusDecoder : AudioDecoder {
                     currentPcmBuffer,                       // output: PCM samples (ShortArray)
                     0,                                      // output offset
                     currentPcmBuffer.size / channels,       // frame size (samples per channel)
-                    false                                   // decode FEC (forward error correction) - disabled for now
+                    false,                                   // decode FEC (forward error correction) - disabled for now
                 )
 
                 if (samplesDecoded <= 0) {
@@ -121,7 +120,6 @@ actual class OpusDecoder : AudioDecoder {
                     buffer.putShort(currentPcmBuffer[i])
                 }
                 buffer.array()
-
             } catch (e: OpusException) {
                 logger.e(e) { "Opus decoding error" }
                 // Graceful degradation: return silence instead of crashing playback

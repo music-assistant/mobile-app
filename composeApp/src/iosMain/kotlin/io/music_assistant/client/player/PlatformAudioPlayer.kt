@@ -13,9 +13,10 @@ interface PlatformAudioPlayer {
         channels: Int,
         bitDepth: Int,
         codecHeader: String?,
-        listener: MediaPlayerListener
+        listener: MediaPlayerListener,
     )
     fun writeRawPcm(data: ByteArray)
+
     /**
      * Efficient variant called from Kotlin: data is already converted to NSData using
      * usePinned bulk-copy, avoiding a byte-by-byte Swift interop loop.
@@ -25,7 +26,7 @@ interface PlatformAudioPlayer {
     fun setVolume(volume: Int)
     fun setMuted(muted: Boolean)
     fun dispose()
-    
+
     // Now Playing (Control Center / Lock Screen)
     fun updateNowPlaying(
         title: String?,
@@ -34,10 +35,10 @@ interface PlatformAudioPlayer {
         artworkUrl: String?,
         duration: Double,
         elapsedTime: Double,
-        playbackRate: Double
+        playbackRate: Double,
     )
     fun clearNowPlaying()
-    
+
     // Remote command handler (set by Kotlin to receive play/pause/next/prev events)
     fun setRemoteCommandHandler(handler: RemoteCommandHandler?)
 }

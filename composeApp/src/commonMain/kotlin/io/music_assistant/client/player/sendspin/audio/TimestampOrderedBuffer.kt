@@ -6,7 +6,7 @@ import kotlinx.coroutines.sync.withLock
 data class AudioChunk(
     val timestamp: Long, // server microseconds
     val data: ByteArray,
-    val localTimestamp: Long // converted to local time
+    val localTimestamp: Long, // converted to local time
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

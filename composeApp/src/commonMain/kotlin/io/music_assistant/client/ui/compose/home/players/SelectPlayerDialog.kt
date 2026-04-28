@@ -1,3 +1,6 @@
+// Compose layout values (sizes, alphas, animation durations) are visual design tokens.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
@@ -61,8 +64,8 @@ import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -79,14 +82,14 @@ fun SelectPlayerDialog(
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
         ) {
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
                     Text(
                         stringResource(Res.string.players_title),
                         style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
 
                     Box(modifier = Modifier.padding(top = 16.dp)) {
@@ -115,14 +118,14 @@ fun GroupSettingsDialog(
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
         ) {
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
                     Text(
                         stringResource(Res.string.players_group_settings),
                         style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
 
                     Box(modifier = Modifier.padding(top = 16.dp)) {
@@ -174,14 +177,16 @@ private fun PlayerSelection(
             key = { _, item -> item.player.id },
         ) { _, item ->
             val selected = item.player.id == selectedPlayer.player.id
-            val borderColor = if (selected)
+            val borderColor = if (selected) {
                 MaterialTheme.colorScheme.primary
-            else
+            } else {
                 MaterialTheme.colorScheme.outlineVariant
-            val backgroundColor = if (selected)
+            }
+            val backgroundColor = if (selected) {
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-            else
+            } else {
                 Color.Transparent
+            }
 
             ReorderableItem(state = reorderableLazyListState, key = item.player.id) {
                 Row(
@@ -197,10 +202,10 @@ private fun PlayerSelection(
                                 onDismissRequest()
                                 onSelectPlayer(item.player.id)
                             },
-                            role = Role.RadioButton
+                            role = Role.RadioButton,
                         )
                         .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     val playerIcon = when {
                         item.isLocal -> Icons.Default.Smartphone
@@ -233,10 +238,11 @@ private fun PlayerSelection(
                         NowPlayingIcon(
                             modifier = Modifier.padding(start = 8.dp),
                             size = 12.dp,
-                            color = if (item.player.isAnnouncing)
+                            color = if (item.player.isAnnouncing) {
                                 Color(0xFFFF9800)
-                            else
-                                Color(0xFF2196F3),
+                            } else {
+                                Color(0xFF2196F3)
+                            },
                         )
                     }
                     Icon(
@@ -247,7 +253,7 @@ private fun PlayerSelection(
                                     dragEndIndex?.let {
                                         onReorder(internalPlayers.map { p -> p.player.id })
                                     }
-                                }
+                                },
                             )
                             .size(16.dp),
                         imageVector = TablerIcons.GripVertical,
@@ -277,14 +283,14 @@ fun GroupSettings(
             )
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
     ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = MAX_LIST_HEIGHT)
                 .weight(1f, false),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // Pivot first, then children (bound before unbound).
             item {
@@ -293,8 +299,11 @@ fun GroupSettings(
                     playerName = item.player.name,
                     useGroupVolume = item.player.isGroup || item.player.isGrouped,
                     volume =
-                        if (item.player.isGroup || item.player.isGrouped) item.player.groupVolume
-                        else item.player.volumeLevel,
+                        if (item.player.isGroup || item.player.isGrouped) {
+                            item.player.groupVolume
+                        } else {
+                            item.player.volumeLevel
+                        },
                     isVolumeEnabled = item.player.isVolumeSliderAccessible,
                     isMuted = item.player.volumeMuted.takeIf { item.player.canMute },
                     simplePlayerAction = playerAction,
@@ -323,7 +332,7 @@ fun GroupSettings(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(Res.string.common_done))
@@ -362,12 +371,12 @@ private fun GroupPlayerItem(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy((-4).dp)
+        verticalArrangement = Arrangement.spacedBy((-4).dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 // Dim only the name when out-of-group. +/- icon and Material3
@@ -380,7 +389,7 @@ private fun GroupPlayerItem(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             // Join/leave button is only shown for child-bind rows (pivot has none).
@@ -393,19 +402,26 @@ private fun GroupPlayerItem(
                             bind.parentId,
                             PlayerAction.GroupManage(
                                 toAdd = itemId.takeIf { !bind.isBound },
-                                toRemove = itemId.takeIf { bind.isBound }
-                            )
+                                toRemove = itemId.takeIf { bind.isBound },
+                            ),
                         )
-                    }
+                    },
                 ) {
                     Icon(
                         modifier = Modifier.alpha(if (bind.isManageable) 1f else 0.4f),
                         imageVector = if (bind.isBound) Icons.Default.Remove else Icons.Default.Add,
-                        contentDescription = if (bind.isBound) stringResource(Res.string.cd_remove_from_group) else stringResource(Res.string.cd_add_to_group),
-                        tint = if (bind.isBound)
+                        contentDescription = if (bind.isBound) {
+                            stringResource(
+                                Res.string.cd_remove_from_group,
+                            )
+                        } else {
+                            stringResource(Res.string.cd_add_to_group)
+                        },
+                        tint = if (bind.isBound) {
                             MaterialTheme.colorScheme.error
-                        else
+                        } else {
                             MaterialTheme.colorScheme.primary
+                        },
                     )
                 }
             }
@@ -485,7 +501,13 @@ private fun VolumeRow(
             ) {
                 Icon(
                     imageVector = if (isMuted) VolumeMutedIcon else VolumeIcon,
-                    contentDescription = if (isMuted) stringResource(Res.string.cd_unmute) else stringResource(Res.string.cd_mute)
+                    contentDescription = if (isMuted) {
+                        stringResource(
+                            Res.string.cd_unmute,
+                        )
+                    } else {
+                        stringResource(Res.string.cd_mute)
+                    },
                 )
             }
         }
@@ -498,8 +520,11 @@ private fun VolumeRow(
             onValueChangeFinished = {
                 simplePlayerAction(
                     playerId,
-                    if (useGroupVolume) PlayerAction.GroupVolumeSet(currentVolume.toDouble())
-                    else PlayerAction.VolumeSet(currentVolume.toDouble())
+                    if (useGroupVolume) {
+                        PlayerAction.GroupVolumeSet(currentVolume.toDouble())
+                    } else {
+                        PlayerAction.VolumeSet(currentVolume.toDouble())
+                    },
                 )
             },
             thumb = {
@@ -516,9 +541,9 @@ private fun VolumeRow(
                     thumbTrackGapSize = 0.dp,
                     trackInsideCornerSize = 0.dp,
                     drawStopIndicator = null,
-                    modifier = Modifier.height(4.dp)
+                    modifier = Modifier.height(4.dp),
                 )
-            }
+            },
         )
     }
 }
@@ -530,7 +555,7 @@ private fun PreviewSelectPlayerDialog() {
     SelectPlayerDialog(
         selectedPlayer = selectedPlayer,
         players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
-        onDismissRequest = {}
+        onDismissRequest = {},
     )
 }
 
@@ -544,7 +569,7 @@ private fun PreviewSelectPlayerDialogLongList() {
     SelectPlayerDialog(
         selectedPlayer = players[0],
         players = players,
-        onDismissRequest = {}
+        onDismissRequest = {},
     )
 }
 
@@ -564,7 +589,7 @@ private fun PreviewGroupSettingDialogLongList() {
     val selectedPlayer = PlayerDataFixtures.playerData(
         groupChildren = 0.until(25).map {
             PlayerDataFixtures.bind()
-        }
+        },
     )
 
     GroupSettingsDialog(

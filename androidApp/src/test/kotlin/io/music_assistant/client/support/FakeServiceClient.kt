@@ -29,7 +29,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
-
     private val items = mutableListOf<ServerMediaItem>()
     private val albums: List<ServerMediaItem>
         get() {
@@ -58,10 +57,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                             AuthProvider(
                                 id = "builtin",
                                 type = "builtin",
-                                requiresRedirect = false
-                            )
-                        )
-                    )
+                                requiresRedirect = false,
+                            ),
+                        ),
+                    ),
                 )
             }
 
@@ -75,10 +74,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                                 provider = "library",
                                 name = "Recently added albums",
                                 mediaType = MediaType.FOLDER,
-                                items = albums
-                            )
-                        )
-                    )
+                                items = albums,
+                            ),
+                        ),
+                    ),
                 )
             }
 
@@ -91,9 +90,9 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                             albums = searchItems(request, items),
                             tracks = emptyList(),
                             playlists = emptyList(),
-                            podcasts = emptyList()
-                        )
-                    )
+                            podcasts = emptyList(),
+                        ),
+                    ),
                 )
             }
 
@@ -101,8 +100,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = findItem(request, albums)
-                    )
+                        result = findItem(request, albums),
+                    ),
                 )
             }
 
@@ -110,8 +109,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = albums
-                    )
+                        result = albums,
+                    ),
                 )
             }
 
@@ -119,8 +118,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = findItem(request, artists)
-                    )
+                        result = findItem(request, artists),
+                    ),
                 )
             }
 
@@ -128,8 +127,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = artists
-                    )
+                        result = artists,
+                    ),
                 )
             }
 
@@ -152,12 +151,12 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         it.connectionData.copy(
                             authProcessState = AuthProcessState.NotStarted,
                             user = User("-1", username, username, "user"),
-                            wasAutoLogin = true
-                        )
+                            wasAutoLogin = true,
+                        ),
                     )
                 }
 
-                else -> throw IllegalStateException()
+                else -> error("Unhandled request type in FakeServiceClient")
             }
         }
     }
@@ -181,11 +180,9 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         get() = TODO("Not yet implemented")
 
     override fun onAppForeground() {
-
     }
 
     override fun onAppBackground() {
-
     }
 
     override fun disconnectByUser() {
@@ -198,8 +195,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             serverInfo = ServerInfo(
                 serverVersion = "fake",
                 schemaVersion = -1,
-                baseUrl = "http://homeassistant.example"
-            )
+                baseUrl = "http://homeassistant.example",
+            ),
         )
         _sessionState.value = SessionState.Connected.Direct(connection, connectionData)
         _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
@@ -236,7 +233,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private fun findItem(
         request: Request,
-        items: List<ServerMediaItem>
+        items: List<ServerMediaItem>,
     ): ServerMediaItem {
         return items.find {
             it.itemId == (request.args!!["item_id"]!! as JsonPrimitive).content
@@ -245,12 +242,12 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private fun searchItems(
         request: Request,
-        items: List<ServerMediaItem>
+        items: List<ServerMediaItem>,
     ): List<ServerMediaItem> {
         return items.filter {
             it.name.contains(
                 (request.args!!["search_query"]!! as JsonPrimitive).content,
-                ignoreCase = true
+                ignoreCase = true,
             )
         }
     }
@@ -261,9 +258,9 @@ private fun answer(request: Request, result: JsonElement): Answer {
         JsonObject(
             mapOf(
                 "message_id" to JsonPrimitive(request.messageId),
-                "result" to result
-            )
-        )
+                "result" to result,
+            ),
+        ),
     )
 }
 

@@ -34,7 +34,7 @@ import platform.Foundation.create
  * directly and calling sendData with isBinary=false.
  */
 actual class DataChannelWrapper(
-    private val dataChannel: DataChannel
+    private val dataChannel: DataChannel,
 ) {
     private val logger = Logger.withTag("DataChannelWrapper[iOS]")
     private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

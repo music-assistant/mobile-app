@@ -1,4 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
+// Compose layout values (sizes, alphas, animation durations) are visual design tokens.
+@file:Suppress("MagicNumber")
 
 package io.music_assistant.client.ui.compose.home.players
 
@@ -115,7 +117,7 @@ internal fun PlayersPager(
         val imageUrl = it.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
         rememberAnimatedDominantColor(
             imageUrl = imageUrl,
-            fallback = MaterialTheme.colorScheme.primaryContainer
+            fallback = MaterialTheme.colorScheme.primaryContainer,
         )
     }
 
@@ -129,7 +131,7 @@ internal fun PlayersPager(
         HorizontalPager(
             modifier = Modifier,
             state = playerPagerState,
-            key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page }
+            key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page },
         ) { page ->
             val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
             var showGroupDialog by remember { mutableStateOf(false) }
@@ -164,18 +166,18 @@ internal fun PlayersPager(
                                 Brush.verticalGradient(
                                     listOf(
                                         MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        MaterialTheme.colorScheme.surfaceContainerLow
-                                    )
+                                        MaterialTheme.colorScheme.surfaceContainerLow,
+                                    ),
                                 )
                             } else {
                                 Brush.verticalGradient(
                                     listOf(
                                         MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        dominantColor.copy(alpha = 0.4f)
-                                    )
+                                        dominantColor.copy(alpha = 0.4f),
+                                    ),
                                 )
-                            }
-                        )
+                            },
+                        ),
                 ) {
                     if (expanded) {
                         ExpandedPlayerPage(
@@ -197,7 +199,7 @@ internal fun PlayersPager(
                             sendspinState = playersState.sendspinState,
                             isQueueExpanded = isQueueExpanded,
                             onExpandQueue = { isQueueExpanded = it },
-                            contentPadding = contentPadding
+                            contentPadding = contentPadding,
                         )
                     } else {
                         CollapsedPlayerPage(
@@ -208,7 +210,7 @@ internal fun PlayersPager(
                             onSelectPlayer = onSelectPlayer,
                             onGroupButton = onGroupButton,
                             serverUrl = serverUrl,
-                            playerAction = playerAction
+                            playerAction = playerAction,
                         )
                     }
                 }
@@ -241,7 +243,7 @@ fun BoundPlayerInfo(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f))
             .clickable { moveToPlayer(parent.id) },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "$playerName is $status ${parent.name}\n(tap to view)",
@@ -273,12 +275,12 @@ private fun ExpandedPlayerPage(
     sendspinState: SendspinState?,
     isQueueExpanded: Boolean,
     onExpandQueue: (Boolean) -> Unit,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
 ) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             PlayerSelectionLayout(
                 player = player,
@@ -292,14 +294,14 @@ private fun ExpandedPlayerPage(
         AnimatedVisibility(
             visible = isQueueExpanded,
             enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-            exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
+            exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
         ) {
             Box(
                 modifier = Modifier
                     .padding(top = 2.dp)
                     .fillMaxWidth()
                     .wrapContentSize()
-                    .clickable { onExpandQueue(false) }
+                    .clickable { onExpandQueue(false) },
             ) {
                 CompactPlayerItem(
                     item = player,
@@ -319,13 +321,13 @@ private fun ExpandedPlayerPage(
                 .conditional(
                     condition = !isQueueExpanded,
                     ifTrue = { weight(1f) },
-                    ifFalse = { wrapContentHeight() }
-                )
+                    ifFalse = { wrapContentHeight() },
+                ),
         ) {
             AnimatedVisibility(
                 visible = !isQueueExpanded,
                 enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-                exit = fadeOut(tween(200)) + shrinkVertically(tween(300))
+                exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
             ) {
                 FullPlayerItem(
                     modifier = Modifier.fillMaxSize(),
@@ -353,7 +355,7 @@ private fun ExpandedPlayerPage(
                     modifier = Modifier.fillMaxWidth().height(36.dp)
                         .padding(horizontal = 64.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Icon(
                         modifier = Modifier
@@ -362,13 +364,14 @@ private fun ExpandedPlayerPage(
                             .clickable(enabled = player.player.canMute) {
                                 playerAction(
                                     player,
-                                    PlayerAction.ToggleMute(player.player.volumeMuted)
+                                    PlayerAction.ToggleMute(player.player.volumeMuted),
                                 )
                             },
-                        imageVector = if (player.player.volumeMuted)
+                        imageVector = if (player.player.volumeMuted) {
                             VolumeMutedIcon
-                        else
-                            VolumeIcon,
+                        } else {
+                            VolumeIcon
+                        },
                         contentDescription = stringResource(Res.string.cd_volume),
                         tint = controlTint,
                     )
@@ -386,7 +389,7 @@ private fun ExpandedPlayerPage(
                                     PlayerAction.VolumeSet(currentVolume.toDouble())
                                 } else {
                                     PlayerAction.GroupVolumeSet(currentVolume.toDouble())
-                                }
+                                },
                             )
                         },
                         thumb = {
@@ -403,9 +406,9 @@ private fun ExpandedPlayerPage(
                                 thumbTrackGapSize = 0.dp,
                                 trackInsideCornerSize = 0.dp,
                                 drawStopIndicator = null,
-                                modifier = Modifier.height(4.dp)
+                                modifier = Modifier.height(4.dp),
                             )
-                        }
+                        },
                     )
                 }
             } else {
@@ -414,7 +417,7 @@ private fun ExpandedPlayerPage(
                     text = "use device buttons to adjust the volume",
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 )
             }
         }
@@ -426,7 +429,7 @@ private fun ExpandedPlayerPage(
                 .conditional(
                     condition = isQueueExpanded,
                     ifTrue = { weight(1f) },
-                    ifFalse = { wrapContentHeight() }
+                    ifFalse = { wrapContentHeight() },
                 ),
             queue = player.queue,
             isQueueExpanded = isQueueExpanded,
@@ -438,7 +441,7 @@ private fun ExpandedPlayerPage(
             players = allPlayers,
             onPlayerSelected = { moveToPlayer(it) },
             isCurrentPage = page == playerPagerState.currentPage,
-            contentPadding = contentPadding
+            contentPadding = contentPadding,
         )
     }
 }
@@ -452,18 +455,18 @@ private fun CollapsedPlayerPage(
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
     serverUrl: String?,
-    playerAction: (PlayerData, PlayerAction) -> Unit
+    playerAction: (PlayerData, PlayerAction) -> Unit,
 ) {
     if (!isExpandedScreen) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             PlayerSelectionLayout(
                 player = player,
                 sendSpinState = sendspinState,
                 onSelectPlayer = onSelectPlayer,
-                onGroupButton = onGroupButton
+                onGroupButton = onGroupButton,
             )
         }
     }
@@ -475,7 +478,7 @@ private fun CollapsedPlayerPage(
         playerAction = playerAction,
         onSelectPlayer = if (isExpandedScreen) onSelectPlayer else null,
         onGroupButton = if (isExpandedScreen) onGroupButton else null,
-        sendSpinState = sendspinState
+        sendSpinState = sendspinState,
     )
 }
 

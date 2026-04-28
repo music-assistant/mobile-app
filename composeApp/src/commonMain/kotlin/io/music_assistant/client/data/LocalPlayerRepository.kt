@@ -33,7 +33,6 @@ class LocalPlayerRepository(
     private val apiClient: ServiceClient,
     private val mediaPlayerController: MediaPlayerController,
 ) : CoroutineScope {
-
     private val log = Logger.withTag("LocalPlayerRepo")
 
     private val supervisorJob = SupervisorJob()
@@ -152,9 +151,9 @@ class LocalPlayerRepository(
                     Queue(
                         info = queueInfo,
                         items = (current.queue as? DataState.Data)?.data?.items
-                            ?: DataState.NoData()
-                    )
-                )
+                            ?: DataState.NoData(),
+                    ),
+                ),
             )
         }
     }
@@ -162,7 +161,7 @@ class LocalPlayerRepository(
     fun onQueueItemsLoaded(queueInfo: QueueInfo, items: List<QueueTrack>) {
         _localPlayerData.update { current ->
             current?.copy(
-                queue = DataState.Data(Queue(info = queueInfo, items = DataState.Data(items)))
+                queue = DataState.Data(Queue(info = queueInfo, items = DataState.Data(items))),
             )
         }
     }
@@ -223,8 +222,8 @@ class LocalPlayerRepository(
                 val queueData = pd.queue as? DataState.Data ?: return@update pd
                 pd.copy(
                     queue = DataState.Data(
-                        queueData.data.copy(info = transform(queueData.data.info))
-                    )
+                        queueData.data.copy(info = transform(queueData.data.info)),
+                    ),
                 )
             }
         }

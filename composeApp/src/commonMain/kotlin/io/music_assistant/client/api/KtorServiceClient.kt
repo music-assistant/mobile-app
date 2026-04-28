@@ -54,7 +54,6 @@ import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
 class KtorServiceClient(private val settings: SettingsRepository) : ServiceClient, CoroutineScope, KoinComponent {
-
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
@@ -122,7 +121,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
             SessionState.Reconnecting.WebRTC(
                 attempt = 0,
                 remoteId = currentState.remoteId,
-                connectionData = currentState.connectionData
+                connectionData = currentState.connectionData,
             )
         }
 
@@ -223,7 +222,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         _sessionState.update {
             (it as? SessionState.Connected)?.update(
                 user = null,
-                authProcessState = AuthProcessState.NotStarted
+                authProcessState = AuthProcessState.NotStarted,
             ) ?: it
         }
     }
@@ -249,7 +248,8 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                             SessionState.Disconnected.ByUser,
                             SessionState.Disconnected.NoServerData,
                             SessionState.Disconnected.Backgrounded,
-                            is SessionState.Disconnected.Error -> Unit
+                            is SessionState.Disconnected.Error,
+                            -> Unit
 
                             SessionState.Disconnected.Initial -> {
                                 val mostRecent = settings.connectionHistory.value.firstOrNull()
@@ -296,7 +296,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         createReconnecting: (Int, ConnectionData) -> SessionState.Reconnecting,
         backgroundInfo: () -> BackgroundedConnectionInfo,
         onFreshConnect: () -> Unit,
-        onReconnected: suspend () -> Unit
+        onReconnected: suspend () -> Unit,
     ) {
         transportObserverJob?.cancel()
         transportObserverJob = launch {
@@ -310,8 +310,11 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                                     ?: ConnectionData()
                             val wasReconnecting = _sessionState.value is SessionState.Reconnecting
                             _sessionState.update { createConnected(preserved) }
-                            if (wasReconnecting) onReconnected()
-                            else onFreshConnect()
+                            if (wasReconnecting) {
+                                onReconnected()
+                            } else {
+                                onFreshConnect()
+                            }
                         }
 
                         is TransportState.Reconnecting -> {
@@ -327,7 +330,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                             _sessionState.update {
                                 createReconnecting(
                                     transportState.attempt,
-                                    preserved
+                                    preserved,
                                 )
                             }
                         }
@@ -368,7 +371,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
             client = client,
             connectionInfoProvider = { settings.connectionInfo.value ?: connection },
             scope = this,
-            networkAvailable = networkMonitor.isAvailable
+            networkAvailable = networkMonitor.isAvailable,
         )
         transport = directTransport
 
@@ -391,10 +394,10 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                         host = connection.host,
                         port = connection.port,
                         isTls = connection.isTls,
-                    )
+                    ),
                 )
             },
-            onReconnected = {} // Direct doesn't need re-auth — server preserves session
+            onReconnected = {}, // Direct doesn't need re-auth — server preserves session
         )
         directTransport.connect()
     }
@@ -410,7 +413,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
             httpClient = webrtcHttpClient,
             remoteId = remoteId,
             scope = this,
-            networkAvailable = networkMonitor.isAvailable
+            networkAvailable = networkMonitor.isAvailable,
         )
         transport = webrtcTransport
 
@@ -427,7 +430,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     ConnectionHistoryEntry(
                         type = ConnectionType.WEBRTC,
                         remoteId = remoteId.rawId,
-                    )
+                    ),
                 )
             },
             onReconnected = {
@@ -441,7 +444,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                 } else {
                     logger.w { "No saved token to re-authenticate with for WebRTC server" }
                 }
-            }
+            },
         )
         webrtcTransport.connect()
     }
@@ -452,8 +455,8 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
 
     private fun disconnect(newState: SessionState.Disconnected) {
         launch {
-            if (newState is SessionState.Disconnected.Backgrounded
-                && (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)
+            if (newState is SessionState.Disconnected.Backgrounded &&
+                (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)
             ) {
                 logger.i { "Backgrounded disconnect aborted — app already foregrounded" }
                 return@launch
@@ -536,7 +539,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     settings.getDirectServerIdentifier(
                         currentState.connectionInfo.host,
                         currentState.connectionInfo.port,
-                        currentState.connectionInfo.isTls
+                        currentState.connectionInfo.isTls,
                     )
                 }
 
@@ -552,7 +555,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         _sessionState.update {
             (it as? SessionState.Connected)?.update(
                 authProcessState = AuthProcessState.LoggedOut,
-                user = null
+                user = null,
             ) ?: it
         }
         launch {
@@ -590,7 +593,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                             settings.getDirectServerIdentifier(
                                 currentState.connectionInfo.host,
                                 currentState.connectionInfo.port,
-                                currentState.connectionInfo.isTls
+                                currentState.connectionInfo.isTls,
                             )
                         }
 
@@ -606,7 +609,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     (it as? SessionState.Connected)?.update(
                         authProcessState = AuthProcessState.NotStarted,
                         user = user,
-                        wasAutoLogin = isAutoLogin
+                        wasAutoLogin = isAutoLogin,
                     ) ?: it
                 }
             } ?: run {
@@ -627,7 +630,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     settings.getDirectServerIdentifier(
                         currentState.connectionInfo.host,
                         currentState.connectionInfo.port,
-                        currentState.connectionInfo.isTls
+                        currentState.connectionInfo.isTls,
                     )
                 }
 

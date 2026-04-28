@@ -13,5 +13,5 @@ import io.music_assistant.client.player.sendspin.model.ClientHelloPayload
 data class MessageDispatcherConfig(
     val clientCapabilities: ClientHelloPayload,
     val authToken: String? = null,
-    val requiresAuth: Boolean = false
+    val requiresAuth: Boolean = false,
 )

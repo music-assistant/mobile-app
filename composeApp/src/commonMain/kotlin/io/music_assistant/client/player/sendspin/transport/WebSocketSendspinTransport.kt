@@ -10,12 +10,11 @@ import kotlinx.coroutines.flow.StateFlow
  * Wraps existing SendspinWsHandler to conform to the transport interface.
  */
 class WebSocketSendspinTransport(
-    private val sendspinWsHandler: SendspinWsHandler
+    private val sendspinWsHandler: SendspinWsHandler,
 ) : SendspinTransport {
-
     constructor(
         serverUrl: String,
-        networkAvailable: StateFlow<Boolean>? = null
+        networkAvailable: StateFlow<Boolean>? = null,
     ) : this(SendspinWsHandler(serverUrl, networkAvailable))
 
     override val connectionState: Flow<WebSocketState>

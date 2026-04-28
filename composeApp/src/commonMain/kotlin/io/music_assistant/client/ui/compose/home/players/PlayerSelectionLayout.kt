@@ -1,3 +1,6 @@
+// Compose layout values (sizes, alphas, animation durations) are visual design tokens.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
@@ -28,11 +31,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.PlayerData
-import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.*
-import org.jetbrains.compose.resources.stringResource
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
+import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
 
 private val GROUP_BUTTON_SIZE = 36.dp
 
@@ -51,7 +54,7 @@ fun PlayerSelectionLayout(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // Left slot: DSP button or invisible counterweight for centering
         if (onDspButton != null) {
@@ -61,13 +64,13 @@ fun PlayerSelectionLayout(
                     .clip(RoundedCornerShape(GROUP_BUTTON_SIZE / 3))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                     .clickable(onClick = onDspButton),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.Tune,
                     contentDescription = stringResource(Res.string.cd_dsp_settings),
                     modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 )
             }
         } else if (hasGroupChildren) {
@@ -77,11 +80,11 @@ fun PlayerSelectionLayout(
         OutlinedButton(
             enabled = true,
             shape = RoundedCornerShape(GROUP_BUTTON_SIZE / 3),
-            onClick = onSelectPlayer
+            onClick = onSelectPlayer,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Icon(
                     imageVector = when {
@@ -96,7 +99,7 @@ fun PlayerSelectionLayout(
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(it, CircleShape)
+                            .background(it, CircleShape),
                     )
                 }
                 Text(
@@ -125,21 +128,25 @@ fun PlayerSelectionLayout(
                     .size(GROUP_BUTTON_SIZE)
                     .clip(RoundedCornerShape(GROUP_BUTTON_SIZE / 3))
                     .background(
-                        if (hasBoundChildren) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        if (hasBoundChildren) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        },
                     )
                     .clickable(onClick = onGroupButton),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = groupLabel,
                     style = MaterialTheme.typography.labelMedium,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (hasBoundChildren)
+                    color = if (hasBoundChildren) {
                         MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    },
                 )
             }
         } else if (onDspButton != null) {
@@ -150,9 +157,11 @@ fun PlayerSelectionLayout(
 
 private fun SendspinState.toDotColor(): Color = when (this) {
     is SendspinState.Synchronized, is SendspinState.Ready,
-    is SendspinState.Buffering -> Color(0xFF4CAF50) // Green
+    is SendspinState.Buffering,
+    -> Color(0xFF4CAF50) // Green
     is SendspinState.Connecting, is SendspinState.Authenticating,
-    is SendspinState.Handshaking, is SendspinState.Reconnecting -> Color(0xFFFF9800) // Orange
+    is SendspinState.Handshaking, is SendspinState.Reconnecting,
+    -> Color(0xFFFF9800) // Orange
     is SendspinState.Error -> Color(0xFFF44336) // Red
     is SendspinState.Idle -> Color(0xFFBDBDBD) // Light gray
 }

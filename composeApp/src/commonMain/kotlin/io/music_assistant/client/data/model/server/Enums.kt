@@ -12,7 +12,7 @@ enum class PlayerType {
     GROUP,
 
     @SerialName("stereo_pair")
-    STEREO_PAIR
+    STEREO_PAIR,
 }
 
 @Serializable
@@ -24,7 +24,7 @@ enum class PlayerState {
     PAUSED,
 
     @SerialName("playing")
-    PLAYING
+    PLAYING,
 }
 
 @Serializable
@@ -36,25 +36,23 @@ enum class RepeatMode {
     ONE,
 
     @SerialName("all")
-    ALL
+    ALL,
 }
 
-class PlayerFeature {
-    companion object {
-        const val POWER = "power"
-        const val VOLUME_SET = "volume_set"
-        const val VOLUME_MUTE = "volume_mute"
-        const val PAUSE = "pause"
-        const val SET_MEMBERS = "set_members"
-        const val MULTI_DEVICE_DSP = "multi_device_dsp"
-        const val SEEK = "seek"
-        const val NEXT_PREVIOUS = "next_previous"
-        const val PLAY_ANNOUNCEMENT = "play_announcement"
-        const val ENQUEUE = "enqueue"
-        const val GAPLESS_PLAYBACK = "gapless_playback"
-        const val GAPLESS_DIFFERENT_SAMPLERATE = "gapless_different_samplerate"
-        const val SELECT_SOURCE = "select_source"
-    }
+object PlayerFeature {
+    const val POWER = "power"
+    const val VOLUME_SET = "volume_set"
+    const val VOLUME_MUTE = "volume_mute"
+    const val PAUSE = "pause"
+    const val SET_MEMBERS = "set_members"
+    const val MULTI_DEVICE_DSP = "multi_device_dsp"
+    const val SEEK = "seek"
+    const val NEXT_PREVIOUS = "next_previous"
+    const val PLAY_ANNOUNCEMENT = "play_announcement"
+    const val ENQUEUE = "enqueue"
+    const val GAPLESS_PLAYBACK = "gapless_playback"
+    const val GAPLESS_DIFFERENT_SAMPLERATE = "gapless_different_samplerate"
+    const val SELECT_SOURCE = "select_source"
 }
 
 @Serializable
@@ -123,16 +121,16 @@ enum class EventType {
     DISCONNECTED,
 
     @SerialName("*")
-    ALL
+    ALL,
 }
 
-//enum class AlbumType {
+// enum class AlbumType {
 //    @SerialName("album") ALBUM,
 //    @SerialName("single") SINGLE,
 //    @SerialName("compilation") COMPILATION,
 //    @SerialName("ep") EP,
 //    @SerialName("unknown") UNKNOWN,
-//}
+// }
 
 enum class QueueOption {
     @SerialName("play")
@@ -144,7 +142,7 @@ enum class QueueOption {
     @SerialName("next")
     NEXT,
 
-    //@SerialName("replace_next") REPLACE_NEXT,
+    // @SerialName("replace_next") REPLACE_NEXT,
     @SerialName("add")
     ADD,
 }

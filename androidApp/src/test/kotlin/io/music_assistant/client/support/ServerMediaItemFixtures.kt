@@ -5,7 +5,6 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.utils.UniqueIdGenerator
 
 object ServerMediaItemFixtures {
-
     private val uniqueIdGenerator = UniqueIdGenerator()
 
     fun album(
@@ -18,7 +17,7 @@ object ServerMediaItemFixtures {
             provider = "blah",
             name = name,
             mediaType = MediaType.ALBUM,
-            artists = listOf(artist)
+            artists = listOf(artist),
         )
     }
 

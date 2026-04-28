@@ -20,7 +20,6 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = Qualifiers.MEDIUM_PHONE)
 class SearchTest {
-
     @get:Rule
     val testRuleChain = createTestRuleChain()
 
@@ -49,20 +48,22 @@ class SearchTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album1)
-
             .clickSearch()
             .search(album2.name.substring(3))
             .clickOnMedia(album2)
-
-            .clickHome(MediaItemPage(
+            .clickHome(
+                MediaItemPage(
                 album1,
                 navigationItem = "Home",
-                composeTestRule = composeTestRule
-            ))
-            .clickSearch(MediaItemPage(
+                composeTestRule = composeTestRule,
+            ),
+            )
+            .clickSearch(
+                MediaItemPage(
                 album2,
                 navigationItem = "Search",
-                composeTestRule = composeTestRule
-            ))
+                composeTestRule = composeTestRule,
+            ),
+            )
     }
 }

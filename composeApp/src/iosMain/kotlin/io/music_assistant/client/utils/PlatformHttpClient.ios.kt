@@ -5,5 +5,5 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.darwin.Darwin
 
 actual fun createPlatformHttpClient(
-    block: HttpClientConfig<*>.() -> Unit
+    block: HttpClientConfig<*>.() -> Unit,
 ): HttpClient = HttpClient(Darwin, block)

@@ -13,9 +13,8 @@ data class QueueTrack(
     val track: PlayableItem,
     val isPlayable: Boolean,
     val format: AudioFormat?,
-    val dsp: Map<String, DSPSettings>?
+    val dsp: Map<String, DSPSettings>?,
 ) {
-
     fun audioFormat(playerId: String) = dsp?.get(playerId)?.outputFormat ?: format
 
     companion object {
@@ -29,10 +28,12 @@ data class QueueTrack(
                         track = appMediaItem,
                         isPlayable = true,
                         format = streamDetails?.audioFormat,
-                        dsp = streamDetails?.dsp
+                        dsp = streamDetails?.dsp,
                     )
                 } else {
-                    Logger.w("QueueTrack: Item $queueItemId has wrong type ${appMediaItem?.let { it::class.simpleName }}, dropping")
+                    Logger.w(
+                        "QueueTrack: Item $queueItemId has wrong type ${appMediaItem?.let { it::class.simpleName }}, dropping",
+                    )
                     return null
                 }
             }
@@ -56,7 +57,7 @@ data class QueueTrack(
                     artists = null,
                     album = null,
                     items = null,
-                    isEditable = null
+                    isEditable = null,
                 )
 
                 val appMediaItem = syntheticMediaItem.toAppMediaItem()
@@ -66,7 +67,7 @@ data class QueueTrack(
                         track = appMediaItem,
                         isPlayable = false,  // Mark as unplayable
                         format = null,
-                        dsp = null
+                        dsp = null,
                     )
                 }
             }

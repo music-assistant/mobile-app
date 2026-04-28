@@ -1,3 +1,6 @@
+// Log-payload truncation lengths and connection delays are inline-documented at use site.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
@@ -25,9 +28,8 @@ class WebRTCTransport(
     private val remoteId: RemoteId,
     private val scope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
-    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS
+    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
 ) : Transport {
-
     private val logger = Logger.withTag("WebRTCTransport")
 
     private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
@@ -76,7 +78,7 @@ class WebRTCTransport(
                 is WebRTCConnectionState.Error -> {
                     if (!isReconnect) {
                         _state.value = TransportState.Failed(
-                            Exception("WebRTC connection failed: ${result.error}")
+                            Exception("WebRTC connection failed: ${result.error}"),
                         )
                     }
                 }
@@ -134,7 +136,7 @@ class WebRTCTransport(
                 logger.i { "WebRTC reconnect attempt $attempt/$maxReconnectAttempts" }
                 connectInternal(isReconnect = true)
                 _state.value == TransportState.Connected
-            }
+            },
         )
         if (!reconnected) {
             _state.value = TransportState.Failed(Exception("Max WebRTC reconnect attempts reached"))
@@ -155,7 +157,7 @@ class WebRTCTransport(
     }
 
     override suspend fun send(message: JsonObject) {
-        val mgr = manager ?: throw IllegalStateException("Not connected")
+        val mgr = manager ?: error("Not connected")
         val jsonString = myJson.encodeToString(JsonObject.serializer(), message)
         mgr.send(jsonString)
     }

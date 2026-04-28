@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-
 @OptIn(FlowPreview::class)
 class AutoLibrary(
     private val context: Context,
@@ -52,7 +51,7 @@ class AutoLibrary(
             searchFlow
                 .filterNotNull()
                 .filter { it.first.isNotEmpty() }
-                .debounce(500)
+                .debounce(SEARCH_DEBOUNCE_MS)
                 .collect { (query, result) ->
                     val answer = apiClient.sendRequest(
                         request = Request.Library.search(
@@ -64,17 +63,17 @@ class AutoLibrary(
                                 MediaType.PLAYLIST,
                                 MediaType.AUDIOBOOK,
                                 MediaType.PODCAST,
-                                MediaType.RADIO
+                                MediaType.RADIO,
                             ),
-                            libraryOnly = false
-                        )
+                            libraryOnly = false,
+                        ),
                     )
                     answer.resultAs<SearchResult>()?.let {
                         result.sendResult(
                             it.toAutoMediaItems(
                                 baseUrl,
-                                defaultIconUri
-                            )
+                                defaultIconUri,
+                            ),
                         )
                     } ?: result.sendResult(null)
                 }
@@ -83,7 +82,7 @@ class AutoLibrary(
 
     fun getItems(
         id: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>
+        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
         Logger.withTag("AutoLibrary").i { "Items for $id" }
         when (id) {
@@ -96,14 +95,17 @@ class AutoLibrary(
                         rootTabItem("Podcasts", MediaIds.TAB_PODCASTS),
                         rootTabItem("Radio", MediaIds.TAB_RADIO),
                         rootTabItem("Audiobooks", MediaIds.TAB_AUDIOBOOKS),
-                    )
+                    ),
                 )
             }
 
             MediaIds.TAB_ARTISTS -> {
                 result.detach()
                 scope.launch {
-                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    if (!waitForCorrectState()) {
+                        result.sendResult(null)
+                    return@launch
+                    }
                     result.sendResult(loadItems(Request.Artist.listLibrary()))
                 }
             }
@@ -111,7 +113,10 @@ class AutoLibrary(
             MediaIds.TAB_ALBUMS -> {
                 result.detach()
                 scope.launch {
-                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    if (!waitForCorrectState()) {
+                        result.sendResult(null)
+                    return@launch
+                    }
                     result.sendResult(loadItems(Request.Album.listLibrary()))
                 }
             }
@@ -119,7 +124,10 @@ class AutoLibrary(
             MediaIds.TAB_PLAYLISTS -> {
                 result.detach()
                 scope.launch {
-                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    if (!waitForCorrectState()) {
+                        result.sendResult(null)
+                    return@launch
+                    }
                     result.sendResult(loadItems(Request.Playlist.listLibrary()))
                 }
             }
@@ -127,7 +135,10 @@ class AutoLibrary(
             MediaIds.TAB_PODCASTS -> {
                 result.detach()
                 scope.launch {
-                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    if (!waitForCorrectState()) {
+                        result.sendResult(null)
+                    return@launch
+                    }
                     result.sendResult(loadItems(Request.Podcast.listLibrary()))
                 }
             }
@@ -135,7 +146,10 @@ class AutoLibrary(
             MediaIds.TAB_RADIO -> {
                 result.detach()
                 scope.launch {
-                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    if (!waitForCorrectState()) {
+                        result.sendResult(null)
+                    return@launch
+                    }
                     result.sendResult(loadItems(Request.RadioStation.listLibrary()))
                 }
             }
@@ -143,14 +157,17 @@ class AutoLibrary(
             MediaIds.TAB_AUDIOBOOKS -> {
                 result.detach()
                 scope.launch {
-                    if (!waitForCorrectState()) { result.sendResult(null); return@launch }
+                    if (!waitForCorrectState()) {
+                        result.sendResult(null)
+                    return@launch
+                    }
                     result.sendResult(loadItems(Request.Audiobook.listLibrary()))
                 }
             }
 
             else -> {
                 val parts = id.split("__")
-                if (parts.size != 4) {
+                if (parts.size != ITEM_ID_PART_COUNT) {
                     result.sendResult(null)
                     return
                 }
@@ -175,7 +192,7 @@ class AutoLibrary(
     }
 
     private suspend fun waitForCorrectState(): Boolean =
-        withTimeoutOrNull(30_000) {
+        withTimeoutOrNull(WAIT_FOR_AUTHENTICATED_TIMEOUT_MS) {
             apiClient.sessionState
                 .mapNotNull { it as? SessionState.Connected }
                 .mapNotNull { it.dataConnectionState as? DataConnectionState.Authenticated }
@@ -191,7 +208,7 @@ class AutoLibrary(
                 it.toAutoMediaItem(
                     baseUrl,
                     true,
-                    defaultIconUri
+                    defaultIconUri,
                 )
             }
 
@@ -206,15 +223,17 @@ class AutoLibrary(
                         .setTitle("Play all")
                         .setMediaId(itemId)
                         .setIconUri(android.R.drawable.ic_media_play.toUri(context))
-                        .setExtras(Bundle().apply {
+                        .setExtras(
+                            Bundle().apply {
                             putString(
                                 MediaIds.QUEUE_OPTION_KEY,
-                                QueueOption.REPLACE.name
+                                QueueOption.REPLACE.name,
                             )
-                        })
+                        },
+                        )
                         .build(),
-                    MediaItem.FLAG_PLAYABLE
-                )
+                    MediaItem.FLAG_PLAYABLE,
+                ),
             )
             add(
                 MediaItem(
@@ -222,22 +241,24 @@ class AutoLibrary(
                         .setTitle("Add all to queue")
                         .setMediaId(itemId)
                         .setIconUri(android.R.drawable.ic_menu_add.toUri(context))
-                        .setExtras(Bundle().apply {
+                        .setExtras(
+                            Bundle().apply {
                             putString(
                                 MediaIds.QUEUE_OPTION_KEY,
-                                QueueOption.ADD.name
+                                QueueOption.ADD.name,
                             )
-                        })
+                        },
+                        )
                         .build(),
-                    MediaItem.FLAG_PLAYABLE
-                )
+                    MediaItem.FLAG_PLAYABLE,
+                ),
             )
         }
     }
 
     fun search(
         query: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>
+        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
         result.detach()
         // converting to flow for filtering and debouncing
@@ -251,8 +272,8 @@ class AutoLibrary(
                 Request.Library.search(
                     query = query,
                     mediaTypes = listOf(MediaType.TRACK, MediaType.ARTIST, MediaType.ALBUM, MediaType.PLAYLIST),
-                    libraryOnly = false
-                )
+                    libraryOnly = false,
+                ),
             )
             val firstUri = result.resultAs<SearchResult>()?.let { sr ->
                 sr.tracks.firstOrNull()?.uri
@@ -265,8 +286,8 @@ class AutoLibrary(
                     media = listOf(firstUri),
                     queueOrPlayerId = queueId,
                     option = QueueOption.REPLACE,
-                    radioMode = false
-                )
+                    radioMode = false,
+                ),
             )
         }
     }
@@ -280,11 +301,11 @@ class AutoLibrary(
                         queueOrPlayerId = queueId,
                         option = extras?.getString(
                             MediaIds.QUEUE_OPTION_KEY,
-                            QueueOption.REPLACE.name
+                            QueueOption.REPLACE.name,
                         )?.let { QueueOption.valueOf(it) }
                             ?: QueueOption.REPLACE,
-                        radioMode = false
-                    )
+                        radioMode = false,
+                    ),
                 )
             }
         }
@@ -295,10 +316,18 @@ class AutoLibrary(
             MediaDescriptionCompat.Builder()
                 .setTitle(tabName)
                 .setMediaId(tabId)
-                .build(), MediaItem.FLAG_BROWSABLE
+                .build(),
+                    MediaItem.FLAG_BROWSABLE,
         )
-}
 
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 500L
+        const val WAIT_FOR_AUTHENTICATED_TIMEOUT_MS = 30_000L
+
+        // Encoded media item IDs are `tab__type__provider__providerItemId` — exactly 4 parts.
+        const val ITEM_ID_PART_COUNT = 4
+    }
+}
 
 internal object MediaIds {
     const val ROOT = "auto_lib_root"
@@ -313,7 +342,7 @@ internal object MediaIds {
 
 private fun SearchResult.toAutoMediaItems(
     serverUrl: String?,
-    defaultIconUri: Uri
+    defaultIconUri: Uri,
 ): List<MediaItem> = buildList {
     mapOf(
         tracks to "Tracks",
@@ -322,7 +351,7 @@ private fun SearchResult.toAutoMediaItems(
         playlists to "Playlists",
         audiobooks to "Audiobooks",
         podcasts to "Podcasts",
-        radios to "Radio stations"
+        radios to "Radio stations",
     ).forEach { (items, category) ->
         addAll(items.mapNotNull { it.toAutoMediaItem(serverUrl, true, defaultIconUri, category) })
     }
@@ -332,7 +361,7 @@ private fun ServerMediaItem.toAutoMediaItem(
     serverUrl: String?,
     allowBrowse: Boolean,
     defaultIconUri: Uri,
-    category: String? = null
+    category: String? = null,
 ): MediaItem? =
     toAppMediaItem()?.toAutoMediaItem(serverUrl, allowBrowse, defaultIconUri, category)
 
@@ -340,44 +369,47 @@ private fun AppMediaItem.toAutoMediaItem(
     serverUrl: String?,
     allowBrowse: Boolean,
     defaultIconUri: Uri,
-    category: String? = null
+    category: String? = null,
 ): MediaItem {
     return MediaItem(
         toMediaDescription(serverUrl, defaultIconUri, category),
-        if (allowBrowse && mediaType.isBrowsableInAuto())
+        if (allowBrowse && mediaType.isBrowsableInAuto()) {
             MediaItem.FLAG_BROWSABLE
-        else
+        } else {
             MediaItem.FLAG_PLAYABLE
+        },
     )
 }
 
 private fun MediaType.isBrowsableInAuto(): Boolean = this in setOf(
-    MediaType.ARTIST, MediaType.ALBUM, MediaType.PODCAST, MediaType.PLAYLIST
+    MediaType.ARTIST, MediaType.ALBUM, MediaType.PODCAST, MediaType.PLAYLIST,
 )
 
 fun @receiver:DrawableRes Int.toUri(context: Context): Uri = Uri.parse(
-    ContentResolver.SCHEME_ANDROID_RESOURCE
-            + "://" + context.resources.getResourcePackageName(this)
-            + '/' + context.resources.getResourceTypeName(this)
-            + '/' + context.resources.getResourceEntryName(this)
+    ContentResolver.SCHEME_ANDROID_RESOURCE +
+            "://" + context.resources.getResourcePackageName(this) +
+            '/' + context.resources.getResourceTypeName(this) +
+            '/' + context.resources.getResourceEntryName(this),
 )
 
 fun AppMediaItem.toMediaDescription(
     serverUrl: String?,
     defaultIconUri: Uri,
-    category: String? = null
+    category: String? = null,
 ): MediaDescriptionCompat {
     return MediaDescriptionCompat.Builder()
-        .setMediaId("${itemId}__${uri}__${mediaType}__${provider}")
+        .setMediaId("${itemId}__${uri}__${mediaType}__$provider")
         .setTitle((if (favorite == true) "\u2665 " else "") + name)
         .setSubtitle(subtitle)
         .setMediaUri(uri?.let { Uri.parse(it) })
         .setIconUri(imageInfo?.url(serverUrl)?.let { Uri.parse(it) } ?: defaultIconUri)
-        .setExtras(Bundle().apply {
+        .setExtras(
+            Bundle().apply {
             putString(
                 MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
-                category
+                category,
             )
-        })
+        },
+        )
         .build()
 }

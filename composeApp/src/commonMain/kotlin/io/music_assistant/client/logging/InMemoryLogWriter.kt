@@ -8,7 +8,6 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 @OptIn(ExperimentalAtomicApi::class)
 object InMemoryLogWriter : LogWriter() {
-
     private const val MAX_ENTRIES = 3000
     private val bufferRef = AtomicReference(emptyList<String>())
 

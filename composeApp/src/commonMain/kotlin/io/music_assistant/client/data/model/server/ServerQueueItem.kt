@@ -7,13 +7,13 @@ import kotlinx.serialization.Serializable
 data class ServerQueueItem(
     @SerialName("queue_item_id") val queueItemId: String,
     @SerialName("media_item") val mediaItem: ServerMediaItem? = null,
-    //@SerialName("queue_id") val queueId: String,
+    // @SerialName("queue_id") val queueId: String,
     @SerialName("name") val name: String? = null,
     @SerialName("duration") val duration: Double? = null,
-    //@SerialName("sort_index") val sortIndex: Int,
+    // @SerialName("sort_index") val sortIndex: Int,
     @SerialName("streamdetails") val streamDetails: StreamDetails? = null,
     @SerialName("image") val image: MediaItemImage? = null,
-    //@SerialName("index") val index: Int
+    // @SerialName("index") val index: Int
 )
 
 @Serializable
@@ -34,7 +34,7 @@ data class StreamDetails(
 //    @SerialName("target_loudness") val targetLoudness: Double,
 //    @SerialName("strip_silence_begin") val stripSilenceBegin: Boolean,
 //    @SerialName("strip_silence_end") val stripSilenceEnd: Boolean,
-    @SerialName("dsp") val dsp: Map<String, DSPSettings>
+    @SerialName("dsp") val dsp: Map<String, DSPSettings>,
 )
 
 @Serializable
@@ -44,5 +44,5 @@ data class DSPSettings(
 //    @SerialName("filters") val filters: List<String>,
 //    @SerialName("output_gain") val outputGain: Double,
 //    @SerialName("output_limiter") val outputLimiter: Boolean,
-    @SerialName("output_format") val outputFormat: AudioFormat? = null
+    @SerialName("output_format") val outputFormat: AudioFormat? = null,
 )

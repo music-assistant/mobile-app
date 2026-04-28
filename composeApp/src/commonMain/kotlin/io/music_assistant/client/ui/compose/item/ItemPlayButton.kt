@@ -25,8 +25,8 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -34,7 +34,7 @@ import org.jetbrains.compose.resources.stringResource
 fun ItemPlayButton(
     item: AppMediaItem,
     onPlayClick: (QueueOption, Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     SplitButtonLayout(
         modifier = modifier,
@@ -42,11 +42,12 @@ fun ItemPlayButton(
             val playNowText = stringResource(Res.string.cd_play_now)
             LeadingButton(
                 modifier = Modifier.semantics { contentDescription = playNowText },
-                onClick = { onPlayClick(QueueOption.REPLACE, false) }) {
+                onClick = { onPlayClick(QueueOption.REPLACE, false) },
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = PlayIcon,
-                        contentDescription = null
+                        contentDescription = null,
                     )
                     Text(modifier = Modifier.padding(start = 8.dp), text = stringResource(Res.string.action_play))
                 }
@@ -55,18 +56,18 @@ fun ItemPlayButton(
         trailingButton = {
             PlayOverflow(
                 item = item,
-                onPlayClick = onPlayClick
+                onPlayClick = onPlayClick,
             ) { onClick ->
                 TrailingButton(
                     onClick = onClick,
                 ) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,
-                        contentDescription = stringResource(Res.string.cd_play_options)
+                        contentDescription = stringResource(Res.string.cd_play_options),
                     )
                 }
             }
-        }
+        },
     )
 }
 
@@ -74,42 +75,46 @@ fun ItemPlayButton(
 private fun PlayOverflow(
     item: AppMediaItem,
     onPlayClick: (QueueOption, Boolean) -> Unit,
-    button: @Composable (() -> Unit) -> Unit
+    button: @Composable (() -> Unit) -> Unit,
 ) {
     OverflowMenu(
         options = buildList {
             add(
                 OverflowMenuOption(
                     title = stringResource(Res.string.action_play_now),
-                    icon = Icons.Default.PlaylistAddCircle
-                ) { onPlayClick(QueueOption.PLAY, false) })
+                    icon = Icons.Default.PlaylistAddCircle,
+                ) { onPlayClick(QueueOption.PLAY, false) },
+            )
             add(
                 OverflowMenuOption(
                     title = stringResource(Res.string.action_play_next),
-                    icon = Icons.Default.QueuePlayNext
+                    icon = Icons.Default.QueuePlayNext,
                 ) {
                     onPlayClick(QueueOption.NEXT, false)
-                })
+                },
+            )
             add(
                 OverflowMenuOption(
                     title = stringResource(Res.string.action_add_to_queue),
-                    icon = Icons.Default.AddToQueue
+                    icon = Icons.Default.AddToQueue,
                 ) {
                     onPlayClick(
-                        QueueOption.ADD, false
+                        QueueOption.ADD,
+                        false,
                     )
-                })
+                },
+            )
             if (item.canStartRadio) {
                 add(
                     OverflowMenuOption(
                         title = stringResource(Res.string.action_start_radio),
-                        icon = Icons.Default.Radio
+                        icon = Icons.Default.Radio,
                     ) {
                         onPlayClick(QueueOption.REPLACE, true)
-                    })
+                    },
+                )
             }
         },
-        buttonContent = button
+        buttonContent = button,
     )
 }
-

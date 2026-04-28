@@ -17,7 +17,6 @@ import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
-
     private val dataSource: MainDataSource by inject()
     private val authManager: AuthenticationManager by inject()
     private val oauthHandler: OAuthHandler by lazy {
@@ -42,12 +41,14 @@ class MainActivity : ComponentActivity() {
                     try {
                         startForegroundService(serviceIntent)
                     } catch (e: Exception) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                            && e is ForegroundServiceStartNotAllowedException
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                            e is ForegroundServiceStartNotAllowedException
                         ) {
                             Logger.withTag("MainActivity")
                                 .w("Cannot start foreground service from background, will retry when foregrounded")
-                        } else throw e
+                        } else {
+                            throw e
+                        }
                     }
                 }
             }

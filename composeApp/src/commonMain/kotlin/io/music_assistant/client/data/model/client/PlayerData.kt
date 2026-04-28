@@ -34,7 +34,7 @@ data class PlayerData(
                                 is DataState.NoData -> {
                                     // Keep old items, but update queue info
                                     DataState.Data(
-                                        newQueueData.copy(items = oldQueueData.items)
+                                        newQueueData.copy(items = oldQueueData.items),
                                     )
                                 }
 

@@ -35,7 +35,7 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         single(createdAtStart = true) {
             AuthenticationManager(
                 get(),
-                get()
+                get(),
             )
         }  // Eager - needs to start monitoring immediately
         singleOf(::MediaPlayerController)  // Used by MainDataSource for Sendspin

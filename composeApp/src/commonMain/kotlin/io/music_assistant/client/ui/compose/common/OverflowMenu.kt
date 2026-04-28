@@ -25,12 +25,12 @@ fun OverflowMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(
-        modifier = modifier.wrapContentSize(Alignment.TopStart)
+        modifier = modifier.wrapContentSize(Alignment.TopStart),
     ) {
         buttonContent { expanded = true }
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
@@ -42,13 +42,13 @@ fun OverflowMenu(
                         {
                             Icon(
                                 imageVector = it,
-                                contentDescription = option.title
+                                contentDescription = option.title,
                             )
                         }
                     },
                     text = {
                         Text(modifier = Modifier.padding(all = 4.dp), text = option.title)
-                    }
+                    },
                 )
             }
         }
@@ -58,5 +58,5 @@ fun OverflowMenu(
 data class OverflowMenuOption(
     val title: String,
     val icon: ImageVector? = null,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
 )

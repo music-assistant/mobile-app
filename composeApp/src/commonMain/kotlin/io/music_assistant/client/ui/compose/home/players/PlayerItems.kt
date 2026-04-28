@@ -45,9 +45,9 @@ import io.music_assistant.client.data.model.client.AppMediaItem.Companion.descri
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.asControlTint
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
-import io.music_assistant.client.ui.compose.common.asControlTint
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.formatDuration
 import kotlin.time.DurationUnit
@@ -61,7 +61,7 @@ fun CompactPlayerItem(
     onSelectPlayer: (() -> Unit)? = null,
     onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
-    sendSpinState: SendspinState?
+    sendSpinState: SendspinState?,
 ) {
     val track = item.queueInfo?.currentItem?.track
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -71,12 +71,12 @@ fun CompactPlayerItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Start,
         ) {
             // Album cover on the far left
             Box(
@@ -84,13 +84,13 @@ fun CompactPlayerItem(
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(dominantColor.copy(alpha = track?.let { 1f } ?: 0.4f)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 if (track != null) {
                     val placeholder = rememberPlaceholderPainter(
                         backgroundColor = dominantColor,
                         iconColor = onPrimaryContainer,
-                        icon = TrackIcon
+                        icon = TrackIcon,
                     )
                     AsyncImage(
                         placeholder = placeholder,
@@ -98,14 +98,14 @@ fun CompactPlayerItem(
                         model = track.imageInfo?.url(serverUrl),
                         contentDescription = track.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else {
                     Icon(
                         imageVector = AlbumIcon,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = onPrimaryContainer.copy(alpha = 0.4f)
+                        tint = onPrimaryContainer.copy(alpha = 0.4f),
                     )
                 }
             }
@@ -118,7 +118,7 @@ fun CompactPlayerItem(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 track?.subtitle?.let {
                     Text(
@@ -126,7 +126,7 @@ fun CompactPlayerItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 } ?: run {
                     if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
@@ -135,7 +135,7 @@ fun CompactPlayerItem(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -155,13 +155,13 @@ fun CompactPlayerItem(
             Row(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.End,
             ) {
                 PlayerSelectionLayout(
                     player = item,
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
-                    onGroupButton = onGroupButton ?: {}
+                    onGroupButton = onGroupButton ?: {},
                 )
             }
         }
@@ -177,7 +177,7 @@ fun FullPlayerItem(
     dominantColor: Color,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
+    @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
 ) {
     val track = item.queueInfo?.currentItem?.track
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -186,7 +186,7 @@ fun FullPlayerItem(
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -201,14 +201,14 @@ fun FullPlayerItem(
                 .padding(16.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(dominantColor.copy(alpha = track?.let { 1f } ?: 0.4f)),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             if (track != null) {
                 val placeholder =
                     rememberPlaceholderPainter(
                         backgroundColor = dominantColor,
                         iconColor = onPrimaryContainer,
-                        icon = track.defaultIcon
+                        icon = track.defaultIcon,
                     )
                 track.imageInfo?.url(serverUrl)?.let {
                     AsyncImage(
@@ -217,29 +217,28 @@ fun FullPlayerItem(
                         model = it,
                         contentDescription = track.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } ?: Icon(
                     imageVector = track.defaultIcon,
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
-                    tint = onPrimaryContainer
+                    tint = onPrimaryContainer,
                 )
             } else {
                 Icon(
                     imageVector = AlbumIcon,
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
-                    tint = onPrimaryContainer.copy(alpha = 0.4f)
+                    tint = onPrimaryContainer.copy(alpha = 0.4f),
                 )
             }
         }
 
-
         // Track info
         Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 modifier = Modifier.basicMarquee(),
@@ -247,7 +246,7 @@ fun FullPlayerItem(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             if (item.queueInfo?.currentItem?.isPlayable == false) {
                 Text(
@@ -256,7 +255,7 @@ fun FullPlayerItem(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             } else {
                 Text(
@@ -265,7 +264,7 @@ fun FullPlayerItem(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
@@ -274,7 +273,7 @@ fun FullPlayerItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
 
@@ -294,8 +293,8 @@ fun FullPlayerItem(
             activeTrackColor = controlTint,
         )
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-        ) {// Progress bar
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        ) { // Progress bar
             Slider(
                 value = sliderPosition,
                 valueRange = duration?.let { 0f..it } ?: 0f..1f,
@@ -330,7 +329,7 @@ fun FullPlayerItem(
                             trackInsideCornerSize = 0.dp,
                             drawStopIndicator = null,
                             enabled = track != null && !item.player.isAnnouncing,
-                            modifier = Modifier.height(8.dp)
+                            modifier = Modifier.height(8.dp),
                         )
                         if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
                             val tickColor =
@@ -344,33 +343,33 @@ fun FullPlayerItem(
                                         color = tickColor,
                                         start = Offset(x, 0f),
                                         end = Offset(x, size.height),
-                                        strokeWidth = 2.dp.toPx()
+                                        strokeWidth = 2.dp.toPx(),
                                     )
                                 }
                             }
                         }
                     }
-                }
+                },
             )
 
             // Duration labels
             Row(
                 modifier = Modifier.fillMaxWidth().offset(y = (-16).dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = sliderPosition.takeIf { track != null }
                         .formatDuration(DurationUnit.SECONDS)
                         .takeIf { duration != null } ?: "",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = track
                         ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
                         ?: "",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

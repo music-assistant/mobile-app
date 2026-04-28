@@ -10,5 +10,5 @@ data class ProviderManifest(
     @SerialName("name") val name: String,
     @SerialName("icon") val icon: String?,
     @SerialName("icon_svg") val iconSvg: String?,
-    @SerialName("icon_svg_dark") val iconSvgDark: String?
+    @SerialName("icon_svg_dark") val iconSvgDark: String?,
 )

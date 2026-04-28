@@ -10,7 +10,6 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 
 sealed interface MainNav : NavKey {
-
     @Serializable
     data object Landing : MainNav
 
@@ -21,7 +20,7 @@ sealed interface MainNav : NavKey {
     data class ItemDetails(
         val itemId: String,
         val mediaType: MediaType,
-        val providerId: String
+        val providerId: String,
     ) : MainNav
 
     @Serializable
@@ -39,12 +38,12 @@ fun rememberMainNavBackStack(bottom: MainNav) = rememberNavBackStack(
                     subclass(MainNav.Library::class, MainNav.Library.serializer())
                     subclass(
                         MainNav.ItemDetails::class,
-                        MainNav.ItemDetails.serializer()
+                        MainNav.ItemDetails.serializer(),
                     )
                     subclass(MainNav.Search::class, MainNav.Search.serializer())
                 }
             }
-        }
+        },
     ),
-    bottom
+    bottom,
 )

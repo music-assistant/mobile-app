@@ -17,7 +17,6 @@ import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
 
 actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platformContext: PlatformContext) {
-
     private fun logFilePath() = "${NSTemporaryDirectory()}ma_client_logs.txt"
     private fun crashLogFilePath() = "${NSTemporaryDirectory()}ma_crash_log.txt"
 
@@ -53,7 +52,7 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
         val fileUrl = NSURL.fileURLWithPath(path)
         val activityVC = UIActivityViewController(
             activityItems = listOf(fileUrl),
-            applicationActivities = null
+            applicationActivities = null,
         )
         val rootVC = UIApplication.sharedApplication.connectedScenes
             .filterIsInstance<UIWindowScene>()

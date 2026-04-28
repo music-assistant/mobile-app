@@ -17,9 +17,8 @@ class WaveformPainter(
     private val thickness: Float = 4f,
     private val baseFrequency: Float = 16f,
     private val baseAmplitudeFactor: Float = 0.8f,
-    private val verticalOffset: Float = 0.0f
+    private val verticalOffset: Float = 0.0f,
 ) : Painter() {
-
     // Cache for the calculated path points
     private var cachedSize: Size? = null
     private var cachedPoints: List<Pair<Offset, Color>>? = null
@@ -48,7 +47,7 @@ class WaveformPainter(
                 color = color,
                 start = prevPoint,
                 end = currPoint,
-                strokeWidth = thickness
+                strokeWidth = thickness,
             )
         }
     }
@@ -97,6 +96,6 @@ fun rememberWaveformPainter(
 ) = remember(color) {
     WaveformPainter(
         waveColor = color,
-        thickness = 3f
+        thickness = 3f,
     )
 }

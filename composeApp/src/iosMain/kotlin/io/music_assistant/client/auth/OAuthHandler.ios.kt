@@ -9,7 +9,7 @@ actual class OAuthHandler {
         UIApplication.sharedApplication.openURL(
             nsUrl,
             options = emptyMap<Any?, Any>(),
-            completionHandler = null
+            completionHandler = null,
         )
     }
 }

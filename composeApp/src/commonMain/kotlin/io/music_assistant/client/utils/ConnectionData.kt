@@ -11,7 +11,7 @@ data class ConnectionData(
     val serverInfo: ServerInfo? = null,
     val user: User? = null,
     val authProcessState: AuthProcessState = AuthProcessState.NotStarted,
-    val wasAutoLogin: Boolean = false
+    val wasAutoLogin: Boolean = false,
 ) {
     val dataConnectionState: DataConnectionState
         get() = when {

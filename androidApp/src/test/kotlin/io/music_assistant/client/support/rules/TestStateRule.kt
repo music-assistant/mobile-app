@@ -8,7 +8,7 @@ import org.junit.runners.model.Statement
 class TestStateRule : TestRule {
     override fun apply(
         base: Statement,
-        description: Description
+        description: Description,
     ): Statement {
         return object : Statement() {
             override fun evaluate() {

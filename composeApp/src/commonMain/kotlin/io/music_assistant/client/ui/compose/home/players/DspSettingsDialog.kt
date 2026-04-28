@@ -1,3 +1,6 @@
+// Compose layout values (sizes, alphas, animation durations) are visual design tokens.
+@file:Suppress("MagicNumber")
+
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.clickable
@@ -31,8 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.server.DspConfigPreset
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -51,14 +54,14 @@ fun DspSettingsDialog(
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
         ) {
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
                     Text(
                         stringResource(Res.string.dsp_title),
                         style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
 
                     when (val s = state) {
@@ -67,7 +70,7 @@ fun DspSettingsDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 32.dp),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator()
                             }
@@ -78,7 +81,7 @@ fun DspSettingsDialog(
                                 stringResource(Res.string.dsp_error),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(16.dp)
+                                modifier = Modifier.padding(16.dp),
                             )
                         }
 
@@ -108,7 +111,7 @@ private fun DspContent(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 stringResource(Res.string.dsp_enable),
@@ -126,7 +129,7 @@ private fun DspContent(
             Text(
                 stringResource(Res.string.dsp_presets),
                 style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
 
             val iconSize = 20.dp
@@ -145,7 +148,7 @@ private fun DspContent(
                             }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Box(modifier = Modifier.size(iconSize)) {
                             if (isApplied) {
@@ -153,7 +156,7 @@ private fun DspContent(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = stringResource(Res.string.cd_applied),
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(iconSize)
+                                    modifier = Modifier.size(iconSize),
                                 )
                             }
                         }

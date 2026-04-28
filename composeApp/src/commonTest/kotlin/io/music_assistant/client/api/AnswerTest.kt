@@ -19,7 +19,6 @@ import kotlin.test.assertNull
  *  - return `null` (and log) when the payload shape doesn't match `T`.
  */
 class AnswerTest {
-
     private fun envelope(resultJson: String): Answer {
         val raw = """{"message_id": "m1", "result": $resultJson}"""
         return Answer(Json.parseToJsonElement(raw) as JsonObject)

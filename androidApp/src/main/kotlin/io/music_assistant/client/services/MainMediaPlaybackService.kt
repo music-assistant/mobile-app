@@ -79,12 +79,12 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         }.stateIn(scope, SharingStarted.Eagerly, null)
     private val mediaNotificationData = combine(
         currentPlayerData.filterNotNull(),
-        players.map { it.size > 1 }
+        players.map { it.size > 1 },
     ) { player, moreThanOnePlayer ->
         MediaNotificationData.from(
             dataSource.apiClient.serverBaseUrl.value,
             player,
-            moreThanOnePlayer
+            moreThanOnePlayer,
         )
     }
         .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }
@@ -107,7 +107,8 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                     AudioDeviceInfo.TYPE_WIRED_HEADSET,       // 3.5mm headset
                     AudioDeviceInfo.TYPE_USB_DEVICE,          // USB audio
                     AudioDeviceInfo.TYPE_USB_HEADSET,         // USB headset
-                    AudioDeviceInfo.TYPE_USB_ACCESSORY -> true
+                    AudioDeviceInfo.TYPE_USB_ACCESSORY,
+                    -> true
 
                     else -> false
                 }
@@ -140,7 +141,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         super.onCreate()
         val token = sharedSession.acquire(
             callback = createCallback(),
-            isAutoService = false
+            isAutoService = false,
         )
         sessionToken = token
         mediaNotificationManager = MediaNotificationManager(this, token)
@@ -149,7 +150,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         try {
             startForeground(
                 MediaNotificationManager.NOTIFICATION_ID,
-                mediaNotificationManager.createNotification(null)
+                mediaNotificationManager.createNotification(null),
             )
         } catch (e: IllegalStateException) {
             logger.w(e) { "Cannot start foreground service from background, stopping" }
@@ -161,7 +162,8 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         logger.i { "Registered audio device callback for routing change detection" }
 
         scope.launch {
-            mediaNotificationData.debounce(200).collect { updatePlaybackState(it) }
+            // 200ms debounce coalesces rapid notification updates without delaying perceptibly.
+            mediaNotificationData.debounce(timeoutMillis = 200).collect { updatePlaybackState(it) }
         }
         scope.launch {
             // Block until everything is stopped, then bail
@@ -187,7 +189,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         wifiLock = wifiManager.createWifiLock(
             WifiManager.WIFI_MODE_FULL_HIGH_PERF,
-            "MusicAssistant:Playback"
+            "MusicAssistant:Playback",
         ).apply { acquire() }
         logger.i { "Wi-Fi lock acquired for Sendspin streaming" }
     }
@@ -210,7 +212,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                     Toast.makeText(
                         this@MainMediaPlaybackService,
                         "You have playing players",
-                        Toast.LENGTH_SHORT
+                        Toast.LENGTH_SHORT,
                     ).show()
                 } ?: run {
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -270,7 +272,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                         playerData.queueInfo?.let {
                             dataSource.playerAction(
                                 playerData,
-                                PlayerAction.ToggleShuffle(current = it.shuffleEnabled)
+                                PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
                             )
                         }
                     }
@@ -279,7 +281,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                         playerData.queueInfo?.repeatMode?.let { repeatMode ->
                             dataSource.playerAction(
                                 playerData,
-                                PlayerAction.ToggleRepeatMode(current = repeatMode)
+                                PlayerAction.ToggleRepeatMode(current = repeatMode),
                             )
                         }
                     }
@@ -291,7 +293,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onLoadChildren(
         parentId: String,
-        result: Result<MutableList<MediaBrowserCompat.MediaItem>>
+        result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) = Unit
 
     private fun switchPlayer() {
@@ -316,14 +318,18 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     private suspend fun updatePlaybackState(data: MediaNotificationData) {
         val bitmap = data.imageUrl?.let {
-            ((imageLoader.execute(
+            (
+                (
+                    imageLoader.execute(
                 ImageRequest.Builder(this@MainMediaPlaybackService)
                     .data(it)
                     .allowHardware(false)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .memoryCacheKey(it)
-                    .build()
-            ) as? SuccessResult)?.image as? BitmapImage)?.bitmap
+                    .build(),
+            ) as? SuccessResult
+                )?.image as? BitmapImage
+            )?.bitmap
         }
         // Only write to the shared session when AA is NOT active.
         // When AA is active, it is the sole writer (with its own data flow).
@@ -336,7 +342,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             startForeground(
                 MediaNotificationManager.NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
             )
         } else {
             startForeground(MediaNotificationManager.NOTIFICATION_ID, notification)

@@ -10,13 +10,12 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.utils.support.MockFunction2
 import org.junit.Rule
-import org.junit.runner.RunWith
 import org.junit.Test
+import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 
 @RunWith(AndroidJUnit4::class)
 class ItemPlayButtonTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
 

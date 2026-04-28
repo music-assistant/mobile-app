@@ -33,7 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -74,8 +73,8 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
-import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.*
+import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.publicvalue.multiplatform.qrcode.CameraPosition
@@ -111,7 +110,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 actions = {
                     ThemeChooser(
                         modifier = Modifier.padding(end = 16.dp),
-                        currentTheme = theme.value
+                        currentTheme = theme.value,
                     ) { changedTheme ->
                         themeViewModel.switchTheme(changedTheme)
                     }
@@ -123,21 +122,21 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
             )
-        }
+        },
     ) {
         Column(
             modifier = Modifier
                 .background(color = MaterialTheme.colorScheme.background)
-                .fillMaxSize()
+                .fillMaxSize(),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 var ipAddress by remember { mutableStateOf(Defaults.URI) }
                 var port by remember { mutableStateOf(Defaults.PORT.toString()) }
@@ -178,7 +177,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             viewModel.attemptConnection(
                                 connInfo.host,
                                 connInfo.port.toString(),
-                                connInfo.isTls
+                                connInfo.isTls,
                             )
                         }
                         // If user changed connection info, don't auto-retry - let them manually retry
@@ -190,7 +189,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     if (!isAuthenticated) {
                         OutlinedButton(onClick = exitApp) { Text(stringResource(Res.string.settings_exit_app)) }
@@ -212,7 +211,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 viewModel.attemptConnection(
                                     ipAddress,
                                     port,
-                                    isTls
+                                    isTls,
                                 )
                             },
                             directConnectEnabled = ipAddress.isValidHost() && port.isIpPort(),
@@ -226,7 +225,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             ipAddress = ipAddress,
                             port = port,
                             preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() }
+                            onCancel = { viewModel.disconnect() },
                         )
                     }
 
@@ -235,7 +234,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             ipAddress = ipAddress,
                             port = port,
                             preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() }
+                            onCancel = { viewModel.disconnect() },
                         )
                     }
 
@@ -247,7 +246,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             connectionInfo = savedConnectionInfo,
                             serverInfo = connectedState.serverInfo,
                             isWebRTC = connectedState is SessionState.Connected.WebRTC,
-                            onDisconnect = { viewModel.disconnect() }
+                            onDisconnect = { viewModel.disconnect() },
                         )
 
                         LoginSection(connectedState.user)
@@ -272,7 +271,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     onShareLogs = { viewModel.shareLogs() },
                     hasCrashLog = hasCrashLog,
                     onShareCrashLog = { viewModel.shareCrashLog() },
-                    onDeleteCrashLog = { viewModel.deleteCrashLog() }
+                    onDeleteCrashLog = { viewModel.deleteCrashLog() },
                 )
 
                 Spacer(modifier = Modifier.size(16.dp))
@@ -288,13 +287,13 @@ private fun MiscSection(
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
     onShareCrashLog: () -> Unit,
-    onDeleteCrashLog: () -> Unit
+    onDeleteCrashLog: () -> Unit,
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onShareLogs
+            onClick = onShareLogs,
         ) {
             Text(stringResource(Res.string.settings_share_logs))
         }
@@ -302,11 +301,11 @@ private fun MiscSection(
             Spacer(modifier = Modifier.size(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
-                    onClick = onShareCrashLog
+                    onClick = onShareCrashLog,
                 ) {
                     Text(stringResource(Res.string.settings_share_crash_logs))
                 }
@@ -321,17 +320,17 @@ private fun MiscSection(
 @Composable
 private fun SectionCard(
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             content()
         }
@@ -344,7 +343,7 @@ private fun SectionTitle(text: String) {
         text = text,
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(bottom = 12.dp)
+        modifier = Modifier.padding(bottom = 12.dp),
     )
 }
 
@@ -398,17 +397,17 @@ private fun ConnectionMethodTabs(
         PrimaryTabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
             Tab(
                 selected = selectedTab == 0,
                 onClick = { viewModel.setPreferredConnectionMethod("direct") },
-                text = { Text(stringResource(Res.string.settings_connection_direct)) }
+                text = { Text(stringResource(Res.string.settings_connection_direct)) },
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { viewModel.setPreferredConnectionMethod("webrtc") },
-                text = { Text(stringResource(Res.string.settings_connection_webrtc)) }
+                text = { Text(stringResource(Res.string.settings_connection_webrtc)) },
             )
         }
 
@@ -499,7 +498,7 @@ private fun DirectConnectionContent(
         colors = TextFieldDefaults.colors(
             focusedTextColor = MaterialTheme.colorScheme.onBackground,
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-        )
+        ),
     )
 
     // Port input
@@ -516,7 +515,7 @@ private fun DirectConnectionContent(
         colors = TextFieldDefaults.colors(
             focusedTextColor = MaterialTheme.colorScheme.onBackground,
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-        )
+        ),
     )
 
     // TLS toggle
@@ -524,11 +523,11 @@ private fun DirectConnectionContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
             checked = isTls,
-            onCheckedChange = onTlsChange
+            onCheckedChange = onTlsChange,
         )
         Text(stringResource(Res.string.settings_use_tls))
     }
@@ -543,7 +542,15 @@ private fun DirectConnectionContent(
             onClick = onConnect,
             enabled = enabled,
         ) {
-            Text(if (hasToken) stringResource(Res.string.settings_connect_saved) else stringResource(Res.string.settings_connect))
+            Text(
+                if (hasToken) {
+                    stringResource(
+                        Res.string.settings_connect_saved,
+                    )
+                } else {
+                    stringResource(Res.string.settings_connect)
+                },
+            )
         }
         IconButton(onClick = onShowHistory) {
             Icon(
@@ -572,7 +579,7 @@ private fun WebRTCConnectionContent(
         text = stringResource(Res.string.settings_webrtc_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 12.dp)
+        modifier = Modifier.padding(bottom = 12.dp),
     )
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -594,17 +601,17 @@ private fun WebRTCConnectionContent(
                 Text(
                     text = stringResource(Res.string.settings_remote_id_hint),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            isError = isInvalidRemoteId
+            isError = isInvalidRemoteId,
         )
 
         IconButton(onClick = { showQrDialog = true }) {
             Icon(
                 imageVector = Icons.Default.QrCodeScanner,
                 contentDescription = stringResource(Res.string.cd_scan_qr_code),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
         }
     }
@@ -615,7 +622,7 @@ private fun WebRTCConnectionContent(
             text = stringResource(Res.string.settings_remote_id_invalid),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
         )
     }
 
@@ -624,7 +631,7 @@ private fun WebRTCConnectionContent(
         text = stringResource(Res.string.settings_webrtc_info),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-        modifier = Modifier.padding(bottom = 12.dp)
+        modifier = Modifier.padding(bottom = 12.dp),
     )
 
     // Connect button + history icon
@@ -643,7 +650,7 @@ private fun WebRTCConnectionContent(
                     isConnecting -> stringResource(Res.string.settings_connecting)
                     hasToken -> stringResource(Res.string.settings_connect_saved)
                     else -> stringResource(Res.string.settings_connect_webrtc)
-                }
+                },
             )
         }
         IconButton(onClick = onShowHistory) {
@@ -659,12 +666,13 @@ private fun WebRTCConnectionContent(
             onDismiss = { showQrDialog = false },
             onScanned = { scannedText ->
                 onRemoteIdChange(
-                    (scannedText.indexOf(webRtcUrlPrefix) + webRtcUrlPrefix.length)
+                    (scannedText.indexOf(WEB_RTC_URL_PREFIX) + WEB_RTC_URL_PREFIX.length)
                         .takeIf { it < scannedText.length }
                         ?.let { scannedText.substring(it) }
-                        ?: scannedText)
+                        ?: scannedText,
+                )
                 showQrDialog = false
-            }
+            },
         )
     }
 }
@@ -678,19 +686,18 @@ private fun QrScanDialog(
     BasicAlertDialog(
         onDismissRequest = onDismiss,
         content = {
-
             Column(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight()
                     .background(
                         MaterialTheme.colorScheme.surfaceContainer,
-                        RoundedCornerShape(corner = CornerSize(12.dp))
+                        RoundedCornerShape(corner = CornerSize(12.dp)),
                     )
                     .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     style = MaterialTheme.typography.bodyLarge,
-                    text = stringResource(Res.string.settings_scan_qr)
+                    text = stringResource(Res.string.settings_scan_qr),
                 )
                 ScannerWithPermissions(
                     modifier = Modifier.heightIn(120.dp, 360.dp),
@@ -700,11 +707,11 @@ private fun QrScanDialog(
                     },
                     types = listOf(CodeType.QR),
                     cameraPosition = CameraPosition.BACK,
-                    enableTorch = false
+                    enableTorch = false,
                 )
                 OutlinedButton(
                     modifier = Modifier.align(Alignment.End),
-                    onClick = onDismiss
+                    onClick = onDismiss,
                 ) {
                     Text(stringResource(Res.string.common_cancel))
                 }
@@ -718,7 +725,7 @@ private fun ConnectingSection(
     ipAddress: String,
     port: String,
     preferredMethod: String?,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
 ) {
     val text = if (preferredMethod == "webrtc") {
         stringResource(Res.string.settings_connecting_remote)
@@ -729,17 +736,17 @@ private fun ConnectingSection(
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
             OutlinedButton(
                 onClick = onCancel,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(Res.string.common_cancel))
             }
@@ -752,7 +759,7 @@ private fun ServerInfoSection(
     connectionInfo: ConnectionInfo?,
     serverInfo: ServerInfo?,
     isWebRTC: Boolean = false,
-    onDisconnect: () -> Unit
+    onDisconnect: () -> Unit,
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_server))
@@ -767,22 +774,26 @@ private fun ServerInfoSection(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
         }
 
         serverInfo?.let { server ->
             Text(
-                text = stringResource(Res.string.settings_version_info, server.serverVersion ?: "", server.schemaVersion?.toString() ?: ""),
+                text = stringResource(
+                    Res.string.settings_version_info,
+                    server.serverVersion ?: "",
+                    server.schemaVersion?.toString() ?: "",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier.padding(bottom = 12.dp),
             )
         }
 
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onDisconnect
+            onClick = onDisconnect,
         ) {
             Text(stringResource(Res.string.settings_disconnect))
         }
@@ -814,7 +825,15 @@ private fun SendspinSection(
     val sendspinCodecPreference by viewModel.sendspinCodecPreference.collectAsStateWithLifecycle()
 
     SectionCard(modifier = modifier) {
-        SectionTitle(if (sendspinEnabled) stringResource(Res.string.settings_local_player_enabled) else stringResource(Res.string.settings_local_player_disabled))
+        SectionTitle(
+            if (sendspinEnabled) {
+                stringResource(
+                    Res.string.settings_local_player_enabled,
+                )
+            } else {
+                stringResource(Res.string.settings_local_player_disabled)
+            },
+        )
 
         // Text fields on top - disabled when player is running
         TextField(
@@ -830,14 +849,14 @@ private fun SendspinSection(
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                 disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-            )
+            ),
         )
 
         // Codec selection
         OverflowMenu(
             options = Codecs.list.map { item ->
                 OverflowMenuOption(
-                    title = item.localizedTitle()
+                    title = item.localizedTitle(),
                 ) { viewModel.setSendspinCodecPreference(item) }
             },
             buttonContent = { onClick ->
@@ -847,35 +866,36 @@ private fun SendspinSection(
                         .clickable(enabled = !sendspinEnabled) { onClick() }
                         .padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(Res.string.settings_codec_preference),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             text = sendspinCodecPreference.localizedTitle(),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = if (sendspinEnabled)
+                            color = if (sendspinEnabled) {
                                 MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                            else
+                            } else {
                                 MaterialTheme.colorScheme.onBackground
+                            },
                         )
                     }
                     Icon(
                         modifier = Modifier.size(24.dp),
                         imageVector = Icons.Default.ExpandMore,
                         contentDescription = stringResource(Res.string.cd_select_codec),
-                        tint = if (sendspinEnabled)
+                        tint = if (sendspinEnabled) {
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        else
+                        } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 }
-
-            }
+            },
         )
 
         // Custom connection toggle
@@ -883,19 +903,20 @@ private fun SendspinSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Checkbox(
                 checked = sendspinUseCustomConnection,
                 onCheckedChange = { viewModel.setSendspinUseCustomConnection(it) },
-                enabled = !sendspinEnabled
+                enabled = !sendspinEnabled,
             )
             Text(
                 text = stringResource(Res.string.settings_custom_sendspin),
-                color = if (sendspinEnabled)
+                color = if (sendspinEnabled) {
                     MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                else
+                } else {
                     MaterialTheme.colorScheme.onBackground
+                },
             )
         }
 
@@ -917,12 +938,12 @@ private fun SendspinSection(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
                     unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                     disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                )
+                ),
             )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 TextField(
                     modifier = Modifier
@@ -939,7 +960,7 @@ private fun SendspinSection(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                         disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    )
+                    ),
                 )
 
                 TextField(
@@ -955,7 +976,7 @@ private fun SendspinSection(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                         disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    )
+                    ),
                 )
             }
 
@@ -963,19 +984,20 @@ private fun SendspinSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(
                     checked = sendspinUseTls,
                     onCheckedChange = { viewModel.setSendspinUseTls(it) },
-                    enabled = !sendspinEnabled
+                    enabled = !sendspinEnabled,
                 )
                 Text(
                     text = stringResource(Res.string.settings_use_tls_wss),
-                    color = if (sendspinEnabled)
+                    color = if (sendspinEnabled) {
                         MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    else
+                    } else {
                         MaterialTheme.colorScheme.onBackground
+                    },
                 )
             }
         }
@@ -1014,7 +1036,7 @@ private fun ConnectionHistoryDialog(
                 .wrapContentHeight()
                 .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(stringResource(Res.string.settings_saved_connections), style = MaterialTheme.typography.titleMedium)
             if (history.isEmpty()) {
@@ -1028,8 +1050,8 @@ private fun ConnectionHistoryDialog(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        ),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1039,7 +1061,7 @@ private fun ConnectionHistoryDialog(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable { onFill(entry) }
-                                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp)
+                                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
                             ) {
                                 Text(
                                     text = entry.displayAddress,
@@ -1074,4 +1096,4 @@ private fun ConnectionHistoryDialog(
     }
 }
 
-const val webRtcUrlPrefix = "https://app.music-assistant.io/?remote_id="
+const val WEB_RTC_URL_PREFIX = "https://app.music-assistant.io/?remote_id="

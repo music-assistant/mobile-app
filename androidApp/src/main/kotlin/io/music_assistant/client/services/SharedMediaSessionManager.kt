@@ -21,7 +21,6 @@ import io.music_assistant.client.data.model.server.RepeatMode
  * Reference-counted: first [acquire] creates the session, last [release] destroys it.
  */
 class SharedMediaSessionManager(private val applicationContext: Context) {
-
     private var mediaSession: MediaSessionCompat? = null
     private var refCount = 0
     private var autoServiceActive = false
@@ -41,13 +40,13 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
     data class ErrorState(
         val code: Int,
         val message: String,
-        val resolution: PendingIntent? = null
+        val resolution: PendingIntent? = null,
     )
 
     @Synchronized
     fun acquire(
         callback: MediaSessionCompat.Callback,
-        isAutoService: Boolean
+        isAutoService: Boolean,
     ): MediaSessionCompat.Token {
         if (mediaSession == null) {
             mediaSession = MediaSessionCompat(applicationContext, "MusicAssistantSession").apply {
@@ -124,7 +123,7 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
     fun updatePlaybackState(
         data: MediaNotificationData,
         bitmap: Bitmap?,
-        multiPlayer: Boolean
+        multiPlayer: Boolean,
     ) {
         lastData = data
         lastBitmap = bitmap
@@ -149,28 +148,29 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
     private fun writePlaybackToSession(
         data: MediaNotificationData,
         bitmap: Bitmap?,
-        multiPlayer: Boolean = false
+        multiPlayer: Boolean = false,
     ) {
         val session = mediaSession ?: return
-        val state = if (data.isPlaying)
+        val state = if (data.isPlaying) {
             PlaybackStateCompat.STATE_PLAYING
-        else
+        } else {
             PlaybackStateCompat.STATE_PAUSED
+        }
         val playbackState = PlaybackStateCompat.Builder()
             .setActions(
                 PlaybackStateCompat.ACTION_PLAY or
                         PlaybackStateCompat.ACTION_SEEK_TO or
                         PlaybackStateCompat.ACTION_PAUSE or
                         PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS,
             )
             .setState(
                 state,
                 data.elapsedTime ?: PlaybackState.PLAYBACK_POSITION_UNKNOWN,
-                1f
+                1f,
             )
             .setActiveQueueItemId(
-                data.longItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong()
+                data.longItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong(),
             )
             .also { builder ->
                 data.shuffleEnabled?.let { shuffle ->
@@ -178,8 +178,8 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
                         PlaybackStateCompat.CustomAction.Builder(
                             "ACTION_TOGGLE_SHUFFLE",
                             "Shuffle",
-                            getShuffleModeIcon(shuffle)
-                        ).build()
+                            getShuffleModeIcon(shuffle),
+                        ).build(),
                     )
                 }
                 if (data.multiplePlayers) {
@@ -187,8 +187,8 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
                         PlaybackStateCompat.CustomAction.Builder(
                             "ACTION_SWITCH_PLAYER",
                             "Next player",
-                            R.drawable.ic_speaker
-                        ).build()
+                            R.drawable.ic_speaker,
+                        ).build(),
                     )
                 } else {
                     data.repeatMode?.let { repeatMode ->
@@ -196,8 +196,8 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
                             PlaybackStateCompat.CustomAction.Builder(
                                 "ACTION_TOGGLE_REPEAT",
                                 "Repeat",
-                                getRepeatModeIcon(repeatMode)
-                            ).build()
+                                getRepeatModeIcon(repeatMode),
+                            ).build(),
                         )
                     }
                 }
@@ -208,16 +208,16 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
         val metadata = MediaMetadataCompat.Builder()
             .putString(
                 MediaMetadataCompat.METADATA_KEY_TITLE,
-                data.name ?: "Unknown Track"
+                data.name ?: "Unknown Track",
             )
             .putString(
                 MediaMetadataCompat.METADATA_KEY_ARTIST,
                 (data.artist ?: "Unknown Artist") +
-                        (if (multiPlayer) data.playerName?.let { " (on $it)" } ?: "" else "")
+                        (if (multiPlayer) data.playerName?.let { " (on $it)" } ?: "" else ""),
             )
             .putString(
                 MediaMetadataCompat.METADATA_KEY_ALBUM,
-                data.album
+                data.album,
             )
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
             .also { builder ->
@@ -235,11 +235,11 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
             Bundle().apply {
                 putParcelable(
                     MediaConstants.PLAYBACK_STATE_EXTRAS_KEY_ERROR_RESOLUTION_ACTION_INTENT,
-                    intent
+                    intent,
                 )
                 putString(
                     MediaConstants.PLAYBACK_STATE_EXTRAS_KEY_ERROR_RESOLUTION_ACTION_LABEL,
-                    "Open app"
+                    "Open app",
                 )
             }
         }
@@ -258,6 +258,9 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
     }
 
     private fun getShuffleModeIcon(shuffleMode: Boolean): Int =
-        if (shuffleMode) R.drawable.baseline_shuffle_24
-        else R.drawable.baseline_arrow_right_alt_24
+        if (shuffleMode) {
+            R.drawable.baseline_shuffle_24
+        } else {
+            R.drawable.baseline_arrow_right_alt_24
+        }
 }

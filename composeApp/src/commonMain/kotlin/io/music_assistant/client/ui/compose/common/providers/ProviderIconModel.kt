@@ -70,7 +70,8 @@ sealed class ProviderIconModel {
                     "network" -> Icons.Default.NetworkWifi
                     "podcast" -> TablerIcons.Microphone
                     "mdi:radio",
-                    "radio" -> Icons.Default.Mic
+                    "radio",
+                    -> Icons.Default.Mic
                     else -> {
                         Logger.e("Cannot find MDI icon for $mdiIcon.")
                         return null

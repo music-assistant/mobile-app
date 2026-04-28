@@ -58,9 +58,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                         subclass(Nav.Settings::class, Nav.Settings.serializer())
                     }
                 }
-            }
+            },
         ),
-        initialScreen
+        initialScreen,
     )
 
     // Monitor session state and navigate appropriately
@@ -98,14 +98,15 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 // This prevents navigation during reconnection when auth might not be loaded yet
             }
 
-            is SessionState.Connecting -> { /* Do nothing */
+            is SessionState.Connecting -> {
+                /* Do nothing */
             }
         }
     }
     val bottomSheetStrategy = remember { BottomSheetSceneStrategy<NavKey>() }
     val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
 
-    Box {
+    Box(modifier = modifier) {
         // Main navigation content
         NavDisplay(
             modifier = Modifier.fillMaxSize(),
@@ -114,13 +115,13 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             sceneStrategy = bottomSheetStrategy.then(dialogStrategy),
             entryDecorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator(
-                    rememberSaveableStateHolder()
-                )
+                    rememberSaveableStateHolder(),
+                ),
             ),
             entryProvider = entryProvider {
                 entry<Nav.Home> {
                     MainNavigationRoot(
-                        goToSettings = { backStack.add(Nav.Settings) }
+                        goToSettings = { backStack.add(Nav.Settings) },
                     )
                 }
 
@@ -131,15 +132,15 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                             backStack.clear()
                             backStack.add(Nav.Home)
                         },
-                        exitApp = { exitApp() }
+                        exitApp = { exitApp() },
                     )
                 }
-            }
+            },
         )
 
         // Connection status banner - overlays at top, doesn't shrink content
         ConnectionStatusBanner(
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter),
         )
     }
 }
