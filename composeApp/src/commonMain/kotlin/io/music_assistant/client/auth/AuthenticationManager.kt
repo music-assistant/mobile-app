@@ -56,8 +56,7 @@ class AuthenticationManager(
                             when (dataConnectionState.authProcessState) {
                                 AuthProcessState.NotStarted -> {
                                     // Try auto-login with saved token (unless we're intentionally logging out)
-                                    val loggingOut = isLoggingOut
-                                    if (!loggingOut) {
+                                    if (!isLoggingOut) {
                                         val serverIdentifier = when (state) {
                                             is SessionState.Connected.Direct ->
                                                 settings.getDirectServerIdentifier(
@@ -68,8 +67,9 @@ class AuthenticationManager(
                                             is SessionState.Connected.WebRTC ->
                                                 settings.getWebRTCServerIdentifier(state.remoteId.rawId)
                                         }
-                                        val token = settings.getTokenForServer(serverIdentifier)
-                                        token?.let { authorizeWithSavedToken(it) }
+                                        settings.getTokenForServer(serverIdentifier)?.let {
+                                            authorizeWithSavedToken(it)
+                                        }
                                     }
                                 }
 
@@ -220,7 +220,6 @@ class AuthenticationManager(
             }
 
             // Timeout - connection not established
-            val currentState = serviceClient.sessionState.value
             Logger.e("Connection timeout - cannot authorize")
             _authState.value = AuthState.Error("Connection timeout. Please try again.")
         }

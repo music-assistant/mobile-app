@@ -277,65 +277,27 @@ class MainDataSource(
 
                                     when (currentState.reason) {
                                         StaleReason.RECONNECTING -> {
-                                            // Brief disconnection - data is still fresh!
-                                            // Transition stale data back to Data without fetching
-                                            // This prevents the "blink" from reloading the UI
+                                            // Brief disconnection — data is still fresh. Transition
+                                            // stale → Data without re-fetching to avoid a UI blink.
+                                            // This branch only runs when dataConnectionState is
+                                            // already Authenticated; if a reconnect requires re-auth,
+                                            // the else branch below preserves Stale data until
+                                            // AuthenticationManager finishes re-authorizing.
                                             log.i { "Seamless recovery - reusing cached data" }
                                             _serverPlayers.update {
                                                 DataState.Data(currentState.data)
                                             }
 
-                                            // Refresh queue items for the selected player.
-                                            // selectedPlayerIndex won't re-emit (same value),
-                                            // so the collector at line ~582 won't fire.
+                                            // selectedPlayerIndex doesn't re-emit on stale-recovery
+                                            // (same value before/after), so refresh manually.
                                             refreshSelectedPlayerQueueItems()
 
-                                            // CRITICAL: Re-authenticate the server session
-                                            // New WebSocket connection needs auth command sent
-                                            launch {
-                                                // Get token for current server
-                                                val serverIdentifier = when (
-                                                    val state =
-                                                    apiClient.sessionState.value
-                                                ) {
-                                                    is SessionState.Connected.Direct -> {
-                                                        state.connectionInfo.let { connInfo ->
-                                                            settings.getDirectServerIdentifier(
-                                                                connInfo.host,
-                                                                connInfo.port,
-                                                                connInfo.isTls,
-                                                            )
-                                                        }
-                                                    }
-
-                                                    is SessionState.Connected.WebRTC -> {
-                                                        settings.getWebRTCServerIdentifier(state.remoteId.rawId)
-                                                    }
-
-                                                    else -> null
-                                                }
-
-                                                val token = serverIdentifier?.let {
-                                                    settings.getTokenForServer(it)
-                                                }
-
-                                                if (token != null) {
-                                                    log.i { "Re-authenticating after reconnection with saved token" }
-                                                    apiClient.authorize(token, isAutoLogin = true)
-                                                } else {
-                                                    log.w { "No saved token to re-authenticate with" }
-                                                }
-                                            }
-
-                                            // Reinit Sendspin — safe because initSendspinIfEnabled()
-                                            // returns early if already Connected/Reconnecting.
-                                            // Needed because:
-                                            //  - WebRTC: new data channels were created on reconnect;
-                                            //    old SendspinClient holds a dead channel (Idle state).
-                                            //  - WebSocket: reconnection may have given up;
-                                            //    server removes the player when the socket closes.
-                                            sendspinClientFactory.onFreshWebRTCConnection()
+                                            // Sendspin reinit: WebRTC sendspin auth is inherited
+                                            // from the data channel itself, not JSON-RPC auth state,
+                                            // so it must be re-driven independently of the main
+                                            // connection's auth lifecycle.
                                             launch { initSendspinIfEnabled() }
+
                                             // Drain any commands queued while disconnected
                                             localPlayerRepository.drainCommandQueue()
                                         }
@@ -360,8 +322,9 @@ class MainDataSource(
                                     updateProvidersManifests()
                                     updatePlayersAndQueues()
                                     refreshSelectedPlayerQueueItems()
-                                    // Safety net: reinit Sendspin if it's not already connected
-                                    sendspinClientFactory.onFreshWebRTCConnection()
+                                    // Safety net: reinit Sendspin if it's not already connected.
+                                    // Factory detects channel freshness from the DataChannelWrapper
+                                    // identity, so no manual reset needed here.
                                     launch { initSendspinIfEnabled() }
                                 }
 
@@ -369,7 +332,6 @@ class MainDataSource(
                                     // Fresh connection or error recovery - show loading
                                     _serverPlayers.update { DataState.Loading() }
                                     updateProvidersManifests()
-                                    sendspinClientFactory.onFreshWebRTCConnection()
                                     initSendspinIfEnabled()
                                     updatePlayersAndQueues()
                                 }

@@ -117,6 +117,12 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         val currentState = _sessionState.value as? SessionState.Connected.WebRTC ?: return
         logger.i { "Forcing WebRTC reconnect for fresh sendspin channel" }
 
+        // `connectionData` is carried verbatim so `Reconnecting.WebRTC` keeps the
+        // current `user` for UI display during the reconnect window. The reauth-
+        // sensitive fields (`serverInfo`, `needsServerReauth`, `authProcessState`)
+        // get rebuilt by `observeTransport` when the new peer connection lands and
+        // emits Connected; until then they're irrelevant because no collector acts
+        // on Reconnecting state.
         _sessionState.update {
             SessionState.Reconnecting.WebRTC(
                 attempt = 0,
@@ -297,6 +303,8 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         backgroundInfo: () -> BackgroundedConnectionInfo,
         onFreshConnect: () -> Unit,
         onReconnected: suspend () -> Unit,
+        needsReauthOnReconnect: Boolean = false,
+        clearsServerInfoOnReconnect: Boolean = false,
     ) {
         transportObserverJob?.cancel()
         transportObserverJob = launch {
@@ -309,7 +317,47 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                                 (_sessionState.value as? HasConnectionData)?.connectionData
                                     ?: ConnectionData()
                             val wasReconnecting = _sessionState.value is SessionState.Reconnecting
-                            _sessionState.update { createConnected(preserved) }
+                            // Both transports use per-connection auth state on the server,
+                            // so every reconnect needs a fresh `client/auth`. Rather than
+                            // call `authorize` from `onReconnected` (which races with the
+                            // session-state emit — MainDataSource can see Authenticated
+                            // and fire RPCs before the auth round-trip lands), flag
+                            // `needsServerReauth` and let AuthenticationManager drive
+                            // re-auth from the resulting `AwaitingAuth(NotStarted)` state.
+                            // While the flag is set, `dataConnectionState` keeps gating
+                            // RPCs even if `authorize` later fails — a `Failed` state with
+                            // `needsServerReauth=true` still reports `AwaitingAuth(Failed)`,
+                            // so MainDataSource's stale-data path holds the line until the
+                            // user retries login or the transport bounces again.
+                            //
+                            // `serverInfo` handling differs by transport. WebRTC clears
+                            // it because the gateway proxies the data channel onto a
+                            // fresh local WebSocket and races the two legs: if
+                            // `client/auth` is sent before the gateway has forwarded the
+                            // new `server/hello` back through the (not-yet-`open`)
+                            // channel, auth is silently lost. Clearing `serverInfo`
+                            // forces `AwaitingServerInfo`, holding `authorize` until the
+                            // fresh `server/hello` arrives. Direct WebSocket has no such
+                            // ordering gate — the new `server/hello` will refresh the
+                            // cached value over the same FIFO channel that carries
+                            // `client/auth` next, so we leave `serverInfo` populated and
+                            // let `AwaitingAuth` trigger immediately.
+                            //
+                            // `authProcessState` resets to `NotStarted` so AuthMgr's
+                            // collector actually fires; a stale `InProgress` from a
+                            // mid-flight auth at disconnect time would otherwise park
+                            // the collector. `user` is preserved so the UI keeps
+                            // showing the user as logged in throughout the reconnect.
+                            val emitData = if (wasReconnecting && needsReauthOnReconnect) {
+                                preserved.copy(
+                                    serverInfo = if (clearsServerInfoOnReconnect) null else preserved.serverInfo,
+                                    needsServerReauth = true,
+                                    authProcessState = AuthProcessState.NotStarted,
+                                )
+                            } else {
+                                preserved
+                            }
+                            _sessionState.update { createConnected(emitData) }
                             if (wasReconnecting) {
                                 onReconnected()
                             } else {
@@ -397,7 +445,16 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     ),
                 )
             },
-            onReconnected = {}, // Direct doesn't need re-auth — server preserves session
+            onReconnected = {
+                // Re-auth is owned by AuthenticationManager (driven by the
+                // `needsReauthOnReconnect = true` gate above); nothing to do here.
+                logger.i { "Direct reconnection successful — awaiting AuthenticationManager re-auth" }
+            },
+            needsReauthOnReconnect = true,
+            // serverInfo stays populated: Direct WS has no `server/hello`-before-`client/auth`
+            // ordering gate (unlike the WebRTC gateway), and the next `server/hello` will
+            // overwrite any stale cached value over the same FIFO channel that carries auth.
+            clearsServerInfoOnReconnect = false,
         )
         directTransport.connect()
     }
@@ -434,17 +491,15 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                 )
             },
             onReconnected = {
-                // WebRTC-specific: re-authenticate with saved token after successful reconnection
-                logger.i { "WebRTC reconnection successful! Re-authenticating..." }
-                val serverIdentifier = settings.getWebRTCServerIdentifier(remoteId.rawId)
-                val token = settings.getTokenForServer(serverIdentifier)
-                if (token != null) {
-                    logger.i { "Re-authenticating after WebRTC reconnection with saved token" }
-                    authorize(token, isAutoLogin = true)
-                } else {
-                    logger.w { "No saved token to re-authenticate with for WebRTC server" }
-                }
+                // Re-auth is owned by AuthenticationManager (driven by the
+                // `needsReauthOnReconnect = true` gate above); nothing to do here.
+                logger.i { "WebRTC reconnection successful — awaiting AuthenticationManager re-auth" }
             },
+            needsReauthOnReconnect = true,
+            // serverInfo cleared: WebRTC gateway races data channel `on_message`
+            // for `client/auth` against forwarding the new `server/hello`. Forcing
+            // `AwaitingServerInfo` until the fresh hello arrives sidesteps the race.
+            clearsServerInfoOnReconnect = true,
         )
         webrtcTransport.connect()
     }
@@ -479,6 +534,18 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         }
     }
 
+    /**
+     * Marks the current auth attempt as failed. Intentionally does NOT clear
+     * `needsServerReauth` — if the failure happened on a transport reconnect,
+     * the underlying server-side session is still invalid and only a successful
+     * `authorize` round-trip can clear the flag. With the flag set, the state
+     * stays `AwaitingAuth(Failed)` (per `ConnectionData.dataConnectionState`),
+     * which holds MainDataSource on stale data instead of letting it fire RPCs
+     * that would 401 against the unauthenticated session. Recovery is either a
+     * manual re-login (success path clears the flag) or another transport
+     * bounce (which resets `authProcessState` to `NotStarted` so AuthMgr
+     * re-fires).
+     */
     private fun setAuthFailed(reason: String) = setAuthState(AuthProcessState.Failed(reason))
 
     override suspend fun login(
@@ -610,6 +677,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                         authProcessState = AuthProcessState.NotStarted,
                         user = user,
                         wasAutoLogin = isAutoLogin,
+                        needsServerReauth = false,
                     ) ?: it
                 }
             } ?: run {

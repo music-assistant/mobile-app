@@ -51,6 +51,13 @@ class SendspinClientFactory(
     private var sharedClockSynchronizer: ClockSynchronizer? = null
     private var sharedPipeline: AudioStreamManager? = null
     private var delayCollectorJob: Job? = null
+
+    // The WebRTC sendspin channel is single-use: after we send client/goodbye,
+    // the server tears down its handler for that channel even though it remains
+    // Open at the WebRTC layer. The DataChannelWrapper instance is the canonical
+    // "channel freshness" identity — a brand-new instance is created only when
+    // WebRTCConnectionManager negotiates a new peer connection.
+    private var lastObservedChannel: DataChannelWrapper? = null
     private var webrtcSendspinUsed = false
 
     /**
@@ -74,14 +81,6 @@ class SendspinClientFactory(
     }
 
     /**
-     * Reset the WebRTC channel flag. Called after a fresh WebRTC connection is established
-     * (new SDP-negotiated channels are available).
-     */
-    fun onFreshWebRTCConnection() {
-        webrtcSendspinUsed = false
-    }
-
-    /**
      * Fully destroys the shared pipeline (called on user logout or persistent error).
      * Next createIfEnabled() will allocate a fresh pipeline.
      */
@@ -93,6 +92,17 @@ class SendspinClientFactory(
         sharedPipeline?.close()
         sharedPipeline = null
         sharedClockSynchronizer = null
+        // Channel-freshness state (`lastObservedChannel`, `webrtcSendspinUsed`)
+        // is intentionally NOT reset here. Tearing down the audio pipeline does
+        // not un-send the `client/goodbye` we shipped on the existing sendspin
+        // channel — the server-side handler is gone. If the same wrapper comes
+        // back on the next attempt (e.g. user disables-then-re-enables sendspin
+        // without a WebRTC reconnect), we need the identity check to still
+        // report `webrtcSendspinUsed=true` so the caller forces a real WebRTC
+        // reconnect. Resetting alongside the pipeline would let a zombie
+        // channel be reused and silently corrupt audio. The flags are
+        // implicitly reset when a new peer connection produces a new wrapper
+        // instance — that's the only correct trigger.
     }
 
     /**
@@ -143,11 +153,19 @@ class SendspinClientFactory(
         pipeline: AudioStreamManager,
         clockSync: ClockSynchronizer,
     ): Result<SendspinClient> {
+        // Identity-based freshness check: a different DataChannelWrapper instance means
+        // WebRTCConnectionManager negotiated a new peer connection, so this channel has
+        // never sent goodbye and is safe to use. Reusing the same instance after goodbye
+        // hits a zombie channel (Open client-side, dead server-side) — refuse and let the
+        // caller force a real WebRTC reconnect.
+        if (lastObservedChannel !== webrtcChannel) {
+            webrtcSendspinUsed = false
+            lastObservedChannel = webrtcChannel
+        }
         if (webrtcSendspinUsed) {
             log.i { "Sendspin channel exhausted — need WebRTC reconnect" }
             return Result.failure(WebRTCSendspinChannelExhausted())
         }
-        webrtcSendspinUsed = true
 
         log.i { "Creating Sendspin client over WebRTC data channel" }
 
@@ -177,6 +195,12 @@ class SendspinClientFactory(
         )
         val transport = WebRTCDataChannelTransport(webrtcChannel)
         client.connectWithTransport(transport)
+        // Mark used only AFTER `connectWithTransport` succeeds: a thrown attach
+        // hasn't sent `client/goodbye`, so the channel is still virgin and the
+        // caller can retry without forcing a (slow) WebRTC peer reconnect. The
+        // exhaustion guard applies to attach-success-then-goodbye, which is the
+        // actual zombie-channel condition.
+        webrtcSendspinUsed = true
         log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello, shared pipeline)" }
         return Result.success(client)
     }
