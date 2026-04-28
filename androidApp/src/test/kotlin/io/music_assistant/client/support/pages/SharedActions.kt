@@ -3,6 +3,7 @@ package io.music_assistant.client.support.pages
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -70,6 +71,9 @@ fun <T : ComposePage> T.assertMediaDisplayed(name: String): T {
 }
 
 fun <T : ComposePage> T.assertCurrentPlayer(name: String): T {
-    composeTestRule.onNodeWithContentDescription("Current player: $name").assertIsDisplayed()
+    composeTestRule.waitUntil {
+        composeTestRule.onNodeWithContentDescription("Current player: $name").isDisplayed()
+    }
+
     return this
 }
