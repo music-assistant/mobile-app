@@ -9,6 +9,7 @@ import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.settings.SettingsRepository
@@ -29,6 +30,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
+    private val players = mutableListOf<ServerPlayer>()
     private val items = mutableListOf<ServerMediaItem>()
     private val albums: List<ServerMediaItem>
         get() {
@@ -46,6 +48,9 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
     override val sessionState: StateFlow<SessionState> = _sessionState
+
+    private val _isReadyForCommands = MutableStateFlow(false)
+    override val isReadyForCommands: StateFlow<Boolean> = _isReadyForCommands
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
         return when (request.command) {
@@ -132,6 +137,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
+            Request.Player.all().command -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = players,
+                    ),
+                )
+            }
+
             else -> {
                 Result.failure(UnsupportedOperationException())
             }
@@ -140,6 +154,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     override suspend fun login(username: String, password: String) {
         authorize("token", true)
+        _isReadyForCommands.value = true
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
@@ -164,9 +179,6 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     override fun logout() {
         TODO("Not yet implemented")
     }
-
-    override val isReadyForCommands: StateFlow<Boolean>
-        get() = TODO("Not yet implemented")
 
     private val _serverBaseUrl = MutableStateFlow<String?>(null)
     override val serverBaseUrl: StateFlow<String?> = _serverBaseUrl
@@ -229,6 +241,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 this.items.addAll(it)
             }
         }
+    }
+
+    fun addPlayer(player: ServerPlayer) {
+        this.players.add(player)
     }
 
     private fun findItem(
