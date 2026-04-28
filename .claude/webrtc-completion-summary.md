@@ -1,8 +1,9 @@
 # WebRTC Remote Access - Completion Summary
 
-**Status**: ✅ **PRODUCTION READY** (Android)
-**Date Completed**: 2026-02-15
-**Functionality**: Fully working WebRTC remote access with robust auto-reconnection and smooth audio streaming over cellular
+**Status**: ✅ **PRODUCTION READY** (Android + iOS)
+**Date Completed**: 2026-02-15 (Android), 2026-04-24 (iOS)
+**Last reviewed**: 2026-04-28
+**Functionality**: Fully working WebRTC remote access with robust auto-reconnection and smooth audio streaming over cellular on both platforms
 
 ---
 
@@ -35,7 +36,14 @@
 
 ### Platform Support
 - **Android**: ✅ Fully implemented and tested
-- **iOS**: Stubs only (not implemented)
+- **iOS**: ✅ Fully implemented (2026-04-24) — shipped via TestFlight, in production. See "iOS Parity" section below.
+
+### iOS Parity (✅ Shipped 2026-04-24)
+- `PeerConnectionWrapper.ios.kt` — `actual class` over webrtc-kmp; real `RTCPeerConnection`, ICE gathering, SDP offer/answer, data channel events
+- `DataChannelWrapper.ios.kt` — bypasses webrtc-kmp's binary-only `send()` and calls native `RTCDataChannel.sendData(isBinary:false)` for text frames (fix #264)
+- Same `ordered=false, maxRetransmits=0` config for sendspin channel as Android
+- Same auto-reconnect + per-server token model — sendspin channel reuse + reauth-on-reconnect unified across both platforms (fix #293, 2026-04-28)
+- TestFlight distribution active since 2026-04-19 (#234)
 
 ---
 
@@ -91,7 +99,7 @@
 **Files**:
 - `PeerConnectionWrapper.kt` - added `ordered` and `maxRetransmits` parameters
 - `PeerConnectionWrapper.android.kt` - pass parameters to webrtc-kmp
-- `PeerConnectionWrapper.ios.kt` - updated stub signature
+- `PeerConnectionWrapper.ios.kt` - pass parameters to webrtc-kmp (iOS impl)
 - `WebRTCConnectionManager.kt` - different configs: ma-api (reliable), sendspin (unreliable)
 **Result**: Smooth playback over cellular, tested in car
 
@@ -249,10 +257,6 @@ ServiceClient (dual-mode: Direct + WebRTC)
 
 ## Known Limitations
 
-### Platform
-- iOS WebRTC not implemented (Android only)
-- Desktop platforms not tested
-
 ### Network
 - Some corporate firewalls block WebRTC (TURN can help)
 - Double NAT scenarios may require TURN servers
@@ -268,8 +272,7 @@ ServiceClient (dual-mode: Direct + WebRTC)
 ## Future Enhancements
 
 ### Planned
-- [ ] iOS WebRTC implementation
-- [ ] Desktop support (macOS/Windows/Linux)
+- [x] iOS WebRTC implementation (shipped 2026-04-24)
 - [ ] Connection quality indicators in UI
 - [ ] Bandwidth adaptation based on network conditions
 - [ ] QR code for Remote ID sharing
@@ -296,4 +299,4 @@ ServiceClient (dual-mode: Direct + WebRTC)
 
 ---
 
-**Bottom Line**: WebRTC remote access is production-ready on Android. Users can connect from anywhere without port forwarding. All features work identically to Direct mode. Auto-reconnection is reliable and fast. Sendspin audio streaming works flawlessly over WebRTC data channels.
+**Bottom Line**: WebRTC remote access is production-ready on **both Android and iOS** (iOS shipped 2026-04-24 via TestFlight). Users can connect from anywhere without port forwarding. All features work identically to Direct mode. Auto-reconnection is reliable and fast. Sendspin audio streaming works flawlessly over WebRTC data channels on both platforms, with shared transport/reconnect/reauth logic in `commonMain`.

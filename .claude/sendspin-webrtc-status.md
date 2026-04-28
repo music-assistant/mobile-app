@@ -1,10 +1,10 @@
 # Sendspin over WebRTC - Implementation Status
 
-**Last Updated:** 2026-02-20
+**Last Updated:** 2026-04-28
 
-## Status: ✅ WORKING (playback bug fixed — pending end-to-end test)
+## Status: ✅ PRODUCTION (Android + iOS)
 
-Player registration works, playback starts over WebRTC data channel. Root cause of playback bug identified and fixed (see Testing Status below).
+Sendspin audio streams reliably over the WebRTC `sendspin` data channel on both platforms. The time-base alignment fix (2026-02-20) plus the cross-platform sync layer (#261, 2026-04-24) plus iOS WebRTC parity (2026-04-24) plus sendspin channel reuse on reconnect (#293, 2026-04-28) put this in steady-state shipping form.
 
 ---
 
@@ -16,10 +16,11 @@ Player registration works, playback starts over WebRTC data channel. Root cause 
 
 **Why:** When connected via WebRTC for remote access, avoid creating a second WebSocket connection for Sendspin. Use the existing WebRTC peer connection's data channel infrastructure.
 
-**Status:**
+**Status (Android + iOS):**
 - ✅ Player registers on server
 - ✅ Playback starts
-- ⚠️ Bugs exist in playback (needs debugging)
+- ✅ Audio plays cleanly end-to-end (time-base + Kalman sync layer shipped 2026-02-20 / 2026-04-24)
+- ✅ Sendspin channel reused across WebRTC reconnects (#293, 2026-04-28)
 
 ---
 
@@ -232,25 +233,26 @@ MediaPlayerController
 
 ## Testing Status
 
-### ✅ Verified Working
+### ✅ Verified Working (Android + iOS)
 - WebRTC connection establishment with sendspin channel
 - Channel creation and opening
 - Transport detection (WebRTC vs WebSocket)
 - Config override for auth bypass
 - Protocol handshake (`client/hello` → `server/hello`)
 - Player registration on server
-- Playback start
+- Playback start, sustained audio playback (cellular + WiFi)
+- Channel reuse across WebRTC reconnects (#293, 2026-04-28) — no stranded channel after reconnect
+- Reauth-on-reconnect unified with Direct mode (#293)
 
-### ✅ Resolved (Pending End-to-End Test)
-- **Playback bug: no audio** — Root cause was a time-base mismatch. `MessageDispatcher` and `AudioStreamManager` each had their own `TimeSource.Monotonic.markNow()` epoch. `ClockSynchronizer.serverLoopOriginLocal` was calibrated in MessageDispatcher's domain, but `AudioStreamManager.getCurrentTimeMicros()` used a different epoch, making all chunk timestamps appear perpetually early. Fixed 2026-02-20: `ClockSynchronizer` now owns the shared `startMark`; both classes call `clockSynchronizer.getCurrentTimeMicros()`.
+### ✅ Resolved (Shipped)
+- **Playback bug: no audio** — Root cause was a time-base mismatch. `MessageDispatcher` and `AudioStreamManager` each had their own `TimeSource.Monotonic.markNow()` epoch. `ClockSynchronizer.serverLoopOriginLocal` was calibrated in MessageDispatcher's domain, but `AudioStreamManager.getCurrentTimeMicros()` used a different epoch, making all chunk timestamps appear perpetually early. Fixed 2026-02-20: `ClockSynchronizer` now owns the shared `startMark`; both classes call `clockSynchronizer.getCurrentTimeMicros()`. Sync layer further refined in #261 (Kalman-smoothed clock offset, reorder buffer, wall-clock-gated playback) — shipped 2026-04-24.
+- **iOS text-frame transmission** — `DataChannelWrapper.ios.kt` was sending empty `NSData` for text frames; fixed in #264 (2026-04-24) by bypassing webrtc-kmp and calling `RTCDataChannel.sendData(isBinary: false)` natively.
 
-### ❌ Not Tested
+### ⚠️ Not Yet Field-Validated
 - Switching Direct → WebRTC while Sendspin running
 - Switching WebRTC → Direct while Sendspin running
-- Long playback sessions over WebRTC
-- Network transitions (WiFi → 4G) with Sendspin over WebRTC
-- Multiple reconnections
-- Error recovery over WebRTC channel
+- Long playback sessions (30+ min) over WebRTC
+- Hard network transitions (WiFi → cellular handoff) with Sendspin over WebRTC active
 
 ---
 
@@ -325,10 +327,10 @@ MediaPlayerController
 
 ## Next Steps
 
-1. **End-to-end test** — Validate audio playback over WebRTC on a real device with the time-base fix applied
-2. **Switching scenarios** — Test Direct → WebRTC and WebRTC → Direct while Sendspin is running
-3. **Long session testing** — Extended playback over WebRTC (30+ min) to check for drift or buffer issues
-4. **Network transition testing** — WiFi → cellular with Sendspin over WebRTC active
+1. **Switching scenarios** — Verify Direct → WebRTC and WebRTC → Direct while Sendspin is running, on both platforms
+2. **Long session testing** — Extended playback over WebRTC (30+ min) to check for drift or buffer issues
+3. **Network transition testing** — WiFi → cellular with Sendspin over WebRTC active
+4. **iOS-specific** — Validate sendspin channel reuse fix (#293) holds up across iOS network handoffs in the field
 
 ---
 

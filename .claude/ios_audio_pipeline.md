@@ -93,14 +93,16 @@ The `NativeAudioController` manages an `AudioQueueRef` directly:
 | `composeApp/.../MediaPlayerController.ios.kt` | Kotlin stub that delegates to `PlatformPlayerProvider`. |
 | `composeApp/.../utils/Codecs.ios.kt` | Supported codecs: FLAC, Opus, PCM. |
 
-## Status: ✅ Working (updated 2026-02-20)
+## Status: ✅ Working (last reviewed 2026-04-28)
 
 - [x] FLAC streaming playback (via libFLAC)
-- [x] Opus streaming playback (via swift-opus)
+- [x] Opus streaming playback (via swift-opus) — stereo decoding corrected and re-enabled as default in #288 (2026-04-27)
 - [x] PCM streaming playback (16/24/32 bit)
 - [x] Proper codec header handling
 - [x] Native AudioQueue implementation (replacing MPV)
-- [x] Background audio: `AVAudioSession` interruption + route-change handlers — resumes after phone calls, Siri, headphone disconnect (completed 2026-02-20, pending tests)
+- [x] Background audio: `AVAudioSession` interruption + route-change handlers — resumes after phone calls, Siri, headphone disconnect (registered in `NativeAudioController.swift:40-95`; shipped 2026-02-20, in production via TestFlight since 2026-04-19)
+- [x] Compose Metal renderer pauses on app background to prevent GPU command-buffer rejection (`UIBackgroundModes: audio` keeps the run loop alive; without this CMP keeps submitting Metal work iOS rejects) — `iosApp/ComposeRenderingGuard.swift` + `composeApp/.../utils/ComposeRendererBridge.kt`, shipped 2026-04-24 (#265)
+- [x] CarPlay cold-launch black-screen fix shipped (#277, 2026-04-26)
 - [x] Efficient Kotlin→Swift data transfer via `writeRawPcmNSData(NSData)` using `usePinned` bulk copy (completed 2026-02-20)
 - [x] Lock Screen / Control Center: Now Playing info + remote commands via `NowPlayingManager`
 

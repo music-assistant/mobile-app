@@ -1,5 +1,7 @@
 # CarPlay Integration
 
+**Last reviewed:** 2026-04-28
+
 ## Architecture
 
 CarPlay uses a single `CPListTemplate` as root (not `CPTabBarTemplate`) with two sections:
@@ -107,7 +109,8 @@ A cold launch from CarPlay (tapping the icon on the head unit) connects only the
 - [x] Control Center / lock screen artwork via NowPlayingManager
 - [x] Koin initialization timing guard
 - [x] Search via KmpHelper (Siri-driven)
+- [x] Cold-launch black screen on head unit (#277, 2026-04-26) — fixed; CarPlay loads reliably from a cold tap on the head unit
 
 ## TODO
 
-- [ ] Siri search not triggering — `INPlayMediaIntent` handler is wired up but Siri does not show the app as a media option. May need: Siri capability enabled in Xcode Signing & Capabilities, an `INMediaAffinityIntent` donation, or `INInteraction.donate()` calls to teach Siri about the app. Test on physical device (Siri intents may not fully work on simulator).
+- [ ] Siri search not triggering — `SiriIntentHandler.swift` implements `INPlayMediaIntentHandling` (both `resolveMediaItems` and `handle`); `Info.plist` declares `INPlayMediaIntent` and `NSSiriUsageDescription`. But Siri still does not show the app as a media option, and **no `INInteraction.donate()` or `INMediaAffinityIntent` calls exist anywhere in `iosApp/`** (verified 2026-04-28). Donation is needed so Siri can learn what the user plays through the app. Likely also need: Siri capability enabled in Xcode Signing & Capabilities. Test on physical device (Siri intents may not fully work on simulator).

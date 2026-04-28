@@ -1,6 +1,6 @@
 # Sendspin Integration - Current Status
 
-**Last Updated:** 2026-01-16
+**Last Updated:** 2026-04-28
 
 ## Implementation Status
 
@@ -34,11 +34,15 @@
 #### iOS
 - **Audio Output**: AudioQueue (CoreAudio) — native, MPV removed
 - **PCM Streaming**: ✅ Working
-- **Opus Decoding**: ✅ Working (swift-opus / libopus)
+- **Opus Decoding**: ✅ Working (swift-opus / libopus) — stereo decoding corrected and re-enabled as default in #288 (2026-04-27)
 - **FLAC Decoding**: ✅ Working (libFLAC)
-- **Volume Control**: ✅ Completed (reads real system volume via `AVAudioSession.outputVolume`) — pending tests
-- **Background Playback**: ✅ Completed (`AVAudioSession` interruption + route-change handlers; resumes after phone calls/Siri) — pending tests
-- **Implementation**: AudioQueue rewrite completed 2026-01-23, interruption handling added 2026-02-20 (see ios_audio_pipeline.md)
+- **Volume Control**: ✅ Working in production (TestFlight) — internal mechanism needs re-verification (a 2026-02-20 source review claimed `getCurrentSystemVolume()` was a stub returning hardcoded `100`, but field testing on 2026-04-28 confirms volume up/down behaves correctly). Likely the path doesn't go through that helper. Investigation queued.
+- **Background Playback**: ✅ Shipped (`AVAudioSession` interruption + route-change handlers in `NativeAudioController.swift:40-95`; resumes after phone calls/Siri/headphone disconnect; in production via TestFlight since 2026-04-19)
+- **WebRTC remote**: ✅ Shipped 2026-04-24 — see `webrtc-completion-summary.md`
+- **Sendspin over WebRTC**: ✅ Shipped — see `sendspin-webrtc-status.md`
+- **Compose Metal background pause**: ✅ Shipped 2026-04-24 (#265) — prevents GPU command-buffer rejection while audio keeps the run loop alive in `UIBackgroundModes: audio`
+- **CarPlay**: ✅ Shipped — cold-launch black-screen fix in #277 (2026-04-26). See `carplay.md` for outstanding Siri donation work.
+- **Implementation**: AudioQueue rewrite completed 2026-01-23; interruption handling 2026-02-20; iOS WebRTC + Sendspin sync + Metal pause 2026-04-24; full TestFlight distribution since 2026-04-19 (see `ios_audio_pipeline.md`)
 
 ### ⚠️ Partially Implemented
 
@@ -192,7 +196,7 @@ SendspinClient (Orchestrator)
 │       • Binary parsing & timestamp conversion
 │       • AudioDecoder (Opus/FLAC/PCM)
 │         - Android: Decode to PCM
-│         - iOS: Passthrough to MPV
+│         - iOS: Passthrough to native AudioQueue (decoded in Swift via libFLAC / swift-opus)
 │       • TimestampOrderedBuffer
 │       • AdaptiveBufferManager
 │       • MediaPlayerController integration
@@ -204,7 +208,7 @@ SendspinClient (Orchestrator)
           ↓
     MediaPlayerController
     • Android: AudioTrack (Raw PCM)
-    • iOS: MPV (all codecs via FFmpeg)
+    • iOS: AudioQueue + Swift decoders (libFLAC, swift-opus, native PCM); MPV removed 2026-01-23
           ↓
     Audio Output
 ```
@@ -273,10 +277,14 @@ SendspinClient (Orchestrator)
 4. **No logging controls** - Can't adjust log verbosity at runtime
 5. **Thread priority not set** - Playback thread should be high priority
 
-### Resolved (Pending Tests)
+### Resolved (Shipped to TestFlight 2026-04-19+)
 - ~~**iOS volume control**~~ — Reads real system volume via `AVAudioSession.outputVolume` (fixed 2026-02-20)
-- ~~**iOS background playback**~~ — `AVAudioSession` interruption + route-change handlers added; auto-resumes after phone calls, Siri, or headphone disconnect (fixed 2026-02-20)
-- ~~**No audio on iOS (time-base mismatch)**~~ — `MessageDispatcher` and `AudioStreamManager` were using separate `TimeSource.Monotonic.markNow()` instances; `ClockSynchronizer.serverLoopOriginLocal` was calibrated in MessageDispatcher's domain but compared with AudioStreamManager's independent epoch, causing all chunks to appear perpetually early. Fixed by adding a shared `startMark` + `getCurrentTimeMicros()` to `ClockSynchronizer` and having both classes delegate to it (fixed 2026-02-20)
+- ~~**iOS background playback**~~ — `AVAudioSession` interruption + route-change handlers added; auto-resumes after phone calls, Siri, or headphone disconnect (fixed 2026-02-20, in production)
+- ~~**No audio on iOS (time-base mismatch)**~~ — `MessageDispatcher` and `AudioStreamManager` were using separate `TimeSource.Monotonic.markNow()` instances; `ClockSynchronizer.serverLoopOriginLocal` was calibrated in MessageDispatcher's domain but compared with AudioStreamManager's independent epoch, causing all chunks to appear perpetually early. Fixed by adding a shared `startMark` + `getCurrentTimeMicros()` to `ClockSynchronizer` and having both classes delegate to it (fixed 2026-02-20). Sync layer further refined in #261 (Kalman-smoothed clock offset, reorder buffer, wall-clock-gated playback) shipped 2026-04-24.
+- ~~**iOS WebRTC stubs**~~ — Full implementation shipped 2026-04-24 (#264, #265). See `webrtc-completion-summary.md`.
+- ~~**iOS Compose Metal background GPU rejection**~~ — `ComposeRenderingGuard` deterministic backstop pauses the Metal renderer on `UIScene.didEnterBackground` (#265, 2026-04-24).
+- ~~**iOS Opus stereo decoding**~~ — Corrected and re-enabled as default codec (#288, 2026-04-27).
+- ~~**iOS CarPlay cold-launch black screen**~~ — Fixed in #277 (2026-04-26).
 
 ---
 
@@ -402,7 +410,7 @@ SendspinClient (Orchestrator)
 
 ### Platform-Specific
 - Android: AudioTrack for raw PCM, Concentus for Opus decoding, MediaCodec for FLAC decoding
-- iOS: MPV (libmpv via MPVKit) for all audio codecs
+- iOS: AudioQueue (CoreAudio) + libFLAC (C) + swift-opus (libopus) + native PCM. MPV/MPVKit removed 2026-01-23.
 
 ---
 
@@ -477,6 +485,16 @@ SendspinClient (Orchestrator)
 ---
 
 ## Changelog
+
+### 2026-04 - iOS Parity & Production Shipping
+- ✅ **TestFlight distribution active** (#234, 2026-04-19) — iOS users now on production build cadence
+- ✅ **iOS WebRTC parity** (#264, 2026-04-24) — `DataChannelWrapper.ios.kt` sends real bytes for text frames; iOS WebRTC fully functional
+- ✅ **Sendspin playback sync layer** (#261, 2026-04-24) — Kalman-smoothed clock offset, reorder buffer, wall-clock-gated playback in `AudioStreamManager` + `ClockSynchronizer`
+- ✅ **Compose Metal background pause** (#265, 2026-04-24) — deterministic backstop in `ComposeRenderingGuard` + `ComposeRendererBridge` prevents GPU command-buffer rejection while audio background mode keeps the run loop alive
+- ✅ **CarPlay cold-launch black screen** (#277, 2026-04-26) — fixed; CarPlay UI loads reliably from head unit
+- ✅ **iOS Opus stereo decoding** (#288, 2026-04-27) — corrected and re-enabled as default codec
+- ✅ **WebRTC sendspin channel reuse + reauth-on-reconnect** (#293, 2026-04-28) — sendspin channel survives WebRTC reconnect cleanly; reauth path unified across Direct + WebRTC modes
+- 📊 Status: iOS reached production parity with Android for streaming, WebRTC remote, background audio, and CarPlay browse. Outstanding iOS-only gap: CarPlay Siri interaction donation (see `carplay.md`).
 
 ### 2026-02-20 - iOS Bug Fixes & Audio Playback (Pending Tests)
 - ✅ **iOS volume control** — `getCurrentSystemVolume()` now reads real system volume via `AVAudioSession.outputVolume` instead of returning hardcoded 100
@@ -573,8 +591,8 @@ SendspinClient (Orchestrator)
 
 ---
 
-**Status:** ✅ **Production-ready** on Android and iOS with multi-codec support.
+**Status:** ✅ **Production** on Android and iOS with multi-codec support. iOS shipping via TestFlight since 2026-04-19.
 
 **Platform Summary:**
-- **Android**: ✅ PCM, Opus (Concentus), FLAC (MediaCodec) - Full background playback & Android Auto
-- **iOS**: ✅ PCM, Opus (swift-opus), FLAC (libFLAC) via AudioQueue - Background playback + Control Center integration (pending end-to-end test)
+- **Android**: ✅ PCM, Opus (Concentus), FLAC (MediaCodec) — full background playback & Android Auto
+- **iOS**: ✅ PCM, Opus (swift-opus), FLAC (libFLAC) via AudioQueue — background playback + Control Center + CarPlay; WebRTC remote at parity with Android
