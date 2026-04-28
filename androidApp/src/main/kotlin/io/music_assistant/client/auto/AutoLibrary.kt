@@ -351,7 +351,7 @@ private fun SearchResult.toAutoMediaItems(
         playlists to "Playlists",
         audiobooks to "Audiobooks",
         podcasts to "Podcasts",
-        radios to "Radio stations",
+        radio to "Radio stations",
     ).forEach { (items, category) ->
         addAll(items.mapNotNull { it.toAutoMediaItem(serverUrl, true, defaultIconUri, category) })
     }

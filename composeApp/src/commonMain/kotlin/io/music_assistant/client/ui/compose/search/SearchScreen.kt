@@ -188,15 +188,7 @@ private fun SearchContent(
                         is DataState.Stale -> resultsState.data
                         else -> return@Column
                     }
-                    val hasResults = results.artists.isNotEmpty() ||
-                            results.albums.isNotEmpty() ||
-                            results.tracks.isNotEmpty() ||
-                            results.playlists.isNotEmpty() ||
-                            results.audiobooks.isNotEmpty() ||
-                            results.podcasts.isNotEmpty() ||
-                            results.radios.isNotEmpty()
-
-                    if (!hasResults) {
+                    if (results.isEmpty) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
@@ -212,6 +204,9 @@ private fun SearchContent(
                             stringResource(Res.string.media_type_podcasts) to results.podcasts,
                             stringResource(Res.string.media_type_audiobooks) to results.audiobooks,
                             stringResource(Res.string.media_type_radio) to results.radios,
+                            // TODO server doesn't return genre in this endpoint yet,
+                            //  need to fetch separately if we want to show it
+                            //stringResource(Res.string.media_type_genres) to results.genres,
                         )
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -270,41 +265,41 @@ private fun SearchFilters(
     onLibraryOnlyToggled: (Boolean) -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-    FlowRow(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        // Media type filter chips
-        searchState.mediaTypes.forEach { mediaTypeSelect ->
+        FlowRow(
+            modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            // Media type filter chips
+            searchState.mediaTypes.forEach { mediaTypeSelect ->
+                FilterChip(
+                    selected = mediaTypeSelect.isSelected,
+                    onClick = {
+                        onMediaTypeToggled(
+                            mediaTypeSelect.type,
+                            !mediaTypeSelect.isSelected,
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = mediaTypeSelect.type.name.lowercase().capitalize(Locale.current),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    },
+                )
+            }
+
+            // In library only filter chip
             FilterChip(
-                selected = mediaTypeSelect.isSelected,
-                onClick = {
-                    onMediaTypeToggled(
-                        mediaTypeSelect.type,
-                        !mediaTypeSelect.isSelected,
-                    )
-                },
+                selected = searchState.libraryOnly,
+                onClick = { onLibraryOnlyToggled(!searchState.libraryOnly) },
                 label = {
                     Text(
-                        text = mediaTypeSelect.type.name.lowercase().capitalize(Locale.current),
-                        style = MaterialTheme.typography.bodySmall,
+                        text = stringResource(Res.string.search_in_library_only),
+                        style = MaterialTheme.typography.bodySmall
                     )
-                },
+                }
             )
         }
-
-        // In library only filter chip
-        FilterChip(
-            selected = searchState.libraryOnly,
-            onClick = { onLibraryOnlyToggled(!searchState.libraryOnly) },
-            label = {
-                Text(
-                    text = stringResource(Res.string.search_in_library_only),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            },
-        )
-    }
     }
 }
