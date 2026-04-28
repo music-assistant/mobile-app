@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,29 +99,8 @@ fun LibraryScreen(
     val isRowMode by viewModel.itemsRowMode.collectAsStateWithLifecycle(false)
     val toastState = rememberToastState()
 
-    // Map MediaType to Tab
-    val initialTab = when (initialTabType) {
-        MediaType.ARTIST -> LibraryViewModel.Tab.ARTISTS
-        MediaType.ALBUM -> LibraryViewModel.Tab.ALBUMS
-        MediaType.TRACK -> LibraryViewModel.Tab.TRACKS
-        MediaType.PLAYLIST -> LibraryViewModel.Tab.PLAYLISTS
-        MediaType.AUDIOBOOK -> LibraryViewModel.Tab.AUDIOBOOKS
-        MediaType.PODCAST -> LibraryViewModel.Tab.PODCASTS
-        MediaType.RADIO -> LibraryViewModel.Tab.RADIOS
-        MediaType.GENRE -> LibraryViewModel.Tab.GENRES
-        null -> LibraryViewModel.Tab.ARTISTS
-        else -> LibraryViewModel.Tab.ARTISTS
-    }
-
-    // Apply initialTab once per NavEntry lifetime. A fresh Library NavKey (e.g. "All Albums"
-    // from Home) instantiates a new entry with a reset flag; popping back from ItemDetails
-    // restores the flag, so the user's in-library tab selection is preserved.
-    var initialTabApplied by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(initialTab) {
-        if (!initialTabApplied) {
-            viewModel.onTabSelected(initialTab)
-            initialTabApplied = true
-        }
+    LaunchedEffect(Unit) {
+        viewModel.applyInitialTabIfNeeded(LibraryViewModel.tabFor(initialTabType))
     }
 
     // Collect toasts

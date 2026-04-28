@@ -57,6 +57,7 @@ gha-creds-*.json
 # Local Claude Code settings
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+./claude/worktrees/*
 .mcp.json
 
 # Always use a venv for Python

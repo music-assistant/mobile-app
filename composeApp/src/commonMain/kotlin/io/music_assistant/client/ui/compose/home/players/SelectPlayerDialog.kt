@@ -38,6 +38,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -153,7 +154,7 @@ private fun PlayerSelection(
 ) {
     val plateShape = RoundedCornerShape(12.dp)
 
-    var internalPlayers by remember(players) { mutableStateOf(players) }
+    var internalPlayers by remember { mutableStateOf(players) }
     var dragEndIndex by remember { mutableStateOf<Int?>(null) }
     val listState = rememberLazyListState()
     val reorderableLazyListState =
@@ -163,6 +164,20 @@ private fun PlayerSelection(
             }
             dragEndIndex = to.index
         }
+
+    // Upstream emits frequently while a player is playing. Adopting those emits
+    // mid-drag wipes the user's reorder and the list jumps. Sync upstream into
+    // internal state only when no drag is in progress; refresh content in place
+    // when the membership matches, so play/stop never reshuffles the order.
+    LaunchedEffect(players, reorderableLazyListState.isAnyItemDragging) {
+        if (reorderableLazyListState.isAnyItemDragging) return@LaunchedEffect
+        val byId = players.associateBy { it.player.id }
+        internalPlayers = if (byId.keys == internalPlayers.mapTo(mutableSetOf()) { it.player.id }) {
+            internalPlayers.map { byId.getValue(it.player.id) }
+        } else {
+            players
+        }
+    }
 
     LazyColumn(
         modifier = Modifier

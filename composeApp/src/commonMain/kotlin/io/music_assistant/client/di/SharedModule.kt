@@ -15,6 +15,7 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
+import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
 import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
@@ -46,7 +47,8 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         factory { ActionsViewModel(get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }
         factory { AuthenticationViewModel(get(), get()) }
-        factory { LibraryViewModel(get(), get(), get()) }
+        single { LibraryNavCoordinator() }
+        factory { LibraryViewModel(get(), get(), get(), get()) }
         factory { ItemDetailsViewModel(get(), get(), get()) }
         factory { DspSettingsViewModel(get()) }
         factory { HomeScreenViewModel(get(), get(), get()) }

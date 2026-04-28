@@ -51,6 +51,7 @@ import io.music_assistant.client.ui.compose.home.nav.rememberMainNavBackStack
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.home.players.collapsedPlayerHeight
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
+import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
@@ -66,6 +67,7 @@ import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -241,6 +243,7 @@ private fun mainNavEntryProvider(
     progressActions: ActionsViewModel.ProgressActions,
     actionsViewModel: ActionsViewModel,
 ): (NavKey) -> NavEntry<NavKey> {
+    val libraryNavCoordinator: LibraryNavCoordinator = koinInject()
     return entryProvider {
         entry<MainNav.Landing> {
             HomeScreen(
@@ -273,6 +276,7 @@ private fun mainNavEntryProvider(
                 },
                 onPlayClick = viewModel::onPlayClick,
                 onLibraryItemClick = { type ->
+                    type?.let { libraryNavCoordinator.requestTab(it) }
                     multiBackStack.switchTo(1, MainNav.Library(type))
                 },
                 playlistActions = playlistActions,
