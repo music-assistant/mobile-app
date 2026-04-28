@@ -56,6 +56,7 @@ gha-creds-*.json
 
 # Local Claude Code settings
 .claude/settings.local.json
+./claude/worktrees/*
 .mcp.json
 
 # Always use a venv for Python

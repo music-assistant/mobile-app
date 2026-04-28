@@ -36,10 +36,23 @@ class LibraryViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
+    private val libraryNavCoordinator: LibraryNavCoordinator,
 ) : ViewModel() {
     companion object Companion {
         private const val PAGE_SIZE = 50
         const val LIBRARY_SORT_DEBOUNCE_MS = 500L
+
+        fun tabFor(type: MediaType?): Tab = when (type) {
+            MediaType.ARTIST -> Tab.ARTISTS
+            MediaType.ALBUM -> Tab.ALBUMS
+            MediaType.TRACK -> Tab.TRACKS
+            MediaType.PLAYLIST -> Tab.PLAYLISTS
+            MediaType.AUDIOBOOK -> Tab.AUDIOBOOKS
+            MediaType.PODCAST -> Tab.PODCASTS
+            MediaType.RADIO -> Tab.RADIOS
+            MediaType.GENRE -> Tab.GENRES
+            else -> Tab.ARTISTS
+        }
     }
 
     enum class Tab {
@@ -170,6 +183,20 @@ class LibraryViewModel(
                     }
             }
         }
+
+        viewModelScope.launch {
+            libraryNavCoordinator.tabRequests.collect { type ->
+                onTabSelected(tabFor(type))
+            }
+        }
+    }
+
+    private var initialTabApplied = false
+
+    fun applyInitialTabIfNeeded(tab: Tab) {
+        if (initialTabApplied) return
+        initialTabApplied = true
+        onTabSelected(tab)
     }
 
     fun onTabSelected(tab: Tab) {
