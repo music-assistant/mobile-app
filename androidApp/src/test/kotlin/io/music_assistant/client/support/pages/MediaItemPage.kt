@@ -66,4 +66,9 @@ class MediaItemPage(
             composeTestRule,
         ).assertOnPage()
     }
+
+    fun clickPlay(): MediaItemPage {
+        composeTestRule.onNodeWithText("Play").performClick()
+        return this
+    }
 }

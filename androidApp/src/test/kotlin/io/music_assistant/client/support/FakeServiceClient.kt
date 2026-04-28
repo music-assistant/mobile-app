@@ -5,13 +5,16 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AuthProvider
+import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
@@ -20,9 +23,9 @@ import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -146,6 +149,19 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
+            "player_queues/play_media" -> {
+                val player =
+                    players.find { it.playerId == (request.args!!["queue_id"] as JsonPrimitive).content }!!
+
+                _events.value = PlayerUpdatedEvent(
+                    event = EventType.PLAYER_UPDATED,
+                    objectId = player.playerId,
+                    data = player.copy(state = PlayerState.PLAYING),
+                )
+
+                Result.failure(UnsupportedOperationException())
+            }
+
             else -> {
                 Result.failure(UnsupportedOperationException())
             }
@@ -187,7 +203,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         TODO("Not yet implemented")
     }
 
-    override val events: Flow<Event<out Any>> = MutableSharedFlow()
+    private val _events = MutableStateFlow<Event<out Any>?>(null)
+    override val events: Flow<Event<out Any>> = _events.filterNotNull()
     override val webrtcSendspinChannel: DataChannelWrapper?
         get() = TODO("Not yet implemented")
 

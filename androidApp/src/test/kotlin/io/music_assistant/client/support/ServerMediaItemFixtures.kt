@@ -18,6 +18,7 @@ object ServerMediaItemFixtures {
             name = name,
             mediaType = MediaType.ALBUM,
             artists = listOf(artist),
+            uri = "http://example.com/album/$itemId",
         )
     }
 

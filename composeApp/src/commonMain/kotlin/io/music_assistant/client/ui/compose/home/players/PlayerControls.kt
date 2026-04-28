@@ -106,6 +106,10 @@ fun PlayerControls(
                 tint = tint,
                 size = mainButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
+                contentDescription = when (player.isPlaying) {
+                    true -> "Pause"
+                    false -> "Play"
+                },
             ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
         }
 
@@ -151,6 +155,7 @@ private fun ActionButton(
     size: Dp,
     tint: Color = MaterialTheme.colorScheme.primary,
     enabled: Boolean = true,
+    contentDescription: String? = null,
     onClick: () -> Unit,
 ) {
     IconButton(
@@ -163,7 +168,7 @@ private fun ActionButton(
         Icon(
             modifier = Modifier.size(size - 12.dp),
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = tint,
         )
     }

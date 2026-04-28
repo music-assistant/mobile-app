@@ -70,9 +70,17 @@ fun <T : ComposePage> T.assertMediaDisplayed(name: String): T {
     return this
 }
 
-fun <T : ComposePage> T.assertCurrentPlayer(name: String): T {
+fun <T : ComposePage> T.assertCurrentPlayer(name: String, playing: Boolean = false): T {
     composeTestRule.waitUntil {
         composeTestRule.onNodeWithContentDescription("Current player: $name").isDisplayed()
+    }
+
+    composeTestRule.waitUntil {
+        if (playing) {
+            composeTestRule.onNodeWithContentDescription("Pause").isDisplayed()
+        } else {
+            composeTestRule.onNodeWithContentDescription("Play").isDisplayed()
+        }
     }
 
     return this

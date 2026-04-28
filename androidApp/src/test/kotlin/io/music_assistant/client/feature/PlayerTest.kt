@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
+import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertCurrentPlayer
@@ -27,11 +28,16 @@ class PlayerTest {
     private val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
-    fun `shows current player`() {
+    fun `can play album`() {
+        val album = ServerMediaItemFixtures.album()
+        serviceClient.addToLibrary(album)
+
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayer(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .assertCurrentPlayer(player.displayName)
+            .clickOnMedia(album)
+            .clickPlay()
+            .assertCurrentPlayer(player.displayName, playing = true)
     }
 }
