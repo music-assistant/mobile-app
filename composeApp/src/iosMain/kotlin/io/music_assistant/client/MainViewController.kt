@@ -16,12 +16,24 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.writeToFile
 
+/**
+ * Idempotent KMP/Koin initialization. Called from two places:
+ *
+ *   1. Swift `iOSApp.init()` — runs before any scene connects, so a
+ *      CarPlay-only cold launch (head unit tap, no SwiftUI scene) still
+ *      gets Koin set up.
+ *   2. `MainViewController()` below — runs when the SwiftUI Compose scene
+ *      connects, which on a SwiftUI-only cold launch happens before the
+ *      CarPlay scene exists.
+ *
+ * Idempotency is mandatory because both paths can run on a single launch
+ * (CarPlay scene + SwiftUI scene both connecting). Backed by `Unit by lazy`
+ * — `startKoin` throws on a second invocation otherwise.
+ */
 fun bootstrapKmp() {
     kmpBootstrap
 }
 
-// `by lazy` because `startKoin` (in `initKoin`) throws if invoked twice;
-// callers from both Swift `iOSApp.init()` and `MainViewController()` below.
 private val kmpBootstrap: Unit by lazy {
     initKoin(iosModule())
     cleanupStaleLogFile()

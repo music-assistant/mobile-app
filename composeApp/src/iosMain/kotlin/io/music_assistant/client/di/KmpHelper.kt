@@ -8,6 +8,7 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,22 @@ object KmpHelper : KoinComponent {
 
     fun getServerUrl(): String? {
         return serviceClient.serverBaseUrl.value
+    }
+
+    /**
+     * The connected MA server's stable identifier (UUID-style, e.g.
+     * "70e548..."). Available once the server has sent its handshake;
+     * null while the connection is still being established.
+     *
+     * Stable across the server's lifetime regardless of how the client
+     * reaches it (mDNS, IP, port forward, network change), which makes it
+     * the right key for namespacing donations and other per-server state.
+     */
+    fun getServerId(): String? {
+        return (serviceClient.sessionState.value as? HasConnectionData)
+            ?.connectionData
+            ?.serverInfo
+            ?.serverId
     }
 
     // MARK: - External Consumer Lifecycle (CarPlay)
@@ -159,5 +176,38 @@ object KmpHelper : KoinComponent {
                 )
             }
         }
+    }
+
+    // MARK: - Library Actions (Siri)
+
+    /**
+     * Set the favorite flag on an [AppMediaItem]. Drives `INMediaAffinityIntent`
+     * mapping from Swift: `like` ⇒ `favorite = true`, `dislike` ⇒ `favorite = false`.
+     * MA only tracks favorites as a boolean — dislike removes an existing favorite
+     * but cannot record an explicit "do not play this" signal. Adding requires a
+     * URI; removal works by id+mediaType.
+     *
+     * Returns `true` synchronously when the request was dispatched, `false` when
+     * we couldn't form a valid request (the only known failure mode today: an
+     * add for an item with no URI). Network outcome is fire-and-forget — Swift
+     * uses the synchronous return to avoid lying to Siri about success.
+     */
+    fun setFavorite(item: AppMediaItem, favorite: Boolean): Boolean {
+        if (favorite) {
+            // Prefer plain `uri`; fall back to `mediaUri`. The base class uses
+            // `uri` directly; subclasses like Genre override `mediaUri` to
+            // synthesize one when the server didn't supply it.
+            val uri = item.uri ?: item.mediaUri ?: return false
+            mainScope.launch {
+                serviceClient.sendRequest(Request.Library.addFavorite(uri))
+            }
+        } else {
+            mainScope.launch {
+                serviceClient.sendRequest(
+                    Request.Library.removeFavorite(item.itemId, item.mediaType),
+                )
+            }
+        }
+        return true
     }
 }

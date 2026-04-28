@@ -3,9 +3,28 @@ import ComposeApp
 import UIKit
 import CarPlay
 import Intents
+import os.log
+import os.lock
 
+private let siriLog = OSLog(
+    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.client",
+    category: "Siri"
+)
+
+/// Single-bit flag indicating whether `bootstrapKmp()` has run and Koin is
+/// usable. Exists because SiriKit intent handlers can be invoked before any
+/// scene connects (cold "Hey Siri, play X"), so they need a way to bail
+/// rather than dereference an uninitialized Koin graph. Written once on the
+/// main thread from `iOSApp.init()`; read from intent-handler queues (which
+/// the system does not pin to main). Wrapped in `OSAllocatedUnfairLock` to
+/// make the cross-thread read formally data-race-free — uncontested reads,
+/// negligible cost.
 enum KmpState {
-    static var isReady = false
+    private static let _isReady = OSAllocatedUnfairLock(initialState: false)
+    static var isReady: Bool {
+        get { _isReady.withLock { $0 } }
+        set { _isReady.withLock { $0 = newValue } }
+    }
     static let readyNotification = Notification.Name("KMPReadyNotification")
 }
 
@@ -49,9 +68,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      handlerFor intent: INIntent) -> Any? {
-        if intent is INPlayMediaIntent {
+        os_log("AppDelegate.handlerFor: intent class=%{public}@",
+               log: siriLog, type: .info, String(describing: type(of: intent)))
+        // The same handler conforms to all three media-domain intents:
+        // play, affinity (like/dislike), and search. See SiriIntentHandler.swift.
+        if intent is INPlayMediaIntent
+            || intent is INUpdateMediaAffinityIntent
+            || intent is INSearchForMediaIntent {
+            os_log("AppDelegate.handlerFor: returning SiriIntentHandler", log: siriLog, type: .info)
             return SiriIntentHandler()
         }
+        os_log("AppDelegate.handlerFor: no handler for this intent — returning nil", log: siriLog, type: .error)
         return nil
     }
 }
@@ -77,9 +104,13 @@ struct iOSApp: App {
         // work that iOS rejects.
         _ = ComposeRenderingGuard.shared
 
-        // Must precede any scene-delegate `didConnect`: both the default
-        // SwiftUI scene and `CarPlaySceneDelegate` resolve Koin in their
-        // connect callbacks.
+        // KMP/Koin init MUST run here, not in any SwiftUI lifecycle callback.
+        // A CarPlay-only cold launch (head unit tap) connects only the
+        // `CPTemplateApplicationScene` — SwiftUI's `WindowGroup` never
+        // connects, so `ContentView.onAppear` never fires. Anything tied to
+        // SwiftUI for app-wide setup is therefore unreachable on that path.
+        // `bootstrapKmp()` is idempotent, so the SwiftUI path's call from
+        // `MainViewController()` is safe.
         MainViewControllerKt.bootstrapKmp()
         KmpState.isReady = true
         NotificationCenter.default.post(name: KmpState.readyNotification, object: nil)
@@ -87,6 +118,30 @@ struct iOSApp: App {
         // Required for apps to appear in Control Center
         // Must be called for remote control events to work
         UIApplication.shared.beginReceivingRemoteControlEvents()
+
+        // Surface the system "allow Siri" prompt on first launch so the
+        // user gets it as a tap-once dialog instead of a setting they
+        // have to find. iOS 18+ exposes the resulting state as the "Use
+        // with Siri Requests" toggle under Settings → Apple Intelligence
+        // & Siri → Apps → Music Assistant; on fresh installs the toggle
+        // defaults to off, and our intent handlers never run until it
+        // flips on (verified in real-world testing). Calling on every
+        // launch is safe: the system only presents the alert when status
+        // is .notDetermined; subsequent calls return the cached value
+        // immediately. Requires NSSiriUsageDescription in Info.plist
+        // (already present) — without it, this call would crash.
+        INPreferences.requestSiriAuthorization { status in
+            let statusString: String
+            switch status {
+            case .notDetermined: statusString = "notDetermined"
+            case .restricted:    statusString = "restricted"
+            case .denied:        statusString = "denied"
+            case .authorized:    statusString = "authorized"
+            @unknown default:    statusString = "unknown(\(status.rawValue))"
+            }
+            os_log("Siri authorization status: %{public}@",
+                   log: siriLog, type: .info, statusString)
+        }
     }
 
     var body: some Scene {

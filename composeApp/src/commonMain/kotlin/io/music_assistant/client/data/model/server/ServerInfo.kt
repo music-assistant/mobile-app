@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ServerInfo(
-    // @SerialName("server_id") var serverId: String? = null,
+    @SerialName("server_id") var serverId: String? = null,
     @SerialName("server_version") var serverVersion: String? = null,
     @SerialName("schema_version") var schemaVersion: Int? = null,
     // @SerialName("min_supported_schema_version") var minSupportedSchemaVersion: Int? = null,
