@@ -417,7 +417,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
 
         val directTransport = DirectTransport(
             client = client,
-            connectionInfoProvider = { settings.connectionInfo.value ?: connection },
+            connectionInfoProvider = { connection },
             scope = this,
             networkAvailable = networkMonitor.isAvailable,
         )
@@ -426,12 +426,10 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         observeTransport(
             transport = directTransport,
             createConnected = { data ->
-                val info = settings.connectionInfo.value ?: connection
-                SessionState.Connected.Direct(info, data)
+                SessionState.Connected.Direct(connection, data)
             },
             createReconnecting = { attempt, data ->
-                val info = settings.connectionInfo.value ?: connection
-                SessionState.Reconnecting.Direct(attempt, info, data)
+                SessionState.Reconnecting.Direct(attempt, connection, data)
             },
             backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
             onFreshConnect = {
