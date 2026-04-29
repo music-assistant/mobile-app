@@ -43,7 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -52,12 +51,12 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.common.asControlTint
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
-import io.music_assistant.client.ui.compose.common.rememberAnimatedDominantColor
+import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
@@ -115,9 +114,9 @@ internal fun PlayersPager(
         )
     }
 
-    val dominantColors = playerDataList.associateWith {
+    val playerColors = playerDataList.associateWith {
         val imageUrl = it.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
-        rememberAnimatedDominantColor(
+        rememberAnimatedPlayerColors(
             imageUrl = imageUrl,
             fallback = MaterialTheme.colorScheme.primaryContainer,
         )
@@ -157,7 +156,7 @@ internal fun PlayersPager(
                 )
             }
 
-            val dominantColor by dominantColors.getValue(player)
+            val colors by playerColors.getValue(player)
 
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
@@ -175,7 +174,7 @@ internal fun PlayersPager(
                                 Brush.verticalGradient(
                                     listOf(
                                         MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        dominantColor.copy(alpha = 0.4f),
+                                        colors.dominant.copy(alpha = 0.4f),
                                     ),
                                 )
                             },
@@ -184,7 +183,7 @@ internal fun PlayersPager(
                     if (expanded) {
                         ExpandedPlayerPage(
                             player = player,
-                            dominantColor = dominantColor,
+                            colors = colors,
                             onSelectPlayer = onSelectPlayer,
                             onGroupButton = onGroupButton,
                             onDspButton = onDspButton.takeIf { !player.player.isGroup },
@@ -207,7 +206,7 @@ internal fun PlayersPager(
                         CollapsedPlayerPage(
                             isExpandedScreen = isExpandedScreen,
                             player = player,
-                            dominantColor = dominantColor,
+                            colors = colors,
                             sendspinState = playersState.sendspinState,
                             onSelectPlayer = onSelectPlayer,
                             onGroupButton = onGroupButton,
@@ -260,7 +259,7 @@ fun BoundPlayerInfo(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ExpandedPlayerPage(
     player: PlayerData,
-    dominantColor: Color,
+    colors: PlayerColors,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
     onDspButton: (() -> Unit)?,
@@ -307,7 +306,7 @@ private fun ExpandedPlayerPage(
             ) {
                 CompactPlayerItem(
                     item = player,
-                    dominantColor = dominantColor,
+                    colors = colors,
                     serverUrl = serverUrl,
                     playerAction = playerAction,
                     onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
@@ -335,7 +334,7 @@ private fun ExpandedPlayerPage(
                     modifier = Modifier.fillMaxSize(),
                     item = player,
                     isLocal = player.isLocal,
-                    dominantColor = dominantColor,
+                    colors = colors,
                     serverUrl = serverUrl,
                     playerAction = playerAction,
                     onFavoriteClick = onFavoriteClick,
@@ -348,7 +347,7 @@ private fun ExpandedPlayerPage(
                 var currentVolume by remember(player.player.currentVolume) {
                     mutableStateOf(player.player.currentVolume)
                 }
-                val controlTint = dominantColor.asControlTint()
+                val controlTint = colors.controlTint
                 val volumeSliderColors = SliderDefaults.colors().copy(
                     thumbColor = controlTint,
                     activeTrackColor = controlTint,
@@ -451,7 +450,7 @@ private fun ExpandedPlayerPage(
             onGoToLibrary = onClose,
             serverUrl = serverUrl,
             queueAction = queueAction,
-            tint = dominantColor.asControlTint(),
+            tint = colors.controlTint,
             players = allPlayers,
             onPlayerSelected = { moveToPlayer(it) },
             isCurrentPage = page == playerPagerState.currentPage,
@@ -464,7 +463,7 @@ private fun ExpandedPlayerPage(
 private fun CollapsedPlayerPage(
     isExpandedScreen: Boolean,
     player: PlayerData,
-    dominantColor: Color,
+    colors: PlayerColors,
     sendspinState: SendspinState?,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
@@ -487,7 +486,7 @@ private fun CollapsedPlayerPage(
 
     CompactPlayerItem(
         item = player,
-        dominantColor = dominantColor,
+        colors = colors,
         serverUrl = serverUrl,
         playerAction = playerAction,
         onSelectPlayer = if (isExpandedScreen) onSelectPlayer else null,

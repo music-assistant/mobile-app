@@ -19,6 +19,7 @@ import androidx.media.MediaBrowserServiceCompat
 import co.touchlab.kermit.Logger
 import coil3.BitmapImage
 import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -55,7 +56,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private val logger = Logger.withTag("MainMediaPlaybackService")
 
     private lateinit var mediaNotificationManager: MediaNotificationManager
-    private lateinit var imageLoader: ImageLoader
+    private val imageLoader: ImageLoader by lazy { SingletonImageLoader.get(this) }
     private lateinit var audioManager: AudioManager
     private var wifiLock: WifiManager.WifiLock? = null
     private var fullyInitialized = false
@@ -146,7 +147,6 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         sessionToken = token
         mediaNotificationManager = MediaNotificationManager(this, token)
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        imageLoader = ImageLoader(this)
         try {
             startForeground(
                 MediaNotificationManager.NOTIFICATION_ID,

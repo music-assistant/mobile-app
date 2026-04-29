@@ -18,6 +18,7 @@ import androidx.media.utils.MediaConstants
 import co.touchlab.kermit.Logger
 import coil3.BitmapImage
 import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -54,7 +55,7 @@ import org.koin.android.ext.android.inject
 class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private lateinit var imageLoader: ImageLoader
+    private val imageLoader: ImageLoader by lazy { SingletonImageLoader.get(this) }
     private lateinit var defaultIconUri: Uri
 
     private val dataSource: MainDataSource by inject()
@@ -80,7 +81,6 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             isAutoService = true,
         )
         sessionToken = token
-        imageLoader = ImageLoader(this)
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
 
         // Playback data collector — the primary writer for playback state.

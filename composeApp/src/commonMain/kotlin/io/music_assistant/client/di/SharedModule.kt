@@ -11,6 +11,7 @@ import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.compose.auth.AuthenticationViewModel
+import io.music_assistant.client.ui.compose.common.DominantColorViewModel
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
@@ -43,6 +44,7 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         singleOf(::SendspinClientFactory)   // Factory for creating Sendspin clients
         singleOf(::LocalPlayerRepository)   // Optimistic local player state
         singleOf(::MainDataSource)          // Singleton - held by foreground service
+        singleOf(::DominantColorViewModel)  // Singleton - app-wide art-color cache
         viewModelOf(::ThemeViewModel)
         factory { ActionsViewModel(get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }

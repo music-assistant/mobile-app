@@ -30,9 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,8 +44,8 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.ui.compose.common.asControlTint
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
@@ -55,7 +55,7 @@ import kotlin.time.DurationUnit
 @Composable
 fun CompactPlayerItem(
     item: PlayerData,
-    dominantColor: Color,
+    colors: PlayerColors,
     serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
@@ -83,12 +83,12 @@ fun CompactPlayerItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(dominantColor.copy(alpha = track?.let { 1f } ?: 0.4f)),
+                    .background(colors.dominant.copy(alpha = track?.let { 1f } ?: 0.4f)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (track != null) {
                     val placeholder = rememberPlaceholderPainter(
-                        backgroundColor = dominantColor,
+                        backgroundColor = colors.dominant,
                         iconColor = onPrimaryContainer,
                         icon = TrackIcon,
                     )
@@ -113,7 +113,8 @@ fun CompactPlayerItem(
             // Track info
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    text = track?.name ?: "--idle--",
+                    modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else 0.4f),
+                    text = track?.name ?: "nothing playing",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -148,7 +149,7 @@ fun CompactPlayerItem(
             showAdditionalButtons = showAdditionalControls,
             mainButtonSize = 48.dp,
             showSkip = true,
-            tint = dominantColor.asControlTint(),
+            tint = colors.controlTint,
         )
 
         if (onSelectPlayer != null) {
@@ -174,14 +175,14 @@ fun FullPlayerItem(
     modifier: Modifier,
     item: PlayerData,
     isLocal: Boolean,
-    dominantColor: Color,
+    colors: PlayerColors,
     serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
 ) {
     val track = item.queueInfo?.currentItem?.track
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    val controlTint = dominantColor.asControlTint()
+    val controlTint = colors.controlTint
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -200,13 +201,13 @@ fun FullPlayerItem(
                 .heightIn(max = 500.dp)
                 .padding(16.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(dominantColor.copy(alpha = track?.let { 1f } ?: 0.4f)),
+                .background(colors.dominant.copy(alpha = track?.let { 1f } ?: 0.4f)),
             contentAlignment = Alignment.Center,
         ) {
             if (track != null) {
                 val placeholder =
                     rememberPlaceholderPainter(
-                        backgroundColor = dominantColor,
+                        backgroundColor = colors.dominant,
                         iconColor = onPrimaryContainer,
                         icon = track.defaultIcon,
                     )
@@ -241,8 +242,8 @@ fun FullPlayerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                modifier = Modifier.basicMarquee(),
-                text = track?.name ?: "--idle--",
+                modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else 0.4f),
+                text = track?.name ?: "nothing playing",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
