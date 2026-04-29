@@ -178,10 +178,6 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             }
 
             "player_queues/play_media" -> {
-                val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                val queue =
-                    queues.find { it.queueId == queueId }!!
-
                 val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
                 val mediaTrack = items.find { it.uri == mediaUri }?.let { item ->
                     when (item.mediaType) {
@@ -201,24 +197,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     }
                 }
 
-                _events.emit(
-                    QueueUpdatedEvent(
-                        event = EventType.QUEUE_UPDATED,
-                        objectId = queue.queueId,
-                        data = queue.copy(
-                            currentItem = ServerQueueItem("blah", mediaTrack),
-                        ),
-                    ),
-                )
-
-                val player = players.find { it.activeSource == queue.queueId }!!
-                _events.emit(
-                    PlayerUpdatedEvent(
-                        event = EventType.PLAYER_UPDATED,
-                        objectId = player.playerId,
-                        data = player.copy(state = PlayerState.PLAYING),
-                    ),
-                )
+                val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
+                updateQueue(queueId, mediaTrack)
+                updatePlayer({ it.activeSource == queueId }) {
+                    it.copy(state = PlayerState.PLAYING)
+                }
 
                 Result.success(Answer(JsonObject(emptyMap())))
             }
@@ -234,14 +217,9 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             "players/cmd/play_pause" -> {
                 val playerId = (request.args!!["player_id"] as JsonPrimitive).content
-                val player = players.find { it.playerId == playerId }!!
-                _events.emit(
-                    PlayerUpdatedEvent(
-                        event = EventType.PLAYER_UPDATED,
-                        objectId = player.playerId,
-                        data = player.copy(state = PlayerState.PAUSED),
-                    ),
-                )
+                updatePlayer({ it.playerId == playerId }) {
+                    it.copy(state = PlayerState.PAUSED)
+                }
 
                 Result.success(Answer(JsonObject(emptyMap())))
             }
@@ -250,6 +228,42 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.failure(UnsupportedOperationException())
             }
         }
+    }
+
+    private suspend fun updateQueue(
+        queueId: String,
+        currentItem: ServerMediaItem?,
+    ) {
+        val queueIndex = queues.indexOfFirst { it.queueId == queueId }
+        queues[queueIndex] =
+            queues[queueIndex].copy(currentItem = ServerQueueItem("blah", currentItem))
+        val queue = queues[queueIndex]
+
+        _events.emit(
+            QueueUpdatedEvent(
+                event = EventType.QUEUE_UPDATED,
+                objectId = queue.queueId,
+                data = queue.copy(
+                    currentItem = ServerQueueItem("blah", currentItem),
+                ),
+            ),
+        )
+    }
+
+    private suspend fun updatePlayer(
+        search: (ServerPlayer) -> Boolean,
+        update: (ServerPlayer) -> ServerPlayer,
+    ) {
+        val playerIndex = players.indexOfFirst(search)
+        val player = update(players[playerIndex])
+        players[playerIndex] = player
+        _events.emit(
+            PlayerUpdatedEvent(
+                event = EventType.PLAYER_UPDATED,
+                objectId = player.playerId,
+                data = player,
+            ),
+        )
     }
 
     override suspend fun login(username: String, password: String) {
@@ -353,6 +367,20 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         this.players.add(player)
         player.activeSource?.let {
             this.queues.add(ServerQueue(queueId = it, available = true))
+        }
+    }
+
+    fun getState(playerId: String): PlayerState? {
+        val player = players.find { it.playerId == playerId }
+        return player?.state
+    }
+
+    fun getCurrentlyPlaying(playerId: String): ServerMediaItem? {
+        val player = players.find { it.playerId == playerId }
+        return if (player != null) {
+            queues.find { it.queueId == player.activeSource }?.currentItem?.mediaItem
+        } else {
+            null
         }
     }
 
