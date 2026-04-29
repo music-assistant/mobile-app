@@ -417,7 +417,10 @@ private fun Players(
         val dominantColorViewModel: DominantColorViewModel = koinInject()
         val platformContext = LocalPlatformContext.current
         val fetchColors = remember<ExtractedColorsFetcher>(dominantColorViewModel, platformContext) {
-            { url -> dominantColorViewModel.getColors(platformContext, url) }
+            {
+                url ->
+                    dominantColorViewModel.getColors(platformContext, url)
+                }
         }
 
         PlayersPager(

@@ -26,7 +26,6 @@ import kotlinx.coroutines.withContext
  * last-writer-wins is harmless.
  */
 class DominantColorViewModel : ViewModel() {
-
     private val cache = LruCache<String, ExtractedColors>(MAX_CACHE_SIZE)
 
     suspend fun getColors(context: PlatformContext, imageUrl: String): ExtractedColors? {
