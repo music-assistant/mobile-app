@@ -14,6 +14,8 @@ object ServerPlayerFixtures {
             available = true,
             hidden = false,
             enabled = true,
+            currentMedia = null,
+            activeSource = playerId,
         )
     }
 }

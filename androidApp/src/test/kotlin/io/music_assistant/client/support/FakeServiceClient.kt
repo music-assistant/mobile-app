@@ -12,9 +12,11 @@ import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerPlayer
+import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
@@ -34,6 +36,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
     private val players = mutableListOf<ServerPlayer>()
+    private val queues = mutableListOf<ServerQueue>()
     private val items = mutableListOf<ServerMediaItem>()
     private val albums: List<ServerMediaItem>
         get() {
@@ -150,8 +153,16 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             }
 
             "player_queues/play_media" -> {
-                val player =
-                    players.find { it.playerId == (request.args!!["queue_id"] as JsonPrimitive).content }!!
+                val queue =
+                    queues.find { it.queueId == (request.args!!["queue_id"] as JsonPrimitive).content }!!
+
+                _events.value = QueueUpdatedEvent(
+                    event = EventType.QUEUE_UPDATED,
+                    objectId = queue.queueId,
+                    data = queue,
+                )
+
+                val player = players.find { it.activeSource == queue.queueId }!!
 
                 _events.value = PlayerUpdatedEvent(
                     event = EventType.PLAYER_UPDATED,
@@ -160,6 +171,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
 
                 Result.failure(UnsupportedOperationException())
+            }
+
+            "player_queues/all" -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = queues,
+                    ),
+                )
             }
 
             else -> {
@@ -262,6 +282,9 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     fun addPlayer(player: ServerPlayer) {
         this.players.add(player)
+        player.activeSource?.let {
+            this.queues.add(ServerQueue(queueId = it, available = true))
+        }
     }
 
     private fun findItem(
