@@ -26,9 +26,9 @@ import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -194,19 +194,23 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     }
                 }
 
-                _events.value = QueueUpdatedEvent(
-                    event = EventType.QUEUE_UPDATED,
-                    objectId = queue.queueId,
-                    data = queue.copy(
-                        currentItem = ServerQueueItem("blah", mediaTrack),
-                    ),
+                _events.emit(
+                    QueueUpdatedEvent(
+                        event = EventType.QUEUE_UPDATED,
+                        objectId = queue.queueId,
+                        data = queue.copy(
+                            currentItem = ServerQueueItem("blah", mediaTrack),
+                        ),
+                    )
                 )
 
                 val player = players.find { it.activeSource == queue.queueId }!!
-                _events.value = PlayerUpdatedEvent(
-                    event = EventType.PLAYER_UPDATED,
-                    objectId = player.playerId,
-                    data = player.copy(state = PlayerState.PLAYING),
+                _events.emit(
+                    PlayerUpdatedEvent(
+                        event = EventType.PLAYER_UPDATED,
+                        objectId = player.playerId,
+                        data = player.copy(state = PlayerState.PLAYING),
+                    )
                 )
 
                 Result.failure(UnsupportedOperationException())
@@ -262,8 +266,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         TODO("Not yet implemented")
     }
 
-    private val _events = MutableStateFlow<Event<out Any>?>(null)
-    override val events: Flow<Event<out Any>> = _events.filterNotNull()
+    private val _events = MutableSharedFlow<Event<out Any>>()
+    override val events: Flow<Event<out Any>> = _events
     override val webrtcSendspinChannel: DataChannelWrapper?
         get() = TODO("Not yet implemented")
 

@@ -55,7 +55,11 @@ class PlayerTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
+
             .playMedia(track2)
             .assertCurrentPlayer(player.displayName, playing = true, item = track2.name)
+
+            .playMedia(track1)
+            .assertCurrentPlayer(player.displayName, playing = true, item = track1.name)
     }
 }
