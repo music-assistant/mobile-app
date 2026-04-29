@@ -83,7 +83,7 @@ fun CompactPlayerItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colors.dominant.copy(alpha = track?.let { 1f } ?: 0.4f)),
+                    .background(colors.dominant.copy(alpha = track?.let { 1f } ?: DISABLED_ALPHA)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (track != null) {
@@ -105,7 +105,7 @@ fun CompactPlayerItem(
                         imageVector = AlbumIcon,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = onPrimaryContainer.copy(alpha = 0.4f),
+                        tint = onPrimaryContainer.copy(alpha = DISABLED_ALPHA),
                     )
                 }
             }
@@ -113,7 +113,7 @@ fun CompactPlayerItem(
             // Track info
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else 0.4f),
+                    modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
                     text = track?.name ?: "nothing playing",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
@@ -134,7 +134,7 @@ fun CompactPlayerItem(
                         Text(
                             text = "Cannot play this item",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -201,7 +201,7 @@ fun FullPlayerItem(
                 .heightIn(max = 500.dp)
                 .padding(16.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(colors.dominant.copy(alpha = track?.let { 1f } ?: 0.4f)),
+                .background(colors.dominant.copy(alpha = track?.let { 1f } ?: DISABLED_ALPHA)),
             contentAlignment = Alignment.Center,
         ) {
             if (track != null) {
@@ -231,7 +231,7 @@ fun FullPlayerItem(
                     imageVector = AlbumIcon,
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
-                    tint = onPrimaryContainer.copy(alpha = 0.4f),
+                    tint = onPrimaryContainer.copy(alpha = DISABLED_ALPHA),
                 )
             }
         }
@@ -242,7 +242,7 @@ fun FullPlayerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else 0.4f),
+                modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
                 text = track?.name ?: "nothing playing",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
@@ -254,7 +254,7 @@ fun FullPlayerItem(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     text = "Cannot play this item",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -272,7 +272,7 @@ fun FullPlayerItem(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 text = item.queueInfo?.currentItem?.audioFormat(item.playerId)?.description ?: "",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -383,3 +383,5 @@ fun FullPlayerItem(
         )
     }
 }
+
+private const val DISABLED_ALPHA = 0.4f
