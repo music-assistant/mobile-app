@@ -94,6 +94,13 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                                 mediaType = MediaType.FOLDER,
                                 items = albums,
                             ),
+                            ServerMediaItem(
+                                itemId = "recently_added_tracks",
+                                provider = "library",
+                                name = "Recently added tracks",
+                                mediaType = MediaType.FOLDER,
+                                items = tracks,
+                            ),
                         ),
                     ),
                 )
@@ -201,7 +208,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         data = queue.copy(
                             currentItem = ServerQueueItem("blah", mediaTrack),
                         ),
-                    )
+                    ),
                 )
 
                 val player = players.find { it.activeSource == queue.queueId }!!
@@ -210,10 +217,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         event = EventType.PLAYER_UPDATED,
                         objectId = player.playerId,
                         data = player.copy(state = PlayerState.PLAYING),
-                    )
+                    ),
                 )
 
-                Result.failure(UnsupportedOperationException())
+                Result.success(Answer(JsonObject(emptyMap())))
             }
 
             "player_queues/all" -> {
@@ -223,6 +230,20 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         result = queues,
                     ),
                 )
+            }
+
+            "players/cmd/play_pause" -> {
+                val playerId = (request.args!!["player_id"] as JsonPrimitive).content
+                val player = players.find { it.playerId == playerId }!!
+                _events.emit(
+                    PlayerUpdatedEvent(
+                        event = EventType.PLAYER_UPDATED,
+                        objectId = player.playerId,
+                        data = player.copy(state = PlayerState.PAUSED),
+                    ),
+                )
+
+                Result.success(Answer(JsonObject(emptyMap())))
             }
 
             else -> {

@@ -70,6 +70,16 @@ fun <T : ComposePage> T.assertMediaDisplayed(name: String): T {
     return this
 }
 
+fun <T : ComposePage> T.playMedia(item: ServerMediaItem): T {
+    composeTestRule.onNodeWithText(item.name).performClick()
+    return this
+}
+
+fun <T : ComposePage> T.pause(): T {
+    composeTestRule.onNodeWithContentDescription("Pause").performClick()
+    return this
+}
+
 fun <T : ComposePage> T.assertCurrentPlayer(
     name: String,
     playing: Boolean = false,

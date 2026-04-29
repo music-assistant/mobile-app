@@ -71,9 +71,4 @@ class MediaItemPage(
         composeTestRule.onNodeWithText("Play").performClick()
         return this
     }
-
-    fun playMedia(item: ServerMediaItem): MediaItemPage {
-        composeTestRule.onNodeWithText(item.name).performClick()
-        return this
-    }
 }

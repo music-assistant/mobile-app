@@ -10,6 +10,8 @@ import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertCurrentPlayer
 import io.music_assistant.client.support.pages.clickOnMedia
+import io.music_assistant.client.support.pages.pause
+import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -55,11 +57,24 @@ class PlayerTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
-
             .playMedia(track2)
             .assertCurrentPlayer(player.displayName, playing = true, item = track2.name)
-
             .playMedia(track1)
             .assertCurrentPlayer(player.displayName, playing = true, item = track1.name)
+    }
+
+    @Test
+    fun `can pause playback`() {
+        val track = ServerMediaItemFixtures.track()
+        serviceClient.addToLibrary(track)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayer(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .playMedia(track)
+            .assertCurrentPlayer(player.displayName, playing = true, item = track.name)
+            .pause()
+            .assertCurrentPlayer(player.displayName, playing = false, item = track.name)
     }
 }
