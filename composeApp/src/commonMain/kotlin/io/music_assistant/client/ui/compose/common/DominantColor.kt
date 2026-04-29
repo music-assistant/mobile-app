@@ -16,8 +16,22 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import coil3.compose.LocalPlatformContext
-import org.koin.compose.koinInject
+
+/**
+ * Theme-independent extraction result kept in [DominantColorViewModel]'s cache.
+ * Both tint variants are pre-computed so consumers select cheaply by surface luminance.
+ */
+data class ExtractedColors(
+    val dominant: Color,
+    val tintOnDark: Color,
+    val tintOnLight: Color,
+)
+
+/**
+ * Suspending fetcher used by [rememberAnimatedPlayerColors] — supplied by the screen
+ * so the composable doesn't depend on Koin and is trivially testable with a fake.
+ */
+typealias ExtractedColorsFetcher = suspend (imageUrl: String) -> ExtractedColors?
 
 /**
  * Dominant color extracted from artwork plus its theme-adjusted control tint.
@@ -33,16 +47,15 @@ data class PlayerColors(
 fun rememberAnimatedPlayerColors(
     imageUrl: String?,
     fallback: Color,
+    fetchColors: ExtractedColorsFetcher,
 ): State<PlayerColors> {
-    val viewModel: DominantColorViewModel = koinInject()
-    val context = LocalPlatformContext.current
     val onDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
-    val extracted by produceState<DominantColorViewModel.ExtractedColors?>(
+    val extracted by produceState<ExtractedColors?>(
         initialValue = null,
         key1 = imageUrl,
     ) {
-        value = imageUrl?.let { viewModel.getColors(context, it) }
+        value = imageUrl?.let { fetchColors(it) }
     }
 
     val targetDominant = extracted?.dominant ?: fallback

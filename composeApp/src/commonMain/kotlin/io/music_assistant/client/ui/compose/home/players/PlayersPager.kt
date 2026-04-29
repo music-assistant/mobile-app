@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -86,6 +87,7 @@ internal fun PlayersPager(
     contentPadding: PaddingValues,
     localPlayerId: String,
     onAdjustPlaybackDelay: (Int) -> Unit,
+    fetchColors: ExtractedColorsFetcher,
 ) {
     val modifier = if (expanded) {
         modifier
@@ -119,6 +121,7 @@ internal fun PlayersPager(
         rememberAnimatedPlayerColors(
             imageUrl = imageUrl,
             fallback = MaterialTheme.colorScheme.primaryContainer,
+            fetchColors = fetchColors,
         )
     }
 

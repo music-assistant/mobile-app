@@ -37,10 +37,13 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import coil3.compose.LocalPlatformContext
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.DominantColorViewModel
+import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -411,6 +414,11 @@ private fun Players(
                 homeScreenViewModel.onPlayersSortChanged(newPlayerIds)
             }
         }
+        val dominantColorViewModel: DominantColorViewModel = koinInject()
+        val platformContext = LocalPlatformContext.current
+        val fetchColors = remember<ExtractedColorsFetcher>(dominantColorViewModel, platformContext) {
+            { url -> dominantColorViewModel.getColors(platformContext, url) }
+        }
 
         PlayersPager(
             playerPagerState = playerPagerState,
@@ -428,6 +436,7 @@ private fun Players(
             contentPadding = contentPadding,
             localPlayerId = homeScreenViewModel.localPlayerId,
             onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
+            fetchColors = fetchColors,
         )
     } else {
         Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {

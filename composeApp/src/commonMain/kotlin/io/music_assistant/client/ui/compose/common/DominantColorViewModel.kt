@@ -22,30 +22,20 @@ import kotlinx.coroutines.withContext
  * per-recomposition extraction or HSL-readjustment cost.
  *
  * LRU eviction at [MAX_CACHE_SIZE]; misses are silent (caller falls back).
+ * Concurrent calls for the same URL may extract twice; result is identical so
+ * last-writer-wins is harmless.
  */
 class DominantColorViewModel : ViewModel() {
-    data class ExtractedColors(
-        val dominant: Color,
-        val tintOnDark: Color,
-        val tintOnLight: Color,
-    )
 
     private val cache = LruCache<String, ExtractedColors>(MAX_CACHE_SIZE)
 
     suspend fun getColors(context: PlatformContext, imageUrl: String): ExtractedColors? {
-        val cached = cache[imageUrl]
-
-        if (cached != null) {
-            return cached
-        } else {
-            val extracted = withContext(Dispatchers.Default) {
-                runCatching { extract(context, imageUrl) }.getOrNull()
-            } ?: return null
-
-            return extracted.also {
-                cache.put(imageUrl, it)
-            }
-        }
+        cache[imageUrl]?.let { return it }
+        val extracted = withContext(Dispatchers.Default) {
+            runCatching { extract(context, imageUrl) }.getOrNull()
+        } ?: return null
+        cache.put(imageUrl, extracted)
+        return extracted
     }
 
     private suspend fun extract(context: PlatformContext, url: String): ExtractedColors? {
