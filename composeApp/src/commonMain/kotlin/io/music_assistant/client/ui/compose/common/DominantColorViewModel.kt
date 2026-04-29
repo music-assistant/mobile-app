@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.common
 
+import androidx.collection.LruCache
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import coil3.PlatformContext
@@ -8,11 +9,10 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import com.kmpalette.generatePalette
+import io.music_assistant.client.ui.compose.common.DominantColorViewModel.Companion.MAX_CACHE_SIZE
 import io.music_assistant.client.utils.disableHardwareBitmaps
 import io.music_assistant.client.utils.toImageBitmap
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
  * pre-computes both light- and dark-surface tint variants so callers pay no
  * per-recomposition extraction or HSL-readjustment cost.
  *
- * FIFO eviction at [MAX_CACHE_SIZE]; misses are silent (caller falls back).
+ * LRU eviction at [MAX_CACHE_SIZE]; misses are silent (caller falls back).
  */
 class DominantColorViewModel : ViewModel() {
     data class ExtractedColors(
@@ -30,21 +30,22 @@ class DominantColorViewModel : ViewModel() {
         val tintOnLight: Color,
     )
 
-    private val mutex = Mutex()
-    private val cache = LinkedHashMap<String, ExtractedColors>()
+    private val cache = LruCache<String, ExtractedColors>(MAX_CACHE_SIZE)
 
     suspend fun getColors(context: PlatformContext, imageUrl: String): ExtractedColors? {
-        mutex.withLock { cache[imageUrl] }?.let { return it }
-        val extracted = withContext(Dispatchers.Default) {
-            runCatching { extract(context, imageUrl) }.getOrNull()
-        } ?: return null
-        mutex.withLock {
-            cache[imageUrl] = extracted
-            while (cache.size > MAX_CACHE_SIZE) {
-                cache.remove(cache.keys.iterator().next())
+        val cached = cache[imageUrl]
+
+        if (cached != null) {
+            return cached
+        } else {
+            val extracted = withContext(Dispatchers.Default) {
+                runCatching { extract(context, imageUrl) }.getOrNull()
+            } ?: return null
+
+            return extracted.also {
+                cache.put(imageUrl, it)
             }
         }
-        return extracted
     }
 
     private suspend fun extract(context: PlatformContext, url: String): ExtractedColors? {
