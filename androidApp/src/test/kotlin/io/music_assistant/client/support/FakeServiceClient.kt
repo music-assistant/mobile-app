@@ -39,7 +39,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
     private val players = mutableListOf<ServerPlayer>()
     private val queues = mutableListOf<ServerQueue>()
-    private val items = mutableListOf<ServerMediaItem>()
+    private val items = mutableSetOf<ServerMediaItem>()
     private val albums: List<ServerMediaItem>
         get() {
             return items.filter { it.mediaType == MediaType.ALBUM }
@@ -123,6 +123,17 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
+            Request.Album.getTracks("", "").command -> {
+                val album = findItem(request, albums)
+
+                Result.success(
+                    answer(
+                        request = request,
+                        result = tracks.filter { it.album == album },
+                    ),
+                )
+            }
+
             Request.Album.listLibrary().command -> {
                 Result.success(
                     answer(
@@ -165,13 +176,29 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     queues.find { it.queueId == queueId }!!
 
                 val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
-                val mediaTracks =
-                    tracks.filter { it.album!!.uri == mediaUri }
+                val mediaTrack = items.find { it.uri == mediaUri }?.let { item ->
+                    when (item.mediaType) {
+                        MediaType.ARTIST -> TODO()
+                        MediaType.ALBUM -> tracks.first { it.album == item }
+                        MediaType.TRACK -> item
+                        MediaType.PLAYLIST -> TODO()
+                        MediaType.RADIO -> TODO()
+                        MediaType.AUDIOBOOK -> TODO()
+                        MediaType.PODCAST -> TODO()
+                        MediaType.PODCAST_EPISODE -> TODO()
+                        MediaType.GENRE -> TODO()
+                        MediaType.FOLDER -> TODO()
+                        MediaType.FLOW_STREAM -> TODO()
+                        MediaType.ANNOUNCEMENT -> TODO()
+                        MediaType.UNKNOWN -> TODO()
+                    }
+                }
+
                 _events.value = QueueUpdatedEvent(
                     event = EventType.QUEUE_UPDATED,
                     objectId = queue.queueId,
                     data = queue.copy(
-                        currentItem = ServerQueueItem("blah", mediaTracks.first()),
+                        currentItem = ServerQueueItem("blah", mediaTrack),
                     ),
                 )
 
@@ -290,6 +317,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 this.items.addAll(it)
             }
         }
+        items.forEach { item ->
+            item.album?.let {
+                this.items.add(it)
+            }
+        }
     }
 
     fun addPlayer(player: ServerPlayer) {
@@ -310,7 +342,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private fun searchItems(
         request: Request,
-        items: List<ServerMediaItem>,
+        items: Collection<ServerMediaItem>,
     ): List<ServerMediaItem> {
         return items.filter {
             it.name.contains(

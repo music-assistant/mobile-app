@@ -88,7 +88,7 @@ fun <T : ComposePage> T.assertCurrentPlayer(
     }
 
     if (item != null) {
-        composeTestRule.onNodeWithText(item).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Playing $item").assertIsDisplayed()
     }
 
     return this

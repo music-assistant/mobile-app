@@ -9,6 +9,7 @@ import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertCurrentPlayer
+import io.music_assistant.client.support.pages.clickOnMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +32,7 @@ class PlayerTest {
     fun `can play album`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(album, track)
+        serviceClient.addToLibrary(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayer(player)
@@ -40,5 +41,21 @@ class PlayerTest {
             .clickOnMedia(album)
             .clickPlay()
             .assertCurrentPlayer(player.displayName, playing = true, item = track.name)
+    }
+
+    @Test
+    fun `can play track from album`() {
+        val album = ServerMediaItemFixtures.album()
+        val track1 = ServerMediaItemFixtures.track(album = album)
+        val track2 = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addToLibrary(track1, track2)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayer(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(album)
+            .playMedia(track2)
+            .assertCurrentPlayer(player.displayName, playing = true, item = track2.name)
     }
 }

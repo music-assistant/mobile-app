@@ -34,6 +34,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
@@ -111,10 +113,17 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            val trackName = track?.title
+            Column(
+                modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .clearAndSetSemantics {
+                    contentDescription = "Playing $trackName"
+                },
+            ) {
                 Text(
                     modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
-                    text = track?.title ?: "nothing playing",
+                    text = trackName ?: "nothing playing",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
