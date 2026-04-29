@@ -30,7 +30,8 @@ class PlayerTest {
     @Test
     fun `can play album`() {
         val album = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
+        val track = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addToLibrary(album, track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayer(player)
@@ -38,6 +39,6 @@ class PlayerTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
             .clickPlay()
-            .assertCurrentPlayer(player.displayName, playing = true)
+            .assertCurrentPlayer(player.displayName, playing = true, item = track.name)
     }
 }

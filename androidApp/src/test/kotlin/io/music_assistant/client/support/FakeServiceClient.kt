@@ -13,6 +13,7 @@ import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
+import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -46,6 +48,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     private val artists: List<ServerMediaItem>
         get() {
             return items.filter { it.mediaType == MediaType.ARTIST }
+        }
+
+    private val tracks: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.TRACK }
         }
 
     val username = "user"
@@ -153,17 +160,22 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             }
 
             "player_queues/play_media" -> {
+                val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
                 val queue =
-                    queues.find { it.queueId == (request.args!!["queue_id"] as JsonPrimitive).content }!!
+                    queues.find { it.queueId == queueId }!!
 
+                val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
+                val mediaTracks =
+                    tracks.filter { it.album!!.uri == mediaUri }
                 _events.value = QueueUpdatedEvent(
                     event = EventType.QUEUE_UPDATED,
                     objectId = queue.queueId,
-                    data = queue,
+                    data = queue.copy(
+                        currentItem = ServerQueueItem("blah", mediaTracks.first()),
+                    ),
                 )
 
                 val player = players.find { it.activeSource == queue.queueId }!!
-
                 _events.value = PlayerUpdatedEvent(
                     event = EventType.PLAYER_UPDATED,
                     objectId = player.playerId,
