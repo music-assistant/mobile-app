@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -62,6 +63,7 @@ import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
+import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_mute
@@ -178,7 +180,7 @@ internal fun PlayersPager(
                                 Brush.verticalGradient(
                                     listOf(
                                         MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        colors.dominant.copy(alpha = 0.4f),
+                                        colors.dominant.inactive(),
                                     ),
                                 )
                             },
@@ -355,6 +357,7 @@ private fun ExpandedPlayerPage(
                 val volumeSliderColors = SliderDefaults.colors().copy(
                     thumbColor = controlTint,
                     activeTrackColor = controlTint,
+                    inactiveTrackColor = controlTint.inactive(),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().height(36.dp)
@@ -365,7 +368,7 @@ private fun ExpandedPlayerPage(
                     Icon(
                         modifier = Modifier
                             .size(24.dp)
-                            .alpha(if (player.player.canMute) 1F else 0.5f)
+                            .alphaOn(player.player.canMute)
                             .clickable(enabled = player.player.canMute) {
                                 playerAction(
                                     player,
@@ -425,7 +428,7 @@ private fun ExpandedPlayerPage(
                         modifier = Modifier.width(24.dp),
                         text = currentVolume.roundToInt().toString(),
                         textAlign = TextAlign.End,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = controlTint,
                     )
                 }

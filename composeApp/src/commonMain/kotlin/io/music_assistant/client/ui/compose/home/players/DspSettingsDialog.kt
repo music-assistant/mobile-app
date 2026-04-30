@@ -29,11 +29,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.server.DspConfigPreset
+import io.music_assistant.client.ui.alphaOn
 import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
@@ -142,7 +142,7 @@ private fun DspContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .alpha(if (state.config.enabled) 1f else 0.4f)
+                            .alphaOn(state.config.enabled)
                             .clickable(enabled = state.config.enabled) {
                                 onApplyPreset(preset)
                             }

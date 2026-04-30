@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import co.touchlab.kermit.Logger
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Microphone
-import io.ktor.util.decodeBase64Bytes
+import kotlin.io.encoding.Base64
 
 /**
  * Sealed class representing different types of provider icons
@@ -86,7 +86,7 @@ sealed class ProviderIconModel {
                     // Remove any closing quotes or XML tags
                     val cleanedData = base64Data.substringBefore("\"").substringBefore("<")
                     try {
-                        val bytes = cleanedData.decodeBase64Bytes()
+                        val bytes = Base64.Default.decode(cleanedData)
                         Png(bytes)
                     } catch (e: Exception) {
                         Logger.e("Cannot decode base64 PNG: ${e.message}")

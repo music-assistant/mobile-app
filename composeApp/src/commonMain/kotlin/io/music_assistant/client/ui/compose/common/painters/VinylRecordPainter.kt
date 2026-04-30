@@ -10,12 +10,13 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
+import io.music_assistant.client.ui.inactive
 
 class VinylRecordPainter(
     private val recordColor: Color,
     private val labelColor: Color,
     private val holeColor: Color,
-    private val grooveColor: Color = labelColor.copy(alpha = 0.4f), // Subtle white for grooves
+    private val grooveColor: Color = labelColor.inactive(), // Subtle white for grooves
     private val grooveCount: Int = 6, // Number of grooves to draw
 ) : Painter() {
     private var cachedSize: Size? = null

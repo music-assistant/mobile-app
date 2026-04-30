@@ -62,6 +62,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
@@ -407,7 +408,7 @@ private fun GroupPlayerItem(
                 // disabled states carry their own visuals and must stay opaque.
                 modifier = Modifier
                     .weight(1f)
-                    .alpha(if (inGroup) 1f else 0.4f),
+                    .alphaOn(inGroup),
                 text = playerName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -435,7 +436,7 @@ private fun GroupPlayerItem(
             ) {
                 childBindItem?.let { bind ->
                     Icon(
-                        modifier = Modifier.alpha(if (bind.isManageable) 1f else 0.4f),
+                        modifier = Modifier.alphaOn(bind.isManageable),
                         imageVector = if (bind.isBound) Icons.Default.Remove else Icons.Default.Add,
                         contentDescription = if (bind.isBound) {
                             stringResource(
@@ -529,7 +530,7 @@ private fun VolumeRow(
             Icon(
                 modifier = Modifier
                     .size(24.dp)
-                    .alpha(if (enabled) 1F else 0.5f)
+                    .alphaOn(enabled)
                     .clickable(enabled = enabled) {
                         simplePlayerAction(playerId, PlayerAction.ToggleMute(isMuted))
                     },
@@ -548,7 +549,7 @@ private fun VolumeRow(
             )
         }
         Slider(
-            modifier = Modifier.weight(1f).alpha(if (enabled) 1f else 0.4f),
+            modifier = Modifier.weight(1f).alphaOn(enabled),
             value = currentVolume,
             valueRange = 0f..100f,
             enabled = enabled,
@@ -582,7 +583,7 @@ private fun VolumeRow(
             },
         )
         Text(
-            modifier = Modifier.width(24.dp).alpha(if (enabled) 1f else 0.4f),
+            modifier = Modifier.width(24.dp).alphaOn(enabled),
             text = currentVolume.roundToInt().toString(),
             textAlign = TextAlign.End,
             style = MaterialTheme.typography.labelMedium,

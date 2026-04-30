@@ -30,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
@@ -46,11 +45,13 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
+import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.formatDuration
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_playing
@@ -88,7 +89,7 @@ fun CompactPlayerItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colors.dominant.copy(alpha = track?.let { 1f } ?: DISABLED_ALPHA)),
+                    .background(colors.dominant.alphaOn(track != null)),
                 contentAlignment = Alignment.Center,
             ) {
                 if (track != null) {
@@ -110,7 +111,7 @@ fun CompactPlayerItem(
                         imageVector = AlbumIcon,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = onPrimaryContainer.copy(alpha = DISABLED_ALPHA),
+                        tint = onPrimaryContainer.inactive(),
                     )
                 }
             }
@@ -120,13 +121,13 @@ fun CompactPlayerItem(
             val playingContentDescription = stringResource(Res.string.cd_playing, trackName)
             Column(
                 modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clearAndSetSemantics {
-                    contentDescription = playingContentDescription
-                },
+                    .padding(horizontal = 16.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = playingContentDescription
+                    },
             ) {
                 Text(
-                    modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
+                    modifier = Modifier.basicMarquee().alphaOn(track != null),
                     text = trackName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
@@ -147,7 +148,7 @@ fun CompactPlayerItem(
                         Text(
                             text = "Cannot play this item",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -214,7 +215,7 @@ fun FullPlayerItem(
                 .heightIn(max = 500.dp)
                 .padding(16.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(colors.dominant.copy(alpha = track?.let { 1f } ?: DISABLED_ALPHA)),
+                .background(colors.dominant.alphaOn(track != null)),
             contentAlignment = Alignment.Center,
         ) {
             if (track != null) {
@@ -244,7 +245,7 @@ fun FullPlayerItem(
                     imageVector = AlbumIcon,
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
-                    tint = onPrimaryContainer.copy(alpha = DISABLED_ALPHA),
+                    tint = onPrimaryContainer.inactive(),
                 )
             }
         }
@@ -255,7 +256,7 @@ fun FullPlayerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
+                modifier = Modifier.basicMarquee().alphaOn(track != null),
                 text = track?.title ?: "nothing playing",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
@@ -267,7 +268,7 @@ fun FullPlayerItem(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     text = "Cannot play this item",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -285,7 +286,7 @@ fun FullPlayerItem(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 text = item.queueInfo?.currentItem?.audioFormat(item.playerId)?.description ?: "",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -305,6 +306,7 @@ fun FullPlayerItem(
         val progressSliderColors = SliderDefaults.colors().copy(
             thumbColor = controlTint,
             activeTrackColor = controlTint,
+            inactiveTrackColor = controlTint.inactive(),
         )
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -375,14 +377,14 @@ fun FullPlayerItem(
                     text = sliderPosition.takeIf { track != null }
                         .formatDuration(DurationUnit.SECONDS)
                         .takeIf { duration != null } ?: "",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    style = MaterialTheme.typography.bodySmall/*.copy(fontSize = 11.sp)*/,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = track
                         ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
                         ?: "",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    style = MaterialTheme.typography.bodySmall/*.copy(fontSize = 11.sp)*/,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -396,5 +398,3 @@ fun FullPlayerItem(
         )
     }
 }
-
-private const val DISABLED_ALPHA = 0.4f

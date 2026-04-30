@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
+import io.music_assistant.client.ui.inactive
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.cd_dsp_settings
@@ -153,7 +154,7 @@ fun PlayerSelectionLayout(
                     color = if (hasBoundChildren) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        MaterialTheme.colorScheme.onSurface.inactive()
                     },
                 )
             }

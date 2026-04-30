@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.PauseIcon
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
@@ -164,7 +164,7 @@ private fun ActionButton(
 ) {
     IconButton(
         modifier = Modifier
-            .alpha(if (enabled) 1F else 0.5f)
+            .alphaOn(enabled)
             .size(size),
         onClick = onClick,
         enabled = enabled,
