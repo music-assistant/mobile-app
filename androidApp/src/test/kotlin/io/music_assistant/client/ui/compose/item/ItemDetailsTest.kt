@@ -13,10 +13,14 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.support.inScrollable
 import io.music_assistant.client.utils.support.MockFunction0
 import io.music_assistant.client.utils.support.MockFunction2
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.cd_more
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -111,8 +115,8 @@ class ItemDetailsTest {
             )
         }
 
-        composeTestRule.onNodeWithContentDescription("More").performClick()
-        composeTestRule.onNodeWithText("Go to artist").assertIsNotDisplayed()
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).assertIsNotDisplayed()
     }
 
     @Test

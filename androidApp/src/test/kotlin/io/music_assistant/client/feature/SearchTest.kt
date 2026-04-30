@@ -6,11 +6,15 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.MediaItemPage
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.rules.createTestRuleChain
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_search
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -54,14 +58,14 @@ class SearchTest {
             .clickHome(
                 MediaItemPage(
                 album1,
-                navigationItem = "Home",
+                navigationItem = Res.string.nav_home.get(),
                 composeTestRule = composeTestRule,
             ),
             )
             .clickSearch(
                 MediaItemPage(
                 album2,
-                navigationItem = "Search",
+                navigationItem = Res.string.nav_search.get(),
                 composeTestRule = composeTestRule,
             ),
             )

@@ -9,7 +9,17 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_pause
+import musicassistantclient.composeapp.generated.resources.action_play
+import musicassistantclient.composeapp.generated.resources.cd_current_player
+import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_search
 
 fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
@@ -41,27 +51,27 @@ fun ComposePage.clickNavBarItem(item: String) {
 }
 
 fun ComposePage.clickSearch(): SearchPage {
-    clickNavBarItem("Search")
+    clickNavBarItem(Res.string.nav_search.get())
     return SearchPage(composeTestRule).assertOnPage()
 }
 
 fun <T : Page> ComposePage.clickSearch(destination: T): T {
-    clickNavBarItem("Search")
+    clickNavBarItem(Res.string.nav_search.get())
     return destination.assertOnPage()
 }
 
 fun <T : Page> ComposePage.clickHome(destination: T): T {
-    clickNavBarItem("Home")
+    clickNavBarItem(Res.string.nav_home.get())
     return destination.assertOnPage()
 }
 
 fun ComposePage.clickLibrary(): LibraryPage {
-    clickNavBarItem("Library")
-    return LibraryPage("Artists", composeTestRule).assertOnPage()
+    clickNavBarItem(Res.string.nav_library.get())
+    return LibraryPage(Res.string.media_type_artists.get(), composeTestRule).assertOnPage()
 }
 
 fun <T : Page> ComposePage.clickLibrary(destination: T): T {
-    clickNavBarItem("Library")
+    clickNavBarItem(Res.string.nav_library.get())
     return destination.assertOnPage()
 }
 
@@ -76,7 +86,7 @@ fun <T : ComposePage> T.playMedia(item: ServerMediaItem): T {
 }
 
 fun <T : ComposePage> T.pause(): T {
-    composeTestRule.onNodeWithContentDescription("Pause").performClick()
+    composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get()).performClick()
     return this
 }
 
@@ -86,19 +96,19 @@ fun <T : ComposePage> T.assertCurrentPlayer(
     item: String? = null,
 ): T {
     composeTestRule.waitUntil {
-        composeTestRule.onNodeWithContentDescription("Current player: $name").isDisplayed()
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_current_player.get().format(name)).isDisplayed()
     }
 
     composeTestRule.waitUntil {
         if (playing) {
-            composeTestRule.onNodeWithContentDescription("Pause").isDisplayed()
+            composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get()).isDisplayed()
         } else {
-            composeTestRule.onNodeWithContentDescription("Play").isDisplayed()
+            composeTestRule.onNodeWithContentDescription(Res.string.action_play.get()).isDisplayed()
         }
     }
 
     if (item != null) {
-        composeTestRule.onNodeWithContentDescription("Playing $item").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_playing.get().format(item)).assertIsDisplayed()
     }
 
     return this

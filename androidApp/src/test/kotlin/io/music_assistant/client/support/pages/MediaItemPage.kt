@@ -12,7 +12,15 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_play
+import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.media_type_albums
+import musicassistantclient.composeapp.generated.resources.media_type_tracks
+import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.nav_settings
 
 class MediaItemPage(
     private val name: String,
@@ -28,21 +36,26 @@ class MediaItemPage(
 
     override fun assert() {
         composeTestRule.onNodeWithText(name).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Play").assertIsDisplayed().assertHasClickAction()
+        composeTestRule.onNodeWithText(Res.string.action_play.get()).assertIsDisplayed().assertHasClickAction()
         assertNavBar(
-            items = listOf("Home", "Search", "Library", "Settings"),
+            items = listOf(
+                Res.string.nav_home.get(),
+                Res.string.nav_search.get(),
+                Res.string.nav_library.get(),
+                Res.string.nav_settings.get(),
+            ),
             selected = navigationItem,
         )
 
         when (type) {
             MediaType.ARTIST -> {
-                composeTestRule.onNode(isTab("Albums")).assertIsDisplayed()
-                composeTestRule.onNode(isTab("Tracks")).assertIsDisplayed()
+                composeTestRule.onNode(isTab(Res.string.media_type_albums.get())).assertIsDisplayed()
+                composeTestRule.onNode(isTab(Res.string.media_type_tracks.get())).assertIsDisplayed()
             }
 
             MediaType.ALBUM -> {
-                composeTestRule.onNode(isTab("Tracks")).assertIsDisplayed()
-                composeTestRule.onNode(isTab("Albums")).assertIsNotDisplayed()
+                composeTestRule.onNode(isTab(Res.string.media_type_tracks.get())).assertIsDisplayed()
+                composeTestRule.onNode(isTab(Res.string.media_type_albums.get())).assertIsNotDisplayed()
             }
 
             MediaType.TRACK -> TODO()
@@ -60,8 +73,8 @@ class MediaItemPage(
     }
 
     fun clickGoToArtist(artist: String): MediaItemPage {
-        composeTestRule.onNodeWithContentDescription("More").performClick()
-        composeTestRule.onNodeWithText("Go to artist").performClick()
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
         return MediaItemPage(
             artist,
             MediaType.ARTIST,
