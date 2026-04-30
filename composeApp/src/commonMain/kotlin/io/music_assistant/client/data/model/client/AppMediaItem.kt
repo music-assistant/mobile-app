@@ -22,7 +22,7 @@ interface PlayableItem {
     val defaultIcon: ImageVector
     val parentName: String?
     val itemId: String
-    val name: String
+    val title: String
     val version: String?
     val duration: Double?
     val uri: String?
@@ -38,7 +38,7 @@ interface PlayableItem {
 abstract class AppMediaItem(
     val itemId: String,
     val provider: String,
-    val name: String,
+    private val name: String,
     val providerMappings: List<ProviderMapping>?,
     metadata: Metadata?,
     val favorite: Boolean?,
@@ -51,6 +51,7 @@ abstract class AppMediaItem(
     // val timestampModified: Long?,
     val canStartRadio: Boolean = false,
 ) {
+    open val title: String = name
     open val subtitle: String? = null
     val longId = itemId.hashCode().toLong()
 
@@ -247,7 +248,7 @@ abstract class AppMediaItem(
         image = image,
         canStartRadio = true,
     ) {
-        override val subtitle = artists.joinToString(separator = ", ") { it.name }
+        override val subtitle = artists.joinToString(separator = ", ") { it.title }
     }
 
     class Track(
@@ -290,8 +291,10 @@ abstract class AppMediaItem(
         canStartRadio = true,
     ),
     PlayableItem {
-        override val subtitle = artists?.joinToString(separator = ", ") { it.name }
-        override val parentName: String? = album?.name
+        override val title =
+            "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}"
+        override val subtitle = artists?.joinToString(separator = ", ") { it.title }
+        override val parentName: String? = album?.title
         override val defaultIcon = TrackIcon
     }
 
@@ -382,7 +385,7 @@ abstract class AppMediaItem(
     ),
     PlayableItem {
         override val subtitle = metadata?.releaseDate?.let(::formatIsoDate)
-        override val parentName: String? = podcast?.name
+        override val parentName: String? = podcast?.title
         override val defaultIcon = Icons.Default.Podcasts
     }
 

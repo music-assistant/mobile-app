@@ -225,7 +225,7 @@ class HomeScreenViewModel(
                     AppMediaItem.RecommendationFolder(
                         itemId = row.itemId,
                         provider = row.provider,
-                        name = row.name,
+                        name = row.title,
                         providerMappings = row.providerMappings,
                         uri = row.uri,
                         image = row.image,

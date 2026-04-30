@@ -539,7 +539,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Text(
-                                        text = playlist.name,
+                                        text = playlist.title,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }

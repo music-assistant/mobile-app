@@ -96,7 +96,7 @@ fun CompactPlayerItem(
                         placeholder = placeholder,
                         fallback = placeholder,
                         model = track.imageInfo?.url(serverUrl),
-                        contentDescription = track.name,
+                        contentDescription = track.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -114,7 +114,7 @@ fun CompactPlayerItem(
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
                     modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
-                    text = track?.name ?: "nothing playing",
+                    text = track?.title ?: "nothing playing",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -216,7 +216,7 @@ fun FullPlayerItem(
                         placeholder = placeholder,
                         fallback = placeholder,
                         model = it,
-                        contentDescription = track.name,
+                        contentDescription = track.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -243,7 +243,7 @@ fun FullPlayerItem(
         ) {
             Text(
                 modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
-                text = track?.name ?: "nothing playing",
+                text = track?.title ?: "nothing playing",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

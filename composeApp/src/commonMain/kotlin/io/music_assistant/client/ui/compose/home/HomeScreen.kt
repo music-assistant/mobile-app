@@ -113,7 +113,7 @@ fun HomeScreen(
                 ) { row ->
                     CategoryRow(
                         serverUrl = serverUrl,
-                        title = row.name,
+                        title = row.title,
                         rowItemType = row.rowItemType,
                         onNavigateClick = onNavigateClick,
                         onPlayClick = onPlayClick,

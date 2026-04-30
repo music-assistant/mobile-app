@@ -84,7 +84,7 @@ class ActionsViewModel(
                     trackUris = listOf(itemUri),
                 ),
             )
-                .map { "Added to ${playlist.name}" }
+                .map { "Added to ${playlist.title}" }
                 .onSuccess { message ->
                     _toasts.emit(message)
                 }

@@ -444,7 +444,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Text(
-                                        text = playlist.name,
+                                        text = playlist.title,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }

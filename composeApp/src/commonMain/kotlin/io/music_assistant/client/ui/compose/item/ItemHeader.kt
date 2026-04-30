@@ -274,7 +274,7 @@ private fun ItemOverflow(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(
-                                    text = playlist.name,
+                                    text = playlist.title,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -313,7 +313,7 @@ private fun ItemText(
         horizontalAlignment = horizontalAlignment,
     ) {
         Text(
-            item.name,
+            item.title,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
         )

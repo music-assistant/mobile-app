@@ -584,7 +584,7 @@ class MainDataSource(
                 val serverUrl = apiClient.serverBaseUrl.value
                 if (track != null) {
                     mediaPlayerController.updateNowPlaying(
-                        title = track.name,
+                        title = track.title,
                         artist = track.subtitle,
                         album = track.parentName,
                         artworkUrl = track.imageInfo?.url(serverUrl),

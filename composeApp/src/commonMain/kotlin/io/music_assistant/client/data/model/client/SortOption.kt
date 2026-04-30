@@ -104,8 +104,8 @@ fun <T> List<T>.clientSorted(option: SortOption): List<T> {
             (it as? AppMediaItem.Track)?.trackNumber
         }
         SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) {
-            (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.name
-                ?: (it as? PlayableItem)?.name ?: ""
+            (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.title
+                ?: (it as? PlayableItem)?.title ?: ""
         }
         SortField.DURATION -> compareBy { (it as? PlayableItem)?.duration ?: 0.0 }
         SortField.YEAR -> compareBy { (it as? AppMediaItem.Album)?.year ?: 0 }
@@ -113,13 +113,13 @@ fun <T> List<T>.clientSorted(option: SortOption): List<T> {
             (it as? AppMediaItem.PodcastEpisode)?.releaseDate ?: ""
         }
         SortField.ARTIST_NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) {
-            (it as? AppMediaItem.Track)?.artists?.firstOrNull()?.name
-                ?: (it as? AppMediaItem.Album)?.artists?.firstOrNull()?.name
+            (it as? AppMediaItem.Track)?.artists?.firstOrNull()?.title
+                ?: (it as? AppMediaItem.Album)?.artists?.firstOrNull()?.title
                 ?: ""
         }
         else -> compareBy(String.CASE_INSENSITIVE_ORDER) {
-            (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.name
-                ?: (it as? PlayableItem)?.name ?: ""
+            (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.title
+                ?: (it as? PlayableItem)?.title ?: ""
         }
     }
     return if (option.descending) sortedWith(comparator.reversed()) else sortedWith(comparator)

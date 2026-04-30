@@ -377,7 +377,7 @@ fun CollapsibleQueue(
                                             ) {
                                                 Text(
                                                     modifier = Modifier.fillMaxWidth(),
-                                                    text = item.track.name,
+                                                    text = item.track.title,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                     color = MaterialTheme.colorScheme.secondary,
