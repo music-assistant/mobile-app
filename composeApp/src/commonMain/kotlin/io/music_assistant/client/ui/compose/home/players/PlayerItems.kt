@@ -377,14 +377,14 @@ fun FullPlayerItem(
                     text = sliderPosition.takeIf { track != null }
                         .formatDuration(DurationUnit.SECONDS)
                         .takeIf { duration != null } ?: "",
-                    style = MaterialTheme.typography.bodySmall/*.copy(fontSize = 11.sp)*/,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = track
                         ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
                         ?: "",
-                    style = MaterialTheme.typography.bodySmall/*.copy(fontSize = 11.sp)*/,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
