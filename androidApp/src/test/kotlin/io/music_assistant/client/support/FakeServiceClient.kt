@@ -1,5 +1,6 @@
 package io.music_assistant.client.support
 
+import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
@@ -67,7 +68,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
         return when (request.command) {
-            Request.Auth.providers().command -> {
+            APICommands.AUTH_PROVIDERS -> {
                 Result.success(
                     answer(
                         request = request,
@@ -82,7 +83,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Library.recommendations().command -> {
+            APICommands.MUSIC_RECOMMENDATIONS -> {
                 Result.success(
                     answer(
                         request = request,
@@ -106,7 +107,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Library.search("", emptyList(), libraryOnly = false).command -> {
+            APICommands.MUSIC_SEARCH -> {
                 Result.success(
                     answer(
                         request = request,
@@ -121,7 +122,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Album.get("", "").command -> {
+            APICommands.musicGet(APICommands.KIND_ALBUMS) -> {
                 Result.success(
                     answer(
                         request = request,
@@ -130,7 +131,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Album.getTracks("", "").command -> {
+            APICommands.MUSIC_ALBUMS_ALBUM_TRACKS -> {
                 val album = findItem(request, albums)
 
                 Result.success(
@@ -141,7 +142,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Album.listLibrary().command -> {
+            APICommands.MUSIC_ALBUMS_LIBRARY_ITEMS -> {
                 Result.success(
                     answer(
                         request = request,
@@ -150,7 +151,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Artist.get("", "").command -> {
+            APICommands.musicGet(APICommands.KIND_ARTISTS) -> {
                 Result.success(
                     answer(
                         request = request,
@@ -159,7 +160,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Artist.listLibrary().command -> {
+            APICommands.MUSIC_ARTISTS_LIBRARY_ITEMS -> {
                 Result.success(
                     answer(
                         request = request,
@@ -168,7 +169,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            Request.Player.all().command -> {
+            APICommands.PLAYERS_ALL -> {
                 Result.success(
                     answer(
                         request = request,
@@ -177,7 +178,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            "player_queues/play_media" -> {
+            APICommands.PLAYER_QUEUES_PLAY_MEDIA -> {
                 val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
                 val mediaTrack = items.find { it.uri == mediaUri }?.let { item ->
                     when (item.mediaType) {
@@ -206,7 +207,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(Answer(JsonObject(emptyMap())))
             }
 
-            "player_queues/all" -> {
+            APICommands.PLAYER_QUEUES_ALL -> {
                 Result.success(
                     answer(
                         request = request,
@@ -215,7 +216,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
-            "players/cmd/play_pause" -> {
+            APICommands.playersCmd("play_pause") -> {
                 val playerId = (request.args!!["player_id"] as JsonPrimitive).content
                 updatePlayer({ it.playerId == playerId }) {
                     it.copy(state = PlayerState.PAUSED)
