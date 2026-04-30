@@ -165,7 +165,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 let displayItems = Array(folderItems.prefix(maxImages))
                 var images = Array(repeating: placeholder, count: displayItems.count)
 
-                let row = CPListImageRowItem(text: folder.name, images: images)
+                let row = CPListImageRowItem(text: folder.title, images: images)
                 row.listImageRowHandler = { [weak self] _, index, completion in
                     if index < displayItems.count {
                         CarPlayContentManager.shared.playItem(displayItems[index])
