@@ -178,7 +178,36 @@ class MainDataSource(
             .map { it.data.any { data -> data.queueInfo?.currentItem != null } }
             .stateIn(this, SharingStarted.Eagerly, false)
 
-    private val _selectedPlayerId = MutableStateFlow<String?>(null)
+    /**
+     * Persisted user choice. Restored from settings on startup and written
+     * only by [selectPlayer]; the persistence collector in [init] mirrors
+     * non-null values into [SettingsRepository.lastSelectedPlayerId] for
+     * the next app launch.
+     */
+    private val _userSelectedPlayerId =
+        MutableStateFlow(settings.lastSelectedPlayerId.value)
+
+    /**
+     * Effective selection consumed by the rest of the data source and UI.
+     * Derived from the current player list and the user choice via
+     * [resolveSelectedPlayerId] — pure function, re-evaluated on every
+     * input change. No state machine pushes a fallback into the upstream
+     * flow; the resolver computes it on the fly.
+     */
+    private val _selectedPlayerId: StateFlow<String?> =
+        combine(
+            _playersData,
+            _userSelectedPlayerId,
+        ) { playersDataState, user ->
+            val visibleIds = (playersDataState as? DataState.Data)
+                ?.data?.map { it.playerId }
+                .orEmpty()
+            resolveSelectedPlayerId(
+                visiblePlayerIds = visibleIds,
+                userChoice = user,
+            )
+        }.stateIn(this, SharingStarted.Eagerly, settings.lastSelectedPlayerId.value)
+
     val selectedPlayerIndex = combine(_playersData, _selectedPlayerId) { listState, selectedId ->
         selectedId?.let { id ->
             (listState as? DataState.Data)?.data?.indexOfFirst { it.playerId == id }
@@ -531,23 +560,15 @@ class MainDataSource(
             }
         }
         launch {
-            var wasLocalPlayerInList = false
-            playersData.mapNotNull { (it as? DataState.Data)?.data }.collect { playersList ->
-                // Auto-select first player if no player is selected
-                if (playersList.isNotEmpty() &&
-                    playersList.none { data -> data.playerId == _selectedPlayerId.value }
-                ) {
-                    _selectedPlayerId.update { playersList.getOrNull(0)?.playerId }
-                }
-                // When local player first appears at first position, select it
-                val localId = settings.sendspinClientId.value
-                if (playersList.firstOrNull()?.playerId == localId && !wasLocalPlayerInList) {
-                    _selectedPlayerId.update { localId }
-                }
-                wasLocalPlayerInList = playersList.any { it.playerId == localId }
-                // Don't call updatePlayersAndQueues() here - it creates a reactive loop!
-                // Updates are triggered by sessionState changes and API events.
-            }
+            // Persist user-driven selection so it survives app restarts.
+            // Only [selectPlayer] writes the upstream flow, so this captures
+            // explicit picks. Nulls are filtered out because clearing the
+            // persisted value isn't a product requirement and rarely the
+            // user's intent.
+            _userSelectedPlayerId
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect { settings.setLastSelectedPlayerId(it) }
         }
         launch {
             selectedPlayerIndex.filterNotNull().collect { index ->
@@ -1002,7 +1023,11 @@ class MainDataSource(
             .getOrNull()?.resultAs<List<DspConfigPreset>>() ?: emptyList()
 
     fun selectPlayer(player: Player) {
-        _selectedPlayerId.update { player.id }
+        // User-driven selection (UI player picker). Writes through
+        // [_userSelectedPlayerId] so the choice persists; the persistence
+        // launch in [init] mirrors it into [SettingsRepository] for the next
+        // app launch.
+        _userSelectedPlayerId.update { player.id }
     }
 
     fun playerAction(playerId: String, action: PlayerAction) {
@@ -1750,7 +1775,28 @@ class MainDataSource(
         supervisorJob.cancel()
     }
 
-    private companion object {
-        const val MAX_SENDSPIN_RETRIES = 5
+    internal companion object {
+        private const val MAX_SENDSPIN_RETRIES = 5
+
+        /**
+         * Resolves the effective selected player from the current state.
+         * Pure function; re-evaluates on every input change.
+         *
+         * Resolution order:
+         *  1. [userChoice] if it appears in [visiblePlayerIds] — persisted
+         *     explicit pick.
+         *  2. First visible player — fallback when no user choice or when
+         *     the user's choice is offline.
+         *  3. [userChoice] as a last resort — preserves the persisted value
+         *     while the player list is loading or empty so the UI holds
+         *     steady across the gap.
+         */
+        internal fun resolveSelectedPlayerId(
+            visiblePlayerIds: List<String>,
+            userChoice: String?,
+        ): String? {
+            if (userChoice != null && userChoice in visiblePlayerIds) return userChoice
+            return visiblePlayerIds.firstOrNull() ?: userChoice
+        }
     }
 }

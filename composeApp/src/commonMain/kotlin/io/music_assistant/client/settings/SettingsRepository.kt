@@ -259,6 +259,25 @@ class SettingsRepository(
         _lastConnectionMode.update { mode }
     }
 
+    // Persisted user player choice. Null means "no explicit choice yet" — on
+    // first launch the resolver in `MainDataSource.resolveSelectedPlayerId`
+    // falls back to the first visible player. Written by
+    // `MainDataSource.selectPlayer` (driven by the in-app player picker); no
+    // other path touches it today.
+    private val _lastSelectedPlayerId = MutableStateFlow(
+        settings.getStringOrNull("last_selected_player_id"),
+    )
+    val lastSelectedPlayerId = _lastSelectedPlayerId.asStateFlow()
+
+    fun setLastSelectedPlayerId(id: String?) {
+        if (id.isNullOrBlank()) {
+            settings.remove("last_selected_player_id")
+        } else {
+            settings.putString("last_selected_player_id", id)
+        }
+        _lastSelectedPlayerId.update { id }
+    }
+
     // Connection history (most-recent-first, max 10 entries)
     private val _connectionHistory = MutableStateFlow(loadConnectionHistory())
     val connectionHistory = _connectionHistory.asStateFlow()
