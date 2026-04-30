@@ -56,6 +56,8 @@ abstract class AppMediaItem(
 
     val isInLibrary = provider == "library"
 
+    val isExplicit = metadata?.explicit == true
+
     /**
      * URI suitable for the play_media API.
      * For genres, always constructs a full URI since the server requires it.

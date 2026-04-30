@@ -68,3 +68,6 @@ testflight-reports/
 
 # Downloaded binary frameworks (too large for git, see ios_build_instructions.md step 5)
 iosApp/Frameworks/
+
+# Google Play developer-verification token (per-account, do not commit)
+androidApp/src/selfSignedRelease/assets/adi-registration.properties
