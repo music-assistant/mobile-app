@@ -85,8 +85,8 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         artist: String?,
         album: String?,
         artworkUrl: String?,
-        duration: Double,
-        elapsedTime: Double,
+        duration: Double?,
+        elapsedTime: Double?,
         playbackRate: Double,
     ) {
         PlatformPlayerProvider.player?.updateNowPlaying(

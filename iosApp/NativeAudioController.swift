@@ -314,13 +314,19 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     
     private var remoteCommandHandler: RemoteCommandHandler?
     
+    /// `duration` and `elapsedTime` are passed as `KotlinDouble?` because Kotlin/Native
+    /// boxes nullable primitives in interface signatures. A nil here means "value
+    /// unknown — leave the corresponding `MPNowPlayingInfoCenter` field alone" (vs.
+    /// the prior contract which forced callers to fabricate a 0 and visibly reset the
+    /// playback bar). See `MainDataSource`'s position-tracker overlay for why this
+    /// distinction matters in practice.
     func updateNowPlaying(
         title: String?,
         artist: String?,
         album: String?,
         artworkUrl: String?,
-        duration: Double,
-        elapsedTime: Double,
+        duration: KotlinDouble?,
+        elapsedTime: KotlinDouble?,
         playbackRate: Double
     ) {
         NowPlayingManager.shared.updateNowPlayingInfo(
@@ -328,8 +334,8 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             artist: artist,
             album: album,
             artworkUrl: artworkUrl,
-            duration: duration,
-            elapsedTime: elapsedTime,
+            duration: duration?.doubleValue,
+            elapsedTime: elapsedTime?.doubleValue,
             playbackRate: playbackRate
         )
     }

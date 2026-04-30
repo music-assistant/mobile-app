@@ -62,120 +62,213 @@ class NowPlayingManager {
     
     // Track pending update to handle race conditions
     private var pendingIdentifier: String?
-    
-    /// Updates the Now Playing info displayed in Control Center and Lock Screen
+
+    /// Stable string identifier derived from track metadata. Used for two purposes:
+    ///   1. `pendingIdentifier` (dedup of in-flight artwork loads when the user
+    ///      changes track twice quickly — drop the older fetch's result).
+    ///   2. `MPNowPlayingInfoPropertyExternalContentIdentifier`, telling
+    ///      `MediaRemote` "this is the *same* item across position-tick updates."
+    ///      Without it, every `setNowPlayingInfo` call gets a fresh auto-assigned
+    ///      ContentItemIdentifier, which causes `mediaremoted` to fire
+    ///      `PlaybackQueueInvalidation` on every 500 ms tick — the bar visibly
+    ///      thrashes and CarPlay treats each tick as a queue change.
+    ///
+    /// Duration is rounded to whole seconds because the value occasionally jitters
+    /// between near-equivalent doubles across queue updates (e.g. 199.99987 vs.
+    /// 200.000); we don't want that to look like a different item.
+    private func contentIdentifier(
+        title: String?,
+        artist: String?,
+        album: String?,
+        duration: Double?
+    ) -> String {
+        let durStr = duration.map { String(format: "%.0f", $0) } ?? ""
+        return "\(title ?? "")|\(artist ?? "")|\(album ?? "")|\(durStr)"
+    }
+
+    /// Updates the Now Playing info displayed in Control Center and Lock Screen.
+    ///
+    /// `duration` and `elapsedTime` are optional: nil means "value unknown — leave
+    /// the corresponding `MPNowPlayingInfoCenter` field alone." The same-track path
+    /// merges into the existing dict rather than replacing it, so a nil value here
+    /// preserves whatever iOS last had instead of pinning a field to 0. See the
+    /// position-tracker overlay in `MainDataSource` (Kotlin) for why upstream needs
+    /// to send nils across transient gaps in server data — without this, a queue
+    /// event arriving with `elapsed_time = null` (which MA does mid-pause) would
+    /// reset the playback bar to 0.
     func updateNowPlayingInfo(
         title: String?,
         artist: String?,
         album: String?,
         artworkUrl: String?,
-        duration: Double,
-        elapsedTime: Double,
+        duration: Double?,
+        elapsedTime: Double?,
         playbackRate: Double
     ) {
-        let newIdentifier = "\(title ?? "")-\(artist ?? "")-\(album ?? "")"
-        let isNewTrack = (title != currentTitle || artist != currentArtist)
-        
-        // If it's the same track, update immediately with existing/cached art
+        let newIdentifier = contentIdentifier(
+            title: title, artist: artist, album: album, duration: duration
+        )
+        // New-track detection has to mirror what `contentIdentifier` keys on,
+        // otherwise the lock-screen artwork pins to whichever cover loaded
+        // first. Two tracks with the same title and artist on different albums
+        // (a single vs. the album cut, a remaster vs. the original) are
+        // legitimately different items and need a fresh artwork load.
+        let isNewTrack = (
+            title != currentTitle ||
+            artist != currentArtist ||
+            album != currentAlbum
+        )
+
+        // If it's the same track, merge into the existing dict so nil-valued
+        // fields preserve iOS's last-known state.
         if !isNewTrack {
-            self.performUpdate(
+            self.applyMergedUpdate(
                 title: title, artist: artist, album: album,
                 artwork: self.cachedArtwork,
-                duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate
+                duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate,
+                contentId: newIdentifier,
+                isNewTrack: false
             )
             return
         }
-        
+
         // If it's a new track, we want to PREVENT FLICKER.
         // Strategy: Keep showing OLD metadata until NEW artwork is ready.
-        
+
         print("🎵 NowPlayingManager: Detected new track. Waiting for artwork to prevent flicker...")
-        
+
         // Mark this as the pending update
         self.pendingIdentifier = newIdentifier
-        
+
         // IMMEDIATE PAUSE FEEDBACK:
         // If the user paused (rate == 0), update the OLD metadata's rate immediately
-        // so the UI stops ticking/shows pause state, even while we load new art.
+        // so the UI stops ticking/shows pause state, even while we load new art. We
+        // intentionally only touch rate (and elapsed if known) — title/artist stay
+        // on the previous track until artwork arrives.
         if abs(playbackRate) < 0.001 {
-             var currentInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-             currentInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
-             currentInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsedTime, duration))
-             MPNowPlayingInfoCenter.default().nowPlayingInfo = currentInfo
+            var currentInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+            currentInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
+            if let elapsed = elapsedTime {
+                let dur = duration
+                    ?? (currentInfo[MPMediaItemPropertyPlaybackDuration] as? Double)
+                    ?? .greatestFiniteMagnitude
+                currentInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsed, dur))
+            }
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = currentInfo
         }
-        
+
         // Cancel any previous pending load
         currentTask?.cancel()
-        
+
         // If no artwork URL, update immediately with nil artwork
         guard let urlString = artworkUrl, let url = URL(string: urlString) else {
             self.cachedArtwork = nil
             self.updateCurrentState(title: title, artist: artist, album: album)
-            self.performUpdate(
+            self.applyMergedUpdate(
                 title: title, artist: artist, album: album,
                 artwork: nil,
-                duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate
+                duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate,
+                contentId: newIdentifier,
+                isNewTrack: true
             )
             return
         }
-        
+
         // Load artwork asynchronously
         self.currentTask = loadArtwork(from: url) { [weak self] artwork in
             guard let self = self else { return }
-            
+
             // Check if this result is still relevant
             if self.pendingIdentifier != newIdentifier {
                 print("🎵 NowPlayingManager: Ignoring stale artwork load for \(newIdentifier)")
                 return
             }
-            
+
             // On main thread, apply the FULL update (Text + New Art)
             DispatchQueue.main.async {
                 self.cachedArtwork = artwork
                 self.updateCurrentState(title: title, artist: artist, album: album)
-                
-                self.performUpdate(
+
+                self.applyMergedUpdate(
                     title: title, artist: artist, album: album,
                     artwork: artwork,
-                    duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate
+                    duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate,
+                    contentId: newIdentifier,
+                    isNewTrack: true
                 )
                 print("🎵 NowPlayingManager: Artwork loaded. Metadata updated.")
             }
         }
     }
-    
+
     private func updateCurrentState(title: String?, artist: String?, album: String?) {
         self.currentTitle = title
         self.currentArtist = artist
         self.currentAlbum = album
     }
-    
-    private func performUpdate(
+
+    /// Merges new fields into the existing `MPNowPlayingInfoCenter.nowPlayingInfo`
+    /// dict.
+    ///
+    /// When `isNewTrack` is `false` (same-track tick): nil-valued fields are
+    /// skipped (preserving iOS's last-known value) and non-nil fields overwrite.
+    /// This is the right semantics for position-tick / pause-rate updates where
+    /// upstream legitimately doesn't know elapsed.
+    ///
+    /// When `isNewTrack` is `true`: previous-track fields are explicitly cleared
+    /// before the merge — otherwise transitioning to a track that has, say, no
+    /// artwork URL would leave the previous track's cover pinned in the dict
+    /// because the skip-on-nil rule preserves it. The merge then writes whatever
+    /// values the caller has; missing values become absent rather than
+    /// previous-track holdovers.
+    ///
+    /// The stable `contentId` is always set so iOS doesn't auto-assign a fresh
+    /// `ContentItemIdentifier` per call (which would make `mediaremoted` fire
+    /// `PlaybackQueueInvalidation` on every position tick).
+    private func applyMergedUpdate(
         title: String?,
         artist: String?,
         album: String?,
         artwork: MPMediaItemArtwork?,
-        duration: Double,
-        elapsedTime: Double,
-        playbackRate: Double
+        duration: Double?,
+        elapsedTime: Double?,
+        playbackRate: Double,
+        contentId: String,
+        isNewTrack: Bool
     ) {
         DispatchQueue.main.async {
-            var nowPlayingInfo = [String: Any]()
-            
-            if let title = title { nowPlayingInfo[MPMediaItemPropertyTitle] = title }
-            if let artist = artist { nowPlayingInfo[MPMediaItemPropertyArtist] = artist }
-            if let album = album { nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = album }
-            
-            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
-            let clampedElapsed = max(0, min(elapsedTime, duration))
-            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = clampedElapsed
-            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
-            
-            if let artwork = artwork {
-                nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+
+            if isNewTrack {
+                // Wipe previous-track holdovers so a missing field on the new
+                // track doesn't render as a pinned stale value.
+                info.removeValue(forKey: MPMediaItemPropertyTitle)
+                info.removeValue(forKey: MPMediaItemPropertyArtist)
+                info.removeValue(forKey: MPMediaItemPropertyAlbumTitle)
+                info.removeValue(forKey: MPMediaItemPropertyArtwork)
+                info.removeValue(forKey: MPMediaItemPropertyPlaybackDuration)
+                info.removeValue(forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime)
             }
-            
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+
+            if let title = title { info[MPMediaItemPropertyTitle] = title }
+            if let artist = artist { info[MPMediaItemPropertyArtist] = artist }
+            if let album = album { info[MPMediaItemPropertyAlbumTitle] = album }
+            if let duration = duration { info[MPMediaItemPropertyPlaybackDuration] = duration }
+            if let elapsed = elapsedTime {
+                // Clamp against the freshly supplied duration if we have one,
+                // otherwise the duration already cached on iOS, otherwise unbounded.
+                let dur = duration
+                    ?? (info[MPMediaItemPropertyPlaybackDuration] as? Double)
+                    ?? .greatestFiniteMagnitude
+                info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsed, dur))
+            }
+            info[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
+            if let artwork = artwork {
+                info[MPMediaItemPropertyArtwork] = artwork
+            }
+            info[MPNowPlayingInfoPropertyExternalContentIdentifier] = contentId
+
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         }
     }
     

@@ -66,6 +66,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -577,24 +578,110 @@ class MainDataSource(
                 }
             }
         }
-        // Keep Now Playing (iOS Control Center / Lock Screen) in sync with local player state.
-        // Runs every ~500 ms driven by the position calculation loop above.
+        // Keep Now Playing (iOS Control Center / Lock Screen) in sync with the
+        // local player. iOS interpolates the playback bar internally from the
+        // `(elapsed, timestamp, rate)` triple on every `setNowPlayingInfo`
+        // call; per Apple's guidance the right pattern is one anchor write
+        // per server event, plus track/rate transitions, and let iOS take
+        // it from there. So we drive this off `localPlayer` — which re-emits
+        // on track change, play/pause, and server queue event — and dedupe
+        // via [NowPlayingSnapshot.sameDictWriteWouldBe] so sub-second
+        // position jitter doesn't cause a write per tick. Mid-pause
+        // `elapsed_time = null` events flow through as `null` and the iOS
+        // adapter's skip-on-nil semantics preserve the previous anchor.
         launch {
-            localPlayer.collect { playerData ->
-                val track = playerData?.queueInfo?.currentItem?.track
-                val serverUrl = apiClient.serverBaseUrl.value
-                if (track != null) {
-                    mediaPlayerController.updateNowPlaying(
-                        title = track.title,
-                        artist = track.subtitle,
-                        album = track.parentName,
-                        artworkUrl = track.imageInfo?.url(serverUrl),
-                        duration = track.duration ?: 0.0,
-                        elapsedTime = playerData.queueInfo.elapsedTime ?: 0.0,
-                        playbackRate = if (playerData.player.isPlaying) 1.0 else 0.0,
-                    )
-                } else {
-                    mediaPlayerController.clearNowPlaying()
+            localPlayer
+                .map { pd ->
+                    val track = pd?.queueInfo?.currentItem?.track
+                    if (track == null) {
+                        NowPlayingSnapshot.Cleared
+                    } else {
+                        NowPlayingSnapshot.Active(
+                            title = track.title,
+                            artist = track.subtitle,
+                            album = track.parentName,
+                            artworkUrl = track.imageInfo?.url(apiClient.serverBaseUrl.value),
+                            duration = track.duration,
+                            elapsedTime = pd.queueInfo?.elapsedTime,
+                            isPlaying = pd.player.isPlaying,
+                        )
+                    }
+                }
+                .distinctUntilChanged { a, b -> NowPlayingSnapshot.sameDictWriteWouldBe(a, b) }
+                .collect { snapshot ->
+                    when (snapshot) {
+                        NowPlayingSnapshot.Cleared -> mediaPlayerController.clearNowPlaying()
+                        is NowPlayingSnapshot.Active -> mediaPlayerController.updateNowPlaying(
+                            title = snapshot.title,
+                            artist = snapshot.artist,
+                            album = snapshot.album,
+                            artworkUrl = snapshot.artworkUrl,
+                            duration = snapshot.duration,
+                            elapsedTime = snapshot.elapsedTime,
+                            playbackRate = if (snapshot.isPlaying) 1.0 else 0.0,
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Captures the fields a single emission would push to iOS's Now Playing
+     * dict — [Active] when the local player has a track, [Cleared] when it
+     * doesn't. Paired with [Companion.sameDictWriteWouldBe] as a
+     * [distinctUntilChanged] key so the flow only emits once per visible
+     * anchor change (new track, pause/play, real elapsed jump).
+     */
+    internal sealed interface NowPlayingSnapshot {
+        data object Cleared : NowPlayingSnapshot
+        data class Active(
+            val title: String?,
+            val artist: String?,
+            val album: String?,
+            val artworkUrl: String?,
+            val duration: Double?,
+            val elapsedTime: Double?,
+            val isPlaying: Boolean,
+        ) : NowPlayingSnapshot
+
+        companion object {
+            /**
+             * Threshold (seconds) below which two `elapsed` values are treated
+             * as the same anchor: iOS's own interpolator covers sub-second
+             * drift from `(elapsed, timestamp, rate)`, so writing a fresh
+             * value within this window is a no-op the user can't see.
+             *
+             * 2 s is comfortably wider than typical position-tracker jitter
+             * (we tick at 500 ms with ±50 ms of dispatch noise) and tighter
+             * than any user-visible seek.
+             */
+            internal const val ELAPSED_ANCHOR_EPSILON_S = 2.0
+
+            /**
+             * Returns `true` when [a] and [b] would produce indistinguishable
+             * `MPNowPlayingInfoCenter` dict writes — i.e. emitting [b] after
+             * [a] would not visibly change the lock screen / CarPlay bar.
+             *
+             * Most fields compare by value equality. `elapsedTime` is the
+             * exception: small drifts (within [ELAPSED_ANCHOR_EPSILON_S]) are
+             * treated as equal because iOS is already interpolating from the
+             * last anchor. Crossing the threshold (e.g. a server-side seek,
+             * a reconnect re-anchoring with a wildly different value) emits.
+             */
+            fun sameDictWriteWouldBe(a: NowPlayingSnapshot, b: NowPlayingSnapshot): Boolean {
+                if (a !is Active || b !is Active) return a === b
+                if (a.title != b.title) return false
+                if (a.artist != b.artist) return false
+                if (a.album != b.album) return false
+                if (a.artworkUrl != b.artworkUrl) return false
+                if (a.duration != b.duration) return false
+                if (a.isPlaying != b.isPlaying) return false
+                val ae = a.elapsedTime
+                val be = b.elapsedTime
+                return when {
+                    ae == null && be == null -> true
+                    ae == null || be == null -> false
+                    else -> kotlin.math.abs(ae - be) < ELAPSED_ANCHOR_EPSILON_S
                 }
             }
         }
