@@ -33,6 +33,10 @@ import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
 import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_pause
+import musicassistantclient.composeapp.generated.resources.action_play
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PlayerControls(
@@ -107,8 +111,8 @@ fun PlayerControls(
                 size = mainButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
                 contentDescription = when (player.isPlaying) {
-                    true -> "Pause"
-                    false -> "Play"
+                    true -> stringResource(Res.string.action_pause)
+                    false -> stringResource(Res.string.action_play)
                 },
             ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
         }

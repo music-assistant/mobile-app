@@ -52,6 +52,9 @@ import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.formatDuration
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_playing
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.DurationUnit
 
 @Composable
@@ -113,17 +116,18 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            val trackName = track?.title
+            val trackName = track?.title ?: "nothing playing"
+            val playingContentDescription = stringResource(Res.string.cd_playing, trackName)
             Column(
                 modifier = Modifier
                 .padding(horizontal = 16.dp)
                 .clearAndSetSemantics {
-                    contentDescription = "Playing $trackName"
+                    contentDescription = playingContentDescription
                 },
             ) {
                 Text(
                     modifier = Modifier.basicMarquee().alpha(if (track != null) 1f else DISABLED_ALPHA),
-                    text = trackName ?: "nothing playing",
+                    text = trackName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,

@@ -23,6 +23,7 @@
     <string name="action_go_to_artist">Go to artist</string>
     <string name="action_toggle_view_mode">Toggle view mode</string>
     <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
     <string name="action_play_next">Play next</string>
     <string name="action_add_to_queue">Add to queue</string>
     <string name="refresh">Refresh</string>
@@ -59,6 +60,8 @@
     <string name="cd_in_progress">In progress</string>
     <string name="cd_provider_icon">Provider Icon</string>
     <string name="cd_dsp_settings">DSP Settings</string>
+    <string name="cd_playing">Playing %1$s</string>
+    <string name="cd_current_player">Current player: %1$s</string>
 
     <!-- Playlist dialog -->
     <string name="playlist_add_to_title">Add to Playlist</string>

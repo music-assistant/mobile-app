@@ -36,6 +36,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.cd_dsp_settings
 import org.jetbrains.compose.resources.stringResource
 
@@ -54,9 +55,11 @@ fun PlayerSelectionLayout(
     val hasGroupChildren = player.childrenBinds.isNotEmpty()
     val hasBoundChildren = player.childrenBinds.any { it.isBound }
 
+    val currentPlayerContentDescription =
+        stringResource(Res.string.cd_current_player, player.player.name)
     Row(
         modifier = Modifier.clearAndSetSemantics {
-            contentDescription = "Current player: ${player.player.name}"
+            contentDescription = currentPlayerContentDescription
         },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
