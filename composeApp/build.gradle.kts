@@ -12,6 +12,10 @@ composeCompiler {
     stabilityConfigurationFile = project.layout.projectDirectory.file("compose-stability.conf")
 }
 
+compose.resources {
+    publicResClass = true
+}
+
 kotlin {
     androidLibrary {
         namespace = "io.music_assistant.client.shared"

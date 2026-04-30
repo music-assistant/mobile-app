@@ -9,7 +9,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_play
 
 class MediaItemPage(
     private val name: String,
@@ -68,7 +71,7 @@ class MediaItemPage(
     }
 
     fun clickPlay(): MediaItemPage {
-        composeTestRule.onNodeWithText("Play").performClick()
+        composeTestRule.onNodeWithText(Res.string.action_play.get()).performClick()
         return this
     }
 }
