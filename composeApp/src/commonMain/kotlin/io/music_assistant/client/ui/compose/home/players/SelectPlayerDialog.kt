@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -581,8 +582,8 @@ private fun VolumeRow(
             },
         )
         Text(
+            modifier = Modifier.width(24.dp).alpha(if (enabled) 1f else 0.4f),
             text = currentVolume.roundToInt().toString(),
-            modifier = Modifier.alpha(if (enabled) 1f else 0.4f),
             textAlign = TextAlign.End,
             style = MaterialTheme.typography.labelMedium,
         )

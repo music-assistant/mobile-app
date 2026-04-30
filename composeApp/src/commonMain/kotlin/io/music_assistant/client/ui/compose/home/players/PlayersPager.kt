@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -357,7 +359,7 @@ private fun ExpandedPlayerPage(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().height(36.dp)
-                        .padding(horizontal = 64.dp),
+                        .padding(horizontal = 32.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -421,6 +423,7 @@ private fun ExpandedPlayerPage(
                         },
                     )
                     Text(
+                        modifier = Modifier.width(24.dp),
                         text = currentVolume.roundToInt().toString(),
                         textAlign = TextAlign.End,
                         style = MaterialTheme.typography.labelMedium,
