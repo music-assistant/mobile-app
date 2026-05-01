@@ -61,7 +61,7 @@ import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
-import io.music_assistant.client.ui.compose.common.OverflowMenu
+import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.nav.BackHandler
@@ -73,8 +73,61 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.auth_title
+import musicassistantclient.composeapp.generated.resources.cd_connection_history
+import musicassistantclient.composeapp.generated.resources.cd_delete_crash_logs
+import musicassistantclient.composeapp.generated.resources.cd_scan_qr_code
+import musicassistantclient.composeapp.generated.resources.cd_select_codec
+import musicassistantclient.composeapp.generated.resources.common_back
+import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.common_delete
+import musicassistantclient.composeapp.generated.resources.nav_settings
+import musicassistantclient.composeapp.generated.resources.settings_about_description
+import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
+import musicassistantclient.composeapp.generated.resources.settings_codec_preference
+import musicassistantclient.composeapp.generated.resources.settings_connect
+import musicassistantclient.composeapp.generated.resources.settings_connect_saved
+import musicassistantclient.composeapp.generated.resources.settings_connect_webrtc
+import musicassistantclient.composeapp.generated.resources.settings_connected
+import musicassistantclient.composeapp.generated.resources.settings_connected_to
+import musicassistantclient.composeapp.generated.resources.settings_connected_webrtc
+import musicassistantclient.composeapp.generated.resources.settings_connecting
+import musicassistantclient.composeapp.generated.resources.settings_connecting_remote
+import musicassistantclient.composeapp.generated.resources.settings_connecting_to
+import musicassistantclient.composeapp.generated.resources.settings_connection_direct
+import musicassistantclient.composeapp.generated.resources.settings_connection_method
+import musicassistantclient.composeapp.generated.resources.settings_connection_webrtc
+import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin
+import musicassistantclient.composeapp.generated.resources.settings_disable_local_player
+import musicassistantclient.composeapp.generated.resources.settings_disconnect
+import musicassistantclient.composeapp.generated.resources.settings_enable_local_player
+import musicassistantclient.composeapp.generated.resources.settings_exit_app
+import musicassistantclient.composeapp.generated.resources.settings_history_direct
+import musicassistantclient.composeapp.generated.resources.settings_history_webrtc
+import musicassistantclient.composeapp.generated.resources.settings_host
+import musicassistantclient.composeapp.generated.resources.settings_local_player_disabled
+import musicassistantclient.composeapp.generated.resources.settings_local_player_enabled
+import musicassistantclient.composeapp.generated.resources.settings_misc
+import musicassistantclient.composeapp.generated.resources.settings_no_saved_connections
+import musicassistantclient.composeapp.generated.resources.settings_path
+import musicassistantclient.composeapp.generated.resources.settings_player_name
+import musicassistantclient.composeapp.generated.resources.settings_port
+import musicassistantclient.composeapp.generated.resources.settings_port_default
+import musicassistantclient.composeapp.generated.resources.settings_remote_id
+import musicassistantclient.composeapp.generated.resources.settings_remote_id_hint
+import musicassistantclient.composeapp.generated.resources.settings_remote_id_invalid
+import musicassistantclient.composeapp.generated.resources.settings_saved_connections
+import musicassistantclient.composeapp.generated.resources.settings_scan_qr
+import musicassistantclient.composeapp.generated.resources.settings_server
+import musicassistantclient.composeapp.generated.resources.settings_server_host
+import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
+import musicassistantclient.composeapp.generated.resources.settings_share_logs
+import musicassistantclient.composeapp.generated.resources.settings_use_tls
+import musicassistantclient.composeapp.generated.resources.settings_use_tls_wss
+import musicassistantclient.composeapp.generated.resources.settings_version_info
+import musicassistantclient.composeapp.generated.resources.settings_webrtc_description
+import musicassistantclient.composeapp.generated.resources.settings_webrtc_info
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.publicvalue.multiplatform.qrcode.CameraPosition
@@ -853,7 +906,7 @@ private fun SendspinSection(
         )
 
         // Codec selection
-        OverflowMenu(
+        OverflowMenuButton(
             options = Codecs.list.map { item ->
                 OverflowMenuOption(
                     title = item.localizedTitle(),

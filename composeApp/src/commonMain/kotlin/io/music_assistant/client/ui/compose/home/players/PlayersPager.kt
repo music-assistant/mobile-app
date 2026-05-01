@@ -64,7 +64,7 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
-import io.music_assistant.client.ui.compose.common.OverflowMenu
+import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -316,7 +316,7 @@ private fun ExpandedPlayerPage(
                 )
             }
 
-            OverflowMenu(
+            OverflowMenuButton(
                 modifier = Modifier,
                 options = (player.queueInfo!!.currentItem!!.track as AppMediaItem).navigationOptions {
                     onClose()

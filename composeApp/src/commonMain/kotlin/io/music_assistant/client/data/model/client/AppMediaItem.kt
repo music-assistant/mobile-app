@@ -269,7 +269,7 @@ abstract class AppMediaItem(
         // val version: String?,
         override val duration: Double?,
 //        val isrc: String?,
-        val artists: List<Artist>?,
+        val artists: List<Artist>,
 // album track only
         val album: Album?,
         val discNumber: Int?,
@@ -541,7 +541,7 @@ abstract class AppMediaItem(
                     // version = version,
                     duration = duration,
 //                    isrc = isrc,
-                    artists = artists?.mapNotNull { it.toAppMediaItem() as? Artist },
+                    artists = artists?.mapNotNull { it.toAppMediaItem() as? Artist } ?: emptyList(),
                     album = album?.let { it.toAppMediaItem() as? Album },
                     discNumber = discNumber,
                     trackNumber = trackNumber,

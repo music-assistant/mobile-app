@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun OverflowMenu(
+fun OverflowMenuButton(
     modifier: Modifier = Modifier,
     options: List<OverflowMenuOption>,
     buttonContent: @Composable (onClick: () -> Unit) -> Unit,
@@ -28,29 +28,38 @@ fun OverflowMenu(
         modifier = modifier.wrapContentSize(Alignment.TopStart),
     ) {
         buttonContent { expanded = true }
-        DropdownMenu(
+        OverflowMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    onClick = {
-                        option.onClick()
-                        expanded = false
-                    },
-                    leadingIcon = option.icon?.let {
-                        {
-                            Icon(
-                                imageVector = it,
-                                contentDescription = option.title,
-                            )
-                        }
-                    },
-                    text = {
-                        Text(modifier = Modifier.padding(all = 4.dp), text = option.title)
-                    },
-                )
-            }
+            onClose = { expanded = false },
+            options = options,
+        )
+    }
+}
+
+@Composable
+fun OverflowMenu(expanded: Boolean, onClose: () -> Unit = {}, options: List<OverflowMenuOption>) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { onClose() },
+    ) {
+        options.forEach { option ->
+            DropdownMenuItem(
+                onClick = {
+                    option.onClick()
+                    onClose()
+                },
+                leadingIcon = option.icon?.let {
+                    {
+                        Icon(
+                            imageVector = it,
+                            contentDescription = option.title,
+                        )
+                    }
+                },
+                text = {
+                    Text(modifier = Modifier.padding(all = 4.dp), text = option.title)
+                },
+            )
         }
     }
 }

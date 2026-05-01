@@ -55,7 +55,7 @@ import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.ui.compose.common.OverflowMenu
+import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.Badges
@@ -64,8 +64,17 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.launch
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_add_to_library
+import musicassistantclient.composeapp.generated.resources.action_favorite
+import musicassistantclient.composeapp.generated.resources.action_remove_from_library
+import musicassistantclient.composeapp.generated.resources.action_toggle_view_mode
+import musicassistantclient.composeapp.generated.resources.action_unfavorite
+import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.common_back
+import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.playlist_add_to_title
+import musicassistantclient.composeapp.generated.resources.playlist_no_editable
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -162,7 +171,7 @@ private fun ItemOverflow(
     var playlists by remember { mutableStateOf<List<AppMediaItem.Playlist>>(emptyList()) }
     var isLoadingPlaylists by remember { mutableStateOf(false) }
 
-    OverflowMenu(
+    OverflowMenuButton(
         options = buildList {
             libraryActions?.let { actions ->
                 if (item !is AppMediaItem.Genre) {

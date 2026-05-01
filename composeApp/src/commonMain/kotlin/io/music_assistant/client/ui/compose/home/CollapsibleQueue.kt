@@ -56,7 +56,7 @@ import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.OverflowMenu
+import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
@@ -64,8 +64,21 @@ import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_toggle_queue
+import musicassistantclient.composeapp.generated.resources.common_clear
+import musicassistantclient.composeapp.generated.resources.common_delete
+import musicassistantclient.composeapp.generated.resources.common_transfer
+import musicassistantclient.composeapp.generated.resources.queue_browse_library
+import musicassistantclient.composeapp.generated.resources.queue_cannot_play
+import musicassistantclient.composeapp.generated.resources.queue_empty
+import musicassistantclient.composeapp.generated.resources.queue_error
+import musicassistantclient.composeapp.generated.resources.queue_label
+import musicassistantclient.composeapp.generated.resources.queue_label_with_position
+import musicassistantclient.composeapp.generated.resources.queue_loading
+import musicassistantclient.composeapp.generated.resources.queue_no_items
+import musicassistantclient.composeapp.generated.resources.queue_no_other_players
+import musicassistantclient.composeapp.generated.resources.queue_not_loaded
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -144,7 +157,7 @@ fun CollapsibleQueue(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Transfer button
-                OverflowMenu(
+                OverflowMenuButton(
                     options = players.filter { p -> p.player.id != queueId }.map { playerData ->
                         OverflowMenuOption(
                             title = playerData.player.nameAndSuffix,

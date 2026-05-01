@@ -44,6 +44,31 @@ object AppMediaItemFixtures {
         )
     }
 
+    fun track(
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Track $itemId",
+        artists: List<AppMediaItem.Artist> = listOf(artist()),
+        album: AppMediaItem.Album? = null,
+    ): AppMediaItem.Track {
+        return AppMediaItem.Track(
+            itemId = itemId,
+            provider = "blah",
+            name = name,
+            providerMappings = emptyList(),
+            metadata = null,
+            favorite = null,
+            uri = null,
+            image = null,
+            duration = null,
+            artists = artists,
+            album = album,
+            discNumber = null,
+            trackNumber = null,
+            position = null,
+            version = null,
+        )
+    }
+
     fun tracks(
         tracks: List<String>,
         album: AppMediaItem.Album? = null,
@@ -51,24 +76,7 @@ object AppMediaItemFixtures {
         return tracks.map {
             val trackAlbum = album ?: album(itemId = "blah")
             val trackArtists = album?.artists ?: listOf(artist())
-
-            AppMediaItem.Track(
-                itemId = "blah",
-                provider = "blah",
-                name = it,
-                providerMappings = emptyList(),
-                metadata = null,
-                favorite = null,
-                uri = null,
-                image = null,
-                duration = null,
-                artists = trackArtists,
-                album = trackAlbum,
-                discNumber = null,
-                trackNumber = null,
-                position = null,
-                version = null,
-            )
+            track(name = it, artists = trackArtists, album = trackAlbum)
         }
     }
 

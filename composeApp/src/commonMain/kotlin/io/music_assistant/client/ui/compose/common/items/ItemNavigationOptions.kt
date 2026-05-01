@@ -15,7 +15,9 @@ fun AppMediaItem.navigationOptions(navigateToItem: (AppMediaItem) -> Unit): List
     return buildList {
         when (item) {
             is AppMediaItem.Track -> {
-                add(goToArtist(item.artists!![0], navigateToItem))
+                if (artists.isNotEmpty()) {
+                    add(goToArtist(item.artists[0], navigateToItem))
+                }
             }
 
             is AppMediaItem.Album -> {
