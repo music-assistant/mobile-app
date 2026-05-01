@@ -14,6 +14,7 @@ import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -40,6 +41,18 @@ class LocalPlayerRepository(
 
     private val _localPlayerData = MutableStateFlow<PlayerData?>(null)
     val localPlayerData: StateFlow<PlayerData?> = _localPlayerData.asStateFlow()
+
+    /**
+     * Fired whenever an optimistic queue mutation produces a new [QueueInfo]
+     * for the local player. [MainDataSource] sets this in its `init` block to
+     * mirror the bumped `elapsedTimeLastUpdated` into its own `_queueInfos`
+     * store, which is the single source of truth consulted by the staleness
+     * gate. Without the mirror, a stale server replay arriving after an
+     * optimistic toggle could pass the gate (it'd compare against the old
+     * server stamp, not the bumped optimistic one) and clobber the user's
+     * change.
+     */
+    var onOptimisticQueueChange: ((QueueInfo) -> Unit)? = null
 
     private val commandQueueMutex = Mutex()
     private val commandQueue = mutableListOf<QueuedEntry>()
@@ -145,6 +158,8 @@ class LocalPlayerRepository(
     }
 
     fun onServerQueueUpdate(queueInfo: QueueInfo) {
+        // Staleness gating happens upstream in [MainDataSource.gateOrSkip]
+        // before we're called, so this just absorbs the admitted event.
         _localPlayerData.update { current ->
             current?.copy(
                 queue = DataState.Data(
@@ -220,9 +235,21 @@ class LocalPlayerRepository(
         _localPlayerData.update { current ->
             current?.let { pd ->
                 val queueData = pd.queue as? DataState.Data ?: return@update pd
+                // Bump `elapsedTimeLastUpdated` to client wall clock so a server
+                // replay whose timestamp predates this optimistic write is
+                // rejected by the staleness gate in [MainDataSource.gateOrSkip].
+                // Assumes client and server clocks are roughly NTP-synced; drift
+                // of seconds is fine because legitimate confirmation events from
+                // the server (post-toggle) are always strictly newer than `now()`.
+                val transformed = transform(queueData.data.info).copy(
+                    elapsedTimeLastUpdated = currentTimeMillis() / 1000.0,
+                )
+                // Notify MainDataSource so the bumped stamp lands in its
+                // `_queueInfos` store — the gate's single source of truth.
+                onOptimisticQueueChange?.invoke(transformed)
                 pd.copy(
                     queue = DataState.Data(
-                        queueData.data.copy(info = transform(queueData.data.info)),
+                        queueData.data.copy(info = transformed),
                     ),
                 )
             }

@@ -2,6 +2,7 @@ package io.music_assistant.client.api
 
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
@@ -78,6 +79,48 @@ class EventTest {
         assertNotNull(decoded)
         assertTrue(decoded is PlayerUpdatedEvent)
         assertNull(decoded.data.type)
+    }
+
+    @Test
+    fun decodesQueueAddedEvent() {
+        // Real-shape payload (truncated from a connect-time CarPlay session
+        // capture). Required fields: queue_id (id), elapsed_time_last_updated.
+        // current_item is the field CarPlay's initial-Now-Playing decision
+        // hinges on, so it's pinned here.
+        val raw = """{
+            "event": "queue_added",
+            "object_id": "q1",
+            "data": {
+                "queue_id": "q1",
+                "active": true,
+                "display_name": "Djinni",
+                "available": true,
+                "items": 128,
+                "shuffle_enabled": false,
+                "repeat_mode": "off",
+                "dont_stop_the_music_enabled": false,
+                "current_index": 2,
+                "elapsed_time": 134.45,
+                "elapsed_time_last_updated": 1777422843.81,
+                "state": "idle",
+                "current_item": {
+                    "queue_id": "q1",
+                    "queue_item_id": "qi1",
+                    "name": "Alela Diane - About Farewell",
+                    "duration": 190,
+                    "sort_index": 2,
+                    "available": true
+                }
+            }
+        }"""
+
+        val decoded = parse(raw).event()
+
+        assertNotNull(decoded)
+        assertTrue(decoded is QueueAddedEvent)
+        assertEquals("q1", decoded.data.queueId)
+        assertNotNull(decoded.data.currentItem)
+        assertEquals("Alela Diane - About Farewell", decoded.data.currentItem.name)
     }
 
     @Test

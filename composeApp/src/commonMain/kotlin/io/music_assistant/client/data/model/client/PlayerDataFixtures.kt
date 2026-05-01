@@ -44,6 +44,7 @@ object PlayerDataFixtures {
                         shuffleEnabled = false,
                         repeatMode = RepeatMode.OFF,
                         elapsedTime = 100.0,
+                        elapsedTimeLastUpdated = null,
                         currentItem = null,
                     ),
                     items = DataState.NoData(),

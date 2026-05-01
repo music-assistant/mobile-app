@@ -30,6 +30,7 @@ import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.data.model.server.events.PlayerAddedEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
@@ -227,6 +228,22 @@ class MainDataSource(
     private var updateJob: Job? = null
 
     init {
+        // Mirror optimistic-bump stamps from LocalPlayerRepository into
+        // `_queueInfos` so [gateOrSkip] sees them when comparing against an
+        // incoming server event. Without this, a server replay arriving after
+        // an optimistic toggle would compare against the stale server stamp
+        // (still in `_queueInfos`) instead of the fresh optimistic one and
+        // pass the gate, clobbering the user's change.
+        localPlayerRepository.onOptimisticQueueChange = { queueInfo ->
+            _queueInfos.update { value ->
+                if (value.any { it.id == queueInfo.id }) {
+                    value.map { if (it.id == queueInfo.id) queueInfo else it }
+                } else {
+                    value + queueInfo
+                }
+            }
+        }
+
         // Position calculation loop - runs independently to provide smooth position updates
         launch {
             while (isActive) {
@@ -1030,6 +1047,30 @@ class MainDataSource(
         _userSelectedPlayerId.update { player.id }
     }
 
+    /**
+     * Stale-event gate. Returns `true` if [data] should be processed, `false`
+     * if it's a server replay older than what we already have for this queue
+     * id. See [QueueInfo.isStaleReplay] for the comparison rules.
+     *
+     * `_queueInfos` is the single source of truth: server-event handlers
+     * write to it on admit, and [LocalPlayerRepository.onOptimisticQueueChange]
+     * mirrors optimistic-bump stamps into it via the callback wired in [init].
+     * That removes the need for a cross-store merge — the gate only has to
+     * look in one place.
+     */
+    private fun gateOrSkip(data: QueueInfo, label: String): Boolean {
+        val existing = _queueInfos.value.find { it.id == data.id }
+        if (QueueInfo.isStaleReplay(incoming = data, existing = existing)) {
+            log.d {
+                "Dropping stale $label for ${data.id}: " +
+                    "${data.elapsedTimeLastUpdated} < " +
+                    "${existing?.elapsedTimeLastUpdated}"
+            }
+            return false
+        }
+        return true
+    }
+
     fun playerAction(playerId: String, action: PlayerAction) {
         // Delegate to data-based overload for local player (handles optimistic + routing)
         if (playerId == settings.sendspinClientId.value) {
@@ -1426,8 +1467,62 @@ class MainDataSource(
                             }
                         }
 
-                        is QueueUpdatedEvent -> {
+                        is QueueAddedEvent -> {
+                            // Server announces a queue (typically when a new
+                            // player connects and MA registers its queue).
+                            // Payload is a full QueueInfo including
+                            // current_item; the staleness gate still applies
+                            // for the rare re-add-after-add case, but on the
+                            // first sighting `existing == null` so it's a
+                            // straight upsert.
                             val data = event.queue()
+                            if (!gateOrSkip(data, "QueueAdded")) return@collect
+                            Logger.i("Queue added $data")
+
+                            val localPlayerId = settings.sendspinClientId.value
+                            if (data.id == localPlayerId ||
+                                (_serverPlayers.value as? DataState.Data)?.data
+                                    ?.find { it.id == localPlayerId }?.queueId == data.id
+                            ) {
+                                localPlayerRepository.onServerQueueUpdate(data)
+                            }
+
+                            data.elapsedTime?.let { elapsed ->
+                                val player =
+                                    (_serverPlayers.value as? DataState.Data)?.data?.find { it.queueId == data.id }
+                                _positionTrackers.update { trackers ->
+                                    trackers + (
+                                        data.id to PositionTracker(
+                                        queueId = data.id,
+                                        basePosition = elapsed,
+                                        baseTimestamp = currentTimeMillis(),
+                                        isPlaying = player?.isPlaying ?: false,
+                                        duration = data.currentItem?.track?.duration,
+                                    )
+                                    )
+                                }
+                            }
+
+                            // Upsert: replace if present, append if new.
+                            _queueInfos.update { value ->
+                                if (value.any { it.id == data.id }) {
+                                    value.map { if (it.id == data.id) data else it }
+                                } else {
+                                    value + data
+                                }
+                            }
+                        }
+
+                        is QueueUpdatedEvent -> {
+                            // Stale-event gate: see [QueueInfo.isStaleReplay]. The
+                            // MA server occasionally replays queue events that
+                            // predate fresher state we already received (observed
+                            // around Siri "next track" handoffs and rapid queue
+                            // mutations). Without this guard, a stale replay
+                            // clobbers the position tracker — the playhead visibly
+                            // snaps backward, or the prior track briefly reappears.
+                            val data = event.queue()
+                            if (!gateOrSkip(data, "QueueUpdated")) return@collect
                             Logger.i("Queue updated $data")
 
                             // Forward to local player repository if this is the local player's queue
@@ -1464,7 +1559,13 @@ class MainDataSource(
                         }
 
                         is QueueItemsUpdatedEvent -> {
+                            // Same staleness gate as QueueUpdatedEvent (see
+                            // [QueueInfo.isStaleReplay]): items can change without
+                            // the playhead advancing (e.g. queue reorder), but a
+                            // same-id event with an older `elapsedTimeLastUpdated`
+                            // is almost certainly a replay.
                             val data = event.queue()
+                            if (!gateOrSkip(data, "QueueItemsUpdated")) return@collect
                             _queueInfos.update { value ->
                                 value.map {
                                     if (it.id == data.id) data else it
@@ -1476,6 +1577,13 @@ class MainDataSource(
                         }
 
                         is QueueTimeUpdatedEvent -> {
+                            // NOT staleness-gated. The event payload is just
+                            // `(objectId, elapsed: Double)` with no server-side
+                            // `last_updated` timestamp, so we have nothing to compare
+                            // against. We rely on in-order WebSocket delivery (TCP
+                            // sequencing within a single transport session) to keep
+                            // these monotonic. If we ever introduce parallel
+                            // transports or out-of-order delivery, revisit this.
                             val oldQueue = _queueInfos.value.find { it.id == event.objectId }
                             // Update position tracker
                             event.objectId?.let { queueId ->

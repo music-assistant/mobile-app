@@ -22,7 +22,22 @@ data class ServerQueue(
     // @SerialName("current_index") val currentIndex: Int? = null,
     // @SerialName("index_in_buffer") val indexInBuffer: Int? = null,
     @SerialName("elapsed_time") val elapsedTime: Double? = null,
-    // @SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double,
+    /**
+     * Server-side wall clock (Unix seconds, fractional) when [elapsedTime] was last
+     * recomputed. Used as the staleness signal: a queue event whose
+     * [elapsedTimeLastUpdated] is older than what we already have for the same
+     * [queueId] is a server replay and is dropped before it can clobber fresher
+     * client state.
+     *
+     * Nullable on purpose. The MA server has historically always emitted the field
+     * (verified against schema v30), but if a future server build, a downgraded
+     * server, or a transient bug ever omits it, the staleness gate must see
+     * `null` and bypass itself — treating a missing stamp as a sentinel value
+     * (e.g. `0.0`) would compare as older than every real timestamp and
+     * silently drop every subsequent legitimate event. See
+     * [io.music_assistant.client.data.model.client.QueueInfo.Companion.isStaleReplay].
+     */
+    @SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double? = null,
     // @SerialName("state") val state: PlayerState,
     @SerialName("current_item") val currentItem: ServerQueueItem? = null,
     // @SerialName("next_item") val nextItem: QueueItem? = null,
