@@ -31,7 +31,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,12 +65,12 @@ import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.OverflowMenu
-import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
+import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
@@ -79,7 +78,6 @@ import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
@@ -98,7 +96,7 @@ internal fun PlayersPager(
     onFavoriteClick: (AppMediaItem) -> Unit,
     expanded: Boolean,
     onClose: () -> Unit,
-    goToArtist: (AppMediaItem.Artist) -> Unit,
+    navigateToItem: (AppMediaItem) -> Unit,
     onPlayersReorder: (List<String>) -> Unit,
     queueAction: (QueueAction) -> Unit,
     moveToPlayer: (String) -> Unit,
@@ -222,7 +220,7 @@ internal fun PlayersPager(
                             onExpandQueue = { isQueueExpanded = it },
                             contentPadding = contentPadding,
                             isCurrentPage = page == playerPagerState.currentPage,
-                            goToArtist = goToArtist,
+                            navigateToItem = navigateToItem,
                         )
                     } else {
                         CollapsedPlayerPage(
@@ -298,7 +296,7 @@ private fun ExpandedPlayerPage(
     onExpandQueue: (Boolean) -> Unit,
     contentPadding: PaddingValues,
     isCurrentPage: Boolean,
-    goToArtist: (AppMediaItem.Artist) -> Unit = {},
+    navigateToItem: (AppMediaItem) -> Unit = {},
 ) {
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Box(
@@ -320,19 +318,9 @@ private fun ExpandedPlayerPage(
 
             OverflowMenu(
                 modifier = Modifier,
-                options = buildList {
-                    add(
-                        OverflowMenuOption(
-                            title = stringResource(Res.string.action_go_to_artist),
-                            icon = Icons.Default.Person,
-                            onClick = {
-                                val artist =
-                                    (player.queueInfo!!.currentItem!!.track as AppMediaItem.Track).artists!![0]
-                                onClose()
-                                goToArtist(artist)
-                            },
-                        ),
-                    )
+                options = (player.queueInfo!!.currentItem!!.track as AppMediaItem).navigationOptions {
+                    onClose()
+                    navigateToItem(it)
                 },
             ) { onClick ->
                 IconButton(onClick = onClick) {

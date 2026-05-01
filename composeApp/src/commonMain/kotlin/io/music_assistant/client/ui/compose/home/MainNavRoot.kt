@@ -442,12 +442,12 @@ private fun Players(
             localPlayerId = homeScreenViewModel.localPlayerId,
             onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
             fetchColors = fetchColors,
-            goToArtist = { artist ->
+            navigateToItem = { item ->
                 backStack.add(
                     MainNav.ItemDetails(
-                        itemId = artist.itemId,
-                        mediaType = artist.mediaType,
-                        providerId = artist.provider,
+                        itemId = item.itemId,
+                        mediaType = item.mediaType,
+                        providerId = item.provider,
                     ),
                 )
             },
