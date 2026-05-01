@@ -12,6 +12,7 @@ import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.Page
 import io.music_assistant.client.support.pages.assertPlayer
+import io.music_assistant.client.support.pages.expandPlayer
 import io.music_assistant.client.support.pages.pause
 import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -33,6 +34,16 @@ class PlayerTest {
     val composeTestRule = createComposeRule()
 
     private val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
+
+    @Test
+    fun `shows message when nothing is playing`() {
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayer(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .assertPlayer(player.displayName, playing = false, item = null)
+            .expandPlayer(player.displayName, playing = false, item = null)
+    }
 
     @Test
     fun `can play album`() {

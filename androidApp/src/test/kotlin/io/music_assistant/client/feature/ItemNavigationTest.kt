@@ -50,7 +50,7 @@ class ItemNavigationTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
-            .expandPlayer(player.displayName, isPlaying = true, item = track.name)
+            .expandPlayer(player.displayName, playing = true, item = track.name)
             .goToArtist(artist.name, navigationItem = "Home")
     }
 
@@ -65,7 +65,7 @@ class ItemNavigationTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
-            .expandPlayer(player.displayName, isPlaying = true, item = track.name)
+            .expandPlayer(player.displayName, playing = true, item = track.name)
             .goToAlbum(album.name, navigationItem = "Home")
     }
 }

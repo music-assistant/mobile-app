@@ -316,18 +316,23 @@ private fun ExpandedPlayerPage(
                 )
             }
 
-            OverflowMenuButton(
-                modifier = Modifier,
-                options = (player.queueInfo!!.currentItem!!.track as AppMediaItem).navigationOptions {
+            val navigationOptions =
+                (player.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions {
                     onClose()
                     navigateToItem(it)
-                },
-            ) { onClick ->
-                IconButton(onClick = onClick) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(Res.string.cd_more),
-                    )
+                }
+
+            if (navigationOptions != null) {
+                OverflowMenuButton(
+                    modifier = Modifier,
+                    options = navigationOptions,
+                ) { onClick ->
+                    IconButton(onClick = onClick) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(Res.string.cd_more),
+                        )
+                    }
                 }
             }
         }

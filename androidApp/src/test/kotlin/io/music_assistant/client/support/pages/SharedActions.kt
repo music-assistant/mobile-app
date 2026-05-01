@@ -22,6 +22,7 @@ import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.players_nothing
 
 fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
@@ -115,6 +116,9 @@ fun <T : ComposePage> T.assertPlayer(
     if (item != null) {
         composeTestRule.onNodeWithContentDescription(Res.string.cd_playing.get().format(item))
             .assertIsDisplayed()
+    } else {
+        composeTestRule.onNodeWithContentDescription(Res.string.players_nothing.get())
+            .assertIsDisplayed()
     }
 
     return this
@@ -122,9 +126,9 @@ fun <T : ComposePage> T.assertPlayer(
 
 fun <T : ComposePage> T.expandPlayer(
     name: String,
-    isPlaying: Boolean,
+    playing: Boolean,
     item: String?,
 ): ExpandedPlayerPage {
     composeTestRule.onNodeWithTag(FloatingBarSemantics.TAG).performClick()
-    return ExpandedPlayerPage(name, isPlaying, item, composeTestRule).assertOnPage()
+    return ExpandedPlayerPage(name, playing, item, composeTestRule).assertOnPage()
 }
