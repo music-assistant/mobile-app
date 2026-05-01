@@ -18,11 +18,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,17 +45,9 @@ class LocalPlayerRepository(
     private val _localPlayerData = MutableStateFlow<PlayerData?>(null)
     val localPlayerData: StateFlow<PlayerData?> = _localPlayerData.asStateFlow()
 
-    /**
-     * Fired whenever an optimistic queue mutation produces a new [QueueInfo]
-     * for the local player. [MainDataSource] sets this in its `init` block to
-     * mirror the bumped `elapsedTimeLastUpdated` into its own `_queueInfos`
-     * store, which is the single source of truth consulted by the staleness
-     * gate. Without the mirror, a stale server replay arriving after an
-     * optimistic toggle could pass the gate (it'd compare against the old
-     * server stamp, not the bumped optimistic one) and clobber the user's
-     * change.
-     */
-    var onOptimisticQueueChange: ((QueueInfo) -> Unit)? = null
+    /** Optimistic local-queue mutations; mirrored into `_queueInfos` by `MainDataSource`. */
+    private val _optimisticQueueChanges = Channel<QueueInfo>(Channel.BUFFERED)
+    val optimisticQueueChanges: Flow<QueueInfo> = _optimisticQueueChanges.receiveAsFlow()
 
     private val commandQueueMutex = Mutex()
     private val commandQueue = mutableListOf<QueuedEntry>()
@@ -231,32 +227,19 @@ class LocalPlayerRepository(
     // --- Private helpers ---
 
     private fun updateOptimisticQueueInfo(transform: (QueueInfo) -> QueueInfo) {
-        _localPlayerData.update { current ->
+        // Bump elapsedTimeLastUpdated above the last known server stamp so
+        // stale replays drop while real confirmations (RTT >> epsilon) override.
+        val newState = _localPlayerData.updateAndGet { current ->
             current?.let { pd ->
-                val queueData = pd.queue as? DataState.Data ?: return@update pd
-                // Bump `elapsedTimeLastUpdated` to a value strictly above the
-                // last known server stamp. A stale server replay carries a
-                // stamp ≤ existing and is rejected by [MainDataSource.gateOrSkip];
-                // a legitimate server confirmation carries a stamp far above
-                // existing (network round-trip alone is orders of magnitude
-                // larger than [OPTIMISTIC_BUMP_EPSILON_S]) and correctly
-                // overrides the optimistic state. Avoids any client-wall-clock
-                // dependency, so DST, NTP step adjustments, and cross-machine
-                // skew are all irrelevant to staleness ordering.
+                val queueData = pd.queue as? DataState.Data ?: return@updateAndGet pd
                 val existingStamp = queueData.data.info.elapsedTimeLastUpdated ?: 0.0
                 val transformed = transform(queueData.data.info).copy(
                     elapsedTimeLastUpdated = existingStamp + OPTIMISTIC_BUMP_EPSILON_S,
                 )
-                // Notify MainDataSource so the bumped stamp lands in its
-                // `_queueInfos` store — the gate's single source of truth.
-                onOptimisticQueueChange?.invoke(transformed)
-                pd.copy(
-                    queue = DataState.Data(
-                        queueData.data.copy(info = transformed),
-                    ),
-                )
+                pd.copy(queue = DataState.Data(queueData.data.copy(info = transformed)))
             }
         }
+        (newState?.queue as? DataState.Data)?.data?.info?.let { _optimisticQueueChanges.trySend(it) }
     }
 
     private suspend fun enqueue(action: PlayerAction, request: Request) {
@@ -300,12 +283,7 @@ class LocalPlayerRepository(
     }
 
     private companion object {
-        /**
-         * Tiny offset added to the existing server stamp on each optimistic
-         * mutation. Chosen to be safely below any realistic server-confirmation
-         * round trip (≥ tens of milliseconds in practice) so the next legitimate
-         * server event always lands above the bumped stamp and overrides it.
-         */
+        /** Optimistic-bump offset; safely below any realistic server-confirmation RTT. */
         const val OPTIMISTIC_BUMP_EPSILON_S = 0.0001
     }
 }
