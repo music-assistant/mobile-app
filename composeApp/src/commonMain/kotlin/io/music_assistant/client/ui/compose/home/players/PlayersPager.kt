@@ -29,8 +29,12 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -61,6 +65,8 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.OverflowMenu
+import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -73,6 +79,8 @@ import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
 import org.jetbrains.compose.resources.stringResource
@@ -90,6 +98,7 @@ internal fun PlayersPager(
     onFavoriteClick: (AppMediaItem) -> Unit,
     expanded: Boolean,
     onClose: () -> Unit,
+    goToArtist: (AppMediaItem.Artist) -> Unit,
     onPlayersReorder: (List<String>) -> Unit,
     queueAction: (QueueAction) -> Unit,
     moveToPlayer: (String) -> Unit,
@@ -213,6 +222,7 @@ internal fun PlayersPager(
                             onExpandQueue = { isQueueExpanded = it },
                             contentPadding = contentPadding,
                             isCurrentPage = page == playerPagerState.currentPage,
+                            goToArtist = goToArtist,
                         )
                     } else {
                         CollapsedPlayerPage(
@@ -288,6 +298,7 @@ private fun ExpandedPlayerPage(
     onExpandQueue: (Boolean) -> Unit,
     contentPadding: PaddingValues,
     isCurrentPage: Boolean,
+    goToArtist: (AppMediaItem.Artist) -> Unit = {},
 ) {
     Column {
         Row(
@@ -301,6 +312,28 @@ private fun ExpandedPlayerPage(
                 onGroupButton = onGroupButton,
                 onDspButton = onDspButton,
             )
+
+            OverflowMenu(
+                modifier = Modifier,
+                options = buildList {
+                    add(
+                        OverflowMenuOption(
+                            title = stringResource(Res.string.action_go_to_artist),
+                            icon = Icons.Default.Person,
+                            onClick = {
+                                val artist =
+                                    (player.queueInfo!!.currentItem!!.track as AppMediaItem.Track).artists!![0]
+                                onClose()
+                                goToArtist(artist)
+                            },
+                        ),
+                    )
+                },
+            ) { onClick ->
+                IconButton(onClick = onClick) {
+                    Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(Res.string.cd_more))
+                }
+            }
         }
 
         AnimatedVisibility(
