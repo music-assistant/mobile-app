@@ -97,16 +97,18 @@ class QueueInfoStalenessTest {
     @Test
     fun optimisticBumpedTimestampPreservesAgainstStaleServerEvent() {
         // Optimistic UI writes (e.g. ToggleShuffle) bump elapsedTimeLastUpdated
-        // to client wall clock so a server replay whose timestamp predates the
-        // user action is rejected. This documents the contract.
+        // to a value strictly above the last known server stamp (existing +
+        // tiny epsilon, see LocalPlayerRepository) so a server replay whose
+        // timestamp predates the user action is rejected. This documents the
+        // contract.
         val lastServerEvent = queueInfoOf("q1", 1000.0)
         val optimistic = lastServerEvent.copy(
             shuffleEnabled = true,
-            // Wall clock at the optimistic moment, strictly after the last
-            // server event.
-            elapsedTimeLastUpdated = 1000.500,
+            // The realistic optimistic stamp: existing + epsilon. The exact
+            // epsilon doesn't matter to the gate, only that it's > existing.
+            elapsedTimeLastUpdated = 1000.0001,
         )
-        val staleServerEvent = queueInfoOf("q1", 1000.250)
+        val staleServerEvent = queueInfoOf("q1", 999.5)
 
         assertTrue(
             isStaleReplay(incoming = staleServerEvent, existing = optimistic),
@@ -119,9 +121,11 @@ class QueueInfoStalenessTest {
         // The flip side of the optimistic case: a server confirmation that
         // arrives *after* the optimistic write must be admitted. Otherwise
         // the optimistic state would be sticky against legitimate server
-        // updates.
-        val optimistic = queueInfoOf("q1", 1000.5)
-        val freshConfirmation = queueInfoOf("q1", 1001.0)
+        // updates. Realistically the server confirmation arrives with a stamp
+        // that's the network round-trip + server processing above the last
+        // server event — orders of magnitude above the optimistic epsilon.
+        val optimistic = queueInfoOf("q1", 1000.0001)
+        val freshConfirmation = queueInfoOf("q1", 1000.5)
 
         assertFalse(
             isStaleReplay(incoming = freshConfirmation, existing = optimistic),

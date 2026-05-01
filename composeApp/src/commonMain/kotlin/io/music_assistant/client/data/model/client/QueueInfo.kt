@@ -11,11 +11,17 @@ data class QueueInfo(
     val repeatMode: RepeatMode?,
     val elapsedTime: Double?,
     /**
-     * Server wall clock (Unix seconds, fractional) when [elapsedTime] was last
-     * recomputed. Used as the monotonic staleness signal — a queue event with an
-     * older value than the one currently stored for this [id] is a server replay
-     * and is dropped. Optimistic UI writes bump this to client wall clock so a
-     * subsequent stale server event can't clobber the optimistic state.
+     * Server wall clock (Unix epoch seconds, fractional, UTC — DST and
+     * timezone changes don't affect this value) when [elapsedTime] was last
+     * recomputed. Used as the monotonic staleness signal — a queue event with
+     * an older value than the one currently stored for this [id] is a server
+     * replay and is dropped.
+     *
+     * Optimistic UI writes (`LocalPlayerRepository.updateOptimisticQueueInfo`)
+     * bump this to a value strictly above the last known server stamp so a
+     * subsequent stale server event can't clobber the optimistic state, while
+     * any legitimate server confirmation lands far above the bump and
+     * overrides it.
      *
      * Nullable to handle the (currently theoretical) case where the server
      * omits the field. A `null` on either side disables the staleness gate

@@ -14,7 +14,6 @@ import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -235,14 +234,18 @@ class LocalPlayerRepository(
         _localPlayerData.update { current ->
             current?.let { pd ->
                 val queueData = pd.queue as? DataState.Data ?: return@update pd
-                // Bump `elapsedTimeLastUpdated` to client wall clock so a server
-                // replay whose timestamp predates this optimistic write is
-                // rejected by the staleness gate in [MainDataSource.gateOrSkip].
-                // Assumes client and server clocks are roughly NTP-synced; drift
-                // of seconds is fine because legitimate confirmation events from
-                // the server (post-toggle) are always strictly newer than `now()`.
+                // Bump `elapsedTimeLastUpdated` to a value strictly above the
+                // last known server stamp. A stale server replay carries a
+                // stamp ≤ existing and is rejected by [MainDataSource.gateOrSkip];
+                // a legitimate server confirmation carries a stamp far above
+                // existing (network round-trip alone is orders of magnitude
+                // larger than [OPTIMISTIC_BUMP_EPSILON_S]) and correctly
+                // overrides the optimistic state. Avoids any client-wall-clock
+                // dependency, so DST, NTP step adjustments, and cross-machine
+                // skew are all irrelevant to staleness ordering.
+                val existingStamp = queueData.data.info.elapsedTimeLastUpdated ?: 0.0
                 val transformed = transform(queueData.data.info).copy(
-                    elapsedTimeLastUpdated = currentTimeMillis() / 1000.0,
+                    elapsedTimeLastUpdated = existingStamp + OPTIMISTIC_BUMP_EPSILON_S,
                 )
                 // Notify MainDataSource so the bumped stamp lands in its
                 // `_queueInfos` store — the gate's single source of truth.
@@ -294,5 +297,15 @@ class LocalPlayerRepository(
                 else -> commandQueue.add(entry)
             }
         }
+    }
+
+    private companion object {
+        /**
+         * Tiny offset added to the existing server stamp on each optimistic
+         * mutation. Chosen to be safely below any realistic server-confirmation
+         * round trip (≥ tens of milliseconds in practice) so the next legitimate
+         * server event always lands above the bumped stamp and overrides it.
+         */
+        const val OPTIMISTIC_BUMP_EPSILON_S = 0.0001
     }
 }

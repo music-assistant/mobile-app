@@ -23,7 +23,8 @@ data class ServerQueue(
     // @SerialName("index_in_buffer") val indexInBuffer: Int? = null,
     @SerialName("elapsed_time") val elapsedTime: Double? = null,
     /**
-     * Server-side wall clock (Unix seconds, fractional) when [elapsedTime] was last
+     * Server-side wall clock (Unix epoch seconds, fractional, UTC — DST and
+     * timezone changes don't affect this value) when [elapsedTime] was last
      * recomputed. Used as the staleness signal: a queue event whose
      * [elapsedTimeLastUpdated] is older than what we already have for the same
      * [queueId] is a server replay and is dropped before it can clobber fresher
