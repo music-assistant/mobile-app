@@ -1782,21 +1782,25 @@ class MainDataSource(
          * Resolves the effective selected player from the current state.
          * Pure function; re-evaluates on every input change.
          *
+         * Invariant: the result is always either `null` or a member of
+         * [visiblePlayerIds]. Returning a value not in the list would let a
+         * downstream consumer attempt to act on an unreachable player; the
+         * persisted choice is held in `SettingsRepository.lastSelectedPlayerId`
+         * across loading gaps, not here.
+         *
          * Resolution order:
          *  1. [userChoice] if it appears in [visiblePlayerIds] — persisted
          *     explicit pick.
          *  2. First visible player — fallback when no user choice or when
          *     the user's choice is offline.
-         *  3. [userChoice] as a last resort — preserves the persisted value
-         *     while the player list is loading or empty so the UI holds
-         *     steady across the gap.
+         *  3. `null` when [visiblePlayerIds] is empty.
          */
         internal fun resolveSelectedPlayerId(
             visiblePlayerIds: List<String>,
             userChoice: String?,
         ): String? {
             if (userChoice != null && userChoice in visiblePlayerIds) return userChoice
-            return visiblePlayerIds.firstOrNull() ?: userChoice
+            return visiblePlayerIds.firstOrNull()
         }
     }
 }

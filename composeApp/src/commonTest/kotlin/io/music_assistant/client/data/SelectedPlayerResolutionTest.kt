@@ -47,14 +47,17 @@ class SelectedPlayerResolutionTest {
     }
 
     @Test
-    fun `falls back to user choice when list is empty`() {
-        // Reconnecting / list still loading. Hold the persisted choice
-        // rather than emit null so the UI stays stable across the gap.
+    fun `returns null when list is empty even if user choice is set`() {
+        // Invariant: never return a player ID that isn't in the visible list.
+        // The persisted choice is held in `SettingsRepository.lastSelectedPlayerId`
+        // and re-emerges on the next resolver run when the list re-populates;
+        // there's no need to leak it through `_selectedPlayerId` while we have
+        // nothing to act on.
         val result = resolveSelectedPlayerId(
             visiblePlayerIds = emptyList(),
             userChoice = "kitchen",
         )
-        assertEquals("kitchen", result)
+        assertNull(result)
     }
 
     @Test
