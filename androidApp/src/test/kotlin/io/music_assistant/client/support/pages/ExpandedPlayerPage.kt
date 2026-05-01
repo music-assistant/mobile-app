@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
 
@@ -29,12 +30,23 @@ class ExpandedPlayerPage(
         )
     }
 
-    fun clickGoToArtist(artist: String, navigationItem: String): MediaItemPage {
+    fun goToArtist(artist: String, navigationItem: String): MediaItemPage {
         composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
         composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
         return MediaItemPage(
             artist,
             MediaType.ARTIST,
+            navigationItem,
+            composeTestRule,
+        ).assertOnPage()
+    }
+
+    fun goToAlbum(album: String, navigationItem: String): MediaItemPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_go_to_album.get()).performClick()
+        return MediaItemPage(
+            album,
+            MediaType.ALBUM,
             navigationItem,
             composeTestRule,
         ).assertOnPage()

@@ -51,6 +51,21 @@ class ItemNavigationTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
             .expandPlayer(player.displayName, isPlaying = true, item = track.name)
-            .clickGoToArtist(artist.name, navigationItem = "Home")
+            .goToArtist(artist.name, navigationItem = "Home")
+    }
+
+    @Test
+    fun `can navigate to album from expanded player`() {
+        val album = ServerMediaItemFixtures.album()
+        val track = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addToLibrary(track)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayer(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .playMedia(track)
+            .expandPlayer(player.displayName, isPlaying = true, item = track.name)
+            .goToAlbum(album.name, navigationItem = "Home")
     }
 }
