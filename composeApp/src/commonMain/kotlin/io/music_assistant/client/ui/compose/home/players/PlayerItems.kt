@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
+import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
@@ -55,6 +56,7 @@ import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.formatDuration
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.players_nothing
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.DurationUnit
 
@@ -117,13 +119,12 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            val trackName = track?.title ?: "nothing playing"
-            val playingContentDescription = stringResource(Res.string.cd_playing, trackName)
+            val (trackName, trackContentDescription) = trackNameAndContentDescription(track)
             Column(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
                     .clearAndSetSemantics {
-                        contentDescription = playingContentDescription
+                        contentDescription = trackContentDescription
                     },
             ) {
                 Text(
@@ -181,6 +182,18 @@ fun CompactPlayerItem(
             }
         }
     }
+}
+
+@Composable
+private fun trackNameAndContentDescription(track: PlayableItem?): Pair<String, String> {
+    val trackName = track?.title
+    val playingContentDescription = if (trackName != null) {
+        stringResource(Res.string.cd_playing, trackName)
+    } else {
+        stringResource(Res.string.players_nothing)
+    }
+
+    return Pair(trackName ?: stringResource(Res.string.players_nothing), playingContentDescription)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -251,13 +264,12 @@ fun FullPlayerItem(
         }
 
         // Track info
-        val trackName = track?.title ?: "nothing playing"
-        val playingContentDescription = stringResource(Res.string.cd_playing, trackName)
+        val (trackName, trackContentDescription) = trackNameAndContentDescription(track)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clearAndSetSemantics {
-                    contentDescription = playingContentDescription
+                    contentDescription = trackContentDescription
                 },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
