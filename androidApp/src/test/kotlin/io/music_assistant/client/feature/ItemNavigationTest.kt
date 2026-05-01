@@ -6,7 +6,10 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
+import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.expandPlayer
+import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -34,5 +37,20 @@ class ItemNavigationTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
             .clickGoToArtist(artist.name)
+    }
+
+    @Test
+    fun `can navigate to artist from expanded player`() {
+        val artist = ServerMediaItemFixtures.artist()
+        val track = ServerMediaItemFixtures.track(artists = listOf(artist))
+        serviceClient.addToLibrary(track)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayer(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .playMedia(track)
+            .expandPlayer(player.displayName, isPlaying = true, item = track.name)
+            .clickGoToArtist(artist.name, navigationItem = "Home")
     }
 }

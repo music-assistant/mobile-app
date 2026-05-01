@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -59,6 +60,7 @@ fun BoxScope.FloatingBar(
 
     Box(
         modifier = modifier
+            .testTag(FloatingBarSemantics.TAG)
             .align(Alignment.BottomCenter)
             .padding(paddingValues)
             .clip(RoundedCornerShape(clip))
@@ -100,6 +102,10 @@ fun BoxScope.FloatingBar(
 
 object FloatingBarDefaults {
     val padding = 8.dp
+}
+
+object FloatingBarSemantics {
+    const val TAG = "FloatingBar"
 }
 
 @Preview

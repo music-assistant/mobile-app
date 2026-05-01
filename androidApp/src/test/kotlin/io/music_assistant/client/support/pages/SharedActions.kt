@@ -5,12 +5,14 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
+import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
@@ -90,26 +92,39 @@ fun <T : ComposePage> T.pause(): T {
     return this
 }
 
-fun <T : ComposePage> T.assertCurrentPlayer(
+fun <T : ComposePage> T.assertPlayer(
     name: String,
     playing: Boolean = false,
     item: String? = null,
 ): T {
     composeTestRule.waitUntil {
-        composeTestRule.onNodeWithContentDescription(Res.string.cd_current_player.get().format(name)).isDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+            .isDisplayed()
     }
 
     composeTestRule.waitUntil {
         if (playing) {
-            composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get()).isDisplayed()
+            composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get())
+                .isDisplayed()
         } else {
             composeTestRule.onNodeWithContentDescription(Res.string.action_play.get()).isDisplayed()
         }
     }
 
     if (item != null) {
-        composeTestRule.onNodeWithContentDescription(Res.string.cd_playing.get().format(item)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_playing.get().format(item))
+            .assertIsDisplayed()
     }
 
     return this
+}
+
+fun <T : ComposePage> T.expandPlayer(
+    name: String,
+    isPlaying: Boolean,
+    item: String?,
+): ExpandedPlayerPage {
+    composeTestRule.onNodeWithTag(FloatingBarSemantics.TAG).performClick()
+    return ExpandedPlayerPage(name, isPlaying, item, composeTestRule).assertOnPage()
 }

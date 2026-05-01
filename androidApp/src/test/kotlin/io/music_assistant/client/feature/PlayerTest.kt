@@ -11,7 +11,7 @@ import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.Page
-import io.music_assistant.client.support.pages.assertCurrentPlayer
+import io.music_assistant.client.support.pages.assertPlayer
 import io.music_assistant.client.support.pages.pause
 import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -46,7 +46,7 @@ class PlayerTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
             .clickPlay()
-            .assertCurrentPlayer(player.displayName, playing = true, item = track.name)
+            .assertPlayer(player.displayName, playing = true, item = track.name)
             .assertPlayerState(
                 serviceClient,
                 player.playerId,
@@ -68,7 +68,7 @@ class PlayerTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
             .playMedia(track2)
-            .assertCurrentPlayer(player.displayName, playing = true, item = track2.name)
+            .assertPlayer(player.displayName, playing = true, item = track2.name)
             .assertPlayerState(
                 serviceClient,
                 player.playerId,
@@ -76,7 +76,7 @@ class PlayerTest {
                 serverMediaItem = track2,
             )
             .playMedia(track1)
-            .assertCurrentPlayer(player.displayName, playing = true, item = track1.name)
+            .assertPlayer(player.displayName, playing = true, item = track1.name)
             .assertPlayerState(
                 serviceClient,
                 player.playerId,
@@ -95,9 +95,9 @@ class PlayerTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
-            .assertCurrentPlayer(player.displayName, playing = true, item = track.name)
+            .assertPlayer(player.displayName, playing = true, item = track.name)
             .pause()
-            .assertCurrentPlayer(player.displayName, playing = false, item = track.name)
+            .assertPlayer(player.displayName, playing = false, item = track.name)
             .assertPlayerState(
                 serviceClient,
                 player.playerId,

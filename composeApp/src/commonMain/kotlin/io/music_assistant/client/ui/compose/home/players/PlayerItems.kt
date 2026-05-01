@@ -251,13 +251,19 @@ fun FullPlayerItem(
         }
 
         // Track info
+        val trackName = track?.title ?: "nothing playing"
+        val playingContentDescription = stringResource(Res.string.cd_playing, trackName)
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics {
+                    contentDescription = playingContentDescription
+                },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 modifier = Modifier.basicMarquee().alphaOn(track != null),
-                text = track?.title ?: "nothing playing",
+                text = trackName,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
