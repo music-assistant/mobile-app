@@ -300,18 +300,23 @@ private fun ExpandedPlayerPage(
     isCurrentPage: Boolean,
     goToArtist: (AppMediaItem.Artist) -> Unit = {},
 ) {
-    Column {
-        Row(
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Box(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+            contentAlignment = Alignment.CenterEnd,
         ) {
-            PlayerSelectionLayout(
-                player = player,
-                sendSpinState = sendspinState,
-                onSelectPlayer = onSelectPlayer,
-                onGroupButton = onGroupButton,
-                onDspButton = onDspButton,
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                PlayerSelectionLayout(
+                    player = player,
+                    sendSpinState = sendspinState,
+                    onSelectPlayer = onSelectPlayer,
+                    onGroupButton = onGroupButton,
+                    onDspButton = onDspButton,
+                )
+            }
 
             OverflowMenu(
                 modifier = Modifier,
@@ -331,7 +336,10 @@ private fun ExpandedPlayerPage(
                 },
             ) { onClick ->
                 IconButton(onClick = onClick) {
-                    Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(Res.string.cd_more))
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(Res.string.cd_more),
+                    )
                 }
             }
         }
