@@ -303,6 +303,18 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         dataSource.selectPlayer(list[newIndex].player)
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // If nothing is actively playing, stop Sendspin and this service when the
+        // user closes the app from recents. Playing state is left running so
+        // background audio continues uninterrupted.
+        if (!dataSource.isAnythingPlaying.value) {
+            dataSource.onAppClosed()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
+
     override fun onDestroy() {
         if (fullyInitialized) {
             releaseWifiLock()

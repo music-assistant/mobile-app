@@ -1841,6 +1841,18 @@ class MainDataSource(
         }
     }
 
+    /**
+     * Called when the app task is removed (user closed the app from recents).
+     * Stops Sendspin if nothing is actively playing — playing state is intentionally
+     * kept alive for background audio and is not affected by this call.
+     */
+    fun onAppClosed() {
+        if (!isAnythingPlaying.value) {
+            log.i { "App closed with no active playback — stopping Sendspin" }
+            launch { stopSendspin() }
+        }
+    }
+
     fun close() {
         supervisorJob.cancel()
     }
