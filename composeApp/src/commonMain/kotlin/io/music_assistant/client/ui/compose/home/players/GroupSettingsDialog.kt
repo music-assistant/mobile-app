@@ -46,7 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.ui.HUNDRED
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
+import io.music_assistant.client.ui.ONE
+import io.music_assistant.client.ui.TEN
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
@@ -58,6 +61,7 @@ import musicassistantclient.composeapp.generated.resources.cd_remove_from_group
 import musicassistantclient.composeapp.generated.resources.cd_unmute
 import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.players_group_settings
+import musicassistantclient.composeapp.generated.resources.players_group_volume
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -104,7 +108,6 @@ private fun GroupSettings(
     localPlayerId: String? = null,
     onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
 ) {
-
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -120,7 +123,7 @@ private fun GroupSettings(
                     GroupPlayerItemCard {
                         GroupItemTitle(
                             isEnabled = item.player.groupVolume != null,
-                            "${item.player.name} group volume",
+                            name = stringResource(Res.string.players_group_volume, item.player.name),
                         )
                         VolumeRow(
                             volume = item.player.groupVolume,
@@ -151,7 +154,7 @@ private fun GroupSettings(
                         isEnabled = true,
                         name = item.player.name,
                         childBindItem = null,
-                        onGroupActionClick = null
+                        onGroupActionClick = null,
                     )
                     if (item.player.isGroup) {
                         item.player.groupVolume?.let { playerVolumeLevel ->
@@ -200,7 +203,7 @@ private fun GroupSettings(
             val sortedChildren = item.childrenBinds.sortedByDescending { it.isBound }
             items(sortedChildren, key = { "${it.id}_${it.volume}" }) { bindInfo ->
                 GroupPlayerItemCard(
-                    background = if (bindInfo.isBound) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
+                    background = if (bindInfo.isBound) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
                 ) {
                     GroupItemTitle(
                         isEnabled = bindInfo.isBound,
@@ -239,7 +242,6 @@ private fun GroupSettings(
                                     bindInfo.id,
                                     PlayerAction.VolumeSet(level.toDouble()),
                                 )
-
                             },
                         )
                     }
@@ -345,12 +347,12 @@ private fun PlaybackDelayButtons(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         listOf(
-            "-100ms" to -100,
-            "-10ms" to -10,
-            "-1ms" to -1,
-            "+1ms" to 1,
-            "+10ms" to 10,
-            "+100ms" to 100,
+            "-100ms" to -HUNDRED,
+            "-10ms" to -TEN,
+            "-1ms" to -ONE,
+            "+1ms" to ONE,
+            "+10ms" to TEN,
+            "+100ms" to HUNDRED,
         ).forEach { (label, delta) ->
             androidx.compose.material3.OutlinedButton(
                 onClick = { onAdjust?.invoke(delta) },
@@ -440,7 +442,6 @@ private fun VolumeRow(
         )
     }
 }
-
 
 @Preview
 @Composable

@@ -789,7 +789,6 @@ class MainDataSource(
                 }
             }
 
-
         // Inject synthetic local player if not in server list
         return if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
             listOf(localData) + playerDataList

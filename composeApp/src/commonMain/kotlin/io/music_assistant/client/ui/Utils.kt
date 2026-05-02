@@ -11,3 +11,7 @@ const val INACTIVE_ALPHA = 0.4f
 fun Modifier.alphaOn(enabled: Boolean) = alpha(if (enabled) 1f else INACTIVE_ALPHA)
 fun Color.alphaOn(enabled: Boolean) = copy(alpha = if (enabled) 1f else INACTIVE_ALPHA)
 fun Color.inactive() = alphaOn(false)
+
+const val HUNDRED = 100
+const val TEN = 10
+const val ONE = 1
