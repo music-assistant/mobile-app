@@ -113,12 +113,19 @@ fun <T : ComposePage> T.assertPlayer(
         }
     }
 
+    // waitUntil — the track-name flow update can lag the play action.
     if (item != null) {
-        composeTestRule.onNodeWithContentDescription(Res.string.cd_playing.get().format(item))
-            .assertIsDisplayed()
+        composeTestRule.waitUntil {
+            composeTestRule
+                .onNodeWithContentDescription(Res.string.cd_playing.get().format(item))
+                .isDisplayed()
+        }
     } else {
-        composeTestRule.onNodeWithContentDescription(Res.string.players_nothing.get())
-            .assertIsDisplayed()
+        composeTestRule.waitUntil {
+            composeTestRule
+                .onNodeWithContentDescription(Res.string.players_nothing.get())
+                .isDisplayed()
+        }
     }
 
     return this
