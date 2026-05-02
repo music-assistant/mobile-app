@@ -42,6 +42,7 @@ data class ServerPlayer(
     @SerialName("active_group") val activeGroup: String? = null,
     @SerialName("synced_to") val syncedTo: String? = null,
     @SerialName("group_volume") val groupVolume: Float? = null,
+    @SerialName("group_volume_muted") val groupVolumeMuted: Boolean? = null,
     @SerialName("display_name") val displayName: String = "",
     @SerialName("hidden") val hidden: Boolean? = null,
     // @SerialName("icon") val icon: String,

@@ -411,15 +411,19 @@ private fun ExpandedPlayerPage(
                             .clickable(enabled = player.player.canMute) {
                                 playerAction(
                                     player,
-                                    PlayerAction.ToggleMute(player.player.volumeMuted),
+                                    if (player.childrenBinds.none { it.isBound }) {
+                                        PlayerAction.GroupToggleMute(player.player.currentMuteState)
+                                    } else {
+                                        PlayerAction.ToggleMute(player.player.currentMuteState)
+                                    },
                                 )
                             },
-                        imageVector = if (player.player.volumeMuted) {
+                        imageVector = if (player.player.currentMuteState) {
                             VolumeMutedIcon
                         } else {
                             VolumeIcon
                         },
-                        contentDescription = if (player.player.volumeMuted) {
+                        contentDescription = if (player.player.currentMuteState) {
                             stringResource(
                                 Res.string.cd_unmute,
                             )

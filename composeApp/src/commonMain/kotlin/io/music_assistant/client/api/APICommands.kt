@@ -6,8 +6,9 @@ object APICommands {
     const val PLAYERS_CMD = "players/cmd"
     const val PLAYERS_CMD_SEEK = "$PLAYERS_CMD/seek"
     const val PLAYERS_CMD_VOLUME_SET = "$PLAYERS_CMD/volume_set"
-    const val PLAYERS_CMD_GROUP_VOLUME = "$PLAYERS_CMD/group_volume"
     const val PLAYERS_CMD_VOLUME_MUTE = "$PLAYERS_CMD/volume_mute"
+    const val PLAYERS_CMD_GROUP_VOLUME = "$PLAYERS_CMD/group_volume"
+    const val PLAYERS_CMD_GROUP_VOLUME_MUTE = "$PLAYERS_CMD/group_volume_mute"
     const val PLAYERS_CMD_SET_MEMBERS = "$PLAYERS_CMD/set_members"
 
     // Player Queue commands

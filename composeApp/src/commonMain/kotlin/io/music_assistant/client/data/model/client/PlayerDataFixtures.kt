@@ -31,6 +31,7 @@ object PlayerDataFixtures {
                 isAnnouncing = false,
                 canGroupWith = emptyList(),
                 groupVolume = null,
+                groupVolumeMuted = false,
                 groupMembers = null,
                 staticGroupMembers = null,
                 activeGroup = null,

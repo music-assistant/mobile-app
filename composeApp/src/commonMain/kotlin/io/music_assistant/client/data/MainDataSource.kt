@@ -7,6 +7,8 @@ import androidx.compose.ui.graphics.Color
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
+import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot.Companion.ELAPSED_ANCHOR_EPSILON_S
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
 import io.music_assistant.client.data.model.client.Player
@@ -129,7 +131,7 @@ class MainDataSource(
                 is DataState.Error,
                 is DataState.Loading,
                 is DataState.NoData,
-                -> playersState
+                    -> playersState
 
                 is DataState.Data -> {
                     val players = playersState.data
@@ -388,9 +390,9 @@ class MainDataSource(
                             val isTerminalAuthFailure =
                                 connState is DataConnectionState.AwaitingAuth &&
                                         (
-                                            connState.authProcessState is AuthProcessState.LoggedOut ||
-                                                connState.authProcessState is AuthProcessState.Failed
-                                        )
+                                                connState.authProcessState is AuthProcessState.LoggedOut ||
+                                                        connState.authProcessState is AuthProcessState.Failed
+                                                )
 
                             if (isTerminalAuthFailure) {
                                 // Auth permanently failed — stop everything
@@ -638,7 +640,7 @@ class MainDataSource(
                             album = track.parentName,
                             artworkUrl = track.imageInfo?.url(apiClient.serverBaseUrl.value),
                             duration = track.duration,
-                            elapsedTime = pd.queueInfo?.elapsedTime,
+                            elapsedTime = pd.queueInfo.elapsedTime,
                             isPlaying = pd.player.isPlaying,
                         )
                     }
@@ -737,21 +739,16 @@ class MainDataSource(
         val playerDataList = allPlayers
             .map { player ->
                 val isLocal = player.id == localPlayerId
+                val parent =
+                    (player.activeGroup ?: player.syncedTo)
+                        ?.let { parentId -> allPlayers.firstOrNull { it.id == parentId } }
+                        ?.asParentBind()
                 val groupChildren =
-                    // No grouping for local player
-                    if (isLocal) {
+                    // No children for local player or if player is part of group
+                    if (isLocal || parent != null) {
                         emptyList()
                     } else {
                         allPlayers.mapNotNull { it.asChildBindFor(player) }
-                    }
-                val parent =
-                    // No grouping for local player
-                    if (isLocal) {
-                        null
-                    } else {
-                        (player.activeGroup ?: player.syncedTo)
-                        ?.let { parentId -> allPlayers.firstOrNull { it.id == parentId } }
-                        ?.asParentBind()
                     }
                 if (isLocal && localData != null) {
                     // Repository is source of truth. Overlay interpolated position from tracker
@@ -765,6 +762,7 @@ class MainDataSource(
                                 queue = DataState.Data(
                                     qd.data.copy(info = qd.data.info.copy(elapsedTime = it)),
                                 ),
+                                parentBind = parent,
                             )
                         }
                     } ?: localData
@@ -790,6 +788,7 @@ class MainDataSource(
                         ?.updateFrom(newData) ?: newData
                 }
             }
+
 
         // Inject synthetic local player if not in server list
         return if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
@@ -842,7 +841,7 @@ class MainDataSource(
                 is SendspinState.Connecting,
                 is SendspinState.Authenticating,
                 is SendspinState.Handshaking,
-                -> {
+                    -> {
                     return@withLock
                 }
 
@@ -1158,6 +1157,10 @@ class MainDataSource(
                     ),
                 )
 
+                is PlayerAction.GroupToggleMute -> apiClient.sendRequest(
+                    Request.Player.setGroupMute(playerId = playerId, !action.isMutedNow),
+                )
+
                 is PlayerAction.GroupVolumeSet -> apiClient.sendRequest(
                     Request.Player.setGroupVolume(
                         playerId = playerId,
@@ -1188,14 +1191,14 @@ class MainDataSource(
                 data.queueInfo?.id?.let { queueId ->
                     _positionTrackers.update { trackers ->
                         trackers + (
-                            queueId to PositionTracker(
-                            queueId = queueId,
-                            basePosition = action.position.toDouble(),
-                            baseTimestamp = currentTimeMillis(),
-                            isPlaying = data.player.isPlaying,
-                            duration = data.queueInfo.currentItem?.track?.duration,
-                        )
-                        )
+                                queueId to PositionTracker(
+                                    queueId = queueId,
+                                    basePosition = action.position.toDouble(),
+                                    baseTimestamp = currentTimeMillis(),
+                                    isPlaying = data.player.isPlaying,
+                                    duration = data.queueInfo.currentItem?.track?.duration,
+                                )
+                                )
                     }
                 }
             }
@@ -1241,7 +1244,7 @@ class MainDataSource(
                                 currentChapterStart
                             } else {
                                 chapters.lastOrNull { it.start < currentChapterStart }?.start
-                                ?: 0.0
+                                    ?: 0.0
                             }
                         Request.Player.seek(queueId = data.playerId, position = prevStart.toLong())
                     }
@@ -1279,6 +1282,9 @@ class MainDataSource(
             is PlayerAction.VolumeSet ->
                 Request.Player.setVolume(playerId = data.playerId, volumeLevel = action.level)
 
+            is PlayerAction.ToggleMute ->
+                Request.Player.setMute(playerId = data.playerId, !action.isMutedNow)
+
             PlayerAction.GroupVolumeDown ->
                 Request.Player.simpleCommand(
                     playerId = data.playerId,
@@ -1291,8 +1297,8 @@ class MainDataSource(
             is PlayerAction.GroupVolumeSet ->
                 Request.Player.setGroupVolume(playerId = data.playerId, volumeLevel = action.level)
 
-            is PlayerAction.ToggleMute ->
-                Request.Player.setMute(playerId = data.playerId, !action.isMutedNow)
+            is PlayerAction.GroupToggleMute ->
+                Request.Player.setGroupMute(playerId = data.playerId, !action.isMutedNow)
 
             is PlayerAction.GroupManage ->
                 Request.Player.setGroupMembers(
@@ -1426,10 +1432,10 @@ class MainDataSource(
                                             _positionTrackers.update { trackers ->
                                                 trackers[queueId]?.let { tracker ->
                                                     trackers + (
-                                                        queueId to tracker.copy(
-                                                        isPlaying = data.isPlaying,
-                                                    )
-                                                    )
+                                                            queueId to tracker.copy(
+                                                                isPlaying = data.isPlaying,
+                                                            )
+                                                            )
                                                 } ?: trackers
                                             }
                                         }
@@ -1472,14 +1478,14 @@ class MainDataSource(
                                     (_serverPlayers.value as? DataState.Data)?.data?.find { it.queueId == data.id }
                                 _positionTrackers.update { trackers ->
                                     trackers + (
-                                        data.id to PositionTracker(
-                                        queueId = data.id,
-                                        basePosition = elapsed,
-                                        baseTimestamp = currentTimeMillis(),
-                                        isPlaying = player?.isPlaying ?: false,
-                                        duration = data.currentItem?.track?.duration,
-                                    )
-                                    )
+                                            data.id to PositionTracker(
+                                                queueId = data.id,
+                                                basePosition = elapsed,
+                                                baseTimestamp = currentTimeMillis(),
+                                                isPlaying = player?.isPlaying ?: false,
+                                                duration = data.currentItem?.track?.duration,
+                                            )
+                                            )
                                 }
                             }
 
@@ -1494,7 +1500,8 @@ class MainDataSource(
                         }
 
                         is QueueUpdatedEvent -> {
-                            val data = event.queue().takeIfNotStale("QueueUpdated") ?: return@collect
+                            val data =
+                                event.queue().takeIfNotStale("QueueUpdated") ?: return@collect
                             Logger.i("Queue updated $data")
 
                             // Forward to local player repository if this is the local player's queue
@@ -1512,14 +1519,14 @@ class MainDataSource(
                                     (_serverPlayers.value as? DataState.Data)?.data?.find { it.queueId == data.id }
                                 _positionTrackers.update { trackers ->
                                     trackers + (
-                                        data.id to PositionTracker(
-                                        queueId = data.id,
-                                        basePosition = elapsed,
-                                        baseTimestamp = currentTimeMillis(),
-                                        isPlaying = player?.isPlaying ?: false,
-                                        duration = data.currentItem?.track?.duration,
-                                    )
-                                    )
+                                            data.id to PositionTracker(
+                                                queueId = data.id,
+                                                basePosition = elapsed,
+                                                baseTimestamp = currentTimeMillis(),
+                                                isPlaying = player?.isPlaying ?: false,
+                                                duration = data.currentItem?.track?.duration,
+                                            )
+                                            )
                                 }
                             }
 
@@ -1531,7 +1538,8 @@ class MainDataSource(
                         }
 
                         is QueueItemsUpdatedEvent -> {
-                            val data = event.queue().takeIfNotStale("QueueItemsUpdated") ?: return@collect
+                            val data =
+                                event.queue().takeIfNotStale("QueueItemsUpdated") ?: return@collect
                             _queueInfos.update { value ->
                                 value.map {
                                     if (it.id == data.id) data else it
@@ -1553,14 +1561,14 @@ class MainDataSource(
                                     (_serverPlayers.value as? DataState.Data)?.data?.find { it.queueId == queueId }
                                 _positionTrackers.update { trackers ->
                                     trackers + (
-                                        queueId to PositionTracker(
-                                        queueId = queueId,
-                                        basePosition = event.data,
-                                        baseTimestamp = currentTimeMillis(),
-                                        isPlaying = player?.isPlaying ?: false,
-                                        duration = oldQueue?.currentItem?.track?.duration,
-                                    )
-                                    )
+                                            queueId to PositionTracker(
+                                                queueId = queueId,
+                                                basePosition = event.data,
+                                                baseTimestamp = currentTimeMillis(),
+                                                isPlaying = player?.isPlaying ?: false,
+                                                duration = oldQueue?.currentItem?.track?.duration,
+                                            )
+                                            )
                                 }
                             }
 
@@ -1577,14 +1585,14 @@ class MainDataSource(
                             }?.id?.let {
                                 _positionTrackers.update { trackers ->
                                     trackers + (
-                                        it to PositionTracker(
-                                        queueId = it,
-                                        basePosition = event.data.secondsPlayed,
-                                        baseTimestamp = currentTimeMillis(),
-                                        isPlaying = event.data.isPlaying,
-                                        duration = event.data.duration,
-                                    )
-                                    )
+                                            it to PositionTracker(
+                                                queueId = it,
+                                                basePosition = event.data.secondsPlayed,
+                                                baseTimestamp = currentTimeMillis(),
+                                                isPlaying = event.data.isPlaying,
+                                                duration = event.data.duration,
+                                            )
+                                            )
                                 }
                             }
                         }
@@ -1608,7 +1616,7 @@ class MainDataSource(
                                             is DataState.Loading,
                                             is DataState.NoData,
                                             is DataState.Stale,
-                                            -> currentState
+                                                -> currentState
 
                                             is DataState.Data -> DataState.Data(
                                                 currentState.data.map { playerData ->
@@ -1648,7 +1656,7 @@ class MainDataSource(
                 is DataState.Loading,
                 is DataState.NoData,
                 is DataState.Stale,
-                -> currentState
+                    -> currentState
 
                 is DataState.Data -> DataState.Data(
                     currentState.data.map { playerData ->
@@ -1659,8 +1667,8 @@ class MainDataSource(
                                         track = newTrack,
                                     )
                                 } else {
-                                        queueTrack
-                                    }
+                                    queueTrack
+                                }
                             }
                             playerData.copy(
                                 queue = (playerData.queue as? DataState.Data)?.let { queueData ->
@@ -1681,8 +1689,8 @@ class MainDataSource(
                                                     ),
                                                 )
                                             } else {
-                                                    queueData.data.info
-                                                },
+                                                queueData.data.info
+                                            },
                                             items = DataState.Data(updatedItems),
                                         ),
                                     )
@@ -1735,14 +1743,14 @@ class MainDataSource(
                                 (_serverPlayers.value as? DataState.Data)?.data?.find { it.queueId == queue.id }
                             _positionTrackers.update { trackers ->
                                 trackers + (
-                                    queue.id to PositionTracker(
-                                    queueId = queue.id,
-                                    basePosition = elapsed,
-                                    baseTimestamp = currentTimeMillis(),
-                                    isPlaying = player?.isPlaying ?: false,
-                                    duration = queue.currentItem?.track?.duration,
-                                )
-                                )
+                                        queue.id to PositionTracker(
+                                            queueId = queue.id,
+                                            basePosition = elapsed,
+                                            baseTimestamp = currentTimeMillis(),
+                                            isPlaying = player?.isPlaying ?: false,
+                                            duration = queue.currentItem?.track?.duration,
+                                        )
+                                        )
                             }
                         }
                     }
@@ -1808,7 +1816,7 @@ class MainDataSource(
                         is DataState.Loading,
                         is DataState.NoData,
                         is DataState.Stale,
-                        -> currentState
+                            -> currentState
 
                         is DataState.Data -> DataState.Data(
                             currentState.data.map { playerData ->
@@ -1831,8 +1839,8 @@ class MainDataSource(
                                         isLocal = playerData.player.id == settings.sendspinClientId.value,
                                     )
                                 } else {
-                                        playerData
-                                    }
+                                    playerData
+                                }
                             },
                         )
                     }

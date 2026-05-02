@@ -205,6 +205,7 @@ class LocalPlayerRepository(
                         groupMembers = null,
                         staticGroupMembers = null,
                         groupVolume = null,
+                        groupVolumeMuted = false,
                         activeGroup = null,
                         syncedTo = null,
                     ),

@@ -55,6 +55,17 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        fun setMute(
+            playerId: String,
+            muted: Boolean,
+        ) = Request(
+            command = APICommands.PLAYERS_CMD_VOLUME_MUTE,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("muted", JsonPrimitive(muted))
+            },
+        )
+
         fun setGroupVolume(
             playerId: String,
             volumeLevel: Double,
@@ -66,11 +77,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
-        fun setMute(
+        fun setGroupMute(
             playerId: String,
             muted: Boolean,
         ) = Request(
-            command = APICommands.PLAYERS_CMD_VOLUME_MUTE,
+            command = APICommands.PLAYERS_CMD_GROUP_VOLUME_MUTE,
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("muted", JsonPrimitive(muted))

@@ -25,6 +25,7 @@ data class Player(
     val activeGroup: String?,
     val syncedTo: String?,
     val groupVolume: Float?,
+    val groupVolumeMuted: Boolean,
 ) {
     val isGroup = type == PlayerType.GROUP
     val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true
@@ -40,6 +41,7 @@ data class Player(
     val providerType = provider.substringBefore("--")
 
     val currentVolume = if (groupMembers?.isNotEmpty() == true) groupVolume else volumeLevel
+    val currentMuteState = if (groupMembers?.isNotEmpty() == true) groupVolumeMuted else volumeMuted
 
     val isVolumeSliderAccessible = (isGroup || canSetVolume) && currentVolume != null
 
@@ -50,14 +52,17 @@ data class Player(
 
     fun asChildBindFor(other: Player): PlayerData.ChildBind? {
         if (id == other.id) return null
-        if (other.canGroupWith?.contains(providerType) != true && other.canGroupWith?.contains(id) != true) return null
+        val isAlreadyGrouped = other.groupMembers?.contains(id) == true
+        val canGroupByProvider = other.canGroupWith?.contains(providerType) == true
+        val canGroupById = other.canGroupWith?.contains(id) == true
+        if (!isAlreadyGrouped && !canGroupByProvider && !canGroupById) return null
         return PlayerData.ChildBind(
             id = id,
             parentId = other.id,
             name = name,
             volume = volumeLevel,
             volumeSliderAccessible = isVolumeSliderAccessible,
-            isMuted = volumeMuted.takeIf { canMute },
+            isMuted = currentMuteState.takeIf { canMute },
             isBound = other.groupMembers?.contains(id) == true,
             isManageable = other.staticGroupMembers?.contains(id) != true,
         )
@@ -99,6 +104,7 @@ data class Player(
             activeGroup = activeGroup,
             syncedTo = syncedTo,
             groupVolume = groupVolume,
+            groupVolumeMuted = groupVolumeMuted == true,
         )
     }
 }
