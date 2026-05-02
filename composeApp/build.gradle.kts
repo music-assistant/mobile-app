@@ -41,6 +41,32 @@ kotlin {
             isStatic = true
             binaryOption("bundleId", "io.music_assistant.client.composeapp")
         }
+
+        // Test binaries need to fully resolve WebRTC at link time. The main
+        // framework is static and defers WebRTC resolution to the iOS app's
+        // final Xcode link, where `iosApp/Frameworks/WebRTC.xcframework` is on
+        // the framework search path. Kotlin/Native test executables don't go
+        // through that wiring, so we point them at the matching slice of the
+        // bundled XCFramework directly. Without this, `:composeApp:*Test*`
+        // tasks fail at `linkDebugTest*` with `framework 'WebRTC' not found`.
+        val webrtcSlice = when (iosTarget.targetName) {
+            "iosArm64" -> "ios-arm64"
+            "iosSimulatorArm64", "iosX64" -> "ios-arm64_x86_64-simulator"
+            else -> error("Unexpected iOS target: ${iosTarget.targetName}")
+        }
+        val webrtcSliceDir = rootProject.layout.projectDirectory
+            .dir("iosApp/Frameworks/WebRTC.xcframework/$webrtcSlice")
+            .asFile
+            .absolutePath
+        listOf(
+            org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG,
+            org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.RELEASE,
+        ).forEach { buildType ->
+            iosTarget.binaries.findTest(buildType)?.linkerOpts(
+                "-F", webrtcSliceDir,
+                "-rpath", webrtcSliceDir,
+            )
+        }
     }
 
     sourceSets {
