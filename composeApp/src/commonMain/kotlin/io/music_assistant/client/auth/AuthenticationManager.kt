@@ -29,6 +29,8 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
 }
 
+private val log = Logger.withTag("AuthMgr")
+
 class AuthenticationManager(
     private val serviceClient: ServiceClient,
     private val settings: SettingsRepository,
@@ -56,7 +58,9 @@ class AuthenticationManager(
                             when (dataConnectionState.authProcessState) {
                                 AuthProcessState.NotStarted -> {
                                     // Try auto-login with saved token (unless we're intentionally logging out)
-                                    if (!isLoggingOut) {
+                                    if (isLoggingOut) {
+                                        log.i { "AwaitingAuth(NotStarted) — skipping auto-login (logging out)" }
+                                    } else {
                                         val serverIdentifier = when (state) {
                                             is SessionState.Connected.Direct ->
                                                 settings.getDirectServerIdentifier(
@@ -67,22 +71,32 @@ class AuthenticationManager(
                                             is SessionState.Connected.WebRTC ->
                                                 settings.getWebRTCServerIdentifier(state.remoteId.rawId)
                                         }
-                                        settings.getTokenForServer(serverIdentifier)?.let {
-                                            authorizeWithSavedToken(it)
+                                        val token = settings.getTokenForServer(serverIdentifier)
+                                        if (token == null) {
+                                            log.i { "AwaitingAuth(NotStarted) — no saved token for server" }
+                                        } else {
+                                            log.i { "AwaitingAuth(NotStarted) — auto-login with saved token" }
+                                            authorizeWithSavedToken(token)
                                         }
                                     }
                                 }
 
                                 AuthProcessState.InProgress -> {
+                                    log.i { "AwaitingAuth(InProgress)" }
                                     _authState.value = AuthState.Loading
                                 }
 
                                 is AuthProcessState.Failed -> {
+                                    log.i {
+                                        "AwaitingAuth(Failed): " +
+                                            dataConnectionState.authProcessState.reason
+                                    }
                                     _authState.value =
                                         AuthState.Error(dataConnectionState.authProcessState.reason)
                                 }
 
                                 AuthProcessState.LoggedOut -> {
+                                    log.i { "AwaitingAuth(LoggedOut)" }
                                     _authState.value = AuthState.Idle
                                 }
                             }
@@ -90,12 +104,14 @@ class AuthenticationManager(
 
                         DataConnectionState.Authenticated -> {
                             state.user?.let { user ->
+                                log.i { "Authenticated" }
                                 _authState.value = AuthState.Authenticated(user)
                             }
                         }
 
                         DataConnectionState.AwaitingServerInfo -> {
-                            // Waiting for server info
+                            // Logged so a stuck reconnect (no `server/hello`) is observable.
+                            log.i { "AwaitingServerInfo" }
                         }
                     }
                 }

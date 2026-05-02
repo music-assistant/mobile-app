@@ -140,7 +140,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
     override fun onAppBackground() {
         isInBackground = true
         backgroundedAt = currentTimeMillis()
-        logger.i { "App backgrounded" }
+        logger.i { "App backgrounded (state=${stateLabel(_sessionState.value)})" }
     }
 
     /**
@@ -148,12 +148,17 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
      */
     override fun onExternalConsumerActive() {
         hasActiveExternalConsumer = true
-        logger.i { "External consumer active" }
+        val state = _sessionState.value
+        logger.i { "External consumer active (state=${stateLabel(state)})" }
 
-        if (_sessionState.value is SessionState.Disconnected.Backgrounded) {
-            val savedInfo = backgroundedConnectionInfo ?: return
+        if (state is SessionState.Disconnected.Backgrounded) {
+            val savedInfo = backgroundedConnectionInfo
+            if (savedInfo == null) {
+                logger.i { "External consumer active: state=Backgrounded but no savedInfo, no reconnect" }
+                return
+            }
             backgroundedConnectionInfo = null
-            logger.i { "Reconnecting for external consumer (was backgrounded)" }
+            logger.i { "External consumer active: reconnecting (was backgrounded)" }
             when (savedInfo) {
                 is BackgroundedConnectionInfo.Direct -> {
                     val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
@@ -164,6 +169,8 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     connectWebRTC(savedInfo.remoteId)
                 }
             }
+        } else {
+            logger.i { "External consumer active: reconnect not applicable for state=${stateLabel(state)}" }
         }
     }
 
@@ -172,7 +179,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
      */
     override fun onExternalConsumerInactive() {
         hasActiveExternalConsumer = false
-        logger.i { "External consumer inactive" }
+        logger.i { "External consumer inactive (state=${stateLabel(_sessionState.value)})" }
     }
 
     /**
@@ -180,7 +187,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
      */
     override fun onPlaybackActive() {
         hasActivePlayback = true
-        logger.i { "Playback active" }
+        logger.i { "Playback active (state=${stateLabel(_sessionState.value)})" }
     }
 
     /**
@@ -188,7 +195,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
      */
     override fun onPlaybackInactive() {
         hasActivePlayback = false
-        logger.i { "Playback inactive" }
+        logger.i { "Playback inactive (state=${stateLabel(_sessionState.value)})" }
     }
 
     /**
@@ -196,12 +203,13 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
      */
     override fun onAppForeground() {
         isInBackground = false
-        logger.i { "App foregrounded" }
+        val state = _sessionState.value
+        logger.i { "App foregrounded (state=${stateLabel(state)})" }
 
         val savedInfo = backgroundedConnectionInfo
         if (savedInfo != null) {
             backgroundedConnectionInfo = null
-            logger.i { "Reconnecting after foreground (was backgrounded)" }
+            logger.i { "App foregrounded: reconnecting (was backgrounded)" }
             when (savedInfo) {
                 is BackgroundedConnectionInfo.Direct -> {
                     val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
@@ -218,10 +226,35 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         // Connection appears alive — probe it if we've been in background long enough
         // for a half-open TCP zombie to form.
         val elapsed = currentTimeMillis() - backgroundedAt
-        if (elapsed > STALE_CONNECTION_THRESHOLD_MS && _sessionState.value is SessionState.Connected) {
-            logger.i { "Probing connection after ${elapsed}ms in background" }
+        if (elapsed > STALE_CONNECTION_THRESHOLD_MS && state is SessionState.Connected) {
+            logger.i { "App foregrounded: probing connection after ${elapsed}ms in background" }
             transport?.verifyConnection()
+        } else if (state !is SessionState.Connected) {
+            // Foregrounding while disconnected with no saved reconnect info means
+            // we won't auto-recover — log so a stuck session is traceable.
+            logger.i { "App foregrounded: no recovery taken (state=${stateLabel(state)}, elapsed=${elapsed}ms)" }
         }
+    }
+
+    /** Compact one-token label for a [SessionState], stable for log greps. */
+    private fun stateLabel(state: SessionState): String = when (state) {
+        is SessionState.Connected.Direct -> "Connected.Direct(${dcsLabel(state.dataConnectionState)})"
+        is SessionState.Connected.WebRTC -> "Connected.WebRTC(${dcsLabel(state.dataConnectionState)})"
+        is SessionState.Reconnecting.Direct -> "Reconnecting.Direct(attempt=${state.attempt})"
+        is SessionState.Reconnecting.WebRTC -> "Reconnecting.WebRTC(attempt=${state.attempt})"
+        SessionState.Disconnected.Initial -> "Disconnected.Initial"
+        SessionState.Disconnected.NoServerData -> "Disconnected.NoServerData"
+        SessionState.Disconnected.Backgrounded -> "Disconnected.Backgrounded"
+        SessionState.Disconnected.ByUser -> "Disconnected.ByUser"
+        is SessionState.Disconnected.Error -> "Disconnected.Error(${state.reason?.message})"
+        SessionState.Connecting -> "Connecting"
+    }
+
+    /** Compact one-token label for a [DataConnectionState]. */
+    private fun dcsLabel(dcs: DataConnectionState): String = when (dcs) {
+        DataConnectionState.AwaitingServerInfo -> "AwaitingServerInfo"
+        is DataConnectionState.AwaitingAuth -> "AwaitingAuth"
+        DataConnectionState.Authenticated -> "Authenticated"
     }
 
     private val rpcEngine = RpcEngine {
@@ -234,6 +267,11 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
     }
 
     init {
+        launch {
+            isReadyForCommands.collect { ready ->
+                logger.i { "isReadyForCommands=$ready" }
+            }
+        }
         launch {
             _sessionState.collect { state ->
                 when (state) {
@@ -358,6 +396,11 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                                 preserved
                             }
                             _sessionState.update { createConnected(emitData) }
+                            logger.i {
+                                "Transport→Connected (wasReconnecting=$wasReconnecting, " +
+                                    "needsReauthOnReconnect=$needsReauthOnReconnect, " +
+                                    "dcs=${dcsLabel(emitData.dataConnectionState)})"
+                            }
                             if (wasReconnecting) {
                                 onReconnected()
                             } else {
@@ -370,6 +413,7 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                                 backgroundedConnectionInfo = backgroundInfo()
                                 transport.disconnect()
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
+                                logger.i { "Transport→Reconnecting while backgrounded → Disconnected.Backgrounded" }
                                 return@collect
                             }
                             val preserved =
@@ -381,15 +425,18 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                                     preserved,
                                 )
                             }
+                            logger.i { "Transport→Reconnecting (attempt=${transportState.attempt})" }
                         }
 
                         is TransportState.Failed -> {
                             _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
+                            logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error?.message}" }
                         }
 
                         TransportState.Disconnected -> {
                             if (_sessionState.value !is SessionState.Disconnected) {
                                 _sessionState.update { SessionState.Disconnected.ByUser }
+                                logger.i { "Transport→Disconnected → Disconnected.ByUser" }
                             }
                         }
 
@@ -741,12 +788,31 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
 
     override suspend fun sendRequest(request: Request): Result<Answer> =
         suspendCancellableCoroutine { continuation ->
-            rpcEngine.registerCallback(request.messageId) { response ->
+            val msgId = request.messageId
+            val cmd = request.command
+            val startMs = currentTimeMillis()
+            logger.d { "sendRequest[$msgId] cmd=$cmd start" }
+
+            rpcEngine.registerCallback(msgId) { response ->
+                logger.d {
+                    "sendRequest[$msgId] cmd=$cmd resumed in " +
+                        "${currentTimeMillis() - startMs}ms"
+                }
                 continuation.resume(Result.success(response))
+            }
+            // Caller cancellation (e.g. withTimeoutOrNull) must release the
+            // rpcEngine callback, otherwise it leaks for the session lifetime.
+            continuation.invokeOnCancellation {
+                logger.i {
+                    "sendRequest[$msgId] cmd=$cmd cancelled after " +
+                        "${currentTimeMillis() - startMs}ms"
+                }
+                rpcEngine.removeCallback(msgId)
             }
             launch {
                 val t = transport ?: run {
-                    rpcEngine.removeCallback(request.messageId)
+                    logger.i { "sendRequest[$msgId] cmd=$cmd transport=null at send time" }
+                    rpcEngine.removeCallback(msgId)
                     continuation.resume(Result.failure(IllegalStateException("Not connected")))
                     return@launch
                 }
@@ -754,9 +820,10 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
                     val jsonObject =
                         myJson.encodeToJsonElement(Request.serializer(), request) as JsonObject
                     t.send(jsonObject)
+                    logger.d { "sendRequest[$msgId] cmd=$cmd sent" }
                 } catch (e: Exception) {
-                    logger.e(e) { "sendRequest FAILED cmd=${request.command}" }
-                    rpcEngine.removeCallback(request.messageId)
+                    logger.e(e) { "sendRequest[$msgId] cmd=$cmd send FAILED" }
+                    rpcEngine.removeCallback(msgId)
                     continuation.resume(Result.failure(e))
                     // Don't trigger full disconnect if transport is already reconnecting
                     val transportState = transport?.state?.value
