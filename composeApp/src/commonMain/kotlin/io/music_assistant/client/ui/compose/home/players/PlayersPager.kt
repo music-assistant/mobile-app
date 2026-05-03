@@ -320,7 +320,7 @@ private fun ExpandedPlayerPage(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
-                PlayerSelectionLayout(
+                PlayerSelectionButton(
                     player = player,
                     sendSpinState = sendspinState,
                     onSelectPlayer = onSelectPlayer,
@@ -628,7 +628,7 @@ private fun CollapsedPlayerPage(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
         ) {
-            PlayerSelectionLayout(
+            PlayerSelectionButton(
                 player = player,
                 sendSpinState = sendspinState,
                 onSelectPlayer = onSelectPlayer,

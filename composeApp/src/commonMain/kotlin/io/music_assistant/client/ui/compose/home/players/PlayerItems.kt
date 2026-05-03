@@ -173,7 +173,7 @@ fun CompactPlayerItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
             ) {
-                PlayerSelectionLayout(
+                PlayerSelectionButton(
                     player = item,
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
