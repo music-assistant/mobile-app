@@ -89,9 +89,29 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
 
         if reason == .oldDeviceUnavailable {
-            // Headphones or Bluetooth device disconnected — standard iOS behaviour pauses audio
             print("🎵 NativeAudioController: Audio output device disconnected")
+            let previousRoute = userInfo[AVAudioSessionRouteChangePreviousRouteKey]
+                as? AVAudioSessionRouteDescription
+            handleOldDeviceUnavailable(previousRoute: previousRoute)
         }
+    }
+
+    /// Tear down the AudioQueue when the active output route disappears
+    /// (CarPlay disconnect, AirPods power-off, headphones unplug). iOS
+    /// pairs `oldDeviceUnavailable` with an `interruption .began` it
+    /// never matches with `.ended`, so the queue stays paused while the
+    /// server keeps streaming. Without this, PCM piles up unconsumed and
+    /// audio never resumes on the new route. Letting the next PCM packet
+    /// rebuild the queue avoids racing the in-flight interruption.
+    private func handleOldDeviceUnavailable(previousRoute: AVAudioSessionRouteDescription?) {
+        guard streamStarted else { return }
+        let prev = previousRoute?.outputs.first?.portType.rawValue ?? "unknown"
+        print("🎵 NativeAudioController: \(prev) disappeared — tearing down AudioQueue")
+        stopAudioQueue()
+        streamStarted = false
+        bufferLock.lock()
+        pcmBuffer.removeAll()
+        bufferLock.unlock()
     }
     
     // MARK: - PlatformAudioPlayer Protocol
