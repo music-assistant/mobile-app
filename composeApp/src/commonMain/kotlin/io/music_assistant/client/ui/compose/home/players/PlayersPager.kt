@@ -32,6 +32,9 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,11 +68,13 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
@@ -84,6 +89,8 @@ import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
 import musicassistantclient.composeapp.generated.resources.queue_clear
+import musicassistantclient.composeapp.generated.resources.queue_no_other_players
+import musicassistantclient.composeapp.generated.resources.queue_transfer
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -319,7 +326,14 @@ private fun ExpandedPlayerPage(
                 )
             }
 
-            PlayerOptionsMenu(player, queueAction, onClose, navigateToItem)
+            PlayerOverflowMenu(
+                player,
+                allPlayers,
+                queueAction,
+                onClose,
+                navigateToItem,
+                { moveToPlayer(it) },
+            )
         }
 
         AnimatedVisibility(
@@ -487,8 +501,6 @@ private fun ExpandedPlayerPage(
             serverUrl = serverUrl,
             queueAction = queueAction,
             tint = colors.controlTint,
-            players = allPlayers,
-            onPlayerSelected = { moveToPlayer(it) },
             isCurrentPage = isCurrentPage,
             contentPadding = contentPadding,
         )
@@ -496,17 +508,26 @@ private fun ExpandedPlayerPage(
 }
 
 @Composable
-private fun PlayerOptionsMenu(
+private fun PlayerOverflowMenu(
     player: PlayerData,
+    allPlayers: List<PlayerData>,
     queueAction: (QueueAction) -> Unit,
     onClose: () -> Unit,
     navigateToItem: (AppMediaItem) -> Unit,
+    onPlayerSelected: (String) -> Unit,
 ) {
+    var transferMenuExpanded by remember { mutableStateOf(false) }
+
     val queueData = player.queue as? DataState.Data
     val queueId = queueData?.data?.info?.id
     val queueHasItems = !(queueData?.data?.items as? DataState.Data)?.data.isNullOrEmpty()
     val queueOptions = if (queueId != null && queueHasItems) {
         listOf(
+            OverflowMenuOption(
+                title = stringResource(Res.string.queue_transfer),
+                icon = Icons.Default.SwapHoriz,
+                onClick = { transferMenuExpanded = true },
+            ),
             OverflowMenuOption(
                 title = stringResource(Res.string.queue_clear),
                 icon = Icons.Default.DeleteSweep,
@@ -515,6 +536,42 @@ private fun PlayerOptionsMenu(
         )
     } else {
         emptyList()
+    }
+
+    if (queueId != null) {
+        Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+            OverflowMenu(
+                expanded = transferMenuExpanded,
+                onClose = { transferMenuExpanded = false },
+                options = allPlayers.filter { p -> p.player.id != queueId }.map { playerData ->
+                    OverflowMenuOption(
+                        title = playerData.player.nameAndSuffix,
+                        icon = when {
+                            playerData.isLocal -> Icons.Default.Smartphone
+                            playerData.player.isGroup -> SpeakerMultipleIcon
+                            else -> Icons.Default.Speaker
+                        },
+                        onClick = {
+                            queueAction(
+                                QueueAction.Transfer(
+                                    queueId,
+                                    playerData.player.id,
+                                    playerData.player.isPlaying,
+                                ),
+                            )
+                            onPlayerSelected.invoke(playerData.player.id)
+                        },
+                    )
+                }.ifEmpty {
+                    listOf(
+                        OverflowMenuOption(
+                            title = stringResource(Res.string.queue_no_other_players),
+                            onClick = { /* No-op */ },
+                        ),
+                    )
+                },
+            )
+        }
     }
 
     val navigationOptions =

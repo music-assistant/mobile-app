@@ -24,8 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -53,21 +51,16 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
-import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.OverflowMenuButton
-import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
-import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_toggle_queue
 import musicassistantclient.composeapp.generated.resources.common_delete
-import musicassistantclient.composeapp.generated.resources.common_transfer
 import musicassistantclient.composeapp.generated.resources.queue_browse_library
 import musicassistantclient.composeapp.generated.resources.queue_cannot_play
 import musicassistantclient.composeapp.generated.resources.queue_empty
@@ -76,7 +69,6 @@ import musicassistantclient.composeapp.generated.resources.queue_label
 import musicassistantclient.composeapp.generated.resources.queue_label_with_position
 import musicassistantclient.composeapp.generated.resources.queue_loading
 import musicassistantclient.composeapp.generated.resources.queue_no_items
-import musicassistantclient.composeapp.generated.resources.queue_no_other_players
 import musicassistantclient.composeapp.generated.resources.queue_not_loaded
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
@@ -93,8 +85,6 @@ fun CollapsibleQueue(
     serverUrl: String?,
     queueAction: (QueueAction) -> Unit,
     tint: Color,
-    players: List<PlayerData> = emptyList(),
-    onPlayerSelected: ((String) -> Unit)? = null,
     isCurrentPage: Boolean = true,
     contentPadding: PaddingValues,
 ) {
@@ -145,52 +135,6 @@ fun CollapsibleQueue(
                 imageVector = if (isQueueExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                 contentDescription = stringResource(Res.string.cd_toggle_queue),
             )
-        }
-        val hasItems = items?.isNotEmpty() == true
-        val queueId = queueData?.data?.info?.id
-
-        if (isQueueExpanded && hasItems && queueId != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Transfer button
-                OverflowMenuButton(
-                    options = players.filter { p -> p.player.id != queueId }.map { playerData ->
-                        OverflowMenuOption(
-                            title = playerData.player.nameAndSuffix,
-                            icon = when {
-                                playerData.isLocal -> Icons.Default.Smartphone
-                                playerData.player.isGroup -> SpeakerMultipleIcon
-                                else -> Icons.Default.Speaker
-                            },
-                            onClick = {
-                                queueAction(
-                                    QueueAction.Transfer(
-                                        queueId,
-                                        playerData.player.id,
-                                        playerData.player.isPlaying,
-                                    ),
-                                )
-                                onPlayerSelected?.invoke(playerData.player.id)
-                            },
-                        )
-                    }.ifEmpty {
-                        listOf(
-                            OverflowMenuOption(
-                                title = stringResource(Res.string.queue_no_other_players),
-                                onClick = { /* No-op */ },
-                            ),
-                        )
-                    },
-                    buttonContent = {
-                        OutlinedButton(onClick = it) {
-                            Text(stringResource(Res.string.common_transfer))
-                        }
-                    },
-                )
-            }
         }
 
         if (isQueueExpanded) {
