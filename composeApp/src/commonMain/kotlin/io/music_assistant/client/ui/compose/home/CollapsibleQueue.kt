@@ -66,7 +66,6 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_toggle_queue
-import musicassistantclient.composeapp.generated.resources.common_clear
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.common_transfer
 import musicassistantclient.composeapp.generated.resources.queue_browse_library
@@ -191,13 +190,6 @@ fun CollapsibleQueue(
                         }
                     },
                 )
-
-                // Clear button
-                OutlinedButton(
-                    onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
-                ) {
-                    Text(stringResource(Res.string.common_clear))
-                }
             }
         }
 

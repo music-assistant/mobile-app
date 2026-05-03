@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,6 +66,7 @@ import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
+import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -81,6 +83,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
+import musicassistantclient.composeapp.generated.resources.queue_clear
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -316,25 +319,7 @@ private fun ExpandedPlayerPage(
                 )
             }
 
-            val navigationOptions =
-                (player.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions {
-                    onClose()
-                    navigateToItem(it)
-                }
-
-            if (navigationOptions != null) {
-                OverflowMenuButton(
-                    modifier = Modifier,
-                    options = navigationOptions,
-                ) { onClick ->
-                    IconButton(onClick = onClick) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = stringResource(Res.string.cd_more),
-                        )
-                    }
-                }
-            }
+            PlayerOptionsMenu(player, queueAction, onClose, navigateToItem)
         }
 
         AnimatedVisibility(
@@ -507,6 +492,50 @@ private fun ExpandedPlayerPage(
             isCurrentPage = isCurrentPage,
             contentPadding = contentPadding,
         )
+    }
+}
+
+@Composable
+private fun PlayerOptionsMenu(
+    player: PlayerData,
+    queueAction: (QueueAction) -> Unit,
+    onClose: () -> Unit,
+    navigateToItem: (AppMediaItem) -> Unit,
+) {
+    val queueData = player.queue as? DataState.Data
+    val queueId = queueData?.data?.info?.id
+    val queueHasItems = !(queueData?.data?.items as? DataState.Data)?.data.isNullOrEmpty()
+    val queueOptions = if (queueId != null && queueHasItems) {
+        listOf(
+            OverflowMenuOption(
+                title = stringResource(Res.string.queue_clear),
+                icon = Icons.Default.DeleteSweep,
+                onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
+            ),
+        )
+    } else {
+        emptyList()
+    }
+
+    val navigationOptions =
+        (player.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions {
+            onClose()
+            navigateToItem(it)
+        } ?: emptyList()
+
+    val menuOptions = queueOptions + navigationOptions
+    if (menuOptions.isNotEmpty()) {
+        OverflowMenuButton(
+            modifier = Modifier,
+            options = menuOptions,
+        ) { onClick ->
+            IconButton(onClick = onClick) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(Res.string.cd_more),
+                )
+            }
+        }
     }
 }
 

@@ -145,6 +145,7 @@
     <string name="queue_no_items">No items</string>
     <string name="queue_not_loaded">Not loaded</string>
     <string name="queue_cannot_play">Cannot play this item</string>
+    <string name="queue_clear">Clear queue</string>
 
     <!-- Players -->
     <string name="players_title">Players</string>
