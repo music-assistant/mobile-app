@@ -17,6 +17,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SplitButtonDefaults.LeadingButton
 import androidx.compose.material3.SplitButtonDefaults.TrailingButton
 import androidx.compose.material3.SplitButtonLayout
@@ -55,76 +56,93 @@ fun PlayerSelectionButton(
     val currentPlayerContentDescription =
         stringResource(Res.string.cd_current_player, player.player.name)
 
-    SplitButtonLayout(
-        modifier = Modifier.clearAndSetSemantics {
-            contentDescription = currentPlayerContentDescription
-        },
-        leadingButton = {
-            LeadingButton(
-                onClick = onSelectPlayer,
-                colors = ButtonDefaults.outlinedButtonColors(),
-                border = ButtonDefaults.outlinedButtonBorder(),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    if (hasGroupChildren) {
+        SplitButtonLayout(
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = currentPlayerContentDescription
+            },
+            leadingButton = {
+                LeadingButton(
+                    onClick = onSelectPlayer,
+                    colors = ButtonDefaults.outlinedButtonColors(),
+                    border = ButtonDefaults.outlinedButtonBorder(),
                 ) {
-                    Icon(
-                        imageVector = when {
-                            isLocalPlayer -> Icons.Default.Smartphone
-                            player.player.isGroup -> SpeakerMultipleIcon
-                            else -> Icons.Default.Speaker
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    dotColor?.let {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(it, CircleShape),
+                    PlayerButtonContent(isLocalPlayer, player, dotColor)
+                }
+            },
+            trailingButton = {
+                if (hasGroupChildren) {
+                    val (colors, border) = if (hasBoundChildren) {
+                        Pair(ButtonDefaults.buttonColors(), null)
+                    } else {
+                        Pair(
+                            ButtonDefaults.outlinedButtonColors(),
+                            ButtonDefaults.outlinedButtonBorder(),
                         )
                     }
 
-                    val boundCount = player.childrenBinds.count { it.isBound }
-                    val playerLabel = when {
-                        player.player.isGroup -> "${player.player.name} (${player.player.groupMembers?.size ?: 0})"
-                        boundCount > 0 -> "${player.player.name} + $boundCount"
-                        else -> player.player.name
+                    TrailingButton(
+                        onClick = onGroupButton,
+                        colors = colors,
+                        border = border,
+                    ) {
+                        Icon(
+                            Icons.Default.Link,
+                            contentDescription = null,
+                        )
                     }
+                }
+            },
+        )
+    } else {
+        OutlinedButton(
+            onClick = onSelectPlayer,
+        ) {
+            PlayerButtonContent(isLocalPlayer = isLocalPlayer, player = player, dotColor = dotColor)
+        }
+    }
+}
 
-                    Text(
-                        text = playerLabel,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        },
-        trailingButton = {
-            if (hasGroupChildren) {
-                val (colors, border) = if (hasBoundChildren) {
-                    Pair(ButtonDefaults.buttonColors(), null)
-                } else {
-                    Pair(
-                        ButtonDefaults.outlinedButtonColors(),
-                        ButtonDefaults.outlinedButtonBorder(),
-                    )
-                }
+@Composable
+private fun PlayerButtonContent(
+    isLocalPlayer: Boolean,
+    player: PlayerData,
+    dotColor: Color?,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            imageVector = when {
+                isLocalPlayer -> Icons.Default.Smartphone
+                player.player.isGroup -> SpeakerMultipleIcon
+                else -> Icons.Default.Speaker
+            },
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+        )
+        dotColor?.let {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(it, CircleShape),
+            )
+        }
 
-                TrailingButton(
-                    onClick = onGroupButton,
-                    colors = colors,
-                    border = border,
-                ) {
-                    Icon(
-                        Icons.Default.Link,
-                        contentDescription = null,
-                    )
-                }
-            }
-        },
-    )
+        val boundCount = player.childrenBinds.count { it.isBound }
+        val playerLabel = when {
+            player.player.isGroup -> "${player.player.name} (${player.player.groupMembers?.size ?: 0})"
+            boundCount > 0 -> "${player.player.name} + $boundCount"
+            else -> player.player.name
+        }
+
+        Text(
+            text = playerLabel,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 private fun SendspinState.toDotColor(): Color = when (this) {
@@ -143,7 +161,7 @@ private fun SendspinState.toDotColor(): Color = when (this) {
 private fun PlayerSelectionButtonNotGroupablePreview() {
     MaterialTheme {
         PlayerSelectionButton(
-            player = PlayerDataFixtures.playerData(name = "Living Room Speaker"),
+            player = PlayerDataFixtures.playerData(),
             sendSpinState = null,
         )
     }
@@ -154,7 +172,7 @@ private fun PlayerSelectionButtonNotGroupablePreview() {
 private fun PlayerSelectionButtonLocalPlayerPreview() {
     MaterialTheme {
         PlayerSelectionButton(
-            player = PlayerDataFixtures.playerData(name = "Local Player").copy(isLocal = true),
+            player = PlayerDataFixtures.playerData().copy(isLocal = true),
             sendSpinState = SendspinState.Synchronized,
         )
     }
@@ -166,7 +184,6 @@ private fun PlayerSelectionButtonPreview() {
     MaterialTheme {
         PlayerSelectionButton(
             player = PlayerDataFixtures.playerData(
-                name = "Group Player",
                 groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = false)),
             ),
             sendSpinState = null,
@@ -180,7 +197,6 @@ private fun PlayerSelectionButtonInGroupPreview() {
     MaterialTheme {
         PlayerSelectionButton(
             player = PlayerDataFixtures.playerData(
-                name = "Group Player",
                 groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = true)),
             ),
             sendSpinState = null,
@@ -193,10 +209,7 @@ private fun PlayerSelectionButtonInGroupPreview() {
 private fun PlayerSelectionButtonIsGroupPreview() {
     MaterialTheme {
         PlayerSelectionButton(
-            player = PlayerDataFixtures.playerData(
-                name = "Group Player",
-                playerType = PlayerType.GROUP,
-            ),
+            player = PlayerDataFixtures.playerData(playerType = PlayerType.GROUP),
             sendSpinState = null,
         )
     }
