@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,7 +37,6 @@ import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.inactive
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_current_player
-import musicassistantclient.composeapp.generated.resources.cd_dsp_settings
 import org.jetbrains.compose.resources.stringResource
 
 private val GROUP_BUTTON_SIZE = 36.dp
@@ -49,7 +47,6 @@ fun PlayerSelectionLayout(
     sendSpinState: SendspinState?,
     onSelectPlayer: () -> Unit = {},
     onGroupButton: () -> Unit = {},
-    onDspButton: (() -> Unit)? = null,
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
@@ -65,24 +62,7 @@ fun PlayerSelectionLayout(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // Left slot: DSP button or invisible counterweight for centering
-        if (onDspButton != null) {
-            Box(
-                modifier = Modifier
-                    .size(GROUP_BUTTON_SIZE)
-                    .clip(RoundedCornerShape(GROUP_BUTTON_SIZE / 3))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                    .clickable(onClick = onDspButton),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = stringResource(Res.string.cd_dsp_settings),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                )
-            }
-        } else if (hasGroupChildren) {
+        if (hasGroupChildren) {
             Spacer(modifier = Modifier.size(GROUP_BUTTON_SIZE))
         }
 
@@ -123,7 +103,6 @@ fun PlayerSelectionLayout(
             }
         }
 
-        // Right slot: group button or invisible counterweight for centering
         if (hasGroupChildren) {
             val boundCount = player.childrenBinds.count { it.isBound }
             val groupLabel = when {
@@ -158,8 +137,6 @@ fun PlayerSelectionLayout(
                     },
                 )
             }
-        } else if (onDspButton != null) {
-            Spacer(modifier = Modifier.size(GROUP_BUTTON_SIZE))
         }
     }
 }
@@ -167,10 +144,10 @@ fun PlayerSelectionLayout(
 private fun SendspinState.toDotColor(): Color = when (this) {
     is SendspinState.Synchronized, is SendspinState.Ready,
     is SendspinState.Buffering,
-    -> Color(0xFF4CAF50) // Green
+        -> Color(0xFF4CAF50) // Green
     is SendspinState.Connecting, is SendspinState.Authenticating,
     is SendspinState.Handshaking, is SendspinState.Reconnecting,
-    -> Color(0xFFFF9800) // Orange
+        -> Color(0xFFFF9800) // Orange
     is SendspinState.Error -> Color(0xFFF44336) // Red
     is SendspinState.Idle -> Color(0xFFBDBDBD) // Light gray
 }

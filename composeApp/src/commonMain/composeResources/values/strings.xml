@@ -59,7 +59,6 @@
     <string name="cd_fully_played">Fully played</string>
     <string name="cd_in_progress">In progress</string>
     <string name="cd_provider_icon">Provider Icon</string>
-    <string name="cd_dsp_settings">DSP Settings</string>
     <string name="cd_playing">Playing %1$s</string>
     <string name="cd_current_player">Current player: %1$s</string>
 
@@ -152,6 +151,7 @@
     <string name="players_group_settings">Group settings</string>
     <string name="players_group_volume">%1$s group volume</string>
     <string name="players_nothing">Nothing playing</string>
+    <string name="players_dsp_settings">DSP settings</string>
 
     <!-- DSP -->
     <string name="dsp_title">DSP settings</string>

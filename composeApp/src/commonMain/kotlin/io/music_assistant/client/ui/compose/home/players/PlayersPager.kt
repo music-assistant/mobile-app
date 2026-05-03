@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -89,6 +90,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
+import musicassistantclient.composeapp.generated.resources.players_dsp_settings
 import musicassistantclient.composeapp.generated.resources.queue_clear
 import musicassistantclient.composeapp.generated.resources.queue_no_other_players
 import musicassistantclient.composeapp.generated.resources.queue_transfer
@@ -323,17 +325,19 @@ private fun ExpandedPlayerPage(
                     sendSpinState = sendspinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton,
-                    onDspButton = onDspButton,
                 )
             }
 
             PlayerOverflowMenu(
-                player,
-                allPlayers,
-                queueAction,
-                onClose,
-                navigateToItem,
-                { moveToPlayer(it) },
+                player = player,
+                allPlayers = allPlayers,
+                queueAction = queueAction,
+                navigateToItem = {
+                    navigateToItem(it)
+                    onClose()
+                },
+                onPlayerSelected = { moveToPlayer(it) },
+                onOpenDsp = onDspButton,
             )
         }
 
@@ -513,9 +517,9 @@ private fun PlayerOverflowMenu(
     player: PlayerData,
     allPlayers: List<PlayerData>,
     queueAction: (QueueAction) -> Unit,
-    onClose: () -> Unit,
     navigateToItem: (AppMediaItem) -> Unit,
     onPlayerSelected: (String) -> Unit,
+    onOpenDsp: (() -> Unit)?,
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
 
@@ -576,13 +580,23 @@ private fun PlayerOverflowMenu(
         }
     }
 
-    val navigationOptions =
-        (player.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions {
-            onClose()
-            navigateToItem(it)
-        } ?: emptyList()
+    val playerOptions = if (onOpenDsp != null) {
+        listOf(
+            OverflowMenuOption(
+                title = stringResource(Res.string.players_dsp_settings),
+                icon = Icons.Default.Tune,
+                onClick = onOpenDsp,
+            ),
+        )
+    } else {
+        emptyList()
+    }
 
-    val menuOptions = queueOptions + navigationOptions
+    val navigationOptions =
+        (player.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(navigateToItem)
+            ?: emptyList()
+
+    val menuOptions = queueOptions + playerOptions + navigationOptions
     if (menuOptions.isNotEmpty()) {
         OverflowMenuButton(
             modifier = Modifier,
