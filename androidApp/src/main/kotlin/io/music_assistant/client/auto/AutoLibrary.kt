@@ -99,7 +99,12 @@ class AutoLibrary(
         Logger.withTag("AutoLibrary").i { "Items for $id" }
         when {
             id == MediaIds.ROOT -> result.sendResult(rootChildren())
-            MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(id, result, favoritesOnly = false)
+            MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(
+                id,
+                result,
+                favoritesOnly = false,
+            )
+
             id.startsWith(MediaIds.SORT_MENU_PREFIX) -> handleSortMenu(id, result)
             id.startsWith(MediaIds.SORT_APPLY_PREFIX) -> handleSortApply(id, result)
             id.startsWith(MediaIds.FAVORITES_PREFIX) -> handleFavorites(id, result)
@@ -142,7 +147,10 @@ class AutoLibrary(
                 emptyList()
             } else {
                 listOf(
-                    sortByPseudoItem(MediaIds.sortMenuId(mediaType), AutoSortPresets.labelOf(mediaType, sort)),
+                    sortByPseudoItem(
+                        MediaIds.sortMenuId(mediaType),
+                        AutoSortPresets.labelOf(mediaType, sort),
+                    ),
                     favoritesPseudoItem(MediaIds.favoritesId(mediaType)),
                 )
             }
@@ -299,10 +307,22 @@ class AutoLibrary(
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.listLibrary(orderBy = orderBy, favorite = favorite)
             MediaType.ALBUM -> Request.Album.listLibrary(orderBy = orderBy, favorite = favorite)
-            MediaType.PLAYLIST -> Request.Playlist.listLibrary(orderBy = orderBy, favorite = favorite)
+            MediaType.PLAYLIST -> Request.Playlist.listLibrary(
+                orderBy = orderBy,
+                favorite = favorite,
+            )
+
             MediaType.PODCAST -> Request.Podcast.listLibrary(orderBy = orderBy, favorite = favorite)
-            MediaType.RADIO -> Request.RadioStation.listLibrary(orderBy = orderBy, favorite = favorite)
-            MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(orderBy = orderBy, favorite = favorite)
+            MediaType.RADIO -> Request.RadioStation.listLibrary(
+                orderBy = orderBy,
+                favorite = favorite,
+            )
+
+            MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
+                orderBy = orderBy,
+                favorite = favorite,
+            )
+
             else -> return null
         }
         return apiClient.sendRequest(request)
@@ -320,23 +340,28 @@ class AutoLibrary(
         val request = when (context) {
             SubItemContext.ARTIST_ALBUMS ->
                 Request.Artist.getAlbums(parent.itemId, parent.provider)
+
             SubItemContext.ALBUM_TRACKS ->
                 Request.Album.getTracks(parent.itemId, parent.provider)
+
             SubItemContext.PLAYLIST_TRACKS ->
                 Request.Playlist.getTracks(
                     itemId = parent.itemId,
                     providerInstanceIdOrDomain = parent.provider,
                     orderBy = sort.toServerString(),
                 )
+
             SubItemContext.PODCAST_EPISODES ->
                 Request.Podcast.getEpisodes(parent.itemId, parent.provider)
+
             SubItemContext.ARTIST_TRACKS -> return null
         }
         val items = apiClient.sendRequest(request)
             .resultAs<List<ServerMediaItem>>()
             ?.toAppMediaItemList()
             ?: return null
-        val sorted = if (context == SubItemContext.PLAYLIST_TRACKS) items else items.clientSorted(sort)
+        val sorted =
+            if (context == SubItemContext.PLAYLIST_TRACKS) items else items.clientSorted(sort)
         return sorted.map { it.toAutoMediaItem(baseUrl, true, defaultIconUri) }
     }
 
@@ -361,11 +386,11 @@ class AutoLibrary(
                         .setIconUri(android.R.drawable.ic_media_play.toUri(context))
                         .setExtras(
                             Bundle().apply {
-                            putString(
-                                MediaIds.QUEUE_OPTION_KEY,
-                                QueueOption.REPLACE.name,
-                            )
-                        },
+                                putString(
+                                    MediaIds.QUEUE_OPTION_KEY,
+                                    QueueOption.REPLACE.name,
+                                )
+                            },
                         )
                         .build(),
                     MediaItem.FLAG_PLAYABLE,
@@ -379,11 +404,11 @@ class AutoLibrary(
                         .setIconUri(android.R.drawable.ic_menu_add.toUri(context))
                         .setExtras(
                             Bundle().apply {
-                            putString(
-                                MediaIds.QUEUE_OPTION_KEY,
-                                QueueOption.ADD.name,
-                            )
-                        },
+                                putString(
+                                    MediaIds.QUEUE_OPTION_KEY,
+                                    QueueOption.ADD.name,
+                                )
+                            },
                         )
                         .build(),
                     MediaItem.FLAG_PLAYABLE,
@@ -407,7 +432,12 @@ class AutoLibrary(
             val result = apiClient.sendRequest(
                 Request.Library.search(
                     query = query,
-                    mediaTypes = listOf(MediaType.TRACK, MediaType.ARTIST, MediaType.ALBUM, MediaType.PLAYLIST),
+                    mediaTypes = listOf(
+                        MediaType.TRACK,
+                        MediaType.ARTIST,
+                        MediaType.ALBUM,
+                        MediaType.PLAYLIST,
+                    ),
                     libraryOnly = false,
                 ),
             )
@@ -491,6 +521,14 @@ class AutoLibrary(
     }
 }
 
+private const val SORT_APPLY_PARAMS_COUNT = 3
+private const val PARENT_REF_PARAMS_COUNT = 4
+private const val SUB_SORT_APPLY_PARAMS_COUNT = 4
+
+private const val PARENT_REF_ITEM_ID_PARAM_INDEX = 0
+private const val PARENT_REF_URI_PARAM_INDEX = 1
+private const val PARENT_REF_PROVIDER_PARAM_INDEX = 3
+
 internal object MediaIds {
     const val ROOT = "auto_lib_root"
     const val TAB_ARTISTS = "auto_lib_artists"
@@ -526,9 +564,10 @@ internal object MediaIds {
 
     fun sortApplyId(type: MediaType, option: SortOption): String =
         "$SORT_APPLY_PREFIX${type.name}|${option.field.name}|${option.descending}"
+
     fun parseSortApply(id: String): Pair<MediaType, SortOption>? {
         val parts = id.removePrefix(SORT_APPLY_PREFIX).split("|")
-        if (parts.size != 3) return null
+        if (parts.size != SORT_APPLY_PARAMS_COUNT) return null
         val type = runCatching { MediaType.valueOf(parts[0]) }.getOrNull() ?: return null
         val field = runCatching { SortField.valueOf(parts[1]) }.getOrNull() ?: return null
         val desc = parts[2].toBooleanStrictOrNull() ?: return null
@@ -541,6 +580,7 @@ internal object MediaIds {
 
     fun subSortMenuId(context: SubItemContext, parent: ParentRef): String =
         "$SUB_SORT_MENU_PREFIX${context.name}|${parent.encode()}"
+
     fun parseSubSortMenu(id: String): SubSortMenuRef? {
         val rest = id.removePrefix(SUB_SORT_MENU_PREFIX)
         val sepIdx = rest.indexOf('|').takeIf { it >= 0 } ?: return null
@@ -552,10 +592,11 @@ internal object MediaIds {
 
     fun subSortApplyId(context: SubItemContext, option: SortOption, parent: ParentRef): String =
         "$SUB_SORT_APPLY_PREFIX${context.name}|${option.field.name}|${option.descending}|${parent.encode()}"
+
     fun parseSubSortApply(id: String): SubSortApplyRef? {
         val rest = id.removePrefix(SUB_SORT_APPLY_PREFIX)
         val parts = rest.split("|", limit = 4)
-        if (parts.size != 4) return null
+        if (parts.size != SUB_SORT_APPLY_PARAMS_COUNT) return null
         val ctx = runCatching { SubItemContext.valueOf(parts[0]) }.getOrNull() ?: return null
         val field = runCatching { SortField.valueOf(parts[1]) }.getOrNull() ?: return null
         val desc = parts[2].toBooleanStrictOrNull() ?: return null
@@ -573,7 +614,7 @@ internal data class ParentRef(
     // Matches the existing 4-part `itemId__uri__mediaType__provider` encoding
     // produced in toMediaDescription, so parents discovered via drill-down IDs
     // and re-encoded for sort sub-menus stay round-trip-safe.
-    fun encode(): String = "${itemId}__${uri}__${type}__${provider}"
+    fun encode(): String = "${itemId}__${uri}__${type}__$provider"
 
     fun subItemContext(): SubItemContext? = when (type) {
         MediaType.ARTIST -> SubItemContext.ARTIST_ALBUMS
@@ -586,9 +627,14 @@ internal data class ParentRef(
     companion object {
         fun parse(encoded: String): ParentRef? {
             val parts = encoded.split("__")
-            if (parts.size != 4) return null
+            if (parts.size != PARENT_REF_PARAMS_COUNT) return null
             val type = runCatching { MediaType.valueOf(parts[2]) }.getOrNull() ?: return null
-            return ParentRef(parts[0], parts[1], type, parts[3])
+            return ParentRef(
+                parts[PARENT_REF_ITEM_ID_PARAM_INDEX],
+                parts[PARENT_REF_URI_PARAM_INDEX],
+                type,
+                parts[PARENT_REF_PROVIDER_PARAM_INDEX],
+            )
         }
     }
 }
@@ -603,8 +649,11 @@ internal data class SubSortApplyRef(
 private object AutoSortPresets {
     data class Preset(val label: String, val option: SortOption)
 
-    private fun asc(field: SortField, label: String) = Preset(label, SortOption(field, descending = false))
-    private fun desc(field: SortField, label: String) = Preset(label, SortOption(field, descending = true))
+    private fun asc(field: SortField, label: String) =
+        Preset(label, SortOption(field, descending = false))
+
+    private fun desc(field: SortField, label: String) =
+        Preset(label, SortOption(field, descending = true))
 
     val byTab: Map<MediaType, List<Preset>> = mapOf(
         MediaType.ARTIST to listOf(
@@ -669,7 +718,8 @@ private object AutoSortPresets {
         byTab[type]?.firstOrNull { it.option == option }?.label ?: option.field.displayName
 
     fun labelOf(context: SubItemContext, option: SortOption): String =
-        bySubContext[context]?.firstOrNull { it.option == option }?.label ?: option.field.displayName
+        bySubContext[context]?.firstOrNull { it.option == option }?.label
+            ?: option.field.displayName
 }
 
 private fun SearchResult.toAutoMediaItems(
@@ -737,11 +787,11 @@ fun AppMediaItem.toMediaDescription(
         .setIconUri(imageInfo?.url(serverUrl)?.let { Uri.parse(it) } ?: defaultIconUri)
         .setExtras(
             Bundle().apply {
-            putString(
-                MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
-                category,
-            )
-        },
+                putString(
+                    MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
+                    category,
+                )
+            },
         )
         .build()
 }
