@@ -227,9 +227,9 @@ style:
     active: true
   UnusedPrivateMember:
     active: true
-    # Allow private @Preview @Composable functions — they're unused at runtime but consumed
-    # by the IDE preview tooling. By project convention these are named `Preview*`.
-    allowedNames: '(_|ignored|expected|serialVersionUID|Preview.*)'
+    allowedNames: '(_|ignored|expected|serialVersionUID)'
+    ignoreAnnotated:
+      - 'Preview'
   UnusedParameter:
     active: true
     allowedNames: '_|ignored|expected'

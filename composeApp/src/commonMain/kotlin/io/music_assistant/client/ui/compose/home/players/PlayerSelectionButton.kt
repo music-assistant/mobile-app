@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SplitButtonDefaults.LeadingButton
 import androidx.compose.material3.SplitButtonDefaults.TrailingButton
 import androidx.compose.material3.SplitButtonLayout
@@ -27,8 +28,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.data.model.server.PlayerType
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import musicassistantclient.composeapp.generated.resources.Res
@@ -132,4 +136,68 @@ private fun SendspinState.toDotColor(): Color = when (this) {
         -> Color(0xFFFF9800) // Orange
     is SendspinState.Error -> Color(0xFFF44336) // Red
     is SendspinState.Idle -> Color(0xFFBDBDBD) // Light gray
+}
+
+@Preview
+@Composable
+private fun PlayerSelectionButtonNotGroupablePreview() {
+    MaterialTheme {
+        PlayerSelectionButton(
+            player = PlayerDataFixtures.playerData(name = "Living Room Speaker"),
+            sendSpinState = null,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PlayerSelectionButtonLocalPlayerPreview() {
+    MaterialTheme {
+        PlayerSelectionButton(
+            player = PlayerDataFixtures.playerData(name = "Local Player").copy(isLocal = true),
+            sendSpinState = SendspinState.Synchronized,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PlayerSelectionButtonPreview() {
+    MaterialTheme {
+        PlayerSelectionButton(
+            player = PlayerDataFixtures.playerData(
+                name = "Group Player",
+                groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = false)),
+            ),
+            sendSpinState = null,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PlayerSelectionButtonInGroupPreview() {
+    MaterialTheme {
+        PlayerSelectionButton(
+            player = PlayerDataFixtures.playerData(
+                name = "Group Player",
+                groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = true)),
+            ),
+            sendSpinState = null,
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PlayerSelectionButtonIsGroupPreview() {
+    MaterialTheme {
+        PlayerSelectionButton(
+            player = PlayerDataFixtures.playerData(
+                name = "Group Player",
+                playerType = PlayerType.GROUP,
+            ),
+            sendSpinState = null,
+        )
+    }
 }

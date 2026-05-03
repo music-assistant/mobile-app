@@ -13,13 +13,14 @@ object PlayerDataFixtures {
         queueId: String = "queue${uniqueIdGenerator.nextInt()}",
         name: String = "Player ${uniqueIdGenerator.nextInt()}",
         groupChildren: List<ChildBind> = emptyList(),
+        playerType: PlayerType = PlayerType.PLAYER,
     ): PlayerData {
         return PlayerData(
             player = Player(
                 id = "player${uniqueIdGenerator.nextInt()}",
                 name = name,
                 provider = "provider",
-                type = PlayerType.PLAYER,
+                type = playerType,
                 shouldBeShown = true,
                 canSetVolume = true,
                 volumeLevel = 50f,
