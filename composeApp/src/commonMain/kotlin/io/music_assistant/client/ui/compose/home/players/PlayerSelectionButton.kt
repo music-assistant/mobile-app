@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.ButtonDefaults
@@ -56,7 +57,6 @@ fun PlayerSelectionButton(
         },
         leadingButton = {
             LeadingButton(
-                enabled = true,
                 onClick = onSelectPlayer,
                 colors = ButtonDefaults.outlinedButtonColors(),
                 border = ButtonDefaults.outlinedButtonBorder(),
@@ -81,8 +81,16 @@ fun PlayerSelectionButton(
                                 .background(it, CircleShape),
                         )
                     }
+
+                    val boundCount = player.childrenBinds.count { it.isBound }
+                    val playerLabel = when {
+                        player.player.isGroup -> "${player.player.name} (${player.player.groupMembers?.size ?: 0})"
+                        boundCount > 0 -> "${player.player.name} + $boundCount"
+                        else -> player.player.name
+                    }
+
                     Text(
-                        text = player.player.name,
+                        text = playerLabel,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -91,13 +99,6 @@ fun PlayerSelectionButton(
         },
         trailingButton = {
             if (hasGroupChildren) {
-                val boundCount = player.childrenBinds.count { it.isBound }
-                val groupLabel = when {
-                    player.player.isGroup -> "${player.player.groupMembers?.size ?: 0}"
-                    boundCount > 0 -> "+$boundCount"
-                    else -> "+"
-                }
-
                 val (colors, border) = if (hasBoundChildren) {
                     Pair(ButtonDefaults.buttonColors(), null)
                 } else {
@@ -108,12 +109,14 @@ fun PlayerSelectionButton(
                 }
 
                 TrailingButton(
-                    modifier = Modifier,
                     onClick = onGroupButton,
                     colors = colors,
                     border = border,
                 ) {
-                    Text(text = groupLabel)
+                    Icon(
+                        Icons.Default.Link,
+                        contentDescription = null,
+                    )
                 }
             }
         },
