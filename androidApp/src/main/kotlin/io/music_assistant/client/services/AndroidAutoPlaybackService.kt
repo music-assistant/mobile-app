@@ -82,6 +82,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         )
         sessionToken = token
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
+        library.notifyChildrenChanged = { parentId -> notifyChildrenChanged(parentId) }
 
         // Playback data collector — the primary writer for playback state.
         // SharedMediaSessionManager coordinates with error state: if an error is set,
@@ -376,6 +377,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onDestroy() {
+        library.notifyChildrenChanged = null
         dataSource.apiClient.onExternalConsumerInactive()
         sharedSession.release(isAutoService = true)
         scope.cancel()

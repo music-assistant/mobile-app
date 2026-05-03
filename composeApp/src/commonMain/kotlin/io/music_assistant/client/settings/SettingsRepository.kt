@@ -355,6 +355,30 @@ class SettingsRepository(
         settings.putString("sort_sub_${context.name}", "${option.field.name}:${option.descending}")
     }
 
+    // Android Auto keeps its own per-type sort independent of the main app: the
+    // car UI exposes a curated subset of presets, so blending them risks leaving
+    // a "Custom" subtitle with no matching menu entry. Defaults still come from
+    // SortConfig — they happen to match the AA matrix.
+    fun getAutoSortOption(mediaType: MediaType): SortOption {
+        val raw = settings.getStringOrNull("auto_sort_${mediaType.name}")
+            ?: return SortConfig.defaultFor(mediaType)
+        return parseSortOption(raw) ?: SortConfig.defaultFor(mediaType)
+    }
+
+    fun setAutoSortOption(mediaType: MediaType, option: SortOption) {
+        settings.putString("auto_sort_${mediaType.name}", "${option.field.name}:${option.descending}")
+    }
+
+    fun getAutoSortOption(context: SubItemContext): SortOption {
+        val raw = settings.getStringOrNull("auto_sort_sub_${context.name}")
+            ?: return SortConfig.defaultFor(context)
+        return parseSortOption(raw) ?: SortConfig.defaultFor(context)
+    }
+
+    fun setAutoSortOption(context: SubItemContext, option: SortOption) {
+        settings.putString("auto_sort_sub_${context.name}", "${option.field.name}:${option.descending}")
+    }
+
     private fun parseSortOption(raw: String): SortOption? {
         val parts = raw.split(":")
         if (parts.size != 2) return null
