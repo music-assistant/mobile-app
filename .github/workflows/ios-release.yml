@@ -39,22 +39,23 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      # WebRTC.xcframework is gitignored (99MB) and downloaded per
-      # ios_build_instructions.md. If the version ever bumps, update both
-      # places — it's only referenced here and in that doc.
+      # WebRTC.xcframework is gitignored (~32 MB extracted, dSYMs shipped
+      # separately) and downloaded per ios_build_instructions.md. If the
+      # version/patch ever bumps, update both places — it's only referenced
+      # here and in that doc.
       - name: Cache WebRTC.xcframework
         id: cache-webrtc
         uses: actions/cache@v4
         with:
           path: iosApp/Frameworks/WebRTC.xcframework
-          key: webrtc-xcframework-125.6422.02
+          key: webrtc-xcframework-m125-cow-bloat-fix.1
 
       - name: Download WebRTC.xcframework
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           curl -L --fail \
-            "https://github.com/webrtc-sdk/Specs/releases/download/125.6422.02/WebRTC.xcframework.zip" \
+            "https://github.com/teancom/webrtc/releases/download/m125-cow-bloat-fix.1/WebRTC.xcframework.m125-cow-bloat-fix.1.zip" \
             -o /tmp/WebRTC.xcframework.zip
           mkdir -p iosApp/Frameworks
           unzip -q /tmp/WebRTC.xcframework.zip -d iosApp/Frameworks/

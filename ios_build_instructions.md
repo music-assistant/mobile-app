@@ -73,8 +73,13 @@ The app uses `webrtc-kmp` which requires the `WebRTC.xcframework` binary to be p
 The framework is already included in the repository at that path. If it's missing, download it:
 
 ```bash
-# Download WebRTC.xcframework (M125 build, ~41 MB)
-curl -L "https://github.com/webrtc-sdk/Specs/releases/download/125.6422.02/WebRTC.xcframework.zip" \
+# Download WebRTC.xcframework (M125 build + dcsctp COW-bloat fix,
+# ~15 MB compressed / ~32 MB extracted).
+# Patched build from teancom/webrtc — same M125 binary upstream ships
+# (125.6422.02), with the DcSctpTransport receive_buffer fix from
+# webrtc-sdk/webrtc#234 backported. Replace with an upstream
+# webrtc-sdk/Specs release once the fix lands in a stock release.
+curl -L "https://github.com/teancom/webrtc/releases/download/m125-cow-bloat-fix.1/WebRTC.xcframework.m125-cow-bloat-fix.1.zip" \
   -o /tmp/WebRTC.xcframework.zip
 
 # Extract into iosApp/Frameworks/
@@ -85,6 +90,10 @@ cd iosApp/Frameworks && unzip /tmp/WebRTC.xcframework.zip
 Expected result: `iosApp/Frameworks/WebRTC.xcframework/` containing slices for:
 - `ios-arm64` (physical device)
 - `ios-arm64_x86_64-simulator` (simulator)
+
+The xcframework binary ships **without dSYMs** — they live as a separate
+`*-dsyms.zip` asset on the same release for opt-in download when you need
+to symbolicate a WebRTC frame in a crash report.
 
 The Xcode build phase script (`Compile Kotlin Framework`) automatically:
 1. Copies the correct slice into the KMP output directory (so the linker can find it)
