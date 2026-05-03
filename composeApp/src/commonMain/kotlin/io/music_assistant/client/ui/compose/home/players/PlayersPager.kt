@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Smartphone
@@ -526,6 +527,7 @@ private fun PlayerOverflowMenu(
             OverflowMenuOption(
                 title = stringResource(Res.string.queue_transfer),
                 icon = Icons.Default.SwapHoriz,
+                trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
                 onClick = { transferMenuExpanded = true },
             ),
             OverflowMenuOption(

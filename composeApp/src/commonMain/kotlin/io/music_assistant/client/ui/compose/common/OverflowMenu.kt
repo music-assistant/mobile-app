@@ -42,33 +42,42 @@ fun OverflowMenu(expanded: Boolean, onClose: () -> Unit = {}, options: List<Over
         expanded = expanded,
         onDismissRequest = { onClose() },
     ) {
-        options.forEach { it.toDropdownMenuItem(onClose) }
+        options.forEach { it.DropdownMenuItem(onClose) }
     }
 }
 
 data class OverflowMenuOption(
     val title: String,
     val icon: ImageVector? = null,
+    val trailingIcon: ImageVector? = null,
     val onClick: () -> Unit,
 )
 
 @Composable
-fun OverflowMenuOption.toDropdownMenuItem(onClose: () -> Unit) {
-    return DropdownMenuItem(
+private fun OverflowMenuOption.DropdownMenuItem(onClose: () -> Unit) {
+    DropdownMenuItem(
         onClick = {
-            this.onClick()
+            onClick()
             onClose()
         },
-        leadingIcon = this.icon?.let {
+        leadingIcon = icon?.let {
             {
                 Icon(
                     imageVector = it,
-                    contentDescription = this.title,
+                    contentDescription = title,
+                )
+            }
+        },
+        trailingIcon = trailingIcon?.let {
+            {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
                 )
             }
         },
         text = {
-            Text(modifier = Modifier.padding(all = 4.dp), text = this.title)
+            Text(modifier = Modifier.padding(all = 4.dp), text = title)
         },
     )
 }
