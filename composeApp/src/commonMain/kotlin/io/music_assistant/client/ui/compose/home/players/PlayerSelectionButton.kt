@@ -55,12 +55,13 @@ fun PlayerSelectionButton(
 
     val currentPlayerContentDescription =
         stringResource(Res.string.cd_current_player, player.player.name)
+    val modifier = Modifier.clearAndSetSemantics {
+        contentDescription = currentPlayerContentDescription
+    }
 
     if (hasGroupChildren) {
         SplitButtonLayout(
-            modifier = Modifier.clearAndSetSemantics {
-                contentDescription = currentPlayerContentDescription
-            },
+            modifier = modifier,
             leadingButton = {
                 LeadingButton(
                     onClick = onSelectPlayer,
@@ -96,6 +97,7 @@ fun PlayerSelectionButton(
         )
     } else {
         OutlinedButton(
+            modifier = modifier,
             onClick = onSelectPlayer,
         ) {
             PlayerButtonContent(isLocalPlayer = isLocalPlayer, player = player, dotColor = dotColor)
