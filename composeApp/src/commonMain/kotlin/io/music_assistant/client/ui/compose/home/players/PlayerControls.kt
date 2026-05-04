@@ -56,7 +56,7 @@ fun PlayerControls(
     Row(
         modifier = modifier
             .wrapContentSize(),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showAdditionalButtons) {

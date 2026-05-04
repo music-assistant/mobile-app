@@ -212,12 +212,11 @@ fun FullPlayerItem(
     val controlTint = colors.controlTint
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            modifier = Modifier.padding(horizontal = 16.dp),
             text = item.player.providerType.takeIf { !isLocal } ?: "",
             fontSize = 12.sp,
         )
@@ -226,7 +225,6 @@ fun FullPlayerItem(
                 .weight(1f, fill = false)
                 .aspectRatio(1f)
                 .heightIn(max = 500.dp)
-                .padding(16.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(colors.dominant.alphaOn(track != null)),
             contentAlignment = Alignment.Center,
@@ -283,7 +281,6 @@ fun FullPlayerItem(
             )
             if (item.queueInfo?.currentItem?.isPlayable == false) {
                 Text(
-                    modifier = Modifier.padding(horizontal = 16.dp),
                     text = "Cannot play this item",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
@@ -292,7 +289,6 @@ fun FullPlayerItem(
                 )
             } else {
                 Text(
-                    modifier = Modifier.padding(horizontal = 16.dp),
                     text = track?.subtitle ?: "",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -327,7 +323,7 @@ fun FullPlayerItem(
             inactiveTrackColor = controlTint.inactive(),
         )
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) { // Progress bar
             Slider(
                 value = sliderPosition,
@@ -385,27 +381,27 @@ fun FullPlayerItem(
                     }
                 },
             )
+        }
 
-            // Duration labels
-            Row(
-                modifier = Modifier.fillMaxWidth().offset(y = (-16).dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = sliderPosition.takeIf { track != null }
-                        .formatDuration(DurationUnit.SECONDS)
-                        .takeIf { duration != null } ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = track
-                        ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
-                        ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        // Duration labels
+        Row(
+            modifier = Modifier.fillMaxWidth().offset(y = (-16).dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = sliderPosition.takeIf { track != null }
+                    .formatDuration(DurationUnit.SECONDS)
+                    .takeIf { duration != null } ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = track
+                    ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
+                    ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         PlayerControls(

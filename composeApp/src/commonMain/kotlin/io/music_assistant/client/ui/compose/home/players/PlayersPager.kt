@@ -311,7 +311,10 @@ private fun ExpandedPlayerPage(
     isCurrentPage: Boolean,
     navigateToItem: (AppMediaItem) -> Unit = {},
 ) {
-    Column(modifier = Modifier.padding(top = 8.dp)) {
+    Column(
+        modifier = Modifier.padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.CenterEnd,
