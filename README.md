@@ -33,6 +33,7 @@ The goal of this app is to provide an iOS and Android native feeling experience 
   - local playback on device from MA library (Sendspin streaming protocol over WebRTC or WebSocket);
   - comprehensive Settings screen with section-based UI for server connection, authentication (builtin/OAuth), and local player configuration.
 - Android-specific:
+  - requires Android 8.0 or later; 
   - media service (background playback) and media notification in system area for quick access to players controls;
   - Android Auto support for built-in player.
 - iOS-specific:
