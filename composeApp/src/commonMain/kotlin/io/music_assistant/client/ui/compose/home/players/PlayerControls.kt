@@ -79,7 +79,7 @@ fun PlayerControls(
             }
         }
 
-        if (showSkip) {
+        if (showAdditionalButtons) {
             ActionButton(
                 icon = SkipBackIcon,
                 tint = tint,
