@@ -13,6 +13,7 @@ import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerPlayer
+import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.User
@@ -201,7 +202,17 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
                 updateQueue(queueId, mediaTrack)
                 updatePlayer({ it.activeSource == queueId }) {
-                    it.copy(state = PlayerState.PLAYING)
+                    it.copy(
+                        state = PlayerState.PLAYING,
+                        currentMedia = mediaTrack?.let { track ->
+                            ServerPlayerMedia(
+                                uri = track.uri,
+                                mediaType = track.mediaType,
+                                title = track.name,
+                                queueId = queueId,
+                            )
+                        },
+                    )
                 }
 
                 Result.success(Answer(JsonObject(emptyMap())))
