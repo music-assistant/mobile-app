@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -316,7 +315,7 @@ fun FullPlayerItem(
         )
         Column(
             modifier = Modifier.fillMaxWidth(),
-        ) { // Progress bar
+        ) {
             Slider(
                 value = sliderPosition,
                 valueRange = duration?.let { 0f..it } ?: 0f..1f,
@@ -373,27 +372,27 @@ fun FullPlayerItem(
                     }
                 },
             )
-        }
 
-        // Duration labels
-        Row(
-            modifier = Modifier.fillMaxWidth().offset(y = (-16).dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = sliderPosition.takeIf { currentMedia != null }
-                    .formatDuration(DurationUnit.SECONDS)
-                    .takeIf { duration != null } ?: "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = currentMedia
-                    ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
-                    ?: "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // Duration labels
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = sliderPosition.takeIf { currentMedia != null }
+                        .formatDuration(DurationUnit.SECONDS)
+                        .takeIf { duration != null } ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = currentMedia
+                        ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
+                        ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         PlayerControls(

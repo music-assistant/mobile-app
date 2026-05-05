@@ -57,7 +57,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.PlayerData
@@ -390,8 +389,10 @@ private fun ExpandedPlayerPage(
             }
         }
 
-        if (player.player.isVolumeSliderAccessible && player.player.currentVolume != null) {
-            if (!player.isLocal) {
+        // Fixed-height shell keeps album art space consistent whether
+        // the volume control is shown for this player.
+        Box(modifier = Modifier.fillMaxWidth().height(36.dp)) {
+            if (player.player.isVolumeSliderAccessible && player.player.currentVolume != null) {
                 var currentVolume by remember(player.player.currentVolume) {
                     mutableStateOf(player.player.currentVolume)
                 }
@@ -402,8 +403,7 @@ private fun ExpandedPlayerPage(
                     inactiveTrackColor = controlTint.inactive(),
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(36.dp)
-                        .padding(horizontal = 32.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -478,14 +478,6 @@ private fun ExpandedPlayerPage(
                         color = controlTint,
                     )
                 }
-            } else {
-                Text(
-                    modifier = Modifier.fillMaxWidth().height(36.dp),
-                    text = "use device buttons to adjust the volume",
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                )
             }
         }
 

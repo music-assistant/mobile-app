@@ -4,6 +4,8 @@
 
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -99,13 +101,13 @@ fun ItemHeader(
             ItemPlayButton(
                 item,
                 onPlayClick = onPlayClick,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
 
         if (WindowClass.isAtLeastExpanded()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 image()
@@ -115,7 +117,7 @@ fun ItemHeader(
             }
         } else {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 image()
@@ -241,7 +243,10 @@ private fun ItemOverflow(
         },
     ) { onClick ->
         IconButton(onClick = onClick) {
-            Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(Res.string.cd_more))
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = stringResource(Res.string.cd_more)
+            )
         }
     }
 
@@ -312,9 +317,11 @@ private fun ItemText(
     Column(
         modifier = modifier,
         horizontalAlignment = horizontalAlignment,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            item.title,
+            modifier = Modifier.basicMarquee(),
+            text = item.title,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
         )
@@ -322,20 +329,20 @@ private fun ItemText(
         (item as? AppMediaItem.Album)?.version?.let {
             if (it.isNotBlank()) {
                 Text(
-                    it,
+                    modifier = Modifier.basicMarquee(),
+                    text = it,
                     textAlign = textAlign,
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
 
         item.subtitle?.let {
             Text(
-                it,
+                modifier = Modifier.basicMarquee(),
+                text = it,
                 textAlign = textAlign,
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 12.dp),
             )
         }
     }
