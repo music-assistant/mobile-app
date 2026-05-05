@@ -40,6 +40,7 @@ import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
+import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
@@ -212,7 +213,10 @@ private fun SearchContent(
                         }
 
                         1 -> LazyColumn(
-                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                                .clearFocusOnScroll(),
                             contentPadding = contentPadding,
                         ) {
                             val (title, items) = results.nonEmptyLists.first()
@@ -314,7 +318,9 @@ private fun SearchContent(
                             val preparedItems = results.nonEmptyLists
                                 .map { (title, items) -> Pair(stringResource(title), items) }
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clearFocusOnScroll(),
                                 contentPadding = contentPadding,
                             ) {
                                 preparedItems.forEach { (stringTitle, items) ->
