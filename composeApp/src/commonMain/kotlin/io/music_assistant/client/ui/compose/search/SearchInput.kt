@@ -28,6 +28,7 @@ private const val MIN_SEARCH_QUERY_LENGTH = 3
 
 @Composable
 fun SearchInput(
+    modifier: Modifier = Modifier,
     query: String,
     onQueryChanged: (String) -> Unit,
     focusManager: FocusManager = LocalFocusManager.current,
@@ -40,8 +41,7 @@ fun SearchInput(
     }
 
     OutlinedTextField(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
+        modifier = modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
         value = query,

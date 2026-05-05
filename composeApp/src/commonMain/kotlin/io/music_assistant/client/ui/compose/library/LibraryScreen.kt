@@ -2,7 +2,6 @@
 
 package io.music_assistant.client.ui.compose.library
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -111,20 +111,27 @@ fun LibraryScreen(
         }
     }
 
+    val selectedTab = state.tabs.find { it.isSelected } ?: state.tabs.first()
+
     Screen(
         topBar = { scrollBehavior ->
             LibraryTopBar(
                 tabs = state.tabs,
+                selectedTab = selectedTab,
                 onTabSelected = viewModel::onTabSelected,
                 isRowMode = isRowMode,
                 onToggleViewMode = viewModel::toggleItemsRowMode,
                 scrollBehavior = scrollBehavior,
+                onSearchQueryChanged = viewModel::onSearchQueryChanged,
+                onOnlyFavoritesClicked = viewModel::onOnlyFavoritesClicked,
+                onSortChanged = viewModel::onSortChanged,
             )
         },
     ) {
         Library(
             contentPadding = contentPadding,
-            state = state,
+            selectedTab = selectedTab,
+            showCreatePlaylistDialog = state.showCreatePlaylistDialog,
             serverUrl = serverUrl,
             isRowMode = isRowMode,
             toastState = toastState,
@@ -132,9 +139,6 @@ fun LibraryScreen(
             onPlayClick = viewModel::onPlayClick,
             onCreatePlaylistClick = viewModel::onCreatePlaylistClick,
             onLoadMore = viewModel::loadMore,
-            onSearchQueryChanged = viewModel::onSearchQueryChanged,
-            onOnlyFavoritesClicked = viewModel::onOnlyFavoritesClicked,
-            onSortChanged = viewModel::onSortChanged,
             onDismissCreatePlaylistDialog = viewModel::onDismissCreatePlaylistDialog,
             onCreatePlaylist = viewModel::createPlaylist,
             playlistActions = ActionsViewModel.PlaylistActions(
@@ -156,46 +160,96 @@ fun LibraryScreen(
 @Composable
 private fun LibraryTopBar(
     tabs: List<LibraryViewModel.TabState>,
+    selectedTab: LibraryViewModel.TabState,
     onTabSelected: (LibraryViewModel.Tab) -> Unit,
     isRowMode: Boolean,
     onToggleViewMode: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    onSearchQueryChanged: (LibraryViewModel.Tab, String) -> Unit,
+    onOnlyFavoritesClicked: (LibraryViewModel.Tab) -> Unit,
+    onSortChanged: (LibraryViewModel.Tab, SortOption) -> Unit,
 ) {
     TopAppBar(
         title = {
-            PrimaryScrollableTabRow(
-                containerColor = Color.Transparent,
-                edgePadding = 0.dp,
-                selectedTabIndex = tabs.indexOfFirst { it.isSelected },
+            Column(
+                modifier = Modifier.padding(vertical = 4.dp),
             ) {
-                tabs.forEach { tabState ->
-                    Tab(
-                        selected = tabState.isSelected,
-                        onClick = { onTabSelected(tabState.tab) },
-                        text = {
-                            Text(
-                                when (tabState.tab) {
-                                    LibraryViewModel.Tab.ARTISTS -> stringResource(Res.string.media_type_artists)
-                                    LibraryViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
-                                    LibraryViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
-                                    LibraryViewModel.Tab.PLAYLISTS -> stringResource(Res.string.media_type_playlists)
-                                    LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(Res.string.media_type_audiobooks)
-                                    LibraryViewModel.Tab.PODCASTS -> stringResource(Res.string.media_type_podcasts)
-                                    LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
-                                    LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+                Row(
+                    modifier = Modifier.height(56.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PrimaryScrollableTabRow(
+                        modifier = Modifier.weight(1f),
+                        containerColor = Color.Transparent,
+                        edgePadding = 0.dp,
+                        selectedTabIndex = tabs.indexOfFirst { it.isSelected },
+                    ) {
+                        tabs.forEach { tabState ->
+                            Tab(
+                                selected = tabState.isSelected,
+                                onClick = { onTabSelected(tabState.tab) },
+                                text = {
+                                    Text(
+                                        when (tabState.tab) {
+                                            LibraryViewModel.Tab.ARTISTS -> stringResource(Res.string.media_type_artists)
+                                            LibraryViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
+                                            LibraryViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
+                                            LibraryViewModel.Tab.PLAYLISTS -> stringResource(Res.string.media_type_playlists)
+                                            LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(Res.string.media_type_audiobooks)
+                                            LibraryViewModel.Tab.PODCASTS -> stringResource(Res.string.media_type_podcasts)
+                                            LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
+                                            LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+                                        },
+                                    )
                                 },
                             )
-                        },
+                        }
+                    }
+                    IconButton(onClick = onToggleViewMode) {
+                        Icon(
+                            imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
+                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                        )
+                    }
+                }
+                val modifier = Modifier.padding(end = 16.dp)
+                // Quick search input
+                OutlinedTextField(
+                    modifier = modifier.fillMaxWidth(),
+                    value = selectedTab.searchQuery,
+                    onValueChange = { onSearchQueryChanged(selectedTab.tab, it) },
+                    label = {
+                        Text(text = stringResource(Res.string.library_quick_search))
+                    },
+                    trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(Res.string.common_clear),
+                                )
+                            }
+                        }
+                    } else {
+                        null
+                    },
+                    singleLine = true,
+                )
+                Row(
+                    modifier = modifier,
+                ) {
+                    FilterChip(
+                        selected = selectedTab.onlyFavorites,
+                        onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
+                        label = { Text(stringResource(Res.string.action_favorite)) },
+                    )
+                    Spacer(Modifier.weight(1f))
+                    SortChip(
+                        currentSort = selectedTab.sortOption,
+                        availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
+                        onSortChanged = { onSortChanged(selectedTab.tab, it) },
                     )
                 }
-            }
-        },
-        actions = {
-            IconButton(onClick = onToggleViewMode) {
-                Icon(
-                    imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -208,7 +262,8 @@ private fun LibraryTopBar(
 @Composable
 private fun Library(
     modifier: Modifier = Modifier,
-    state: LibraryViewModel.State,
+    selectedTab: LibraryViewModel.TabState,
+    showCreatePlaylistDialog: Boolean,
     serverUrl: String?,
     isRowMode: Boolean,
     toastState: ToastState,
@@ -216,9 +271,6 @@ private fun Library(
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
     onLoadMore: (LibraryViewModel.Tab) -> Unit,
-    onSearchQueryChanged: (LibraryViewModel.Tab, String) -> Unit,
-    onOnlyFavoritesClicked: (LibraryViewModel.Tab) -> Unit,
-    onSortChanged: (LibraryViewModel.Tab, SortOption) -> Unit,
     onDismissCreatePlaylistDialog: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
@@ -226,7 +278,6 @@ private fun Library(
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {
-    val selectedTab = state.tabs.find { it.isSelected } ?: state.tabs.first()
 
     Box(modifier = modifier) {
         Column(
@@ -234,46 +285,6 @@ private fun Library(
                 .fillMaxSize()
                 .clearFocusOnScroll(),
         ) {
-            // Quick search input
-            OutlinedTextField(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                value = selectedTab.searchQuery,
-                onValueChange = { onSearchQueryChanged(selectedTab.tab, it) },
-                label = {
-                    Text(text = stringResource(Res.string.library_quick_search))
-                },
-                trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
-                    {
-                        IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = stringResource(Res.string.common_clear),
-                            )
-                        }
-                    }
-                } else {
-                    null
-                },
-                singleLine = true,
-            )
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FilterChip(
-                    selected = selectedTab.onlyFavorites,
-                    onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
-                    label = { Text(stringResource(Res.string.action_favorite)) },
-                )
-                SortChip(
-                    currentSort = selectedTab.sortOption,
-                    availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
-                    onSortChanged = { onSortChanged(selectedTab.tab, it) },
-                )
-            }
-
             // Content area
             Box(modifier = Modifier.fillMaxSize()) {
                 TabContent(
@@ -301,7 +312,7 @@ private fun Library(
         )
 
         // Create Playlist Dialog
-        if (state.showCreatePlaylistDialog) {
+        if (showCreatePlaylistDialog) {
             CreatePlaylistDialog(
                 onDismiss = onDismissCreatePlaylistDialog,
                 onCreate = onCreatePlaylist,
@@ -407,7 +418,7 @@ private fun TabContent(
         is DataState.NoData -> EmptyState()
         is DataState.Stale,
         is DataState.Data,
-        -> {
+            -> {
             // Handle both Data and Stale - both contain valid library data
             val items = when (dataState) {
                 is DataState.Data -> dataState.data
@@ -426,7 +437,10 @@ private fun TabContent(
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 onClick = onCreatePlaylistClick,
                             ) {
-                                Icon(TablerIcons.Plus, contentDescription = stringResource(Res.string.cd_add_playlist))
+                                Icon(
+                                    TablerIcons.Plus,
+                                    contentDescription = stringResource(Res.string.cd_add_playlist)
+                                )
                                 Spacer(Modifier.width(4.dp))
                                 Text(stringResource(Res.string.playlist_add_new))
                             }
