@@ -176,7 +176,7 @@ private fun LibraryTopBar(
             ) {
                 Row(
                     modifier = Modifier.height(56.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PrimaryScrollableTabRow(
                         modifier = Modifier.weight(1f),
@@ -191,12 +191,20 @@ private fun LibraryTopBar(
                                 text = {
                                     Text(
                                         when (tabState.tab) {
-                                            LibraryViewModel.Tab.ARTISTS -> stringResource(Res.string.media_type_artists)
+                                            LibraryViewModel.Tab.ARTISTS -> stringResource(
+                                                Res.string.media_type_artists,
+                                            )
                                             LibraryViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
                                             LibraryViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
-                                            LibraryViewModel.Tab.PLAYLISTS -> stringResource(Res.string.media_type_playlists)
-                                            LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(Res.string.media_type_audiobooks)
-                                            LibraryViewModel.Tab.PODCASTS -> stringResource(Res.string.media_type_podcasts)
+                                            LibraryViewModel.Tab.PLAYLISTS -> stringResource(
+                                                Res.string.media_type_playlists,
+                                            )
+                                            LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(
+                                                Res.string.media_type_audiobooks,
+                                            )
+                                            LibraryViewModel.Tab.PODCASTS -> stringResource(
+                                                Res.string.media_type_podcasts,
+                                            )
                                             LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
                                             LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
                                         },
@@ -278,7 +286,6 @@ private fun Library(
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {
-
     Box(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -439,7 +446,7 @@ private fun TabContent(
                             ) {
                                 Icon(
                                     TablerIcons.Plus,
-                                    contentDescription = stringResource(Res.string.cd_add_playlist)
+                                    contentDescription = stringResource(Res.string.cd_add_playlist),
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(stringResource(Res.string.playlist_add_new))

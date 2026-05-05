@@ -245,7 +245,7 @@ private fun ItemOverflow(
         IconButton(onClick = onClick) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
-                contentDescription = stringResource(Res.string.cd_more)
+                contentDescription = stringResource(Res.string.cd_more),
             )
         }
     }

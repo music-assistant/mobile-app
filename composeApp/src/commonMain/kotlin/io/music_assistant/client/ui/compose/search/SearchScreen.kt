@@ -159,7 +159,7 @@ private fun SearchTopBar(
                 SearchInput(
                     modifier = modifier,
                     query = searchState.query,
-                    onQueryChanged = onQueryChanged
+                    onQueryChanged = onQueryChanged,
                 )
 
                 // Search filters (always visible)
@@ -194,8 +194,6 @@ private fun SearchContent(
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-
-
             // Results
             when (val resultsState = state.resultsState) {
                 is DataState.Loading -> {
