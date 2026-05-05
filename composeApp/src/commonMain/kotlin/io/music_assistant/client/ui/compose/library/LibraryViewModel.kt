@@ -693,12 +693,13 @@ class LibraryViewModel(
         offset: Int,
         hasMore: Boolean,
     ) {
+        val deduped = items.distinctBy { Triple(it.mediaType, it.provider, it.itemId) }
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
                 if (tabState.tab == tab) {
                     tabState.copy(
-                        dataState = DataState.Data(items),
+                        dataState = DataState.Data(deduped),
                         offset = offset,
                         hasMore = hasMore,
                         isLoadingMore = false,

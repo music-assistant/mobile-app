@@ -79,7 +79,7 @@ fun AdaptiveMediaGrid(
     ) {
         items(
             items = items,
-            key = { it.itemId },
+            key = { "${it.mediaType}_${it.provider}_${it.itemId}" },
             span = if (isRowMode) {
                 { GridItemSpan(maxLineSpan) }
             } else {

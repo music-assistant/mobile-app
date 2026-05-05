@@ -229,7 +229,10 @@ private fun SearchContent(
                             item {
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
-                            items(items = items, key = { it.itemId }) { item ->
+                            items(
+                                items = items,
+                                key = { "${it.mediaType}_${it.provider}_${it.itemId}" },
+                            ) { item ->
                                 when (item) {
                                     is AppMediaItem.Track -> TrackWithMenu(
                                         serverUrl = serverUrl,
