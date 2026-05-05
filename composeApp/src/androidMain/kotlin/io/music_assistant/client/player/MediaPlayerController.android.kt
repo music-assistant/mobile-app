@@ -372,7 +372,15 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     }
 
     actual fun resumeSink() {
-        if (shouldPlayAudio) audioTrack?.play()
+        if (!shouldPlayAudio) {
+            // Recover from a prior focus loss; otherwise writeRawPcm silently drops PCM.
+            if (!requestAudioFocus()) {
+                logger.w { "resumeSink: cannot re-acquire audio focus — sink stays paused" }
+                return
+            }
+            shouldPlayAudio = true
+        }
+        audioTrack?.play()
     }
 
     actual fun flush() {
