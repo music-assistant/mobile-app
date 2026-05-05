@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
@@ -199,7 +198,6 @@ private fun trackNameAndContentDescription(title: String?): Pair<String, String>
 fun FullPlayerItem(
     modifier: Modifier,
     item: PlayerData,
-    isLocal: Boolean,
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
@@ -213,10 +211,6 @@ fun FullPlayerItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = item.player.providerType.takeIf { !isLocal } ?: "",
-            fontSize = 12.sp,
-        )
         Box(
             modifier = Modifier
                 .weight(1f, fill = false)

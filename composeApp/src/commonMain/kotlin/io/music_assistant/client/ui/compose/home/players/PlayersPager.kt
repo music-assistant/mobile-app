@@ -383,7 +383,6 @@ private fun ExpandedPlayerPage(
                 FullPlayerItem(
                     modifier = Modifier.fillMaxSize(),
                     item = player,
-                    isLocal = player.isLocal,
                     colors = colors,
                     playerAction = playerAction,
                     onFavoriteClick = onFavoriteClick,
