@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.client.PlayerMedia.Companion.toPlayerMedia
 import io.music_assistant.client.data.model.server.PlayerFeature
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.PlayerType
@@ -26,6 +27,7 @@ data class Player(
     val syncedTo: String?,
     val groupVolume: Float?,
     val groupVolumeMuted: Boolean,
+    val currentMedia: PlayerMedia?,
 ) {
     val isGroup = type == PlayerType.GROUP
     val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true
@@ -95,7 +97,7 @@ data class Player(
             volumeControl = volumeControl,
             volumeMuted = volumeMuted == true,
             canMute = muteControl != null && muteControl != PLAYER_CONTROL_NONE,
-            queueId = currentMedia?.queueId ?: activeSource,
+            queueId = activeSource ?: currentMedia?.queueId,
             isPlaying = state == PlayerState.PLAYING,
             isAnnouncing = announcementInProgress == true,
             canGroupWith = canGroupWith,
@@ -105,6 +107,7 @@ data class Player(
             syncedTo = syncedTo,
             groupVolume = groupVolume,
             groupVolumeMuted = groupVolumeMuted == true,
+            currentMedia = currentMedia?.toPlayerMedia(),
         )
     }
 }

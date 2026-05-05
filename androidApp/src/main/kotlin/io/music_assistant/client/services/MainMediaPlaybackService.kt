@@ -83,7 +83,6 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         players.map { it.size > 1 },
     ) { player, moreThanOnePlayer ->
         MediaNotificationData.from(
-            dataSource.apiClient.serverBaseUrl.value,
             player,
             moreThanOnePlayer,
         )

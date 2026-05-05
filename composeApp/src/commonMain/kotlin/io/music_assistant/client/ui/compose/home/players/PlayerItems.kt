@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
-import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
@@ -64,14 +63,13 @@ import kotlin.time.DurationUnit
 fun CompactPlayerItem(
     item: PlayerData,
     colors: PlayerColors,
-    serverUrl: String? = null,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
     onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
     sendSpinState: SendspinState?,
 ) {
-    val track = item.queueInfo?.currentItem?.track
+    val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
 
     Row(
@@ -91,10 +89,10 @@ fun CompactPlayerItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colors.dominant.alphaOn(track != null)),
+                    .background(colors.dominant.alphaOn(currentMedia != null)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (track != null) {
+                if (currentMedia != null) {
                     val placeholder = rememberPlaceholderPainter(
                         backgroundColor = colors.dominant,
                         iconColor = onPrimaryContainer,
@@ -103,8 +101,8 @@ fun CompactPlayerItem(
                     AsyncImage(
                         placeholder = placeholder,
                         fallback = placeholder,
-                        model = track.imageInfo?.url(serverUrl),
-                        contentDescription = track.title,
+                        model = currentMedia.imageUrl,
+                        contentDescription = currentMedia.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -119,7 +117,7 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            val (trackName, trackContentDescription) = trackNameAndContentDescription(track)
+            val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
             Column(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
@@ -128,7 +126,7 @@ fun CompactPlayerItem(
                     },
             ) {
                 Text(
-                    modifier = Modifier.basicMarquee().alphaOn(track != null),
+                    modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
                     text = trackName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
@@ -136,8 +134,9 @@ fun CompactPlayerItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                track?.subtitle?.let {
+                currentMedia?.subtitle?.let {
                     Text(
+                        modifier = Modifier.basicMarquee(),
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -185,15 +184,14 @@ fun CompactPlayerItem(
 }
 
 @Composable
-private fun trackNameAndContentDescription(track: PlayableItem?): Pair<String, String> {
-    val trackName = track?.title
-    val playingContentDescription = if (trackName != null) {
-        stringResource(Res.string.cd_playing, trackName)
+private fun trackNameAndContentDescription(title: String?): Pair<String, String> {
+    val playingContentDescription = if (title != null) {
+        stringResource(Res.string.cd_playing, title)
     } else {
         stringResource(Res.string.players_nothing)
     }
 
-    return Pair(trackName ?: stringResource(Res.string.players_nothing), playingContentDescription)
+    return Pair(title ?: stringResource(Res.string.players_nothing), playingContentDescription)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -203,11 +201,10 @@ fun FullPlayerItem(
     item: PlayerData,
     isLocal: Boolean,
     colors: PlayerColors,
-    serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
 ) {
-    val track = item.queueInfo?.currentItem?.track
+    val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
 
@@ -226,27 +223,27 @@ fun FullPlayerItem(
                 .aspectRatio(1f)
                 .heightIn(max = 500.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(colors.dominant.alphaOn(track != null)),
+                .background(colors.dominant.alphaOn(currentMedia != null)),
             contentAlignment = Alignment.Center,
         ) {
-            if (track != null) {
+            if (currentMedia != null) {
                 val placeholder =
                     rememberPlaceholderPainter(
                         backgroundColor = colors.dominant,
                         iconColor = onPrimaryContainer,
-                        icon = track.defaultIcon,
+                        icon = currentMedia.defaultIcon,
                     )
-                track.imageInfo?.url(serverUrl)?.let {
+                currentMedia.imageUrl?.let {
                     AsyncImage(
                         placeholder = placeholder,
                         fallback = placeholder,
                         model = it,
-                        contentDescription = track.title,
+                        contentDescription = currentMedia.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } ?: Icon(
-                    imageVector = track.defaultIcon,
+                    imageVector = currentMedia.defaultIcon,
                     contentDescription = null,
                     modifier = Modifier.size(120.dp),
                     tint = onPrimaryContainer,
@@ -262,7 +259,7 @@ fun FullPlayerItem(
         }
 
         // Track info
-        val (trackName, trackContentDescription) = trackNameAndContentDescription(track)
+        val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -272,7 +269,7 @@ fun FullPlayerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                modifier = Modifier.basicMarquee().alphaOn(track != null),
+                modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
                 text = trackName,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
@@ -289,7 +286,8 @@ fun FullPlayerItem(
                 )
             } else {
                 Text(
-                    text = track?.subtitle ?: "",
+                    modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                    text = currentMedia?.subtitle ?: "", // TODO take from currentItem?
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -306,7 +304,7 @@ fun FullPlayerItem(
             )
         }
 
-        val duration = track?.duration?.takeIf { it > 0 }?.toFloat()
+        val duration = currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
 
         // Position is calculated in MainDataSource and updated twice per second
         val displayPosition = item.queueInfo?.elapsedTime?.toFloat() ?: 0f
@@ -349,7 +347,7 @@ fun FullPlayerItem(
                     }
                 },
                 track = { sliderState ->
-                    val audiobook = track as? AppMediaItem.Audiobook
+                    val audiobook = item.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook
                     val chapters = audiobook?.chapters
                     Box {
                         SliderDefaults.Track(
@@ -358,7 +356,7 @@ fun FullPlayerItem(
                             thumbTrackGapSize = 0.dp,
                             trackInsideCornerSize = 0.dp,
                             drawStopIndicator = null,
-                            enabled = track != null && !item.player.isAnnouncing,
+                            enabled = currentMedia != null && !item.player.isAnnouncing,
                             modifier = Modifier.height(8.dp),
                         )
                         if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
@@ -389,14 +387,14 @@ fun FullPlayerItem(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = sliderPosition.takeIf { track != null }
+                text = sliderPosition.takeIf { currentMedia != null }
                     .formatDuration(DurationUnit.SECONDS)
                     .takeIf { duration != null } ?: "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = track
+                text = currentMedia
                     ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
                     ?: "",
                 style = MaterialTheme.typography.bodySmall,

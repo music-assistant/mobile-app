@@ -65,7 +65,6 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     private val mediaNotificationData = currentPlayerData.filterNotNull()
         .map {
             MediaNotificationData.from(
-                dataSource.apiClient.serverBaseUrl.value,
                 it,
                 false,
             )

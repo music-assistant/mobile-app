@@ -37,6 +37,7 @@ object PlayerDataFixtures {
                 staticGroupMembers = null,
                 activeGroup = null,
                 syncedTo = null,
+                currentMedia = null,
             ),
             queue = DataState.Data(
                 Queue(

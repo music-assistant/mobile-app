@@ -21,20 +21,20 @@ data class MediaNotificationData(
     val duration: Long?,
 ) {
     companion object {
-        fun from(serverUrl: String?, playerData: PlayerData, multiplePlayers: Boolean) =
+        fun from(playerData: PlayerData, multiplePlayers: Boolean) =
             MediaNotificationData(
                 multiplePlayers = multiplePlayers,
-                longItemId = playerData.queueInfo?.currentItem?.track?.longId,
-                name = playerData.queueInfo?.currentItem?.track?.title,
-                artist = playerData.queueInfo?.currentItem?.track?.subtitle,
-                album = playerData.queueInfo?.currentItem?.track?.parentName,
+                longItemId = playerData.player.currentMedia?.hashCode()?.toLong(),
+                name = playerData.player.currentMedia?.title,
+                artist = playerData.player.currentMedia?.artist,
+                album = playerData.player.currentMedia?.album,
                 repeatMode = playerData.queueInfo?.repeatMode,
                 shuffleEnabled = playerData.queueInfo?.shuffleEnabled,
                 isPlaying = playerData.player.isPlaying,
-                imageUrl = playerData.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl),
+                imageUrl = playerData.player.currentMedia?.imageUrl,
                 elapsedTime = playerData.queueInfo?.elapsedTime?.toLong()?.let { it * 1000 },
                 playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
-                duration = playerData.queueInfo?.currentItem?.track?.duration?.toLong()
+                duration = playerData.player.currentMedia?.duration?.toLong()
                     ?.let { it * 1000 },
             )
 

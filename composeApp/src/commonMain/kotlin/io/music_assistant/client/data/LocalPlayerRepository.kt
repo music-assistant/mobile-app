@@ -208,6 +208,7 @@ class LocalPlayerRepository(
                         groupVolumeMuted = false,
                         activeGroup = null,
                         syncedTo = null,
+                        currentMedia = null,
                     ),
                     queue = DataState.NoData(),
                     parentBind = null,

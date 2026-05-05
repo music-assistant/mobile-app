@@ -30,7 +30,7 @@ data class ServerPlayer(
     @SerialName("enabled") val enabled: Boolean = true,
     // @SerialName("elapsed_time") val elapsedTime: Double? = null,
     // @SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double? = null,
-    @SerialName("current_media") val currentMedia: PlayerMedia? = null,
+    @SerialName("current_media") val currentMedia: ServerPlayerMedia? = null,
     @SerialName("state") val state: PlayerState? = null,
     // @SerialName("powered") val powered: Boolean? = null,
     @SerialName("volume_level") val volumeLevel: Float? = null,
@@ -69,16 +69,16 @@ data class ServerPlayer(
 // )
 
 @Serializable
-data class PlayerMedia(
-//    @SerialName("uri") val uri: String? = null,
-//    @SerialName("media_type") val mediaType: MediaType,
-//    @SerialName("title") val title: String? = null,
-//    @SerialName("artist") val artist: String? = null,
-//    @SerialName("album") val album: String? = null,
-//    @SerialName("image_url") val imageUrl: String? = null,
-//    @SerialName("duration") val duration: Double? = null,
+data class ServerPlayerMedia(
+    @SerialName("uri") val uri: String? = null,
+    @SerialName("media_type") val mediaType: MediaType,
+    @SerialName("title") val title: String? = null,
+    @SerialName("artist") val artist: String? = null,
+    @SerialName("album") val album: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("duration") val duration: Double? = null,
     @SerialName("queue_id") val queueId: String? = null,
-//    @SerialName("queue_item_id") val queueItemId: String? = null,
+    @SerialName("queue_item_id") val queueItemId: String? = null,
 //    @SerialName("custom_data") val customData: JsonObject? = null,
 )
 

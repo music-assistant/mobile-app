@@ -147,7 +147,7 @@ internal fun PlayersPager(
     }
 
     val playerColors = playerDataList.associateWith {
-        val imageUrl = it.queueInfo?.currentItem?.track?.imageInfo?.url(serverUrl)
+        val imageUrl = it.player.currentMedia?.imageUrl
         rememberAnimatedPlayerColors(
             imageUrl = imageUrl,
             fallback = MaterialTheme.colorScheme.primaryContainer,
@@ -243,7 +243,6 @@ internal fun PlayersPager(
                             sendspinState = playersState.sendspinState,
                             onSelectPlayer = onSelectPlayer,
                             onGroupButton = onGroupButton,
-                            serverUrl = serverUrl,
                             playerAction = playerAction,
                         )
                     }
@@ -359,7 +358,6 @@ private fun ExpandedPlayerPage(
                 CompactPlayerItem(
                     item = player,
                     colors = colors,
-                    serverUrl = serverUrl,
                     playerAction = playerAction,
                     onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
                     onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
@@ -387,7 +385,6 @@ private fun ExpandedPlayerPage(
                     item = player,
                     isLocal = player.isLocal,
                     colors = colors,
-                    serverUrl = serverUrl,
                     playerAction = playerAction,
                     onFavoriteClick = onFavoriteClick,
                 )
@@ -623,7 +620,6 @@ private fun CollapsedPlayerPage(
     sendspinState: SendspinState?,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
-    serverUrl: String?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
 ) {
     if (!isExpandedScreen) {
@@ -643,7 +639,6 @@ private fun CollapsedPlayerPage(
     CompactPlayerItem(
         item = player,
         colors = colors,
-        serverUrl = serverUrl,
         playerAction = playerAction,
         onSelectPlayer = if (isExpandedScreen) onSelectPlayer else null,
         onGroupButton = if (isExpandedScreen) onGroupButton else null,

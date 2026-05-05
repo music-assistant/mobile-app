@@ -7,6 +7,7 @@ import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
 import io.ktor.http.encodeURLQueryComponent
 import io.music_assistant.client.data.model.server.AudioFormat
+import io.music_assistant.client.data.model.server.MediaItemChapter
 import io.music_assistant.client.data.model.server.MediaItemImage
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.Metadata
@@ -32,6 +33,7 @@ interface PlayableItem {
     val isInLibrary: Boolean
     val favorite: Boolean?
     val longId: Long
+        get() = itemId.hashCode().toLong()
     val canStartRadio: Boolean
 }
 
@@ -53,7 +55,6 @@ abstract class AppMediaItem(
 ) {
     open val title: String = name
     open val subtitle: String? = null
-    val longId = itemId.hashCode().toLong()
 
     val isInLibrary = provider == "library"
 
@@ -101,14 +102,14 @@ abstract class AppMediaItem(
 
     override fun toString(): String =
         "AppMediaItem(" +
-            "itemId='$itemId', " +
-            "provider='$provider', " +
-            "name='$name', " +
-            "favorite=$favorite, " +
-            "mediaType=$mediaType, " +
-            "providerMappings=$providerMappings, " +
-            "uri=$uri" +
-            ")"
+                "itemId='$itemId', " +
+                "provider='$provider', " +
+                "name='$name', " +
+                "favorite=$favorite, " +
+                "mediaType=$mediaType, " +
+                "providerMappings=$providerMappings, " +
+                "uri=$uri" +
+                ")"
 
     val imageInfo: ImageInfo? = (image ?: metadata?.images?.getOrNull(0))
         ?.let { image ->
@@ -248,6 +249,8 @@ abstract class AppMediaItem(
         image = image,
         canStartRadio = true,
     ) {
+        override val title =
+            "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}"
         override val subtitle = artists.joinToString(separator = ", ") { it.title }
     }
 
@@ -290,10 +293,10 @@ abstract class AppMediaItem(
         image = image,
         canStartRadio = true,
     ),
-    PlayableItem {
+        PlayableItem {
         override val title =
             "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}"
-        override val subtitle = artists?.joinToString(separator = ", ") { it.title }
+        override val subtitle = artists.joinToString(separator = ", ") { it.title }
         override val parentName: String? = album?.title
         override val defaultIcon = TrackIcon
     }
@@ -383,7 +386,7 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
     ),
-    PlayableItem {
+        PlayableItem {
         override val subtitle = metadata?.releaseDate?.let(::formatIsoDate)
         override val parentName: String? = podcast?.title
         override val defaultIcon = Icons.Default.Podcasts
@@ -412,7 +415,7 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
     ),
-    PlayableItem {
+        PlayableItem {
         override val duration: Double? = null  // Radio stations have no duration
         override val subtitle: String = "Radio"
         override val parentName: String? = null  // No parent item
@@ -459,7 +462,7 @@ abstract class AppMediaItem(
         override val duration: Double?,
         val authors: List<String>?,
         val narrators: List<String>?,
-        val chapters: List<io.music_assistant.client.data.model.server.MediaItemChapter>?,
+        val chapters: List<MediaItemChapter>?,
         val fullyPlayed: Boolean?,
         val resumePositionMs: Long?,
         override val version: String?,
@@ -475,7 +478,7 @@ abstract class AppMediaItem(
         uri = uri,
         image = image,
     ),
-    PlayableItem {
+        PlayableItem {
         override val subtitle =
             authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
         override val parentName: String? = authors?.firstOrNull()
@@ -655,7 +658,7 @@ abstract class AppMediaItem(
                 MediaType.ANNOUNCEMENT,
                 MediaType.GENRE,
                 MediaType.UNKNOWN,
-                -> null
+                    -> null
             }
 
         fun List<ServerMediaItem>.toAppMediaItemList() =
