@@ -74,6 +74,7 @@ fun AlbumWithMenu(
             )
         } else {
             AlbumGridItem(
+                modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
                 onClick = onClick,
@@ -114,6 +115,7 @@ fun ArtistWithMenu(
             )
         } else {
             ArtistGridItem(
+                modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
                 onClick = onClick,
@@ -154,6 +156,7 @@ fun PlaylistWithMenu(
             )
         } else {
             PlaylistGridItem(
+                modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
                 onClick = onClick,
@@ -196,6 +199,7 @@ fun AudiobookWithMenu(
             )
         } else {
             AudiobookGridItem(
+                modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
                 onClick = onClick,
@@ -236,6 +240,7 @@ fun GenreWithMenu(
             )
         } else {
             GenreGridItem(
+                modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
                 onClick = onClick,
@@ -276,6 +281,7 @@ fun PodcastWithMenu(
             )
         } else {
             PodcastGridItem(
+                modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
                 onClick = onClick,
