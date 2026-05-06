@@ -1,6 +1,11 @@
 package io.music_assistant.client.support.pages
 
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +18,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.queue_clear
 
 class ExpandedPlayerPage(
     val name: String,
@@ -31,7 +37,7 @@ class ExpandedPlayerPage(
     }
 
     fun goToArtist(artist: String, navigationItem: String): MediaItemPage {
-        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        clickMore()
         composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
         return MediaItemPage(
             artist,
@@ -42,7 +48,7 @@ class ExpandedPlayerPage(
     }
 
     fun goToAlbum(album: String, navigationItem: String): MediaItemPage {
-        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        clickMore()
         composeTestRule.onNodeWithText(Res.string.action_go_to_album.get()).performClick()
         return MediaItemPage(
             album,
@@ -51,4 +57,19 @@ class ExpandedPlayerPage(
             composeTestRule,
         ).assertOnPage()
     }
+
+    fun clearQueue(): ExpandedPlayerPage {
+        clickMore()
+        composeTestRule.onNodeWithText(Res.string.queue_clear.get()).performClick()
+        return ExpandedPlayerPage(name, false, null, composeTestRule).assertOnPage()
+    }
+
+    private fun clickMore() {
+        composeTestRule.onNodeWithinFloatingBar(hasContentDescription(Res.string.cd_more.get()))
+            .performClick()
+    }
+}
+
+private fun ComposeTestRule.onNodeWithinFloatingBar(matcher: SemanticsMatcher): SemanticsNodeInteraction {
+    return onNode(hasAnyAncestor(hasTestTag(FloatingBarSemantics.TAG)).and(matcher))
 }
