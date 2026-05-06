@@ -19,6 +19,7 @@ import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
@@ -41,6 +42,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
     private val players = mutableListOf<ServerPlayer>()
     private val queues = mutableListOf<ServerQueue>()
+    private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
     private val items = mutableSetOf<ServerMediaItem>()
     private val albums: List<ServerMediaItem>
         get() {
@@ -181,11 +183,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             APICommands.PLAYER_QUEUES_PLAY_MEDIA -> {
                 val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
-                val mediaTrack = items.find { it.uri == mediaUri }?.let { item ->
+                val mediaTracks = items.find { it.uri == mediaUri }?.let { item ->
                     when (item.mediaType) {
                         MediaType.ARTIST -> TODO()
-                        MediaType.ALBUM -> tracks.first { it.album == item }
-                        MediaType.TRACK -> item
+                        MediaType.ALBUM -> tracks.filter { it.album == item }
+                        MediaType.TRACK -> listOf(item)
                         MediaType.PLAYLIST -> TODO()
                         MediaType.RADIO -> TODO()
                         MediaType.AUDIOBOOK -> TODO()
@@ -197,14 +199,14 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         MediaType.ANNOUNCEMENT -> TODO()
                         MediaType.UNKNOWN -> TODO()
                     }
-                }
+                } ?: emptyList()
 
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                updateQueue(queueId, mediaTrack)
+                updateQueue(queueId, mediaTracks)
                 updatePlayer({ it.activeSource == queueId }) {
                     it.copy(
                         state = PlayerState.PLAYING,
-                        currentMedia = mediaTrack?.let { track ->
+                        currentMedia = mediaTracks.firstOrNull()?.let { track ->
                             ServerPlayerMedia(
                                 uri = track.uri,
                                 mediaType = track.mediaType,
@@ -227,6 +229,30 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
+            APICommands.PLAYER_QUEUES_ITEMS -> {
+                val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
+
+                Result.success(
+                    answer(
+                        request = request,
+                        result = queueItems[queueId],
+                    ),
+                )
+            }
+
+            APICommands.PLAYER_QUEUES_CLEAR -> {
+                val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
+                updateQueue(queueId, emptyList())
+                updatePlayer({ it.activeSource == queueId }) {
+                    it.copy(
+                        state = PlayerState.IDLE,
+                        currentMedia = null,
+                    )
+                }
+
+                Result.success(Answer(JsonObject(emptyMap())))
+            }
+
             APICommands.playersCmd("play_pause") -> {
                 val playerId = (request.args!!["player_id"] as JsonPrimitive).content
                 updatePlayer({ it.playerId == playerId }) {
@@ -244,20 +270,31 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private suspend fun updateQueue(
         queueId: String,
-        currentItem: ServerMediaItem?,
+        items: List<ServerMediaItem>,
     ) {
         val queueIndex = queues.indexOfFirst { it.queueId == queueId }
+
+        val currentItem = items.firstOrNull()
         queues[queueIndex] =
             queues[queueIndex].copy(currentItem = ServerQueueItem("blah", currentItem))
-        val queue = queues[queueIndex]
+        queueItems[queueId] = items.map {
+            ServerQueueItem("blah", it)
+        }
 
+        val queue = queues[queueIndex]
         _events.emit(
             QueueUpdatedEvent(
                 event = EventType.QUEUE_UPDATED,
                 objectId = queue.queueId,
-                data = queue.copy(
-                    currentItem = ServerQueueItem("blah", currentItem),
-                ),
+                data = queue,
+            ),
+        )
+
+        _events.emit(
+            QueueItemsUpdatedEvent(
+                event = EventType.QUEUE_ITEMS_UPDATED,
+                objectId = queue.queueId,
+                data = queue,
             ),
         )
     }
