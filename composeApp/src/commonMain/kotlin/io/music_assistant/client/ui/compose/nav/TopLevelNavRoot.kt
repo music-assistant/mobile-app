@@ -51,7 +51,8 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
         when (val s = sessionState) {
             SessionState.Disconnected.Initial -> true
             SessionState.Connecting -> true
-            is SessionState.Connected -> s.dataConnectionState != DataConnectionState.Authenticated &&
+            is SessionState.Connected ->
+                s.dataConnectionState != DataConnectionState.Authenticated &&
                 s.authProcessState !is AuthProcessState.Failed
             else -> false
         }
