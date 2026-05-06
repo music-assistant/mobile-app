@@ -330,7 +330,7 @@ private fun ExpandedPlayerPage(
             }
 
             PlayerOverflowMenu(
-                player = player,
+                currentPlayer = player,
                 allPlayers = allPlayers,
                 queueAction = queueAction,
                 navigateToItem = {
@@ -505,7 +505,7 @@ private fun ExpandedPlayerPage(
 
 @Composable
 private fun PlayerOverflowMenu(
-    player: PlayerData,
+    currentPlayer: PlayerData,
     allPlayers: List<PlayerData>,
     queueAction: (QueueAction) -> Unit,
     navigateToItem: (AppMediaItem) -> Unit,
@@ -514,7 +514,7 @@ private fun PlayerOverflowMenu(
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
 
-    val queueData = player.queue as? DataState.Data
+    val queueData = currentPlayer.queue as? DataState.Data
     val queueId = queueData?.data?.info?.id
     val queueHasItems = !(queueData?.data?.items as? DataState.Data)?.data.isNullOrEmpty()
     val queueOptions = if (queueId != null && queueHasItems) {
@@ -553,7 +553,7 @@ private fun PlayerOverflowMenu(
                                 QueueAction.Transfer(
                                     queueId,
                                     playerData.player.id,
-                                    playerData.player.isPlaying,
+                                    currentPlayer.player.isPlaying,
                                 ),
                             )
                             onPlayerSelected.invoke(playerData.player.id)
@@ -584,7 +584,7 @@ private fun PlayerOverflowMenu(
     }
 
     val navigationOptions =
-        (player.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(navigateToItem)
+        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(navigateToItem)
             ?: emptyList()
 
     val menuOptions = queueOptions + playerOptions + navigationOptions
