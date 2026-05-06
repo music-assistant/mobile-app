@@ -88,7 +88,7 @@ fun PlayerSelectionButton(
                         border = border,
                     ) {
                         Icon(
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                             imageVector = Icons.Default.Link,
                             contentDescription = null,
                         )

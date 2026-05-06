@@ -6,6 +6,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.OauthUrl
 import io.music_assistant.client.data.model.server.User
+import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
@@ -47,6 +48,24 @@ class AuthenticationManager(
     private val _isLoggingOut = MutableStateFlow(false)
     private val isLoggingOut: Boolean
         get() = _isLoggingOut.value
+
+    /**
+     * Snapshot at construction: will the cold-launch auto-connect produce a silent auto-login?
+     * True iff the most-recent saved server has a saved token. Mirrors the identifier resolution
+     * used by the [init] block below and by `KtorServiceClient.init`'s auto-connect path.
+     */
+    val willAutoLoginOnLaunch: Boolean = run {
+        val mostRecent = settings.connectionHistory.value.firstOrNull() ?: return@run false
+        val identifier = when (mostRecent.type) {
+            ConnectionType.DIRECT -> mostRecent.connectionInfo?.let {
+                settings.getDirectServerIdentifier(it.host, it.port, it.isTls)
+            }
+            ConnectionType.WEBRTC -> mostRecent.remoteId?.let {
+                settings.getWebRTCServerIdentifier(it)
+            }
+        } ?: return@run false
+        settings.getTokenForServer(identifier) != null
+    }
 
     init {
         // Monitor session state to update auth UI state

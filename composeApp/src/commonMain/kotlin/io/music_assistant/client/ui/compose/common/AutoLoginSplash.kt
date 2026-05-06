@@ -1,0 +1,81 @@
+package io.music_assistant.client.ui.compose.common
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.dp
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.mass
+import musicassistantclient.composeapp.generated.resources.settings_connecting
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+
+@Composable
+fun AutoLoginSplash(
+    visible: Boolean,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        modifier = modifier,
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.colorScheme.surfaceContainerLow,
+                        ),
+                    ),
+                ),
+        ) {
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.mass),
+                    contentDescription = null,
+                    modifier = Modifier.size(128.dp),
+                )
+                CircularProgressIndicator()
+                Text(
+                    text = stringResource(Res.string.settings_connecting),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            OutlinedButton(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 48.dp),
+                onClick = onCancel,
+            ) {
+                Text(stringResource(Res.string.common_cancel))
+            }
+        }
+    }
+}
