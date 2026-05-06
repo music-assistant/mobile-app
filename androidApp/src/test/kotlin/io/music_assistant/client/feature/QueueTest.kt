@@ -35,12 +35,29 @@ class QueueTest {
         serviceClient.addToLibrary(track)
 
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
             .clickPlay()
             .expandPlayer(player.displayName, playing = true, item = track.name)
             .clearQueue()
+    }
+
+    @Test
+    fun `can transfer queue to another player`() {
+        val album = ServerMediaItemFixtures.album()
+        val track = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addToLibrary(track)
+
+        val player1 = ServerPlayerFixtures.player()
+        val player2 = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player1, player2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(album)
+            .clickPlay()
+            .expandPlayer(player1.displayName, playing = true, item = track.name)
+            .transferQueue(player2.displayName)
     }
 }

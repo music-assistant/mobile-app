@@ -9,6 +9,7 @@ import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.PlayerState
+import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -71,6 +72,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
         return when (request.command) {
+            APICommands.PROVIDERS_MANIFESTS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = emptyList<ProviderManifest>(),
+                    ),
+                )
+            }
+
             APICommands.AUTH_PROVIDERS -> {
                 Result.success(
                     answer(
@@ -202,7 +212,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 } ?: emptyList()
 
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                updateQueue(queueId, mediaTracks)
+                updateQueue(queueId, mediaTracks.map { ServerQueueItem("blah", it) })
                 updatePlayer({ it.activeSource == queueId }) {
                     it.copy(
                         state = PlayerState.PLAYING,
@@ -242,7 +252,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             APICommands.PLAYER_QUEUES_CLEAR -> {
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                updateQueue(queueId, emptyList())
+                updateQueue(queueId, emptyList<ServerQueueItem>())
                 updatePlayer({ it.activeSource == queueId }) {
                     it.copy(
                         state = PlayerState.IDLE,
@@ -262,6 +272,38 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(Answer(JsonObject(emptyMap())))
             }
 
+            APICommands.PLAYER_QUEUES_TRANSFER -> {
+                val queueId = request.getArg("source_queue_id")
+                val targetQueueId = request.getArg("target_queue_id")
+                val autoPlay = request.getArg("auto_play").toBoolean()
+
+                val queueItems = queueItems[queueId] ?: emptyList()
+                updateQueue(queueId, emptyList())
+                updatePlayer({ it.activeSource == queueId }) {
+                    it.copy(
+                        state = PlayerState.IDLE,
+                        currentMedia = null,
+                    )
+                }
+
+                updateQueue(targetQueueId, queueItems)
+                updatePlayer({ it.activeSource == targetQueueId }) {
+                    it.copy(
+                        state = if (autoPlay) PlayerState.PLAYING else PlayerState.PAUSED,
+                        currentMedia = queueItems.firstOrNull()?.mediaItem?.let { track ->
+                            ServerPlayerMedia(
+                                uri = track.uri,
+                                mediaType = track.mediaType,
+                                title = track.name,
+                                queueId = queueId,
+                            )
+                        },
+                    )
+                }
+
+                Result.success(Answer(JsonObject(emptyMap())))
+            }
+
             else -> {
                 Result.failure(UnsupportedOperationException())
             }
@@ -270,16 +312,14 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private suspend fun updateQueue(
         queueId: String,
-        items: List<ServerMediaItem>,
+        items: List<ServerQueueItem>,
     ) {
         val queueIndex = queues.indexOfFirst { it.queueId == queueId }
 
         val currentItem = items.firstOrNull()
         queues[queueIndex] =
-            queues[queueIndex].copy(currentItem = ServerQueueItem("blah", currentItem))
-        queueItems[queueId] = items.map {
-            ServerQueueItem("blah", it)
-        }
+            queues[queueIndex].copy(currentItem = currentItem)
+        queueItems[queueId] = items
 
         val queue = queues[queueIndex]
         _events.emit(
@@ -412,11 +452,14 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         }
     }
 
-    fun addPlayer(player: ServerPlayer) {
-        this.players.add(player)
-        player.activeSource?.let {
-            this.queues.add(ServerQueue(queueId = it, available = true))
+    fun addPlayers(vararg players: ServerPlayer) {
+        players.forEach { player ->
+            player.activeSource?.let {
+                this.queues.add(ServerQueue(queueId = it, available = true))
+            }
         }
+
+        this.players.addAll(players)
     }
 
     fun getState(playerId: String): PlayerState? {
@@ -468,4 +511,8 @@ private fun answer(request: Request, result: JsonElement): Answer {
 
 private inline fun <reified T> answer(request: Request, result: T): Answer {
     return answer(request, myJson.encodeToJsonElement(result))
+}
+
+private fun Request.getArg(arg: String): String {
+    return (args!![arg] as JsonPrimitive).content
 }

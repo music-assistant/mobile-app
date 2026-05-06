@@ -19,6 +19,7 @@ import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.queue_clear
+import musicassistantclient.composeapp.generated.resources.queue_transfer
 
 class ExpandedPlayerPage(
     val name: String,
@@ -67,6 +68,13 @@ class ExpandedPlayerPage(
     private fun clickMore() {
         composeTestRule.onNodeWithinFloatingBar(hasContentDescription(Res.string.cd_more.get()))
             .performClick()
+    }
+
+    fun transferQueue(player: String): ExpandedPlayerPage {
+        clickMore()
+        composeTestRule.onNodeWithText(Res.string.queue_transfer.get()).performClick()
+        composeTestRule.onNodeWithText(player).performClick()
+        return ExpandedPlayerPage(player, true, item, composeTestRule).assertOnPage()
     }
 }
 

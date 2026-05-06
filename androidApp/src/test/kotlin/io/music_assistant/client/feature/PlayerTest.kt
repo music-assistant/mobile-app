@@ -38,7 +38,7 @@ class PlayerTest {
     @Test
     fun `shows message when nothing is playing`() {
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .assertPlayer(player.displayName, playing = false, item = null)
@@ -52,7 +52,7 @@ class PlayerTest {
         serviceClient.addToLibrary(track)
 
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
@@ -74,7 +74,7 @@ class PlayerTest {
         serviceClient.addToLibrary(track1, track2)
 
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
@@ -102,7 +102,7 @@ class PlayerTest {
         serviceClient.addToLibrary(track)
 
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)

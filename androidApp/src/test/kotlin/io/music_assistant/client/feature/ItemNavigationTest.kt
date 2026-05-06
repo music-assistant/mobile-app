@@ -46,7 +46,7 @@ class ItemNavigationTest {
         serviceClient.addToLibrary(track)
 
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
@@ -61,7 +61,7 @@ class ItemNavigationTest {
         serviceClient.addToLibrary(track)
 
         val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayer(player)
+        serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
