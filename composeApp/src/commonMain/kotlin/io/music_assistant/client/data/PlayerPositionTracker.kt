@@ -2,7 +2,6 @@ package io.music_assistant.client.data
 
 import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

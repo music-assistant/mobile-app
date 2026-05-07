@@ -1216,7 +1216,9 @@ class MainDataSource(
                 Request.Player.simpleCommand(playerId = data.playerId, command = "pause")
 
             PlayerAction.Next -> {
-                val currentPos = data.queueInfo?.elapsedTime ?: 0.0
+                val currentPos = data.queueInfo?.id
+                    ?.let(positionTracker::effectiveSec)
+                    ?: data.queueInfo?.elapsedTime ?: 0.0
                 (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
                     ?.chapters?.firstOrNull { it.start > currentPos }?.start
                     ?.let { Request.Player.seek(queueId = data.playerId, position = it.toLong()) }
@@ -1224,7 +1226,9 @@ class MainDataSource(
             }
 
             PlayerAction.Previous -> {
-                val currentPos = data.queueInfo?.elapsedTime ?: 0.0
+                val currentPos = data.queueInfo?.id
+                    ?.let(positionTracker::effectiveSec)
+                    ?: data.queueInfo?.elapsedTime ?: 0.0
                 (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
                     ?.chapters?.takeIf { it.isNotEmpty() }
                     ?.let { chapters ->

@@ -85,6 +85,7 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.conditional
+import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
@@ -117,7 +118,7 @@ internal fun PlayersPager(
     localPlayerId: String,
     onAdjustPlaybackDelay: (Int) -> Unit,
     fetchColors: ExtractedColorsFetcher,
-    observePosition: (queueId: String) -> kotlinx.coroutines.flow.Flow<Double>,
+    observePosition: (queueId: String) -> Flow<Double>,
 ) {
     val modifier = if (expanded) {
         modifier
@@ -310,7 +311,7 @@ private fun ExpandedPlayerPage(
     contentPadding: PaddingValues,
     isCurrentPage: Boolean,
     navigateToItem: (AppMediaItem) -> Unit = {},
-    livePositionFlow: kotlinx.coroutines.flow.Flow<Double>?,
+    livePositionFlow: Flow<Double>?,
 ) {
     Column(
         modifier = Modifier.padding(top = 8.dp),
