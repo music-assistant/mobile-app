@@ -83,8 +83,11 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         players.map { it.size > 1 },
     ) { player, moreThanOnePlayer ->
         MediaNotificationData.from(
-            player,
-            moreThanOnePlayer,
+            playerData = player,
+            multiplePlayers = moreThanOnePlayer,
+            effectiveElapsedSec = player.queueInfo?.id?.let { id ->
+                dataSource.positionTracker.effectiveSec(id)
+            },
         )
     }
         .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }

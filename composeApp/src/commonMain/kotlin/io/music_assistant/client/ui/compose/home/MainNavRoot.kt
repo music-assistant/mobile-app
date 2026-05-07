@@ -442,6 +442,7 @@ private fun Players(
             localPlayerId = homeScreenViewModel.localPlayerId,
             onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
             fetchColors = fetchColors,
+            observePosition = homeScreenViewModel::observePosition,
             navigateToItem = { item ->
                 backStack.add(
                     MainNav.ItemDetails(

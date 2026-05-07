@@ -65,8 +65,11 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     private val mediaNotificationData = currentPlayerData.filterNotNull()
         .map {
             MediaNotificationData.from(
-                it,
-                false,
+                playerData = it,
+                multiplePlayers = false,
+                effectiveElapsedSec = it.queueInfo?.id?.let { id ->
+                    dataSource.positionTracker.effectiveSec(id)
+                },
             )
         }
         .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }
@@ -273,16 +276,13 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                             sharedSession.clearErrorState()
                             if (!wasAuthenticated) {
                                 wasAuthenticated = true
-                                // Route through library so cache is invalidated alongside
-                                // the AA host notification — otherwise stale entries would
-                                // stick around after a reconnect.
-                                library.invalidateAndNotify(MediaIds.ROOT)
-                                library.invalidateAndNotify(MediaIds.TAB_ARTISTS)
-                                library.invalidateAndNotify(MediaIds.TAB_ALBUMS)
-                                library.invalidateAndNotify(MediaIds.TAB_PLAYLISTS)
-                                library.invalidateAndNotify(MediaIds.TAB_PODCASTS)
-                                library.invalidateAndNotify(MediaIds.TAB_RADIO)
-                                library.invalidateAndNotify(MediaIds.TAB_AUDIOBOOKS)
+                                notifyChildrenChanged(MediaIds.ROOT)
+                                notifyChildrenChanged(MediaIds.TAB_ARTISTS)
+                                notifyChildrenChanged(MediaIds.TAB_ALBUMS)
+                                notifyChildrenChanged(MediaIds.TAB_PLAYLISTS)
+                                notifyChildrenChanged(MediaIds.TAB_PODCASTS)
+                                notifyChildrenChanged(MediaIds.TAB_RADIO)
+                                notifyChildrenChanged(MediaIds.TAB_AUDIOBOOKS)
                             }
                         }
                     }

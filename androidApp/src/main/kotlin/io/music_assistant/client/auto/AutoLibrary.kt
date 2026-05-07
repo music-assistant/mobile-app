@@ -41,7 +41,6 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(FlowPreview::class)
 class AutoLibrary(
@@ -58,18 +57,6 @@ class AutoLibrary(
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
         MutableStateFlow(null)
     private val defaultIconUri = R.drawable.baseline_library_music_24.toUri(context)
-
-    /**
-     * In-memory cache of [getItems] results. AA hosts re-subscribe browseable
-     * parents aggressively (on metadata changes, focus changes, host re-renders);
-     * without this cache, every re-subscribe round-trips to the MA server,
-     * allocating DTOs and pegging GC. Entries are invalidated explicitly via
-     * [invalidateAndNotify] when the underlying data changes (sort applied, etc.).
-     */
-    private data class CachedItems(val items: List<MediaItem>, val timestampMs: Long)
-
-    private val itemCache = ConcurrentHashMap<String, CachedItems>()
-    private val cacheTtlMs = 5 * 60 * 1000L // 5 minutes
 
     init {
         scope.launch {
@@ -109,16 +96,9 @@ class AutoLibrary(
         id: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
-        val cached = itemCache[id]
-        if (cached != null && System.currentTimeMillis() - cached.timestampMs < cacheTtlMs) {
-            // Cache hit: serve without server round-trip. AA fires onLoadChildren
-            // many times per second when its host invalidates browse caches.
-            result.sendResult(cached.items)
-            return
-        }
-        Logger.withTag("AutoLibrary").i { "Items for $id (cache miss)" }
+        Logger.withTag("AutoLibrary").i { "Items for $id" }
         when {
-            id == MediaIds.ROOT -> sendAndCache(id, result, rootChildren())
+            id == MediaIds.ROOT -> result.sendResult(rootChildren())
             MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(
                 id,
                 result,
@@ -134,27 +114,6 @@ class AutoLibrary(
         }
     }
 
-    /**
-     * Invalidate the cached children for [parentId] and notify AA that the
-     * subtree has changed. All notifyChildrenChanged dispatches go through this
-     * method to keep cache and AA's view consistent.
-     */
-    fun invalidateAndNotify(parentId: String) {
-        itemCache.remove(parentId)
-        notifyChildrenChanged?.invoke(parentId)
-    }
-
-    private fun sendAndCache(
-        id: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
-        items: List<MediaItem>?,
-    ) {
-        if (items != null) {
-            itemCache[id] = CachedItems(items, System.currentTimeMillis())
-        }
-        result.sendResult(items)
-    }
-
     private fun rootChildren(): List<MediaItem> = listOf(
         rootTabItem("Artists", MediaIds.TAB_ARTISTS),
         rootTabItem("Albums", MediaIds.TAB_ALBUMS),
@@ -168,7 +127,6 @@ class AutoLibrary(
         tabId: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
         favoritesOnly: Boolean,
-        cacheKey: String = tabId,
     ) {
         val mediaType = MediaIds.tabMediaTypeOf(tabId) ?: run {
             result.sendResult(null)
@@ -196,7 +154,7 @@ class AutoLibrary(
                     favoritesPseudoItem(MediaIds.favoritesId(mediaType)),
                 )
             }
-            sendAndCache(cacheKey, result, header + items)
+            result.sendResult(header + items)
         }
     }
 
@@ -220,7 +178,7 @@ class AutoLibrary(
                 isCurrent = preset.option == current,
             )
         }
-        sendAndCache(id, result, items)
+        result.sendResult(items)
     }
 
     private fun handleSortApply(
@@ -239,7 +197,7 @@ class AutoLibrary(
         // browse view glitches many times a second.
         if (settings.getAutoSortOption(mediaType) != sort) {
             settings.setAutoSortOption(mediaType, sort)
-            invalidateAndNotify(MediaIds.tabIdOf(mediaType))
+            notifyChildrenChanged?.invoke(MediaIds.tabIdOf(mediaType))
         }
         result.detach()
         scope.launch {
@@ -247,7 +205,7 @@ class AutoLibrary(
                 result.sendResult(null)
                 return@launch
             }
-            sendAndCache(id, result, loadTabItems(mediaType, sort, favoritesOnly = false))
+            result.sendResult(loadTabItems(mediaType, sort, favoritesOnly = false))
         }
     }
 
@@ -260,14 +218,7 @@ class AutoLibrary(
             return
         }
         // Reuse the tab content path with favoritesOnly=true; header is suppressed there.
-        // Cache key is the original favorites id, not the tab id, so each subtree
-        // gets its own cache slot.
-        handleTabContent(
-            tabId = MediaIds.tabIdOf(mediaType),
-            result = result,
-            favoritesOnly = true,
-            cacheKey = id,
-        )
+        handleTabContent(MediaIds.tabIdOf(mediaType), result, favoritesOnly = true)
     }
 
     private fun handleSubSortMenu(
@@ -290,7 +241,7 @@ class AutoLibrary(
                 isCurrent = preset.option == current,
             )
         }
-        sendAndCache(id, result, items)
+        result.sendResult(items)
     }
 
     private fun handleSubSortApply(
@@ -303,11 +254,12 @@ class AutoLibrary(
         }
         if (settings.getAutoSortOption(parsed.context) != parsed.option) {
             settings.setAutoSortOption(parsed.context, parsed.option)
-            invalidateAndNotify(parsed.parent.encode())
+            notifyChildrenChanged?.invoke(parsed.parent.encode())
         }
         result.detach()
         scope.launch {
-            sendAndCache(id, result, loadSubItems(parsed.context, parsed.parent, parsed.option))
+            val list = loadSubItems(parsed.context, parsed.parent, parsed.option)
+            result.sendResult(list)
         }
     }
 
@@ -341,7 +293,7 @@ class AutoLibrary(
                 }
                 addAll(actionsForItem(id))
             }
-            sendAndCache(id, result, header + items)
+            result.sendResult(header + items)
         }
     }
 

@@ -21,22 +21,34 @@ data class MediaNotificationData(
     val duration: Long?,
 ) {
     companion object {
-        fun from(playerData: PlayerData, multiplePlayers: Boolean) =
-            MediaNotificationData(
-                multiplePlayers = multiplePlayers,
-                longItemId = playerData.player.currentMedia?.hashCode()?.toLong(),
-                name = playerData.player.currentMedia?.title,
-                artist = playerData.player.currentMedia?.artist,
-                album = playerData.player.currentMedia?.album,
-                repeatMode = playerData.queueInfo?.repeatMode,
-                shuffleEnabled = playerData.queueInfo?.shuffleEnabled,
-                isPlaying = playerData.player.isPlaying,
-                imageUrl = playerData.player.currentMedia?.imageUrl,
-                elapsedTime = playerData.queueInfo?.elapsedTime?.toLong()?.let { it * 1000 },
-                playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
-                duration = playerData.player.currentMedia?.duration?.toLong()
-                    ?.let { it * 1000 },
-            )
+        /**
+         * Builds the snapshot pushed to MediaSession. [effectiveElapsedSec]
+         * is the freshly-extrapolated position at write-time (computed by the
+         * data layer from anchor + elapsed wall clock). We use it directly
+         * instead of `playerData.queueInfo.elapsedTime` because the latter is
+         * only refreshed on `QueueAdded/UpdatedEvent` — not on the more
+         * frequent `QueueTimeUpdatedEvent` — and would freeze the AA /
+         * notification progress bar at a stale anchor on pause.
+         */
+        fun from(
+            playerData: PlayerData,
+            multiplePlayers: Boolean,
+            effectiveElapsedSec: Double?,
+        ) = MediaNotificationData(
+            multiplePlayers = multiplePlayers,
+            longItemId = playerData.player.currentMedia?.hashCode()?.toLong(),
+            name = playerData.player.currentMedia?.title,
+            artist = playerData.player.currentMedia?.artist,
+            album = playerData.player.currentMedia?.album,
+            repeatMode = playerData.queueInfo?.repeatMode,
+            shuffleEnabled = playerData.queueInfo?.shuffleEnabled,
+            isPlaying = playerData.player.isPlaying,
+            imageUrl = playerData.player.currentMedia?.imageUrl,
+            elapsedTime = effectiveElapsedSec?.toLong()?.let { it * 1000 },
+            playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
+            duration = playerData.player.currentMedia?.duration?.toLong()
+                ?.let { it * 1000 },
+        )
 
         fun areTooSimilarToUpdate(old: MediaNotificationData, new: MediaNotificationData): Boolean {
             if (old.copy(elapsedTime = null) != new.copy(elapsedTime = null)) {

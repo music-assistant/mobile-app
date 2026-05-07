@@ -60,6 +60,9 @@ class HomeScreenViewModel(
         settings.setSendspinStaticDelayMs(settings.sendspinStaticDelayMs.value + deltaMs)
     }
 
+    /** Live elapsed-time flow for the slider. Ticks at 500 ms only while playing + subscribed. */
+    fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
+
     private val _recommendationsState = MutableStateFlow(
         RecommendationsState(
             connectionState = SessionState.Disconnected.Initial,

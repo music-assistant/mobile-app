@@ -23,12 +23,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,10 +51,8 @@ import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.inactive
-import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.formatDuration
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.players_nothing
@@ -186,64 +183,6 @@ fun CompactPlayerItem(
     }
 }
 
-/**
- * Smooth slider progression without depending on a 2 Hz data-layer tick.
- *
- * `anchor` is the last server-confirmed position. The visible value [current]
- * advances forward at wall-clock rate while playing, freezes while paused, and
- * snaps to a new anchor when (and only when) the anchor actually changes —
- * server scrub, user seek, track flip. Crucially, pause/resume transitions
- * do NOT reset `current`: the slider stays where it visually was, so there's
- * no snap-back to a stale anchor when you pause.
- */
-@Composable
-private fun rememberInterpolatedPosition(
-    anchor: Double?,
-    isPlaying: Boolean,
-    duration: Double?,
-): Float {
-    if (anchor == null) return 0f
-    val anchorState = rememberUpdatedState(anchor)
-    val durationState = rememberUpdatedState(duration)
-    val isPlayingState = rememberUpdatedState(isPlaying)
-    var current by remember { mutableStateOf(anchor) }
-    LaunchedEffect(Unit) {
-        var lastObservedAnchor = anchorState.value
-        var lastTickWallTime = currentTimeMillis()
-        var wasPlaying = isPlayingState.value
-        while (isActive) {
-            val a = anchorState.value
-            val playing = isPlayingState.value
-            val now = currentTimeMillis()
-            // Resume detection: rebase wall-time so the pause duration doesn't
-            // get folded into the next forward-advance step.
-            if (playing && !wasPlaying) {
-                lastTickWallTime = now
-            }
-            wasPlaying = playing
-            when {
-                a != lastObservedAnchor -> {
-                    // Real anchor change (seek / scrub / track flip). Snap to it.
-                    current = a
-                    lastObservedAnchor = a
-                    lastTickWallTime = now
-                }
-
-                playing -> {
-                    val deltaSec = (now - lastTickWallTime) / 1000.0
-                    val advanced = current + deltaSec
-                    current = durationState.value?.let { advanced.coerceAtMost(it) } ?: advanced
-                    lastTickWallTime = now
-                }
-                // Paused with no anchor change: leave `current` and `lastTickWallTime`
-                // alone — the resume branch above will rebase wall-time on transition.
-            }
-            delay(500)
-        }
-    }
-    return current.toFloat()
-}
-
 @Composable
 private fun trackNameAndContentDescription(title: String?): Pair<String, String> {
     val playingContentDescription = if (title != null) {
@@ -263,6 +202,7 @@ fun FullPlayerItem(
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
+    livePositionFlow: Flow<Double>?,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -362,14 +302,14 @@ fun FullPlayerItem(
 
         val duration = currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
 
-        // Local interpolation off the server-anchored elapsed time. Recomposition
-        // scope is limited to this slider — the marquee, art, controls etc.
-        // recompose only on real state changes.
-        val displayPosition = rememberInterpolatedPosition(
-            anchor = item.queueInfo?.elapsedTime,
-            isPlaying = item.player.isPlaying,
-            duration = currentMedia?.duration,
-        )
+        // Live position from PlayerPositionTracker — single source of truth shared
+        // with notification + Android Auto. Recomposition scope is limited to this
+        // slider; the marquee/art/controls only recompose on real state changes.
+        val displayPosition = livePositionFlow
+            ?.collectAsStateWithLifecycle(initialValue = item.queueInfo?.elapsedTime ?: 0.0)
+            ?.value?.toFloat()
+            ?: item.queueInfo?.elapsedTime?.toFloat()
+            ?: 0f
 
         // Track user drag state separately
         var userDragPosition by remember { mutableStateOf<Float?>(null) }
