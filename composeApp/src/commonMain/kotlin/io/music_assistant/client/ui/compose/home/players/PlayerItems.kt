@@ -29,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -190,11 +189,12 @@ fun CompactPlayerItem(
 /**
  * Smooth slider progression without depending on a 2 Hz data-layer tick.
  *
- * `anchor` is the last server-confirmed position (re-anchored on
- * `QueueTimeUpdatedEvent`, optimistic seek, track flip). The effect lives
- * across anchor changes — it observes them inside the loop instead of
- * cancelling/restarting on each one. This avoids both per-anchor allocation
- * churn AND visible snap-back when the server smooths position at high rate.
+ * `anchor` is the last server-confirmed position. The visible value [current]
+ * advances forward at wall-clock rate while playing, freezes while paused, and
+ * snaps to a new anchor when (and only when) the anchor actually changes —
+ * server scrub, user seek, track flip. Crucially, pause/resume transitions
+ * do NOT reset `current`: the slider stays where it visually was, so there's
+ * no snap-back to a stale anchor when you pause.
  */
 @Composable
 private fun rememberInterpolatedPosition(
@@ -205,25 +205,39 @@ private fun rememberInterpolatedPosition(
     if (anchor == null) return 0f
     val anchorState = rememberUpdatedState(anchor)
     val durationState = rememberUpdatedState(duration)
+    val isPlayingState = rememberUpdatedState(isPlaying)
     var current by remember { mutableStateOf(anchor) }
-    LaunchedEffect(isPlaying) {
-        if (!isPlaying) {
-            // Paused: track anchor changes (e.g., user seek while paused) without
-            // running the local interpolator.
-            snapshotFlow { anchorState.value }.collect { current = it }
-            return@LaunchedEffect
-        }
-        // Playing: re-base on each observed anchor, advance locally between.
-        var baseAnchor = anchorState.value
-        var baseTime = currentTimeMillis()
+    LaunchedEffect(Unit) {
+        var lastObservedAnchor = anchorState.value
+        var lastTickWallTime = currentTimeMillis()
+        var wasPlaying = isPlayingState.value
         while (isActive) {
             val a = anchorState.value
-            if (a != baseAnchor) {
-                baseAnchor = a
-                baseTime = currentTimeMillis()
+            val playing = isPlayingState.value
+            val now = currentTimeMillis()
+            // Resume detection: rebase wall-time so the pause duration doesn't
+            // get folded into the next forward-advance step.
+            if (playing && !wasPlaying) {
+                lastTickWallTime = now
             }
-            val advanced = baseAnchor + (currentTimeMillis() - baseTime) / 1000.0
-            current = durationState.value?.let { advanced.coerceAtMost(it) } ?: advanced
+            wasPlaying = playing
+            when {
+                a != lastObservedAnchor -> {
+                    // Real anchor change (seek / scrub / track flip). Snap to it.
+                    current = a
+                    lastObservedAnchor = a
+                    lastTickWallTime = now
+                }
+
+                playing -> {
+                    val deltaSec = (now - lastTickWallTime) / 1000.0
+                    val advanced = current + deltaSec
+                    current = durationState.value?.let { advanced.coerceAtMost(it) } ?: advanced
+                    lastTickWallTime = now
+                }
+                // Paused with no anchor change: leave `current` and `lastTickWallTime`
+                // alone — the resume branch above will rebase wall-time on transition.
+            }
             delay(500)
         }
     }
