@@ -94,34 +94,34 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             }
         }
 
-        // Queue updates (separate MediaSession property — no conflict with playback state)
+        // Queue updates (separate MediaSession property — no conflict with playback state).
+        // Project to track-id list and dedupe: setQueue is an IPC write that AA hosts react to
+        // (re-rendering the queue view, which can in turn re-subscribe browse parents). Without
+        // dedup, every localPlayer emission — even ones with byte-identical queues — churns AA.
         scope.launch {
-            currentPlayerData.filterNotNull().collect { playerData ->
-                when (val queueData = playerData.queue) {
-                    is DataState.Data -> {
-                        when (val queueItems = queueData.data.items) {
-                            is DataState.Data -> {
-                                val baseUrl = dataSource.apiClient.serverBaseUrl.value
-                                sharedSession.updateQueue(
-                                    queueItems.data.map { queueTrack ->
-                                    QueueItem(
-                                        (queueTrack.track as AppMediaItem).toMediaDescription(
-                                            baseUrl,
-                                            defaultIconUri,
-                                        ),
-                                        queueTrack.track.longId,
-                                    )
-                                },
-                                )
-                            }
-
-                            else -> sharedSession.updateQueue(emptyList())
-                        }
-                    }
-
-                    else -> sharedSession.updateQueue(emptyList())
+            currentPlayerData
+                .map { playerData ->
+                    val queueData = playerData?.queue as? DataState.Data
+                    (queueData?.data?.items as? DataState.Data)?.data.orEmpty()
                 }
-            }
+                .distinctUntilChanged { old, new ->
+                    old.size == new.size &&
+                        old.zip(new).all { (a, b) -> a.track.longId == b.track.longId }
+                }
+                .collect { items ->
+                    val baseUrl = dataSource.apiClient.serverBaseUrl.value
+                    sharedSession.updateQueue(
+                        items.map { queueTrack ->
+                            QueueItem(
+                                (queueTrack.track as AppMediaItem).toMediaDescription(
+                                    baseUrl,
+                                    defaultIconUri,
+                                ),
+                                queueTrack.track.longId,
+                            )
+                        },
+                    )
+                }
         }
 
         dataSource.apiClient.onExternalConsumerActive()
