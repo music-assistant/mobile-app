@@ -1,11 +1,8 @@
 package io.music_assistant.client.support.pages
 
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,12 +10,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.support.get
+import io.music_assistant.client.support.withinTag
+import io.music_assistant.client.ui.compose.home.CollapsibleQueueSemantics
 import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.queue_clear
+import musicassistantclient.composeapp.generated.resources.queue_label_with_position
 import musicassistantclient.composeapp.generated.resources.queue_transfer
 
 class ExpandedPlayerPage(
@@ -66,7 +66,8 @@ class ExpandedPlayerPage(
     }
 
     private fun clickMore() {
-        composeTestRule.onNodeWithinFloatingBar(hasContentDescription(Res.string.cd_more.get()))
+        composeTestRule
+            .onNode(withinTag(FloatingBarSemantics.TAG).and(hasContentDescription(Res.string.cd_more.get())))
             .performClick()
     }
 
@@ -76,8 +77,21 @@ class ExpandedPlayerPage(
         composeTestRule.onNodeWithText(player).performClick()
         return ExpandedPlayerPage(player, true, item, composeTestRule).assertOnPage()
     }
-}
 
-private fun ComposeTestRule.onNodeWithinFloatingBar(matcher: SemanticsMatcher): SemanticsNodeInteraction {
-    return onNode(hasAnyAncestor(hasTestTag(FloatingBarSemantics.TAG)).and(matcher))
+    fun openQueue(currentPosition: Int, size: Int): ExpandedPlayerPage {
+        composeTestRule
+            .onNodeWithText(Res.string.queue_label_with_position.get(currentPosition, size))
+            .performClick()
+        return this
+    }
+
+    fun assertQueue(vararg titles: String): ExpandedPlayerPage {
+        titles.forEach {
+            composeTestRule
+                .onNode(withinTag(CollapsibleQueueSemantics.QUEUE_TAG).and(hasText(it)))
+                .assertIsDisplayed()
+        }
+
+        return this
+    }
 }

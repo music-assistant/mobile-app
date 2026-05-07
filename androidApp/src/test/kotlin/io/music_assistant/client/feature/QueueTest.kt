@@ -29,6 +29,24 @@ class QueueTest {
     private val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
+    fun `can view current player queue`() {
+        val album = ServerMediaItemFixtures.album()
+        val track1 = ServerMediaItemFixtures.track(album = album)
+        val track2 = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addToLibrary(track1, track2)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(album)
+            .clickPlay()
+            .expandPlayer(player.displayName, playing = true, item = track1.name)
+            .openQueue(1, 2)
+            .assertQueue(track1.name, track2.name)
+    }
+
+    @Test
     fun `can clear current player queue`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)

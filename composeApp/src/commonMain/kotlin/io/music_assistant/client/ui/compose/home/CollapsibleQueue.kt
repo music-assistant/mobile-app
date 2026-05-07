@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -232,7 +233,9 @@ fun CollapsibleQueue(
                         }
 
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(CollapsibleQueueSemantics.QUEUE_TAG),
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             contentPadding = contentPadding,
@@ -401,4 +404,8 @@ fun CollapsibleQueue(
             }
         }
     }
+}
+
+object CollapsibleQueueSemantics {
+    const val QUEUE_TAG: String = "CollapsibleQueue"
 }

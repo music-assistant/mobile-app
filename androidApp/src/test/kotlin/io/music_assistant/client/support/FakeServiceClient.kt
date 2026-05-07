@@ -26,6 +26,7 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.UniqueIdGenerator
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
@@ -41,6 +42,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
+    private val uniqueIdGenerator = UniqueIdGenerator()
+
     private val players = mutableListOf<ServerPlayer>()
     private val queues = mutableListOf<ServerQueue>()
     private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
@@ -212,7 +215,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 } ?: emptyList()
 
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                updateQueue(queueId, mediaTracks.map { ServerQueueItem("blah", it) })
+                updateQueue(
+                    queueId,
+                    mediaTracks.map { ServerQueueItem(uniqueIdGenerator.nextInt().toString(), it) },
+                )
                 updatePlayer({ it.activeSource == queueId }) {
                     it.copy(
                         state = PlayerState.PLAYING,
@@ -252,7 +258,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             APICommands.PLAYER_QUEUES_CLEAR -> {
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                updateQueue(queueId, emptyList<ServerQueueItem>())
+                updateQueue(queueId, emptyList())
                 updatePlayer({ it.activeSource == queueId }) {
                     it.copy(
                         state = PlayerState.IDLE,

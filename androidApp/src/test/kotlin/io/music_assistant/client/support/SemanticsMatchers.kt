@@ -4,7 +4,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 
 fun hasRole(role: Role): SemanticsMatcher {
@@ -18,4 +20,8 @@ fun hasRole(role: Role): SemanticsMatcher {
 fun isTab(text: String): SemanticsMatcher {
     return hasRole(Role.Tab)
         .and(hasContentDescription(text).or(hasText(text)))
+}
+
+fun withinTag(testTag: String): SemanticsMatcher {
+    return hasAnyAncestor(hasTestTag(testTag))
 }

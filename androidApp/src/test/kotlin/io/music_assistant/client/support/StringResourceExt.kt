@@ -4,9 +4,13 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 
-fun StringResource.get(): String {
+fun StringResource.get(vararg formatArgs: Any): String {
     val resource = this
     return runBlocking {
-        getString(resource)
+        if (formatArgs.isNotEmpty()) {
+            getString(resource, *formatArgs)
+        } else {
+            getString(resource)
+        }
     }
 }
