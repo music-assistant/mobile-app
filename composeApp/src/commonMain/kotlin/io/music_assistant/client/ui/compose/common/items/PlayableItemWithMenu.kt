@@ -39,17 +39,33 @@ import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_add_to_bottom
+import musicassistantclient.composeapp.generated.resources.action_add_to_library
+import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
+import musicassistantclient.composeapp.generated.resources.action_favorite
+import musicassistantclient.composeapp.generated.resources.action_insert_next
+import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
+import musicassistantclient.composeapp.generated.resources.action_mark_played
+import musicassistantclient.composeapp.generated.resources.action_mark_unplayed
+import musicassistantclient.composeapp.generated.resources.action_play_now
+import musicassistantclient.composeapp.generated.resources.action_remove_from_library
+import musicassistantclient.composeapp.generated.resources.action_remove_from_playlist
+import musicassistantclient.composeapp.generated.resources.action_start_radio
+import musicassistantclient.composeapp.generated.resources.action_unfavorite
+import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.playlist_add_to_title
+import musicassistantclient.composeapp.generated.resources.playlist_no_editable
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TrackWithMenu(
     item: AppMediaItem.Track,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onPlayOption: ((AppMediaItem.Track, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -58,15 +74,18 @@ fun TrackWithMenu(
     serverUrl: String?,
 ) {
     PlayableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
         itemComposable = { mod, onClick, onLongClick ->
-            if (rowMode) {
-                TrackRowItem(
+            when (viewMode) {
+                ViewMode.LIST -> TrackRowItem(
                     modifier = mod,
                     item = item,
                     serverUrl = serverUrl,
@@ -74,8 +93,8 @@ fun TrackWithMenu(
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
                 )
-            } else {
-                TrackGridItem(
+
+                ViewMode.GRID -> TrackGridItem(
                     modifier = mod,
                     item = item,
                     serverUrl = serverUrl,
@@ -91,7 +110,7 @@ fun TrackWithMenu(
 @Composable
 fun PodcastEpisodeWithMenu(
     item: AppMediaItem.PodcastEpisode,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onPlayOption: ((AppMediaItem.PodcastEpisode, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -101,7 +120,10 @@ fun PodcastEpisodeWithMenu(
     serverUrl: String?,
 ) {
     PlayableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
@@ -109,8 +131,8 @@ fun PodcastEpisodeWithMenu(
         libraryActions = libraryActions,
         progressActions = progressActions,
         itemComposable = { mod, onClick, onLongClick ->
-            if (rowMode) {
-                PodcastEpisodeRowItem(
+            when (viewMode) {
+                ViewMode.LIST -> PodcastEpisodeRowItem(
                     modifier = mod,
                     item = item,
                     serverUrl = serverUrl,
@@ -118,8 +140,8 @@ fun PodcastEpisodeWithMenu(
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
                 )
-            } else {
-                PodcastEpisodeGridItem(
+
+                ViewMode.GRID -> PodcastEpisodeGridItem(
                     modifier = mod,
                     item = item,
                     serverUrl = serverUrl,
@@ -135,7 +157,7 @@ fun PodcastEpisodeWithMenu(
 @Composable
 fun RadioWithMenu(
     item: AppMediaItem.RadioStation,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onPlayOption: ((AppMediaItem.RadioStation, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -144,15 +166,18 @@ fun RadioWithMenu(
     serverUrl: String?,
 ) {
     PlayableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
         itemComposable = { mod, onClick, onLongClick ->
-            if (rowMode) {
-                RadioRowItem(
+            when (viewMode) {
+                ViewMode.LIST -> RadioRowItem(
                     modifier = mod,
                     item = item,
                     serverUrl = serverUrl,
@@ -160,8 +185,8 @@ fun RadioWithMenu(
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
                 )
-            } else {
-                RadioGridItem(
+
+                ViewMode.GRID -> RadioGridItem(
                     modifier = mod,
                     item = item,
                     serverUrl = serverUrl,
@@ -376,14 +401,14 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                        if (isPlayed) {
-                            stringResource(
-                                Res.string.action_mark_unplayed,
-                            )
-                        } else {
-                            stringResource(Res.string.action_mark_played)
-                        },
-                    )
+                            if (isPlayed) {
+                                stringResource(
+                                    Res.string.action_mark_unplayed,
+                                )
+                            } else {
+                                stringResource(Res.string.action_mark_played)
+                            },
+                        )
                     },
                     onClick = {
                         if (isPlayed) {

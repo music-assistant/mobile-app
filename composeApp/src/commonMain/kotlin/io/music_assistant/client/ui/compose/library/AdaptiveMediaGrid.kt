@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
@@ -41,7 +42,7 @@ fun AdaptiveMediaGrid(
     serverUrl: String?,
     isLoadingMore: Boolean = false,
     hasMore: Boolean = true,
-    isRowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
     onLoadMore: () -> Unit = {},
@@ -51,6 +52,7 @@ fun AdaptiveMediaGrid(
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {
+    val isRow = viewMode == ViewMode.LIST
     // Detect when we're near the end and trigger load more
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -80,7 +82,7 @@ fun AdaptiveMediaGrid(
         items(
             items = items,
             key = { "${it.mediaType}_${it.provider}_${it.itemId}" },
-            span = if (isRowMode) {
+            span = if (isRow) {
                 { GridItemSpan(maxLineSpan) }
             } else {
                 null
@@ -89,8 +91,7 @@ fun AdaptiveMediaGrid(
             when (item) {
                 is AppMediaItem.Artist -> ArtistWithMenu(
                     item = item,
-                    rowMode = isRowMode,
-
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -100,8 +101,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.Album -> AlbumWithMenu(
                     item = item,
-                    rowMode = isRowMode,
-
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -111,8 +111,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.Playlist -> PlaylistWithMenu(
                     item = item,
-                    rowMode = isRowMode,
-
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -122,8 +121,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.Podcast -> PodcastWithMenu(
                     item = item,
-                    rowMode = isRowMode,
-
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -133,7 +131,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.Track -> TrackWithMenu(
                     item = item,
-                    rowMode = isRowMode,
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
@@ -143,7 +141,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
                     item = item,
-                    rowMode = isRowMode,
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
@@ -154,8 +152,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.Audiobook -> AudiobookWithMenu(
                     item = item,
-                    rowMode = isRowMode,
-
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -166,8 +163,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.Genre -> GenreWithMenu(
                     item = item,
-                    rowMode = isRowMode,
-
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
@@ -177,7 +173,7 @@ fun AdaptiveMediaGrid(
 
                 is AppMediaItem.RadioStation -> RadioWithMenu(
                     item = item,
-                    rowMode = isRowMode,
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,

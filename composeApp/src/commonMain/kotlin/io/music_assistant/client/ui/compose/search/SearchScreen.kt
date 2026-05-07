@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -183,7 +184,6 @@ private fun SearchContent(
     state: SearchViewModel.State,
     serverUrl: String?,
     toastState: ToastState,
-
     onItemClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
@@ -222,9 +222,8 @@ private fun SearchContent(
                     -> {
                     // Handle both Data and Stale - both contain valid search results
                     val results = when (resultsState) {
-                        is DataState.Data -> resultsState.data
                         is DataState.Stale -> resultsState.data
-                        else -> return@Column
+                        is DataState.Data -> resultsState.data
                     }
                     when (results.nonEmptyLists.size) {
                         0 -> Box(
@@ -258,7 +257,7 @@ private fun SearchContent(
                                 when (item) {
                                     is AppMediaItem.Track -> TrackWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onPlayOption = onPlayClick,
                                         libraryActions = libraryActions,
@@ -267,7 +266,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.Artist -> ArtistWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -277,7 +276,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.Album -> AlbumWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -287,7 +286,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.Playlist -> PlaylistWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -297,7 +296,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.Podcast -> PodcastWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -307,7 +306,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.Audiobook -> AudiobookWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,
@@ -317,7 +316,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.RadioStation -> RadioWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onPlayOption = onPlayClick,
                                         libraryActions = libraryActions,
@@ -326,7 +325,7 @@ private fun SearchContent(
 
                                     is AppMediaItem.Genre -> GenreWithMenu(
                                         serverUrl = serverUrl,
-                                        rowMode = true,
+                                        viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
                                         onPlayOption = onPlayClick,

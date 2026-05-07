@@ -54,6 +54,7 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
@@ -97,7 +98,6 @@ fun LibraryScreen(
     val actionsViewModel: ActionsViewModel = koinInject()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
-    val isRowMode by viewModel.itemsRowMode.collectAsStateWithLifecycle(false)
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
@@ -119,8 +119,8 @@ fun LibraryScreen(
                 tabs = state.tabs,
                 selectedTab = selectedTab,
                 onTabSelected = viewModel::onTabSelected,
-                isRowMode = isRowMode,
-                onToggleViewMode = viewModel::toggleItemsRowMode,
+                viewMode = selectedTab.viewMode,
+                onToggleViewMode = { viewModel.toggleViewMode(selectedTab.tab) },
                 scrollBehavior = scrollBehavior,
                 onSearchQueryChanged = viewModel::onSearchQueryChanged,
                 onOnlyFavoritesClicked = viewModel::onOnlyFavoritesClicked,
@@ -133,7 +133,6 @@ fun LibraryScreen(
             selectedTab = selectedTab,
             showCreatePlaylistDialog = state.showCreatePlaylistDialog,
             serverUrl = serverUrl,
-            isRowMode = isRowMode,
             toastState = toastState,
             onNavigateClick = onNavigateClick,
             onPlayClick = viewModel::onPlayClick,
@@ -162,7 +161,7 @@ private fun LibraryTopBar(
     tabs: List<LibraryViewModel.TabState>,
     selectedTab: LibraryViewModel.TabState,
     onTabSelected: (LibraryViewModel.Tab) -> Unit,
-    isRowMode: Boolean,
+    viewMode: ViewMode,
     onToggleViewMode: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onSearchQueryChanged: (LibraryViewModel.Tab, String) -> Unit,
@@ -215,7 +214,10 @@ private fun LibraryTopBar(
                     }
                     IconButton(onClick = onToggleViewMode) {
                         Icon(
-                            imageVector = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
+                            imageVector = when (viewMode) {
+                                ViewMode.LIST -> Icons.Default.GridView
+                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                            },
                             contentDescription = stringResource(Res.string.cd_toggle_view_mode),
                         )
                     }
@@ -273,7 +275,6 @@ private fun Library(
     selectedTab: LibraryViewModel.TabState,
     showCreatePlaylistDialog: Boolean,
     serverUrl: String?,
-    isRowMode: Boolean,
     toastState: ToastState,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -297,7 +298,6 @@ private fun Library(
                 TabContent(
                     tabState = selectedTab,
                     serverUrl = serverUrl,
-                    isRowMode = isRowMode,
                     onNavigateClick = onNavigateClick,
                     onPlayClick = onPlayClick,
                     onCreatePlaylistClick = onCreatePlaylistClick,
@@ -376,7 +376,6 @@ private fun CreatePlaylistDialog(
 private fun TabContent(
     tabState: LibraryViewModel.TabState,
     serverUrl: String?,
-    isRowMode: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
@@ -459,7 +458,7 @@ private fun TabContent(
                                 serverUrl = serverUrl,
                                 isLoadingMore = tabState.isLoadingMore,
                                 hasMore = tabState.hasMore,
-                                isRowMode = isRowMode,
+                                viewMode = tabState.viewMode,
                                 onNavigateClick = onNavigateClick,
                                 onPlayClick = onPlayClick,
                                 onLoadMore = onLoadMore,

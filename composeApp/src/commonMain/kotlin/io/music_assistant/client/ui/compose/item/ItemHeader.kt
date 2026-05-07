@@ -56,7 +56,9 @@ import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -130,9 +132,9 @@ fun ItemHeader(
 @Composable
 internal fun ItemTopBar(
     item: AppMediaItem,
-    isRowMode: Boolean,
     onBack: () -> Unit,
-    onToggleViewMode: () -> Unit,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
+    onToggleViewMode: (MediaType) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
     scrollBehavior: TopAppBarScrollBehavior? = null,
@@ -148,7 +150,7 @@ internal fun ItemTopBar(
         actions = {
             ItemOverflow(
                 item = item,
-                isRowMode = isRowMode,
+                viewModeProvider = viewModeProvider,
                 onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions,
@@ -162,8 +164,8 @@ internal fun ItemTopBar(
 @Composable
 private fun ItemOverflow(
     item: AppMediaItem,
-    isRowMode: Boolean,
-    onToggleViewMode: () -> Unit,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
+    onToggleViewMode: (MediaType) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
@@ -234,8 +236,12 @@ private fun ItemOverflow(
             add(
                 OverflowMenuOption(
                     title = stringResource(Res.string.action_toggle_view_mode),
-                    icon = if (isRowMode) Icons.Default.GridView else Icons.AutoMirrored.Filled.ViewList,
-                    onClick = onToggleViewMode,
+                    icon =
+                        when (viewModeProvider(item.mediaType)) {
+                            ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
+                            ViewMode.GRID -> Icons.Default.GridView
+                        },
+                    onClick = { onToggleViewMode(item.mediaType) },
                 ),
             )
 

@@ -325,14 +325,34 @@ class SettingsRepository(
     }
 
     // UI preferences
-    private val _itemsRowMode = MutableStateFlow(
-        settings.getBoolean("items_row_mode", false),
-    )
-    val itemsRowMode = _itemsRowMode.asStateFlow()
+    init {
+        // Migrate legacy global "items_row_mode" boolean to per-MediaType "view_mode_*" enum.
+        val legacyKey = "items_row_mode"
+        if (settings.hasKey(legacyKey)) {
+            val legacy = if (settings.getBoolean(legacyKey, false)) ViewMode.LIST else ViewMode.GRID
+            MediaType.entries.forEach { mediaType ->
+                val key = viewModeKey(mediaType)
+                if (!settings.hasKey(key)) settings.putString(key, legacy.name)
+            }
+            settings.remove(legacyKey)
+        }
+    }
 
-    fun setItemsRowMode(enabled: Boolean) {
-        settings.putBoolean("items_row_mode", enabled)
-        _itemsRowMode.update { enabled }
+    private val viewModeFlows = mutableMapOf<MediaType, MutableStateFlow<ViewMode>>()
+
+    private fun viewModeKey(mediaType: MediaType) = "view_mode_${mediaType.name}"
+
+    private fun viewModeFlow(mediaType: MediaType) = viewModeFlows.getOrPut(mediaType) {
+        val stored = settings.getStringOrNull(viewModeKey(mediaType))
+        val initial = stored?.let { runCatching { ViewMode.valueOf(it) }.getOrNull() } ?: ViewMode.GRID
+        MutableStateFlow(initial)
+    }
+
+    fun viewMode(mediaType: MediaType) = viewModeFlow(mediaType).asStateFlow()
+
+    fun setViewMode(mediaType: MediaType, mode: ViewMode) {
+        settings.putString(viewModeKey(mediaType), mode.name)
+        viewModeFlow(mediaType).update { mode }
     }
 
     fun getSortOption(mediaType: MediaType): SortOption {

@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
@@ -81,6 +82,7 @@ class LibraryViewModel(
         val searchQuery: String = "",
         val onlyFavorites: Boolean = false,
         val sortOption: SortOption = SortConfig.defaultFor(tab.mediaType),
+        val viewMode: ViewMode = ViewMode.GRID,
     )
 
     data class State(
@@ -93,10 +95,9 @@ class LibraryViewModel(
 
     val serverUrl = apiClient.serverBaseUrl
 
-    val itemsRowMode = settingsRepository.itemsRowMode
-
-    fun toggleItemsRowMode() {
-        settingsRepository.setItemsRowMode(!settingsRepository.itemsRowMode.value)
+    fun toggleViewMode(tab: Tab) {
+        val current = settingsRepository.viewMode(tab.mediaType).value
+        settingsRepository.setViewMode(tab.mediaType, current.toggled())
     }
 
     private val _state = MutableStateFlow(
@@ -108,6 +109,7 @@ class LibraryViewModel(
                     dataState = DataState.Loading(),
                     isSelected = tab == Tab.ARTISTS,
                     sortOption = settingsRepository.getSortOption(tab.mediaType),
+                    viewMode = settingsRepository.viewMode(tab.mediaType).value,
                 )
             },
         ),
@@ -187,6 +189,22 @@ class LibraryViewModel(
         viewModelScope.launch {
             libraryNavCoordinator.tabRequests.collect { type ->
                 onTabSelected(tabFor(type))
+            }
+        }
+
+        // Mirror per-MediaType view mode into TabState so toggles from elsewhere
+        // (e.g. ItemDetailsScreen) propagate here too.
+        Tab.entries.forEach { tab ->
+            viewModelScope.launch {
+                settingsRepository.viewMode(tab.mediaType).collect { mode ->
+                    _state.update { s ->
+                        s.copy(
+                            tabs = s.tabs.map { ts ->
+                                if (ts.tab == tab) ts.copy(viewMode = mode) else ts
+                            },
+                        )
+                    }
+                }
             }
         }
     }

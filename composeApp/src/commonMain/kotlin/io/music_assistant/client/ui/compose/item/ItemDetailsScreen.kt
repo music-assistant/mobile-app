@@ -49,6 +49,7 @@ import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.server.MediaItemChapter
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
@@ -61,8 +62,9 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.theme.AppTheme
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.item_error
+import musicassistantclient.composeapp.generated.resources.item_no_data
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -80,7 +82,6 @@ fun ItemDetailsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
     val toastState = rememberToastState()
-    val isRowMode by viewModel.itemsRowMode.collectAsStateWithLifecycle(false)
 
     LaunchedEffect(itemId, mediaType) {
         viewModel.loadItem(itemId, mediaType, providerId)
@@ -94,36 +95,34 @@ fun ItemDetailsScreen(
     }
 
     ItemDetails(
-        contentPadding,
-        state,
-        serverUrl,
-        onBack,
-        isRowMode,
-        toastState,
-        onNavigateToItem,
-        actionsViewModel::getEditablePlaylists,
-        actionsViewModel::addToPlaylist,
-        actionsViewModel::onLibraryClick,
-        actionsViewModel::onFavoriteClick,
-        actionsViewModel::onMarkPlayed,
-        actionsViewModel::onMarkUnplayed,
-        { id, pos ->
-            actionsViewModel.removeFromPlaylist(
-                id,
-                pos,
-                viewModel::reload,
-            )
+        contentPadding = contentPadding,
+        state = state,
+        serverUrl = serverUrl,
+        onBack = onBack,
+        viewModeProvider = { type ->
+            viewModel.viewMode(type).collectAsStateWithLifecycle(initialValue = ViewMode.GRID).value
         },
-        { modifier, provider ->
+        onToggleViewMode = viewModel::toggleViewMode,
+        toastState = toastState,
+        onNavigateToItem = onNavigateToItem,
+        geEditablePlaylists = actionsViewModel::getEditablePlaylists,
+        addToPlaylist = actionsViewModel::addToPlaylist,
+        onLibraryClick = actionsViewModel::onLibraryClick,
+        onFavoriteClick = actionsViewModel::onFavoriteClick,
+        onMarkPlayed = actionsViewModel::onMarkPlayed,
+        onMarkUnplayed = actionsViewModel::onMarkUnplayed,
+        onRemoveFromPlaylist = { id, pos ->
+            actionsViewModel.removeFromPlaylist(id, pos, viewModel::reload)
+        },
+        providerIconFetcher = { modifier, provider ->
             actionsViewModel.getProviderIcon(provider)
                 ?.let { ProviderIcon(modifier, it) }
         },
-        viewModel::onPlayClick,
-        viewModel::toggleItemsRowMode,
-        viewModel::onChapterClick,
-        viewModel::onPlayClick,
-        viewModel::onAlbumsSortChanged,
-        viewModel::onPlayableItemsSortChanged,
+        onPlayClick = viewModel::onPlayClick,
+        onChapterClick = viewModel::onChapterClick,
+        onChildPlayClick = viewModel::onPlayClick,
+        onAlbumsSortChanged = viewModel::onAlbumsSortChanged,
+        onPlayableItemsSortChanged = viewModel::onPlayableItemsSortChanged,
     )
 }
 
@@ -133,7 +132,8 @@ fun ItemDetails(
     state: ItemDetailsViewModel.State,
     serverUrl: String? = null,
     onBack: () -> Unit = {},
-    isRowMode: Boolean = true,
+    viewModeProvider: @Composable (MediaType) -> ViewMode = { ViewMode.LIST },
+    onToggleViewMode: (MediaType) -> Unit = {},
     toastState: ToastState = rememberToastState(),
     onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
     geEditablePlaylists: suspend () -> List<AppMediaItem.Playlist> = suspend { emptyList() },
@@ -145,7 +145,6 @@ fun ItemDetails(
     onRemoveFromPlaylist: (String, Int) -> Unit = { _, _ -> },
     providerIconFetcher: @Composable (Modifier, String) -> Unit = { _, _ -> },
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
-    onToggleViewMode: () -> Unit = {},
     onChapterClick: (Int) -> Unit = {},
     onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit = { _, _, _ -> },
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
@@ -170,7 +169,7 @@ fun ItemDetails(
         state = state,
         serverUrl = serverUrl,
         toastState = toastState,
-        isRowMode = isRowMode,
+        viewModeProvider = viewModeProvider,
         onNavigateClick = { item ->
             when (item) {
                 is AppMediaItem.Artist,
@@ -179,7 +178,7 @@ fun ItemDetails(
                 is AppMediaItem.Podcast,
                 is AppMediaItem.Audiobook,
                 is AppMediaItem.Genre,
-                -> {
+                    -> {
                     onNavigateToItem(item.itemId, item.mediaType, item.provider)
                 }
 
@@ -202,7 +201,10 @@ fun ItemDetails(
     )
 }
 
-private enum class ItemDetailsTab(val title: String, val sortContext: SubItemContext?) {
+private enum class ItemDetailsTab(
+    val title: String,
+    val sortContext: SubItemContext?,
+) {
     ARTIST_ALBUMS("Albums", SubItemContext.ARTIST_ALBUMS),
     ARTIST_TRACKS("Tracks", SubItemContext.ARTIST_TRACKS),
     ALBUM_TRACKS("Tracks", SubItemContext.ALBUM_TRACKS),
@@ -228,7 +230,7 @@ private fun ItemChildren(
     state: ItemDetailsViewModel.State,
     serverUrl: String?,
     toastState: ToastState,
-    isRowMode: Boolean,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -239,7 +241,7 @@ private fun ItemChildren(
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     onBack: () -> Unit,
-    onToggleViewMode: () -> Unit,
+    onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     contentPadding: PaddingValues,
@@ -255,7 +257,7 @@ private fun ItemChildren(
 
             is DataState.Stale,
             is DataState.Data,
-            -> {
+                -> {
                 val item = when (itemState) {
                     is DataState.Data -> itemState.data
                     is DataState.Stale -> itemState.data
@@ -264,7 +266,7 @@ private fun ItemChildren(
                     item = item,
                     state = state,
                     serverUrl = serverUrl,
-                    isRowMode = isRowMode,
+                    viewModeProvider = viewModeProvider,
                     onNavigateClick = onNavigateClick,
                     onPlayItemClick = onPlayItemClick,
                     onPlayChildClick = onPlayChildClick,
@@ -299,7 +301,6 @@ private fun ItemContent(
     item: AppMediaItem,
     state: ItemDetailsViewModel.State,
     serverUrl: String?,
-    isRowMode: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -310,7 +311,8 @@ private fun ItemContent(
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
     onBack: () -> Unit,
-    onToggleViewMode: () -> Unit,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
+    onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     contentPadding: PaddingValues,
@@ -332,8 +334,8 @@ private fun ItemContent(
         Column(modifier = Modifier.fillMaxSize()) {
             ItemTopBar(
                 item = item,
-                isRowMode = isRowMode,
                 onBack = onBack,
+                viewModeProvider = viewModeProvider,
                 onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
@@ -362,7 +364,7 @@ private fun ItemContent(
                         item = item,
                         state = state,
                         serverUrl = serverUrl,
-                        isRowMode = isRowMode,
+                        viewModeProvider = viewModeProvider,
                         onNavigateClick = onNavigateClick,
                         onPlayChildClick = onPlayChildClick,
                         onChapterClick = onChapterClick,
@@ -400,7 +402,7 @@ private fun TabsBar(
         SubItemContext.ALBUM_TRACKS,
         SubItemContext.PLAYLIST_TRACKS,
         SubItemContext.PODCAST_EPISODES,
-        -> playableItemsSortOption
+            -> playableItemsSortOption
 
         null -> null
     }
@@ -447,7 +449,7 @@ private fun TabContent(
     item: AppMediaItem,
     state: ItemDetailsViewModel.State,
     serverUrl: String?,
-    isRowMode: Boolean,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onChapterClick: (Int) -> Unit,
@@ -464,9 +466,9 @@ private fun TabContent(
     when (tab) {
         ItemDetailsTab.ARTIST_ALBUMS,
         ItemDetailsTab.GENRE_ALBUMS,
-        -> AlbumsTabContent(
+            -> AlbumsTabContent(
             albumsState = state.albumsState,
-            isRowMode = isRowMode,
+            viewModeProvider = viewModeProvider,
             serverUrl = serverUrl,
             onNavigateClick = onNavigateClick,
             onPlayChildClick = onPlayChildClick,
@@ -482,10 +484,10 @@ private fun TabContent(
         ItemDetailsTab.ALBUM_TRACKS,
         ItemDetailsTab.PLAYLIST_TRACKS,
         ItemDetailsTab.PODCAST_EPISODES,
-        -> PlayablesTabContent(
+            -> PlayablesTabContent(
             playableItemsState = state.playableItemsState,
             parentItem = item,
-            isRowMode = isRowMode,
+            viewModeProvider = viewModeProvider,
             serverUrl = serverUrl,
             onPlayChildClick = onPlayChildClick,
             playlistActions = playlistActions,
@@ -501,7 +503,7 @@ private fun TabContent(
 
         ItemDetailsTab.GENRE_ARTISTS -> ArtistsTabContent(
             artistsState = state.artistsState,
-            isRowMode = isRowMode,
+            viewModeProvider = viewModeProvider,
             serverUrl = serverUrl,
             onNavigateClick = onNavigateClick,
             onPlayChildClick = onPlayChildClick,
@@ -527,7 +529,7 @@ private fun TabContent(
 @Composable
 private fun AlbumsTabContent(
     albumsState: DataState<List<AppMediaItem.Album>>,
-    isRowMode: Boolean,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
     serverUrl: String?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -538,6 +540,7 @@ private fun AlbumsTabContent(
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
 ) {
+    val viewMode = viewModeProvider(MediaType.ALBUM)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
@@ -551,16 +554,18 @@ private fun AlbumsTabContent(
 
         when (albumsState) {
             is DataState.Data -> items(
-                albumsState.data,
-                span = if (isRowMode) {
-                    { GridItemSpan(maxLineSpan) }
-                } else {
-                    null
+                items = albumsState.data,
+                span = when (viewMode) {
+                    ViewMode.LIST -> {
+                        { GridItemSpan(maxLineSpan) }
+                    }
+
+                    ViewMode.GRID -> null
                 },
             ) { album ->
                 AlbumWithMenu(
                     item = album,
-                    rowMode = isRowMode,
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayChildClick,
@@ -581,7 +586,7 @@ private fun AlbumsTabContent(
 @Composable
 private fun ArtistsTabContent(
     artistsState: DataState<List<AppMediaItem.Artist>>,
-    isRowMode: Boolean,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
     serverUrl: String?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -592,6 +597,7 @@ private fun ArtistsTabContent(
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
 ) {
+    val viewMode = viewModeProvider(MediaType.ARTIST)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
@@ -605,16 +611,18 @@ private fun ArtistsTabContent(
 
         when (artistsState) {
             is DataState.Data -> items(
-                artistsState.data,
-                span = if (isRowMode) {
-                    { GridItemSpan(maxLineSpan) }
-                } else {
-                    null
+                items = artistsState.data,
+                span = when (viewMode) {
+                    ViewMode.LIST -> {
+                        { GridItemSpan(maxLineSpan) }
+                    }
+
+                    ViewMode.GRID -> null
                 },
             ) { artist ->
                 ArtistWithMenu(
                     item = artist,
-                    rowMode = isRowMode,
+                    viewMode = viewMode,
                     serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayChildClick,
@@ -636,7 +644,7 @@ private fun ArtistsTabContent(
 private fun PlayablesTabContent(
     playableItemsState: DataState<List<PlayableItem>>,
     parentItem: AppMediaItem,
-    isRowMode: Boolean,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
     serverUrl: String?,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
@@ -649,6 +657,7 @@ private fun PlayablesTabContent(
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
 ) {
+    val viewMode = viewModeProvider(MediaType.TRACK)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
@@ -664,17 +673,19 @@ private fun PlayablesTabContent(
             is DataState.Data -> {
                 playableItemsState.data.forEachIndexed { index, track ->
                     item(
-                        span = if (isRowMode) {
-                            { GridItemSpan(maxLineSpan) }
-                        } else {
-                            null
+                        span = when (viewMode) {
+                            ViewMode.LIST -> {
+                                { GridItemSpan(maxLineSpan) }
+                            }
+
+                            ViewMode.GRID -> null
                         },
                     ) {
                         when (track) {
                             is AppMediaItem.Track -> TrackWithMenu(
                                 item = track,
                                 serverUrl = serverUrl,
-                                rowMode = isRowMode,
+                                viewMode = viewMode,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = playlistActions,
                                 onRemoveFromPlaylist = if (parentItem is AppMediaItem.Playlist && parentItem.isEditable == true) {
@@ -689,7 +700,7 @@ private fun PlayablesTabContent(
                             is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
                                 item = track,
                                 serverUrl = serverUrl,
-                                rowMode = isRowMode,
+                                viewMode = viewMode,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = null,
                                 libraryActions = libraryActions,
@@ -836,7 +847,7 @@ private fun PreviewArtist(isRowMode: Boolean = true) {
                     ),
                     DataState.NoData(),
                 ),
-                isRowMode = isRowMode,
+                viewModeProvider = { if (isRowMode) ViewMode.LIST else ViewMode.GRID },
                 geEditablePlaylists = suspend { emptyList() },
             )
         }
@@ -867,7 +878,7 @@ private fun PreviewAlbum(isRowMode: Boolean = true) {
                     ),
                 ),
             ),
-            isRowMode = isRowMode,
+            viewModeProvider = { if (isRowMode) ViewMode.LIST else ViewMode.GRID },
             geEditablePlaylists = suspend { emptyList() },
         )
     }
@@ -889,7 +900,7 @@ private fun PreviewPlaylist(isRowMode: Boolean = true) {
                 DataState.NoData(),
                 DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"))),
             ),
-            isRowMode = isRowMode,
+            viewModeProvider = { if (isRowMode) ViewMode.LIST else ViewMode.GRID },
             geEditablePlaylists = suspend { emptyList() },
         )
     }
@@ -917,7 +928,7 @@ private fun PreviewPodcast(isRowMode: Boolean = true) {
                     ),
                 ),
             ),
-            isRowMode = isRowMode,
+            viewModeProvider = { if (isRowMode) ViewMode.LIST else ViewMode.GRID },
             geEditablePlaylists = suspend { emptyList() },
         )
     }
@@ -944,7 +955,7 @@ private fun PreviewAudiobook(isRowMode: Boolean = true) {
                 DataState.NoData(),
                 DataState.NoData(),
             ),
-            isRowMode = isRowMode,
+            viewModeProvider = { if (isRowMode) ViewMode.LIST else ViewMode.GRID },
             geEditablePlaylists = suspend { emptyList() },
         )
     }

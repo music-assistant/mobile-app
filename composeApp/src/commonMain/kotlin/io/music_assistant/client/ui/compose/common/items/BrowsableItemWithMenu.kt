@@ -37,6 +37,7 @@ import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
@@ -47,7 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun AlbumWithMenu(
     item: AppMediaItem.Album,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem.Album) -> Unit,
     onPlayOption: ((AppMediaItem.Album, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
@@ -56,15 +57,18 @@ fun AlbumWithMenu(
     serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
     ) { mod, onClick, onLongClick ->
-        if (rowMode) {
-            AlbumRowItem(
+        when (viewMode) {
+            ViewMode.LIST -> AlbumRowItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -72,8 +76,7 @@ fun AlbumWithMenu(
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
             )
-        } else {
-            AlbumGridItem(
+            ViewMode.GRID -> AlbumGridItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -88,7 +91,7 @@ fun AlbumWithMenu(
 @Composable
 fun ArtistWithMenu(
     item: AppMediaItem.Artist,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem.Artist) -> Unit,
     onPlayOption: ((AppMediaItem.Artist, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
@@ -97,15 +100,18 @@ fun ArtistWithMenu(
     serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
     ) { mod, onClick, onLongClick ->
-        if (rowMode) {
-            ArtistRowItem(
+        when (viewMode) {
+            ViewMode.LIST -> ArtistRowItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -113,8 +119,7 @@ fun ArtistWithMenu(
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
             )
-        } else {
-            ArtistGridItem(
+            ViewMode.GRID -> ArtistGridItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -129,7 +134,7 @@ fun ArtistWithMenu(
 @Composable
 fun PlaylistWithMenu(
     item: AppMediaItem.Playlist,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem.Playlist) -> Unit,
     onPlayOption: ((AppMediaItem.Playlist, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
@@ -138,15 +143,18 @@ fun PlaylistWithMenu(
     serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
     ) { mod, onClick, onLongClick ->
-        if (rowMode) {
-            PlaylistRowItem(
+        when (viewMode) {
+            ViewMode.LIST -> PlaylistRowItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -154,8 +162,7 @@ fun PlaylistWithMenu(
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
             )
-        } else {
-            PlaylistGridItem(
+            ViewMode.GRID -> PlaylistGridItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -170,7 +177,7 @@ fun PlaylistWithMenu(
 @Composable
 fun AudiobookWithMenu(
     item: AppMediaItem.Audiobook,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem.Audiobook) -> Unit,
     onPlayOption: ((AppMediaItem.Audiobook, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
@@ -180,7 +187,10 @@ fun AudiobookWithMenu(
     serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
@@ -188,8 +198,8 @@ fun AudiobookWithMenu(
         libraryActions = libraryActions,
         progressActions = progressActions,
     ) { mod, onClick, onLongClick ->
-        if (rowMode) {
-            AudiobookRowItem(
+        when (viewMode) {
+            ViewMode.LIST -> AudiobookRowItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -197,8 +207,7 @@ fun AudiobookWithMenu(
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
             )
-        } else {
-            AudiobookGridItem(
+            ViewMode.GRID -> AudiobookGridItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -213,7 +222,7 @@ fun AudiobookWithMenu(
 @Composable
 fun GenreWithMenu(
     item: AppMediaItem.Genre,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem.Genre) -> Unit,
     onPlayOption: ((AppMediaItem.Genre, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
@@ -222,15 +231,18 @@ fun GenreWithMenu(
     serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
     ) { mod, onClick, onLongClick ->
-        if (rowMode) {
-            GenreRowItem(
+        when (viewMode) {
+            ViewMode.LIST -> GenreRowItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -238,8 +250,7 @@ fun GenreWithMenu(
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
             )
-        } else {
-            GenreGridItem(
+            ViewMode.GRID -> GenreGridItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -254,7 +265,7 @@ fun GenreWithMenu(
 @Composable
 fun PodcastWithMenu(
     item: AppMediaItem.Podcast,
-    rowMode: Boolean = false,
+    viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem.Podcast) -> Unit,
     onPlayOption: ((AppMediaItem.Podcast, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
@@ -263,15 +274,18 @@ fun PodcastWithMenu(
     serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
-        modifier = if (rowMode) Modifier.fillMaxWidth() else Modifier,
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
         item = item,
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
     ) { mod, onClick, onLongClick ->
-        if (rowMode) {
-            PodcastRowItem(
+        when (viewMode) {
+            ViewMode.LIST -> PodcastRowItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
@@ -279,8 +293,7 @@ fun PodcastWithMenu(
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
             )
-        } else {
-            PodcastGridItem(
+            ViewMode.GRID -> PodcastGridItem(
                 modifier = mod,
                 item = item,
                 serverUrl = serverUrl,
