@@ -64,6 +64,8 @@ class SendspinClientFactory(
      * Returns the shared pipeline (and its clock synchronizer), creating them if needed.
      * Both are passed to new SendspinClient instances so the audio sink persists across reconnects.
      */
+    fun currentClockSynchronizer(): ClockSynchronizer? = sharedClockSynchronizer
+
     fun getOrCreatePipeline(): Pair<AudioStreamManager, ClockSynchronizer> {
         val cs = sharedClockSynchronizer ?: ClockSynchronizer().also { sharedClockSynchronizer = it }
         val pipeline = sharedPipeline ?: AudioStreamManager(cs, mediaPlayerController).also {

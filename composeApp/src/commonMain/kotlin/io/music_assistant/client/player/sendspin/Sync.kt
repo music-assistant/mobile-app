@@ -101,8 +101,15 @@ class ClockSynchronizer {
         val predictedOffset = offset + (drift * deltaTime).toLong()
         val residual = measuredOffset - predictedOffset
 
-        // Reject outliers
-        if (kotlin.math.abs(residual) > 50_000) return
+        // Residual >1s = discontinuity (doze paused CLOCK_MONOTONIC, NTP step,
+        // server reset). Smoothing can't claw that back; reset and let the next
+        // sample re-init.
+        val absResidual = kotlin.math.abs(residual)
+        if (absResidual > 1_000_000) {
+            reset()
+            return
+        }
+        if (absResidual > 50_000) return
 
         // Update offset and drift
         offset = predictedOffset + (smoothingRate * residual).toLong()

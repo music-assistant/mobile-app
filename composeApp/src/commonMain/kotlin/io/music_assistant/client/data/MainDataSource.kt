@@ -616,6 +616,21 @@ class MainDataSource(
                 }
             }
         }
+
+        // Reset clock sync on foreground unless playback held CPU awake through
+        // the background — otherwise doze-paused CLOCK_MONOTONIC strands the offset.
+        launch {
+            apiClient.foregroundEvents.collect {
+                val streaming = sendspinClient?.state?.value.let {
+                    it is SendspinState.Synchronized || it is SendspinState.Buffering
+                }
+                if (streaming) return@collect
+                sendspinClientFactory.currentClockSynchronizer()?.let {
+                    log.i { "Foreground from idle — resetting clock sync" }
+                    it.reset()
+                }
+            }
+        }
         // Keep Now Playing (iOS Control Center / Lock Screen) in sync with the
         // local player. iOS interpolates the playback bar internally from the
         // `(elapsed, timestamp, rate)` triple on every `setNowPlayingInfo`

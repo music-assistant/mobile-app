@@ -47,24 +47,28 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     // user-initiated reconnects and background→foreground transitions don't bring it back.
     var splashDismissed by remember { mutableStateOf(false) }
     val splashVisible = !splashDismissed &&
-        authManager.willAutoLoginOnLaunch &&
-        when (val s = sessionState) {
-            SessionState.Disconnected.Initial -> true
-            SessionState.Connecting -> true
-            is SessionState.Connected ->
-                s.dataConnectionState != DataConnectionState.Authenticated &&
-                s.authProcessState !is AuthProcessState.Failed
-            else -> false
-        }
+            authManager.willAutoLoginOnLaunch &&
+            when (val s = sessionState) {
+                SessionState.Disconnected.Initial -> true
+                SessionState.Connecting -> true
+                is SessionState.Connected ->
+                    s.dataConnectionState != DataConnectionState.Authenticated &&
+                            s.authProcessState !is AuthProcessState.Failed
+
+                else -> false
+            }
     LaunchedEffect(sessionState) {
-        val s = sessionState
-        val terminal = when {
-            s is SessionState.Connected &&
-                s.dataConnectionState == DataConnectionState.Authenticated -> true
-            s is SessionState.Connected && s.authProcessState is AuthProcessState.Failed -> true
-            s is SessionState.Disconnected &&
-                s !is SessionState.Disconnected.Initial &&
-                s !is SessionState.Disconnected.Backgrounded -> true
+        val terminal = when (val s = sessionState) {
+            is SessionState.Connected -> {
+                s.dataConnectionState == DataConnectionState.Authenticated ||
+                        s.authProcessState is AuthProcessState.Failed
+            }
+
+            is SessionState.Disconnected.Error,
+            is SessionState.Disconnected.ByUser,
+            is SessionState.Disconnected.NoServerData,
+                -> true
+
             else -> false
         }
         if (terminal) splashDismissed = true

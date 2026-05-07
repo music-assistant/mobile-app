@@ -22,6 +22,7 @@ interface ServiceClient {
 
     fun onAppForeground()
     fun onAppBackground()
+    val foregroundEvents: Flow<Unit>
     fun disconnectByUser()
     fun connect(connection: ConnectionInfo)
     fun connectWebRTC(remoteId: RemoteId)

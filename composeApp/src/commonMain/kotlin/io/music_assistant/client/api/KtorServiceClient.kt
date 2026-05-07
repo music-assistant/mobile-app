@@ -101,6 +101,9 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
     private val _eventsFlow = MutableSharedFlow<Event<out Any>>(extraBufferCapacity = 10)
     override val events: Flow<Event<out Any>> = _eventsFlow.asSharedFlow()
 
+    private val _foregroundEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val foregroundEvents: Flow<Unit> = _foregroundEvents.asSharedFlow()
+
     /**
      * WebRTC Sendspin data channel.
      * Available when connected via WebRTC, null otherwise.
@@ -202,9 +205,12 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
      * Called when the app returns to the foreground.
      */
     override fun onAppForeground() {
+        val wasInBackground = isInBackground
         isInBackground = false
         val state = _sessionState.value
         logger.i { "App foregrounded (state=${stateLabel(state)})" }
+
+        if (wasInBackground) _foregroundEvents.tryEmit(Unit)
 
         val savedInfo = backgroundedConnectionInfo
         if (savedInfo != null) {
