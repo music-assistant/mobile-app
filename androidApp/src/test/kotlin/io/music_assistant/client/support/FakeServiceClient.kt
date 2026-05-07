@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -252,7 +253,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             APICommands.PLAYER_QUEUES_CLEAR -> {
                 val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
-                updateQueue(queueId, emptyList<ServerQueueItem>())
+                updateQueue(queueId, emptyList())
                 updatePlayer({ it.activeSource == queueId }) {
                     it.copy(
                         state = PlayerState.IDLE,
@@ -392,7 +393,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private val _events = MutableSharedFlow<Event<out Any>>()
     override val events: Flow<Event<out Any>> = _events
-    override val webrtcSendspinChannel: DataChannelWrapper?
+    override val webrtcSendspinChannel: DataChannelWrapper
         get() = TODO("Not yet implemented")
 
     override fun onAppForeground() {
@@ -400,6 +401,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     override fun onAppBackground() {
     }
+
+    override val foregroundEvents: Flow<Unit> = emptyFlow()
 
     override fun disconnectByUser() {
         TODO("Not yet implemented")
