@@ -24,7 +24,6 @@ import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
@@ -46,13 +45,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 class AutoLibrary(
     private val context: Context,
     private val apiClient: ServiceClient,
-    private val settings: SettingsRepository,
 ) {
-    // Service supplies its own notifyChildrenChanged so the cached parent view
-    // (with the now-stale "Sort by: <old>" subtitle) is invalidated after a
-    // sort selection is persisted. Set once during service onCreate.
-    var notifyChildrenChanged: ((parentId: String) -> Unit)? = null
-
     private val scope = CoroutineScope(Dispatchers.IO)
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
         MutableStateFlow(null)
@@ -105,11 +98,7 @@ class AutoLibrary(
                 favoritesOnly = false,
             )
 
-            id.startsWith(MediaIds.SORT_MENU_PREFIX) -> handleSortMenu(id, result)
-            id.startsWith(MediaIds.SORT_APPLY_PREFIX) -> handleSortApply(id, result)
             id.startsWith(MediaIds.FAVORITES_PREFIX) -> handleFavorites(id, result)
-            id.startsWith(MediaIds.SUB_SORT_MENU_PREFIX) -> handleSubSortMenu(id, result)
-            id.startsWith(MediaIds.SUB_SORT_APPLY_PREFIX) -> handleSubSortApply(id, result)
             else -> handleDrillDown(id, result)
         }
     }
@@ -138,74 +127,16 @@ class AutoLibrary(
                 result.sendResult(null)
                 return@launch
             }
-            val sort = settings.getAutoSortOption(mediaType)
-            val items = loadTabItems(mediaType, sort, favoritesOnly) ?: run {
+            val items = loadTabItems(mediaType, defaultSortFor(mediaType), favoritesOnly) ?: run {
                 result.sendResult(null)
                 return@launch
             }
             val header = if (favoritesOnly) {
                 emptyList()
             } else {
-                listOf(
-                    sortByPseudoItem(
-                        MediaIds.sortMenuId(mediaType),
-                        AutoSortPresets.labelOf(mediaType, sort),
-                    ),
-                    favoritesPseudoItem(MediaIds.favoritesId(mediaType)),
-                )
+                listOf(favoritesPseudoItem(MediaIds.favoritesId(mediaType)))
             }
             result.sendResult(header + items)
-        }
-    }
-
-    private fun handleSortMenu(
-        id: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
-    ) {
-        val mediaType = MediaIds.sortMenuMediaTypeOf(id) ?: run {
-            result.sendResult(null)
-            return
-        }
-        val current = settings.getAutoSortOption(mediaType)
-        val presets = AutoSortPresets.byTab[mediaType] ?: run {
-            result.sendResult(null)
-            return
-        }
-        val items = presets.map { preset ->
-            sortPresetItem(
-                presetId = MediaIds.sortApplyId(mediaType, preset.option),
-                title = preset.label,
-                isCurrent = preset.option == current,
-            )
-        }
-        result.sendResult(items)
-    }
-
-    private fun handleSortApply(
-        id: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
-    ) {
-        val (mediaType, sort) = MediaIds.parseSortApply(id) ?: run {
-            result.sendResult(null)
-            return
-        }
-        // Idempotent: only persist + invalidate cache when the sort actually changes.
-        // Without this, any AA re-subscribe to an apply node (which can happen when AA
-        // refreshes the browse stack for *any* reason — e.g. session-state churn,
-        // playback-state updates, host re-render) would re-invoke notifyChildrenChanged
-        // on the parent tab, AA re-renders the tab, the user's scroll resets, and the
-        // browse view glitches many times a second.
-        if (settings.getAutoSortOption(mediaType) != sort) {
-            settings.setAutoSortOption(mediaType, sort)
-            notifyChildrenChanged?.invoke(MediaIds.tabIdOf(mediaType))
-        }
-        result.detach()
-        scope.launch {
-            if (!waitForCorrectState()) {
-                result.sendResult(null)
-                return@launch
-            }
-            result.sendResult(loadTabItems(mediaType, sort, favoritesOnly = false))
         }
     }
 
@@ -219,48 +150,6 @@ class AutoLibrary(
         }
         // Reuse the tab content path with favoritesOnly=true; header is suppressed there.
         handleTabContent(MediaIds.tabIdOf(mediaType), result, favoritesOnly = true)
-    }
-
-    private fun handleSubSortMenu(
-        id: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
-    ) {
-        val parsed = MediaIds.parseSubSortMenu(id) ?: run {
-            result.sendResult(null)
-            return
-        }
-        val current = settings.getAutoSortOption(parsed.context)
-        val presets = AutoSortPresets.bySubContext[parsed.context] ?: run {
-            result.sendResult(null)
-            return
-        }
-        val items = presets.map { preset ->
-            sortPresetItem(
-                presetId = MediaIds.subSortApplyId(parsed.context, preset.option, parsed.parent),
-                title = preset.label,
-                isCurrent = preset.option == current,
-            )
-        }
-        result.sendResult(items)
-    }
-
-    private fun handleSubSortApply(
-        id: String,
-        result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
-    ) {
-        val parsed = MediaIds.parseSubSortApply(id) ?: run {
-            result.sendResult(null)
-            return
-        }
-        if (settings.getAutoSortOption(parsed.context) != parsed.option) {
-            settings.setAutoSortOption(parsed.context, parsed.option)
-            notifyChildrenChanged?.invoke(parsed.parent.encode())
-        }
-        result.detach()
-        scope.launch {
-            val list = loadSubItems(parsed.context, parsed.parent, parsed.option)
-            result.sendResult(list)
-        }
     }
 
     private fun handleDrillDown(
@@ -277,23 +166,11 @@ class AutoLibrary(
         }
         result.detach()
         scope.launch {
-            val sort = settings.getAutoSortOption(context)
-            val items = loadSubItems(context, parent, sort) ?: run {
+            val items = loadSubItems(context, parent, defaultSortFor(context)) ?: run {
                 result.sendResult(null)
                 return@launch
             }
-            val header = buildList {
-                if (context != SubItemContext.ALBUM_TRACKS) {
-                    add(
-                        sortByPseudoItem(
-                            MediaIds.subSortMenuId(context, parent),
-                            AutoSortPresets.labelOf(context, sort),
-                        ),
-                    )
-                }
-                addAll(actionsForItem(id))
-            }
-            result.sendResult(header + items)
+            result.sendResult(actionsForItem(id) + items)
         }
     }
 
@@ -363,6 +240,19 @@ class AutoLibrary(
         val sorted =
             if (context == SubItemContext.PLAYLIST_TRACKS) items else items.clientSorted(sort)
         return sorted.map { it.toAutoMediaItem(baseUrl, true, defaultIconUri) }
+    }
+
+    // Hardcoded defaults — sorting UI is intentionally absent in AA. Per-list
+    // pickers turned out to be a footgun: AA prefetches children of every
+    // browsable preset, which (when coupled to persistence + parent invalidation)
+    // looped the browse view to OOM. Keeping the matrix flat sidesteps the
+    // entire surface.
+    private fun defaultSortFor(mediaType: MediaType): SortOption =
+        SortOption(SortField.NAME, descending = false)
+
+    private fun defaultSortFor(context: SubItemContext): SortOption = when (context) {
+        SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
+        else -> SortOption(SortField.NAME, descending = false)
     }
 
     private suspend fun waitForCorrectState(): Boolean =
@@ -486,17 +376,6 @@ class AutoLibrary(
             MediaItem.FLAG_BROWSABLE,
         )
 
-    private fun sortByPseudoItem(menuId: String, currentLabel: String): MediaItem =
-        MediaItem(
-            MediaDescriptionCompat.Builder()
-                .setTitle("Sort by")
-                .setSubtitle(currentLabel)
-                .setMediaId(menuId)
-                .setIconUri(android.R.drawable.ic_menu_sort_by_size.toUri(context))
-                .build(),
-            MediaItem.FLAG_BROWSABLE,
-        )
-
     private fun favoritesPseudoItem(favoritesId: String): MediaItem =
         MediaItem(
             MediaDescriptionCompat.Builder()
@@ -507,23 +386,12 @@ class AutoLibrary(
             MediaItem.FLAG_BROWSABLE,
         )
 
-    private fun sortPresetItem(presetId: String, title: String, isCurrent: Boolean): MediaItem =
-        MediaItem(
-            MediaDescriptionCompat.Builder()
-                .setTitle(if (isCurrent) "✓ $title" else title)
-                .setMediaId(presetId)
-                .build(),
-            MediaItem.FLAG_BROWSABLE,
-        )
-
     private companion object {
         const val WAIT_FOR_AUTHENTICATED_TIMEOUT_MS = 30_000L
     }
 }
 
-private const val SORT_APPLY_PARAMS_COUNT = 3
 private const val PARENT_REF_PARAMS_COUNT = 4
-private const val SUB_SORT_APPLY_PARAMS_COUNT = 4
 
 private const val PARENT_REF_ITEM_ID_PARAM_INDEX = 0
 private const val PARENT_REF_URI_PARAM_INDEX = 1
@@ -539,11 +407,7 @@ internal object MediaIds {
     const val TAB_AUDIOBOOKS = "auto_lib_audiobooks"
     const val QUEUE_OPTION_KEY = "auto_queue_option"
 
-    const val SORT_MENU_PREFIX = "auto_sortmenu_"
-    const val SORT_APPLY_PREFIX = "auto_sortapply_"
     const val FAVORITES_PREFIX = "auto_fav_"
-    const val SUB_SORT_MENU_PREFIX = "auto_subsortmenu_"
-    const val SUB_SORT_APPLY_PREFIX = "auto_subsortapply_"
 
     private val tabToType = mapOf(
         TAB_ARTISTS to MediaType.ARTIST,
@@ -558,51 +422,9 @@ internal object MediaIds {
     fun tabMediaTypeOf(id: String): MediaType? = tabToType[id]
     fun tabIdOf(type: MediaType): String = typeToTab.getValue(type)
 
-    fun sortMenuId(type: MediaType): String = "$SORT_MENU_PREFIX${type.name}"
-    fun sortMenuMediaTypeOf(id: String): MediaType? =
-        runCatching { MediaType.valueOf(id.removePrefix(SORT_MENU_PREFIX)) }.getOrNull()
-
-    fun sortApplyId(type: MediaType, option: SortOption): String =
-        "$SORT_APPLY_PREFIX${type.name}|${option.field.name}|${option.descending}"
-
-    fun parseSortApply(id: String): Pair<MediaType, SortOption>? {
-        val parts = id.removePrefix(SORT_APPLY_PREFIX).split("|")
-        if (parts.size != SORT_APPLY_PARAMS_COUNT) return null
-        val type = runCatching { MediaType.valueOf(parts[0]) }.getOrNull() ?: return null
-        val field = runCatching { SortField.valueOf(parts[1]) }.getOrNull() ?: return null
-        val desc = parts[2].toBooleanStrictOrNull() ?: return null
-        return type to SortOption(field, desc)
-    }
-
     fun favoritesId(type: MediaType): String = "$FAVORITES_PREFIX${type.name}"
     fun favoritesMediaTypeOf(id: String): MediaType? =
         runCatching { MediaType.valueOf(id.removePrefix(FAVORITES_PREFIX)) }.getOrNull()
-
-    fun subSortMenuId(context: SubItemContext, parent: ParentRef): String =
-        "$SUB_SORT_MENU_PREFIX${context.name}|${parent.encode()}"
-
-    fun parseSubSortMenu(id: String): SubSortMenuRef? {
-        val rest = id.removePrefix(SUB_SORT_MENU_PREFIX)
-        val sepIdx = rest.indexOf('|').takeIf { it >= 0 } ?: return null
-        val ctx = runCatching { SubItemContext.valueOf(rest.substring(0, sepIdx)) }.getOrNull()
-            ?: return null
-        val parent = ParentRef.parse(rest.substring(sepIdx + 1)) ?: return null
-        return SubSortMenuRef(ctx, parent)
-    }
-
-    fun subSortApplyId(context: SubItemContext, option: SortOption, parent: ParentRef): String =
-        "$SUB_SORT_APPLY_PREFIX${context.name}|${option.field.name}|${option.descending}|${parent.encode()}"
-
-    fun parseSubSortApply(id: String): SubSortApplyRef? {
-        val rest = id.removePrefix(SUB_SORT_APPLY_PREFIX)
-        val parts = rest.split("|", limit = 4)
-        if (parts.size != SUB_SORT_APPLY_PARAMS_COUNT) return null
-        val ctx = runCatching { SubItemContext.valueOf(parts[0]) }.getOrNull() ?: return null
-        val field = runCatching { SortField.valueOf(parts[1]) }.getOrNull() ?: return null
-        val desc = parts[2].toBooleanStrictOrNull() ?: return null
-        val parent = ParentRef.parse(parts[3]) ?: return null
-        return SubSortApplyRef(ctx, SortOption(field, desc), parent)
-    }
 }
 
 internal data class ParentRef(
@@ -613,7 +435,7 @@ internal data class ParentRef(
 ) {
     // Matches the existing 4-part `itemId__uri__mediaType__provider` encoding
     // produced in toMediaDescription, so parents discovered via drill-down IDs
-    // and re-encoded for sort sub-menus stay round-trip-safe.
+    // stay round-trip-safe.
     fun encode(): String = "${itemId}__${uri}__${type}__$provider"
 
     fun subItemContext(): SubItemContext? = when (type) {
@@ -637,89 +459,6 @@ internal data class ParentRef(
             )
         }
     }
-}
-
-internal data class SubSortMenuRef(val context: SubItemContext, val parent: ParentRef)
-internal data class SubSortApplyRef(
-    val context: SubItemContext,
-    val option: SortOption,
-    val parent: ParentRef,
-)
-
-private object AutoSortPresets {
-    data class Preset(val label: String, val option: SortOption)
-
-    private fun asc(field: SortField, label: String) =
-        Preset(label, SortOption(field, descending = false))
-
-    private fun desc(field: SortField, label: String) =
-        Preset(label, SortOption(field, descending = true))
-
-    val byTab: Map<MediaType, List<Preset>> = mapOf(
-        MediaType.ARTIST to listOf(
-            asc(SortField.NAME, "A–Z"),
-            desc(SortField.DATE_ADDED, "Recently added"),
-            desc(SortField.LAST_PLAYED, "Recently played"),
-            desc(SortField.PLAY_COUNT, "Most played"),
-        ),
-        MediaType.ALBUM to listOf(
-            asc(SortField.NAME, "A–Z"),
-            asc(SortField.ARTIST_NAME, "By artist"),
-            desc(SortField.YEAR, "Newest"),
-            desc(SortField.DATE_ADDED, "Recently added"),
-            desc(SortField.LAST_PLAYED, "Recently played"),
-            desc(SortField.PLAY_COUNT, "Most played"),
-        ),
-        MediaType.PLAYLIST to listOf(
-            asc(SortField.NAME, "A–Z"),
-            desc(SortField.DATE_ADDED, "Recently added"),
-            desc(SortField.DATE_MODIFIED, "Recently modified"),
-            desc(SortField.LAST_PLAYED, "Recently played"),
-            desc(SortField.PLAY_COUNT, "Most played"),
-        ),
-        MediaType.PODCAST to listOf(
-            desc(SortField.DATE_ADDED, "Recently added"),
-            desc(SortField.DATE_MODIFIED, "Recently updated"),
-            asc(SortField.NAME, "A–Z"),
-            desc(SortField.LAST_PLAYED, "Recently played"),
-        ),
-        MediaType.RADIO to listOf(
-            asc(SortField.NAME, "A–Z"),
-            desc(SortField.DATE_ADDED, "Recently added"),
-            desc(SortField.LAST_PLAYED, "Recently played"),
-            desc(SortField.PLAY_COUNT, "Most played"),
-        ),
-        MediaType.AUDIOBOOK to listOf(
-            asc(SortField.NAME, "A–Z"),
-            desc(SortField.DATE_ADDED, "Recently added"),
-            desc(SortField.LAST_PLAYED, "Recently played"),
-        ),
-    )
-
-    val bySubContext: Map<SubItemContext, List<Preset>> = mapOf(
-        SubItemContext.ARTIST_ALBUMS to listOf(
-            desc(SortField.YEAR, "Newest"),
-            asc(SortField.YEAR, "Oldest"),
-            asc(SortField.NAME, "A–Z"),
-        ),
-        SubItemContext.PLAYLIST_TRACKS to listOf(
-            asc(SortField.ORIGINAL, "Original"),
-            asc(SortField.NAME, "A–Z"),
-            asc(SortField.ARTIST_NAME, "By artist"),
-        ),
-        SubItemContext.PODCAST_EPISODES to listOf(
-            desc(SortField.RELEASE_DATE, "Newest"),
-            asc(SortField.RELEASE_DATE, "Oldest"),
-            asc(SortField.NAME, "A–Z"),
-        ),
-    )
-
-    fun labelOf(type: MediaType, option: SortOption): String =
-        byTab[type]?.firstOrNull { it.option == option }?.label ?: option.field.displayName
-
-    fun labelOf(context: SubItemContext, option: SortOption): String =
-        bySubContext[context]?.firstOrNull { it.option == option }?.label
-            ?: option.field.displayName
 }
 
 private fun SearchResult.toAutoMediaItems(
