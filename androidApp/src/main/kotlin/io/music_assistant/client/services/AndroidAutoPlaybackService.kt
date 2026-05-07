@@ -275,6 +275,9 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                             sharedSession.clearErrorState()
                             if (!wasAuthenticated) {
                                 wasAuthenticated = true
+                                // Drop stale cached lists from a prior server session before
+                                // AA re-pulls. One-shot, not cyclic.
+                                library.invalidateCache()
                                 notifyChildrenChanged(MediaIds.ROOT)
                                 notifyChildrenChanged(MediaIds.TAB_ARTISTS)
                                 notifyChildrenChanged(MediaIds.TAB_ALBUMS)

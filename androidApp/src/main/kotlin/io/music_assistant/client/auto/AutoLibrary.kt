@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(FlowPreview::class)
 class AutoLibrary(
@@ -50,6 +51,13 @@ class AutoLibrary(
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
         MutableStateFlow(null)
     private val defaultIconUri = R.drawable.baseline_library_music_24.toUri(context)
+
+    // AA hosts re-subscribe browse parents aggressively (on metadata / playback /
+    // focus changes). With 27 browsable nodes (6 tabs + 5*4 sub-lists + radio
+    // header) every reconnect would otherwise issue 21 server list requests in
+    // one burst. Cache is invalidated explicitly from the service on reconnect.
+    private val itemCache = ConcurrentHashMap<String, CacheEntry>()
+    private val cacheTtlMs = 5 * 60_000L
 
     init {
         scope.launch {
@@ -92,15 +100,14 @@ class AutoLibrary(
         Logger.withTag("AutoLibrary").i { "Items for $id" }
         when {
             id == MediaIds.ROOT -> result.sendResult(rootChildren())
-            MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(
-                id,
-                result,
-                favoritesOnly = false,
-            )
-
-            id.startsWith(MediaIds.FAVORITES_PREFIX) -> handleFavorites(id, result)
+            MediaIds.parseSubListId(id) != null -> handleSubList(id, result)
+            MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(id, result)
             else -> handleDrillDown(id, result)
         }
+    }
+
+    fun invalidateCache() {
+        itemCache.clear()
     }
 
     private fun rootChildren(): List<MediaItem> = listOf(
@@ -115,41 +122,92 @@ class AutoLibrary(
     private fun handleTabContent(
         tabId: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
-        favoritesOnly: Boolean,
     ) {
         val mediaType = MediaIds.tabMediaTypeOf(tabId) ?: run {
             result.sendResult(null)
             return
         }
+        if (mediaType != MediaType.RADIO) {
+            // Collection tabs return only stateless sub-list browsables. The
+            // selection is encoded in the parentId — no settings, no parent
+            // invalidation, no re-fetch loop.
+            result.sendResult(AutoSubList.entries.map { subListBrowsable(mediaType, it) })
+            return
+        }
+        // Radio: a flat list (sorted by recently played) with a single
+        // Favorites browsable header.
         result.detach()
         scope.launch {
-            if (!waitForCorrectState()) {
-                result.sendResult(null)
-                return@launch
+            val items = cachedOrFetch(tabId) {
+                if (!waitForCorrectState()) return@cachedOrFetch null
+                val sorted = loadTabItems(
+                    MediaType.RADIO,
+                    SortOption(SortField.LAST_PLAYED, descending = true),
+                    favoritesOnly = false,
+                ) ?: return@cachedOrFetch null
+                listOf(subListBrowsable(MediaType.RADIO, AutoSubList.FAVORITES)) + sorted
             }
-            val items = loadTabItems(mediaType, defaultSortFor(mediaType), favoritesOnly) ?: run {
-                result.sendResult(null)
-                return@launch
-            }
-            val header = if (favoritesOnly) {
-                emptyList()
-            } else {
-                listOf(favoritesPseudoItem(MediaIds.favoritesId(mediaType)))
-            }
-            result.sendResult(header + items)
+            result.sendResult(items)
         }
     }
 
-    private fun handleFavorites(
+    private fun handleSubList(
         id: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
-        val mediaType = MediaIds.favoritesMediaTypeOf(id) ?: run {
+        val (mediaType, key) = MediaIds.parseSubListId(id) ?: run {
             result.sendResult(null)
             return
         }
-        // Reuse the tab content path with favoritesOnly=true; header is suppressed there.
-        handleTabContent(MediaIds.tabIdOf(mediaType), result, favoritesOnly = true)
+        val spec = subListSpec(mediaType, key) ?: run {
+            result.sendResult(null)
+            return
+        }
+        result.detach()
+        scope.launch {
+            val items = cachedOrFetch(id) {
+                if (!waitForCorrectState()) return@cachedOrFetch null
+                loadTabItems(mediaType, spec.sort, spec.favoritesOnly)
+            }
+            result.sendResult(items)
+        }
+    }
+
+    private suspend fun cachedOrFetch(
+        cacheKey: String,
+        fetch: suspend () -> List<MediaItem>?,
+    ): List<MediaItem>? {
+        val now = System.currentTimeMillis()
+        itemCache[cacheKey]?.let { (cached, ts) ->
+            if (now - ts < cacheTtlMs) return cached
+        }
+        val items = fetch() ?: return null
+        itemCache[cacheKey] = CacheEntry(items, now)
+        return items
+    }
+
+    private data class SubListSpec(val sort: SortOption, val favoritesOnly: Boolean)
+
+    private fun subListSpec(type: MediaType, key: AutoSubList): SubListSpec? {
+        // Radio only exposes FAVORITES as a sub-list; other keys are not valid.
+        if (type == MediaType.RADIO && key != AutoSubList.FAVORITES) return null
+        return when (key) {
+            AutoSubList.RECENT ->
+                SubListSpec(SortOption(SortField.LAST_PLAYED, descending = true), false)
+
+            AutoSubList.FAVORITES ->
+                SubListSpec(SortOption(SortField.NAME), true)
+
+            AutoSubList.NEW -> if (type == MediaType.PODCAST) {
+                // For podcasts, "New" means recently updated (i.e. has new episodes).
+                SubListSpec(SortOption(SortField.DATE_MODIFIED, descending = true), false)
+            } else {
+                SubListSpec(SortOption(SortField.DATE_ADDED, descending = true), false)
+            }
+
+            AutoSubList.BY_NAME ->
+                SubListSpec(SortOption(SortField.NAME), false)
+        }
     }
 
     private fun handleDrillDown(
@@ -241,14 +299,6 @@ class AutoLibrary(
             if (context == SubItemContext.PLAYLIST_TRACKS) items else items.clientSorted(sort)
         return sorted.map { it.toAutoMediaItem(baseUrl, true, defaultIconUri) }
     }
-
-    // Hardcoded defaults — sorting UI is intentionally absent in AA. Per-list
-    // pickers turned out to be a footgun: AA prefetches children of every
-    // browsable preset, which (when coupled to persistence + parent invalidation)
-    // looped the browse view to OOM. Keeping the matrix flat sidesteps the
-    // entire surface.
-    private fun defaultSortFor(mediaType: MediaType): SortOption =
-        SortOption(SortField.NAME, descending = false)
 
     private fun defaultSortFor(context: SubItemContext): SortOption = when (context) {
         SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
@@ -376,15 +426,26 @@ class AutoLibrary(
             MediaItem.FLAG_BROWSABLE,
         )
 
-    private fun favoritesPseudoItem(favoritesId: String): MediaItem =
-        MediaItem(
+    private fun subListBrowsable(mediaType: MediaType, key: AutoSubList): MediaItem {
+        val title = when (key) {
+            AutoSubList.RECENT -> "Recent"
+            AutoSubList.FAVORITES -> "Favorites"
+            AutoSubList.NEW -> "New"
+            AutoSubList.BY_NAME -> "By name"
+        }
+        val icon = when (key) {
+            AutoSubList.FAVORITES -> R.drawable.baseline_favorite_24.toUri(context)
+            else -> defaultIconUri
+        }
+        return MediaItem(
             MediaDescriptionCompat.Builder()
-                .setTitle("Favorites")
-                .setMediaId(favoritesId)
-                .setIconUri(R.drawable.baseline_favorite_24.toUri(context))
+                .setTitle(title)
+                .setMediaId(MediaIds.subListIdOf(mediaType, key))
+                .setIconUri(icon)
                 .build(),
             MediaItem.FLAG_BROWSABLE,
         )
+    }
 
     private companion object {
         const val WAIT_FOR_AUTHENTICATED_TIMEOUT_MS = 30_000L
@@ -407,7 +468,11 @@ internal object MediaIds {
     const val TAB_AUDIOBOOKS = "auto_lib_audiobooks"
     const val QUEUE_OPTION_KEY = "auto_queue_option"
 
-    const val FAVORITES_PREFIX = "auto_fav_"
+    // `_` is taken by tab IDs and `__` by ParentRef; `|` keeps sub-list IDs
+    // unambiguous against both (and against keys like BY_NAME that contain `_`).
+    // Avoid `#` — some AA components treat mediaIds as URIs and `#` is the
+    // fragment delimiter.
+    private const val SUBLIST_SEP = '|'
 
     private val tabToType = mapOf(
         TAB_ARTISTS to MediaType.ARTIST,
@@ -422,10 +487,21 @@ internal object MediaIds {
     fun tabMediaTypeOf(id: String): MediaType? = tabToType[id]
     fun tabIdOf(type: MediaType): String = typeToTab.getValue(type)
 
-    fun favoritesId(type: MediaType): String = "$FAVORITES_PREFIX${type.name}"
-    fun favoritesMediaTypeOf(id: String): MediaType? =
-        runCatching { MediaType.valueOf(id.removePrefix(FAVORITES_PREFIX)) }.getOrNull()
+    fun subListIdOf(type: MediaType, key: AutoSubList): String =
+        "${tabIdOf(type)}$SUBLIST_SEP${key.name}"
+
+    fun parseSubListId(id: String): Pair<MediaType, AutoSubList>? {
+        val idx = id.indexOf(SUBLIST_SEP).takeIf { it >= 0 } ?: return null
+        val type = tabMediaTypeOf(id.substring(0, idx)) ?: return null
+        val key = runCatching { AutoSubList.valueOf(id.substring(idx + 1)) }.getOrNull()
+            ?: return null
+        return type to key
+    }
 }
+
+internal enum class AutoSubList { RECENT, FAVORITES, NEW, BY_NAME }
+
+internal data class CacheEntry(val items: List<MediaItem>, val timestamp: Long)
 
 internal data class ParentRef(
     val itemId: String,
