@@ -145,6 +145,15 @@ internal fun PlayersPager(
         )
     }
 
+    val playerColors = playerDataList.associateWith {
+        val imageUrl = it.player.currentMedia?.imageUrl
+        rememberAnimatedPlayerColors(
+            imageUrl = imageUrl,
+            fallback = MaterialTheme.colorScheme.primaryContainer,
+            fetchColors = fetchColors,
+        )
+    }
+
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
@@ -179,15 +188,7 @@ internal fun PlayersPager(
                 )
             }
 
-            // Inlined per-page (instead of an associateWith map at parent scope) so a 2 Hz
-            // position-update cascade through `playerDataList` doesn't rebuild a Map across
-            // all players on every recomposition. HorizontalPager only composes visible pages,
-            // and the underlying kmpalette extraction is cached in DominantColorViewModel.
-            val colors by rememberAnimatedPlayerColors(
-                imageUrl = player.player.currentMedia?.imageUrl,
-                fallback = MaterialTheme.colorScheme.primaryContainer,
-                fetchColors = fetchColors,
-            )
+            val colors by playerColors.getValue(player)
 
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(

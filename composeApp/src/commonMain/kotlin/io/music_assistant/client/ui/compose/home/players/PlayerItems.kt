@@ -7,7 +7,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,8 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -85,18 +82,77 @@ fun CompactPlayerItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start,
         ) {
-            CompactPlayerArt(
-                hasMedia = currentMedia != null,
-                imageUrl = currentMedia?.imageUrl,
-                title = currentMedia?.title,
-                dominant = colors.dominant,
-                onPrimaryContainer = onPrimaryContainer,
-            )
-            CompactPlayerText(
-                title = currentMedia?.title,
-                subtitle = currentMedia?.subtitle,
-                showCannotPlay = item.queueInfo?.currentItem?.isPlayable == showAdditionalControls,
-            )
+            // Album cover on the far left
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.dominant.alphaOn(currentMedia != null)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (currentMedia != null) {
+                    val placeholder = rememberPlaceholderPainter(
+                        backgroundColor = colors.dominant,
+                        iconColor = onPrimaryContainer,
+                        icon = TrackIcon,
+                    )
+                    AsyncImage(
+                        placeholder = placeholder,
+                        fallback = placeholder,
+                        model = currentMedia.imageUrl,
+                        contentDescription = currentMedia.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = AlbumIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = onPrimaryContainer.inactive(),
+                    )
+                }
+            }
+
+            // Track info
+            val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = trackContentDescription
+                    },
+            ) {
+                Text(
+                    modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                    text = trackName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                currentMedia?.subtitle?.let {
+                    Text(
+                        modifier = Modifier.basicMarquee(),
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } ?: run {
+                    if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
+                        Text(
+                            text = "Cannot play this item",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
         }
 
         PlayerControls(
@@ -122,197 +178,6 @@ fun CompactPlayerItem(
                 )
             }
         }
-    }
-}
-
-// Stable-input subtree: skips recomposition when title/subtitle/imageUrl are unchanged,
-// so the basicMarquee animation does NOT re-anchor on every 2 Hz position-update tick.
-@Composable
-private fun CompactPlayerArt(
-    hasMedia: Boolean,
-    imageUrl: String?,
-    title: String?,
-    dominant: Color,
-    onPrimaryContainer: Color,
-) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(dominant.alphaOn(hasMedia)),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (hasMedia) {
-            val placeholder = rememberPlaceholderPainter(
-                backgroundColor = dominant,
-                iconColor = onPrimaryContainer,
-                icon = TrackIcon,
-            )
-            AsyncImage(
-                placeholder = placeholder,
-                fallback = placeholder,
-                model = imageUrl,
-                contentDescription = title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Icon(
-                imageVector = AlbumIcon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = onPrimaryContainer.inactive(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun CompactPlayerText(
-    title: String?,
-    subtitle: String?,
-    showCannotPlay: Boolean,
-) {
-    val (trackName, trackContentDescription) = trackNameAndContentDescription(title)
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .clearAndSetSemantics {
-                contentDescription = trackContentDescription
-            },
-    ) {
-        Text(
-            modifier = Modifier.basicMarquee().alphaOn(title != null),
-            text = trackName,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        subtitle?.let {
-            Text(
-                modifier = Modifier.basicMarquee(),
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        } ?: run {
-            if (showCannotPlay) {
-                Text(
-                    text = "Cannot play this item",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ColumnScope.FullPlayerArt(
-    hasMedia: Boolean,
-    imageUrl: String?,
-    title: String?,
-    defaultIcon: ImageVector,
-    dominant: Color,
-    onPrimaryContainer: Color,
-) {
-    Box(
-        modifier = Modifier
-            .weight(1f, fill = false)
-            .aspectRatio(1f)
-            .heightIn(max = 500.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(dominant.alphaOn(hasMedia)),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (hasMedia) {
-            val placeholder = rememberPlaceholderPainter(
-                backgroundColor = dominant,
-                iconColor = onPrimaryContainer,
-                icon = defaultIcon,
-            )
-            imageUrl?.let {
-                AsyncImage(
-                    placeholder = placeholder,
-                    fallback = placeholder,
-                    model = it,
-                    contentDescription = title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } ?: Icon(
-                imageVector = defaultIcon,
-                contentDescription = null,
-                modifier = Modifier.size(120.dp),
-                tint = onPrimaryContainer,
-            )
-        } else {
-            Icon(
-                imageVector = AlbumIcon,
-                contentDescription = null,
-                modifier = Modifier.size(120.dp),
-                tint = onPrimaryContainer.inactive(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun FullPlayerText(
-    title: String?,
-    subtitle: String?,
-    isUnplayable: Boolean,
-    audioFormat: String,
-) {
-    val (trackName, trackContentDescription) = trackNameAndContentDescription(title)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clearAndSetSemantics {
-                contentDescription = trackContentDescription
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            modifier = Modifier.basicMarquee().alphaOn(title != null),
-            text = trackName,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (isUnplayable) {
-            Text(
-                text = "Cannot play this item",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        } else {
-            Text(
-                modifier = Modifier.basicMarquee().alphaOn(title != null),
-                text = subtitle ?: "",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Text(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            text = audioFormat,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
@@ -345,20 +210,92 @@ fun FullPlayerItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FullPlayerArt(
-            hasMedia = currentMedia != null,
-            imageUrl = currentMedia?.imageUrl,
-            title = currentMedia?.title,
-            defaultIcon = currentMedia?.defaultIcon ?: AlbumIcon,
-            dominant = colors.dominant,
-            onPrimaryContainer = onPrimaryContainer,
-        )
-        FullPlayerText(
-            title = currentMedia?.title,
-            subtitle = currentMedia?.subtitle,
-            isUnplayable = item.queueInfo?.currentItem?.isPlayable == false,
-            audioFormat = item.queueInfo?.currentItem?.audioFormat(item.playerId)?.description ?: "",
-        )
+        Box(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .aspectRatio(1f)
+                .heightIn(max = 500.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(colors.dominant.alphaOn(currentMedia != null)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (currentMedia != null) {
+                val placeholder =
+                    rememberPlaceholderPainter(
+                        backgroundColor = colors.dominant,
+                        iconColor = onPrimaryContainer,
+                        icon = currentMedia.defaultIcon,
+                    )
+                currentMedia.imageUrl?.let {
+                    AsyncImage(
+                        placeholder = placeholder,
+                        fallback = placeholder,
+                        model = it,
+                        contentDescription = currentMedia.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } ?: Icon(
+                    imageVector = currentMedia.defaultIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(120.dp),
+                    tint = onPrimaryContainer,
+                )
+            } else {
+                Icon(
+                    imageVector = AlbumIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(120.dp),
+                    tint = onPrimaryContainer.inactive(),
+                )
+            }
+        }
+
+        // Track info
+        val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics {
+                    contentDescription = trackContentDescription
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                text = trackName,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (item.queueInfo?.currentItem?.isPlayable == false) {
+                Text(
+                    text = "Cannot play this item",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else {
+                Text(
+                    modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                    text = currentMedia?.subtitle ?: "", // TODO take from currentItem?
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                text = item.queueInfo?.currentItem?.audioFormat(item.playerId)?.description ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         val duration = currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
 
