@@ -1,7 +1,6 @@
 package io.music_assistant.client.ui.compose.common
 
 import androidx.collection.LruCache
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -48,15 +47,16 @@ class DominantColorViewModel : ViewModel() {
             ?: return null
         val bitmap = result.image.toImageBitmap() ?: return null
         val palette = bitmap.generatePalette()
-        val dominantColor = palette.swatches
-            .maxByOrNull { it.population }
-            ?.let { Color(it.rgb) }
-            ?: return null
-        return ExtractedColors(
-            dominant = dominantColor,
-            tintOnDark = dominantColor.ensureReadable(onDarkSurface = true),
-            tintOnLight = dominantColor.ensureReadable(onDarkSurface = false),
-        )
+        val color = palette.getBestColor()
+        return if (color != null) {
+            ExtractedColors(
+                dominant = color,
+                tintOnDark = color.ensureReadable(onDarkSurface = true),
+                tintOnLight = color.ensureReadable(onDarkSurface = false),
+            )
+        } else {
+            null
+        }
     }
 
     private companion object {

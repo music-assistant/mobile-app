@@ -16,6 +16,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.kmpalette.palette.graphics.Palette
 
 /**
  * Theme-independent extraction result kept in [DominantColorViewModel]'s cache.
@@ -75,6 +76,25 @@ fun rememberAnimatedPlayerColors(
     val state = remember { mutableStateOf(PlayerColors(targetDominant, targetTint)) }
     state.value = PlayerColors(animatedDominant, animatedTint)
     return state
+}
+
+/**
+ * This tries to identify the "best" color: if the "dominant" color is very close to black or
+ * white (which will cause control color problems), fallback to the "vibrant" color. For
+ * completely black/white images (see Weezer, Spinal Tap, The Beatles or Metallica for
+ * examples), a vibrant color might not exist and in that case we still use the dominant one.
+ */
+fun Palette.getBestColor(): Color? {
+    val dominantColor = this.dominantSwatch?.let { Color(it.rgb) }
+    val vibrantColor = this.vibrantSwatch?.let { Color(it.rgb) }
+    val color =
+        if (dominantColor != null && (dominantColor.luminance() in 0.01..0.99 || vibrantColor == null)) {
+            dominantColor
+        } else {
+            vibrantColor
+        }
+
+    return color
 }
 
 /**
