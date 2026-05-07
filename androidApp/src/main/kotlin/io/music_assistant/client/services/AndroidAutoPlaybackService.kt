@@ -94,34 +94,37 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             }
         }
 
-        // Queue updates (separate MediaSession property — no conflict with playback state)
+        // Queue updates (separate MediaSession property — no conflict with playback state).
+        // Project to a stable id list and dedup: setQueue is an expensive IPC write that AA
+        // hosts react to (re-rendering, which can re-subscribe browse parents). Without
+        // dedup, every `_localPlayerData` emission — volume changes, optimistic bumps,
+        // anything — churns the AA UI even when the queue itself is unchanged.
         scope.launch {
-            currentPlayerData.filterNotNull().collect { playerData ->
-                when (val queueData = playerData.queue) {
-                    is DataState.Data -> {
-                        when (val queueItems = queueData.data.items) {
-                            is DataState.Data -> {
-                                val baseUrl = dataSource.apiClient.serverBaseUrl.value
-                                sharedSession.updateQueue(
-                                    queueItems.data.map { queueTrack ->
-                                    QueueItem(
-                                        (queueTrack.track as AppMediaItem).toMediaDescription(
-                                            baseUrl,
-                                            defaultIconUri,
-                                        ),
-                                        queueTrack.track.longId,
-                                    )
-                                },
-                                )
-                            }
-
-                            else -> sharedSession.updateQueue(emptyList())
-                        }
-                    }
-
-                    else -> sharedSession.updateQueue(emptyList())
+            currentPlayerData
+                .map { playerData ->
+                    val items = (playerData?.queue as? DataState.Data)
+                        ?.data?.items?.let { it as? DataState.Data }?.data
+                        .orEmpty()
+                    items
                 }
-            }
+                .distinctUntilChanged { old, new ->
+                    old.size == new.size &&
+                        old.zip(new).all { (a, b) -> a.track.longId == b.track.longId }
+                }
+                .collect { items ->
+                    val baseUrl = dataSource.apiClient.serverBaseUrl.value
+                    sharedSession.updateQueue(
+                        items.map { queueTrack ->
+                            QueueItem(
+                                (queueTrack.track as AppMediaItem).toMediaDescription(
+                                    baseUrl,
+                                    defaultIconUri,
+                                ),
+                                queueTrack.track.longId,
+                            )
+                        },
+                    )
+                }
         }
 
         dataSource.apiClient.onExternalConsumerActive()
@@ -270,13 +273,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                             sharedSession.clearErrorState()
                             if (!wasAuthenticated) {
                                 wasAuthenticated = true
-                                notifyChildrenChanged(MediaIds.ROOT)
-                                notifyChildrenChanged(MediaIds.TAB_ARTISTS)
-                                notifyChildrenChanged(MediaIds.TAB_ALBUMS)
-                                notifyChildrenChanged(MediaIds.TAB_PLAYLISTS)
-                                notifyChildrenChanged(MediaIds.TAB_PODCASTS)
-                                notifyChildrenChanged(MediaIds.TAB_RADIO)
-                                notifyChildrenChanged(MediaIds.TAB_AUDIOBOOKS)
+                                // Route through library so cache is invalidated alongside
+                                // the AA host notification — otherwise stale entries would
+                                // stick around after a reconnect.
+                                library.invalidateAndNotify(MediaIds.ROOT)
+                                library.invalidateAndNotify(MediaIds.TAB_ARTISTS)
+                                library.invalidateAndNotify(MediaIds.TAB_ALBUMS)
+                                library.invalidateAndNotify(MediaIds.TAB_PLAYLISTS)
+                                library.invalidateAndNotify(MediaIds.TAB_PODCASTS)
+                                library.invalidateAndNotify(MediaIds.TAB_RADIO)
+                                library.invalidateAndNotify(MediaIds.TAB_AUDIOBOOKS)
                             }
                         }
                     }

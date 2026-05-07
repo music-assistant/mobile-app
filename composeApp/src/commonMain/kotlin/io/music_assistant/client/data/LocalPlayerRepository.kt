@@ -102,7 +102,12 @@ class LocalPlayerRepository(
                 updateOptimisticQueueInfo { it.copy(repeatMode = nextMode) }
             }
 
-            // SeekTo: position tracker in MainDataSource handles immediate feedback
+            is PlayerAction.SeekTo -> {
+                // Optimistic anchor jump so the slider doesn't snap back to the pre-seek
+                // position while waiting for the server's QueueTimeUpdatedEvent to confirm.
+                updateOptimisticQueueInfo { it.copy(elapsedTime = action.position.toDouble()) }
+            }
+
             // Next/Previous: no optimistic UI change (we don't know the next track)
             else -> {}
         }
