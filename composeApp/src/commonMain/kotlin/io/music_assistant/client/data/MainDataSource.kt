@@ -72,6 +72,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
@@ -1703,6 +1704,13 @@ class MainDataSource(
                         ?.let { localPlayerRepository.onServerQueueUpdate(it) }
                 }
         }
+        launch {
+            // Wait for the players+queues combine to land, then fetch items
+            // for every player. Single-shot per call — runtime queue changes
+            // are covered by QueueItemsUpdatedEvent.
+            _playersData.first { it is DataState.Data }
+            refreshAllPlayersQueueItems()
+        }
     }
 
     private fun updateProvidersManifests() {
@@ -1723,6 +1731,23 @@ class MainDataSource(
                     }
                     _providersIcons.update { map }
                 }
+        }
+    }
+
+    /**
+     * Fan out item fetches across every player whose queue metadata is loaded.
+     * Without this, items only get fetched for the currently selected player
+     * (via the [selectedPlayerIndex] collector), so notifications and pager
+     * neighbours show "not loaded" until visited.
+     */
+    private fun refreshAllPlayersQueueItems() {
+        val players = when (val pd = _playersData.value) {
+            is DataState.Data -> pd.data
+            is DataState.Stale -> pd.data
+            else -> return
+        }
+        players.forEach { pd ->
+            if (pd.queueInfo != null) refreshPlayerQueueItems(pd)
         }
     }
 
