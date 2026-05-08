@@ -1,10 +1,13 @@
 package io.music_assistant.client.services
 
+import android.os.SystemClock
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.server.RepeatMode
 
-// Elapsed time can drift up to 10s before we treat it as a real position change.
-private const val ELAPSED_TIME_DRIFT_TOLERANCE_MS = 10_000
+// Elapsed time can drift up to 1s before we treat it as a real position change.
+// Lower tolerance keeps OEM surfaces that don't extrapolate (OneUI/MIUI/etc.)
+// in lockstep with the in-app slider; debounce(200ms) bounds write churn.
+private const val ELAPSED_TIME_DRIFT_TOLERANCE_MS = 1_000
 
 data class MediaNotificationData(
     val multiplePlayers: Boolean,
@@ -17,6 +20,11 @@ data class MediaNotificationData(
     val isPlaying: Boolean,
     val imageUrl: String?,
     val elapsedTime: Long?,
+    // SystemClock.elapsedRealtime() captured when [elapsedTime] was sampled.
+    // Paired with elapsedTime when writing PlaybackStateCompat so Android's
+    // extrapolation re-anchors at the correct wall clock — not 200ms later
+    // when the debounced collector finally calls setState.
+    val elapsedUpdateTimeMs: Long?,
     val playerName: String?,
     val duration: Long?,
 ) {
@@ -45,13 +53,16 @@ data class MediaNotificationData(
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
             elapsedTime = effectiveElapsedSec?.toLong()?.let { it * 1000 },
+            elapsedUpdateTimeMs = effectiveElapsedSec?.let { SystemClock.elapsedRealtime() },
             playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
             duration = playerData.player.currentMedia?.duration?.toLong()
                 ?.let { it * 1000 },
         )
 
         fun areTooSimilarToUpdate(old: MediaNotificationData, new: MediaNotificationData): Boolean {
-            if (old.copy(elapsedTime = null) != new.copy(elapsedTime = null)) {
+            if (old.copy(elapsedTime = null, elapsedUpdateTimeMs = null) !=
+                new.copy(elapsedTime = null, elapsedUpdateTimeMs = null)
+            ) {
                 return false
             }
             if (old.elapsedTime == null) {

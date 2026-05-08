@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.session.PlaybackState
 import android.os.Bundle
+import android.os.SystemClock
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -167,7 +168,8 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
             .setState(
                 state,
                 data.elapsedTime ?: PlaybackState.PLAYBACK_POSITION_UNKNOWN,
-                1f,
+                if (data.isPlaying) 1f else 0f,
+                data.elapsedUpdateTimeMs ?: SystemClock.elapsedRealtime(),
             )
             .setActiveQueueItemId(
                 data.longItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong(),
