@@ -327,7 +327,7 @@ private fun ItemText(
     ) {
         Text(
             modifier = Modifier.basicMarquee(),
-            text = item.title,
+            text = item.name,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
         )

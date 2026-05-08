@@ -40,7 +40,7 @@ interface PlayableItem {
 abstract class AppMediaItem(
     val itemId: String,
     val provider: String,
-    private val name: String,
+    val name: String,
     val providerMappings: List<ProviderMapping>?,
     metadata: Metadata?,
     val favorite: Boolean?,

@@ -98,6 +98,7 @@ class ItemDetailsTest {
             )
         }
 
+        composeTestRule.onAllNodes(hasText(album.name)).onFirst().assertIsDisplayed()
         composeTestRule.onAllNodes(hasText(album.version!!)).onFirst().assertIsDisplayed()
     }
 
