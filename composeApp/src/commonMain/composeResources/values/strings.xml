@@ -22,7 +22,6 @@
     <string name="action_mark_unplayed">Mark as unplayed</string>
     <string name="action_go_to_artist">Go to artist</string>
     <string name="action_go_to_album">Go to album</string>
-    <string name="action_toggle_view_mode">Toggle view mode</string>
     <string name="action_play">Play</string>
     <string name="action_pause">Pause</string>
     <string name="action_play_next">Play next</string>

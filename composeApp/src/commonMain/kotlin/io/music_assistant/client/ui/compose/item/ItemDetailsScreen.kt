@@ -18,8 +18,13 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
@@ -63,6 +68,7 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.theme.AppTheme
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
 import org.jetbrains.compose.resources.stringResource
@@ -100,7 +106,7 @@ fun ItemDetailsScreen(
         serverUrl = serverUrl,
         onBack = onBack,
         viewModeProvider = { type ->
-            viewModel.viewMode(type).collectAsStateWithLifecycle(initialValue = ViewMode.GRID).value
+            viewModel.viewMode(type).collectAsStateWithLifecycle().value
         },
         onToggleViewMode = viewModel::toggleViewMode,
         toastState = toastState,
@@ -204,15 +210,16 @@ fun ItemDetails(
 private enum class ItemDetailsTab(
     val title: String,
     val sortContext: SubItemContext?,
+    val viewMediaType: MediaType?,
 ) {
-    ARTIST_ALBUMS("Albums", SubItemContext.ARTIST_ALBUMS),
-    ARTIST_TRACKS("Tracks", SubItemContext.ARTIST_TRACKS),
-    ALBUM_TRACKS("Tracks", SubItemContext.ALBUM_TRACKS),
-    PLAYLIST_TRACKS("Tracks", SubItemContext.PLAYLIST_TRACKS),
-    PODCAST_EPISODES("Episodes", SubItemContext.PODCAST_EPISODES),
-    AUDIOBOOK_CHAPTERS("Chapters", null),
-    GENRE_ARTISTS("Artists", null),
-    GENRE_ALBUMS("Albums", null),
+    ARTIST_ALBUMS("Albums", SubItemContext.ARTIST_ALBUMS, MediaType.ALBUM),
+    ARTIST_TRACKS("Tracks", SubItemContext.ARTIST_TRACKS, MediaType.TRACK),
+    ALBUM_TRACKS("Tracks", SubItemContext.ALBUM_TRACKS, MediaType.TRACK),
+    PLAYLIST_TRACKS("Tracks", SubItemContext.PLAYLIST_TRACKS, MediaType.TRACK),
+    PODCAST_EPISODES("Episodes", SubItemContext.PODCAST_EPISODES, MediaType.TRACK),
+    AUDIOBOOK_CHAPTERS("Chapters", null, null),
+    GENRE_ARTISTS("Artists", null, MediaType.ARTIST),
+    GENRE_ALBUMS("Albums", null, MediaType.ALBUM),
 }
 
 private fun tabsFor(item: AppMediaItem): List<ItemDetailsTab> = when (item) {
@@ -335,8 +342,6 @@ private fun ItemContent(
             ItemTopBar(
                 item = item,
                 onBack = onBack,
-                viewModeProvider = viewModeProvider,
-                onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
                 navigateToItem = onNavigateClick,
@@ -355,6 +360,8 @@ private fun ItemContent(
                         playableItemsSortOption = state.playableItemsSortOption,
                         onAlbumsSortChanged = onAlbumsSortChanged,
                         onPlayableItemsSortChanged = onPlayableItemsSortChanged,
+                        viewModeProvider = viewModeProvider,
+                        onToggleViewMode = onToggleViewMode,
                     )
                 }
                 val gridState = rememberLazyGridState()
@@ -393,6 +400,8 @@ private fun TabsBar(
     playableItemsSortOption: SortOption?,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
+    onToggleViewMode: (MediaType) -> Unit,
 ) {
     val currentTab = tabs[selectedIndex]
     val sortCtx = currentTab.sortContext
@@ -439,6 +448,17 @@ private fun TabsBar(
                     }
                 },
             )
+        }
+        currentTab.viewMediaType?.let { viewMediaType ->
+            IconButton(onClick = { onToggleViewMode(viewMediaType) }) {
+                Icon(
+                    imageVector = when (viewModeProvider(viewMediaType)) {
+                        ViewMode.LIST -> Icons.Default.GridView
+                        ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                    },
+                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                )
+            }
         }
     }
 }

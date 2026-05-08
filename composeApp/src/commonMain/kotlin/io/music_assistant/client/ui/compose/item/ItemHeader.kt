@@ -19,8 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,9 +54,7 @@ import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
-import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -72,7 +68,6 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_library
 import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.action_remove_from_library
-import musicassistantclient.composeapp.generated.resources.action_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.action_unfavorite
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.common_back
@@ -133,8 +128,6 @@ fun ItemHeader(
 internal fun ItemTopBar(
     item: AppMediaItem,
     onBack: () -> Unit,
-    viewModeProvider: @Composable (MediaType) -> ViewMode,
-    onToggleViewMode: (MediaType) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
     scrollBehavior: TopAppBarScrollBehavior? = null,
@@ -150,8 +143,6 @@ internal fun ItemTopBar(
         actions = {
             ItemOverflow(
                 item = item,
-                viewModeProvider = viewModeProvider,
-                onToggleViewMode = onToggleViewMode,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions,
                 navigateToItem = navigateToItem,
@@ -164,8 +155,6 @@ internal fun ItemTopBar(
 @Composable
 private fun ItemOverflow(
     item: AppMediaItem,
-    viewModeProvider: @Composable (MediaType) -> ViewMode,
-    onToggleViewMode: (MediaType) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
     playlistActions: ActionsViewModel.PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
@@ -232,18 +221,6 @@ private fun ItemOverflow(
                     },
                 )
             }
-
-            add(
-                OverflowMenuOption(
-                    title = stringResource(Res.string.action_toggle_view_mode),
-                    icon =
-                        when (viewModeProvider(item.mediaType)) {
-                            ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
-                            ViewMode.GRID -> Icons.Default.GridView
-                        },
-                    onClick = { onToggleViewMode(item.mediaType) },
-                ),
-            )
 
             addAll(item.navigationOptions(navigateToItem))
         },

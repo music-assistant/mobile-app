@@ -67,7 +67,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     // Note: Sendspin is managed by MainDataSource (singleton, shared across app)
     private val players = dataSource.playersData
         .mapNotNull { (it as? DataState.Data)?.data }
-        .map { list -> list.filter { it.queueInfo?.currentItem != null } }
+        .map { list -> list.filter { it.player.canPlay && it.queueInfo?.currentItem != null } }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
     private val activePlayerIndex = MutableStateFlow(-1)
     private val currentPlayerData =
