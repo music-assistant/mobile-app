@@ -105,6 +105,21 @@ class SettingsRepository(
         _playersSorting.update { newValue }
     }
 
+    // Hidden home-screen recommendation folders (by itemId). Comma-separated.
+    private val _hiddenRecommendationFolders = MutableStateFlow(
+        settings.getStringOrNull("hidden_recommendation_folders")
+            ?.split(",")
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            ?: emptySet(),
+    )
+    val hiddenRecommendationFolders = _hiddenRecommendationFolders.asStateFlow()
+
+    fun setHiddenRecommendationFolders(ids: Set<String>) {
+        settings.putString("hidden_recommendation_folders", ids.joinToString(","))
+        _hiddenRecommendationFolders.update { ids }
+    }
+
     // Library tabs visibility + ordering. Stored as comma-separated "NAME:0|1"
     // pairs. Reconciliation against the live tab universe happens at the
     // ViewModel boundary — repo deals with raw name/enabled pairs only.

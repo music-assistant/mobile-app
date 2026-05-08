@@ -2,6 +2,8 @@
 
 package io.music_assistant.client.ui.compose.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,20 +17,28 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.server.MediaType
@@ -44,6 +54,7 @@ import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.utils.SessionState
 import musicassistantclient.composeapp.generated.resources.*
@@ -65,8 +76,16 @@ fun HomeScreen(
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     onRefresh: () -> Unit,
+    hiddenFolderIds: Set<String>,
+    onSaveHiddenFolders: (Set<String>) -> Unit,
 ) {
-    val filteredData = remember(dataState) {
+    var editMode by remember { mutableStateOf(false) }
+    var pendingHidden by remember { mutableStateOf(hiddenFolderIds) }
+    LaunchedEffect(hiddenFolderIds, editMode) {
+        if (!editMode) pendingHidden = hiddenFolderIds
+    }
+
+    val baseList = remember(dataState) {
         if (dataState is DataState.Data) {
             dataState.data.filter {
                 it.items?.any { item ->
@@ -85,12 +104,35 @@ fun HomeScreen(
             emptyList()
         }
     }
+    val displayedData = if (editMode) {
+        baseList
+    } else {
+        baseList.filterNot { it.itemId in hiddenFolderIds }
+    }
 
     val listState = rememberLazyListState()
 
+    BackHandler(enabled = editMode) {
+        pendingHidden = hiddenFolderIds
+        editMode = false
+    }
+
     Screen(
         topBar = { scrollBehavior ->
-            LandingPageTopBar(scrollBehavior = scrollBehavior, onRefresh = onRefresh)
+            LandingPageTopBar(
+                scrollBehavior = scrollBehavior,
+                editMode = editMode,
+                onRefresh = onRefresh,
+                onToggleEditMode = {
+                    if (editMode) {
+                        onSaveHiddenFolders(pendingHidden)
+                        editMode = false
+                    } else {
+                        pendingHidden = hiddenFolderIds
+                        editMode = true
+                    }
+                },
+            )
         },
     ) {
         LazyColumn(
@@ -108,22 +150,57 @@ fun HomeScreen(
                 }
             } else {
                 items(
-                    items = filteredData,
+                    items = displayedData,
                     key = { it.itemId },
                 ) { row ->
-                    CategoryRow(
-                        serverUrl = serverUrl,
-                        title = row.displayName,
-                        rowItemType = row.rowItemType,
-                        onNavigateClick = onNavigateClick,
-                        onPlayClick = onPlayClick,
-                        onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
-                        mediaItems = row.items.orEmpty(),
-                        playlistActions = playlistActions,
-                        libraryActions = libraryActions,
-                        progressActions = progressActions,
-                        providerIconFetcher = providerIconFetcher,
-                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        CategoryRow(
+                            serverUrl = serverUrl,
+                            title = row.displayName,
+                            rowItemType = row.rowItemType,
+                            onNavigateClick = onNavigateClick,
+                            onPlayClick = onPlayClick,
+                            onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
+                            mediaItems = row.items.orEmpty(),
+                            playlistActions = playlistActions,
+                            libraryActions = libraryActions,
+                            progressActions = progressActions,
+                            providerIconFetcher = providerIconFetcher,
+                        )
+                        if (editMode) {
+                            val isHidden = row.itemId in pendingHidden
+                            val overlayAlpha = if (isHidden) 0.80f else 0.60f
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(
+                                        MaterialTheme.colorScheme.background.copy(
+                                            alpha = overlayAlpha,
+                                        ),
+                                    )
+                                    .pointerInput(Unit) {
+                                        // Swallow taps & long-presses on the row;
+                                        // vertical drags pass through so the
+                                        // LazyColumn can still scroll.
+                                        detectTapGestures(
+                                            onTap = {},
+                                            onLongPress = {},
+                                        )
+                                    },
+                            )
+                            Switch(
+                                modifier = Modifier.align(Alignment.Center),
+                                checked = !isHidden,
+                                onCheckedChange = { active ->
+                                    pendingHidden = if (active) {
+                                        pendingHidden - row.itemId
+                                    } else {
+                                        pendingHidden + row.itemId
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -131,15 +208,30 @@ fun HomeScreen(
 }
 
 @Composable
-private fun LandingPageTopBar(scrollBehavior: TopAppBarScrollBehavior, onRefresh: () -> Unit) {
+private fun LandingPageTopBar(
+    scrollBehavior: TopAppBarScrollBehavior,
+    editMode: Boolean,
+    onRefresh: () -> Unit,
+    onToggleEditMode: () -> Unit,
+) {
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
         scrollBehavior = scrollBehavior,
         actions = {
-            IconButton(onClick = onRefresh) {
+            if (!editMode) {
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(Res.string.refresh),
+                    )
+                }
+            }
+            IconButton(onClick = onToggleEditMode) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(Res.string.refresh),
+                    imageVector = if (editMode) Icons.Default.Done else Icons.Default.Edit,
+                    contentDescription = stringResource(
+                        if (editMode) Res.string.home_save_rows else Res.string.home_edit_rows,
+                    ),
                 )
             }
         },

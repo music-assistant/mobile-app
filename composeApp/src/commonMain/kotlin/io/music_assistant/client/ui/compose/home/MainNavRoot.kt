@@ -123,6 +123,7 @@ fun MainNavigationRoot(
 
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
+    val hiddenFolderIds = recommendationsState.value.hiddenFolderIds
 
     var playerExpanded by remember { mutableStateOf(false) }
 
@@ -198,6 +199,7 @@ fun MainNavigationRoot(
                         floatingBarHeight,
                         connectionState,
                         dataState,
+                        hiddenFolderIds,
                         serverUrl,
                         multiBackStack,
                         viewModel,
@@ -239,6 +241,7 @@ private fun mainNavEntryProvider(
     floatingBarHeight: Dp,
     connectionState: SessionState,
     dataState: DataState<List<AppMediaItem.RecommendationFolder>>,
+    hiddenFolderIds: Set<String>,
     serverUrl: String?,
     multiBackStack: MultiBackStack,
     viewModel: HomeScreenViewModel,
@@ -291,6 +294,8 @@ private fun mainNavEntryProvider(
                         ?.let { ProviderIcon(modifier, it) }
                 },
                 onRefresh = { viewModel.loadRecommendations() },
+                hiddenFolderIds = hiddenFolderIds,
+                onSaveHiddenFolders = viewModel::saveHiddenRecommendationFolders,
             )
         }
 

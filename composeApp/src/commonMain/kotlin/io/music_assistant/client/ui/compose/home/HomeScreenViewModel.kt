@@ -67,6 +67,7 @@ class HomeScreenViewModel(
         RecommendationsState(
             connectionState = SessionState.Disconnected.Initial,
             recommendations = DataState.Loading(),
+            hiddenFolderIds = settings.hiddenRecommendationFolders.value,
         ),
     )
     val recommendationsState = _recommendationsState.asStateFlow()
@@ -161,6 +162,12 @@ class HomeScreenViewModel(
                         }
                     }
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            settings.hiddenRecommendationFolders.collect { ids ->
+                _recommendationsState.update { it.copy(hiddenFolderIds = ids) }
             }
         }
 
@@ -335,9 +342,13 @@ class HomeScreenViewModel(
             result.resultAs<List<ServerMediaItem>>()?.toAppMediaItemList()?.mapNotNull { it as? T }
         }
 
+    fun saveHiddenRecommendationFolders(ids: Set<String>) =
+        settings.setHiddenRecommendationFolders(ids)
+
     data class RecommendationsState(
         val connectionState: SessionState,
         val recommendations: DataState<List<AppMediaItem.RecommendationFolder>>,
+        val hiddenFolderIds: Set<String> = emptySet(),
     )
 
     sealed class PlayersState {
