@@ -76,6 +76,7 @@ class LibraryViewModel(
         val tab: Tab,
         val dataState: DataState<List<AppMediaItem>>,
         val isSelected: Boolean,
+        val enabled: Boolean = true,
         val offset: Int = 0,
         val hasMore: Boolean = true,
         val isLoadingMore: Boolean = false,
@@ -103,18 +104,77 @@ class LibraryViewModel(
     private val _state = MutableStateFlow(
         State(
             connectionState = SessionState.Disconnected.Initial,
-            tabs = Tab.entries.map { tab ->
-                TabState(
-                    tab = tab,
-                    dataState = DataState.Loading(),
-                    isSelected = tab == Tab.ARTISTS,
-                    sortOption = settingsRepository.getSortOption(tab.mediaType),
-                    viewMode = settingsRepository.viewMode(tab.mediaType).value,
-                )
-            },
+            tabs = buildInitialTabs(),
         ),
     )
     val state = _state.asStateFlow()
+
+    private fun buildInitialTabs(): List<TabState> {
+        val stored = settingsRepository.libraryTabsConfig.value
+        // Reconcile: keep stored order/enabled, append any new tabs at the end (enabled).
+        val storedByName = stored?.associate { it.name to it.enabled }.orEmpty()
+        val orderedNames = stored?.map { it.name }?.filter { name ->
+            Tab.entries.any { it.name == name }
+        }.orEmpty()
+        val missing = Tab.entries.map { it.name }.filter { it !in orderedNames }
+        val finalOrder = (orderedNames + missing).map { name -> Tab.valueOf(name) }
+        var firstEnabledAssigned = false
+        return finalOrder.map { tab ->
+            val enabled = storedByName[tab.name] ?: true
+            val isSelected = enabled && !firstEnabledAssigned
+            if (isSelected) firstEnabledAssigned = true
+            TabState(
+                tab = tab,
+                dataState = DataState.Loading(),
+                isSelected = isSelected,
+                enabled = enabled,
+                sortOption = settingsRepository.getSortOption(tab.mediaType),
+                viewMode = settingsRepository.viewMode(tab.mediaType).value,
+            )
+        }
+    }
+
+    fun onTabsConfigChanged(newOrder: List<Pair<Tab, Boolean>>) {
+        // Persist
+        settingsRepository.setLibraryTabsConfig(
+            newOrder.map { (tab, enabled) ->
+                SettingsRepository.LibraryTabPref(name = tab.name, enabled = enabled)
+            },
+        )
+        // Reorder existing TabStates and update enabled flag, preserving their data.
+        _state.update { s ->
+            val byTab = s.tabs.associateBy { it.tab }
+            val reordered = newOrder.mapNotNull { (tab, enabled) ->
+                byTab[tab]?.copy(enabled = enabled)
+            }
+            // If currently selected tab is now disabled, select first enabled.
+            val currentSelected = reordered.find { it.isSelected }
+            val needsReselect = currentSelected == null || !currentSelected.enabled
+            val finalTabs = if (needsReselect) {
+                val firstEnabledTab = reordered.firstOrNull { it.enabled }?.tab
+                reordered.map { it.copy(isSelected = it.tab == firstEnabledTab) }
+            } else {
+                reordered
+            }
+            s.copy(tabs = finalTabs)
+        }
+        // Trigger load for any tab that was just enabled and has no data yet.
+        _state.value.tabs.filter { it.enabled && it.dataState is DataState.Loading }
+            .forEach { triggerLoad(it.tab) }
+    }
+
+    private fun triggerLoad(tab: Tab) {
+        when (tab) {
+            Tab.ARTISTS -> loadArtists()
+            Tab.ALBUMS -> loadAlbums()
+            Tab.TRACKS -> loadTracks()
+            Tab.PLAYLISTS -> loadPlaylists()
+            Tab.AUDIOBOOKS -> loadAudiobooks()
+            Tab.PODCASTS -> loadPodcasts()
+            Tab.RADIOS -> loadRadios()
+            Tab.GENRES -> loadGenres()
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -123,15 +183,8 @@ class LibraryViewModel(
                 if (connection is SessionState.Connected &&
                     connection.dataConnectionState == DataConnectionState.Authenticated
                 ) {
-                    // Load all tabs when authenticated
-                    loadArtists()
-                    loadAlbums()
-                    loadTracks()
-                    loadPlaylists()
-                    loadAudiobooks()
-                    loadPodcasts()
-                    loadRadios()
-                    loadGenres()
+                    // Load only enabled tabs when authenticated.
+                    _state.value.tabs.filter { it.enabled }.forEach { triggerLoad(it.tab) }
                 }
             }
         }
@@ -218,6 +271,18 @@ class LibraryViewModel(
     }
 
     fun onTabSelected(tab: Tab) {
+        // If selecting a currently disabled tab (deep link / coordinator request),
+        // re-enable it AND move it to the bottom of the enabled section so the
+        // "enabled first, disabled last" invariant holds.
+        val current = _state.value.tabs.find { it.tab == tab }
+        if (current != null && !current.enabled) {
+            val newOrder = moveToEnabledBoundary(
+                _state.value.tabs.map { it.tab to it.enabled },
+                target = tab,
+                newEnabled = true,
+            )
+            onTabsConfigChanged(newOrder)
+        }
         _state.update { s ->
             s.copy(tabs = s.tabs.map { it.copy(isSelected = it.tab == tab) })
         }

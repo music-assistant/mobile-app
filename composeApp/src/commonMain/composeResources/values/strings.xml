@@ -42,6 +42,7 @@
     <string name="cd_play_options">Play options</string>
     <string name="cd_toggle_queue">Toggle Queue</string>
     <string name="cd_toggle_view_mode">Toggle view mode</string>
+    <string name="cd_customize_tabs">Customize tabs</string>
     <string name="cd_sort_direction">Sort direction</string>
     <string name="cd_more">More</string>
     <string name="cd_add_to_group">Add to group</string>
@@ -94,6 +95,7 @@
 
     <!-- Library -->
     <string name="library_quick_search">Quick search</string>
+    <string name="library_customize">Customize</string>
     <string name="library_error">Error loading data</string>
     <string name="library_empty">No items found</string>
 

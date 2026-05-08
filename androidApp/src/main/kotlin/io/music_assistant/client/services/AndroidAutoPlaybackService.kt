@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -61,6 +62,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     private val dataSource: MainDataSource by inject()
     private val library: AutoLibrary by inject()
     private val sharedSession: SharedMediaSessionManager by inject()
+    private val settingsRepository: io.music_assistant.client.settings.SettingsRepository by inject()
     private val currentPlayerData = dataSource.localPlayer
     private val mediaNotificationData = currentPlayerData.filterNotNull()
         .map {
@@ -132,7 +134,18 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         dataSource.apiClient.onExternalConsumerActive()
         observeSessionState()
         observeLocalPlayer()
+        observeLibraryTabsConfig()
         ensureNotificationService()
+    }
+
+    // Phone-side Customize Tabs changes must propagate to AA without requiring
+    // a reconnect. Drop the initial value so we don't notify on cold start.
+    private fun observeLibraryTabsConfig() {
+        scope.launch {
+            settingsRepository.libraryTabsConfig
+                .drop(1)
+                .collect { notifyChildrenChanged(MediaIds.ROOT) }
+        }
     }
 
     private fun createCallback(): MediaSessionCompat.Callback =

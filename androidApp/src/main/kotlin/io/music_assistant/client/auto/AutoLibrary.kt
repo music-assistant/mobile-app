@@ -24,7 +24,9 @@ import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
+import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
@@ -46,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap
 class AutoLibrary(
     private val context: Context,
     private val apiClient: ServiceClient,
+    private val settingsRepository: SettingsRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
@@ -110,14 +113,33 @@ class AutoLibrary(
         itemCache.clear()
     }
 
-    private fun rootChildren(): List<MediaItem> = listOf(
-        rootTabItem("Artists", MediaIds.TAB_ARTISTS),
-        rootTabItem("Albums", MediaIds.TAB_ALBUMS),
-        rootTabItem("Playlists", MediaIds.TAB_PLAYLISTS),
-        rootTabItem("Podcasts", MediaIds.TAB_PODCASTS),
-        rootTabItem("Radio", MediaIds.TAB_RADIO),
-        rootTabItem("Audiobooks", MediaIds.TAB_AUDIOBOOKS),
+    // Default order/visibility when the user hasn't customized library tabs in
+    // the phone UI. Tracks/Genres are intentionally not exposed in AA.
+    private val defaultAutoTabs: List<Pair<MediaType, String>> = listOf(
+        MediaType.ARTIST to "Artists",
+        MediaType.ALBUM to "Albums",
+        MediaType.PLAYLIST to "Playlists",
+        MediaType.PODCAST to "Podcasts",
+        MediaType.RADIO to "Radio",
+        MediaType.AUDIOBOOK to "Audiobooks",
     )
+
+    private fun rootChildren(): List<MediaItem> {
+        val titles = defaultAutoTabs.toMap()
+        val supportedTypes = titles.keys
+        val stored = settingsRepository.libraryTabsConfig.value
+        val ordered: List<MediaType> = if (stored == null) {
+            defaultAutoTabs.map { it.first }
+        } else {
+            stored.mapNotNull { pref ->
+                if (!pref.enabled) return@mapNotNull null
+                val tab = runCatching { LibraryViewModel.Tab.valueOf(pref.name) }.getOrNull()
+                    ?: return@mapNotNull null
+                tab.mediaType.takeIf { it in supportedTypes }
+            }
+        }
+        return ordered.map { type -> rootTabItem(titles.getValue(type), MediaIds.tabIdOf(type)) }
+    }
 
     private fun handleTabContent(
         tabId: String,

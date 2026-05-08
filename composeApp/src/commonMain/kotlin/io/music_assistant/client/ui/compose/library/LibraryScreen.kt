@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +67,7 @@ import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
+import musicassistantclient.composeapp.generated.resources.cd_customize_tabs
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_clear
@@ -111,16 +113,29 @@ fun LibraryScreen(
         }
     }
 
-    val selectedTab = state.tabs.find { it.isSelected } ?: state.tabs.first()
+    val visibleTabs = state.tabs.filter { it.enabled }
+    val selectedTab = visibleTabs.find { it.isSelected }
+        ?: visibleTabs.firstOrNull()
+        ?: state.tabs.first()
+
+    var showCustomizeDialog by remember { mutableStateOf(false) }
+    if (showCustomizeDialog) {
+        CustomizeTabsDialog(
+            initialConfig = state.tabs.map { it.tab to it.enabled },
+            onDismissRequest = { showCustomizeDialog = false },
+            onConfirm = viewModel::onTabsConfigChanged,
+        )
+    }
 
     Screen(
         topBar = { scrollBehavior ->
             LibraryTopBar(
-                tabs = state.tabs,
+                tabs = visibleTabs,
                 selectedTab = selectedTab,
                 onTabSelected = viewModel::onTabSelected,
                 viewMode = selectedTab.viewMode,
                 onToggleViewMode = { viewModel.toggleViewMode(selectedTab.tab) },
+                onCustomizeClick = { showCustomizeDialog = true },
                 scrollBehavior = scrollBehavior,
                 onSearchQueryChanged = viewModel::onSearchQueryChanged,
                 onOnlyFavoritesClicked = viewModel::onOnlyFavoritesClicked,
@@ -163,6 +178,7 @@ private fun LibraryTopBar(
     onTabSelected: (LibraryViewModel.Tab) -> Unit,
     viewMode: ViewMode,
     onToggleViewMode: () -> Unit,
+    onCustomizeClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onSearchQueryChanged: (LibraryViewModel.Tab, String) -> Unit,
     onOnlyFavoritesClicked: (LibraryViewModel.Tab) -> Unit,
@@ -212,13 +228,10 @@ private fun LibraryTopBar(
                             )
                         }
                     }
-                    IconButton(onClick = onToggleViewMode) {
+                    IconButton(onClick = onCustomizeClick) {
                         Icon(
-                            imageVector = when (viewMode) {
-                                ViewMode.LIST -> Icons.Default.GridView
-                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-                            },
-                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = stringResource(Res.string.cd_customize_tabs),
                         )
                     }
                 }
@@ -259,6 +272,15 @@ private fun LibraryTopBar(
                         availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
                         onSortChanged = { onSortChanged(selectedTab.tab, it) },
                     )
+                    IconButton(onClick = onToggleViewMode) {
+                        Icon(
+                            imageVector = when (viewMode) {
+                                ViewMode.LIST -> Icons.Default.GridView
+                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                            },
+                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                        )
+                    }
                 }
             }
         },
