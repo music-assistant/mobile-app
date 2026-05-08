@@ -42,46 +42,6 @@ class CutStripShape : Shape {
 }
 
 /**
- * Shape that cuts a circular hole in the center.
- * Used for album vinyl record effect.
- */
-class HoleShape : Shape {
-    override fun createOutline(
-        size: Size,
-        layoutDirection: LayoutDirection,
-        density: Density,
-    ): Outline {
-        val radiusPx = size.width * 0.17f
-        val center = size.width * 0.5f
-
-        // Define the full cover path
-        val coverPath = Path().apply {
-            addRect(Rect(Offset.Zero, size))
-        }
-
-        // Define the hole path
-        val holePath = Path().apply {
-            val rect = Rect(
-                left = center - radiusPx,
-                top = center - radiusPx,
-                right = center + radiusPx,
-                bottom = center + radiusPx,
-            )
-            addOval(oval = rect)
-        }
-
-        // Subtract hole from cover
-        val finalPath = Path.combine(
-            operation = PathOperation.Difference,
-            path1 = coverPath,
-            path2 = holePath,
-        )
-
-        return Outline.Generic(finalPath)
-    }
-}
-
-/**
  * Shape that cuts a vertical strip from the left side.
  * Used for notebook/playlist spiral binding effect.
  */

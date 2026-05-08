@@ -564,10 +564,10 @@ private fun AlbumsTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = contentPadding + PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        columns = GridCells.Adaptive(minSize = 108.dp),
+        contentPadding = contentPadding + PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
         item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
@@ -621,10 +621,10 @@ private fun ArtistsTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = contentPadding + PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        columns = GridCells.Adaptive(minSize = 108.dp),
+        contentPadding = contentPadding + PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
         item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
@@ -681,10 +681,10 @@ private fun PlayablesTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = contentPadding + PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        columns = GridCells.Adaptive(minSize = 108.dp),
+        contentPadding = contentPadding + PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
         item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
@@ -753,8 +753,10 @@ private fun ChaptersTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = contentPadding,
+        columns = GridCells.Adaptive(minSize = 108.dp),
+        contentPadding = contentPadding + PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
         item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }

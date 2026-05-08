@@ -10,6 +10,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -212,7 +213,6 @@ private fun AlbumImage(
         )
 
         val cutStripShape = remember { CutStripShape() }
-        val holeShape = remember { HoleShape() }
 
         Image(
             painter = vinylRecord,
@@ -228,8 +228,7 @@ private fun AlbumImage(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .clip(cutStripShape)
-                .clip(holeShape),
+                .clip(cutStripShape),
         )
     }
 }
@@ -821,16 +820,22 @@ private fun GridItem(
     onLongClick: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .width(96.dp)
-            .then(modifier)
-            .clip(RoundedCornerShape(8.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        content()
+    BoxWithConstraints {
+        val cellWidthModifier = if (constraints.hasBoundedWidth) {
+            Modifier.fillMaxWidth()
+        } else {
+            Modifier.width(108.dp)
+        }
+        Column(
+            modifier = cellWidthModifier
+                .then(modifier)
+                .clip(RoundedCornerShape(8.dp))
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .padding(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            content()
+        }
     }
 }
 

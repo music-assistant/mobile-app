@@ -74,10 +74,10 @@ fun AdaptiveMediaGrid(
     LazyVerticalGrid(
         modifier = modifier,
         state = gridState,
-        columns = GridCells.Adaptive(minSize = 96.dp),
-        contentPadding = contentPadding + PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        columns = GridCells.Adaptive(minSize = 108.dp),
+        contentPadding = contentPadding + PaddingValues(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items(
             items = items,
