@@ -618,7 +618,7 @@ fun AppMediaItem.toMediaDescription(
 ): MediaDescriptionCompat {
     return MediaDescriptionCompat.Builder()
         .setMediaId("${itemId}__${uri}__${mediaType}__$provider")
-        .setTitle((if (favorite == true) "♥ " else "") + title)
+        .setTitle((if (favorite == true) "♥ " else "") + displayName)
         .setSubtitle(subtitle)
         .setMediaUri(uri?.let { Uri.parse(it) })
         .setIconUri(imageInfo?.url(serverUrl)?.let { Uri.parse(it) } ?: defaultIconUri)

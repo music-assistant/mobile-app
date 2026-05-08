@@ -286,7 +286,7 @@ private fun ItemOverflow(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(
-                                    text = playlist.title,
+                                    text = playlist.displayName,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }

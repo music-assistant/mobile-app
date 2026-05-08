@@ -50,10 +50,10 @@ class ItemDetailsTest {
             )
         }
 
-        composeTestRule.onAllNodes(hasText(artist.title)).onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodes(hasText(artist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(albums[0].title)).assertIsDisplayed()
-            onNode(hasText(albums[1].title)).assertIsDisplayed()
+            onNode(hasText(albums[0].displayName)).assertIsDisplayed()
+            onNode(hasText(albums[1].displayName)).assertIsDisplayed()
         }
     }
 
@@ -74,11 +74,11 @@ class ItemDetailsTest {
             )
         }
 
-        composeTestRule.onAllNodes(hasText(album.title)).onFirst().assertIsDisplayed()
-        composeTestRule.onAllNodes(hasText(artist.title)).onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodes(hasText(album.displayName)).onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodes(hasText(artist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(tracks[0].title)).assertIsDisplayed()
-            onNode(hasText(tracks[1].title)).assertIsDisplayed()
+            onNode(hasText(tracks[0].displayName)).assertIsDisplayed()
+            onNode(hasText(tracks[1].displayName)).assertIsDisplayed()
         }
     }
 
@@ -136,12 +136,12 @@ class ItemDetailsTest {
             )
         }
 
-        composeTestRule.onAllNodes(hasText(playlist.title)).onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodes(hasText(playlist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(tracks[0].title)).assertIsDisplayed()
-            onNode(hasText(tracks[0].artists!![0].title)).assertIsDisplayed()
-            onNode(hasText(tracks[1].title)).assertIsDisplayed()
-            onNode(hasText(tracks[1].artists!![0].title)).assertIsDisplayed()
+            onNode(hasText(tracks[0].displayName)).assertIsDisplayed()
+            onNode(hasText(tracks[0].artists!![0].displayName)).assertIsDisplayed()
+            onNode(hasText(tracks[1].displayName)).assertIsDisplayed()
+            onNode(hasText(tracks[1].artists!![0].displayName)).assertIsDisplayed()
         }
     }
 
@@ -162,10 +162,10 @@ class ItemDetailsTest {
             )
         }
 
-        composeTestRule.onAllNodes(hasText(podcast.title)).onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodes(hasText(podcast.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(episodes[0].title)).assertIsDisplayed()
-            onNode(hasText(episodes[1].title)).assertIsDisplayed()
+            onNode(hasText(episodes[0].displayName)).assertIsDisplayed()
+            onNode(hasText(episodes[1].displayName)).assertIsDisplayed()
         }
     }
 
@@ -184,7 +184,7 @@ class ItemDetailsTest {
             )
         }
 
-        composeTestRule.onAllNodes(hasText(audiobook.title)).onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodes(hasText(audiobook.displayName)).onFirst().assertIsDisplayed()
         val chapters = audiobook.chapters!!
         composeTestRule.inScrollable("LazyVerticalGrid") {
             onNode(hasText(chapters[0].name)).assertIsDisplayed()

@@ -635,7 +635,7 @@ class MainDataSource(
                         NowPlayingSnapshot.Cleared
                     } else {
                         NowPlayingSnapshot.Active(
-                            title = track.title,
+                            title = track.displayName,
                             artist = track.subtitle,
                             album = track.parentName,
                             artworkUrl = track.imageInfo?.url(apiClient.serverBaseUrl.value),

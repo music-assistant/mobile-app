@@ -96,7 +96,7 @@ fun ArtistGridItem(
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.displayName,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -137,7 +137,7 @@ private fun ArtistImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
@@ -175,7 +175,7 @@ fun AlbumGridItem(
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.displayName,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -224,7 +224,7 @@ private fun AlbumImage(
             placeholder = vinylRecord,
             fallback = vinylRecord,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
@@ -266,7 +266,7 @@ fun PlaylistGridItem(
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.displayName,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -346,7 +346,7 @@ private fun PlaylistImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
@@ -379,7 +379,7 @@ fun PodcastGridItem(
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.displayName,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -449,7 +449,7 @@ private fun PodcastImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
@@ -515,7 +515,7 @@ private fun TrackImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
@@ -588,7 +588,7 @@ private fun PodcastEpisodeImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
@@ -673,7 +673,7 @@ private fun RadioImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
@@ -716,7 +716,7 @@ internal fun AudiobookGridItem(
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.displayName,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -777,7 +777,7 @@ private fun AudiobookImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
@@ -790,7 +790,7 @@ private fun AudiobookImage(
 private fun GridPlayableItemLabels(item: PlayableItem) {
     Spacer(Modifier.height(4.dp))
     Text(
-        text = "${item.title}${
+        text = "${item.displayName}${
             item.version
                 ?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""
         }",
@@ -927,7 +927,7 @@ internal fun TrackRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             TrackImage(item, serverUrl)
@@ -952,7 +952,7 @@ internal fun AlbumRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             AlbumImage(item, serverUrl)
@@ -977,7 +977,7 @@ internal fun ArtistRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             ArtistImage(item, serverUrl)
@@ -1002,7 +1002,7 @@ internal fun PlaylistRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             PlaylistImage(item, serverUrl)
@@ -1027,7 +1027,7 @@ internal fun PodcastRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             PodcastImage(item, serverUrl)
@@ -1052,7 +1052,7 @@ internal fun PodcastEpisodeRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             PodcastEpisodeImage(item, serverUrl)
@@ -1081,7 +1081,7 @@ internal fun RadioRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             RadioImage(item, serverUrl)
@@ -1119,7 +1119,7 @@ fun GenreGridItem(
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.displayName,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1160,7 +1160,7 @@ private fun GenreImage(
             placeholder = placeholder,
             fallback = placeholder,
             model = item.imageInfo?.url(serverUrl),
-            contentDescription = item.title,
+            contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
@@ -1178,7 +1178,7 @@ internal fun GenreRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             GenreImage(item, serverUrl)
@@ -1203,7 +1203,7 @@ internal fun AudiobookRowItem(
 ) {
     RowItem(
         modifier = modifier,
-        name = item.title,
+        name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
             AudiobookImage(item, serverUrl)
