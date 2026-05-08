@@ -420,9 +420,9 @@ private fun ExpandedPlayerPage(
                                 playerAction(
                                     player,
                                     if (player.childrenBinds.none { it.isBound }) {
-                                        PlayerAction.GroupToggleMute(player.player.currentMuteState)
-                                    } else {
                                         PlayerAction.ToggleMute(player.player.currentMuteState)
+                                    } else {
+                                        PlayerAction.GroupToggleMute(player.player.currentMuteState)
                                     },
                                 )
                             },
@@ -475,10 +475,8 @@ private fun ExpandedPlayerPage(
                             )
                         },
                     )
-                    Text(
-                        modifier = Modifier.width(24.dp),
-                        text = currentVolume.roundToInt().toString(),
-                        textAlign = TextAlign.End,
+                    VolumeValue(
+                        volume = currentVolume.roundToInt(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = controlTint,
                     )

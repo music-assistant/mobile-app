@@ -434,10 +434,9 @@ private fun VolumeRow(
                 )
             },
         )
-        Text(
-            modifier = Modifier.width(24.dp).alphaOn(enabled),
-            text = currentVolume.roundToInt().toString(),
-            textAlign = TextAlign.End,
+        VolumeValue(
+            modifier = Modifier.alphaOn(enabled),
+            volume = currentVolume.roundToInt(),
             style = MaterialTheme.typography.labelMedium,
         )
     }
