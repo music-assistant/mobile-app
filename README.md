@@ -23,6 +23,8 @@ The goal of this app is to provide an iOS and Android native feeling experience 
 - Start browsing library
 - Open settings
 
+Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you can enjoy your music easily and safely through your car’s infotainment system. These in-car experiences are dedicated exclusively to the local player; managing external players is out of scope.
+
 ## Current set of features:
 
 ### Disclaimer: This app is not intended to provide offline playback
