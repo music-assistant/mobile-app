@@ -60,7 +60,7 @@ class SiriIntentHandler: NSObject {
             os_log("donatePlayed: skipping non-mappable item kind=%{public}@ name=%{public}@",
                    log: log, type: .info,
                    String(describing: Swift.type(of: item)),
-                   item.title)
+                   item.displayName)
             return
         }
         // Server id is the namespace for `itemId`, which is server-relative.
@@ -83,7 +83,7 @@ class SiriIntentHandler: NSObject {
             playbackSpeed: nil,
             mediaSearch: nil
         )
-        intent.suggestedInvocationPhrase = "Play \(item.title)"
+        intent.suggestedInvocationPhrase = "Play \(item.displayName)"
 
         let interaction = INInteraction(
             intent: intent,
@@ -155,7 +155,7 @@ class SiriIntentHandler: NSObject {
 
         return INMediaItem(
             identifier: item.itemId,
-            title: item.title,
+            title: item.displayName,
             type: type,
             artwork: nil,
             artist: item.subtitle
@@ -289,7 +289,7 @@ class SiriIntentHandler: NSObject {
             // tracks/albums, descriptive labels otherwise). This lets an
             // artist token in the query lift the album that names that
             // artist, without dragging unrelated items down.
-            let itemTokens = Self.tokens(item.title)
+            let itemTokens = Self.tokens(item.displayName)
                 .union(Self.tokens(item.subtitle ?? ""))
             let overlap = queryTokens.intersection(itemTokens).count
             let score = Double(overlap) / Double(queryTokens.count)
@@ -307,7 +307,7 @@ class SiriIntentHandler: NSObject {
         if let best = best {
             os_log("bestMatch: picked name=%{public}@ kind=%{public}@ score=%{public}.2f from %d candidates (type-filtered=%d, mappable=%d)",
                    log: log, type: .info,
-                   best.item.title,
+                   best.item.displayName,
                    String(describing: Swift.type(of: best.item)),
                    best.score,
                    candidates.count,
@@ -400,7 +400,7 @@ extension SiriIntentHandler: INPlayMediaIntentHandling {
                 return
             }
             os_log("PlayMedia.resolveMediaItems: best match name=%{public}@ kind=%{public}@ — .success",
-                   log: log, type: .info, best.title, String(describing: type(of: best)))
+                   log: log, type: .info, best.displayName, String(describing: type(of: best)))
             completion([.success(with: resolved)])
         }
     }
@@ -466,7 +466,7 @@ extension SiriIntentHandler: INPlayMediaIntentHandling {
                 return
             }
             os_log("PlayMedia.handle: matched name=%{public}@ kind=%{public}@",
-                   log: log, type: .info, match.title, String(describing: type(of: match)))
+                   log: log, type: .info, match.displayName, String(describing: type(of: match)))
             Self.dispatchPlay(match, completion: completion)
         }
     }
@@ -480,7 +480,7 @@ extension SiriIntentHandler: INPlayMediaIntentHandling {
         let dispatched = KmpHelper.shared.playOnLocalPlayer(item: item)
         os_log("PlayMedia.dispatchPlay: name=%{public}@ dispatched=%{public}@",
                log: log, type: .info,
-               item.title,
+               item.displayName,
                dispatched ? "true" : "false")
         if dispatched {
             donatePlayed(item)
@@ -684,7 +684,7 @@ extension SiriIntentHandler: INUpdateMediaAffinityIntentHandling {
             os_log("Affinity.handle: applying favorite=%{public}@ to name=%{public}@ kind=%{public}@ dispatched=%{public}@",
                    log: log, type: .info,
                    favorite ? "true" : "false",
-                   match.title,
+                   match.displayName,
                    String(describing: Swift.type(of: match)),
                    dispatched ? "true" : "false")
             // setFavorite returns false synchronously when the request can't

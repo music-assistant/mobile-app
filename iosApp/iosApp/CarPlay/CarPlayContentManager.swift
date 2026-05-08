@@ -149,7 +149,7 @@ class CarPlayContentManager {
     // MARK: - Helpers
     
     private func mapToCPListItem(_ item: AppMediaItem) -> CPListItem? {
-        let title = item.title
+        let title = item.displayName
         let subtitle = item.subtitle
 
         let listItem = CPListItem(text: title, detailText: subtitle)

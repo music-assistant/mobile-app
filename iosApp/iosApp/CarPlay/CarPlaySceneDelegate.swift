@@ -317,7 +317,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 let displayItems = Array(folderItems.prefix(maxImages))
                 var images = Array(repeating: placeholder, count: displayItems.count)
 
-                let row = CPListImageRowItem(text: folder.title, images: images)
+                let row = CPListImageRowItem(text: folder.displayName, images: images)
                 row.listImageRowHandler = { [weak self] _, index, completion in
                     guard let self = self else { completion(); return }
                     // Recommendation rows retain "tap to play" for every type;
@@ -463,8 +463,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func pushAlbumsForArtist(_ artist: AppMediaItem.Artist) {
         pushDrilldown(
-            title: "Albums by \(artist.title)",
-            emptyText: "No albums for \(artist.title)"
+            title: "Albums by \(artist.displayName)",
+            emptyText: "No albums for \(artist.displayName)"
         ) { completion in
             CarPlayContentManager.shared.fetchAlbumsForArtist(artist, completion: completion)
         }
@@ -472,7 +472,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func pushTracksForAlbum(_ album: AppMediaItem.Album) {
         pushDrilldown(
-            title: album.title,
+            title: album.displayName,
             emptyText: "No tracks in this album"
         ) { completion in
             CarPlayContentManager.shared.fetchTracksForAlbum(album, completion: completion)
@@ -481,7 +481,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func pushTracksForPlaylist(_ playlist: AppMediaItem.Playlist) {
         pushDrilldown(
-            title: playlist.title,
+            title: playlist.displayName,
             emptyText: "No tracks in this playlist"
         ) { completion in
             CarPlayContentManager.shared.fetchTracksForPlaylist(playlist, completion: completion)
