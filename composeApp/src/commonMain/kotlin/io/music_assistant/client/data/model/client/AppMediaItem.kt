@@ -126,7 +126,7 @@ abstract class AppMediaItem(
         val provider: String,
     ) {
         fun url(serverUrl: String?): String? =
-            path.takeIf { isRemotelyAccessible }
+            path.takeIf { isRemotelyAccessible && it.startsWith("https") }
                 ?: serverUrl?.let { server ->
                     return URLBuilder(server).apply {
                         // Append the static path segment
