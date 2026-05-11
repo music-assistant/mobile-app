@@ -527,5 +527,4 @@ class WebRTCConnectionManager(
 
         currentSessionId = null
     }
-
 }
