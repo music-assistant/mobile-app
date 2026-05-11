@@ -75,9 +75,12 @@ expect class PeerConnectionWrapper() {
     /**
      * Create SDP offer to send to remote peer via signaling.
      *
+     * @param iceRestart If true, regenerates ICE ufrag/pwd so the remote peer performs
+     *   a fresh ICE gathering pass. Used to recover an existing connection whose
+     *   underlying network path changed (e.g. WiFi → mobile).
      * @return SessionDescription with type "offer" and SDP string
      */
-    suspend fun createOffer(): SessionDescription
+    suspend fun createOffer(iceRestart: Boolean = false): SessionDescription
 
     /**
      * Set remote peer's SDP answer received via signaling.

@@ -39,6 +39,7 @@ class WebRTCTransport(
     override val messages = _messages.asSharedFlow()
 
     private var manager: WebRTCConnectionManager? = null
+    private var signalingClient: SignalingClient? = null
     private var connectionJob: Job? = null
     private var messageListenerJob: Job? = null
     private var stateMonitorJob: Job? = null
@@ -150,6 +151,7 @@ class WebRTCTransport(
             messageListenerJob?.cancel()
             stateMonitorJob?.cancel()
             cleanupManager()
+            closeSignaling() // forced reconnect = full rebuild including signaling
             delay(1500) // wait for signaling server to process disconnect
             logger.i { "Starting fresh WebRTC connection after forced disconnect" }
             startReconnection()
@@ -173,25 +175,47 @@ class WebRTCTransport(
         stateMonitorJob = null
         val mgr = manager
         manager = null
+        val sig = signalingClient
+        signalingClient = null
         if (mgr != null) {
-            scope.launch { mgr.disconnect() }
+            scope.launch {
+                mgr.disconnect(closeSignaling = false)
+                sig?.disconnect()
+            }
+        } else if (sig != null) {
+            scope.launch { sig.disconnect() }
         }
         _state.value = TransportState.Disconnected
     }
 
-    /** Cleans up the current manager and its listener jobs. Does NOT cancel reconnectionJob. */
+    /**
+     * Cleans up the current manager and its listener jobs. Does NOT touch the
+     * signaling client — it is reused across reconnect attempts. Does NOT cancel
+     * reconnectionJob.
+     */
     private suspend fun cleanupManager() {
         messageListenerJob?.cancel()
         messageListenerJob = null
         stateMonitorJob?.cancel()
         stateMonitorJob = null
-        manager?.disconnect()
+        manager?.disconnect(closeSignaling = false)
         manager = null
     }
 
+    private suspend fun closeSignaling() {
+        signalingClient?.disconnect()
+        signalingClient = null
+    }
+
     private fun createManager(): WebRTCConnectionManager {
-        val signalingClient = SignalingClient(httpClient, scope)
-        val mgr = WebRTCConnectionManager(signalingClient, scope)
+        // Reuse the existing signaling client if still alive; rebuild only when dead.
+        val existing = signalingClient?.takeIf { it.isConnected }
+        val sig = existing ?: SignalingClient(httpClient, scope).also { signalingClient = it }
+        logger.d {
+            if (existing != null) "Reusing existing signaling WebSocket"
+            else "Created new SignalingClient"
+        }
+        val mgr = WebRTCConnectionManager(sig, scope)
         logger.d { "Created new WebRTC manager [${mgr.hashCode()}]" }
         return mgr
     }

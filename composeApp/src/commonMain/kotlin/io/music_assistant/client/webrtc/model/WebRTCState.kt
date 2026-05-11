@@ -22,6 +22,19 @@ sealed class WebRTCConnectionState {
         val remoteId: RemoteId,
     ) : WebRTCConnectionState()
 
+    /**
+     * ICE transiently DISCONNECTED. Internal grace window during which WebRTC's own
+     * ICE connectivity checks may auto-heal back to Connected. If the window expires
+     * (or peer state moves to FAILED/CLOSED), the state transitions to Error.
+     *
+     * From the transport's perspective the connection is still alive — do not trigger
+     * reconnection on this state.
+     */
+    data class Recovering(
+        val sessionId: String,
+        val remoteId: RemoteId,
+    ) : WebRTCConnectionState()
+
     /** Connection failed or error occurred */
     data class Error(val error: WebRTCError) : WebRTCConnectionState()
 

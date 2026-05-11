@@ -71,6 +71,10 @@ class SignalingClient(
     private val _connectionState = MutableStateFlow<SignalingState>(SignalingState.Disconnected)
     val connectionState: StateFlow<SignalingState> = _connectionState.asStateFlow()
 
+    /** True iff the WebSocket session is open and live. */
+    val isConnected: Boolean
+        get() = session?.isActive == true && _connectionState.value is SignalingState.Connected
+
     private val _incomingMessages = MutableSharedFlow<SignalingMessage>(extraBufferCapacity = 50)
     val incomingMessages: SharedFlow<SignalingMessage> = _incomingMessages.asSharedFlow()
 

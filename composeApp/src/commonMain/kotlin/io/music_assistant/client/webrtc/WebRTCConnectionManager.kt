@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.TimeSource
 
 /**
  * Manages WebRTC connection lifecycle and orchestrates signaling + peer connection.
@@ -84,6 +85,7 @@ class WebRTCConnectionManager(
     private var messageListenerJob: Job? = null
     private var dataChannelStateJob: Job? = null
     private var connectionTimeoutJob: Job? = null
+    private var recoveryTimeoutJob: Job? = null
     private var currentSessionId: String? = null
     private var currentRemoteId: RemoteId? = null
 
@@ -145,11 +147,16 @@ class WebRTCConnectionManager(
 
     /**
      * Disconnect from WebRTC connection and cleanup resources.
+     *
+     * @param closeSignaling if true, also closes the shared SignalingClient WebSocket.
+     *   Pass false when the signaling session is owned by an outer scope and should
+     *   be reused across reconnect attempts.
      */
-    suspend fun disconnect() = mutex.withLock {
-        logger.i { "Disconnecting WebRTC connection" }
+    suspend fun disconnect(closeSignaling: Boolean = true) = mutex.withLock {
+        logger.i { "Disconnecting WebRTC connection (closeSignaling=$closeSignaling)" }
         _connectionState.value = WebRTCConnectionState.Disconnecting
         cleanup()
+        if (closeSignaling) signalingClient.disconnect()
         _connectionState.value = WebRTCConnectionState.Idle
     }
 
@@ -168,6 +175,12 @@ class WebRTCConnectionManager(
      */
     private fun startListeningToSignaling() {
         signalingMessageListenerJob = scope.launch {
+            // Mirror signaling connection state to logs for reconnection diagnostics.
+            launch {
+                signalingClient.connectionState.collect { sigState ->
+                    logger.i { "Signaling state: $sigState" }
+                }
+            }
             signalingClient.incomingMessages.collect { message ->
                 handleSignalingMessage(message)
             }
@@ -179,6 +192,25 @@ class WebRTCConnectionManager(
      */
     private suspend fun handleSignalingMessage(message: SignalingMessage) {
         logger.d { "Received signaling message: ${message.type}" }
+
+        // The SignalingClient WebSocket is reused across reconnect attempts, so stale
+        // session-bearing messages from a previous session may arrive at a new manager
+        // before its own Connected response. Drop them by sessionId.
+        val incomingSession = when (message) {
+            is SignalingMessage.Answer -> message.sessionId
+            is SignalingMessage.IceCandidate -> message.sessionId
+            is SignalingMessage.Error -> message.sessionId
+            is SignalingMessage.PeerDisconnected -> message.sessionId
+            else -> null
+        }
+        if (incomingSession != null && currentSessionId != null && incomingSession != currentSessionId) {
+            logger.d { "Dropping stale ${message.type} for session $incomingSession (current=$currentSessionId)" }
+            return
+        }
+        if (incomingSession != null && currentSessionId == null && message !is SignalingMessage.Connected) {
+            logger.d { "Dropping pre-session ${message.type} (no current session yet)" }
+            return
+        }
 
         when (message) {
             is SignalingMessage.Connected -> handleConnected(message)
@@ -266,29 +298,45 @@ class WebRTCConnectionManager(
             // Monitor connection state for failures
             connectionStateJob = scope.launch {
                 try {
+                    var lastTransition = TimeSource.Monotonic.markNow()
+                    var prevState: PeerConnectionStateValue? = null
                     pc.connectionState.collect { state ->
-                        logger.d { "Peer connection state: $state" }
+                        val deltaMs = lastTransition.elapsedNow().inWholeMilliseconds
+                        logger.i { "PC state: ${prevState ?: "<initial>"} → $state (+${deltaMs}ms)" }
+                        lastTransition = TimeSource.Monotonic.markNow()
+                        prevState = state
                         when (state) {
                             PeerConnectionStateValue.FAILED -> {
-                                logger.e { "ICE connection failed" }
-                                _connectionState.value = WebRTCConnectionState.Error(
-                                    WebRTCError.ConnectionError("ICE connection failed"),
-                                )
-                                cleanup()
+                                logger.w { "ICE FAILED — attempting ICE restart before giving up" }
+                                tryIceRestartOrFail("ICE connection failed")
                             }
 
                             PeerConnectionStateValue.DISCONNECTED -> {
-                                logger.w { "ICE connection disconnected" }
-                                // Treat disconnected as immediate failure to enable fast reconnection
-                                // Even if temporary, reconnection will succeed quickly
-                                _connectionState.value = WebRTCConnectionState.Error(
-                                    WebRTCError.ConnectionError("ICE connection disconnected"),
-                                )
-                                cleanup()
+                                logger.w { "ICE DISCONNECTED — entering recovery (grace=${ICE_RECOVERY_GRACE_MS}ms, will attempt ICE restart)" }
+                                tryIceRestartOrFail("ICE connection disconnected")
+                            }
+
+                            PeerConnectionStateValue.CONNECTED -> {
+                                // Recovered (either passively or via ICE restart) before the grace window expired
+                                if (recoveryTimeoutJob != null) {
+                                    logger.i { "ICE recovered — cancelling grace window" }
+                                    recoveryTimeoutJob?.cancel()
+                                    recoveryTimeoutJob = null
+                                    val remote = currentRemoteId
+                                    val session = currentSessionId
+                                    if (remote != null && session != null) {
+                                        _connectionState.value = WebRTCConnectionState.Connected(
+                                            sessionId = session,
+                                            remoteId = remote,
+                                        )
+                                    }
+                                }
                             }
 
                             PeerConnectionStateValue.CLOSED -> {
-                                logger.i { "ICE connection closed" }
+                                logger.i { "PC CLOSED" }
+                                recoveryTimeoutJob?.cancel()
+                                recoveryTimeoutJob = null
                                 if (_connectionState.value !is WebRTCConnectionState.Idle) {
                                     _connectionState.value = WebRTCConnectionState.Error(
                                         WebRTCError.ConnectionError("ICE connection closed"),
@@ -298,7 +346,7 @@ class WebRTCConnectionManager(
                             }
 
                             else -> {
-                                // Normal states (NEW, CONNECTING, CONNECTED)
+                                // Normal states (NEW, CONNECTING)
                             }
                         }
                     }
@@ -514,6 +562,9 @@ class WebRTCConnectionManager(
         connectionTimeoutJob?.cancel()
         connectionTimeoutJob = null
 
+        recoveryTimeoutJob?.cancel()
+        recoveryTimeoutJob = null
+
         dataChannel?.close()
         dataChannel = null
 
@@ -523,8 +574,91 @@ class WebRTCConnectionManager(
         peerConnection?.close()
         peerConnection = null
 
-        signalingClient.disconnect()
-
+        // Signaling lifecycle is owned by the outer Transport so it can survive PC failures
+        // and be reused across reconnect attempts. Use disconnect(closeSignaling=true) to
+        // tear it down explicitly.
         currentSessionId = null
+    }
+
+    /**
+     * Attempt to recover the existing peer connection via ICE restart over the still-alive
+     * signaling session. Falls through to full failure (and cleanup) if the recovery window
+     * expires without reaching CONNECTED.
+     *
+     * Same path is used for both DISCONNECTED and FAILED — DISCONNECTED is just an earlier
+     * signal; FAILED can also recover via ICE restart if the underlying signaling is alive.
+     */
+    private fun tryIceRestartOrFail(errorMessage: String) {
+        if (recoveryTimeoutJob != null) {
+            logger.d { "Recovery already in progress — skipping duplicate trigger" }
+            return
+        }
+        val remote = currentRemoteId
+        val session = currentSessionId
+        val pc = peerConnection
+        if (remote == null || session == null || pc == null) {
+            logger.w { "No active session/PC to recover — failing immediately" }
+            _connectionState.value = WebRTCConnectionState.Error(
+                WebRTCError.ConnectionError(errorMessage),
+            )
+            scope.launch { cleanup() }
+            return
+        }
+
+        _connectionState.value = WebRTCConnectionState.Recovering(
+            sessionId = session,
+            remoteId = remote,
+        )
+
+        val recoveryStart = TimeSource.Monotonic.markNow()
+        recoveryTimeoutJob = scope.launch {
+            // Fire ICE restart attempt. The signaling client may be dead (network blip) —
+            // we still set up the timeout and let the restart fail loudly. If the network
+            // returns within the window and the connection recovers naturally, we'll see
+            // CONNECTED and cancel this timeout.
+            launch {
+                try {
+                    if (!signalingClient.isConnected) {
+                        logger.w { "Cannot send ICE restart offer: signaling not connected" }
+                        return@launch
+                    }
+                    logger.i { "Sending ICE restart offer for session=$session" }
+                    val offer = pc.createOffer(iceRestart = true)
+                    signalingClient.sendMessage(
+                        SignalingMessage.Offer(
+                            remoteId = remote.rawId,
+                            sessionId = session,
+                            data = offer,
+                        ),
+                    )
+                    logger.i { "ICE restart offer sent — awaiting server answer + new ICE pairing" }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    logger.e(e) { "ICE restart attempt threw — will rely on grace window" }
+                }
+            }
+
+            delay(ICE_RECOVERY_GRACE_MS)
+            recoveryTimeoutJob = null
+            if (_connectionState.value is WebRTCConnectionState.Recovering) {
+                logger.w {
+                    "Recovery window expired (${recoveryStart.elapsedNow().inWholeMilliseconds}ms) — failing connection"
+                }
+                _connectionState.value = WebRTCConnectionState.Error(
+                    WebRTCError.ConnectionError(errorMessage),
+                )
+                cleanup()
+            }
+        }
+    }
+
+    companion object {
+        /**
+         * Recovery window: ICE restart is attempted at the start, and ICE must reach
+         * CONNECTED within this window or we give up and full-reconnect. Sized to cover
+         * offer/answer round-trip + new ICE gathering + connectivity checks on the new
+         * network interface (e.g. WiFi → mobile handoff).
+         */
+        private const val ICE_RECOVERY_GRACE_MS = 7000L
     }
 }
