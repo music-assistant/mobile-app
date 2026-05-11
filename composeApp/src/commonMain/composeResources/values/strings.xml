@@ -90,7 +90,6 @@
     <string name="search_no_results">No results found</string>
     <string name="search_start">Start searching...</string>
     <string name="search_error">Error loading search results</string>
-    <string name="search_min_chars">Type at least 3 characters to search</string>
     <string name="search_query_label">Search query</string>
     <string name="search_in_library_only">In library only</string>
 

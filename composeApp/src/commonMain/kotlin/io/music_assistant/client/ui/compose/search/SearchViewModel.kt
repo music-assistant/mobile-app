@@ -18,12 +18,10 @@ import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -49,6 +47,8 @@ class SearchViewModel(
 
     val searchJob = AtomicReference<Job?>(null)
 
+    private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     private val _state = MutableStateFlow(
         State(
             searchState = SearchState(
@@ -73,14 +73,13 @@ class SearchViewModel(
     val state = _state.asStateFlow()
 
     init {
-        // Debounced search
+        // Explicit-trigger search, debounced for sanity (rapid taps, filter toggles).
         viewModelScope.launch {
-            _state.map { it.searchState }
-                .distinctUntilChanged()
-                .filter { it.query.trim().length > 2 || it.query.isEmpty() }
-                .debounce { Timings.INPUT_DEBOUNCE }
-                .collect { searchState ->
-                    if (searchState.query.isNotEmpty()) {
+            searchTrigger
+                .debounce(Timings.INPUT_DEBOUNCE)
+                .collect {
+                    val searchState = _state.value.searchState
+                    if (searchState.query.isNotBlank()) {
                         performSearch(searchState)
                     } else {
                         _state.update { it.copy(resultsState = DataState.NoData()) }
@@ -109,6 +108,10 @@ class SearchViewModel(
         _state.update { it.copy(searchState = it.searchState.copy(query = query)) }
     }
 
+    fun onSearchTriggered() {
+        searchTrigger.tryEmit(Unit)
+    }
+
     fun onMediaTypeToggled(type: MediaType, isSelected: Boolean) {
         _state.update { state ->
             state.copy(
@@ -123,10 +126,12 @@ class SearchViewModel(
                 ),
             )
         }
+        searchTrigger.tryEmit(Unit)
     }
 
     fun onLibraryOnlyToggled(libraryOnly: Boolean) {
         _state.update { it.copy(searchState = it.searchState.copy(libraryOnly = libraryOnly)) }
+        searchTrigger.tryEmit(Unit)
     }
 
     fun onPlayClick(track: AppMediaItem, option: QueueOption, radio: Boolean) {

@@ -1,10 +1,12 @@
 package io.music_assistant.client.ui.compose.search
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -22,13 +24,12 @@ import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 
-private const val MIN_SEARCH_QUERY_LENGTH = 3
-
 @Composable
 fun SearchInput(
     modifier: Modifier = Modifier,
     query: String,
     onQueryChanged: (String) -> Unit,
+    onSearchTriggered: () -> Unit,
     focusManager: FocusManager = LocalFocusManager.current,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -45,30 +46,35 @@ fun SearchInput(
         value = query,
         onValueChange = onQueryChanged,
         maxLines = 1,
-        label = {
-            Text(
-            if (query.trim().length < MIN_SEARCH_QUERY_LENGTH) {
-                stringResource(
-                    Res.string.search_min_chars,
-                )
-            } else {
-                stringResource(Res.string.search_query_label)
-            },
-        )
-        },
-        trailingIcon = if (query.isNotEmpty()) {
-            {
+        label = { Text(stringResource(Res.string.search_query_label)) },
+        trailingIcon = {
+            Row {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChanged("") }) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = stringResource(Res.string.common_clear),
+                        )
+                    }
+                }
                 IconButton(
-                onClick = { onQueryChanged("") },
-            ) { Icon(Icons.Default.Clear, contentDescription = stringResource(Res.string.common_clear)) }
+                    onClick = {
+                        focusManager.clearFocus()
+                        onSearchTriggered()
+                    },
+                    enabled = query.isNotBlank(),
+                ) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = stringResource(Res.string.search_title),
+                    )
+                }
             }
-        } else {
-            null
         },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {
-            onQueryChanged(query)
             focusManager.clearFocus()
+            onSearchTriggered()
         }),
     )
 }

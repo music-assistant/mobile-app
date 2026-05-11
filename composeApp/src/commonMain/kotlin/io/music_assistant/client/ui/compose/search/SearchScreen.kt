@@ -93,6 +93,7 @@ fun SearchScreen(
                 state.searchState,
                 scrollBehavior = scrollBehaviour,
                 onQueryChanged = viewModel::onQueryChanged,
+                onSearchTriggered = viewModel::onSearchTriggered,
                 onMediaTypeToggled = viewModel::onMediaTypeToggled,
                 onLibraryOnlyToggled = viewModel::onLibraryOnlyToggled,
             )
@@ -143,6 +144,7 @@ private fun SearchTopBar(
     searchState: SearchViewModel.SearchState,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onQueryChanged: (String) -> Unit,
+    onSearchTriggered: () -> Unit,
     onMediaTypeToggled: (MediaType, Boolean) -> Unit,
     onLibraryOnlyToggled: (Boolean) -> Unit,
 ) {
@@ -161,6 +163,7 @@ private fun SearchTopBar(
                     modifier = modifier,
                     query = searchState.query,
                     onQueryChanged = onQueryChanged,
+                    onSearchTriggered = onSearchTriggered,
                 )
 
                 // Search filters (always visible)
