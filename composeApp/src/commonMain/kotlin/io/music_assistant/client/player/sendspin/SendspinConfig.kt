@@ -8,7 +8,7 @@ data class SendspinConfig(
     val clientId: String,
     val deviceName: String,
     val enabled: Boolean = true,
-    val bufferCapacityMicros: Int = 500_000, // 500ms
+    val bufferCapacityMicros: Int = DEFAULT_BUFFER_CAPACITY_MICROS,
     val codecPreference: Codec,
 
     // Server connection settings
@@ -39,4 +39,10 @@ data class SendspinConfig(
 
     val isValid: Boolean
         get() = enabled && serverHost.isNotEmpty() && deviceName.isNotEmpty()
+
+    companion object {
+        // Advertised to server in client/hello; controls how much audio it may pre-push.
+        // Deep prebuffer lets short network drops pass without playback hiccups.
+        const val DEFAULT_BUFFER_CAPACITY_MICROS: Int = 10_000_000 // 10s
+    }
 }
