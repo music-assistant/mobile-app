@@ -39,20 +39,57 @@ class WebRTCTransport(
     override val messages = _messages.asSharedFlow()
 
     private var manager: WebRTCConnectionManager? = null
-    private var signalingClient: SignalingClient? = null
     private var connectionJob: Job? = null
     private var messageListenerJob: Job? = null
     private var stateMonitorJob: Job? = null
     private var reconnectionJob: Job? = null
+    private var networkWatchJob: Job? = null
 
     val sendspinDataChannel: DataChannelWrapper?
         get() = manager?.sendspinDataChannel
 
     override fun connect() {
         connectionJob?.cancel()
+        startNetworkWatchIfNeeded()
         connectionJob = scope.launch {
             _state.value = TransportState.Connecting
             connectInternal(isReconnect = false)
+        }
+    }
+
+    /**
+     * Observes the OS-level default network. When it transitions from available → lost
+     * while we have a live connection, proactively tear down and kick reconnection
+     * instead of waiting for libwebrtc's ICE keepalive to notice (~6s on Android).
+     *
+     * Does NOT catch mid-call link-quality degradation (weak signal, packet loss) — the
+     * OS still considers the interface up in that case; only ICE/keepalive timeouts fire.
+     */
+    private fun startNetworkWatchIfNeeded() {
+        val net = networkAvailable ?: return
+        if (networkWatchJob?.isActive == true) return
+        networkWatchJob = scope.launch {
+            var wasAvailable = net.value
+            net.collect { available ->
+                if (wasAvailable && !available && _state.value is TransportState.Connected) {
+                    logger.w { "Default network lost — proactively aborting connection (skipping libwebrtc ICE timeout)" }
+                    onNetworkLost()
+                }
+                wasAvailable = available
+            }
+        }
+    }
+
+    private fun onNetworkLost() {
+        // Pre-empt the slow path: cancel state monitor, tear down manager, and start the
+        // reconnection loop. The loop gates on networkAvailable, so it waits until a
+        // network is back before attempting.
+        stateMonitorJob?.cancel()
+        messageListenerJob?.cancel()
+        reconnectionJob?.cancel()
+        reconnectionJob = scope.launch {
+            cleanupManager()
+            startReconnection()
         }
     }
 
@@ -151,7 +188,6 @@ class WebRTCTransport(
             messageListenerJob?.cancel()
             stateMonitorJob?.cancel()
             cleanupManager()
-            closeSignaling() // forced reconnect = full rebuild including signaling
             delay(1500) // wait for signaling server to process disconnect
             logger.i { "Starting fresh WebRTC connection after forced disconnect" }
             startReconnection()
@@ -173,49 +209,29 @@ class WebRTCTransport(
         messageListenerJob = null
         stateMonitorJob?.cancel()
         stateMonitorJob = null
+        networkWatchJob?.cancel()
+        networkWatchJob = null
         val mgr = manager
         manager = null
-        val sig = signalingClient
-        signalingClient = null
         if (mgr != null) {
-            scope.launch {
-                mgr.disconnect(closeSignaling = false)
-                sig?.disconnect()
-            }
-        } else if (sig != null) {
-            scope.launch { sig.disconnect() }
+            scope.launch { mgr.disconnect() }
         }
         _state.value = TransportState.Disconnected
     }
 
-    /**
-     * Cleans up the current manager and its listener jobs. Does NOT touch the
-     * signaling client — it is reused across reconnect attempts. Does NOT cancel
-     * reconnectionJob.
-     */
+    /** Cleans up the current manager and its listener jobs. Does NOT cancel reconnectionJob. */
     private suspend fun cleanupManager() {
         messageListenerJob?.cancel()
         messageListenerJob = null
         stateMonitorJob?.cancel()
         stateMonitorJob = null
-        manager?.disconnect(closeSignaling = false)
+        manager?.disconnect()
         manager = null
     }
 
-    private suspend fun closeSignaling() {
-        signalingClient?.disconnect()
-        signalingClient = null
-    }
-
     private fun createManager(): WebRTCConnectionManager {
-        // Reuse the existing signaling client if still alive; rebuild only when dead.
-        val existing = signalingClient?.takeIf { it.isConnected }
-        val sig = existing ?: SignalingClient(httpClient, scope).also { signalingClient = it }
-        logger.d {
-            if (existing != null) "Reusing existing signaling WebSocket"
-            else "Created new SignalingClient"
-        }
-        val mgr = WebRTCConnectionManager(sig, scope)
+        val signalingClient = SignalingClient(httpClient, scope)
+        val mgr = WebRTCConnectionManager(signalingClient, scope)
         logger.d { "Created new WebRTC manager [${mgr.hashCode()}]" }
         return mgr
     }

@@ -133,15 +133,14 @@ actual class PeerConnectionWrapper actual constructor() {
         PeerConnectionState.Closed -> PeerConnectionStateValue.CLOSED
     }
 
-    actual suspend fun createOffer(iceRestart: Boolean): io.music_assistant.client.webrtc.model.SessionDescription {
+    actual suspend fun createOffer(): io.music_assistant.client.webrtc.model.SessionDescription {
         val pc = peerConnection.get() ?: error("Peer connection not initialized")
-        logger.d { "Creating SDP offer (iceRestart=$iceRestart)" }
+        logger.d { "Creating SDP offer" }
 
         // Create offer with options (no audio/video)
         val options = OfferAnswerOptions(
             offerToReceiveAudio = false,
             offerToReceiveVideo = false,
-            iceRestart = if (iceRestart) true else null,
         )
 
         val offer = pc.createOffer(options)
