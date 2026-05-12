@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -184,24 +183,25 @@ fun MainNavigationRoot(
         val bottomPadding = scaffoldContentPadding.calculateBottomPadding()
 
         FloatingBarLayout(
-            modifier = Modifier.padding(bottom = bottomPadding),
             floatingBar = {
                 FloatingBar(
+                    collapsedBottomPadding = bottomPadding,
                     expanded = playerExpanded,
                     onExpand = onExpandPlayer,
-                ) { expanded, contentPadding ->
-                    Players(
-                        playerPagerState = playerPagerState,
-                        state = playersState,
-                        serverUrl = serverUrl,
-                        homeScreenViewModel = viewModel,
-                        actionsViewModel = actionsViewModel,
-                        expanded = expanded,
-                        onClose = { playerExpanded = false },
-                        contentPadding = contentPadding,
-                        backStack = multiBackStack,
-                    )
-                }
+                    { expanded, contentPadding ->
+                        Players(
+                            playerPagerState = playerPagerState,
+                            state = playersState,
+                            serverUrl = serverUrl,
+                            homeScreenViewModel = viewModel,
+                            actionsViewModel = actionsViewModel,
+                            expanded = expanded,
+                            onClose = { playerExpanded = false },
+                            contentPadding = contentPadding,
+                            backStack = multiBackStack,
+                        )
+                    },
+                )
             },
         ) { floatingBarContentPadding ->
             Box(

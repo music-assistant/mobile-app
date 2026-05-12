@@ -317,7 +317,7 @@ private fun ExpandedPlayerPage(
 ) {
     val isLargeScreen = WindowClass.isAtLeastLarge()
     Column(
-        modifier = Modifier.padding(top = 4.dp),
+        modifier = Modifier.padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {

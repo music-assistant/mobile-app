@@ -92,7 +92,7 @@ fun CollapsibleQueue(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = if (isQueueExpanded) 0.dp else 16.dp)
+            .padding(horizontal = 16.dp)
             .animateContentSize(),
     ) {
         // Action buttons (visible when expanded and has items)
