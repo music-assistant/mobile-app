@@ -48,8 +48,10 @@ data class MediaNotificationData(
             name = playerData.player.currentMedia?.title,
             artist = playerData.player.currentMedia?.artist,
             album = playerData.player.currentMedia?.album,
-            repeatMode = playerData.queueInfo?.repeatMode,
-            shuffleEnabled = playerData.queueInfo?.shuffleEnabled,
+            repeatMode = playerData.queueInfo?.repeatMode
+                ?.takeIf { playerData.queueInfo?.isDynamic != true },
+            shuffleEnabled = playerData.queueInfo?.shuffleEnabled
+                ?.takeIf { playerData.queueInfo?.isDynamic != true },
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
             elapsedTime = effectiveElapsedSec?.toLong()?.let { it * 1000 },

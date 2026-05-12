@@ -316,7 +316,8 @@ abstract class AppMediaItem(
 //        timestampAdded: Long?,
 //        timestampModified: Long?,
         // val owner: String?,
-        val isEditable: Boolean?,
+        val isEditable: Boolean,
+        val isDynamic: Boolean,
     ) : AppMediaItem(
         itemId = itemId,
         provider = provider,
@@ -328,7 +329,7 @@ abstract class AppMediaItem(
         sortName = sortName,
         uri = uri,
         image = image,
-        canStartRadio = true,
+        canStartRadio = !isDynamic,
     ) {
         override val subtitle = "Playlist"
     }
@@ -567,7 +568,8 @@ abstract class AppMediaItem(
 //                    timestampAdded = timestampAdded,
 //                    timestampModified = timestampModified,
 //                    owner = owner,
-                    isEditable = isEditable,
+                    isEditable = isEditable == true,
+                    isDynamic = isDynamic == true,
                 )
 
                 MediaType.FOLDER -> RecommendationFolder(

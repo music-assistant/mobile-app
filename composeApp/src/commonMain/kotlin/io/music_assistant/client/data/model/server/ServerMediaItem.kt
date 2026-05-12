@@ -40,6 +40,7 @@ data class ServerMediaItem(
     // Playlist only
     // @SerialName("owner") val owner: String? = null,
     @SerialName("is_editable") val isEditable: Boolean? = null,
+    @SerialName("is_dynamic") val isDynamic: Boolean? = null,
     // Track only
     @SerialName("duration") val duration: Double? = null,
     // @SerialName("isrc") val isrc: String? = null,

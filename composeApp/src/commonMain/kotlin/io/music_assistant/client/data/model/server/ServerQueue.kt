@@ -34,4 +34,5 @@ data class ServerQueue(
     // @SerialName("radio_source") val radioSource: List<String>,
     // @SerialName("flow_mode") val flowMode: Boolean,
     // @SerialName("resume_pos") val resumePos: Double?
+    @SerialName("is_dynamic") val isDynamic: Boolean? = null,
 )

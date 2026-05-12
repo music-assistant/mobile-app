@@ -70,7 +70,7 @@ fun PlayerControls(
                     },
                     tint = tint,
                     size = smallButtonSize,
-                    enabled = playerEnabled && buttonsEnabled,
+                    enabled = playerEnabled && buttonsEnabled && !it.isDynamic,
                 ) {
                     playerAction(
                         playerData,
@@ -136,11 +136,11 @@ fun PlayerControls(
                         RepeatMode.ALL -> RepeatOnIcon
                         RepeatMode.OFF,
                         null,
-                        -> RepeatOffIcon
+                            -> RepeatOffIcon
                     },
                     tint = tint,
                     size = smallButtonSize,
-                    enabled = playerEnabled && buttonsEnabled && repeatMode != null,
+                    enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamic,
                 ) {
                     repeatMode?.let {
                         playerAction(
@@ -181,7 +181,11 @@ private fun ActionButton(
 
 @Preview
 @Composable
-private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = true, showSkipBack: Boolean = true) {
+private fun Preview(
+    showAdditionButtons: Boolean = true,
+    showSkip: Boolean = true,
+    showSkipBack: Boolean = true,
+) {
     MaterialTheme {
         PlayerControls(
             playerData = PlayerDataFixtures.playerData(),

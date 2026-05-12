@@ -89,7 +89,8 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            isEditable = null,
+            isEditable = false,
+            isDynamic = false,
             image = null,
         )
     }

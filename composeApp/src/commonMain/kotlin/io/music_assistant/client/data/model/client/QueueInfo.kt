@@ -17,6 +17,7 @@ data class QueueInfo(
      */
     val elapsedTimeLastUpdated: Double?,
     val currentItem: QueueTrack?,
+    val isDynamic: Boolean,
 ) {
     companion object Companion {
         fun ServerQueue.toQueue() = QueueInfo(
@@ -27,6 +28,7 @@ data class QueueInfo(
             elapsedTime = elapsedTime,
             elapsedTimeLastUpdated = elapsedTimeLastUpdated,
             currentItem = currentItem?.toQueueTrack(),
+            isDynamic = isDynamic == true,
         )
     }
 }

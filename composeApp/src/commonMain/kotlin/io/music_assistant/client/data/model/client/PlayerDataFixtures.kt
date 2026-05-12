@@ -27,6 +27,7 @@ object PlayerDataFixtures {
                         elapsedTime = 100.0,
                         elapsedTimeLastUpdated = null,
                         currentItem = null,
+                        isDynamic = false,
                     ),
                     items = DataState.NoData(),
                 ),
@@ -103,6 +104,7 @@ object PlayerDataFixtures {
             elapsedTime = 100.0,
             elapsedTimeLastUpdated = null,
             currentItem = first(),
+            isDynamic = false,
         )
 
         return Queue(info = queueInfo, items = DataState.Data(this))

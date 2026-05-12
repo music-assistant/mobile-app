@@ -711,7 +711,7 @@ private fun PlayablesTabContent(
                                 viewMode = viewMode,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = playlistActions,
-                                onRemoveFromPlaylist = if (parentItem is AppMediaItem.Playlist && parentItem.isEditable == true) {
+                                onRemoveFromPlaylist = if (parentItem is AppMediaItem.Playlist && parentItem.isEditable) {
                                     { onRemoveFromPlaylist(parentItem.itemId, index) }
                                 } else {
                                     null

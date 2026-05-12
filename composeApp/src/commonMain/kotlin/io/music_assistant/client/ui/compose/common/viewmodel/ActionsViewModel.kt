@@ -64,7 +64,7 @@ class ActionsViewModel(
         return result.resultAs<List<ServerMediaItem>>()
             ?.toAppMediaItemList()
             ?.filterIsInstance<AppMediaItem.Playlist>()
-            ?.filter { it.isEditable == true }
+            ?.filter { it.isEditable }
             ?: emptyList()
     }
 
