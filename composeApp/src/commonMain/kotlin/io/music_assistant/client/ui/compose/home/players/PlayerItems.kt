@@ -164,6 +164,7 @@ fun CompactPlayerItem(
             showAdditionalButtons = showAdditionalControls,
             mainButtonSize = 48.dp,
             showSkip = true,
+            showSkipBack = onSelectPlayer != null,
             tint = colors.controlTint,
         )
 

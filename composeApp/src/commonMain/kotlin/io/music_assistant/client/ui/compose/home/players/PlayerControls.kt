@@ -46,6 +46,7 @@ fun PlayerControls(
     showAdditionalButtons: Boolean = true,
     mainButtonSize: Dp,
     showSkip: Boolean = true,
+    showSkipBack: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.primary,
 ) {
     val player = playerData.player
@@ -79,7 +80,7 @@ fun PlayerControls(
             }
         }
 
-        if (showAdditionalButtons) {
+        if (showSkipBack || showAdditionalButtons) {
             ActionButton(
                 icon = SkipBackIcon,
                 tint = tint,
@@ -180,12 +181,13 @@ private fun ActionButton(
 
 @Preview
 @Composable
-private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = true) {
+private fun Preview(showAdditionButtons: Boolean = true, showSkip: Boolean = true, showSkipBack: Boolean = true) {
     MaterialTheme {
         PlayerControls(
             playerData = PlayerDataFixtures.playerData(),
             playerAction = { _, _ -> },
             showSkip = showSkip,
+            showSkipBack = showSkipBack,
             mainButtonSize = 60.dp,
             showAdditionalButtons = showAdditionButtons,
         )
@@ -201,5 +203,5 @@ private fun PreviewNoAdditional() {
 @Preview
 @Composable
 private fun PreviewNoSkipNoAdditional() {
-    Preview(showSkip = false, showAdditionButtons = false)
+    Preview(showSkip = false, showAdditionButtons = false, showSkipBack = false)
 }
