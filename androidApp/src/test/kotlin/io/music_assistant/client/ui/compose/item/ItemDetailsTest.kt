@@ -139,9 +139,9 @@ class ItemDetailsTest {
         composeTestRule.onAllNodes(hasText(playlist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
             onNode(hasText(tracks[0].displayName)).assertIsDisplayed()
-            onNode(hasText(tracks[0].artists!![0].displayName)).assertIsDisplayed()
+            onNode(hasText(tracks[0].artists[0].displayName)).assertIsDisplayed()
             onNode(hasText(tracks[1].displayName)).assertIsDisplayed()
-            onNode(hasText(tracks[1].artists!![0].displayName)).assertIsDisplayed()
+            onNode(hasText(tracks[1].artists[0].displayName)).assertIsDisplayed()
         }
     }
 

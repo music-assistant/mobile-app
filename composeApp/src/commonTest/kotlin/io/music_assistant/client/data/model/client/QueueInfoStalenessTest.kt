@@ -29,6 +29,7 @@ class QueueInfoStalenessTest {
         elapsedTime = elapsedTime,
         elapsedTimeLastUpdated = elapsedTimeLastUpdated,
         currentItem = null,
+        isDynamic = false,
     )
 
     @Test
