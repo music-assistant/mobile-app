@@ -113,7 +113,6 @@ internal fun PlayersPager(
     onPlayersReorder: (List<String>) -> Unit,
     queueAction: (QueueAction) -> Unit,
     moveToPlayer: (String) -> Unit,
-    isExpandedScreen: Boolean,
     contentPadding: PaddingValues,
     localPlayerId: String,
     onAdjustPlaybackDelay: (Int) -> Unit,
@@ -150,6 +149,7 @@ internal fun PlayersPager(
         )
     }
 
+    val isExpandedScreen = WindowClass.isAtLeastExpanded()
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
@@ -306,6 +306,7 @@ private fun ExpandedPlayerPage(
     navigateToItem: (AppMediaItem) -> Unit = {},
     livePositionFlow: Flow<Double>?,
 ) {
+    val isLargeScreen = WindowClass.isAtLeastLarge()
     Column(
         modifier = Modifier.padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -364,7 +365,6 @@ private fun ExpandedPlayerPage(
             }
         }
 
-        val isLargeScreen = WindowClass.isAtLeastLarge()
         Row {
             Column(
                 modifier = Modifier

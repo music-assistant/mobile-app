@@ -61,7 +61,6 @@ import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.WindowClass
 import kotlinx.coroutines.flow.collectLatest
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_home
@@ -182,7 +181,6 @@ fun MainNavigationRoot(
         showNavBar = !playerExpanded,
         navigationItems = navigationItems,
     ) { scaffoldContentPadding ->
-        val isExpandedScreen = WindowClass.isAtLeastExpanded()
         val bottomPadding = scaffoldContentPadding.calculateBottomPadding()
 
         FloatingBarLayout(
@@ -200,7 +198,6 @@ fun MainNavigationRoot(
                         actionsViewModel = actionsViewModel,
                         expanded = expanded,
                         onClose = { playerExpanded = false },
-                        isExpandedScreen = isExpandedScreen,
                         contentPadding = contentPadding,
                         backStack = multiBackStack,
                     )
@@ -371,7 +368,6 @@ private fun Players(
     actionsViewModel: ActionsViewModel,
     expanded: Boolean,
     onClose: () -> Unit,
-    isExpandedScreen: Boolean,
     contentPadding: PaddingValues,
     backStack: MultiBackStack,
 ) {
@@ -435,7 +431,6 @@ private fun Players(
             onPlayersReorder = onPlayersReorder,
             queueAction = queueAction,
             moveToPlayer = moveToPlayer,
-            isExpandedScreen = isExpandedScreen,
             contentPadding = contentPadding,
             localPlayerId = homeScreenViewModel.localPlayerId,
             onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
