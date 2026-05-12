@@ -28,7 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,6 +65,7 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.theme.AppTheme
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
@@ -337,16 +337,19 @@ private fun ItemContent(
         )
     }
 
-    Surface {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Screen(
+        topBar = { scrollBehaviour ->
             ItemTopBar(
                 item = item,
                 onBack = onBack,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item !is AppMediaItem.Genre },
                 navigateToItem = onNavigateClick,
+                scrollBehavior = scrollBehaviour,
             )
-
+        },
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             if (tabs.isEmpty()) {
                 heroSlot()
             } else {
