@@ -54,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
@@ -506,7 +505,10 @@ private fun ExpandedPlayerPage(
                         contentPadding = contentPadding,
                     )
                 } else {
-                    Spacer(modifier = Modifier.fillMaxWidth().height(contentPadding.calculateBottomPadding()))
+                    Spacer(
+                        modifier = Modifier.fillMaxWidth()
+                            .height(contentPadding.calculateBottomPadding()),
+                    )
                 }
             }
 
@@ -661,14 +663,6 @@ private fun CollapsedPlayerPage(
         onGroupButton = if (isExpandedScreen) onGroupButton else null,
         sendSpinState = sendspinState,
     )
-}
-
-fun collapsedPlayerHeight(isExpandedScreen: Boolean): Dp {
-    return if (isExpandedScreen) {
-        84.dp
-    } else {
-        130.dp
-    }
 }
 
 @Preview

@@ -31,6 +31,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -51,7 +52,6 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.nav.MainNav
 import io.music_assistant.client.ui.compose.home.nav.rememberMainNavBackStack
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
-import io.music_assistant.client.ui.compose.home.players.collapsedPlayerHeight
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
 import io.music_assistant.client.ui.compose.library.LibraryScreen
@@ -452,7 +452,7 @@ private fun Players(
             },
         )
     } else {
-        Box(Modifier.fillMaxWidth().height(collapsedPlayerHeight(isExpandedScreen))) {
+        Box(Modifier.fillMaxWidth().height(84.dp)) {
             val text = when (state) {
                 is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
                 is HomeScreenViewModel.PlayersState.Data -> "No players available"
