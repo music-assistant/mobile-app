@@ -59,7 +59,7 @@ object AppMediaItemFixtures {
             favorite = null,
             uri = null,
             image = null,
-            duration = null,
+            duration = 210.0,
             artists = artists,
             album = album,
             discNumber = null,

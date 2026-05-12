@@ -10,35 +10,13 @@ object PlayerDataFixtures {
     private val uniqueIdGenerator = UniqueIdGenerator()
 
     fun playerData(
-        queueId: String = "queue${uniqueIdGenerator.nextInt()}",
+        queueId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Player ${uniqueIdGenerator.nextInt()}",
         groupChildren: List<ChildBind> = emptyList(),
         playerType: PlayerType = PlayerType.PLAYER,
     ): PlayerData {
         return PlayerData(
-            player = Player(
-                id = "player${uniqueIdGenerator.nextInt()}",
-                name = name,
-                provider = "provider",
-                type = playerType,
-                shouldBeShown = true,
-                canSetVolume = true,
-                volumeLevel = 50f,
-                volumeMuted = false,
-                volumeControl = "native",
-                canMute = true,
-                queueId = queueId,
-                isPlaying = true,
-                isAnnouncing = false,
-                canGroupWith = emptyList(),
-                groupVolume = null,
-                groupVolumeMuted = false,
-                groupMembers = null,
-                staticGroupMembers = null,
-                activeGroup = null,
-                syncedTo = null,
-                currentMedia = null,
-            ),
+            player = player(name = name, playerType = playerType, queueId = queueId),
             queue = DataState.Data(
                 Queue(
                     info = QueueInfo(
@@ -58,6 +36,38 @@ object PlayerDataFixtures {
         )
     }
 
+    fun player(
+        id: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Player ${uniqueIdGenerator.nextInt()}",
+        playerType: PlayerType = PlayerType.PLAYER,
+        queueId: String = uniqueIdGenerator.nextInt().toString(),
+        currentMedia: PlayerMedia? = null,
+    ): Player {
+        return Player(
+            id = id,
+            name = name,
+            provider = "provider",
+            type = playerType,
+            shouldBeShown = true,
+            canSetVolume = true,
+            volumeLevel = 50f,
+            volumeMuted = false,
+            volumeControl = "native",
+            canMute = true,
+            queueId = queueId,
+            isPlaying = true,
+            isAnnouncing = false,
+            canGroupWith = emptyList(),
+            groupVolume = null,
+            groupVolumeMuted = false,
+            groupMembers = null,
+            staticGroupMembers = null,
+            activeGroup = null,
+            syncedTo = null,
+            currentMedia = currentMedia,
+        )
+    }
+
     fun bind(): ChildBind {
         return ChildBind(
             id = "bind${uniqueIdGenerator.nextInt()}",
@@ -68,6 +78,44 @@ object PlayerDataFixtures {
             name = "Player ${uniqueIdGenerator.nextInt()}",
             isBound = false,
             isManageable = true,
+        )
+    }
+
+    fun PlayableItem.toPlayerMedia(
+        queueId: String = uniqueIdGenerator.nextInt().toString(),
+        queueItemId: String = uniqueIdGenerator.nextInt().toString(),
+    ): PlayerMedia {
+        return PlayerMedia(
+            title = displayName,
+            artist = subtitle,
+            album = (this as? AppMediaItem.Track)?.album?.displayName,
+            imageUrl = null,
+            duration = duration,
+            queueId = queueId,
+            queueItemId = queueItemId,
+            mediaType = (this as? AppMediaItem)?.mediaType,
+            uri = null,
+        )
+    }
+
+    fun QueueTrack.toPlayerMedia(
+        queueId: String = uniqueIdGenerator.nextInt().toString(),
+    ): PlayerMedia {
+        return track.toPlayerMedia(
+            queueId = queueId,
+            queueItemId = id,
+        )
+    }
+
+    fun PlayableItem.toQueueTrack(
+        id: String = uniqueIdGenerator.nextInt().toString(),
+    ): QueueTrack {
+        return QueueTrack(
+            id = id,
+            track = this,
+            isPlayable = true,
+            format = null,
+            dsp = null,
         )
     }
 }

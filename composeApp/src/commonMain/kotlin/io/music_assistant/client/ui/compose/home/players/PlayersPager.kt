@@ -60,9 +60,10 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.data.model.client.PlayerDataFixtures.toPlayerMedia
+import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTrack
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
-import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
@@ -586,7 +587,9 @@ private fun PlayerOverflowMenu(
     }
 
     val navigationOptions =
-        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(navigateToItem)
+        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(
+            navigateToItem,
+        )
             ?: emptyList()
 
     val menuOptions = queueOptions + playerOptions + navigationOptions
@@ -651,7 +654,8 @@ fun collapsedPlayerHeight(isExpandedScreen: Boolean): Dp {
 @Composable
 fun ExpandedPlayerPagePreview() {
     MaterialTheme {
-        val track = AppMediaItemFixtures.tracks(listOf("Test Track")).first()
+        val track = AppMediaItemFixtures.track()
+        val queueTrack = track.toQueueTrack()
         val queueInfo = QueueInfo(
             id = "queue1",
             available = true,
@@ -659,29 +663,20 @@ fun ExpandedPlayerPagePreview() {
             repeatMode = RepeatMode.OFF,
             elapsedTime = 100.0,
             elapsedTimeLastUpdated = null,
-            currentItem = QueueTrack(
-                track = track,
-                id = "",
-                isPlayable = true,
-                format = null,
-                dsp = null,
-            ),
+            currentItem = queueTrack,
         )
 
+        val queue = Queue(info = queueInfo, items = DataState.Data(listOf(queueTrack)))
         val playerData = PlayerDataFixtures.playerData().copy(
-            queue = DataState.Data(
-                Queue(
-                    info = queueInfo,
-                    items = DataState.NoData(),
-                ),
-            ),
+            player = PlayerDataFixtures.player(currentMedia = queueTrack.toPlayerMedia(queueInfo.id)),
+            queue = DataState.Data(queue),
         )
 
         ExpandedPlayerPage(
             player = playerData,
             colors = PlayerColors(
-                MaterialTheme.colorScheme.primary,
-                MaterialTheme.colorScheme.onPrimary,
+                MaterialTheme.colorScheme.surface,
+                MaterialTheme.colorScheme.onSurface,
             ),
             onSelectPlayer = {},
             onGroupButton = {},
