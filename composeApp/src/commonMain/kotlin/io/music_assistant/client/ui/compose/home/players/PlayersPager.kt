@@ -393,6 +393,7 @@ private fun ExpandedPlayerPage(
         Row {
             Column(
                 modifier = Modifier
+                    .padding(top = 8.dp)
                     .widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp),
             ) {
                 Column(
