@@ -426,16 +426,7 @@ private fun Players(
             simplePlayerAction = simplePlayerAction,
             playerAction = playerAction,
             onFavoriteClick = onFavoriteClick,
-            expanded = expanded,
             onClose = onClose,
-            onPlayersReorder = onPlayersReorder,
-            queueAction = queueAction,
-            moveToPlayer = moveToPlayer,
-            contentPadding = contentPadding,
-            localPlayerId = homeScreenViewModel.localPlayerId,
-            onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
-            fetchColors = fetchColors,
-            observePosition = homeScreenViewModel::observePosition,
             navigateToItem = { item ->
                 backStack.add(
                     MainNav.ItemDetails(
@@ -445,6 +436,15 @@ private fun Players(
                     ),
                 )
             },
+            onPlayersReorder = onPlayersReorder,
+            queueAction = queueAction,
+            moveToPlayer = moveToPlayer,
+            contentPadding = contentPadding,
+            localPlayerId = homeScreenViewModel.localPlayerId,
+            onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
+            fetchColors = fetchColors,
+            observePosition = homeScreenViewModel::observePosition,
+            compact = !expanded,
         )
     } else {
         Box(Modifier.fillMaxWidth().height(84.dp)) {

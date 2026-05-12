@@ -109,7 +109,6 @@ internal fun PlayersPager(
     simplePlayerAction: (String, PlayerAction) -> Unit,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
-    expanded: Boolean,
     onClose: () -> Unit,
     navigateToItem: (AppMediaItem) -> Unit,
     onPlayersReorder: (List<String>) -> Unit,
@@ -120,6 +119,7 @@ internal fun PlayersPager(
     onAdjustPlaybackDelay: (Int) -> Unit,
     fetchColors: ExtractedColorsFetcher,
     observePosition: (queueId: String) -> Flow<Double>,
+    compact: Boolean,
 ) {
     var isQueueExpanded by remember { mutableStateOf(false) }
 
@@ -152,20 +152,13 @@ internal fun PlayersPager(
     }
 
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
-    Column(modifier = modifier) {
-        if (expanded) {
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier.statusBarsPadding().fillMaxWidth().height(36.dp),
-            ) {
-                Icon(
-                    Icons.Default.ExpandMore,
-                    "Collapse",
-                    modifier = Modifier.size(32.dp),
-                )
-            }
-        }
+    val modifier = if (compact) {
+        modifier
+    } else {
+        modifier.statusBarsPadding()
+    }
 
+    Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 pagerState = playerPagerState,
@@ -222,7 +215,17 @@ internal fun PlayersPager(
                             },
                         ),
                 ) {
-                    if (expanded) {
+                    if (compact) {
+                        CollapsedPlayerPage(
+                            isExpandedScreen = isExpandedScreen,
+                            player = player,
+                            colors = colors,
+                            sendspinState = playersState.sendspinState,
+                            onSelectPlayer = onSelectPlayer,
+                            onGroupButton = onGroupButton,
+                            playerAction = playerAction,
+                        )
+                    } else {
                         ExpandedPlayerPage(
                             player = player,
                             colors = colors,
@@ -244,16 +247,6 @@ internal fun PlayersPager(
                             isCurrentPage = page == playerPagerState.currentPage,
                             navigateToItem = navigateToItem,
                             livePositionFlow = player.queueInfo?.id?.let(observePosition),
-                        )
-                    } else {
-                        CollapsedPlayerPage(
-                            isExpandedScreen = isExpandedScreen,
-                            player = player,
-                            colors = colors,
-                            sendspinState = playersState.sendspinState,
-                            onSelectPlayer = onSelectPlayer,
-                            onGroupButton = onGroupButton,
-                            playerAction = playerAction,
                         )
                     }
                 }
@@ -326,10 +319,22 @@ private fun ExpandedPlayerPage(
         modifier = Modifier.padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                IconButton(
+                    onClick = onClose,
+                ) {
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        "Collapse",
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
@@ -342,17 +347,22 @@ private fun ExpandedPlayerPage(
                 )
             }
 
-            PlayerOverflowMenu(
-                currentPlayer = player,
-                allPlayers = allPlayers,
-                queueAction = queueAction,
-                navigateToItem = {
-                    navigateToItem(it)
-                    onClose()
-                },
-                onPlayerSelected = { moveToPlayer(it) },
-                onOpenDsp = onDspButton,
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                PlayerOverflowMenu(
+                    currentPlayer = player,
+                    allPlayers = allPlayers,
+                    queueAction = queueAction,
+                    navigateToItem = {
+                        navigateToItem(it)
+                        onClose()
+                    },
+                    onPlayerSelected = { moveToPlayer(it) },
+                    onOpenDsp = onDspButton,
+                )
+            }
         }
 
         AnimatedVisibility(
