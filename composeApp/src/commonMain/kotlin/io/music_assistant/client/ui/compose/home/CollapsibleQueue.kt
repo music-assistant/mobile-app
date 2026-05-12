@@ -155,7 +155,7 @@ fun CollapsibleQueue(
 
 @Composable
 fun Queue(
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     queue: DataState<Queue>,
     onGoToLibrary: () -> Unit,
     isQueueExpanded: Boolean,

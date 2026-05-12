@@ -540,14 +540,13 @@ private fun ExpandedPlayerPage(
 
             if (isLargeScreen && player.queue is DataState.Data) {
                 Queue(
-                    modifier = Modifier,
                     queue = player.queue,
-                    onGoToLibrary = {},
+                    onGoToLibrary = onClose,
                     isQueueExpanded = true,
-                    isCurrentPage = true,
+                    isCurrentPage = isCurrentPage,
                     contentPadding = contentPadding,
-                    queueAction = {},
-                    serverUrl = null,
+                    queueAction = queueAction,
+                    serverUrl = serverUrl,
                 )
             }
         }
