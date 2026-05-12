@@ -199,21 +199,12 @@ internal fun PlayersPager(
                 Column(
                     Modifier
                         .background(
-                            brush = if (player.isLocal) {
-                                Brush.verticalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                    ),
-                                )
-                            } else {
-                                Brush.verticalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        colors.dominant.inactive(),
-                                    ),
-                                )
-                            },
+                            brush = Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    colors.dominant.inactive(),
+                                ),
+                            ),
                         ),
                 ) {
                     if (compact) {
