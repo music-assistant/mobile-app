@@ -12,4 +12,12 @@ object WindowClass {
         return windowSizeClass
             .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
     }
+
+    @Composable
+    fun isAtLeastLarge(): Boolean {
+        val windowSizeClass =
+            currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
+        return windowSizeClass
+            .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_LARGE_LOWER_BOUND)
+    }
 }
