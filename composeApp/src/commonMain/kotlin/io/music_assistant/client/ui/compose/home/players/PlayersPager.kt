@@ -121,12 +121,6 @@ internal fun PlayersPager(
     fetchColors: ExtractedColorsFetcher,
     observePosition: (queueId: String) -> Flow<Double>,
 ) {
-    val modifier = if (expanded) {
-        modifier
-    } else {
-        modifier.height(collapsedPlayerHeight(isExpandedScreen))
-    }
-
     var isQueueExpanded by remember { mutableStateOf(false) }
 
     // Extract playerData list to ensure proper recomposition
@@ -193,10 +187,9 @@ internal fun PlayersPager(
 
             val colors by playerColors.getValue(player)
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.wrapContentHeight()) {
                 Column(
                     Modifier
-                        .fillMaxSize()
                         .background(
                             brush = if (player.isLocal) {
                                 Brush.verticalGradient(
@@ -360,6 +353,7 @@ private fun ExpandedPlayerPage(
                     .clickable { onExpandQueue(false) },
             ) {
                 CompactPlayerItem(
+                    modifier = Modifier,
                     item = player,
                     colors = colors,
                     playerAction = playerAction,
@@ -659,6 +653,7 @@ private fun CollapsedPlayerPage(
     }
 
     CompactPlayerItem(
+        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
         item = player,
         colors = colors,
         playerAction = playerAction,

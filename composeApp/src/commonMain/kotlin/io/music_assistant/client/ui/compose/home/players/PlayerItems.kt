@@ -61,6 +61,7 @@ import kotlin.time.DurationUnit
 
 @Composable
 fun CompactPlayerItem(
+    modifier: Modifier,
     item: PlayerData,
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
@@ -73,7 +74,7 @@ fun CompactPlayerItem(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
