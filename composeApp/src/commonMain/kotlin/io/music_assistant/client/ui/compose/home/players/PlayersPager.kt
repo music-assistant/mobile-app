@@ -60,11 +60,8 @@ import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
-import io.music_assistant.client.data.model.client.PlayerDataFixtures.toPlayerMedia
+import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueue
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTrack
-import io.music_assistant.client.data.model.client.Queue
-import io.music_assistant.client.data.model.client.QueueInfo
-import io.music_assistant.client.data.model.server.RepeatMode
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
@@ -655,22 +652,7 @@ fun collapsedPlayerHeight(isExpandedScreen: Boolean): Dp {
 fun ExpandedPlayerPagePreview() {
     MaterialTheme {
         val track = AppMediaItemFixtures.track()
-        val queueTrack = track.toQueueTrack()
-        val queueInfo = QueueInfo(
-            id = "queue1",
-            available = true,
-            shuffleEnabled = false,
-            repeatMode = RepeatMode.OFF,
-            elapsedTime = 100.0,
-            elapsedTimeLastUpdated = null,
-            currentItem = queueTrack,
-        )
-
-        val queue = Queue(info = queueInfo, items = DataState.Data(listOf(queueTrack)))
-        val playerData = PlayerDataFixtures.playerData().copy(
-            player = PlayerDataFixtures.player(currentMedia = queueTrack.toPlayerMedia(queueInfo.id)),
-            queue = DataState.Data(queue),
-        )
+        val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
 
         ExpandedPlayerPage(
             player = playerData,

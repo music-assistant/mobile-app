@@ -36,6 +36,18 @@ object PlayerDataFixtures {
         )
     }
 
+    fun playerData(queue: Queue): PlayerData {
+        val playerData = playerData()
+        return playerData.copy(
+            player = playerData.player.copy(
+                queueId = queue.info.id,
+                currentMedia = (queue.items as DataState.Data<List<QueueTrack>>).data.first()
+                    .toPlayerMedia(),
+            ),
+            queue = DataState.Data(queue),
+        )
+    }
+
     fun player(
         id: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Player ${uniqueIdGenerator.nextInt()}",
@@ -79,6 +91,21 @@ object PlayerDataFixtures {
             isBound = false,
             isManageable = true,
         )
+    }
+
+    fun List<QueueTrack>.toQueue(): Queue {
+        val queueId = uniqueIdGenerator.nextInt().toString()
+        val queueInfo = QueueInfo(
+            id = queueId,
+            available = true,
+            shuffleEnabled = false,
+            repeatMode = RepeatMode.OFF,
+            elapsedTime = 100.0,
+            elapsedTimeLastUpdated = null,
+            currentItem = first(),
+        )
+
+        return Queue(info = queueInfo, items = DataState.Data(this))
     }
 
     fun PlayableItem.toPlayerMedia(
