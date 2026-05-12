@@ -158,7 +158,7 @@ internal fun PlayersPager(
         modifier.statusBarsPadding()
     }
 
-    Column(modifier) {
+    Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 modifier = modifier.padding(top = 4.dp),
