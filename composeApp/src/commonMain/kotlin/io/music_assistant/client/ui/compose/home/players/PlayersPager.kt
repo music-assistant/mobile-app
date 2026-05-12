@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
@@ -32,6 +33,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
@@ -151,6 +153,19 @@ internal fun PlayersPager(
 
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
     Column(modifier = modifier) {
+        if (expanded) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.statusBarsPadding().fillMaxWidth().height(36.dp),
+            ) {
+                Icon(
+                    Icons.Default.ExpandMore,
+                    "Collapse",
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+        }
+
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
                 pagerState = playerPagerState,

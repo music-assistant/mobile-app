@@ -14,18 +14,11 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,19 +61,6 @@ fun FloatingBar(
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Column {
-            if (expanded) {
-                IconButton(
-                    onClick = { onExpand(false) },
-                    modifier = Modifier.statusBarsPadding().fillMaxWidth().height(36.dp),
-                ) {
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        "Collapse",
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-
             val contentPadding = if (expanded) {
                 val windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom)
                 windowInsets.asPaddingValues()
