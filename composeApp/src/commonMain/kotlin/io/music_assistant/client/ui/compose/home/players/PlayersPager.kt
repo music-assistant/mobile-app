@@ -158,9 +158,10 @@ internal fun PlayersPager(
         modifier.statusBarsPadding()
     }
 
-    Column(modifier = modifier) {
+    Column(modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
+                modifier = modifier.padding(top = 4.dp),
                 pagerState = playerPagerState,
             )
         }
@@ -316,7 +317,7 @@ private fun ExpandedPlayerPage(
 ) {
     val isLargeScreen = WindowClass.isAtLeastLarge()
     Column(
-        modifier = Modifier.padding(top = 8.dp),
+        modifier = Modifier.padding(top = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
