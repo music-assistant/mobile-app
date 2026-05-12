@@ -511,6 +511,8 @@ private fun ExpandedPlayerPage(
                         isCurrentPage = isCurrentPage,
                         contentPadding = contentPadding,
                     )
+                } else {
+                    Spacer(modifier = Modifier.fillMaxWidth().height(contentPadding.calculateBottomPadding()))
                 }
             }
 
