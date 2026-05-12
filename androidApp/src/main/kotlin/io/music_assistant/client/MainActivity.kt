@@ -2,6 +2,7 @@ package io.music_assistant.client
 
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,6 +25,11 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Lock orientation on compact devices
+        if (this.resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
@@ -78,5 +84,9 @@ class MainActivity : ComponentActivity() {
                 Logger.withTag("MainActivity").e("No token in OAuth callback")
             }
         }
+    }
+
+    companion object {
+        private const val COMPACT_DEVICE_WIDTH = 600
     }
 }
