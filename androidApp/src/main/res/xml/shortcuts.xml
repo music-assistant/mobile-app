@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Google App Actions capability map for voice playback.
+
+  Each <intent> clause within actions.intent.PLAY_MEDIA is selected by the
+  Assistant NLU based on the recognised media.@type slot. Slots are projected
+  into the same extra keys our AutoLibrary.searchAndPlay pipeline already
+  consumes for AndroidAuto's onPlayFromSearch — so once the dispatch Activity
+  forwards the Intent to AndroidAutoPlaybackService, the existing focus-aware
+  branching handles everything.
+
+  Mapping summary (schema.org type → EXTRA_MEDIA_FOCUS):
+    MusicGroup       → vnd.android.cursor.item/artist
+    MusicAlbum       → vnd.android.cursor.item/album
+    MusicRecording   → vnd.android.cursor.item/audio
+    MusicPlaylist    → vnd.android.cursor.item/playlist
+    PodcastSeries    → (no first-party focus — unstructured cascade)
+    RadioStation     → (no first-party focus — unstructured cascade)
+
+  Reference:
+    https://developer.android.com/guide/app-actions/built-in-intents/media-actions
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <capability android:name="actions.intent.PLAY_MEDIA">
+
+        <!-- Artist: "play Radiohead", "play music by Daft Punk" -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.@type"
+                android:required="true"
+                android:value="MusicGroup" />
+            <parameter
+                android:name="media.name"
+                android:key="android.intent.extra.artist" />
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+            <extra
+                android:name="android.intent.extra.focus"
+                android:value="vnd.android.cursor.item/artist" />
+        </intent>
+
+        <!-- Album: "play OK Computer", "play the album Dark Side of the Moon by Pink Floyd" -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.@type"
+                android:required="true"
+                android:value="MusicAlbum" />
+            <parameter
+                android:name="media.name"
+                android:key="android.intent.extra.album" />
+            <parameter
+                android:name="media.byArtist.name"
+                android:key="android.intent.extra.artist" />
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+            <extra
+                android:name="android.intent.extra.focus"
+                android:value="vnd.android.cursor.item/album" />
+        </intent>
+
+        <!-- Song / Track: "play Bohemian Rhapsody", "play Yesterday by The Beatles" -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.@type"
+                android:required="true"
+                android:value="MusicRecording" />
+            <parameter
+                android:name="media.name"
+                android:key="android.intent.extra.title" />
+            <parameter
+                android:name="media.byArtist.name"
+                android:key="android.intent.extra.artist" />
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+            <extra
+                android:name="android.intent.extra.focus"
+                android:value="vnd.android.cursor.item/audio" />
+        </intent>
+
+        <!-- Playlist: "play my Workout playlist" -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.@type"
+                android:required="true"
+                android:value="MusicPlaylist" />
+            <parameter
+                android:name="media.name"
+                android:key="android.intent.extra.playlist" />
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+            <extra
+                android:name="android.intent.extra.focus"
+                android:value="vnd.android.cursor.item/playlist" />
+        </intent>
+
+        <!-- Podcast: "play the Daily podcast" — falls through to unstructured cascade -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.@type"
+                android:required="true"
+                android:value="PodcastSeries" />
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+        </intent>
+
+        <!-- Radio station: "play KEXP", "play BBC Radio 6" — unstructured cascade -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.@type"
+                android:required="true"
+                android:value="RadioStation" />
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+        </intent>
+
+        <!-- Generic fallback: any PLAY_MEDIA without a recognised @type — unstructured -->
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="io.music_assistant.client"
+            android:targetClass="io.music_assistant.client.VoicePlayDispatchActivity">
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+        </intent>
+
+    </capability>
+
+</shortcuts>

@@ -47,9 +47,11 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.android.ext.android.inject
 
 @OptIn(FlowPreview::class)
@@ -80,6 +82,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
+        Logger.withTag("AAService").i { "onCreate — acquiring session as AA callback owner" }
         val token = sharedSession.acquire(
             callback = createCallback(),
             isAutoService = true,
@@ -169,10 +172,38 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             }
 
             override fun onPlayFromSearch(query: String?, extras: Bundle?) {
-                currentPlayerData.value?.let { playerData ->
-                    query?.takeIf { it.isNotBlank() }?.let { q ->
-                        library.searchAndPlay(q, playerData.queueInfo?.id ?: playerData.player.id)
+                val log = Logger.withTag("AAPlayFromSearch")
+
+                @Suppress("DEPRECATION") // Bundle.get(key) is the only untyped log-dump accessor.
+                val extrasDump = extras?.keySet()?.joinToString { k -> "$k=${extras.get(k)}" }
+                log.i { "onPlayFromSearch query=\"$query\" extras={$extrasDump}" }
+                if (query.isNullOrBlank() && extras == null) {
+                    log.w { "Blank query AND null extras — nothing to act on, no-op." }
+                    return
+                }
+                // Cold-start case (phone-side voice dispatch via MediaBrowser bind):
+                // the service was just created, so currentPlayerData may still be null
+                // while auth + local-player initialization complete. Wait up to 10s.
+                // For the in-car AA path the player is already up, so the await is
+                // immediate. One symmetrical entry point for both surfaces.
+                scope.launch {
+                    val playerData = withTimeoutOrNull(LOCAL_PLAYER_READY_TIMEOUT_MS) {
+                        currentPlayerData.filterNotNull().first()
                     }
+                    if (playerData == null) {
+                        log.w {
+                            "Local player did not initialize within 10s — dropping " +
+                                "(query=\"$query\"). Open the app once to bootstrap it."
+                        }
+                        return@launch
+                    }
+                    val queueId = playerData.queueInfo?.id ?: playerData.player.id
+                    log.i { "Dispatching to AutoLibrary with queueId=$queueId (local player)" }
+                    library.searchAndPlay(
+                        query = query.orEmpty(),
+                        extras = extras,
+                        queueId = queueId,
+                    )
                 }
             }
 
@@ -248,6 +279,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
 
     override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
+        Logger.withTag("AAService").i { "onGetRoot from package=$packageName uid=$uID" }
         val extras = Bundle().apply {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
             putInt(
@@ -418,4 +450,10 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 )?.image as? BitmapImage
             )?.bitmap
         }
+
+    private companion object {
+        // Cold-start window: voice intent may arrive before auth + local player
+        // bootstrap finish. After this many ms we give up and log a warning.
+        const val LOCAL_PLAYER_READY_TIMEOUT_MS = 10_000L
+    }
 }

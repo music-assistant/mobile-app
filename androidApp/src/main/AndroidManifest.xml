@@ -43,6 +43,31 @@
                     android:host="auth"
                     android:path="/callback" />
             </intent-filter>
+            <!-- App Actions capability map (actions.intent.PLAY_MEDIA, etc.) -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
+        <!--
+            Headless dispatch Activity for App Actions / Assistant voice playback.
+            App Actions fulfilment intents can only target Activities, so this
+            Theme.NoDisplay shim binds AndroidAutoPlaybackService via
+            MediaBrowserCompat and invokes playFromSearch on the resulting
+            MediaController — same path the in-car AA framework uses. The
+            Activity finishes synchronously; the async bind is owned by a
+            process-scoped singleton (see VoicePlayDispatchActivity.kt).
+        -->
+        <activity
+            android:name=".VoicePlayDispatchActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
         <service
             android:name="io.music_assistant.client.services.AndroidAutoPlaybackService"

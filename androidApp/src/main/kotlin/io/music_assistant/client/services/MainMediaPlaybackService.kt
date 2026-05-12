@@ -242,7 +242,14 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             }
 
             override fun onPlayFromSearch(query: String?, extras: Bundle?) {
-                Logger.withTag("MainMediaPlayback").i { "onPlayFromSearch: $query (not handled)" }
+                // Voice playback routing lives exclusively on AndroidAutoPlaybackService —
+                // both the in-car AA framework and the phone-side VoicePlayDispatchActivity
+                // bind that service to invoke playFromSearch. This callback only owns the
+                // session when AA is *not* bound, and no current code path reaches here.
+                // Kept as a defensive log so an unexpected external invocation is visible.
+                Logger.withTag("MainMediaPlayback").w {
+                    "Unexpected onPlayFromSearch on notification session (no handler): query=\"$query\""
+                }
             }
 
             override fun onPause() {

@@ -11,6 +11,7 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.utils.MediaConstants
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.R
 import io.music_assistant.client.data.model.server.RepeatMode
 
@@ -60,10 +61,20 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
             autoServiceActive = true
             autoCallback = callback
             mediaSession?.setCallback(callback)
+            Logger.withTag(
+                "SharedSession",
+            ).i { "acquire(auto=true) — AA callback now active. refCount=${refCount + 1}" }
         } else {
             notificationCallback = callback
             if (!autoServiceActive) {
                 mediaSession?.setCallback(callback)
+                Logger.withTag(
+                    "SharedSession",
+                ).i { "acquire(auto=false) — notification callback now active. refCount=${refCount + 1}" }
+            } else {
+                Logger.withTag("SharedSession").i {
+                    "acquire(auto=false) — AA already owns session; notification cb stored only. refCount=${refCount + 1}"
+                }
             }
         }
         refCount++

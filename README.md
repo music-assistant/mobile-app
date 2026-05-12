@@ -37,7 +37,7 @@ Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you 
 - Android-specific:
   - requires Android 8.0 or later; 
   - media service (background playback) and media notification in system area for quick access to players controls;
-  - Android Auto support for built-in player.
+  - Android Auto support for the built-in player, plus voice playback ("Hey Google, play *X* on Music Assistant") via Google Assistant and Gemini App Actions — works in the car *and* on the phone, single symmetric code path. Full phrase reference, architecture notes and testing in [AndroidAuto.md](AndroidAuto.md).
 - iOS-specific:
   - requires iOS 18.5 or later; 
   - native audio playback via AudioQueue (CoreAudio) with support for FLAC, Opus, and PCM;
@@ -95,8 +95,12 @@ Download and install debug APK from latest release on [releases page](https://gi
 
 *Disclamer: this is debug version of application, and isn't recommended for usage beyond testing purposes!*
 
-### To use the app with Android Auto you will need additional steps
-   - in Android Auto menu on your phone, click repeatedly on `Version and permission info` text, until dialog appears, that will allow you turning dev mode on;
-   - after turning it on, in overflow menu (three dots on top) choose `Developer settings`;
-   - in dev settings, find and enable `Unknown sources`;
-   - after this, customize your launcher to show Music Assistant.
+### Android Auto & Google Assistant
+
+See [Android Auto.md](AndroidAuto.md) for:
+
+- enabling Android Auto with sideloaded debug/self-signed builds (Unknown sources flow);
+- the library browsing layout on the head unit;
+- the full list of supported Google Assistant voice phrases (works in the car *and* on the phone);
+- shell-based testing of `MEDIA_PLAY_FROM_SEARCH` intents;
+- known limitations.
