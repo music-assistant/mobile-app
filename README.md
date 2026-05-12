@@ -43,7 +43,8 @@ Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you 
   - native audio playback via AudioQueue (CoreAudio) with support for FLAC, Opus, and PCM;
   - Lock Screen and Control Center integration (Now Playing info, play/pause/next/prev remote commands);
   - background audio playback with automatic resume after phone call or Siri interruptions;
-  - WebRTC data channel transport for low-latency Sendspin streaming.
+  - WebRTC data channel transport for low-latency Sendspin streaming;
+  - Apple CarPlay support for built-in player (very early state, a lot of bugs are expected).
 
 ## Contributing
 
