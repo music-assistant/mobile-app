@@ -62,9 +62,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import io.music_assistant.client.data.model.client.AppMediaItem
@@ -350,9 +350,18 @@ private fun ExpandedPlayerPage(
                 var totalDrag = 0f
                 var fired = false
                 detectVerticalDragGestures(
-                    onDragStart = { totalDrag = 0f; fired = false },
-                    onDragEnd = { totalDrag = 0f; fired = false },
-                    onDragCancel = { totalDrag = 0f; fired = false },
+                    onDragStart = {
+                        totalDrag = 0f
+                        fired = false
+                    },
+                    onDragEnd = {
+                        totalDrag = 0f
+                        fired = false
+                    },
+                    onDragCancel = {
+                        totalDrag = 0f
+                        fired = false
+                    },
                     onVerticalDrag = { _, dragAmount ->
                         totalDrag += dragAmount
                         if (!fired && totalDrag > dismissThresholdPx) {
