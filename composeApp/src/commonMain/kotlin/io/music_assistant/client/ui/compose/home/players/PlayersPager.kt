@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,8 +54,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -307,8 +315,53 @@ private fun ExpandedPlayerPage(
     livePositionFlow: Flow<Double>?,
 ) {
     val isLargeScreen = WindowClass.isAtLeastLarge()
+    val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
+    val dismissNestedScroll = remember(onClose, dismissThresholdPx) {
+        object : NestedScrollConnection {
+            var totalDrag = 0f
+            var fired = false
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                    totalDrag += available.y
+                    if (!fired && totalDrag > dismissThresholdPx) {
+                        fired = true
+                        onClose()
+                    }
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                totalDrag = 0f
+                fired = false
+                return Velocity.Zero
+            }
+        }
+    }
     Column(
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .nestedScroll(dismissNestedScroll)
+            .pointerInput(onClose, dismissThresholdPx) {
+                var totalDrag = 0f
+                var fired = false
+                detectVerticalDragGestures(
+                    onDragStart = { totalDrag = 0f; fired = false },
+                    onDragEnd = { totalDrag = 0f; fired = false },
+                    onDragCancel = { totalDrag = 0f; fired = false },
+                    onVerticalDrag = { _, dragAmount ->
+                        totalDrag += dragAmount
+                        if (!fired && totalDrag > dismissThresholdPx) {
+                            fired = true
+                            onClose()
+                        }
+                    },
+                )
+            },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
