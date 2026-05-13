@@ -24,12 +24,13 @@ class QueueInfoStalenessTest {
     ) = QueueInfo(
         id = id,
         available = true,
+        currentIndex = null,
         shuffleEnabled = false,
         repeatMode = RepeatMode.OFF,
         elapsedTime = elapsedTime,
         elapsedTimeLastUpdated = elapsedTimeLastUpdated,
         currentItem = null,
-        isDynamic = false,
+        radioSource = emptyList(),
     )
 
     @Test

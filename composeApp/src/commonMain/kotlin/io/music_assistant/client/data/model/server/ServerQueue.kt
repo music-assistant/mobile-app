@@ -19,7 +19,7 @@ data class ServerQueue(
     @SerialName("shuffle_enabled") val shuffleEnabled: Boolean = false,
     @SerialName("repeat_mode") val repeatMode: RepeatMode = RepeatMode.OFF,
     // @SerialName("dont_stop_the_music_enabled") val dontStopTheMusicEnabled: Boolean,
-    // @SerialName("current_index") val currentIndex: Int? = null,
+    @SerialName("current_index") val currentIndex: Int? = null,
     // @SerialName("index_in_buffer") val indexInBuffer: Int? = null,
     @SerialName("elapsed_time") val elapsedTime: Double? = null,
     /**
@@ -31,7 +31,7 @@ data class ServerQueue(
     // @SerialName("state") val state: PlayerState,
     @SerialName("current_item") val currentItem: ServerQueueItem? = null,
     // @SerialName("next_item") val nextItem: QueueItem? = null,
-    // @SerialName("radio_source") val radioSource: List<String>,
+    @SerialName("radio_source") val radioSource: List<ServerMediaItem>? = null,
     // @SerialName("flow_mode") val flowMode: Boolean,
     // @SerialName("resume_pos") val resumePos: Double?
     @SerialName("is_dynamic") val isDynamic: Boolean? = null,

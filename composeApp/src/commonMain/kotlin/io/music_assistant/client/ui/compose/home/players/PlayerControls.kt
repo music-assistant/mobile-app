@@ -53,6 +53,9 @@ fun PlayerControls(
     val queue = playerData.queueInfo
     val playerEnabled = player.canPlay && !player.isAnnouncing
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
+    val itemsCount = playerData.queueItems?.size ?: 0
+    val skipBackEnabled = queue?.currentIndex?.let { it > 0 } ?: false
+    val skipForwardEnabled = queue?.currentIndex?.let { it < itemsCount - 1 } ?: false
     val smallButtonSize = (mainButtonSize.value * 0.6).dp
     Row(
         modifier = modifier
@@ -85,7 +88,7 @@ fun PlayerControls(
                 icon = SkipBackIcon,
                 tint = tint,
                 size = smallButtonSize,
-                enabled = playerEnabled && buttonsEnabled,
+                enabled = playerEnabled && buttonsEnabled && skipBackEnabled,
             ) { playerAction(playerData, PlayerAction.Previous) }
         }
 
@@ -123,7 +126,7 @@ fun PlayerControls(
                 icon = SkipForwardIcon,
                 tint = tint,
                 size = smallButtonSize,
-                enabled = playerEnabled && buttonsEnabled,
+                enabled = playerEnabled && buttonsEnabled && skipForwardEnabled,
             ) { playerAction(playerData, PlayerAction.Next) }
         }
 

@@ -22,12 +22,13 @@ object PlayerDataFixtures {
                     info = QueueInfo(
                         id = queueId,
                         available = true,
+                        currentIndex = null,
                         shuffleEnabled = false,
                         repeatMode = RepeatMode.OFF,
                         elapsedTime = 100.0,
                         elapsedTimeLastUpdated = null,
                         currentItem = null,
-                        isDynamic = false,
+                        radioSource = emptyList(),
                     ),
                     items = DataState.NoData(),
                 ),
@@ -99,12 +100,13 @@ object PlayerDataFixtures {
         val queueInfo = QueueInfo(
             id = queueId,
             available = true,
+            currentIndex = null,
             shuffleEnabled = false,
             repeatMode = RepeatMode.OFF,
             elapsedTime = 100.0,
             elapsedTimeLastUpdated = null,
             currentItem = first(),
-            isDynamic = false,
+            radioSource = emptyList(),
         )
 
         return Queue(info = queueInfo, items = DataState.Data(this))
