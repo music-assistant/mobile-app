@@ -161,7 +161,7 @@ internal fun PlayersPager(
     Column(modifier = modifier) {
         if (playerDataList.size > 1) {
             HorizontalPagerIndicator(
-                modifier = modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 4.dp),
                 pagerState = playerPagerState,
             )
         }
