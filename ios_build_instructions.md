@@ -47,30 +47,9 @@ sudo xcodebuild -license accept
 chmod +x ./gradlew
 ```
 
----
+### 4. WebRTC framework (one-time download)
 
-## Project Configuration
-
-### 4. Set signing team and bundle ID
-
-Edit `iosApp/Configuration/Config.xcconfig`:
-
-```
-TEAM_ID=YOUR_APPLE_TEAM_ID
-PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
-APP_NAME=MusicAssistantClient
-IPHONEOS_DEPLOYMENT_TARGET = 15.0
-```
-
-Replace `YOUR_APPLE_TEAM_ID` with your Apple Developer Team ID (10-character alphanumeric string found at developer.apple.com/account).
-
-To build for simulator **without a developer account**, you can leave `TEAM_ID` empty and pass signing override flags on the command line (see step 6 below).
-
-### 5. WebRTC framework (one-time download)
-
-The app uses `webrtc-kmp` which requires the `WebRTC.xcframework` binary to be present at `iosApp/Frameworks/WebRTC.xcframework`.
-
-The framework is already included in the repository at that path. If it's missing, download it:
+The app uses `webrtc-kmp` which requires the `WebRTC.xcframework` binary to be present at `iosApp/Frameworks/WebRTC.xcframework`. To download it:
 
 ```bash
 # Download WebRTC.xcframework (M125 build + dcsctp COW-bloat fix,
@@ -104,7 +83,19 @@ The Xcode build phase script (`Compile Kotlin Framework`) automatically:
 
 ## Build Commands
 
-### 6. Build for iOS Simulator (command line)
+### Build and run in Xcode (recommended)
+
+```bash
+open iosApp/iosApp.xcodeproj
+```
+
+Then in Xcode:
+1. Select a simulator or physical device from the toolbar
+2. Click the **Run** button (⌘R)
+
+Xcode will invoke the Gradle build phase automatically.
+
+### Build for iOS Simulator (command line)
 
 ```bash
 # From the mobile-app/ directory:
@@ -129,25 +120,25 @@ to compile the KMP framework before Swift compilation.
 **First build time:** 10–30 minutes (Kotlin/Native compilation with `kotlin.native.cacheKind=none`).
 **Subsequent builds:** 1–3 minutes (incremental, Gradle up-to-date checks).
 
-### 7. Build and run in Xcode (recommended)
-
-```bash
-open iosApp/iosApp.xcodeproj
-```
-
-Then in Xcode:
-1. Select a simulator or physical device from the toolbar
-2. Click the **Run** button (⌘R)
-
-Xcode will invoke the Gradle build phase automatically.
-
-### 8. Build for physical device
+### Build for physical device
 
 Physical device builds require valid provisioning:
 - Set `TEAM_ID` in `Config.xcconfig`
 - Ensure your Apple Developer account can sign for `PRODUCT_BUNDLE_IDENTIFIER`
 - Remove `CODE_SIGNING_ALLOWED=NO` from the xcodebuild command
 - The device must be registered in your Apple Developer portal
+### Set signing team and bundle ID
+
+Edit `iosApp/Configuration/Config.xcconfig`:
+
+```
+TEAM_ID=YOUR_APPLE_TEAM_ID
+PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
+APP_NAME=MusicAssistantClient
+IPHONEOS_DEPLOYMENT_TARGET = 15.0
+```
+
+Replace `YOUR_APPLE_TEAM_ID` with your Apple Developer Team ID (10-character alphanumeric string found at developer.apple.com/account).
 
 ---
 
