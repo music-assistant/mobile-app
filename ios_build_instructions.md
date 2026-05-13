@@ -120,29 +120,7 @@ to compile the KMP framework before Swift compilation.
 **First build time:** 10–30 minutes (Kotlin/Native compilation with `kotlin.native.cacheKind=none`).
 **Subsequent builds:** 1–3 minutes (incremental, Gradle up-to-date checks).
 
-### Build for physical device
-
-Physical device builds require valid provisioning:
-- Set `TEAM_ID` in `Config.xcconfig`
-- Ensure your Apple Developer account can sign for `PRODUCT_BUNDLE_IDENTIFIER`
-- Remove `CODE_SIGNING_ALLOWED=NO` from the xcodebuild command
-- The device must be registered in your Apple Developer portal
-### Set signing team and bundle ID
-
-Edit `iosApp/Configuration/Config.xcconfig`:
-
-```
-TEAM_ID=YOUR_APPLE_TEAM_ID
-PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
-APP_NAME=MusicAssistantClient
-IPHONEOS_DEPLOYMENT_TARGET = 15.0
-```
-
-Replace `YOUR_APPLE_TEAM_ID` with your Apple Developer Team ID (10-character alphanumeric string found at developer.apple.com/account).
-
----
-
-## Install and Run on Simulator
+#### Install and Run on Simulator
 
 ```bash
 # List available simulators
@@ -158,6 +136,27 @@ xcrun simctl install <SIMULATOR_UUID> \
 # Launch the app
 xcrun simctl launch <SIMULATOR_UUID> io.music-assistant.client
 ```
+
+### Build for physical device
+
+Physical device builds require valid provisioning:
+- Set `TEAM_ID` in `Config.xcconfig`
+- Ensure your Apple Developer account can sign for `PRODUCT_BUNDLE_IDENTIFIER`
+- Remove `CODE_SIGNING_ALLOWED=NO` from the xcodebuild command
+- The device must be registered in your Apple Developer portal
+
+#### Set signing team and bundle ID
+
+Edit `iosApp/Configuration/Config.xcconfig`:
+
+```
+TEAM_ID=YOUR_APPLE_TEAM_ID
+PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
+APP_NAME=MusicAssistantClient
+IPHONEOS_DEPLOYMENT_TARGET = 15.0
+```
+
+Replace `YOUR_APPLE_TEAM_ID` with your Apple Developer Team ID (10-character alphanumeric string found at developer.apple.com/account).
 
 ---
 
