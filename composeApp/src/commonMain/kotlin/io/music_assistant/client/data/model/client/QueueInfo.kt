@@ -21,7 +21,6 @@ data class QueueInfo(
     val currentItem: QueueTrack?,
     val radioSource: List<AppMediaItem>,
 ) {
-
     val isDynamic = radioSource.size == 1 &&
             (radioSource[0] as? AppMediaItem.Playlist)?.isDynamic == true
 
