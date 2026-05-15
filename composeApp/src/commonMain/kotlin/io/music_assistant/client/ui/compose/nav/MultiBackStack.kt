@@ -18,7 +18,7 @@ import androidx.navigation3.runtime.NavKey
 class MultiBackStack<T : NavKey>(private val backStacks: List<MutableList<T>>) {
     var currentBackStack by mutableStateOf(0)
 
-    private val originalItems = backStacks.map { it.toList() }
+    private val roots = backStacks.map { it.first() }
 
     /**
      * Clear the current back stack and reset it back to its original state
@@ -26,7 +26,7 @@ class MultiBackStack<T : NavKey>(private val backStacks: List<MutableList<T>>) {
     fun resetCurrentBackStack() {
         backStacks[currentBackStack].apply {
             clear()
-            addAll(originalItems[currentBackStack])
+            add(roots[currentBackStack])
         }
     }
 
