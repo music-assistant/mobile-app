@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
 import io.music_assistant.client.utils.WindowClass
 
@@ -81,7 +82,7 @@ data class NavigationItem(
     val label: String? = null,
 )
 
-fun MultiBackStack.createNavigationItem(
+fun <T : NavKey> MultiBackStack<T>.createNavigationItem(
     backStack: Int,
     icon: ImageVector,
     label: String? = null,

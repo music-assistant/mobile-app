@@ -241,7 +241,7 @@ private fun mainNavEntryProvider(
     dataState: DataState<List<AppMediaItem.RecommendationFolder>>,
     hiddenFolderIds: Set<String>,
     serverUrl: String?,
-    multiBackStack: MultiBackStack,
+    multiBackStack: MultiBackStack<NavKey>,
     viewModel: HomeScreenViewModel,
     playlistActions: ActionsViewModel.PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -369,7 +369,7 @@ private fun Players(
     expanded: Boolean,
     onClose: () -> Unit,
     contentPadding: PaddingValues,
-    backStack: MultiBackStack,
+    backStack: MultiBackStack<NavKey>,
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         val simplePlayerAction = remember(homeScreenViewModel) {

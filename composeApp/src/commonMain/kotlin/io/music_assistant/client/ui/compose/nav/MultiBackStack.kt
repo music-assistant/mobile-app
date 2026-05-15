@@ -15,7 +15,7 @@ import androidx.navigation3.runtime.NavKey
  * navigating backways from the last element of any back stack except the first leads to the top
  * element of the first back stack.
  */
-class MultiBackStack(private val backStacks: List<MutableList<NavKey>>) {
+class MultiBackStack<T : NavKey>(private val backStacks: List<MutableList<T>>) {
     var currentBackStack by mutableStateOf(0)
 
     private val originalItems = backStacks.map { it.toList() }
@@ -30,7 +30,7 @@ class MultiBackStack(private val backStacks: List<MutableList<NavKey>>) {
         }
     }
 
-    fun add(element: NavKey) {
+    fun add(element: T) {
         backStacks[currentBackStack].add(element)
     }
 
@@ -39,7 +39,7 @@ class MultiBackStack(private val backStacks: List<MutableList<NavKey>>) {
      * [replacementBottom] entry. Used to redirect navigation into another tab's stack
      * (e.g. tapping "All Albums" on Home jumps to the Library tab rooted at Albums).
      */
-    fun switchTo(index: Int, replacementBottom: NavKey? = null) {
+    fun switchTo(index: Int, replacementBottom: T? = null) {
         currentBackStack = index
         replacementBottom?.let {
             backStacks[index].apply {
