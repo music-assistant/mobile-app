@@ -38,6 +38,10 @@ import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.PlayableItem
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.PodcastEpisode
+import io.music_assistant.client.data.model.client.RadioStation
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
@@ -64,9 +68,9 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TrackWithMenu(
-    item: AppMediaItem.Track,
+    item: Track,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: ((AppMediaItem.Track, QueueOption, Boolean) -> Unit),
+    onPlayOption: ((Track, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -109,9 +113,9 @@ fun TrackWithMenu(
 
 @Composable
 fun PodcastEpisodeWithMenu(
-    item: AppMediaItem.PodcastEpisode,
+    item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: ((AppMediaItem.PodcastEpisode, QueueOption, Boolean) -> Unit),
+    onPlayOption: ((PodcastEpisode, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -156,9 +160,9 @@ fun PodcastEpisodeWithMenu(
 
 @Composable
 fun RadioWithMenu(
-    item: AppMediaItem.RadioStation,
+    item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: ((AppMediaItem.RadioStation, QueueOption, Boolean) -> Unit),
+    onPlayOption: ((RadioStation, QueueOption, Boolean) -> Unit),
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -222,7 +226,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
 ) {
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    var playlists by remember { mutableStateOf<List<AppMediaItem.Playlist>>(emptyList()) }
+    var playlists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
     var isLoadingPlaylists by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     Box(modifier = modifier) {
@@ -358,7 +362,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                 )
             }
 
-            if (playlistActions != null && item is AppMediaItem.Track) {
+            if (playlistActions != null && item is Track) {
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.action_add_to_playlist)) },
                     onClick = {
@@ -396,7 +400,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
             }
 
             // Mark played/unplayed (podcast episodes)
-            if (progressActions != null && item is AppMediaItem.PodcastEpisode) {
+            if (progressActions != null && item is PodcastEpisode) {
                 val isPlayed = item.fullyPlayed == true
                 DropdownMenuItem(
                     text = {
@@ -435,7 +439,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
         }
 
         // Add to Playlist Dialogue
-        if (showPlaylistDialog && item is AppMediaItem.Track) {
+        if (showPlaylistDialog && item is Track) {
             AlertDialog(
                 onDismissRequest = {
                     showPlaylistDialog = false

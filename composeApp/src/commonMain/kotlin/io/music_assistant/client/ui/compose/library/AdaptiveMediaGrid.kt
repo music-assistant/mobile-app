@@ -21,7 +21,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.PodcastEpisode
+import io.music_assistant.client.data.model.client.RadioStation
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
@@ -89,7 +98,7 @@ fun AdaptiveMediaGrid(
             },
         ) { item ->
             when (item) {
-                is AppMediaItem.Artist -> ArtistWithMenu(
+                is Artist -> ArtistWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -99,7 +108,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.Album -> AlbumWithMenu(
+                is Album -> AlbumWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -109,7 +118,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.Playlist -> PlaylistWithMenu(
+                is Playlist -> PlaylistWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -119,7 +128,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.Podcast -> PodcastWithMenu(
+                is Podcast -> PodcastWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -129,7 +138,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.Track -> TrackWithMenu(
+                is Track -> TrackWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -139,7 +148,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.PodcastEpisode -> PodcastEpisodeWithMenu(
+                is PodcastEpisode -> PodcastEpisodeWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -150,7 +159,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.Audiobook -> AudiobookWithMenu(
+                is Audiobook -> AudiobookWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -161,7 +170,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.Genre -> GenreWithMenu(
+                is Genre -> GenreWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,
@@ -171,7 +180,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is AppMediaItem.RadioStation -> RadioWithMenu(
+                is RadioStation -> RadioWithMenu(
                     item = item,
                     viewMode = viewMode,
                     serverUrl = serverUrl,

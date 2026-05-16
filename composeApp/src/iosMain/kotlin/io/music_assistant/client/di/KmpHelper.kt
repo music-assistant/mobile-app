@@ -5,8 +5,13 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.mapper.MediaItemFactory
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.RecommendationFolder
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.utils.HasConnectionData
@@ -37,6 +42,7 @@ object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
+    private val mediaItemFactory: MediaItemFactory by inject()
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -118,19 +124,19 @@ object KmpHelper : KoinComponent {
         launchFetch("recommendations", completion) {
             serviceClient.sendRequest(Request.Library.recommendations())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
 
     fun fetchRecommendationFolders(
-        completion: (List<AppMediaItem.RecommendationFolder>?) -> Unit,
+        completion: (List<RecommendationFolder>?) -> Unit,
     ) {
         launchFetch("recommendationFolders", completion) {
             serviceClient.sendRequest(Request.Library.recommendations())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.RecommendationFolder>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<RecommendationFolder>()
                 ?: emptyList()
         }
     }
@@ -139,7 +145,7 @@ object KmpHelper : KoinComponent {
         launchFetch("playlists", completion) {
             serviceClient.sendRequest(Request.Playlist.listLibrary())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -148,7 +154,7 @@ object KmpHelper : KoinComponent {
         launchFetch("albums", completion) {
             serviceClient.sendRequest(Request.Album.listLibrary())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -157,7 +163,7 @@ object KmpHelper : KoinComponent {
         launchFetch("artists", completion) {
             serviceClient.sendRequest(Request.Artist.listLibrary())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -166,7 +172,7 @@ object KmpHelper : KoinComponent {
         launchFetch("audiobooks", completion) {
             serviceClient.sendRequest(Request.Audiobook.listLibrary())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -175,7 +181,7 @@ object KmpHelper : KoinComponent {
         launchFetch("tracks", completion) {
             serviceClient.sendRequest(Request.Track.list())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -184,7 +190,7 @@ object KmpHelper : KoinComponent {
         launchFetch("podcasts", completion) {
             serviceClient.sendRequest(Request.Podcast.listLibrary())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -193,7 +199,7 @@ object KmpHelper : KoinComponent {
         launchFetch("radioStations", completion) {
             serviceClient.sendRequest(Request.RadioStation.listLibrary())
                 .resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -216,7 +222,7 @@ object KmpHelper : KoinComponent {
                 ),
             )
             result.resultAs<io.music_assistant.client.data.model.server.SearchResult>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?: emptyList()
         }
     }
@@ -224,7 +230,7 @@ object KmpHelper : KoinComponent {
     // MARK: - Drilldown fetchers (same nullable-on-timeout contract)
 
     fun fetchAlbumsByArtist(
-        artist: AppMediaItem.Artist,
+        artist: Artist,
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("albumsByArtist:${artist.itemId}", completion) {
@@ -235,14 +241,14 @@ object KmpHelper : KoinComponent {
                     inLibraryOnly = false,
                 ),
             ).resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Album>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Album>()
                 ?: emptyList()
         }
     }
 
     fun fetchTracksByAlbum(
-        album: AppMediaItem.Album,
+        album: Album,
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("tracksByAlbum:${album.itemId}", completion) {
@@ -253,14 +259,14 @@ object KmpHelper : KoinComponent {
                     inLibraryOnly = false,
                 ),
             ).resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Track>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Track>()
                 ?: emptyList()
         }
     }
 
     fun fetchTracksByPlaylist(
-        playlist: AppMediaItem.Playlist,
+        playlist: Playlist,
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("tracksByPlaylist:${playlist.itemId}", completion) {
@@ -271,8 +277,8 @@ object KmpHelper : KoinComponent {
                     forceRefresh = null,
                 ),
             ).resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Track>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Track>()
                 ?: emptyList()
         }
     }

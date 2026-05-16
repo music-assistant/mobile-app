@@ -37,8 +37,15 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import coil3.compose.LocalPlatformContext
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel
@@ -238,7 +245,7 @@ fun MainNavigationRoot(
 private fun mainNavEntryProvider(
     contentPadding: PaddingValues,
     connectionState: SessionState,
-    dataState: DataState<List<AppMediaItem.RecommendationFolder>>,
+    dataState: DataState<List<RecommendationFolder>>,
     hiddenFolderIds: Set<String>,
     serverUrl: String?,
     multiBackStack: MultiBackStack<NavKey>,
@@ -258,12 +265,12 @@ private fun mainNavEntryProvider(
                 serverUrl = serverUrl,
                 onNavigateClick = { item ->
                     when (item) {
-                        is AppMediaItem.Artist,
-                        is AppMediaItem.Album,
-                        is AppMediaItem.Playlist,
-                        is AppMediaItem.Podcast,
-                        is AppMediaItem.Audiobook,
-                        is AppMediaItem.Genre,
+                        is Artist,
+                        is Album,
+                        is Playlist,
+                        is Podcast,
+                        is Audiobook,
+                        is Genre,
                         -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
@@ -301,12 +308,12 @@ private fun mainNavEntryProvider(
                 initialTabType = it.type,
                 onNavigateClick = { item ->
                     when (item) {
-                        is AppMediaItem.Artist,
-                        is AppMediaItem.Album,
-                        is AppMediaItem.Playlist,
-                        is AppMediaItem.Podcast,
-                        is AppMediaItem.Audiobook,
-                        is AppMediaItem.Genre,
+                        is Artist,
+                        is Album,
+                        is Playlist,
+                        is Podcast,
+                        is Audiobook,
+                        is Genre,
                         -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(

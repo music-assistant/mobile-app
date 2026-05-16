@@ -1,9 +1,6 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
-import io.music_assistant.client.data.model.client.QueueTrack.Companion.toQueueTrack
 import io.music_assistant.client.data.model.server.RepeatMode
-import io.music_assistant.client.data.model.server.ServerQueue
 
 data class QueueInfo(
     val id: String,
@@ -22,21 +19,7 @@ data class QueueInfo(
     val radioSource: List<AppMediaItem>,
 ) {
     val isDynamic = radioSource.size == 1 &&
-            (radioSource[0] as? AppMediaItem.Playlist)?.isDynamic == true
-
-    companion object Companion {
-        fun ServerQueue.toQueue() = QueueInfo(
-            id = queueId,
-            available = available,
-            currentIndex = currentIndex,
-            shuffleEnabled = shuffleEnabled,
-            repeatMode = repeatMode,
-            elapsedTime = elapsedTime,
-            elapsedTimeLastUpdated = elapsedTimeLastUpdated,
-            currentItem = currentItem?.toQueueTrack(),
-            radioSource = radioSource?.toAppMediaItemList() ?: emptyList(),
-        )
-    }
+            (radioSource[0] as? Playlist)?.isDynamic == true
 }
 
 /** Strict-older-than on [QueueInfo.elapsedTimeLastUpdated]. Callers match ids first. */

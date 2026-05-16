@@ -1,10 +1,6 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.client.PlayerMedia.Companion.toPlayerMedia
-import io.music_assistant.client.data.model.server.PlayerFeature
-import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.PlayerType
-import io.music_assistant.client.data.model.server.ServerPlayer
 
 data class Player(
     val id: String,
@@ -76,38 +72,6 @@ data class Player(
             name = name,
             isPlaying = isPlaying,
             isGroup = isGroup,
-        )
-    }
-
-    companion object {
-        private const val PLAYER_CONTROL_NONE = "none"
-
-        fun ServerPlayer.toPlayer() = Player(
-            id = playerId,
-            name = displayName,
-            provider = provider,
-            // Unknown/new server-side player types (coerced to null by myJson) are
-            // treated as regular players so they still show up and aren't mistaken
-            // for a group. If the server adds a genuinely new group-like type we
-            // can surface it explicitly once the mobile app learns about it.
-            type = type ?: PlayerType.PLAYER,
-            shouldBeShown = available && enabled && (hidden != true),
-            canSetVolume = supportedFeatures.contains(PlayerFeature.VOLUME_SET),
-            volumeLevel = volumeLevel,
-            volumeControl = volumeControl,
-            volumeMuted = volumeMuted == true,
-            canMute = muteControl != null && muteControl != PLAYER_CONTROL_NONE,
-            queueId = activeSource ?: currentMedia?.queueId,
-            isPlaying = state == PlayerState.PLAYING,
-            isAnnouncing = announcementInProgress == true,
-            canGroupWith = canGroupWith,
-            groupMembers = groupMembers,
-            staticGroupMembers = staticGroupMembers,
-            activeGroup = activeGroup,
-            syncedTo = syncedTo,
-            groupVolume = groupVolume,
-            groupVolumeMuted = groupVolumeMuted == true,
-            currentMedia = currentMedia?.toPlayerMedia(),
         )
     }
 }

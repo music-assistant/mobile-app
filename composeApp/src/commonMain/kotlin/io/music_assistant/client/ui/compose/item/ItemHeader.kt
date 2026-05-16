@@ -52,8 +52,12 @@ import compose.icons.tablericons.FolderMinus
 import compose.icons.tablericons.FolderPlus
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.Playlist
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -161,13 +165,13 @@ private fun ItemOverflow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    var playlists by remember { mutableStateOf<List<AppMediaItem.Playlist>>(emptyList()) }
+    var playlists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
     var isLoadingPlaylists by remember { mutableStateOf(false) }
 
     OverflowMenuButton(
         options = buildList {
             libraryActions?.let { actions ->
-                if (item !is AppMediaItem.Genre) {
+                if (item !is Genre) {
                     add(
                         OverflowMenuOption(
                             title =
@@ -309,7 +313,7 @@ private fun ItemText(
             style = MaterialTheme.typography.titleLarge,
         )
 
-        (item as? AppMediaItem.Album)?.version?.let {
+        (item as? Album)?.version?.let {
             if (it.isNotBlank()) {
                 Text(
                     modifier = Modifier.basicMarquee(),
@@ -349,7 +353,7 @@ private fun Image(
             icon = TrackIcon,
         )
 
-        val shape = if (item is AppMediaItem.Artist) {
+        val shape = if (item is Artist) {
             CircleShape
         } else {
             RoundedCornerShape(16.dp)
@@ -378,7 +382,7 @@ private fun Image(
 
 @Preview
 @Composable
-private fun Preview(item: AppMediaItem.Album = AppMediaItemFixtures.album()) {
+private fun Preview(item: Album = AppMediaItemFixtures.album()) {
     ItemHeader(item)
 }
 

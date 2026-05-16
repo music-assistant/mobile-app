@@ -1,6 +1,6 @@
 package io.music_assistant.client.data.model.server
 
-import io.music_assistant.client.data.model.client.Player.Companion.toPlayer
+import io.music_assistant.client.data.mapper.PlayerFactory
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,11 +18,13 @@ import kotlin.test.assertTrue
  *  - Unknown `PlayerType` / `PlayerState` variants coerce to `null` via
  *    `coerceInputValues = true` on [myJson], rather than throwing
  *    `SerializationException` out of `decodeTaggedEnum`.
- *  - [ServerPlayer.toPlayer] maps a null `type` back to [PlayerType.PLAYER]
+ *  - [PlayerFactory.create] maps a null `type` back to [PlayerType.PLAYER]
  *    so a new server-side type still renders as something, instead of
  *    being silently misclassified as a group.
  */
 class ServerPlayerSerializationTest {
+    private val playerFactory = PlayerFactory()
+
     @Test
     fun deserializesWithOnlyPlayerIdPresent() {
         val json = """{"player_id": "pl1"}"""
@@ -78,7 +80,7 @@ class ServerPlayerSerializationTest {
     fun toPlayerMapsNullTypeToPlainPlayer() {
         val server = myJson.decodeFromString<ServerPlayer>("""{"player_id": "pl1"}""")
 
-        val player = server.toPlayer()
+        val player = playerFactory.create(server)
 
         assertEquals(PlayerType.PLAYER, player.type)
         assertEquals(false, player.isGroup)
@@ -90,7 +92,7 @@ class ServerPlayerSerializationTest {
             """{"player_id": "pl1", "type": "group"}""",
         )
 
-        val player = server.toPlayer()
+        val player = playerFactory.create(server)
 
         assertEquals(PlayerType.GROUP, player.type)
         assertTrue(player.isGroup)

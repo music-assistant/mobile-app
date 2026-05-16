@@ -1,0 +1,228 @@
+package io.music_assistant.client.data.mapper
+
+import io.music_assistant.client.data.model.client.Album
+import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Chapter
+import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.Metadata
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.PodcastEpisode
+import io.music_assistant.client.data.model.client.RadioStation
+import io.music_assistant.client.data.model.client.RecommendationFolder
+import io.music_assistant.client.data.model.client.Track
+import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.server.SearchResult
+import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerMediaItemChapter
+import io.music_assistant.client.data.model.server.ServerMediaItemImage
+import io.music_assistant.client.data.model.server.ServerMetadata
+
+/**
+ * Maps server-side [ServerMediaItem] DTOs into typed client [AppMediaItem] subtypes.
+ *
+ * Single concrete dispatcher — keep all type-switching here so subtypes stay dumb data classes.
+ * Pure & stateless; safe to register as a Koin `single`.
+ */
+class MediaItemFactory {
+
+    fun create(server: ServerMediaItem): AppMediaItem? = with(server) {
+        when (mediaType) {
+            MediaType.ARTIST -> Artist(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+            )
+
+            MediaType.ALBUM -> Album(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                version = version,
+                year = year,
+                artists = artists?.mapNotNull { create(it) as? Artist } ?: emptyList(),
+            )
+
+            MediaType.TRACK -> Track(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                duration = duration,
+                artists = artists?.mapNotNull { create(it) as? Artist } ?: emptyList(),
+                album = album?.let { create(it) as? Album },
+                discNumber = discNumber,
+                trackNumber = trackNumber,
+                position = position,
+                version = version,
+            )
+
+            MediaType.PLAYLIST -> Playlist(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                isEditable = isEditable == true,
+                isDynamic = isDynamic == true,
+            )
+
+            MediaType.FOLDER -> RecommendationFolder(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                items = items?.let { createList(it) },
+            )
+
+            MediaType.PODCAST -> Podcast(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+            )
+
+            MediaType.PODCAST_EPISODE -> PodcastEpisode(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                duration = duration,
+                podcast = podcast?.let { create(it) as? Podcast },
+                fullyPlayed = fullyPlayed,
+                resumePositionMs = resumePositionMs,
+                releaseDate = metadata?.releaseDate,
+                version = version,
+            )
+
+            MediaType.RADIO -> RadioStation(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                version = version,
+            )
+
+            MediaType.AUDIOBOOK -> Audiobook(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+                duration = duration,
+                authors = authors,
+                narrators = narrators,
+                chapters = metadata?.chapters?.map(::createChapter),
+                fullyPlayed = fullyPlayed,
+                resumePositionMs = resumePositionMs,
+                version = version,
+            )
+
+            MediaType.GENRE -> Genre(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                favorite = favorite,
+                sortName = sortName,
+                uri = uri,
+                imageInfo = resolveImageInfo(image, metadata),
+            )
+
+            MediaType.FLOW_STREAM,
+            MediaType.ANNOUNCEMENT,
+            MediaType.UNKNOWN,
+                -> null
+        }
+    }
+
+    fun createList(servers: List<ServerMediaItem>): List<AppMediaItem> =
+        servers.mapNotNull { create(it) }
+
+    fun createList(search: SearchResult): List<AppMediaItem> =
+        createList(search.artists) +
+                createList(search.albums) +
+                createList(search.tracks) +
+                createList(search.playlists) +
+                createList(search.podcasts) +
+                createList(search.audiobooks) +
+                createList(search.radio) +
+                createList(search.genres)
+
+    private fun createMetadata(server: ServerMetadata?): Metadata? = server?.let {
+        Metadata(
+            explicit = it.explicit == true,
+            images = it.images?.map(::createImageInfo).orEmpty(),
+            releaseDate = it.releaseDate,
+            chapters = it.chapters?.map(::createChapter).orEmpty(),
+        )
+    }
+
+    private fun createChapter(server: ServerMediaItemChapter): Chapter =
+        Chapter(
+            position = server.position,
+            name = server.name,
+            start = server.start,
+            end = server.end,
+        )
+
+    private fun createImageInfo(server: ServerMediaItemImage): ImageInfo =
+        ImageInfo(
+            path = server.path,
+            isRemotelyAccessible = server.remotelyAccessible,
+            provider = server.provider,
+        )
+
+    private fun resolveImageInfo(
+        image: ServerMediaItemImage?,
+        metadata: ServerMetadata?,
+    ): ImageInfo? =
+        image?.let(::createImageInfo)
+            ?: metadata?.images?.firstOrNull()?.let(::createImageInfo)
+}

@@ -6,10 +6,17 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.mapper.MediaItemFactory
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.RadioStation
 import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
@@ -38,6 +45,7 @@ class LibraryViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val libraryNavCoordinator: LibraryNavCoordinator,
+    private val mediaItemFactory: MediaItemFactory,
 ) : ViewModel() {
     companion object Companion {
         private const val PAGE_SIZE = 50
@@ -193,15 +201,15 @@ class LibraryViewModel(
         viewModelScope.launch {
             apiClient.events.collect { event ->
                 when (event) {
-                    is MediaItemUpdatedEvent -> event.data.toAppMediaItem()?.let { newItem ->
+                    is MediaItemUpdatedEvent -> mediaItemFactory.create(event.data)?.let { newItem ->
                         updateItemInTabs(newItem, ListModification.Update)
                     }
 
-                    is MediaItemAddedEvent -> event.data.toAppMediaItem()?.let { newItem ->
+                    is MediaItemAddedEvent -> mediaItemFactory.create(event.data)?.let { newItem ->
                         updateItemInTabs(newItem, ListModification.Add)
                     }
 
-                    is MediaItemDeletedEvent -> event.data.toAppMediaItem()?.let { newItem ->
+                    is MediaItemDeletedEvent -> mediaItemFactory.create(event.data)?.let { newItem ->
                         updateItemInTabs(newItem, ListModification.Delete)
                     }
 
@@ -356,7 +364,7 @@ class LibraryViewModel(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && item !is AppMediaItem.Genre,
+                        radioMode = radio && item !is Genre,
                     ),
                 )
             }
@@ -380,8 +388,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Artist>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Artist>()
                 ?.let { artists ->
                     updateTabStateWithData(
                         tab = Tab.ARTISTS,
@@ -413,8 +421,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Album>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Album>()
                 ?.let { albums ->
                     updateTabStateWithData(
                         tab = Tab.ALBUMS,
@@ -446,8 +454,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Playlist>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Playlist>()
                 ?.let { playlists ->
                     updateTabStateWithData(
                         tab = Tab.PLAYLISTS,
@@ -479,8 +487,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Track>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Track>()
                 ?.let { tracks ->
                     updateTabStateWithData(
                         tab = Tab.TRACKS,
@@ -512,8 +520,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Podcast>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Podcast>()
                 ?.let { podcasts ->
                     updateTabStateWithData(
                         tab = Tab.PODCASTS,
@@ -545,8 +553,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Audiobook>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Audiobook>()
                 ?.let { audiobooks ->
                     updateTabStateWithData(
                         tab = Tab.AUDIOBOOKS,
@@ -578,8 +586,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.RadioStation>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<RadioStation>()
                 ?.let { radios ->
                     updateTabStateWithData(
                         tab = Tab.RADIOS,
@@ -611,8 +619,8 @@ class LibraryViewModel(
                 ),
             )
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
-                ?.filterIsInstance<AppMediaItem.Genre>()
+                ?.let { mediaItemFactory.createList(it) }
+                ?.filterIsInstance<Genre>()
                 ?.let { genres ->
                     updateTabStateWithData(
                         tab = Tab.GENRES,
@@ -732,7 +740,7 @@ class LibraryViewModel(
             }
 
             result.resultAs<List<ServerMediaItem>>()
-                ?.toAppMediaItemList()
+                ?.let { mediaItemFactory.createList(it) }
                 ?.let { newItems ->
                     val currentItems = tabState.dataState.data
                     val allItems = currentItems + newItems
@@ -800,14 +808,14 @@ class LibraryViewModel(
             s.copy(
                 tabs = s.tabs.map { tabState ->
                 val shouldUpdate = when (newItem) {
-                    is AppMediaItem.Artist -> tabState.tab == Tab.ARTISTS
-                    is AppMediaItem.Album -> tabState.tab == Tab.ALBUMS
-                    is AppMediaItem.Track -> tabState.tab == Tab.TRACKS
-                    is AppMediaItem.Playlist -> tabState.tab == Tab.PLAYLISTS
-                    is AppMediaItem.Audiobook -> tabState.tab == Tab.AUDIOBOOKS
-                    is AppMediaItem.Podcast -> tabState.tab == Tab.PODCASTS
-                    is AppMediaItem.RadioStation -> tabState.tab == Tab.RADIOS
-                    is AppMediaItem.Genre -> tabState.tab == Tab.GENRES
+                    is Artist -> tabState.tab == Tab.ARTISTS
+                    is Album -> tabState.tab == Tab.ALBUMS
+                    is Track -> tabState.tab == Tab.TRACKS
+                    is Playlist -> tabState.tab == Tab.PLAYLISTS
+                    is Audiobook -> tabState.tab == Tab.AUDIOBOOKS
+                    is Podcast -> tabState.tab == Tab.PODCASTS
+                    is RadioStation -> tabState.tab == Tab.RADIOS
+                    is Genre -> tabState.tab == Tab.GENRES
                     else -> false
                 }
 

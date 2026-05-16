@@ -36,7 +36,15 @@ import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.RadioStation
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.settings.ViewMode
@@ -105,11 +113,11 @@ fun SearchScreen(
             toastState = toastState,
             onItemClick = { item ->
                 when (item) {
-                    is AppMediaItem.Artist,
-                    is AppMediaItem.Album,
-                    is AppMediaItem.Playlist,
-                    is AppMediaItem.Podcast,
-                    is AppMediaItem.Audiobook,
+                    is Artist,
+                    is Album,
+                    is Playlist,
+                    is Podcast,
+                    is Audiobook,
                         -> {
                         onNavigateToItem(item.itemId, item.mediaType, item.provider)
                     }
@@ -258,7 +266,7 @@ private fun SearchContent(
                                 key = { "${it.mediaType}_${it.provider}_${it.itemId}" },
                             ) { item ->
                                 when (item) {
-                                    is AppMediaItem.Track -> TrackWithMenu(
+                                    is Track -> TrackWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
@@ -267,17 +275,7 @@ private fun SearchContent(
                                         providerIconFetcher = providerIconFetcher,
                                     )
 
-                                    is AppMediaItem.Artist -> ArtistWithMenu(
-                                        serverUrl = serverUrl,
-                                        viewMode = ViewMode.LIST,
-                                        item = item,
-                                        onNavigateClick = onItemClick,
-                                        onPlayOption = onPlayClick,
-                                        libraryActions = libraryActions,
-                                        providerIconFetcher = providerIconFetcher,
-                                    )
-
-                                    is AppMediaItem.Album -> AlbumWithMenu(
+                                    is Artist -> ArtistWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
@@ -287,7 +285,7 @@ private fun SearchContent(
                                         providerIconFetcher = providerIconFetcher,
                                     )
 
-                                    is AppMediaItem.Playlist -> PlaylistWithMenu(
+                                    is Album -> AlbumWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
@@ -297,7 +295,7 @@ private fun SearchContent(
                                         providerIconFetcher = providerIconFetcher,
                                     )
 
-                                    is AppMediaItem.Podcast -> PodcastWithMenu(
+                                    is Playlist -> PlaylistWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
@@ -307,7 +305,7 @@ private fun SearchContent(
                                         providerIconFetcher = providerIconFetcher,
                                     )
 
-                                    is AppMediaItem.Audiobook -> AudiobookWithMenu(
+                                    is Podcast -> PodcastWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
@@ -317,7 +315,17 @@ private fun SearchContent(
                                         providerIconFetcher = providerIconFetcher,
                                     )
 
-                                    is AppMediaItem.RadioStation -> RadioWithMenu(
+                                    is Audiobook -> AudiobookWithMenu(
+                                        serverUrl = serverUrl,
+                                        viewMode = ViewMode.LIST,
+                                        item = item,
+                                        onNavigateClick = onItemClick,
+                                        onPlayOption = onPlayClick,
+                                        libraryActions = libraryActions,
+                                        providerIconFetcher = providerIconFetcher,
+                                    )
+
+                                    is RadioStation -> RadioWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
@@ -326,7 +334,7 @@ private fun SearchContent(
                                         providerIconFetcher = providerIconFetcher,
                                     )
 
-                                    is AppMediaItem.Genre -> GenreWithMenu(
+                                    is Genre -> GenreWithMenu(
                                         serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,

@@ -128,23 +128,23 @@ class SiriIntentHandler: NSObject {
     ///   RecommendationFolder → nil  (filter out)
     fileprivate static func mapToINMediaItem(_ item: AppMediaItem) -> INMediaItem? {
         let type: INMediaItemType
-        if item is AppMediaItem.Track {
+        if item is Track {
             type = .song
-        } else if item is AppMediaItem.Album {
+        } else if item is Album {
             type = .album
-        } else if item is AppMediaItem.Artist {
+        } else if item is Artist {
             type = .artist
-        } else if item is AppMediaItem.Playlist {
+        } else if item is Playlist {
             type = .playlist
-        } else if item is AppMediaItem.Audiobook {
+        } else if item is Audiobook {
             type = .audioBook
-        } else if item is AppMediaItem.RadioStation {
+        } else if item is RadioStation {
             type = .radioStation
-        } else if item is AppMediaItem.Podcast {
+        } else if item is Podcast {
             type = .podcastShow
-        } else if item is AppMediaItem.PodcastEpisode {
+        } else if item is PodcastEpisode {
             type = .podcastEpisode
-        } else if item is AppMediaItem.Genre {
+        } else if item is Genre {
             type = .musicStation
         } else {
             // RecommendationFolder, plus any future AppMediaItem subtype we
@@ -252,25 +252,25 @@ class SiriIntentHandler: NSObject {
         let typeFiltered: [AppMediaItem] = {
             switch type {
             case .artist:
-                return mappable.filter { $0 is AppMediaItem.Artist }
+                return mappable.filter { $0 is Artist }
             case .album:
-                return mappable.filter { $0 is AppMediaItem.Album }
+                return mappable.filter { $0 is Album }
             case .song:
-                return mappable.filter { $0 is AppMediaItem.Track }
+                return mappable.filter { $0 is Track }
             case .playlist:
-                return mappable.filter { $0 is AppMediaItem.Playlist }
+                return mappable.filter { $0 is Playlist }
             case .audioBook:
-                return mappable.filter { $0 is AppMediaItem.Audiobook }
+                return mappable.filter { $0 is Audiobook }
             case .radioStation, .algorithmicRadioStation:
-                return mappable.filter { $0 is AppMediaItem.RadioStation }
+                return mappable.filter { $0 is RadioStation }
             case .musicStation:
                 // We map Genre → .musicStation; RadioStation is the closer
                 // analogue when a real station was requested. Accept either.
-                return mappable.filter { $0 is AppMediaItem.RadioStation || $0 is AppMediaItem.Genre }
+                return mappable.filter { $0 is RadioStation || $0 is Genre }
             case .podcastShow, .podcastStation, .podcastPlaylist:
-                return mappable.filter { $0 is AppMediaItem.Podcast }
+                return mappable.filter { $0 is Podcast }
             case .podcastEpisode:
-                return mappable.filter { $0 is AppMediaItem.PodcastEpisode }
+                return mappable.filter { $0 is PodcastEpisode }
             default:
                 return []
             }

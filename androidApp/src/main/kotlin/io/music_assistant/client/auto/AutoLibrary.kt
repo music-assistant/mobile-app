@@ -15,9 +15,8 @@ import io.music_assistant.client.R
 import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
@@ -51,6 +50,7 @@ class AutoLibrary(
     private val context: Context,
     private val apiClient: ServiceClient,
     private val settingsRepository: SettingsRepository,
+    private val mediaItemFactory: MediaItemFactory,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
@@ -93,6 +93,7 @@ class AutoLibrary(
                     answer.resultAs<SearchResult>()?.let {
                         result.sendResult(
                             it.toAutoMediaItems(
+                                mediaItemFactory,
                                 baseUrl,
                                 defaultIconUri,
                             ),
@@ -290,7 +291,7 @@ class AutoLibrary(
         }
         return apiClient.sendRequest(request)
             .resultAs<List<ServerMediaItem>>()
-            ?.toAppMediaItemList()
+            ?.let { mediaItemFactory.createList(it) }
             ?.map { it.toAutoMediaItem(baseUrl, true, defaultIconUri) }
     }
 
@@ -321,7 +322,7 @@ class AutoLibrary(
         }
         val items = apiClient.sendRequest(request)
             .resultAs<List<ServerMediaItem>>()
-            ?.toAppMediaItemList()
+            ?.let { mediaItemFactory.createList(it) }
             ?: return null
         val sorted =
             if (context == SubItemContext.PLAYLIST_TRACKS) items else items.clientSorted(sort)
@@ -875,6 +876,7 @@ internal data class ParentRef(
 }
 
 private fun SearchResult.toAutoMediaItems(
+    factory: MediaItemFactory,
     serverUrl: String?,
     defaultIconUri: Uri,
 ): List<MediaItem> = buildList {
@@ -887,17 +889,18 @@ private fun SearchResult.toAutoMediaItems(
         podcasts to "Podcasts",
         radio to "Radio stations",
     ).forEach { (items, category) ->
-        addAll(items.mapNotNull { it.toAutoMediaItem(serverUrl, true, defaultIconUri, category) })
+        addAll(items.mapNotNull { it.toAutoMediaItem(factory, serverUrl, true, defaultIconUri, category) })
     }
 }
 
 private fun ServerMediaItem.toAutoMediaItem(
+    factory: MediaItemFactory,
     serverUrl: String?,
     allowBrowse: Boolean,
     defaultIconUri: Uri,
     category: String? = null,
 ): MediaItem? =
-    toAppMediaItem()?.toAutoMediaItem(serverUrl, allowBrowse, defaultIconUri, category)
+    factory.create(this)?.toAutoMediaItem(serverUrl, allowBrowse, defaultIconUri, category)
 
 private fun AppMediaItem.toAutoMediaItem(
     serverUrl: String?,

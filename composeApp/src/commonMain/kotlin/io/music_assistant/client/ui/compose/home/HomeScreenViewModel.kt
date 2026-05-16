@@ -6,10 +6,12 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
+import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.Player
+import io.music_assistant.client.data.model.client.RecommendationFolder
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -43,6 +45,7 @@ class HomeScreenViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
     private val settings: SettingsRepository,
+    private val mediaItemFactory: MediaItemFactory,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var recommendationsJob: Job? = null
@@ -192,7 +195,7 @@ class HomeScreenViewModel(
         _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
         repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
             if (attempt > 0) delay(Timings.RETRY_DEBOUNCE)
-            getList<AppMediaItem.RecommendationFolder>(Request.Library.recommendations())
+            getList<RecommendationFolder>(Request.Library.recommendations())
                 ?.let { items ->
                     _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
                     return@launch
@@ -210,7 +213,7 @@ class HomeScreenViewModel(
                             media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio && item !is AppMediaItem.Genre,
+                            radioMode = radio && item !is Genre,
                         ),
                     )
                 }
@@ -225,20 +228,20 @@ class HomeScreenViewModel(
             val updated = recommendationsData.map { row ->
                 row.items?.let { itemsList ->
                     val updatedItems = itemsList.map { item ->
-                        if (item is AppMediaItem.Track && item.hasAnyMappingFrom(serverItem)) {
-                            serverItem.toAppMediaItem() as? AppMediaItem.Track ?: item
+                        if (item is Track && item.hasAnyMappingFrom(serverItem)) {
+                            mediaItemFactory.create(serverItem) as? Track ?: item
                         } else {
                             item
                         }
                     }
                     // Create new RecommendationFolder with updated items
-                    AppMediaItem.RecommendationFolder(
+                    RecommendationFolder(
                         itemId = row.itemId,
                         provider = row.provider,
                         name = row.displayName,
                         providerMappings = row.providerMappings,
                         uri = row.uri,
-                        image = row.image,
+                        imageInfo = row.imageInfo,
                         items = updatedItems,
                     )
                 } ?: row
@@ -339,7 +342,7 @@ class HomeScreenViewModel(
             if (result.isFailure) {
                 Logger.e("Error fetching list for request $request: ${result.exceptionOrNull()}")
             }
-            result.resultAs<List<ServerMediaItem>>()?.toAppMediaItemList()?.mapNotNull { it as? T }
+            result.resultAs<List<ServerMediaItem>>()?.let { mediaItemFactory.createList(it) }?.mapNotNull { it as? T }
         }
 
     fun saveHiddenRecommendationFolders(ids: Set<String>) =
@@ -347,7 +350,7 @@ class HomeScreenViewModel(
 
     data class RecommendationsState(
         val connectionState: SessionState,
-        val recommendations: DataState<List<AppMediaItem.RecommendationFolder>>,
+        val recommendations: DataState<List<RecommendationFolder>>,
         val hiddenFolderIds: Set<String> = emptySet(),
     )
 

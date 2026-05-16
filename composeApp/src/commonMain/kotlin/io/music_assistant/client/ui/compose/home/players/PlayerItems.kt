@@ -41,7 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.description
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.description
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
@@ -351,7 +352,7 @@ fun FullPlayerItem(
                     }
                 },
                 track = { sliderState ->
-                    val audiobook = item.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook
+                    val audiobook = item.queueInfo?.currentItem?.track as? Audiobook
                     val chapters = audiobook?.chapters
                     Box {
                         SliderDefaults.Track(

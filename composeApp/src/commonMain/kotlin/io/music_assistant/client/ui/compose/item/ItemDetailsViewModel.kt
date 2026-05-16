@@ -6,11 +6,19 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.mapper.MediaItemFactory
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItemList
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.PlayableItem
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.PodcastEpisode
+import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.clientSorted
@@ -34,17 +42,18 @@ class ItemDetailsViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
+    private val mediaItemFactory: MediaItemFactory,
 ) : ViewModel() {
     data class State(
         val itemState: DataState<AppMediaItem>,
-        val albumsState: DataState<List<AppMediaItem.Album>>,
+        val albumsState: DataState<List<Album>>,
         val playableItemsState: DataState<List<PlayableItem>>,
-        val artistsState: DataState<List<AppMediaItem.Artist>> = DataState.Loading(),
+        val artistsState: DataState<List<Artist>> = DataState.Loading(),
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
     )
 
-    private var rawAlbums: List<AppMediaItem.Album> = emptyList()
+    private var rawAlbums: List<Album> = emptyList()
     private var rawPlayableItems: List<PlayableItem> = emptyList()
 
     val serverUrl = apiClient.serverBaseUrl
@@ -76,7 +85,7 @@ class ItemDetailsViewModel(
                     is MediaItemUpdatedEvent -> {
                         (_state.value.itemState as? DataState.Data)?.data?.let { current ->
                             event.data.takeIf { current.hasAnyMappingFrom(it) }
-                                ?.toAppMediaItem()
+                                ?.let { mediaItemFactory.create(it) }
                                 ?.let { updatedItem ->
                                     _state.update {
                                         it.copy(itemState = DataState.Data(updatedItem))
@@ -91,7 +100,7 @@ class ItemDetailsViewModel(
                     is MediaItemAddedEvent -> {
                         (_state.value.itemState as? DataState.Data)?.data?.let { current ->
                             event.data.takeIf { current.hasAnyMappingFrom(it) }
-                                ?.toAppMediaItem()
+                                ?.let { mediaItemFactory.create(it) }
                                 ?.let { updatedItem ->
                                     _state.update {
                                         it.copy(itemState = DataState.Data(updatedItem))
@@ -118,7 +127,7 @@ class ItemDetailsViewModel(
                                         )
                                     }
                                 }
-                                ?.toAppMediaItem()
+                                ?.let { mediaItemFactory.create(it) }
                                 ?.let { updatedItem ->
                                     _state.update {
                                         it.copy(itemState = DataState.Data(updatedItem))
@@ -172,12 +181,12 @@ class ItemDetailsViewModel(
 
         return apiClient.sendRequest(request)
             .resultAs<ServerMediaItem>()
-            ?.toAppMediaItem()
+            ?.let { mediaItemFactory.create(it) }
     }
 
     private fun loadSubItems(item: AppMediaItem) {
         when (item) {
-            is AppMediaItem.Artist -> {
+            is Artist -> {
                 _state.update {
                     it.copy(
                         albumsSortOption = settingsRepository.getSortOption(SubItemContext.ARTIST_ALBUMS),
@@ -188,7 +197,7 @@ class ItemDetailsViewModel(
                 loadArtistTracks(item.itemId, item.provider)
             }
 
-            is AppMediaItem.Album -> {
+            is Album -> {
                 _state.update {
                     it.copy(
                         albumsState = DataState.NoData(),
@@ -199,7 +208,7 @@ class ItemDetailsViewModel(
                 loadAlbumTracks(item.itemId, item.provider)
             }
 
-            is AppMediaItem.Playlist -> {
+            is Playlist -> {
                 _state.update {
                     it.copy(
                         albumsState = DataState.NoData(),
@@ -210,7 +219,7 @@ class ItemDetailsViewModel(
                 loadPlaylistTracks(item.itemId, item.provider)
             }
 
-            is AppMediaItem.Podcast -> {
+            is Podcast -> {
                 _state.update {
                     it.copy(
                         albumsState = DataState.NoData(),
@@ -221,7 +230,7 @@ class ItemDetailsViewModel(
                 loadPodcastEpisodes(item.itemId, item.provider)
             }
 
-            is AppMediaItem.Genre -> {
+            is Genre -> {
                 _state.update {
                     it.copy(
                         playableItemsState = DataState.NoData(),
@@ -232,7 +241,7 @@ class ItemDetailsViewModel(
                 loadGenreOverview(item.itemId, item.provider)
             }
 
-            is AppMediaItem.Audiobook -> {
+            is Audiobook -> {
                 _state.update {
                     it.copy(
                         albumsState = DataState.NoData(),
@@ -269,8 +278,8 @@ class ItemDetailsViewModel(
                         inLibraryOnly = false,
                     ),
                 ).resultAs<List<ServerMediaItem>>()
-                    ?.toAppMediaItemList()
-                    ?.filterIsInstance<AppMediaItem.Album>()
+                    ?.let { mediaItemFactory.createList(it) }
+                    ?.filterIsInstance<Album>()
                     ?: emptyList()
 
                 rawAlbums = albums
@@ -295,8 +304,8 @@ class ItemDetailsViewModel(
                         inLibraryOnly = false,
                     ),
                 ).resultAs<List<ServerMediaItem>>()
-                    ?.toAppMediaItemList()
-                    ?.filterIsInstance<AppMediaItem.Track>()
+                    ?.let { mediaItemFactory.createList(it) }
+                    ?.filterIsInstance<Track>()
                     ?: emptyList()
 
                 rawPlayableItems = tracks
@@ -321,8 +330,8 @@ class ItemDetailsViewModel(
                         inLibraryOnly = false,
                     ),
                 ).resultAs<List<ServerMediaItem>>()
-                    ?.toAppMediaItemList()
-                    ?.filterIsInstance<AppMediaItem.Track>()
+                    ?.let { mediaItemFactory.createList(it) }
+                    ?.filterIsInstance<Track>()
                     ?: emptyList()
 
                 rawPlayableItems = tracks
@@ -347,8 +356,8 @@ class ItemDetailsViewModel(
                         forceRefresh = null,
                     ),
                 ).resultAs<List<ServerMediaItem>>()
-                    ?.toAppMediaItemList()
-                    ?.filterIsInstance<AppMediaItem.Track>()
+                    ?.let { mediaItemFactory.createList(it) }
+                    ?.filterIsInstance<Track>()
                     ?: emptyList()
 
                 rawPlayableItems = tracks
@@ -373,8 +382,8 @@ class ItemDetailsViewModel(
                         inLibraryOnly = false,
                     ),
                 ).resultAs<List<ServerMediaItem>>()
-                    ?.toAppMediaItemList()
-                    ?.filterIsInstance<AppMediaItem.PodcastEpisode>()
+                    ?.let { mediaItemFactory.createList(it) }
+                    ?.filterIsInstance<PodcastEpisode>()
                     ?: emptyList()
 
                 rawPlayableItems = episodes
@@ -403,13 +412,13 @@ class ItemDetailsViewModel(
                         providerInstanceIdOrDomain = provider,
                     ),
                 ).resultAs<List<ServerMediaItem>>()
-                    ?.toAppMediaItemList()
-                    ?.filterIsInstance<AppMediaItem.RecommendationFolder>()
+                    ?.let { mediaItemFactory.createList(it) }
+                    ?.filterIsInstance<RecommendationFolder>()
                     ?: emptyList()
 
                 val allItems = folders.flatMap { it.items.orEmpty() }
-                val artists = allItems.filterIsInstance<AppMediaItem.Artist>()
-                val albums = allItems.filterIsInstance<AppMediaItem.Album>()
+                val artists = allItems.filterIsInstance<Artist>()
+                val albums = allItems.filterIsInstance<Album>()
 
                 _state.update {
                     it.copy(
@@ -444,7 +453,7 @@ class ItemDetailsViewModel(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && track !is AppMediaItem.Genre,
+                        radioMode = radio && track !is Genre,
                     ),
                 )
             }
@@ -503,7 +512,7 @@ class ItemDetailsViewModel(
         if (artistsData != null) {
             val updatedArtists = artistsData.map { artist ->
                 if (artist.itemId == serverItem.itemId) {
-                    serverItem.toAppMediaItem() as? AppMediaItem.Artist ?: artist
+                    mediaItemFactory.create(serverItem) as? Artist ?: artist
                 } else {
                     artist
                 }
@@ -515,14 +524,14 @@ class ItemDetailsViewModel(
         if (albumsData != null) {
             val updatedAlbums = albumsData.map { album ->
                 if (album.itemId == serverItem.itemId) {
-                    serverItem.toAppMediaItem() as? AppMediaItem.Album ?: album
+                    mediaItemFactory.create(serverItem) as? Album ?: album
                 } else {
                     album
                 }
             }
             rawAlbums = rawAlbums.map { album ->
                 if (album.itemId == serverItem.itemId) {
-                    serverItem.toAppMediaItem() as? AppMediaItem.Album ?: album
+                    mediaItemFactory.create(serverItem) as? Album ?: album
                 } else {
                     album
                 }
@@ -534,14 +543,14 @@ class ItemDetailsViewModel(
         if (tracksData != null) {
             val updatedTracks = tracksData.map { track ->
                 if (track.itemId == serverItem.itemId) {
-                    serverItem.toAppMediaItem() as? AppMediaItem.Track ?: track
+                    mediaItemFactory.create(serverItem) as? Track ?: track
                 } else {
                     track
                 }
             }
             rawPlayableItems = rawPlayableItems.map { track ->
                 if (track.itemId == serverItem.itemId) {
-                    serverItem.toAppMediaItem() as? PlayableItem ?: track
+                    mediaItemFactory.create(serverItem) as? PlayableItem ?: track
                 } else {
                     track
                 }

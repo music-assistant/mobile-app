@@ -94,7 +94,7 @@ class CarPlayContentManager {
     }
 
     /// Returns nil on timeout. Empty array means "server answered, no folders."
-    func fetchRecommendationFolders(completion: @escaping ([AppMediaItem.RecommendationFolder]?) -> Void) {
+    func fetchRecommendationFolders(completion: @escaping ([RecommendationFolder]?) -> Void) {
         KmpHelper.shared.fetchRecommendationFolders { folders in
             guard let folders = folders else { completion(nil); return }
             completion(Array(folders))
@@ -111,7 +111,7 @@ class CarPlayContentManager {
     // Same nil-on-timeout contract as the library fetchers above.
 
     func fetchAlbumsForArtist(
-        _ artist: AppMediaItem.Artist,
+        _ artist: Artist,
         completion: @escaping ([CPListItem]?) -> Void
     ) {
         KmpHelper.shared.fetchAlbumsByArtist(artist: artist) { items in
@@ -120,7 +120,7 @@ class CarPlayContentManager {
     }
 
     func fetchTracksForAlbum(
-        _ album: AppMediaItem.Album,
+        _ album: Album,
         completion: @escaping ([CPListItem]?) -> Void
     ) {
         KmpHelper.shared.fetchTracksByAlbum(album: album) { items in
@@ -129,7 +129,7 @@ class CarPlayContentManager {
     }
 
     func fetchTracksForPlaylist(
-        _ playlist: AppMediaItem.Playlist,
+        _ playlist: Playlist,
         completion: @escaping ([CPListItem]?) -> Void
     ) {
         KmpHelper.shared.fetchTracksByPlaylist(playlist: playlist) { items in
@@ -157,15 +157,15 @@ class CarPlayContentManager {
 
         // Set type-appropriate placeholder icon
         let iconName: String
-        if item is AppMediaItem.Audiobook {
+        if item is Audiobook {
             iconName = "book.fill"
-        } else if item is AppMediaItem.RadioStation {
+        } else if item is RadioStation {
             iconName = "radio.fill"
-        } else if item is AppMediaItem.Album {
+        } else if item is Album {
             iconName = "square.stack"
-        } else if item is AppMediaItem.Playlist {
+        } else if item is Playlist {
             iconName = "music.note.list"
-        } else if item is AppMediaItem.Artist {
+        } else if item is Artist {
             iconName = "person.2.crop.square.stack"
         } else {
             iconName = "music.note"

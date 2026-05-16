@@ -119,7 +119,7 @@ object PlayerDataFixtures {
         return PlayerMedia(
             title = displayName,
             artist = subtitle,
-            album = (this as? AppMediaItem.Track)?.album?.displayName,
+            album = (this as? Track)?.album?.displayName,
             imageUrl = null,
             duration = duration,
             queueId = queueId,

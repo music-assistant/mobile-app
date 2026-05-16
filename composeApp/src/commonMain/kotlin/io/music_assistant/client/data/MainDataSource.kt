@@ -9,15 +9,16 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
 import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot.Companion.ELAPSED_ANCHOR_EPSILON_S
+import io.music_assistant.client.data.mapper.MediaItemFactory
+import io.music_assistant.client.data.mapper.PlayerFactory
+import io.music_assistant.client.data.mapper.QueueFactory
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
+import io.music_assistant.client.data.model.client.Audiobook
 import io.music_assistant.client.data.model.client.Player
-import io.music_assistant.client.data.model.client.Player.Companion.toPlayer
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
-import io.music_assistant.client.data.model.client.QueueInfo.Companion.toQueue
-import io.music_assistant.client.data.model.client.QueueTrack.Companion.toQueueTrack
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
@@ -89,6 +90,9 @@ class MainDataSource(
     private val mediaPlayerController: MediaPlayerController,
     private val sendspinClientFactory: SendspinClientFactory,
     private val localPlayerRepository: LocalPlayerRepository,
+    private val mediaItemFactory: MediaItemFactory,
+    private val playerFactory: PlayerFactory,
+    private val queueFactory: QueueFactory,
 ) : CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
@@ -1219,7 +1223,7 @@ class MainDataSource(
                 val currentPos = data.queueInfo?.id
                     ?.let(positionTracker::effectiveSec)
                     ?: data.queueInfo?.elapsedTime ?: 0.0
-                (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
+                (data.queueInfo?.currentItem?.track as? Audiobook)
                     ?.chapters?.firstOrNull { it.start > currentPos }?.start
                     ?.let { Request.Player.seek(queueId = data.playerId, position = it.toLong()) }
                     ?: Request.Player.simpleCommand(playerId = data.playerId, command = "next")
@@ -1229,7 +1233,7 @@ class MainDataSource(
                 val currentPos = data.queueInfo?.id
                     ?.let(positionTracker::effectiveSec)
                     ?: data.queueInfo?.elapsedTime ?: 0.0
-                (data.queueInfo?.currentItem?.track as? AppMediaItem.Audiobook)
+                (data.queueInfo?.currentItem?.track as? Audiobook)
                     ?.chapters?.takeIf { it.isNotEmpty() }
                     ?.let { chapters ->
                         val currentChapterStart =
@@ -1370,7 +1374,7 @@ class MainDataSource(
                 .collect { event ->
                     when (event) {
                         is PlayerAddedEvent -> {
-                            val newPlayer = event.player()
+                            val newPlayer = playerFactory.create(event.data)
                             Logger.e("Player added: $newPlayer")
                             if (newPlayer.shouldBeShown) {
                                 _serverPlayers.update { oldState ->
@@ -1413,7 +1417,7 @@ class MainDataSource(
                         }
 
                         is PlayerUpdatedEvent -> {
-                            val data = event.player()
+                            val data = playerFactory.create(event.data)
                             Logger.i("Player updated: $data")
                             // Forward to local player repository if this is the local player
                             if (data.id == settings.sendspinClientId.value) {
@@ -1444,7 +1448,7 @@ class MainDataSource(
                         is QueueAddedEvent -> {
                             // Server announces a queue (typically when a new
                             // player connects and MA registers its queue).
-                            val data = event.queue().takeIfNotStale("QueueAdded") ?: return@collect
+                            val data = queueFactory.create(event.data).takeIfNotStale("QueueAdded") ?: return@collect
                             Logger.i("Queue added $data")
 
                             val localPlayerId = settings.sendspinClientId.value
@@ -1477,7 +1481,7 @@ class MainDataSource(
 
                         is QueueUpdatedEvent -> {
                             val data =
-                                event.queue().takeIfNotStale("QueueUpdated") ?: return@collect
+                                queueFactory.create(event.data).takeIfNotStale("QueueUpdated") ?: return@collect
                             Logger.i("Queue updated $data")
 
                             // Forward to local player repository if this is the local player's queue
@@ -1508,7 +1512,7 @@ class MainDataSource(
 
                         is QueueItemsUpdatedEvent -> {
                             val data =
-                                event.queue().takeIfNotStale("QueueItemsUpdated") ?: return@collect
+                                queueFactory.create(event.data).takeIfNotStale("QueueItemsUpdated") ?: return@collect
                             _queueInfos.update { value ->
                                 value.map {
                                     if (it.id == data.id) data else it
@@ -1553,17 +1557,17 @@ class MainDataSource(
                         }
 
                         is MediaItemUpdatedEvent -> {
-                            (event.data.toAppMediaItem() as? AppMediaItem.Track)
+                            (mediaItemFactory.create(event.data) as? Track)
                                 ?.let { updateMediaTrackInfo(it) }
                         }
 
                         is MediaItemAddedEvent -> {
-                            (event.data.toAppMediaItem() as? AppMediaItem.Track)
+                            (mediaItemFactory.create(event.data) as? Track)
                                 ?.let { updateMediaTrackInfo(it) }
                         }
 
                         is MediaItemDeletedEvent -> {
-                            (event.data.toAppMediaItem() as? AppMediaItem.Track)
+                            (mediaItemFactory.create(event.data) as? Track)
                                 ?.let { deletedTrack ->
                                     _playersData.update { currentState ->
                                         when (currentState) {
@@ -1604,7 +1608,7 @@ class MainDataSource(
                 }
         }
 
-    private fun updateMediaTrackInfo(newTrack: AppMediaItem.Track) {
+    private fun updateMediaTrackInfo(newTrack: Track) {
         _playersData.update { currentState ->
             when (currentState) {
                 is DataState.Error,
@@ -1662,7 +1666,7 @@ class MainDataSource(
         log.i { "Updating players and queues" }
         launch {
             apiClient.sendRequest(Request.Player.all())
-                .resultAs<List<ServerPlayer>>()?.map { it.toPlayer() }
+                .resultAs<List<ServerPlayer>>()?.let { playerFactory.createList(it) }
                 ?.let { list ->
                     val visiblePlayers = list.filter { it.shouldBeShown }
                     _serverPlayers.update {
@@ -1681,7 +1685,7 @@ class MainDataSource(
         }
         launch {
             apiClient.sendRequest(Request.Queue.all())
-                .resultAs<List<ServerQueue>>()?.map { it.toQueue() }?.let { list ->
+                .resultAs<List<ServerQueue>>()?.let { queueFactory.createList(it) }?.let { list ->
                     _queueInfos.update { list }
                     list.forEach { queueInfo ->
                         queueInfo.elapsedTime?.let { elapsed ->
@@ -1775,7 +1779,7 @@ class MainDataSource(
         launch {
             (forcedQueueData ?: fullData.queueInfo)?.let { queueInfo ->
                 val queueTracks = apiClient.sendRequest(Request.Queue.items(queueInfo.id))
-                    .resultAs<List<ServerQueueItem>>()?.mapNotNull { it.toQueueTrack() }
+                    .resultAs<List<ServerQueueItem>>()?.let { queueFactory.createTrackList(it) }
 
                 // Forward to local player repository so external consumers (Android Auto, CarPlay) see items
                 if (fullData.isLocal && queueTracks != null) {

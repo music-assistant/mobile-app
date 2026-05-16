@@ -5,8 +5,16 @@ import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.mapper.MediaItemFactory
+import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.AppMediaItem.Companion.toAppMediaItem
+import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.RadioStation
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.QueueOption
 import io.music_assistant.client.data.model.server.SearchResult
@@ -42,6 +50,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 class SearchViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
+    private val mediaItemFactory: MediaItemFactory,
 ) : ViewModel() {
     val serverUrl = apiClient.serverBaseUrl
 
@@ -143,7 +152,7 @@ class SearchViewModel(
                             media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio && track !is AppMediaItem.Genre,
+                            radioMode = radio && track !is Genre,
                         ),
                     )
                 }
@@ -156,7 +165,7 @@ class SearchViewModel(
         if (resultsData != null) {
             val updatedTracks = resultsData.tracks.map { track ->
                 if (track.hasAnyMappingFrom(serverItem)) {
-                    serverItem.toAppMediaItem() as? AppMediaItem.Track ?: track
+                    mediaItemFactory.create(serverItem) as? Track ?: track
                 } else {
                     track
                 }
@@ -213,14 +222,14 @@ class SearchViewModel(
     )
 
     data class SearchResults(
-        val artists: List<AppMediaItem.Artist>,
-        val albums: List<AppMediaItem.Album>,
-        val tracks: List<AppMediaItem.Track>,
-        val playlists: List<AppMediaItem.Playlist>,
-        val audiobooks: List<AppMediaItem.Audiobook>,
-        val podcasts: List<AppMediaItem.Podcast>,
-        val radios: List<AppMediaItem.RadioStation>,
-        val genres: List<AppMediaItem.Genre>,
+        val artists: List<Artist>,
+        val albums: List<Album>,
+        val tracks: List<Track>,
+        val playlists: List<Playlist>,
+        val audiobooks: List<Audiobook>,
+        val podcasts: List<Podcast>,
+        val radios: List<RadioStation>,
+        val genres: List<Genre>,
     ) {
         val nonEmptyLists = listOf(
             Item(Res.string.media_type_tracks, tracks),
@@ -240,13 +249,13 @@ class SearchViewModel(
     }
 
     private fun SearchResult.toAppSearchResults() = SearchResults(
-        artists = artists.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Artist },
-        albums = albums.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Album },
-        tracks = tracks.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Track },
-        playlists = playlists.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Playlist },
-        audiobooks = audiobooks.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Audiobook },
-        podcasts = podcasts.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Podcast },
-        radios = radio.mapNotNull { it.toAppMediaItem() as? AppMediaItem.RadioStation },
-        genres = genres.mapNotNull { it.toAppMediaItem() as? AppMediaItem.Genre },
+        artists = artists.mapNotNull { mediaItemFactory.create(it) as? Artist },
+        albums = albums.mapNotNull { mediaItemFactory.create(it) as? Album },
+        tracks = tracks.mapNotNull { mediaItemFactory.create(it) as? Track },
+        playlists = playlists.mapNotNull { mediaItemFactory.create(it) as? Playlist },
+        audiobooks = audiobooks.mapNotNull { mediaItemFactory.create(it) as? Audiobook },
+        podcasts = podcasts.mapNotNull { mediaItemFactory.create(it) as? Podcast },
+        radios = radio.mapNotNull { mediaItemFactory.create(it) as? RadioStation },
+        genres = genres.mapNotNull { mediaItemFactory.create(it) as? Genre },
     )
 }

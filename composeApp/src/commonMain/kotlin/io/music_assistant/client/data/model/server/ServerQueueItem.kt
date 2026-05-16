@@ -12,7 +12,7 @@ data class ServerQueueItem(
     @SerialName("duration") val duration: Double? = null,
     // @SerialName("sort_index") val sortIndex: Int,
     @SerialName("streamdetails") val streamDetails: StreamDetails? = null,
-    @SerialName("image") val image: MediaItemImage? = null,
+    @SerialName("image") val image: ServerMediaItemImage? = null,
     // @SerialName("index") val index: Int
 )
 

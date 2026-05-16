@@ -19,12 +19,12 @@ data class ServerMediaItem(
     @SerialName("provider") val provider: String,
     @SerialName("name") val name: String,
     @SerialName("provider_mappings") val providerMappings: List<ProviderMapping>? = null,
-    @SerialName("metadata") val metadata: Metadata? = null,
+    @SerialName("metadata") val metadata: ServerMetadata? = null,
     @SerialName("favorite") val favorite: Boolean? = null,
     @SerialName("media_type") val mediaType: MediaType,
     @SerialName("sort_name") val sortName: String? = null,
     @SerialName("uri") val uri: String? = null,
-    @SerialName("image") val image: MediaItemImage? = null,
+    @SerialName("image") val image: ServerMediaItemImage? = null,
     // @SerialName("is_playable") val isPlayable: Boolean? = null,
     // @SerialName("timestamp_added") val timestampAdded: Long? = null,
     // @SerialName("timestamp_modified") val timestampModified: Long? = null,
@@ -64,11 +64,11 @@ data class ServerMediaItem(
 )
 
 @Serializable
-data class Metadata(
+data class ServerMetadata(
     @SerialName("description") val description: String? = null,
     @SerialName("review") val review: String? = null,
     @SerialName("explicit") val explicit: Boolean? = null,
-    @SerialName("images") val images: List<MediaItemImage>? = null,
+    @SerialName("images") val images: List<ServerMediaItemImage>? = null,
     @SerialName("genres") val genres: List<String>? = null,
     @SerialName("mood") val mood: String? = null,
     @SerialName("style") val style: String? = null,
@@ -81,13 +81,13 @@ data class Metadata(
     @SerialName("popularity") val popularity: Int? = null,
     @SerialName("release_date") val releaseDate: String? = null,
     // @SerialName("languages") val languages: List<String>? = null,
-    @SerialName("chapters") val chapters: List<MediaItemChapter>? = null,
+    @SerialName("chapters") val chapters: List<ServerMediaItemChapter>? = null,
     @SerialName("last_refresh") val lastRefresh: Long?,
 )
 
 @Serializable
-data class MediaItemImage(
-    // @SerialName("type") val type: String,
+data class ServerMediaItemImage(
+    @SerialName("type") val type: String,
     @SerialName("path") val path: String,
     @SerialName("provider") val provider: String,
     @SerialName("remotely_accessible") val remotelyAccessible: Boolean,
@@ -105,14 +105,12 @@ data class ProviderMapping(
 )
 
 @Serializable
-data class MediaItemChapter(
+data class ServerMediaItemChapter(
     @SerialName("position") val position: Int,
     @SerialName("name") val name: String,
     @SerialName("start") val start: Double,
     @SerialName("end") val end: Double? = null,
-) {
-    val duration: Double get() = if (end != null) end - start else 0.0
-}
+)
 
 // Server inconsistency: audiobooks send Boolean, podcast episodes send Int 0/1
 private object FlexibleBooleanSerializer : KSerializer<Boolean> {

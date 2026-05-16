@@ -258,7 +258,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         recommendationsFetchGen += 1
         let myGen = recommendationsFetchGen
         os_log("CP: loadRecommendations gen=%{public}d", log: cpLog, type: .default, myGen)
-        CarPlayContentManager.shared.fetchRecommendationFolders { [weak self] (folders: [AppMediaItem.RecommendationFolder]?) in
+        CarPlayContentManager.shared.fetchRecommendationFolders { [weak self] (folders: [RecommendationFolder]?) in
             guard let self = self else { return }
             // Drop completions from superseded calls so a slow first attempt
             // can't overwrite a faster second attempt's results.
@@ -428,11 +428,11 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             let mediaItem = cpListItem.userInfo as? AppMediaItem
         else { return }
 
-        if let artist = mediaItem as? AppMediaItem.Artist {
+        if let artist = mediaItem as? Artist {
             pushAlbumsForArtist(artist)
-        } else if let album = mediaItem as? AppMediaItem.Album {
+        } else if let album = mediaItem as? Album {
             pushTracksForAlbum(album)
-        } else if let playlist = mediaItem as? AppMediaItem.Playlist {
+        } else if let playlist = mediaItem as? Playlist {
             pushTracksForPlaylist(playlist)
         } else {
             // Track / RadioStation / Podcast / Audiobook / PodcastEpisode —
@@ -461,7 +461,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     // MARK: - Drilldown push helpers
 
-    private func pushAlbumsForArtist(_ artist: AppMediaItem.Artist) {
+    private func pushAlbumsForArtist(_ artist: Artist) {
         pushDrilldown(
             title: "Albums by \(artist.displayName)",
             emptyText: "No albums for \(artist.displayName)"
@@ -470,7 +470,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         }
     }
 
-    private func pushTracksForAlbum(_ album: AppMediaItem.Album) {
+    private func pushTracksForAlbum(_ album: Album) {
         pushDrilldown(
             title: album.displayName,
             emptyText: "No tracks in this album"
@@ -479,7 +479,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         }
     }
 
-    private func pushTracksForPlaylist(_ playlist: AppMediaItem.Playlist) {
+    private func pushTracksForPlaylist(_ playlist: Playlist) {
         pushDrilldown(
             title: playlist.displayName,
             emptyText: "No tracks in this playlist"

@@ -10,6 +10,7 @@ import io.music_assistant.client.player.sendspin.model.StreamMetadataPayload
 import io.music_assistant.client.player.sendspin.protocol.MessageDispatcher
 import io.music_assistant.client.player.sendspin.protocol.MessageDispatcherConfig
 import io.music_assistant.client.player.sendspin.transport.SendspinTransport
+import io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -67,7 +68,7 @@ class SendspinClient(
         try {
             val serverUrl = config.buildServerUrl()
             val sendspinTransport =
-                io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport(
+                WebSocketSendspinTransport(
                     serverUrl,
                     networkAvailable,
                 )
