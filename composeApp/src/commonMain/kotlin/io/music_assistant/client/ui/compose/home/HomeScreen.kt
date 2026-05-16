@@ -67,8 +67,19 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.utils.SessionState
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.all_albums
+import musicassistantclient.composeapp.generated.resources.all_artists
+import musicassistantclient.composeapp.generated.resources.all_audiobooks
+import musicassistantclient.composeapp.generated.resources.all_genres
+import musicassistantclient.composeapp.generated.resources.all_playlists
+import musicassistantclient.composeapp.generated.resources.all_podcasts
+import musicassistantclient.composeapp.generated.resources.all_radio
+import musicassistantclient.composeapp.generated.resources.all_tracks
+import musicassistantclient.composeapp.generated.resources.home_edit_rows
+import musicassistantclient.composeapp.generated.resources.home_save_rows
+import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
 
 @Composable

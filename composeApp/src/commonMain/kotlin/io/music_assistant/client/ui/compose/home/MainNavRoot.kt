@@ -35,7 +35,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.ui.NavDisplay
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -61,6 +60,7 @@ import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
+import io.music_assistant.client.ui.compose.nav.SavedStateNavDisplay
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
@@ -211,7 +211,7 @@ fun MainNavigationRoot(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
             ) {
-                NavDisplay(
+                SavedStateNavDisplay(
                     entries = multiBackStack.toEntries(
                         mainNavEntryProvider(
                             floatingBarContentPadding,
