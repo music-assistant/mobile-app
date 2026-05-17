@@ -86,6 +86,7 @@ import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
 fun ItemDetailsScreen(
@@ -96,14 +97,13 @@ fun ItemDetailsScreen(
     onNavigateToItem: (String, MediaType, String) -> Unit,
     contentPadding: PaddingValues,
 ) {
-    val viewModel: ItemDetailsViewModel = koinViewModel()
+    val viewModel: ItemDetailsViewModel = koinViewModel {
+        parametersOf(itemId, mediaType, providerId)
+    }
+
     val actionsViewModel: ActionsViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
-
-    LaunchedEffect(itemId, mediaType) {
-        viewModel.loadItem(itemId, mediaType, providerId)
-    }
 
     // Collect toasts
     LaunchedEffect(Unit) {

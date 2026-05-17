@@ -38,6 +38,9 @@ class ItemDetailsViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
+    private val itemId: String,
+    private val mediaType: MediaType,
+    private val providerId: String,
 ) : ViewModel() {
     data class State(
         val itemState: DataState<AppMediaItem>,
@@ -85,14 +88,11 @@ class ItemDetailsViewModel(
                 updateSubItemIfNeeded(updated)
             }
         }
+
+        loadItem()
     }
 
-    fun loadItem(itemId: String, mediaType: MediaType, providerId: String) {
-        val currentData = _state.value.itemState as? DataState.Data<AppMediaItem>
-        if (currentData != null) {
-            return
-        }
-
+    private fun loadItem() {
         viewModelScope.launch {
             _state.update { it.copy(itemState = DataState.Loading()) }
 
