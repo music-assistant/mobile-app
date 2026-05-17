@@ -1,4 +1,4 @@
-package io.music_assistant.client.ui.compose.nav
+package io.music_assistant.client.ui.compose
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +25,7 @@ import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.ui.compose.common.AutoLoginSplash
 import io.music_assistant.client.ui.compose.common.ConnectionStatusBanner
 import io.music_assistant.client.ui.compose.home.MainNavigationRoot
+import io.music_assistant.client.ui.compose.nav.exitApp
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.BottomSheetSceneStrategy
