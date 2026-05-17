@@ -36,7 +36,7 @@ class ActionsViewModel(
                 )
             } else {
                 item.uri?.let {
-                    apiClient.sendRequest(Request.Library.add(item.uri))
+                    apiClient.sendRequest(Request.Library.add(it))
                 }
             }
         }

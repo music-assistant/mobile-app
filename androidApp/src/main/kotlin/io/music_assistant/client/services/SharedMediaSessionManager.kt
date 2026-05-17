@@ -50,27 +50,29 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
         callback: MediaSessionCompat.Callback,
         isAutoService: Boolean,
     ): MediaSessionCompat.Token {
-        if (mediaSession == null) {
-            mediaSession = MediaSessionCompat(applicationContext, "MusicAssistantSession").apply {
-                setFlags(MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS)
-                setPlaybackToLocal(AudioManager.STREAM_MUSIC)
-                isActive = true
-            }
-        }
+        val session = mediaSession
+            ?: MediaSessionCompat(applicationContext, "MusicAssistantSession")
+                .apply {
+                    setFlags(MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS)
+                    setPlaybackToLocal(AudioManager.STREAM_MUSIC)
+                    isActive = true
+                }
+                .also { mediaSession = it }
         if (isAutoService) {
             autoServiceActive = true
             autoCallback = callback
-            mediaSession?.setCallback(callback)
+            session.setCallback(callback)
             Logger.withTag(
                 "SharedSession",
             ).i { "acquire(auto=true) — AA callback now active. refCount=${refCount + 1}" }
         } else {
             notificationCallback = callback
             if (!autoServiceActive) {
-                mediaSession?.setCallback(callback)
+                session.setCallback(callback)
                 Logger.withTag(
                     "SharedSession",
-                ).i { "acquire(auto=false) — notification callback now active. refCount=${refCount + 1}" }
+                )
+                    .i { "acquire(auto=false) — notification callback now active. refCount=${refCount + 1}" }
             } else {
                 Logger.withTag("SharedSession").i {
                     "acquire(auto=false) — AA already owns session; notification cb stored only. refCount=${refCount + 1}"
@@ -78,7 +80,7 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
             }
         }
         refCount++
-        return mediaSession!!.sessionToken
+        return session.sessionToken
     }
 
     @Synchronized
@@ -112,8 +114,9 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
      */
     @Synchronized
     fun setErrorState(code: Int, message: String, resolution: PendingIntent? = null) {
-        currentError = ErrorState(code, message, resolution)
-        writeErrorToSession(currentError!!)
+        currentError = ErrorState(code, message, resolution).also {
+            writeErrorToSession(it)
+        }
     }
 
     /**
@@ -140,9 +143,9 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
         lastData = data
         lastBitmap = bitmap
         lastMultiPlayer = multiPlayer
-        if (currentError != null) {
-            writeErrorToSession(currentError!!)
-        } else {
+        currentError?.let {
+            writeErrorToSession(it)
+        } ?: run {
             writePlaybackToSession(data, bitmap, multiPlayer)
         }
     }
@@ -152,8 +155,6 @@ class SharedMediaSessionManager(private val applicationContext: Context) {
         mediaSession?.setQueue(queue)
         mediaSession?.setQueueTitle("Now playing")
     }
-
-    fun getSessionToken(): MediaSessionCompat.Token? = mediaSession?.sessionToken
 
     // --- Private writers ---
 
