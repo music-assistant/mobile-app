@@ -13,7 +13,6 @@ import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.model.client.ImageType
-import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
@@ -23,6 +22,7 @@ import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest

@@ -53,8 +53,8 @@ import coil3.compose.AsyncImage
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ImageType
-import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.Queue
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon

@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.ImageType
-import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -61,6 +60,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 import io.music_assistant.client.ui.compose.common.icons.GenreIcon
