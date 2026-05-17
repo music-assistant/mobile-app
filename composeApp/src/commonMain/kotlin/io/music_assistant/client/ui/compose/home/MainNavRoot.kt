@@ -37,8 +37,11 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
+import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import androidx.savedstate.serialization.SavedStateConfiguration
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -55,8 +58,6 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
-import io.music_assistant.client.ui.compose.home.nav.MainNav
-import io.music_assistant.client.ui.compose.home.nav.rememberMainNavBackStack
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
@@ -68,6 +69,9 @@ import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -76,6 +80,8 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -463,3 +469,48 @@ private fun Players(
         }
     }
 }
+
+private sealed interface MainNav : NavKey {
+    @Serializable
+    data object Landing : MainNav
+
+    @Serializable
+    data class Library(val type: MediaType?) : MainNav
+
+    /**
+     * Multiple instances of the same item can appear in a back stack - [stackingId] ensures they
+     * are treated as different entries.
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    @Serializable
+    data class ItemDetails(
+        val itemId: String,
+        val mediaType: MediaType,
+        val providerId: String,
+        val stackingId: String = Uuid.generateV4().toString(),
+    ) : MainNav
+
+    @Serializable
+    data object Search : MainNav
+}
+
+@Composable
+private fun rememberMainNavBackStack(bottom: MainNav) = rememberNavBackStack(
+    SavedStateConfiguration(
+        from = SavedStateConfiguration.DEFAULT,
+        builderAction = {
+            serializersModule = SerializersModule {
+                polymorphic(NavKey::class) {
+                    subclass(MainNav.Landing::class, MainNav.Landing.serializer())
+                    subclass(MainNav.Library::class, MainNav.Library.serializer())
+                    subclass(
+                        MainNav.ItemDetails::class,
+                        MainNav.ItemDetails.serializer(),
+                    )
+                    subclass(MainNav.Search::class, MainNav.Search.serializer())
+                }
+            }
+        },
+    ),
+    bottom,
+)

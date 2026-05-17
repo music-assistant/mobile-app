@@ -78,7 +78,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val initialScreen = when (val state = sessionState) {
         is SessionState.Connected -> {
             when (state.dataConnectionState) {
-                DataConnectionState.Authenticated -> Nav.Home
+                DataConnectionState.Authenticated -> Nav.Main
                 else -> Nav.Settings
             }
         }
@@ -92,7 +92,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             builderAction = {
                 serializersModule = SerializersModule {
                     polymorphic(NavKey::class) {
-                        subclass(Nav.Home::class, Nav.Home.serializer())
+                        subclass(Nav.Main::class, Nav.Main.serializer())
                         subclass(Nav.Settings::class, Nav.Settings.serializer())
                     }
                 }
@@ -127,9 +127,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
                 // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
                 if (connState == DataConnectionState.Authenticated && connectedState.wasAutoLogin) {
-                    if (backStack.last() !is Nav.Home) {
+                    if (backStack.last() !is Nav.Main) {
                         backStack.clear()
-                        backStack.add(Nav.Home)
+                        backStack.add(Nav.Main)
                     }
                 }
                 // Don't navigate to Settings here - we handle Disconnected states separately
@@ -157,7 +157,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 ),
             ),
             entryProvider = entryProvider {
-                entry<Nav.Home> {
+                entry<Nav.Main> {
                     MainNavigationRoot(
                         goToSettings = { backStack.add(Nav.Settings) },
                     )
@@ -168,7 +168,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                         goHome = {
                             ->
                             backStack.clear()
-                            backStack.add(Nav.Home)
+                            backStack.add(Nav.Main)
                         },
                         exitApp = { exitApp() },
                     )
@@ -197,7 +197,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
 private sealed interface Nav : NavKey {
     @Serializable
-    data object Home : Nav
+    data object Main : Nav
 
     @Serializable
     data object Settings : Nav
