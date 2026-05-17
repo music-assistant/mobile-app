@@ -922,8 +922,10 @@ fun AppMediaItem.toMediaDescription(
         .setTitle((if (favorite == true) "♥ " else "") + displayName)
         .setSubtitle(subtitle)
         .setMediaUri(uri?.let { Uri.parse(it) })
-        .setIconUri(images.getFirst(ImageType.THUMB)?.url?.let { Uri.parse(it) }
-            ?: defaultIconUri)
+        .setIconUri(
+            images.getFirst(ImageType.THUMB)?.url?.let { Uri.parse(it) }
+            ?: defaultIconUri,
+        )
         .setExtras(
             Bundle().apply {
                 putString(
