@@ -174,7 +174,7 @@ class CarPlayContentManager {
 
         // Load artwork asynchronously
         let serverUrl = KmpHelper.shared.getServerUrl()
-        if let imageUrl = item.imageInfo?.url(serverUrl: serverUrl) {
+        if let imageUrl = item.imageInfo?.url {
             CarPlayImageLoader.shared.loadImage(from: imageUrl) { image in
                 if let image = image {
                     listItem.setImage(image)

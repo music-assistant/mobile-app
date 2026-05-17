@@ -1,9 +1,12 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 
-class Playlist(
+class Genre(
     itemId: String,
     provider: String,
     name: String,
@@ -12,9 +15,7 @@ class Playlist(
     favorite: Boolean?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
-    val isEditable: Boolean,
-    val isDynamic: Boolean,
+    images: Map<ImageType, ImageInfo>,
 ) : AppMediaItem(
     itemId = itemId,
     provider = provider,
@@ -22,11 +23,12 @@ class Playlist(
     providerMappings = providerMappings,
     metadata = metadata,
     favorite = favorite,
-    mediaType = MediaType.PLAYLIST,
+    mediaType = MediaType.GENRE,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
-    canStartRadio = !isDynamic,
+    images = images,
 ) {
-    override val subtitle = "Playlist"
+    override val subtitle = "Genre"
+    override val mediaUri: String
+        get() = uri ?: "$provider://genre/$itemId"
 }

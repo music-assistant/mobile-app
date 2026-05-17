@@ -1,13 +1,13 @@
 package io.music_assistant.client.data.repository
 
-import io.music_assistant.client.data.model.client.Album
-import io.music_assistant.client.data.model.client.Artist
-import io.music_assistant.client.data.model.client.Audiobook
-import io.music_assistant.client.data.model.client.Genre
-import io.music_assistant.client.data.model.client.Playlist
-import io.music_assistant.client.data.model.client.Podcast
-import io.music_assistant.client.data.model.client.RadioStation
-import io.music_assistant.client.data.model.client.Track
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.Track
 
 /**
  * Client-side, type-bucketed search results. Returned by

@@ -1,6 +1,7 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Playlist
 
 data class QueueInfo(
     val id: String,

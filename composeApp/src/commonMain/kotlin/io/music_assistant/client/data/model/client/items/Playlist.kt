@@ -1,9 +1,12 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 
-class Album(
+class Playlist(
     itemId: String,
     provider: String,
     name: String,
@@ -12,10 +15,9 @@ class Album(
     favorite: Boolean?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
-    val version: String?,
-    val year: Int?,
-    val artists: List<Artist>,
+    images: Map<ImageType, ImageInfo>,
+    val isEditable: Boolean,
+    val isDynamic: Boolean,
 ) : AppMediaItem(
     itemId = itemId,
     provider = provider,
@@ -23,13 +25,11 @@ class Album(
     providerMappings = providerMappings,
     metadata = metadata,
     favorite = favorite,
-    mediaType = MediaType.ALBUM,
+    mediaType = MediaType.PLAYLIST,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
-    canStartRadio = true,
+    images = images,
+    canStartRadio = !isDynamic,
 ) {
-    override val displayName =
-        "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}"
-    override val subtitle = artists.joinToString(separator = ", ") { it.displayName }
+    override val subtitle = "Playlist"
 }

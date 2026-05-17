@@ -1,9 +1,9 @@
 package io.music_assistant.client.api
 
-import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

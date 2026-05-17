@@ -5,10 +5,10 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.QueueTrack
-import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.settings.SettingsRepository

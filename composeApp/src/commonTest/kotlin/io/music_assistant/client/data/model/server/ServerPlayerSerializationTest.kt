@@ -1,6 +1,6 @@
 package io.music_assistant.client.data.model.server
 
-import io.music_assistant.client.data.mapper.PlayerFactory
+import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test

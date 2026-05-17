@@ -1,30 +1,31 @@
-package io.music_assistant.client.data.mapper
+package io.music_assistant.client.data.factory
 
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
 import io.ktor.http.encodeURLQueryComponent
 import io.music_assistant.client.api.ServiceClient
-import io.music_assistant.client.data.model.client.Album
-import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.Artist
-import io.music_assistant.client.data.model.client.Audiobook
 import io.music_assistant.client.data.model.client.Chapter
-import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.ImageInfo
-import io.music_assistant.client.data.model.client.Metadata
-import io.music_assistant.client.data.model.client.Playlist
-import io.music_assistant.client.data.model.client.Podcast
-import io.music_assistant.client.data.model.client.PodcastEpisode
-import io.music_assistant.client.data.model.client.RadioStation
-import io.music_assistant.client.data.model.client.RecommendationFolder
-import io.music_assistant.client.data.model.client.Track
-import io.music_assistant.client.data.repository.SearchResultData
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItemChapter
 import io.music_assistant.client.data.model.server.ServerMediaItemImage
 import io.music_assistant.client.data.model.server.ServerMetadata
+import io.music_assistant.client.data.repository.SearchResultData
 
 /**
  * Maps server-side [ServerMediaItem] DTOs into typed client [AppMediaItem] subtypes.
@@ -35,7 +36,6 @@ import io.music_assistant.client.data.model.server.ServerMetadata
 class MediaItemFactory(
     private val apiClient: ServiceClient,
 ) {
-
     fun create(server: ServerMediaItem): AppMediaItem? = with(server) {
         when (MediaType.fromServer(mediaType)) {
             MediaType.ARTIST -> Artist(
@@ -47,7 +47,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
             )
 
             MediaType.ALBUM -> Album(
@@ -59,7 +59,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 version = version,
                 year = year,
                 artists = artists?.mapNotNull { create(it) as? Artist } ?: emptyList(),
@@ -74,7 +74,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 duration = duration,
                 artists = artists?.mapNotNull { create(it) as? Artist } ?: emptyList(),
                 album = album?.let { create(it) as? Album },
@@ -93,7 +93,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 isEditable = isEditable == true,
                 isDynamic = isDynamic == true,
             )
@@ -104,7 +104,7 @@ class MediaItemFactory(
                 name = name,
                 providerMappings = providerMappings,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 items = items?.let { createList(it) },
             )
 
@@ -117,7 +117,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
             )
 
             MediaType.PODCAST_EPISODE -> PodcastEpisode(
@@ -129,7 +129,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 duration = duration,
                 podcast = podcast?.let { create(it) as? Podcast },
                 fullyPlayed = fullyPlayed,
@@ -147,7 +147,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 version = version,
             )
 
@@ -160,7 +160,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
                 duration = duration,
                 authors = authors,
                 narrators = narrators,
@@ -179,7 +179,7 @@ class MediaItemFactory(
                 favorite = favorite,
                 sortName = sortName,
                 uri = uri,
-                imageInfo = resolveImageInfo(image, metadata),
+                images = resolveImageInfo(image, metadata),
             )
 
             MediaType.FLOW_STREAM,
@@ -192,16 +192,6 @@ class MediaItemFactory(
 
     fun createList(servers: List<ServerMediaItem>): List<AppMediaItem> =
         servers.mapNotNull { create(it) }
-
-    fun createList(search: SearchResult): List<AppMediaItem> =
-        createList(search.artists) +
-                createList(search.albums) +
-                createList(search.tracks) +
-                createList(search.playlists) +
-                createList(search.podcasts) +
-                createList(search.audiobooks) +
-                createList(search.radio) +
-                createList(search.genres)
 
     fun createSearchResult(search: SearchResult): SearchResultData = SearchResultData(
         artists = search.artists.mapNotNull { create(it) as? Artist },
@@ -233,6 +223,7 @@ class MediaItemFactory(
 
     private fun createImageInfo(server: ServerMediaItemImage): ImageInfo =
         ImageInfo(
+            type = ImageType.fromServer(server.type),
             path = server.path,
             isRemotelyAccessible = server.remotelyAccessible,
             provider = server.provider,
@@ -259,7 +250,8 @@ class MediaItemFactory(
     private fun resolveImageInfo(
         image: ServerMediaItemImage?,
         metadata: ServerMetadata?,
-    ): ImageInfo? =
-        image?.let(::createImageInfo)
-            ?: metadata?.images?.firstOrNull()?.let(::createImageInfo)
+    ) = buildMap {
+        image?.let { put(ImageType.MAIN, createImageInfo(it)) }
+        metadata?.images?.map { createImageInfo(it) }?.forEach { put(it.type, it) }
+    }
 }

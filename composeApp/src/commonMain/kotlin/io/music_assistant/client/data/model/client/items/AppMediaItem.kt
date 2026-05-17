@@ -1,6 +1,10 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.AudioFormat
 import io.music_assistant.client.data.model.server.ProviderMapping
 
@@ -13,7 +17,7 @@ interface PlayableItem {
     val duration: Double?
     val uri: String?
     val subtitle: String?
-    val imageInfo: ImageInfo?
+    val images: Map<ImageType, ImageInfo>
     val provider: String
     val isInLibrary: Boolean
     val favorite: Boolean?
@@ -32,7 +36,7 @@ sealed class AppMediaItem(
     val mediaType: MediaType,
     val sortName: String?,
     val uri: String?,
-    val imageInfo: ImageInfo?,
+    val images: Map<ImageType, ImageInfo>,
     val canStartRadio: Boolean = false,
 ) {
     open val displayName: String = name

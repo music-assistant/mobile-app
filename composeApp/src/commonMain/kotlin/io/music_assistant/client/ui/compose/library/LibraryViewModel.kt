@@ -6,19 +6,19 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.model.client.Album
-import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.Artist
-import io.music_assistant.client.data.model.client.Audiobook
-import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.Playlist
-import io.music_assistant.client.data.model.client.Podcast
 import io.music_assistant.client.data.model.client.QueueOption
-import io.music_assistant.client.data.model.client.RadioStation
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
-import io.music_assistant.client.data.model.client.Track
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
@@ -278,7 +278,6 @@ class LibraryViewModel(
                     target = tabToSelect,
                     newEnabled = true,
                 ).let { newOrder -> onTabsConfigChanged(newOrder) }
-
             }
         _state.update { s ->
             s.copy(tabs = s.tabs.map { it.copy(isSelected = it.tab == tabToSelect) })
@@ -374,7 +373,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Artist>()
@@ -406,7 +405,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Album>()
@@ -438,7 +437,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Playlist>()
@@ -470,7 +469,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Track>()
@@ -502,7 +501,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Podcast>()
@@ -534,7 +533,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Audiobook>()
@@ -566,7 +565,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<RadioStation>()
@@ -598,7 +597,7 @@ class LibraryViewModel(
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                )
+                ),
             )
             result.getOrNull()
                 ?.filterIsInstance<Genre>()
@@ -721,10 +720,14 @@ class LibraryViewModel(
                 _state.update { s ->
                     s.copy(
                         tabs = s.tabs.map { ts ->
-                            if (ts.tab == tab) ts.copy(
+                            if (ts.tab == tab) {
+                                ts.copy(
                                 isLoadingMore = false,
-                                hasMore = false
-                            ) else ts
+                                hasMore = false,
+                            )
+                            } else {
+                                ts
+                            }
                         },
                     )
                 }

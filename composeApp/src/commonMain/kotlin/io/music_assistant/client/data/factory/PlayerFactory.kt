@@ -1,11 +1,11 @@
-package io.music_assistant.client.data.mapper
+package io.music_assistant.client.data.factory
 
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerMedia
-import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.server.PlayerFeature
 import io.music_assistant.client.data.model.server.PlayerState
-import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerPlayerMedia
 
@@ -16,7 +16,6 @@ import io.music_assistant.client.data.model.server.ServerPlayerMedia
  * Pure & stateless; safe to register as a Koin `single`.
  */
 class PlayerFactory {
-
     fun create(server: ServerPlayer): Player = with(server) {
         Player(
             id = playerId,

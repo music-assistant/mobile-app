@@ -1,5 +1,12 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.utils.UniqueIdGenerator
 
 object AppMediaItemFixtures {
@@ -19,7 +26,7 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            imageInfo = null,
+            images = emptyMap(),
             version = version,
             year = null,
             artists = if (artist != null) {
@@ -39,7 +46,7 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            imageInfo = null,
+            images = emptyMap(),
         )
     }
 
@@ -57,7 +64,7 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            imageInfo = null,
+            images = emptyMap(),
             duration = 210.0,
             artists = artists,
             album = album,
@@ -90,7 +97,7 @@ object AppMediaItemFixtures {
             uri = null,
             isEditable = false,
             isDynamic = false,
-            imageInfo = null,
+            images = emptyMap(),
         )
     }
 
@@ -103,7 +110,7 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            imageInfo = null,
+            images = emptyMap(),
         )
     }
 
@@ -120,7 +127,7 @@ object AppMediaItemFixtures {
                 metadata = null,
                 favorite = null,
                 uri = null,
-                imageInfo = null,
+                images = emptyMap(),
                 duration = null,
                 podcast = podcast,
                 fullyPlayed = null,
@@ -142,7 +149,7 @@ object AppMediaItemFixtures {
             metadata = null,
             favorite = null,
             uri = null,
-            imageInfo = null,
+            images = emptyMap(),
             duration = null,
             authors = null,
             narrators = null,

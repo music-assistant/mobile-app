@@ -5,9 +5,9 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.data.LocalPlayerRepository
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
-import io.music_assistant.client.data.mapper.PlayerFactory
-import io.music_assistant.client.data.mapper.QueueFactory
+import io.music_assistant.client.data.factory.MediaItemFactory
+import io.music_assistant.client.data.factory.PlayerFactory
+import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaPlayerController
@@ -63,7 +63,6 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         factory { DspSettingsViewModel(get()) }
         factory { HomeScreenViewModel(get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get()) }
-
     }
 
 /**

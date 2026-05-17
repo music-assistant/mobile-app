@@ -1,5 +1,7 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ProviderMapping
 
@@ -10,7 +12,7 @@ class RecommendationFolder(
     providerMappings: List<ProviderMapping>?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
+    images: Map<ImageType, ImageInfo>,
     val items: List<AppMediaItem>? = null,
 ) : AppMediaItem(
     itemId = itemId,
@@ -22,7 +24,7 @@ class RecommendationFolder(
     mediaType = MediaType.ARTIST,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
+    images = images,
 ) {
     val rowItemType = when (itemId) {
         "recently_added_tracks", "recent_favorite_tracks" -> MediaType.TRACK

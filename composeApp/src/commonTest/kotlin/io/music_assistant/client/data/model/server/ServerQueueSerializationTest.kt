@@ -1,7 +1,7 @@
 package io.music_assistant.client.data.model.server
 
-import io.music_assistant.client.data.mapper.MediaItemFactory
-import io.music_assistant.client.data.mapper.QueueFactory
+import io.music_assistant.client.data.factory.MediaItemFactory
+import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test

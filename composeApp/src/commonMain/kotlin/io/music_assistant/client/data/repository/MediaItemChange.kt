@@ -1,6 +1,6 @@
 package io.music_assistant.client.data.repository
 
-import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 
 /**
  * Client-side projection of a server-side media-item lifecycle event.

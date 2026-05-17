@@ -29,7 +29,7 @@ import io.music_assistant.client.auto.MediaIds
 import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.model.client.AppMediaItem
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction

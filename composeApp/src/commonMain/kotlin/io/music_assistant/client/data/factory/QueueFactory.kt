@@ -1,11 +1,11 @@
-package io.music_assistant.client.data.mapper
+package io.music_assistant.client.data.factory
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
@@ -20,7 +20,6 @@ import io.music_assistant.client.data.model.server.ServerQueueItem
 class QueueFactory(
     private val mediaItemFactory: MediaItemFactory,
 ) {
-
     fun create(server: ServerQueue): QueueInfo = with(server) {
         QueueInfo(
             id = queueId,

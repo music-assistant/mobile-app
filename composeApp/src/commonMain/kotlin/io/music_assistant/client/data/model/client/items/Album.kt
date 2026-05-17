@@ -1,10 +1,12 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
-import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 
-class Track(
+class Album(
     itemId: String,
     provider: String,
     name: String,
@@ -13,14 +15,10 @@ class Track(
     favorite: Boolean?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
-    override val duration: Double?,
+    images: Map<ImageType, ImageInfo>,
+    val version: String?,
+    val year: Int?,
     val artists: List<Artist>,
-    val album: Album?,
-    val discNumber: Int?,
-    val trackNumber: Int?,
-    val position: Int?,
-    override val version: String?,
 ) : AppMediaItem(
     itemId = itemId,
     provider = provider,
@@ -28,16 +26,13 @@ class Track(
     providerMappings = providerMappings,
     metadata = metadata,
     favorite = favorite,
-    mediaType = MediaType.TRACK,
+    mediaType = MediaType.ALBUM,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
+    images = images,
     canStartRadio = true,
-),
-    PlayableItem {
+) {
     override val displayName =
         "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}"
     override val subtitle = artists.joinToString(separator = ", ") { it.displayName }
-    override val parentName: String? = album?.displayName
-    override val defaultIcon = TrackIcon
 }

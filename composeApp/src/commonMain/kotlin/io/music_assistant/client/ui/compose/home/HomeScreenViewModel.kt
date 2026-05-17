@@ -6,13 +6,13 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.QueueOption
-import io.music_assistant.client.data.model.client.RecommendationFolder
-import io.music_assistant.client.data.model.client.Track
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
@@ -181,7 +181,9 @@ class HomeScreenViewModel(
         _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
         repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
             if (attempt > 0) delay(Timings.RETRY_DEBOUNCE)
-            getList<RecommendationFolder>(Request.Library.recommendations())
+            getList<io.music_assistant.client.data.model.client.items.RecommendationFolder>(
+                Request.Library.recommendations(),
+            )
                 ?.let { items ->
                     _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
                     return@launch
@@ -222,7 +224,7 @@ class HomeScreenViewModel(
                     name = row.displayName,
                     providerMappings = row.providerMappings,
                     uri = row.uri,
-                    imageInfo = row.imageInfo,
+                    images = row.images,
                     items = updatedItems,
                 )
             } ?: row

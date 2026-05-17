@@ -1,6 +1,10 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PlayableItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.Track
 
 enum class SortField(val serverKey: String, val displayName: String) {
     ORIGINAL("original", "Original"),

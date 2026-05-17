@@ -1,6 +1,10 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.Chapter
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 
@@ -13,7 +17,7 @@ class Audiobook(
     favorite: Boolean?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
+    images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
     val authors: List<String>?,
     val narrators: List<String>?,
@@ -31,7 +35,7 @@ class Audiobook(
     mediaType = MediaType.AUDIOBOOK,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
+    images = images,
 ),
     PlayableItem {
     override val subtitle =

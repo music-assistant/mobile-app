@@ -52,13 +52,15 @@ import compose.icons.tablericons.FolderMinus
 import compose.icons.tablericons.FolderPlus
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
-import io.music_assistant.client.data.model.client.Album
-import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
-import io.music_assistant.client.data.model.client.Artist
-import io.music_assistant.client.data.model.client.Genre
-import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.getInOrder
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -355,10 +357,8 @@ private fun Image(
         } else {
             RoundedCornerShape(16.dp)
         }
-
-        val model = item.imageInfo?.url
         AsyncImage(
-            model = model,
+            model = item.images.getInOrder(ImageType.THUMB)?.url,
             placeholder = placeholder,
             fallback = placeholder,
             contentDescription = null,

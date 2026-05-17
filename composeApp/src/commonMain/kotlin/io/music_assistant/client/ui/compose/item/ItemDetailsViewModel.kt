@@ -6,23 +6,23 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.model.client.Album
-import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.Artist
-import io.music_assistant.client.data.model.client.Audiobook
-import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.PlayableItem
-import io.music_assistant.client.data.model.client.Playlist
-import io.music_assistant.client.data.model.client.Podcast
-import io.music_assistant.client.data.model.client.PodcastEpisode
 import io.music_assistant.client.data.model.client.QueueOption
-import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
-import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.clientSorted
+import io.music_assistant.client.data.model.client.items.Album
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.PlayableItem
+import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -211,11 +211,13 @@ class ItemDetailsViewModel(
             _state.update { it.copy(albumsState = DataState.Loading()) }
 
             try {
-                val albums = mediaItemRepository.fetchMediaItems(Request.Artist.getAlbums(
+                val albums = mediaItemRepository.fetchMediaItems(
+                    Request.Artist.getAlbums(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
                         inLibraryOnly = false,
-                    )).getOrNull()
+                    ),
+                ).getOrNull()
                     ?.filterIsInstance<Album>()
                     ?: emptyList()
 
@@ -234,11 +236,13 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val tracks = mediaItemRepository.fetchMediaItems(Request.Artist.getTracks(
+                val tracks = mediaItemRepository.fetchMediaItems(
+                    Request.Artist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
                         inLibraryOnly = false,
-                    )).getOrNull()
+                    ),
+                ).getOrNull()
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
@@ -257,11 +261,13 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val tracks = mediaItemRepository.fetchMediaItems(Request.Album.getTracks(
+                val tracks = mediaItemRepository.fetchMediaItems(
+                    Request.Album.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                         inLibraryOnly = false,
-                    )).getOrNull()
+                    ),
+                ).getOrNull()
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
@@ -280,11 +286,13 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val tracks = mediaItemRepository.fetchMediaItems(Request.Playlist.getTracks(
+                val tracks = mediaItemRepository.fetchMediaItems(
+                    Request.Playlist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                         forceRefresh = null,
-                    )).getOrNull()
+                    ),
+                ).getOrNull()
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
@@ -303,11 +311,13 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val episodes = mediaItemRepository.fetchMediaItems(Request.Podcast.getEpisodes(
+                val episodes = mediaItemRepository.fetchMediaItems(
+                    Request.Podcast.getEpisodes(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                         inLibraryOnly = false,
-                    )).getOrNull()
+                    ),
+                ).getOrNull()
                     ?.filterIsInstance<PodcastEpisode>()
                     ?: emptyList()
 
@@ -331,10 +341,12 @@ class ItemDetailsViewModel(
             }
 
             try {
-                val folders = mediaItemRepository.fetchMediaItems(Request.Genre.overview(
+                val folders = mediaItemRepository.fetchMediaItems(
+                    Request.Genre.overview(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                    )).getOrNull()
+                    ),
+                ).getOrNull()
                     ?.filterIsInstance<RecommendationFolder>()
                     ?: emptyList()
 

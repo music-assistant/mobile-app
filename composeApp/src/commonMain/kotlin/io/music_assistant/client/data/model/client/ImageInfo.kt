@@ -8,6 +8,7 @@ package io.music_assistant.client.data.model.client
  * (direct https path or imageproxy endpoint), so the UI just binds to [url].
  */
 data class ImageInfo(
+    val type: ImageType,
     val path: String,
     val isRemotelyAccessible: Boolean,
     val provider: String,

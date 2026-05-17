@@ -1,8 +1,11 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Podcasts
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.utils.formatIsoDate
 
@@ -15,7 +18,7 @@ class PodcastEpisode(
     favorite: Boolean?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
+    images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
     val podcast: Podcast?,
     val fullyPlayed: Boolean?,
@@ -32,7 +35,7 @@ class PodcastEpisode(
     mediaType = MediaType.PODCAST_EPISODE,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
+    images = images,
 ),
     PlayableItem {
     override val subtitle = releaseDate?.let(::formatIsoDate)

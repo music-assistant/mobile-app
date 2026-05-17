@@ -9,21 +9,23 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
 import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot.Companion.ELAPSED_ANCHOR_EPSILON_S
-import io.music_assistant.client.data.mapper.MediaItemFactory
-import io.music_assistant.client.data.mapper.PlayerFactory
-import io.music_assistant.client.data.mapper.QueueFactory
-import io.music_assistant.client.data.model.client.AppMediaItem
-import io.music_assistant.client.data.model.client.Audiobook
+import io.music_assistant.client.data.factory.MediaItemFactory
+import io.music_assistant.client.data.factory.PlayerFactory
+import io.music_assistant.client.data.factory.QueueFactory
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
-import io.music_assistant.client.data.model.client.Track
+import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.getInOrder
 import io.music_assistant.client.data.model.client.isBefore
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
-import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
@@ -643,7 +645,7 @@ class MainDataSource(
                             title = track.displayName,
                             artist = track.subtitle,
                             album = track.parentName,
-                            artworkUrl = track.imageInfo?.url,
+                            artworkUrl = track.images.getInOrder(ImageType.THUMB)?.url,
                             duration = track.duration,
                             // Read live position from the tracker rather than the stale
                             // anchor on `pd.queueInfo` (which is only updated by

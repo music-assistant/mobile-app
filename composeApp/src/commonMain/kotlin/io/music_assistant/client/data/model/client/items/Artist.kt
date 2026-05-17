@@ -1,6 +1,9 @@
-package io.music_assistant.client.data.model.client
+package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.ImageInfo
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 
 class Artist(
@@ -12,7 +15,7 @@ class Artist(
     favorite: Boolean?,
     sortName: String? = null,
     uri: String?,
-    imageInfo: ImageInfo?,
+    images: Map<ImageType, ImageInfo>,
 ) : AppMediaItem(
     itemId = itemId,
     provider = provider,
@@ -23,6 +26,6 @@ class Artist(
     mediaType = MediaType.ARTIST,
     sortName = sortName,
     uri = uri,
-    imageInfo = imageInfo,
+    images = images,
     canStartRadio = true,
 )

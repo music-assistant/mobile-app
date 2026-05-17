@@ -2,7 +2,6 @@ package io.music_assistant.client.data.model.client
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Podcasts
-import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
