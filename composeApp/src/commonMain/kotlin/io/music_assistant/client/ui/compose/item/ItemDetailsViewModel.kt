@@ -88,6 +88,11 @@ class ItemDetailsViewModel(
     }
 
     fun loadItem(itemId: String, mediaType: MediaType, providerId: String) {
+        val currentData = _state.value.itemState as? DataState.Data<AppMediaItem>
+        if (currentData != null) {
+            return
+        }
+
         viewModelScope.launch {
             _state.update { it.copy(itemState = DataState.Loading()) }
 

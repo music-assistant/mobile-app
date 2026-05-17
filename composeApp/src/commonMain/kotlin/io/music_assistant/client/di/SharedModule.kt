@@ -59,7 +59,7 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         factory { AuthenticationViewModel(get(), get()) }
         single { LibraryNavCoordinator() }
         factory { LibraryViewModel(get(), get(), get(), get(), get()) }
-        factory { ItemDetailsViewModel(get(), get(), get(), get()) }
+        factory { params -> ItemDetailsViewModel(get(), get(), get(), get()) }
         factory { DspSettingsViewModel(get()) }
         factory { HomeScreenViewModel(get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get()) }
