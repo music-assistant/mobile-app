@@ -23,7 +23,7 @@ import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.clientSorted
-import io.music_assistant.client.data.model.client.getInOrder
+import io.music_assistant.client.data.model.client.getFirst
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -922,7 +922,7 @@ fun AppMediaItem.toMediaDescription(
         .setTitle((if (favorite == true) "♥ " else "") + displayName)
         .setSubtitle(subtitle)
         .setMediaUri(uri?.let { Uri.parse(it) })
-        .setIconUri(images.getInOrder(ImageType.THUMB)?.url?.let { Uri.parse(it) }
+        .setIconUri(images.getFirst(ImageType.THUMB)?.url?.let { Uri.parse(it) }
             ?: defaultIconUri)
         .setExtras(
             Bundle().apply {

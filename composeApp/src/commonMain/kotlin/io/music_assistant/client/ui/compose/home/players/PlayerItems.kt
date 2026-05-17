@@ -225,36 +225,27 @@ fun FullPlayerItem(
                 .background(colors.dominant.alphaOn(currentMedia != null)),
             contentAlignment = Alignment.Center,
         ) {
-            if (currentMedia != null) {
+            currentMedia?.imageUrl?.let {
                 val placeholder =
                     rememberPlaceholderPainter(
                         backgroundColor = colors.dominant,
                         iconColor = onPrimaryContainer,
                         icon = currentMedia.defaultIcon,
                     )
-                currentMedia.imageUrl?.let {
-                    AsyncImage(
-                        placeholder = placeholder,
-                        fallback = placeholder,
-                        model = it,
-                        contentDescription = currentMedia.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } ?: Icon(
-                    imageVector = currentMedia.defaultIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp),
-                    tint = onPrimaryContainer,
+                AsyncImage(
+                    placeholder = placeholder,
+                    fallback = placeholder,
+                    model = it,
+                    contentDescription = currentMedia.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
-            } else {
-                Icon(
-                    imageVector = AlbumIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp),
-                    tint = onPrimaryContainer.inactive(),
-                )
-            }
+            } ?: Icon(
+                imageVector = currentMedia?.defaultIcon ?: AlbumIcon,
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+                tint = onPrimaryContainer,
+            )
         }
 
         // Track info

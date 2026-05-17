@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.ImageType
-import io.music_assistant.client.data.model.client.getInOrder
+import io.music_assistant.client.data.model.client.getFirst
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -145,7 +145,7 @@ private fun ArtistImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -228,7 +228,7 @@ private fun AlbumImage(
         AsyncImage(
             placeholder = vinylRecord,
             fallback = vinylRecord,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -346,7 +346,7 @@ private fun PlaylistImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -447,7 +447,7 @@ private fun PodcastImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -510,7 +510,7 @@ private fun TrackImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -581,7 +581,7 @@ private fun PodcastEpisodeImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -663,7 +663,7 @@ private fun RadioImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -764,7 +764,7 @@ private fun AudiobookImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -1144,7 +1144,7 @@ private fun GenreImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.images.getInOrder(ImageType.THUMB)?.url,
+            model = item.images.getFirst(ImageType.THUMB)?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),

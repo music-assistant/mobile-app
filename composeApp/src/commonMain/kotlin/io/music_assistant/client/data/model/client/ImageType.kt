@@ -21,9 +21,9 @@ enum class ImageType(val serverValue: String) {
     }
 }
 
-fun Map<ImageType, ImageInfo>.getInOrder(vararg types: ImageType): ImageInfo? {
+fun Map<ImageType, ImageInfo>.getFirst(vararg types: ImageType): ImageInfo? {
     for (t in types) {
         this[t]?.let { return it }
     }
-    return null
+    return this[ImageType.MAIN] // fallback
 }

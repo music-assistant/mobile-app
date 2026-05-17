@@ -271,7 +271,7 @@ class LibraryViewModel(
         // "enabled first, disabled last" invariant holds.
         _state.value.tabs
             .find { it.tab == tabToSelect }
-            ?.takeIf { it.enabled }
+            ?.takeIf { !it.enabled }
             ?.run {
                 moveToEnabledBoundary(
                     _state.value.tabs.map { it.tab to it.enabled },
