@@ -5,11 +5,9 @@ import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Playlist
-import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.utils.resultAs
+import io.music_assistant.client.data.repository.MediaItemRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -21,7 +19,7 @@ import kotlinx.coroutines.launch
 class ActionsViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
-    private val mediaItemFactory: MediaItemFactory,
+    private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
@@ -61,14 +59,12 @@ class ActionsViewModel(
         }
     }
 
-    suspend fun getEditablePlaylists(): List<Playlist> {
-        val result = apiClient.sendRequest(Request.Playlist.listLibrary())
-        return result.resultAs<List<ServerMediaItem>>()
-            ?.let { mediaItemFactory.createList(it) }
+    suspend fun getEditablePlaylists(): List<Playlist> =
+        mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
+            .getOrNull()
             ?.filterIsInstance<Playlist>()
             ?.filter { it.isEditable }
             ?: emptyList()
-    }
 
     fun addToPlaylist(
         mediaItem: AppMediaItem,

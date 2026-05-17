@@ -4,18 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class PlayerType {
-    @SerialName("player")
-    PLAYER,
-
-    @SerialName("group")
-    GROUP,
-
-    @SerialName("stereo_pair")
-    STEREO_PAIR,
-}
-
-@Serializable
 enum class PlayerState {
     @SerialName("idle")
     IDLE,
@@ -25,18 +13,6 @@ enum class PlayerState {
 
     @SerialName("playing")
     PLAYING,
-}
-
-@Serializable
-enum class RepeatMode {
-    @SerialName("off")
-    OFF,
-
-    @SerialName("one")
-    ONE,
-
-    @SerialName("all")
-    ALL,
 }
 
 object PlayerFeature {
@@ -122,27 +98,4 @@ enum class EventType {
 
     @SerialName("*")
     ALL,
-}
-
-// enum class AlbumType {
-//    @SerialName("album") ALBUM,
-//    @SerialName("single") SINGLE,
-//    @SerialName("compilation") COMPILATION,
-//    @SerialName("ep") EP,
-//    @SerialName("unknown") UNKNOWN,
-// }
-
-enum class QueueOption {
-    @SerialName("play")
-    PLAY,
-
-    @SerialName("replace")
-    REPLACE,
-
-    @SerialName("next")
-    NEXT,
-
-    // @SerialName("replace_next") REPLACE_NEXT,
-    @SerialName("add")
-    ADD,
 }

@@ -1,9 +1,9 @@
 package io.music_assistant.client.api
 
 import io.music_assistant.client.data.model.server.DspConfig
-import io.music_assistant.client.data.model.server.MediaType
-import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -192,7 +192,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = APICommands.PLAYER_QUEUES_REPEAT,
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
-                put("repeat_mode", JsonPrimitive(repeatMode.name.lowercase()))
+                put("repeat_mode", JsonPrimitive(repeatMode.serverValue))
             },
         )
 
@@ -526,7 +526,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = APICommands.MUSIC_LIBRARY_REMOVE_ITEM,
             args = buildJsonObject {
                 put("library_item_id", JsonPrimitive(itemId))
-                put("media_type", JsonPrimitive(mediaType.name.lowercase()))
+                put("media_type", JsonPrimitive(mediaType.serverValue))
             },
         )
 
@@ -540,7 +540,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = APICommands.PLAYER_QUEUES_PLAY_MEDIA,
             args = buildJsonObject {
                 put("media", JsonArray(media.map { JsonPrimitive(it) }))
-                put("option", JsonPrimitive(option.name.lowercase()))
+                put("option", JsonPrimitive(option.serverValue))
                 put("radio_mode", JsonPrimitive(radioMode))
                 put("queue_id", JsonPrimitive(queueOrPlayerId))
                 startItem?.let { put("start_item", JsonPrimitive(it)) }
@@ -563,7 +563,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command = APICommands.MUSIC_FAVORITES_REMOVE_ITEM,
             args = buildJsonObject {
                 put("library_item_id", JsonPrimitive(itemId))
-                put("media_type", JsonPrimitive(mediaType.name.lowercase()))
+                put("media_type", JsonPrimitive(mediaType.serverValue))
             },
         )
 
@@ -596,7 +596,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("search_query", JsonPrimitive(query.replace("-", " ")))
                 put(
                     "media_types",
-                    myJson.decodeFromString<JsonArray>(myJson.encodeToString(mediaTypes)),
+                    JsonArray(mediaTypes.map { JsonPrimitive(it.serverValue) }),
                 )
                 put("limit", JsonPrimitive(limit))
                 put("library_only", JsonPrimitive(libraryOnly))

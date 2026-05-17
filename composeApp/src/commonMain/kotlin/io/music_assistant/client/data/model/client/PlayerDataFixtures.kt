@@ -1,8 +1,8 @@
 package io.music_assistant.client.data.model.client
 
 import io.music_assistant.client.data.model.client.PlayerData.ChildBind
-import io.music_assistant.client.data.model.server.PlayerType
-import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.data.model.client.PlayerType
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.UniqueIdGenerator
 

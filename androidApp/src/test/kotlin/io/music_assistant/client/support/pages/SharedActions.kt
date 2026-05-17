@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
@@ -28,7 +28,11 @@ fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
     navigationItem: String,
 ): MediaItemPage {
-    return clickOnMedia(serverMediaItem.name, serverMediaItem.mediaType, navigationItem)
+    return clickOnMedia(
+        serverMediaItem.name,
+        MediaType.fromServer(serverMediaItem.mediaType) ?: MediaType.UNKNOWN,
+        navigationItem,
+    )
 }
 
 fun ComposePage.clickOnMedia(name: String, type: MediaType, navigationItem: String): MediaItemPage {

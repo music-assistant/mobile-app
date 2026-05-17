@@ -1,6 +1,6 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ProviderMapping
 
 class Playlist(

@@ -33,7 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
-import io.music_assistant.client.data.model.server.PlayerType
+import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import musicassistantclient.composeapp.generated.resources.Res

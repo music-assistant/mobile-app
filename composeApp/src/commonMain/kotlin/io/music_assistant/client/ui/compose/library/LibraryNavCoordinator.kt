@@ -1,6 +1,6 @@
 package io.music_assistant.client.ui.compose.library
 
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow

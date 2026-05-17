@@ -1,10 +1,11 @@
 package io.music_assistant.client.data.mapper
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.QueueTrack
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
@@ -26,7 +27,7 @@ class QueueFactory(
             available = available,
             currentIndex = currentIndex,
             shuffleEnabled = shuffleEnabled,
-            repeatMode = repeatMode,
+            repeatMode = RepeatMode.fromServer(repeatMode) ?: RepeatMode.OFF,
             elapsedTime = elapsedTime,
             elapsedTimeLastUpdated = elapsedTimeLastUpdated,
             currentItem = currentItem?.let(::createTrack),
@@ -65,7 +66,7 @@ class QueueFactory(
                 itemId = "unplayable_$queueItemId",
                 provider = "unknown",
                 name = name,
-                mediaType = MediaType.TRACK,
+                mediaType = MediaType.TRACK.serverValue,
                 duration = duration,
                 image = image,
                 uri = null,

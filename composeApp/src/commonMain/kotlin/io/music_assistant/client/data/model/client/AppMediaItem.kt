@@ -2,9 +2,7 @@ package io.music_assistant.client.data.model.client
 
 import androidx.compose.ui.graphics.vector.ImageVector
 import io.music_assistant.client.data.model.server.AudioFormat
-import io.music_assistant.client.data.model.server.MediaType
 import io.music_assistant.client.data.model.server.ProviderMapping
-import io.music_assistant.client.data.model.server.ServerMediaItem
 
 interface PlayableItem {
     val defaultIcon: ImageVector
@@ -57,13 +55,6 @@ sealed class AppMediaItem(
 
     fun hasAnyMappingFrom(other: AppMediaItem): Boolean =
         mappingsHashes.intersect(other.mappingsHashes).isNotEmpty()
-
-    fun hasAnyMappingFrom(other: ServerMediaItem): Boolean =
-        mappingsHashes
-            .intersect(
-                other.providerMappings?.map { it.toHash().hashCode() }?.toSet() ?: emptySet(),
-            )
-            .isNotEmpty()
 
     override fun equals(other: Any?): Boolean {
         return other is AppMediaItem &&

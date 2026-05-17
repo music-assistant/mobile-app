@@ -23,7 +23,7 @@ import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
-import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem

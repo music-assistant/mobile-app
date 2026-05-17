@@ -65,9 +65,9 @@ class EventTest {
 
     @Test
     fun decodesPlayerUpdatedEventWithUnknownPlayerType() {
-        // `coerceInputValues` on [myJson] combined with ServerPlayer.type
-        // being nullable with a null default means an unknown `type`
-        // string degrades to `null` rather than aborting the decode.
+        // ServerPlayer.type is a raw `String?` so an unknown server-side
+        // variant carries through the decode untouched; the client-side
+        // PlayerFactory is what normalizes it to PlayerType.PLAYER.
         val raw = """{
             "event": "player_updated",
             "object_id": "pl1",
@@ -78,7 +78,7 @@ class EventTest {
 
         assertNotNull(decoded)
         assertTrue(decoded is PlayerUpdatedEvent)
-        assertNull(decoded.data.type)
+        assertEquals("some_new_server_type", decoded.data.type)
     }
 
     @Test

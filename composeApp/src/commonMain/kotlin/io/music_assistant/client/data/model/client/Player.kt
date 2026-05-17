@@ -1,6 +1,6 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.server.PlayerType
+import io.music_assistant.client.data.model.client.PlayerType
 
 data class Player(
     val id: String,

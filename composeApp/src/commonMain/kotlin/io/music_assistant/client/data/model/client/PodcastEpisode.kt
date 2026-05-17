@@ -2,7 +2,7 @@ package io.music_assistant.client.data.model.client
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Podcasts
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.utils.formatIsoDate
 

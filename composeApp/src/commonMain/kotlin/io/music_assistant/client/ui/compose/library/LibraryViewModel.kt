@@ -6,30 +6,26 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Artist
 import io.music_assistant.client.data.model.client.Audiobook
 import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Playlist
 import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RadioStation
 import io.music_assistant.client.data.model.client.SortConfig
-import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.SortOption
-import io.music_assistant.client.data.model.server.MediaType
-import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.data.model.client.Track
+import io.music_assistant.client.data.repository.MediaItemChange
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,7 +41,7 @@ class LibraryViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val libraryNavCoordinator: LibraryNavCoordinator,
-    private val mediaItemFactory: MediaItemFactory,
+    private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     companion object Companion {
         private const val PAGE_SIZE = 50
@@ -197,24 +193,15 @@ class LibraryViewModel(
             }
         }
 
-        // Listen to real-time events for updates
+        // Listen to real-time library changes and patch any visible tab.
         viewModelScope.launch {
-            apiClient.events.collect { event ->
-                when (event) {
-                    is MediaItemUpdatedEvent -> mediaItemFactory.create(event.data)?.let { newItem ->
-                        updateItemInTabs(newItem, ListModification.Update)
-                    }
-
-                    is MediaItemAddedEvent -> mediaItemFactory.create(event.data)?.let { newItem ->
-                        updateItemInTabs(newItem, ListModification.Add)
-                    }
-
-                    is MediaItemDeletedEvent -> mediaItemFactory.create(event.data)?.let { newItem ->
-                        updateItemInTabs(newItem, ListModification.Delete)
-                    }
-
-                    else -> Unit
+            mediaItemRepository.itemChanges.collect { change ->
+                val modification = when (change) {
+                    is MediaItemChange.Added -> ListModification.Add
+                    is MediaItemChange.Updated -> ListModification.Update
+                    is MediaItemChange.Deleted -> ListModification.Delete
                 }
+                updateItemInTabs(change.item, modification)
             }
         }
 
@@ -378,17 +365,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.ARTISTS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Artist.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.Artist.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Artist>()
                 ?.let { artists ->
                     updateTabStateWithData(
@@ -411,17 +395,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.ALBUMS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Album.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.Album.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Album>()
                 ?.let { albums ->
                     updateTabStateWithData(
@@ -444,17 +425,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.PLAYLISTS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Playlist.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Playlist>()
                 ?.let { playlists ->
                     updateTabStateWithData(
@@ -477,17 +455,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.TRACKS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Track.list(
+            val result = mediaItemRepository.fetchMediaItems(Request.Track.list(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Track>()
                 ?.let { tracks ->
                     updateTabStateWithData(
@@ -510,17 +485,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.PODCASTS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Podcast.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.Podcast.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Podcast>()
                 ?.let { podcasts ->
                     updateTabStateWithData(
@@ -543,17 +515,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.AUDIOBOOKS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Audiobook.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.Audiobook.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Audiobook>()
                 ?.let { audiobooks ->
                     updateTabStateWithData(
@@ -576,17 +545,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.RADIOS, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.RadioStation.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.RadioStation.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<RadioStation>()
                 ?.let { radios ->
                     updateTabStateWithData(
@@ -609,17 +575,14 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.GENRES, DataState.Loading())
-            val result = apiClient.sendRequest(
-                Request.Genre.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(Request.Genre.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ),
-            )
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+                ))
+            result.getOrNull()
                 ?.filterIsInstance<Genre>()
                 ?.let { genres ->
                     updateTabStateWithData(
@@ -657,90 +620,74 @@ class LibraryViewModel(
                 )
             }
 
-            val result = when (tab) {
-                Tab.ARTISTS -> apiClient.sendRequest(
-                    Request.Artist.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+            val request = when (tab) {
+                Tab.ARTISTS -> Request.Artist.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.ALBUMS -> apiClient.sendRequest(
-                    Request.Album.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.ALBUMS -> Request.Album.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.TRACKS -> apiClient.sendRequest(
-                    Request.Track.list(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.TRACKS -> Request.Track.list(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.PLAYLISTS -> apiClient.sendRequest(
-                    Request.Playlist.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.PLAYLISTS -> Request.Playlist.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.AUDIOBOOKS -> apiClient.sendRequest(
-                    Request.Audiobook.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.AUDIOBOOKS -> Request.Audiobook.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.PODCASTS -> apiClient.sendRequest(
-                    Request.Podcast.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.PODCASTS -> Request.Podcast.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.RADIOS -> apiClient.sendRequest(
-                    Request.RadioStation.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.RADIOS -> Request.RadioStation.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
 
-                Tab.GENRES -> apiClient.sendRequest(
-                    Request.Genre.listLibrary(
-                        limit = PAGE_SIZE,
-                        offset = tabState.offset,
-                        search = searchQuery,
-                        favorite = favoritesOnly,
-                        orderBy = orderBy,
-                    ),
+                Tab.GENRES -> Request.Genre.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = tabState.offset,
+                    search = searchQuery,
+                    favorite = favoritesOnly,
+                    orderBy = orderBy,
                 )
             }
+            val result = mediaItemRepository.fetchMediaItems(request)
 
-            result.resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            result.getOrNull()
                 ?.let { newItems ->
                     val currentItems = tabState.dataState.data
                     val allItems = currentItems + newItems

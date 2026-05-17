@@ -51,8 +51,8 @@ import io.music_assistant.client.data.model.client.PodcastEpisode
 import io.music_assistant.client.data.model.client.RadioStation
 import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.Track
-import io.music_assistant.client.data.model.server.MediaType
-import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu

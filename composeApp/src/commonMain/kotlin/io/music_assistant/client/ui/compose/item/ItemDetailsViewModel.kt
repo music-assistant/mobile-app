@@ -6,31 +6,26 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Artist
 import io.music_assistant.client.data.model.client.Audiobook
 import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayableItem
 import io.music_assistant.client.data.model.client.Playlist
 import io.music_assistant.client.data.model.client.Podcast
 import io.music_assistant.client.data.model.client.PodcastEpisode
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.SortConfig
-import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.data.model.client.Track
 import io.music_assistant.client.data.model.client.clientSorted
-import io.music_assistant.client.data.model.server.MediaType
-import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -42,7 +37,7 @@ class ItemDetailsViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
-    private val mediaItemFactory: MediaItemFactory,
+    private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     data class State(
         val itemState: DataState<AppMediaItem>,
@@ -78,69 +73,18 @@ class ItemDetailsViewModel(
     val state = _state.asStateFlow()
 
     init {
-        // Listen to real-time events for favorite updates
+        // Listen to library changes; refresh the open item + its sub-lists.
+        // The repository already handles the library-fallback re-keying that
+        // used to live here for delete events.
         viewModelScope.launch {
-            apiClient.events.collect { event ->
-                when (event) {
-                    is MediaItemUpdatedEvent -> {
-                        (_state.value.itemState as? DataState.Data)?.data?.let { current ->
-                            event.data.takeIf { current.hasAnyMappingFrom(it) }
-                                ?.let { mediaItemFactory.create(it) }
-                                ?.let { updatedItem ->
-                                    _state.update {
-                                        it.copy(itemState = DataState.Data(updatedItem))
-                                    }
-                                }
-                        }
-
-                        // Also update sub-items if they were updated
-                        updateSubItemIfNeeded(event.data)
+            mediaItemRepository.itemChanges.collect { change ->
+                val updated = change.item
+                (_state.value.itemState as? DataState.Data)?.data?.let { current ->
+                    if (current.hasAnyMappingFrom(updated)) {
+                        _state.update { it.copy(itemState = DataState.Data(updated)) }
                     }
-
-                    is MediaItemAddedEvent -> {
-                        (_state.value.itemState as? DataState.Data)?.data?.let { current ->
-                            event.data.takeIf { current.hasAnyMappingFrom(it) }
-                                ?.let { mediaItemFactory.create(it) }
-                                ?.let { updatedItem ->
-                                    _state.update {
-                                        it.copy(itemState = DataState.Data(updatedItem))
-                                    }
-                                }
-                        }
-
-                        // Also update sub-items if they were updated
-                        updateSubItemIfNeeded(event.data)
-                    }
-
-                    is MediaItemDeletedEvent -> {
-                        (_state.value.itemState as? DataState.Data)?.data?.let { current ->
-                            event.data.takeIf { current.hasAnyMappingFrom(it) }
-                                // removing library provider from it
-                                ?.let {
-                                    it.providerMappings?.getOrNull(0)?.let { provider ->
-                                        it.copy(
-                                            itemId = provider.itemId,
-                                            provider = provider.providerInstance,
-                                            favorite = null,
-                                            uri = "${provider.providerInstance}://${it.mediaType.name.lowercase()}/${provider.itemId}",
-
-                                        )
-                                    }
-                                }
-                                ?.let { mediaItemFactory.create(it) }
-                                ?.let { updatedItem ->
-                                    _state.update {
-                                        it.copy(itemState = DataState.Data(updatedItem))
-                                    }
-                                }
-                        }
-
-                        // Also update sub-items if they were updated
-                        updateSubItemIfNeeded(event.data)
-                    }
-
-                    else -> Unit
                 }
+                updateSubItemIfNeeded(updated)
             }
         }
     }
@@ -179,9 +123,7 @@ class ItemDetailsViewModel(
             else -> return null
         }
 
-        return apiClient.sendRequest(request)
-            .resultAs<ServerMediaItem>()
-            ?.let { mediaItemFactory.create(it) }
+        return mediaItemRepository.fetchMediaItem(request).getOrNull()
     }
 
     private fun loadSubItems(item: AppMediaItem) {
@@ -271,14 +213,11 @@ class ItemDetailsViewModel(
             _state.update { it.copy(albumsState = DataState.Loading()) }
 
             try {
-                val albums = apiClient.sendRequest(
-                    Request.Artist.getAlbums(
+                val albums = mediaItemRepository.fetchMediaItems(Request.Artist.getAlbums(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
                         inLibraryOnly = false,
-                    ),
-                ).resultAs<List<ServerMediaItem>>()
-                    ?.let { mediaItemFactory.createList(it) }
+                    )).getOrNull()
                     ?.filterIsInstance<Album>()
                     ?: emptyList()
 
@@ -297,14 +236,11 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val tracks = apiClient.sendRequest(
-                    Request.Artist.getTracks(
+                val tracks = mediaItemRepository.fetchMediaItems(Request.Artist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
                         inLibraryOnly = false,
-                    ),
-                ).resultAs<List<ServerMediaItem>>()
-                    ?.let { mediaItemFactory.createList(it) }
+                    )).getOrNull()
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
@@ -323,14 +259,11 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val tracks = apiClient.sendRequest(
-                    Request.Album.getTracks(
+                val tracks = mediaItemRepository.fetchMediaItems(Request.Album.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                         inLibraryOnly = false,
-                    ),
-                ).resultAs<List<ServerMediaItem>>()
-                    ?.let { mediaItemFactory.createList(it) }
+                    )).getOrNull()
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
@@ -349,14 +282,11 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val tracks = apiClient.sendRequest(
-                    Request.Playlist.getTracks(
+                val tracks = mediaItemRepository.fetchMediaItems(Request.Playlist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                         forceRefresh = null,
-                    ),
-                ).resultAs<List<ServerMediaItem>>()
-                    ?.let { mediaItemFactory.createList(it) }
+                    )).getOrNull()
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
@@ -375,14 +305,11 @@ class ItemDetailsViewModel(
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
             try {
-                val episodes = apiClient.sendRequest(
-                    Request.Podcast.getEpisodes(
+                val episodes = mediaItemRepository.fetchMediaItems(Request.Podcast.getEpisodes(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                         inLibraryOnly = false,
-                    ),
-                ).resultAs<List<ServerMediaItem>>()
-                    ?.let { mediaItemFactory.createList(it) }
+                    )).getOrNull()
                     ?.filterIsInstance<PodcastEpisode>()
                     ?: emptyList()
 
@@ -406,13 +333,10 @@ class ItemDetailsViewModel(
             }
 
             try {
-                val folders = apiClient.sendRequest(
-                    Request.Genre.overview(
+                val folders = mediaItemRepository.fetchMediaItems(Request.Genre.overview(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                    ),
-                ).resultAs<List<ServerMediaItem>>()
-                    ?.let { mediaItemFactory.createList(it) }
+                    )).getOrNull()
                     ?.filterIsInstance<RecommendationFolder>()
                     ?: emptyList()
 
@@ -506,56 +430,33 @@ class ItemDetailsViewModel(
         }
     }
 
-    private fun updateSubItemIfNeeded(serverItem: ServerMediaItem) {
-        // Update artists list if this item is an artist
-        val artistsData = (_state.value.artistsState as? DataState.Data)?.data
-        if (artistsData != null) {
-            val updatedArtists = artistsData.map { artist ->
-                if (artist.itemId == serverItem.itemId) {
-                    mediaItemFactory.create(serverItem) as? Artist ?: artist
-                } else {
-                    artist
-                }
+    private fun updateSubItemIfNeeded(changed: AppMediaItem) {
+        when (changed) {
+            is Artist -> {
+                val artistsData = (_state.value.artistsState as? DataState.Data)?.data ?: return
+                val updated = artistsData.map { if (it.itemId == changed.itemId) changed else it }
+                _state.update { it.copy(artistsState = DataState.Data(updated)) }
             }
-            _state.update { it.copy(artistsState = DataState.Data(updatedArtists)) }
-        }
 
-        val albumsData = (_state.value.albumsState as? DataState.Data)?.data
-        if (albumsData != null) {
-            val updatedAlbums = albumsData.map { album ->
-                if (album.itemId == serverItem.itemId) {
-                    mediaItemFactory.create(serverItem) as? Album ?: album
-                } else {
-                    album
-                }
+            is Album -> {
+                val albumsData = (_state.value.albumsState as? DataState.Data)?.data ?: return
+                val updated = albumsData.map { if (it.itemId == changed.itemId) changed else it }
+                rawAlbums = rawAlbums.map { if (it.itemId == changed.itemId) changed else it }
+                _state.update { it.copy(albumsState = DataState.Data(updated)) }
             }
-            rawAlbums = rawAlbums.map { album ->
-                if (album.itemId == serverItem.itemId) {
-                    mediaItemFactory.create(serverItem) as? Album ?: album
-                } else {
-                    album
-                }
-            }
-            _state.update { it.copy(albumsState = DataState.Data(updatedAlbums)) }
-        }
 
-        val tracksData = (_state.value.playableItemsState as? DataState.Data)?.data
-        if (tracksData != null) {
-            val updatedTracks = tracksData.map { track ->
-                if (track.itemId == serverItem.itemId) {
-                    mediaItemFactory.create(serverItem) as? Track ?: track
-                } else {
-                    track
+            is PlayableItem -> {
+                val tracksData = (_state.value.playableItemsState as? DataState.Data)?.data ?: return
+                val updated = tracksData.map { existing ->
+                    if (existing.itemId == changed.itemId) changed else existing
                 }
-            }
-            rawPlayableItems = rawPlayableItems.map { track ->
-                if (track.itemId == serverItem.itemId) {
-                    mediaItemFactory.create(serverItem) as? PlayableItem ?: track
-                } else {
-                    track
+                rawPlayableItems = rawPlayableItems.map { existing ->
+                    if (existing.itemId == changed.itemId) changed else existing
                 }
+                _state.update { it.copy(playableItemsState = DataState.Data(updated)) }
             }
-            _state.update { it.copy(playableItemsState = DataState.Data(updatedTracks)) }
+
+            else -> Unit
         }
     }
 }

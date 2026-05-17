@@ -14,7 +14,8 @@ import io.music_assistant.client.data.model.client.PodcastEpisode
 import io.music_assistant.client.data.model.client.RadioStation
 import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.Track
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.repository.SearchResultData
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItemChapter
@@ -30,7 +31,7 @@ import io.music_assistant.client.data.model.server.ServerMetadata
 class MediaItemFactory {
 
     fun create(server: ServerMediaItem): AppMediaItem? = with(server) {
-        when (mediaType) {
+        when (MediaType.fromServer(mediaType)) {
             MediaType.ARTIST -> Artist(
                 itemId = itemId,
                 provider = provider,
@@ -178,6 +179,7 @@ class MediaItemFactory {
             MediaType.FLOW_STREAM,
             MediaType.ANNOUNCEMENT,
             MediaType.UNKNOWN,
+            null,
                 -> null
         }
     }
@@ -194,6 +196,17 @@ class MediaItemFactory {
                 createList(search.audiobooks) +
                 createList(search.radio) +
                 createList(search.genres)
+
+    fun createSearchResult(search: SearchResult): SearchResultData = SearchResultData(
+        artists = search.artists.mapNotNull { create(it) as? Artist },
+        albums = search.albums.mapNotNull { create(it) as? Album },
+        tracks = search.tracks.mapNotNull { create(it) as? Track },
+        playlists = search.playlists.mapNotNull { create(it) as? Playlist },
+        audiobooks = search.audiobooks.mapNotNull { create(it) as? Audiobook },
+        podcasts = search.podcasts.mapNotNull { create(it) as? Podcast },
+        radios = search.radio.mapNotNull { create(it) as? RadioStation },
+        genres = search.genres.mapNotNull { create(it) as? Genre },
+    )
 
     private fun createMetadata(server: ServerMetadata?): Metadata? = server?.let {
         Metadata(

@@ -5,18 +5,17 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Artist
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Playlist
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.Track
-import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.currentTimeMillis
-import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,7 +41,7 @@ object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
-    private val mediaItemFactory: MediaItemFactory by inject()
+    private val mediaItemRepository: MediaItemRepository by inject()
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -122,9 +121,7 @@ object KmpHelper : KoinComponent {
 
     fun fetchRecommendations(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("recommendations", completion) {
-            serviceClient.sendRequest(Request.Library.recommendations())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Library.recommendations()).getOrNull()
                 ?: emptyList()
         }
     }
@@ -133,9 +130,7 @@ object KmpHelper : KoinComponent {
         completion: (List<RecommendationFolder>?) -> Unit,
     ) {
         launchFetch("recommendationFolders", completion) {
-            serviceClient.sendRequest(Request.Library.recommendations())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Library.recommendations()).getOrNull()
                 ?.filterIsInstance<RecommendationFolder>()
                 ?: emptyList()
         }
@@ -143,87 +138,81 @@ object KmpHelper : KoinComponent {
 
     fun fetchPlaylists(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("playlists", completion) {
-            serviceClient.sendRequest(Request.Playlist.listLibrary())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun fetchAlbums(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("albums", completion) {
-            serviceClient.sendRequest(Request.Album.listLibrary())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Album.listLibrary()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun fetchArtists(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("artists", completion) {
-            serviceClient.sendRequest(Request.Artist.listLibrary())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Artist.listLibrary()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun fetchAudiobooks(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("audiobooks", completion) {
-            serviceClient.sendRequest(Request.Audiobook.listLibrary())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Audiobook.listLibrary()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun fetchTracks(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("tracks", completion) {
-            serviceClient.sendRequest(Request.Track.list())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Track.list()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun fetchPodcasts(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("podcasts", completion) {
-            serviceClient.sendRequest(Request.Podcast.listLibrary())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.Podcast.listLibrary()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun fetchRadioStations(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("radioStations", completion) {
-            serviceClient.sendRequest(Request.RadioStation.listLibrary())
-                .resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            mediaItemRepository.fetchMediaItems(Request.RadioStation.listLibrary()).getOrNull()
                 ?: emptyList()
         }
     }
 
     fun search(query: String, completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("search:$query", completion) {
-            val result = serviceClient.sendRequest(
+            val result = mediaItemRepository.search(
                 Request.Library.search(
                     query = query,
                     mediaTypes = listOf(
-                        io.music_assistant.client.data.model.server.MediaType.ARTIST,
-                        io.music_assistant.client.data.model.server.MediaType.ALBUM,
-                        io.music_assistant.client.data.model.server.MediaType.TRACK,
-                        io.music_assistant.client.data.model.server.MediaType.PLAYLIST,
-                        io.music_assistant.client.data.model.server.MediaType.AUDIOBOOK,
-                        io.music_assistant.client.data.model.server.MediaType.RADIO,
+                        MediaType.ARTIST,
+                        MediaType.ALBUM,
+                        MediaType.TRACK,
+                        MediaType.PLAYLIST,
+                        MediaType.AUDIOBOOK,
+                        MediaType.RADIO,
                     ),
                     limit = 10,
                     libraryOnly = false,
                 ),
-            )
-            result.resultAs<io.music_assistant.client.data.model.server.SearchResult>()
-                ?.let { mediaItemFactory.createList(it) }
-                ?: emptyList()
+            ).getOrNull()
+            buildList<AppMediaItem> {
+                result ?: return@buildList
+                addAll(result.artists)
+                addAll(result.albums)
+                addAll(result.tracks)
+                addAll(result.playlists)
+                addAll(result.podcasts)
+                addAll(result.audiobooks)
+                addAll(result.radios)
+                addAll(result.genres)
+            }
         }
     }
 
@@ -234,14 +223,13 @@ object KmpHelper : KoinComponent {
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("albumsByArtist:${artist.itemId}", completion) {
-            serviceClient.sendRequest(
+            mediaItemRepository.fetchMediaItems(
                 Request.Artist.getAlbums(
                     itemId = artist.itemId,
                     providerInstanceIdOrDomain = artist.provider,
                     inLibraryOnly = false,
                 ),
-            ).resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            ).getOrNull()
                 ?.filterIsInstance<Album>()
                 ?: emptyList()
         }
@@ -252,14 +240,13 @@ object KmpHelper : KoinComponent {
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("tracksByAlbum:${album.itemId}", completion) {
-            serviceClient.sendRequest(
+            mediaItemRepository.fetchMediaItems(
                 Request.Album.getTracks(
                     itemId = album.itemId,
                     providerInstanceIdOrDomain = album.provider,
                     inLibraryOnly = false,
                 ),
-            ).resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            ).getOrNull()
                 ?.filterIsInstance<Track>()
                 ?: emptyList()
         }
@@ -270,14 +257,13 @@ object KmpHelper : KoinComponent {
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("tracksByPlaylist:${playlist.itemId}", completion) {
-            serviceClient.sendRequest(
+            mediaItemRepository.fetchMediaItems(
                 Request.Playlist.getTracks(
                     itemId = playlist.itemId,
                     providerInstanceIdOrDomain = playlist.provider,
                     forceRefresh = null,
                 ),
-            ).resultAs<List<ServerMediaItem>>()
-                ?.let { mediaItemFactory.createList(it) }
+            ).getOrNull()
                 ?.filterIsInstance<Track>()
                 ?: emptyList()
         }

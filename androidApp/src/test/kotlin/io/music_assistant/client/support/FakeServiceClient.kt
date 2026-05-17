@@ -7,7 +7,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.EventType
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.SearchResult
@@ -51,17 +51,17 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     private val items = mutableSetOf<ServerMediaItem>()
     private val albums: List<ServerMediaItem>
         get() {
-            return items.filter { it.mediaType == MediaType.ALBUM }
+            return items.filter { it.mediaType == MediaType.ALBUM.serverValue }
         }
 
     private val artists: List<ServerMediaItem>
         get() {
-            return items.filter { it.mediaType == MediaType.ARTIST }
+            return items.filter { it.mediaType == MediaType.ARTIST.serverValue }
         }
 
     private val tracks: List<ServerMediaItem>
         get() {
-            return items.filter { it.mediaType == MediaType.TRACK }
+            return items.filter { it.mediaType == MediaType.TRACK.serverValue }
         }
 
     val username = "user"
@@ -109,14 +109,14 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                                 itemId = "recently_added_albums",
                                 provider = "library",
                                 name = "Recently added albums",
-                                mediaType = MediaType.FOLDER,
+                                mediaType = MediaType.FOLDER.serverValue,
                                 items = albums,
                             ),
                             ServerMediaItem(
                                 itemId = "recently_added_tracks",
                                 provider = "library",
                                 name = "Recently added tracks",
-                                mediaType = MediaType.FOLDER,
+                                mediaType = MediaType.FOLDER.serverValue,
                                 items = tracks,
                             ),
                         ),
@@ -198,20 +198,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             APICommands.PLAYER_QUEUES_PLAY_MEDIA -> {
                 val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
                 val mediaTracks = items.find { it.uri == mediaUri }?.let { item ->
-                    when (item.mediaType) {
-                        MediaType.ARTIST -> TODO()
+                    when (MediaType.fromServer(item.mediaType)) {
                         MediaType.ALBUM -> tracks.filter { it.album == item }
                         MediaType.TRACK -> listOf(item)
-                        MediaType.PLAYLIST -> TODO()
-                        MediaType.RADIO -> TODO()
-                        MediaType.AUDIOBOOK -> TODO()
-                        MediaType.PODCAST -> TODO()
-                        MediaType.PODCAST_EPISODE -> TODO()
-                        MediaType.GENRE -> TODO()
-                        MediaType.FOLDER -> TODO()
-                        MediaType.FLOW_STREAM -> TODO()
-                        MediaType.ANNOUNCEMENT -> TODO()
-                        MediaType.UNKNOWN -> TODO()
+                        else -> TODO()
                     }
                 } ?: emptyList()
 

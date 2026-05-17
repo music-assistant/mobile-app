@@ -1,6 +1,6 @@
 package io.music_assistant.client.ui.compose.common.action
 
-import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.data.model.client.RepeatMode
 
 sealed interface PlayerAction {
     data object TogglePlayPause : PlayerAction

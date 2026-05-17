@@ -17,7 +17,7 @@ data class ServerQueue(
     @SerialName("available") val available: Boolean = false,
     // @SerialName("items") val items: Int,
     @SerialName("shuffle_enabled") val shuffleEnabled: Boolean = false,
-    @SerialName("repeat_mode") val repeatMode: RepeatMode = RepeatMode.OFF,
+    @SerialName("repeat_mode") val repeatMode: String? = null,
     // @SerialName("dont_stop_the_music_enabled") val dontStopTheMusicEnabled: Boolean,
     @SerialName("current_index") val currentIndex: Int? = null,
     // @SerialName("index_in_buffer") val indexInBuffer: Int? = null,

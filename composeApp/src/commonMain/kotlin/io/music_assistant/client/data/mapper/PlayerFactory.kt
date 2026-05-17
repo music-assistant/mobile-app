@@ -2,10 +2,10 @@ package io.music_assistant.client.data.mapper
 
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerMedia
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.PlayerFeature
 import io.music_assistant.client.data.model.server.PlayerState
-import io.music_assistant.client.data.model.server.PlayerType
+import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerPlayerMedia
 
@@ -26,7 +26,7 @@ class PlayerFactory {
             // treated as regular players so they still show up and aren't mistaken
             // for a group. If the server adds a genuinely new group-like type we
             // can surface it explicitly once the mobile app learns about it.
-            type = type ?: PlayerType.PLAYER,
+            type = PlayerType.fromServer(type) ?: PlayerType.PLAYER,
             shouldBeShown = available && enabled && (hidden != true),
             canSetVolume = supportedFeatures.contains(PlayerFeature.VOLUME_SET),
             volumeLevel = volumeLevel,
@@ -51,15 +51,16 @@ class PlayerFactory {
         servers.map { create(it) }
 
     private fun createPlayerMedia(server: ServerPlayerMedia): PlayerMedia = with(server) {
+        val clientMediaType = MediaType.fromServer(mediaType)
         PlayerMedia(
             title = title,
             artist = artist,
             album = album,
             imageUrl = imageUrl,
-            duration = duration.takeIf { mediaType != MediaType.RADIO },
+            duration = duration.takeIf { clientMediaType != MediaType.RADIO },
             queueId = queueId,
             queueItemId = queueItemId,
-            mediaType = mediaType,
+            mediaType = clientMediaType,
             uri = uri,
         )
     }

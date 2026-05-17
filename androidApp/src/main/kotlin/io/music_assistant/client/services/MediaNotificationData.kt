@@ -2,7 +2,7 @@ package io.music_assistant.client.services
 
 import android.os.SystemClock
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.data.model.client.RepeatMode
 
 // Elapsed time can drift up to 1s before we treat it as a real position change.
 // Lower tolerance keeps OEM surfaces that don't extrapolate (OneUI/MIUI/etc.)

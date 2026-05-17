@@ -6,7 +6,7 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.ui.theme.ThemeSetting

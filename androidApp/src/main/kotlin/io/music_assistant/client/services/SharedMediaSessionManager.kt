@@ -13,7 +13,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.utils.MediaConstants
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.R
-import io.music_assistant.client.data.model.server.RepeatMode
+import io.music_assistant.client.data.model.client.RepeatMode
 
 /**
  * Single source of truth for the app's MediaSession.

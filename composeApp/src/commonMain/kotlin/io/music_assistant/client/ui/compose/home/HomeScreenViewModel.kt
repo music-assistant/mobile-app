@@ -6,18 +6,14 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.Player
+import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RecommendationFolder
 import io.music_assistant.client.data.model.client.Track
-import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
@@ -27,7 +23,6 @@ import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -45,7 +40,7 @@ class HomeScreenViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
     private val settings: SettingsRepository,
-    private val mediaItemFactory: MediaItemFactory,
+    private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var recommendationsJob: Job? = null
@@ -174,19 +169,11 @@ class HomeScreenViewModel(
             }
         }
 
-        // Listen to real-time events for track updates in recommendations
+        // Listen to real-time library changes to refresh tracks already shown
+        // in the recommendations grid.
         viewModelScope.launch {
-            apiClient.events.collect { event ->
-                when (event) {
-                    is MediaItemUpdatedEvent,
-                    is MediaItemAddedEvent,
-                    is MediaItemDeletedEvent,
-                    -> {
-                        event.data?.let { updateRecommendationsIfNeeded(it) }
-                    }
-
-                    else -> Unit
-                }
+            mediaItemRepository.itemChanges.collect { change ->
+                (change.item as? Track)?.let { updateRecommendationsIfNeeded(it) }
             }
         }
     }
@@ -221,34 +208,28 @@ class HomeScreenViewModel(
         }
     }
 
-    private fun updateRecommendationsIfNeeded(serverItem: ServerMediaItem) {
+    private fun updateRecommendationsIfNeeded(changed: Track) {
         val recommendationsData =
             (_recommendationsState.value.recommendations as? DataState.Data)?.data
-        if (recommendationsData != null) {
-            val updated = recommendationsData.map { row ->
-                row.items?.let { itemsList ->
-                    val updatedItems = itemsList.map { item ->
-                        if (item is Track && item.hasAnyMappingFrom(serverItem)) {
-                            mediaItemFactory.create(serverItem) as? Track ?: item
-                        } else {
-                            item
-                        }
-                    }
-                    // Create new RecommendationFolder with updated items
-                    RecommendationFolder(
-                        itemId = row.itemId,
-                        provider = row.provider,
-                        name = row.displayName,
-                        providerMappings = row.providerMappings,
-                        uri = row.uri,
-                        imageInfo = row.imageInfo,
-                        items = updatedItems,
-                    )
-                } ?: row
-            }
-            _recommendationsState.update {
-                it.copy(recommendations = DataState.Data(updated))
-            }
+                ?: return
+        val updated = recommendationsData.map { row ->
+            row.items?.let { itemsList ->
+                val updatedItems = itemsList.map { item ->
+                    if (item is Track && item.hasAnyMappingFrom(changed)) changed else item
+                }
+                RecommendationFolder(
+                    itemId = row.itemId,
+                    provider = row.provider,
+                    name = row.displayName,
+                    providerMappings = row.providerMappings,
+                    uri = row.uri,
+                    imageInfo = row.imageInfo,
+                    items = updatedItems,
+                )
+            } ?: row
+        }
+        _recommendationsState.update {
+            it.copy(recommendations = DataState.Data(updated))
         }
     }
 
@@ -337,13 +318,12 @@ class HomeScreenViewModel(
     @Suppress("UNCHECKED_CAST")
     private suspend fun <T : AppMediaItem> getList(
         request: Request,
-    ): List<T>? =
-        apiClient.sendRequest(request).let { result ->
-            if (result.isFailure) {
-                Logger.e("Error fetching list for request $request: ${result.exceptionOrNull()}")
-            }
-            result.resultAs<List<ServerMediaItem>>()?.let { mediaItemFactory.createList(it) }?.mapNotNull { it as? T }
+    ): List<T>? = mediaItemRepository.fetchMediaItems(request).let { result ->
+        if (result.isFailure) {
+            Logger.e("Error fetching list for request $request: ${result.exceptionOrNull()}")
         }
+        result.getOrNull()?.mapNotNull { it as? T }
+    }
 
     fun saveHiddenRecommendationFolders(ids: Set<String>) =
         settings.setHiddenRecommendationFolders(ids)

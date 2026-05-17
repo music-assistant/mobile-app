@@ -21,7 +21,7 @@ import kotlinx.serialization.Serializable
 data class ServerPlayer(
     @SerialName("player_id") val playerId: String,
     @SerialName("provider") val provider: String = "",
-    @SerialName("type") val type: PlayerType? = null,
+    @SerialName("type") val type: String? = null,
     // @SerialName("name") val name: String,
     @SerialName("available") val available: Boolean = false,
     // @SerialName("device_info") val deviceInfo: DeviceInfo,
@@ -71,7 +71,7 @@ data class ServerPlayer(
 @Serializable
 data class ServerPlayerMedia(
     @SerialName("uri") val uri: String? = null,
-    @SerialName("media_type") val mediaType: MediaType,
+    @SerialName("media_type") val mediaType: String,
     @SerialName("title") val title: String? = null,
     @SerialName("artist") val artist: String? = null,
     @SerialName("album") val album: String? = null,

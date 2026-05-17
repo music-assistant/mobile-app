@@ -8,6 +8,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.mapper.PlayerFactory
 import io.music_assistant.client.data.mapper.QueueFactory
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
@@ -49,6 +50,7 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)
+        singleOf(::MediaItemRepository)     // Server DTO/event → client model boundary for UI
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         singleOf(::DominantColorViewModel)  // Singleton - app-wide art-color cache
         viewModelOf(::ThemeViewModel)
@@ -61,6 +63,7 @@ fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient
         factory { DspSettingsViewModel(get()) }
         factory { HomeScreenViewModel(get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get()) }
+
     }
 
 /**

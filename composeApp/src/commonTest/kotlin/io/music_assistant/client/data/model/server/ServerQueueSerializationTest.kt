@@ -1,18 +1,24 @@
 package io.music_assistant.client.data.model.server
 
+import io.music_assistant.client.data.mapper.MediaItemFactory
+import io.music_assistant.client.data.mapper.QueueFactory
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
- * Guards the tolerance contract of [ServerQueue] deserialization: only
- * `queue_id` is required, every other field carries a default, and an
- * unknown [RepeatMode] variant coerces to [RepeatMode.OFF] via
- * `coerceInputValues = true` on [myJson]. The upshot is that one stale
- * entry in a `List<ServerQueue>` payload never aborts the whole
- * queue-listing decode.
+ * Guards the tolerance contract of [ServerQueue] deserialization and the
+ * client-side enum mapping done by [QueueFactory]: only `queue_id` is
+ * required, every other field carries a default, and an unknown
+ * `repeat_mode` value passes through as a raw string and gets normalized
+ * to [RepeatMode.OFF] by [QueueFactory] via [RepeatMode.fromServer]. One
+ * stale entry in a `List<ServerQueue>` payload never aborts the decode.
  */
 class ServerQueueSerializationTest {
+    private val queueFactory = QueueFactory(MediaItemFactory())
+
     @Test
     fun deserializesWithOnlyQueueIdPresent() {
         val json = """{"queue_id": "q1"}"""
@@ -22,29 +28,31 @@ class ServerQueueSerializationTest {
         assertEquals("q1", queue.queueId)
         assertEquals(false, queue.available)
         assertEquals(false, queue.shuffleEnabled)
-        assertEquals(RepeatMode.OFF, queue.repeatMode)
+        assertNull(queue.repeatMode)
+        assertEquals(RepeatMode.OFF, queueFactory.create(queue).repeatMode)
     }
 
     @Test
-    fun deserializesUnknownRepeatModeAsOff() {
+    fun mapsUnknownRepeatModeToOff() {
         val json = """{"queue_id": "q1", "repeat_mode": "random_future_mode"}"""
 
         val queue = myJson.decodeFromString<ServerQueue>(json)
 
+        assertEquals("random_future_mode", queue.repeatMode)
         assertEquals(
             RepeatMode.OFF,
-            queue.repeatMode,
-            "Unknown RepeatMode must coerce to the default OFF, not throw",
+            queueFactory.create(queue).repeatMode,
+            "Unknown RepeatMode must fall back to OFF, not throw",
         )
     }
 
     @Test
-    fun deserializesKnownRepeatModeNormally() {
+    fun mapsKnownRepeatModeNormally() {
         val json = """{"queue_id": "q1", "repeat_mode": "all"}"""
 
         val queue = myJson.decodeFromString<ServerQueue>(json)
 
-        assertEquals(RepeatMode.ALL, queue.repeatMode)
+        assertEquals(RepeatMode.ALL, queueFactory.create(queue).repeatMode)
     }
 
     @Test
@@ -60,8 +68,8 @@ class ServerQueueSerializationTest {
 
         assertEquals(2, queues.size)
         assertEquals("q1", queues[0].queueId)
-        assertEquals(RepeatMode.ONE, queues[0].repeatMode)
+        assertEquals(RepeatMode.ONE, queueFactory.create(queues[0]).repeatMode)
         assertEquals("q2", queues[1].queueId)
-        assertEquals(RepeatMode.OFF, queues[1].repeatMode)
+        assertEquals(RepeatMode.OFF, queueFactory.create(queues[1]).repeatMode)
     }
 }

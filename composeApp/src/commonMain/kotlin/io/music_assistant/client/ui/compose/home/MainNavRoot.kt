@@ -46,7 +46,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Playlist
 import io.music_assistant.client.data.model.client.Podcast
 import io.music_assistant.client.data.model.client.RecommendationFolder
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher

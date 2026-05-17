@@ -7,7 +7,7 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
@@ -32,7 +32,12 @@ class MediaItemPage(
         serverMediaItem: ServerMediaItem,
         navigationItem: String,
         composeTestRule: ComposeTestRule,
-    ) : this(serverMediaItem.name, serverMediaItem.mediaType, navigationItem, composeTestRule)
+    ) : this(
+        serverMediaItem.name,
+        MediaType.fromServer(serverMediaItem.mediaType) ?: MediaType.UNKNOWN,
+        navigationItem,
+        composeTestRule,
+    )
 
     override fun assert() {
         composeTestRule.onNodeWithText(name).assertIsDisplayed()

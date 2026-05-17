@@ -58,7 +58,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Artist
 import io.music_assistant.client.data.model.client.Genre
 import io.music_assistant.client.data.model.client.Playlist
-import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon

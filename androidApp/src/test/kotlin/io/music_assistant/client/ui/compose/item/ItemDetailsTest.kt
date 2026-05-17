@@ -12,7 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
-import io.music_assistant.client.data.model.server.QueueOption
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.support.inScrollable

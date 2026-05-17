@@ -5,23 +5,18 @@ import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.mapper.MediaItemFactory
 import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Artist
 import io.music_assistant.client.data.model.client.Audiobook
 import io.music_assistant.client.data.model.client.Genre
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Playlist
 import io.music_assistant.client.data.model.client.Podcast
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RadioStation
 import io.music_assistant.client.data.model.client.Track
-import io.music_assistant.client.data.model.server.MediaType
-import io.music_assistant.client.data.model.server.QueueOption
-import io.music_assistant.client.data.model.server.SearchResult
-import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.FlowPreview
@@ -50,7 +45,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 class SearchViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
-    private val mediaItemFactory: MediaItemFactory,
+    private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     val serverUrl = apiClient.serverBaseUrl
 
@@ -96,19 +91,10 @@ class SearchViewModel(
                 }
         }
 
-        // Listen to real-time events for track updates
+        // Listen to real-time library changes; refresh any tracks already shown.
         viewModelScope.launch {
-            apiClient.events.collect { event ->
-                when (event) {
-                    is MediaItemUpdatedEvent,
-                    is MediaItemAddedEvent,
-                    is MediaItemDeletedEvent,
-                        -> {
-                        event.data?.let { updateSearchResultsIfNeeded(it) }
-                    }
-
-                    else -> Unit
-                }
+            mediaItemRepository.itemChanges.collect { change ->
+                (change.item as? Track)?.let { updateSearchResultsIfNeeded(it) }
             }
         }
     }
@@ -160,15 +146,11 @@ class SearchViewModel(
         }
     }
 
-    private fun updateSearchResultsIfNeeded(serverItem: ServerMediaItem) {
+    private fun updateSearchResultsIfNeeded(changed: Track) {
         val resultsData = (_state.value.resultsState as? DataState.Data)?.data
         if (resultsData != null) {
             val updatedTracks = resultsData.tracks.map { track ->
-                if (track.hasAnyMappingFrom(serverItem)) {
-                    mediaItemFactory.create(serverItem) as? Track ?: track
-                } else {
-                    track
-                }
+                if (track.hasAnyMappingFrom(changed)) changed else track
             }
             _state.update {
                 it.copy(resultsState = DataState.Data(resultsData.copy(tracks = updatedTracks)))
@@ -181,7 +163,7 @@ class SearchViewModel(
             viewModelScope.launch {
                 _state.update { it.copy(resultsState = DataState.Loading()) }
 
-                val result = apiClient.sendRequest(
+                val result = mediaItemRepository.search(
                     Request.Library.search(
                         query = searchState.query,
                         mediaTypes = searchState.selectedMediaTypes,
@@ -190,8 +172,17 @@ class SearchViewModel(
                     ),
                 )
                 if (isActive) {
-                    result.getOrNull()?.resultAs<SearchResult>()?.let { search ->
-                        val results = search.toAppSearchResults()
+                    result.getOrNull()?.let { data ->
+                        val results = SearchResults(
+                            artists = data.artists,
+                            albums = data.albums,
+                            tracks = data.tracks,
+                            playlists = data.playlists,
+                            audiobooks = data.audiobooks,
+                            podcasts = data.podcasts,
+                            radios = data.radios,
+                            genres = data.genres,
+                        )
                         if (isActive) {
                             _state.update { it.copy(resultsState = DataState.Data(results)) }
                         }
@@ -248,14 +239,4 @@ class SearchViewModel(
         )
     }
 
-    private fun SearchResult.toAppSearchResults() = SearchResults(
-        artists = artists.mapNotNull { mediaItemFactory.create(it) as? Artist },
-        albums = albums.mapNotNull { mediaItemFactory.create(it) as? Album },
-        tracks = tracks.mapNotNull { mediaItemFactory.create(it) as? Track },
-        playlists = playlists.mapNotNull { mediaItemFactory.create(it) as? Playlist },
-        audiobooks = audiobooks.mapNotNull { mediaItemFactory.create(it) as? Audiobook },
-        podcasts = podcasts.mapNotNull { mediaItemFactory.create(it) as? Podcast },
-        radios = radio.mapNotNull { mediaItemFactory.create(it) as? RadioStation },
-        genres = genres.mapNotNull { mediaItemFactory.create(it) as? Genre },
-    )
 }

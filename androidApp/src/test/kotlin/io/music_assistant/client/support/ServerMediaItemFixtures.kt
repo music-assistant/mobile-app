@@ -1,6 +1,6 @@
 package io.music_assistant.client.support
 
-import io.music_assistant.client.data.model.server.MediaType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.utils.UniqueIdGenerator
 
@@ -16,7 +16,7 @@ object ServerMediaItemFixtures {
             itemId = itemId,
             provider = "blah",
             name = name,
-            mediaType = MediaType.ALBUM,
+            mediaType = MediaType.ALBUM.serverValue,
             artists = listOf(artist),
             uri = "http://example.com/album/$itemId",
         )
@@ -30,7 +30,7 @@ object ServerMediaItemFixtures {
             itemId = itemId,
             provider = "blah",
             name = name,
-            mediaType = MediaType.ARTIST,
+            mediaType = MediaType.ARTIST.serverValue,
         )
     }
 
@@ -44,7 +44,7 @@ object ServerMediaItemFixtures {
             itemId = itemId,
             provider = "blah",
             name = name,
-            mediaType = MediaType.TRACK,
+            mediaType = MediaType.TRACK.serverValue,
             artists = artists,
             album = album,
             uri = "http://example.com/track/$itemId",

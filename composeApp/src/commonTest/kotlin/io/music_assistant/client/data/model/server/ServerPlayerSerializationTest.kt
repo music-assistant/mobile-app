@@ -1,6 +1,7 @@
 package io.music_assistant.client.data.model.server
 
 import io.music_assistant.client.data.mapper.PlayerFactory
+import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,19 +9,20 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Guards the tolerance contract of [ServerPlayer] deserialization: the
- * server evolves independently of the client, so any non-identity field
- * must be absent-tolerant and any enum field must survive an unknown
- * variant. Specifically:
+ * Guards the tolerance contract of [ServerPlayer] deserialization and the
+ * client-side enum mapping done by [PlayerFactory]. The server evolves
+ * independently of the client, so:
  *
  *  - Only `player_id` is required; every other field has a default so a
  *    missing wire field does not throw `MissingFieldException`.
- *  - Unknown `PlayerType` / `PlayerState` variants coerce to `null` via
- *    `coerceInputValues = true` on [myJson], rather than throwing
- *    `SerializationException` out of `decodeTaggedEnum`.
- *  - [PlayerFactory.create] maps a null `type` back to [PlayerType.PLAYER]
- *    so a new server-side type still renders as something, instead of
- *    being silently misclassified as a group.
+ *  - `type` is decoded as a raw string (no `@Serializable` enum on the wire),
+ *    so an unknown server-side value can't break decoding.
+ *  - [PlayerFactory.create] maps `type` through [PlayerType.fromServer],
+ *    falling back to [PlayerType.PLAYER] for unknown/missing values so a new
+ *    server type still renders as something instead of being misclassified
+ *    as a group.
+ *  - `state` is still a `@Serializable` enum and relies on
+ *    `coerceInputValues = true` in [myJson] for unknown variants.
  */
 class ServerPlayerSerializationTest {
     private val playerFactory = PlayerFactory()
@@ -42,17 +44,19 @@ class ServerPlayerSerializationTest {
     }
 
     @Test
-    fun deserializesUnknownPlayerTypeAsNull() {
+    fun deserializesUnknownPlayerTypeAsRawString() {
         val json = """{
             "player_id": "pl1",
             "type": "surround_group",
             "display_name": "Living Room"
         }"""
 
-        val player = myJson.decodeFromString<ServerPlayer>(json)
+        val server = myJson.decodeFromString<ServerPlayer>(json)
 
-        assertNull(player.type, "Unknown PlayerType must coerce to null, not throw")
-        assertEquals("Living Room", player.displayName)
+        assertEquals("surround_group", server.type)
+        assertEquals("Living Room", server.displayName)
+        // Factory must reject the unknown variant and fall back to PLAYER.
+        assertEquals(PlayerType.PLAYER, playerFactory.create(server).type)
     }
 
     @Test
@@ -68,26 +72,7 @@ class ServerPlayerSerializationTest {
     }
 
     @Test
-    fun deserializesKnownPlayerTypeNormally() {
-        val json = """{"player_id": "pl1", "type": "group"}"""
-
-        val player = myJson.decodeFromString<ServerPlayer>(json)
-
-        assertEquals(PlayerType.GROUP, player.type)
-    }
-
-    @Test
-    fun toPlayerMapsNullTypeToPlainPlayer() {
-        val server = myJson.decodeFromString<ServerPlayer>("""{"player_id": "pl1"}""")
-
-        val player = playerFactory.create(server)
-
-        assertEquals(PlayerType.PLAYER, player.type)
-        assertEquals(false, player.isGroup)
-    }
-
-    @Test
-    fun toPlayerPreservesKnownGroupType() {
+    fun toPlayerMapsKnownGroupType() {
         val server = myJson.decodeFromString<ServerPlayer>(
             """{"player_id": "pl1", "type": "group"}""",
         )
@@ -99,20 +84,30 @@ class ServerPlayerSerializationTest {
     }
 
     @Test
+    fun toPlayerMapsMissingTypeToPlainPlayer() {
+        val server = myJson.decodeFromString<ServerPlayer>("""{"player_id": "pl1"}""")
+
+        val player = playerFactory.create(server)
+
+        assertEquals(PlayerType.PLAYER, player.type)
+        assertEquals(false, player.isGroup)
+    }
+
+    @Test
     fun deserializesInsideListEvenWhenOneElementHasUnknownEnum() {
         // RPCs returning List<ServerPlayer> must not lose the entire list when
-        // one entry has a `type` the client doesn't know about — coercion is
-        // applied per-element, not dropped at the collection boundary.
+        // one entry has a `type` the client doesn't know about — the raw
+        // string carries through and the factory handles the fallback per item.
         val json = """[
             {"player_id": "good", "type": "player"},
             {"player_id": "weird", "type": "unknown_future_type"}
         ]"""
 
-        val players = myJson.decodeFromString<List<ServerPlayer>>(json)
+        val servers = myJson.decodeFromString<List<ServerPlayer>>(json)
 
-        assertEquals(2, players.size)
-        assertEquals(PlayerType.PLAYER, players[0].type)
-        assertNull(players[1].type)
+        assertEquals(2, servers.size)
+        assertEquals(PlayerType.PLAYER, playerFactory.create(servers[0]).type)
+        assertEquals(PlayerType.PLAYER, playerFactory.create(servers[1]).type)
     }
 
     @Test

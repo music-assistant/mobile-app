@@ -21,7 +21,7 @@ data class ServerMediaItem(
     @SerialName("provider_mappings") val providerMappings: List<ProviderMapping>? = null,
     @SerialName("metadata") val metadata: ServerMetadata? = null,
     @SerialName("favorite") val favorite: Boolean? = null,
-    @SerialName("media_type") val mediaType: MediaType,
+    @SerialName("media_type") val mediaType: String,
     @SerialName("sort_name") val sortName: String? = null,
     @SerialName("uri") val uri: String? = null,
     @SerialName("image") val image: ServerMediaItemImage? = null,
