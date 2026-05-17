@@ -8,6 +8,8 @@ import io.music_assistant.client.data.model.client.MediaType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 sealed interface MainNav : NavKey {
     @Serializable
@@ -16,11 +18,17 @@ sealed interface MainNav : NavKey {
     @Serializable
     data class Library(val type: MediaType?) : MainNav
 
+    /**
+     * Multiple instances of the same item can appear in a back stack - [stackingId] ensures they
+     * are treated as different entries.
+     */
+    @OptIn(ExperimentalUuidApi::class)
     @Serializable
     data class ItemDetails(
         val itemId: String,
         val mediaType: MediaType,
         val providerId: String,
+        val stackingId: String = Uuid.generateV4().toString(),
     ) : MainNav
 
     @Serializable
