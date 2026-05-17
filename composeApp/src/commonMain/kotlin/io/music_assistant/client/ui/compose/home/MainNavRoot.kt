@@ -335,6 +335,7 @@ private fun mainNavEntryProvider(
                         else -> Unit
                     }
                 },
+                actionsViewModel = actionsViewModel,
             )
         }
 
@@ -354,6 +355,7 @@ private fun mainNavEntryProvider(
                         ),
                     )
                 },
+                actionsViewModel = actionsViewModel,
             )
         }
 
@@ -369,6 +371,7 @@ private fun mainNavEntryProvider(
                     )
                 },
                 contentPadding = contentPadding,
+                actionsViewModel = actionsViewModel,
             )
         }
     }

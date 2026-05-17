@@ -87,17 +87,16 @@ import musicassistantclient.composeapp.generated.resources.playlist_add_new
 import musicassistantclient.composeapp.generated.resources.playlist_create_title
 import musicassistantclient.composeapp.generated.resources.playlist_name_label
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun LibraryScreen(
     contentPadding: PaddingValues,
     initialTabType: MediaType?,
+    actionsViewModel: ActionsViewModel,
     onNavigateClick: (AppMediaItem) -> Unit,
 ) {
     val viewModel: LibraryViewModel = koinViewModel()
-    val actionsViewModel: ActionsViewModel = koinInject()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 

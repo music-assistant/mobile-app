@@ -78,7 +78,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SearchScreen(
     onNavigateToItem: (String, MediaType, String) -> Unit,
     viewModel: SearchViewModel = koinViewModel(),
-    actionsViewModel: ActionsViewModel = koinViewModel(),
+    actionsViewModel: ActionsViewModel,
     contentPadding: PaddingValues,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()

@@ -93,6 +93,7 @@ fun ItemDetailsScreen(
     itemId: String,
     mediaType: MediaType,
     providerId: String,
+    actionsViewModel: ActionsViewModel,
     onBack: () -> Unit,
     onNavigateToItem: (String, MediaType, String) -> Unit,
     contentPadding: PaddingValues,
@@ -101,7 +102,6 @@ fun ItemDetailsScreen(
         parametersOf(itemId, mediaType, providerId)
     }
 
-    val actionsViewModel: ActionsViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
