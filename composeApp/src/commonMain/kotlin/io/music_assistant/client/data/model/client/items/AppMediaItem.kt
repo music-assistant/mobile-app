@@ -26,25 +26,26 @@ interface PlayableItem {
     val canStartRadio: Boolean
 }
 
-sealed class AppMediaItem(
-    val itemId: String,
-    val provider: String,
-    val name: String,
-    val providerMappings: List<ProviderMapping>?,
-    val metadata: Metadata?,
-    val favorite: Boolean?,
-    val mediaType: MediaType,
-    val sortName: String?,
-    val uri: String?,
-    val images: Map<ImageType, ImageInfo>,
-    val canStartRadio: Boolean = false,
-) {
-    open val displayName: String = name
-    open val subtitle: String? = null
+sealed class AppMediaItem {
+    abstract val itemId: String
+    abstract val provider: String
+    abstract val name: String
+    abstract val providerMappings: List<ProviderMapping>?
+    abstract val metadata: Metadata?
+    abstract val favorite: Boolean?
+    abstract val mediaType: MediaType
+    abstract val sortName: String?
+    abstract val uri: String?
+    abstract val images: Map<ImageType, ImageInfo>
+    open val canStartRadio: Boolean get() = false
 
-    val isInLibrary = provider == "library"
+    open val displayName: String get() = name
+    open val subtitle: String? get() = null
 
-    val isExplicit: Boolean = metadata?.explicit == true
+    val isInLibrary: Boolean get() = provider == "library"
+    val isExplicit: Boolean get() = metadata?.explicit == true
+
+    fun image(type: ImageType): ImageInfo? = images[type] ?: images[ImageType.MAIN]
 
     /**
      * URI suitable for the play_media API.
@@ -54,8 +55,9 @@ sealed class AppMediaItem(
     open val mediaUri: String?
         get() = uri
 
-    private val mappingsHashes =
+    private val mappingsHashes: Set<Int> by lazy {
         providerMappings?.map { it.toHash().hashCode() }?.toSet() ?: emptySet()
+    }
 
     fun hasAnyMappingFrom(other: AppMediaItem): Boolean =
         mappingsHashes.intersect(other.mappingsHashes).isNotEmpty()
@@ -90,6 +92,9 @@ sealed class AppMediaItem(
                 "uri=$uri" +
                 ")"
 }
+
+fun PlayableItem.image(type: ImageType): ImageInfo? =
+    images[type] ?: images[ImageType.MAIN]
 
 val AudioFormat.description: String
     get() = listOfNotNull(

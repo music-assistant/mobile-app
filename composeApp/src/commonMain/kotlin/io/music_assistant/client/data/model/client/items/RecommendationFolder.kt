@@ -3,29 +3,23 @@ package io.music_assistant.client.data.model.client.items
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 
-class RecommendationFolder(
-    itemId: String,
-    provider: String,
-    name: String,
-    providerMappings: List<ProviderMapping>?,
-    sortName: String? = null,
-    uri: String?,
-    images: Map<ImageType, ImageInfo>,
+data class RecommendationFolder(
+    override val itemId: String,
+    override val provider: String,
+    override val name: String,
+    override val sortName: String? = null,
+    override val uri: String?,
+    override val images: Map<ImageType, ImageInfo>,
     val items: List<AppMediaItem>? = null,
-) : AppMediaItem(
-    itemId = itemId,
-    provider = provider,
-    name = name,
-    providerMappings = null,
-    metadata = null,
-    favorite = null,
-    mediaType = MediaType.ARTIST,
-    sortName = sortName,
-    uri = uri,
-    images = images,
-) {
+) : AppMediaItem() {
+    override val providerMappings: List<ProviderMapping>? = null
+    override val metadata: Metadata? = null
+    override val favorite: Boolean? = null
+    override val mediaType: MediaType = MediaType.ARTIST
+
     val rowItemType = when (itemId) {
         "recently_added_tracks", "recent_favorite_tracks" -> MediaType.TRACK
         "recently_added_albums", "random_albums" -> MediaType.ALBUM

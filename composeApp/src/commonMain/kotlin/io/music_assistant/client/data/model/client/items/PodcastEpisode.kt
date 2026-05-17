@@ -9,35 +9,24 @@ import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.utils.formatIsoDate
 
-class PodcastEpisode(
-    itemId: String,
-    provider: String,
-    name: String,
-    providerMappings: List<ProviderMapping>?,
-    metadata: Metadata?,
-    favorite: Boolean?,
-    sortName: String? = null,
-    uri: String?,
-    images: Map<ImageType, ImageInfo>,
+data class PodcastEpisode(
+    override val itemId: String,
+    override val provider: String,
+    override val name: String,
+    override val providerMappings: List<ProviderMapping>?,
+    override val metadata: Metadata?,
+    override val favorite: Boolean?,
+    override val sortName: String? = null,
+    override val uri: String?,
+    override val images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
     val podcast: Podcast?,
     val fullyPlayed: Boolean?,
     val resumePositionMs: Long?,
     val releaseDate: String? = null,
     override val version: String?,
-) : AppMediaItem(
-    itemId = itemId,
-    provider = provider,
-    name = name,
-    providerMappings = providerMappings,
-    metadata = metadata,
-    favorite = favorite,
-    mediaType = MediaType.PODCAST_EPISODE,
-    sortName = sortName,
-    uri = uri,
-    images = images,
-),
-    PlayableItem {
+) : AppMediaItem(), PlayableItem {
+    override val mediaType: MediaType = MediaType.PODCAST_EPISODE
     override val subtitle = releaseDate?.let(::formatIsoDate)
     override val parentName: String? = podcast?.displayName
     override val defaultIcon = Icons.Default.Podcasts

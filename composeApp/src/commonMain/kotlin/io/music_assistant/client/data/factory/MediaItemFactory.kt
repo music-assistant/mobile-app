@@ -102,7 +102,6 @@ class MediaItemFactory(
                 itemId = itemId,
                 provider = provider,
                 name = name,
-                providerMappings = providerMappings,
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 items = items?.let { createList(it) },

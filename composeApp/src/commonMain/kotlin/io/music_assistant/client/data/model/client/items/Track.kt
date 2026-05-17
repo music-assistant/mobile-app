@@ -7,16 +7,16 @@ import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 
-class Track(
-    itemId: String,
-    provider: String,
-    name: String,
-    providerMappings: List<ProviderMapping>?,
-    metadata: Metadata?,
-    favorite: Boolean?,
-    sortName: String? = null,
-    uri: String?,
-    images: Map<ImageType, ImageInfo>,
+data class Track(
+    override val itemId: String,
+    override val provider: String,
+    override val name: String,
+    override val providerMappings: List<ProviderMapping>?,
+    override val metadata: Metadata?,
+    override val favorite: Boolean?,
+    override val sortName: String? = null,
+    override val uri: String?,
+    override val images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
     val artists: List<Artist>,
     val album: Album?,
@@ -24,20 +24,9 @@ class Track(
     val trackNumber: Int?,
     val position: Int?,
     override val version: String?,
-) : AppMediaItem(
-    itemId = itemId,
-    provider = provider,
-    name = name,
-    providerMappings = providerMappings,
-    metadata = metadata,
-    favorite = favorite,
-    mediaType = MediaType.TRACK,
-    sortName = sortName,
-    uri = uri,
-    images = images,
-    canStartRadio = true,
-),
-    PlayableItem {
+) : AppMediaItem(), PlayableItem {
+    override val mediaType: MediaType = MediaType.TRACK
+    override val canStartRadio: Boolean = true
     override val displayName =
         "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""}"
     override val subtitle = artists.joinToString(separator = ", ") { it.displayName }

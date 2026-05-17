@@ -20,10 +20,3 @@ enum class ImageType(val serverValue: String) {
         fun fromServer(raw: String?): ImageType = raw?.let { byServerValue[it] } ?: UNKNOWN
     }
 }
-
-fun Map<ImageType, ImageInfo>.getFirst(vararg types: ImageType): ImageInfo? {
-    for (t in types) {
-        this[t]?.let { return it }
-    }
-    return this[ImageType.MAIN] // fallback
-}

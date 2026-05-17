@@ -13,12 +13,12 @@ import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.RepeatMode
-import io.music_assistant.client.data.model.client.getFirst
 import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
@@ -645,7 +645,7 @@ class MainDataSource(
                             title = track.displayName,
                             artist = track.subtitle,
                             album = track.parentName,
-                            artworkUrl = track.images.getFirst(ImageType.THUMB)?.url,
+                            artworkUrl = track.image(ImageType.THUMB)?.url,
                             duration = track.duration,
                             // Read live position from the tracker rather than the stale
                             // anchor on `pd.queueInfo` (which is only updated by

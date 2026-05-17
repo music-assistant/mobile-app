@@ -222,7 +222,6 @@ class HomeScreenViewModel(
                     itemId = row.itemId,
                     provider = row.provider,
                     name = row.displayName,
-                    providerMappings = row.providerMappings,
                     uri = row.uri,
                     images = row.images,
                     items = updatedItems,

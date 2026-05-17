@@ -339,7 +339,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
                 // Load artwork asynchronously
                 for (i, item) in displayItems.enumerated() {
-                    guard let imageUrl = item.images.getFirst(ImageType.THUMB)?.url else { continue }
+                    guard let imageUrl = item.image(type: ImageType.thumb)?.url else { continue }
                     CarPlayImageLoader.shared.loadImage(from: imageUrl) { image in
                         guard let image = image else { return }
                         images[i] = image

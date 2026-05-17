@@ -53,8 +53,8 @@ import coil3.compose.AsyncImage
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.Queue
-import io.music_assistant.client.data.model.client.getFirst
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
@@ -335,7 +335,7 @@ fun Queue(
                                             .clip(RoundedCornerShape(size = 4.dp)),
                                         placeholder = placeholder,
                                         fallback = placeholder,
-                                        model = item.track.images.getFirst(ImageType.THUMB)?.url,
+                                        model = item.track.image(ImageType.THUMB)?.url,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
                                     )
