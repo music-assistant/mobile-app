@@ -92,10 +92,6 @@ fun SearchScreen(
 
     Screen(
         topBar = { scrollBehaviour ->
-            LaunchedEffect(state.searchState.query) {
-                scrollBehaviour.state.heightOffset = 0f
-            }
-
             SearchTopBar(
                 state.searchState,
                 scrollBehavior = scrollBehaviour,
