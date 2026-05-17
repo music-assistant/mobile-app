@@ -153,7 +153,7 @@ fun MainNavigationRoot(
 
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
-        rememberMainNavBackStack(MainNav.Library(MediaType.ARTIST)),
+        rememberMainNavBackStack(MainNav.Library(null)),
         rememberMainNavBackStack(MainNav.Search),
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }

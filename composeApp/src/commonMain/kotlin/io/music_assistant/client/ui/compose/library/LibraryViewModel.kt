@@ -47,7 +47,7 @@ class LibraryViewModel(
         private const val PAGE_SIZE = 50
         const val LIBRARY_SORT_DEBOUNCE_MS = 500L
 
-        fun tabFor(type: MediaType?): Tab = when (type) {
+        private fun tabFor(type: MediaType): Tab = when (type) {
             MediaType.ARTIST -> Tab.ARTISTS
             MediaType.ALBUM -> Tab.ALBUMS
             MediaType.TRACK -> Tab.TRACKS
@@ -257,27 +257,31 @@ class LibraryViewModel(
 
     private var initialTabApplied = false
 
-    fun applyInitialTabIfNeeded(tab: Tab) {
+    fun applyInitialTabIfNeeded(type: MediaType?) {
         if (initialTabApplied) return
         initialTabApplied = true
-        onTabSelected(tab)
+        onTabSelected(type?.let { tabFor(it) })
     }
 
-    fun onTabSelected(tab: Tab) {
+    fun onTabSelected(tab: Tab?) {
+        // If tab == null, just select first enabled tab (default behaviour on app start).
+        val tabToSelect = tab ?: _state.value.tabs.firstOrNull { it.enabled }?.tab ?: return
         // If selecting a currently disabled tab (deep link / coordinator request),
         // re-enable it AND move it to the bottom of the enabled section so the
         // "enabled first, disabled last" invariant holds.
-        val current = _state.value.tabs.find { it.tab == tab }
-        if (current != null && !current.enabled) {
-            val newOrder = moveToEnabledBoundary(
-                _state.value.tabs.map { it.tab to it.enabled },
-                target = tab,
-                newEnabled = true,
-            )
-            onTabsConfigChanged(newOrder)
-        }
+        _state.value.tabs
+            .find { it.tab == tabToSelect }
+            ?.takeIf { it.enabled }
+            ?.run {
+                moveToEnabledBoundary(
+                    _state.value.tabs.map { it.tab to it.enabled },
+                    target = tabToSelect,
+                    newEnabled = true,
+                ).let { newOrder -> onTabsConfigChanged(newOrder) }
+
+            }
         _state.update { s ->
-            s.copy(tabs = s.tabs.map { it.copy(isSelected = it.tab == tab) })
+            s.copy(tabs = s.tabs.map { it.copy(isSelected = it.tab == tabToSelect) })
         }
     }
 
@@ -285,12 +289,12 @@ class LibraryViewModel(
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
-                if (tabState.tab == tab) {
-                    tabState.copy(searchQuery = query)
-                } else {
-                    tabState
-                }
-            },
+                    if (tabState.tab == tab) {
+                        tabState.copy(searchQuery = query)
+                    } else {
+                        tabState
+                    }
+                },
             )
         }
     }
@@ -299,12 +303,12 @@ class LibraryViewModel(
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
-                if (tabState.tab == tab) {
-                    tabState.copy(onlyFavorites = !tabState.onlyFavorites)
-                } else {
-                    tabState
-                }
-            },
+                    if (tabState.tab == tab) {
+                        tabState.copy(onlyFavorites = !tabState.onlyFavorites)
+                    } else {
+                        tabState
+                    }
+                },
             )
         }
     }
@@ -314,12 +318,12 @@ class LibraryViewModel(
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
-                if (tabState.tab == tab) {
-                    tabState.copy(sortOption = sortOption)
-                } else {
-                    tabState
-                }
-            },
+                    if (tabState.tab == tab) {
+                        tabState.copy(sortOption = sortOption)
+                    } else {
+                        tabState
+                    }
+                },
             )
         }
     }
@@ -363,13 +367,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.ARTISTS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Artist.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Artist.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Artist>()
                 ?.let { artists ->
@@ -393,13 +399,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.ALBUMS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Album.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Album.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Album>()
                 ?.let { albums ->
@@ -423,13 +431,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.PLAYLISTS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Playlist.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Playlist>()
                 ?.let { playlists ->
@@ -453,13 +463,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.TRACKS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Track.list(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Track.list(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Track>()
                 ?.let { tracks ->
@@ -483,13 +495,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.PODCASTS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Podcast.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Podcast.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Podcast>()
                 ?.let { podcasts ->
@@ -513,13 +527,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.AUDIOBOOKS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Audiobook.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Audiobook.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Audiobook>()
                 ?.let { audiobooks ->
@@ -543,13 +559,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.RADIOS, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.RadioStation.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.RadioStation.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<RadioStation>()
                 ?.let { radios ->
@@ -573,13 +591,15 @@ class LibraryViewModel(
             val favoritesOnly = tabState?.onlyFavorites?.takeIf { it }
             val orderBy = tabState?.sortOption?.toServerString()
             updateTabState(Tab.GENRES, DataState.Loading())
-            val result = mediaItemRepository.fetchMediaItems(Request.Genre.listLibrary(
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.Genre.listLibrary(
                     limit = PAGE_SIZE,
                     offset = 0,
                     search = searchQuery,
                     favorite = favoritesOnly,
                     orderBy = orderBy,
-                ))
+                )
+            )
             result.getOrNull()
                 ?.filterIsInstance<Genre>()
                 ?.let { genres ->
@@ -613,8 +633,8 @@ class LibraryViewModel(
             _state.update { s ->
                 s.copy(
                     tabs = s.tabs.map { ts ->
-                    if (ts.tab == tab) ts.copy(isLoadingMore = true) else ts
-                },
+                        if (ts.tab == tab) ts.copy(isLoadingMore = true) else ts
+                    },
                 )
             }
 
@@ -701,8 +721,11 @@ class LibraryViewModel(
                 _state.update { s ->
                     s.copy(
                         tabs = s.tabs.map { ts ->
-                        if (ts.tab == tab) ts.copy(isLoadingMore = false, hasMore = false) else ts
-                    },
+                            if (ts.tab == tab) ts.copy(
+                                isLoadingMore = false,
+                                hasMore = false
+                            ) else ts
+                        },
                     )
                 }
             }
@@ -713,12 +736,12 @@ class LibraryViewModel(
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
-                if (tabState.tab == tab) {
-                    tabState.copy(dataState = dataState)
-                } else {
-                    tabState
-                }
-            },
+                    if (tabState.tab == tab) {
+                        tabState.copy(dataState = dataState)
+                    } else {
+                        tabState
+                    }
+                },
             )
         }
     }
@@ -733,17 +756,17 @@ class LibraryViewModel(
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
-                if (tabState.tab == tab) {
-                    tabState.copy(
-                        dataState = DataState.Data(deduped),
-                        offset = offset,
-                        hasMore = hasMore,
-                        isLoadingMore = false,
-                    )
-                } else {
-                    tabState
-                }
-            },
+                    if (tabState.tab == tab) {
+                        tabState.copy(
+                            dataState = DataState.Data(deduped),
+                            offset = offset,
+                            hasMore = hasMore,
+                            isLoadingMore = false,
+                        )
+                    } else {
+                        tabState
+                    }
+                },
             )
         }
     }
@@ -752,42 +775,42 @@ class LibraryViewModel(
         _state.update { s ->
             s.copy(
                 tabs = s.tabs.map { tabState ->
-                val shouldUpdate = when (newItem) {
-                    is Artist -> tabState.tab == Tab.ARTISTS
-                    is Album -> tabState.tab == Tab.ALBUMS
-                    is Track -> tabState.tab == Tab.TRACKS
-                    is Playlist -> tabState.tab == Tab.PLAYLISTS
-                    is Audiobook -> tabState.tab == Tab.AUDIOBOOKS
-                    is Podcast -> tabState.tab == Tab.PODCASTS
-                    is RadioStation -> tabState.tab == Tab.RADIOS
-                    is Genre -> tabState.tab == Tab.GENRES
-                    else -> false
-                }
+                    val shouldUpdate = when (newItem) {
+                        is Artist -> tabState.tab == Tab.ARTISTS
+                        is Album -> tabState.tab == Tab.ALBUMS
+                        is Track -> tabState.tab == Tab.TRACKS
+                        is Playlist -> tabState.tab == Tab.PLAYLISTS
+                        is Audiobook -> tabState.tab == Tab.AUDIOBOOKS
+                        is Podcast -> tabState.tab == Tab.PODCASTS
+                        is RadioStation -> tabState.tab == Tab.RADIOS
+                        is Genre -> tabState.tab == Tab.GENRES
+                        else -> false
+                    }
 
-                if (shouldUpdate && tabState.dataState is DataState.Data) {
-                    val currentList = tabState.dataState.data
-                    val updatedList = when (modification) {
-                        ListModification.Add -> {
-                            if (currentList.any { it.itemId == newItem.itemId }) {
-                                currentList
-                            } else {
-                                currentList + newItem
+                    if (shouldUpdate && tabState.dataState is DataState.Data) {
+                        val currentList = tabState.dataState.data
+                        val updatedList = when (modification) {
+                            ListModification.Add -> {
+                                if (currentList.any { it.itemId == newItem.itemId }) {
+                                    currentList
+                                } else {
+                                    currentList + newItem
+                                }
+                            }
+
+                            ListModification.Update -> {
+                                currentList.map { if (it.itemId == newItem.itemId) newItem else it }
+                            }
+
+                            ListModification.Delete -> {
+                                currentList.filter { it.itemId != newItem.itemId }
                             }
                         }
-
-                        ListModification.Update -> {
-                            currentList.map { if (it.itemId == newItem.itemId) newItem else it }
-                        }
-
-                        ListModification.Delete -> {
-                            currentList.filter { it.itemId != newItem.itemId }
-                        }
+                        tabState.copy(dataState = DataState.Data(updatedList))
+                    } else {
+                        tabState
                     }
-                    tabState.copy(dataState = DataState.Data(updatedList))
-                } else {
-                    tabState
-                }
-            },
+                },
             )
         }
     }

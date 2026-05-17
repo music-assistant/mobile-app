@@ -102,7 +102,7 @@ fun LibraryScreen(
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
-        viewModel.applyInitialTabIfNeeded(LibraryViewModel.tabFor(initialTabType))
+        viewModel.applyInitialTabIfNeeded(initialTabType)
     }
 
     // Collect toasts
