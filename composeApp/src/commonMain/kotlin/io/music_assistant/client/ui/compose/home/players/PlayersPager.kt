@@ -250,7 +250,7 @@ internal fun PlayersPager(
                 }
                 player.parentBind?.let {
                     BoundPlayerInfo(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.matchParentSize(),
                         playerName = player.player.name,
                         parent = it,
                         moveToPlayer = moveToPlayer,
@@ -262,7 +262,7 @@ internal fun PlayersPager(
 }
 
 @Composable
-fun BoundPlayerInfo(
+private fun BoundPlayerInfo(
     modifier: Modifier,
     playerName: String,
     parent: PlayerData.ParentBind,
