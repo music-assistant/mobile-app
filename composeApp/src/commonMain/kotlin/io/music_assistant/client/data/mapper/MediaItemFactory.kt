@@ -1,5 +1,9 @@
 package io.music_assistant.client.data.mapper
 
+import io.ktor.http.URLBuilder
+import io.ktor.http.appendPathSegments
+import io.ktor.http.encodeURLQueryComponent
+import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.Album
 import io.music_assistant.client.data.model.client.AppMediaItem
 import io.music_assistant.client.data.model.client.Artist
@@ -28,7 +32,9 @@ import io.music_assistant.client.data.model.server.ServerMetadata
  * Single concrete dispatcher — keep all type-switching here so subtypes stay dumb data classes.
  * Pure & stateless; safe to register as a Koin `single`.
  */
-class MediaItemFactory {
+class MediaItemFactory(
+    private val apiClient: ServiceClient,
+) {
 
     fun create(server: ServerMediaItem): AppMediaItem? = with(server) {
         when (MediaType.fromServer(mediaType)) {
@@ -230,7 +236,25 @@ class MediaItemFactory {
             path = server.path,
             isRemotelyAccessible = server.remotelyAccessible,
             provider = server.provider,
+            url = buildImageUrl(server.path, server.provider, server.remotelyAccessible),
         )
+
+    private fun buildImageUrl(
+        path: String,
+        provider: String,
+        isRemotelyAccessible: Boolean,
+    ): String? =
+        path.takeIf { isRemotelyAccessible && it.startsWith("https") }
+            ?: apiClient.serverBaseUrl.value?.let { server ->
+                URLBuilder(server).apply {
+                    appendPathSegments("imageproxy")
+                    parameters.apply {
+                        append("path", path.encodeURLQueryComponent())
+                        append("provider", provider)
+                        append("checksum", "")
+                    }
+                }.buildString()
+            }
 
     private fun resolveImageInfo(
         image: ServerMediaItemImage?,

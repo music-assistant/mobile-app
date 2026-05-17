@@ -82,7 +82,6 @@ fun SearchScreen(
     contentPadding: PaddingValues,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
@@ -109,7 +108,6 @@ fun SearchScreen(
     ) {
         SearchContent(
             state = state,
-            serverUrl = serverUrl,
             toastState = toastState,
             onItemClick = { item ->
                 when (item) {
@@ -193,7 +191,6 @@ private fun SearchTopBar(
 @Composable
 private fun SearchContent(
     state: SearchViewModel.State,
-    serverUrl: String?,
     toastState: ToastState,
     onItemClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -267,7 +264,6 @@ private fun SearchContent(
                             ) { item ->
                                 when (item) {
                                     is Track -> TrackWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onPlayOption = onPlayClick,
@@ -276,7 +272,6 @@ private fun SearchContent(
                                     )
 
                                     is Artist -> ArtistWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
@@ -286,7 +281,6 @@ private fun SearchContent(
                                     )
 
                                     is Album -> AlbumWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
@@ -296,7 +290,6 @@ private fun SearchContent(
                                     )
 
                                     is Playlist -> PlaylistWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
@@ -306,7 +299,6 @@ private fun SearchContent(
                                     )
 
                                     is Podcast -> PodcastWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
@@ -316,7 +308,6 @@ private fun SearchContent(
                                     )
 
                                     is Audiobook -> AudiobookWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
@@ -326,7 +317,6 @@ private fun SearchContent(
                                     )
 
                                     is RadioStation -> RadioWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onPlayOption = onPlayClick,
@@ -335,7 +325,6 @@ private fun SearchContent(
                                     )
 
                                     is Genre -> GenreWithMenu(
-                                        serverUrl = serverUrl,
                                         viewMode = ViewMode.LIST,
                                         item = item,
                                         onNavigateClick = onItemClick,
@@ -362,7 +351,6 @@ private fun SearchContent(
                                     if (items.isNotEmpty()) {
                                         item(key = stringTitle, contentType = "category") {
                                             CategoryRow(
-                                                serverUrl = serverUrl,
                                                 title = stringTitle,
                                                 rowItemType = null,
                                                 onNavigateClick = onItemClick,

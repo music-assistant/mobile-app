@@ -643,7 +643,7 @@ class MainDataSource(
                             title = track.displayName,
                             artist = track.subtitle,
                             album = track.parentName,
-                            artworkUrl = track.imageInfo?.url(apiClient.serverBaseUrl.value),
+                            artworkUrl = track.imageInfo?.url,
                             duration = track.duration,
                             // Read live position from the tracker rather than the stale
                             // anchor on `pd.queueInfo` (which is only updated by

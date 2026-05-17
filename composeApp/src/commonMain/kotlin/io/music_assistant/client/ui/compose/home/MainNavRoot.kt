@@ -99,7 +99,6 @@ fun MainNavigationRoot(
     }
 
     val recommendationsState = viewModel.recommendationsState.collectAsStateWithLifecycle()
-    val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle()
     val playersState by viewModel.playersState.collectAsStateWithLifecycle()
     // Single pager state used across all views
     val data = playersState as? HomeScreenViewModel.PlayersState.Data
@@ -199,7 +198,6 @@ fun MainNavigationRoot(
                         Players(
                             playerPagerState = playerPagerState,
                             state = playersState,
-                            serverUrl = serverUrl,
                             homeScreenViewModel = viewModel,
                             actionsViewModel = actionsViewModel,
                             expanded = expanded,
@@ -223,7 +221,6 @@ fun MainNavigationRoot(
                             connectionState,
                             dataState,
                             hiddenFolderIds,
-                            serverUrl,
                             multiBackStack,
                             viewModel,
                             playlistActions,
@@ -247,7 +244,6 @@ private fun mainNavEntryProvider(
     connectionState: SessionState,
     dataState: DataState<List<RecommendationFolder>>,
     hiddenFolderIds: Set<String>,
-    serverUrl: String?,
     multiBackStack: MultiBackStack<NavKey>,
     viewModel: HomeScreenViewModel,
     playlistActions: ActionsViewModel.PlaylistActions,
@@ -262,7 +258,6 @@ private fun mainNavEntryProvider(
                 contentPadding = contentPadding,
                 connectionState = connectionState,
                 dataState = dataState,
-                serverUrl = serverUrl,
                 onNavigateClick = { item ->
                     when (item) {
                         is Artist,
@@ -370,7 +365,6 @@ private fun mainNavEntryProvider(
 private fun Players(
     playerPagerState: PagerState,
     state: HomeScreenViewModel.PlayersState,
-    serverUrl: String?,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
     expanded: Boolean,
@@ -429,7 +423,6 @@ private fun Players(
         PlayersPager(
             playerPagerState = playerPagerState,
             playersState = state,
-            serverUrl = serverUrl,
             simplePlayerAction = simplePlayerAction,
             playerAction = playerAction,
             onFavoriteClick = onFavoriteClick,

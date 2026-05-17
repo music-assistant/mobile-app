@@ -119,14 +119,11 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         old.zip(new).all { (a, b) -> a.track.longId == b.track.longId }
                 }
                 .collect { items ->
-                    val baseUrl = dataSource.apiClient.serverBaseUrl.value
                     sharedSession.updateQueue(
                         items.map { queueTrack ->
                             QueueItem(
-                                (queueTrack.track as AppMediaItem).toMediaDescription(
-                                    baseUrl,
-                                    defaultIconUri,
-                                ),
+                                (queueTrack.track as AppMediaItem)
+                                    .toMediaDescription(defaultIconUri),
                                 queueTrack.track.longId,
                             )
                         },

@@ -45,7 +45,6 @@ class HomeScreenViewModel(
     private val jobs = mutableListOf<Job>()
     private var recommendationsJob: Job? = null
 
-    val serverUrl = apiClient.serverBaseUrl
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
 

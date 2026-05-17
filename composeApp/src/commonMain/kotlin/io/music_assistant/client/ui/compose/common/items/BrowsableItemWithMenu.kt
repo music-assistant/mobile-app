@@ -61,7 +61,6 @@ fun AlbumWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -78,7 +77,6 @@ fun AlbumWithMenu(
             ViewMode.LIST -> AlbumRowItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -86,7 +84,6 @@ fun AlbumWithMenu(
             ViewMode.GRID -> AlbumGridItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -104,7 +101,6 @@ fun ArtistWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -121,7 +117,6 @@ fun ArtistWithMenu(
             ViewMode.LIST -> ArtistRowItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -129,7 +124,6 @@ fun ArtistWithMenu(
             ViewMode.GRID -> ArtistGridItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -147,7 +141,6 @@ fun PlaylistWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -164,7 +157,6 @@ fun PlaylistWithMenu(
             ViewMode.LIST -> PlaylistRowItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -172,7 +164,6 @@ fun PlaylistWithMenu(
             ViewMode.GRID -> PlaylistGridItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -191,7 +182,6 @@ fun AudiobookWithMenu(
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -209,7 +199,6 @@ fun AudiobookWithMenu(
             ViewMode.LIST -> AudiobookRowItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -217,7 +206,6 @@ fun AudiobookWithMenu(
             ViewMode.GRID -> AudiobookGridItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -235,7 +223,6 @@ fun GenreWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -252,7 +239,6 @@ fun GenreWithMenu(
             ViewMode.LIST -> GenreRowItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -260,7 +246,6 @@ fun GenreWithMenu(
             ViewMode.GRID -> GenreGridItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -278,7 +263,6 @@ fun PodcastWithMenu(
     playlistActions: ActionsViewModel.PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -295,7 +279,6 @@ fun PodcastWithMenu(
             ViewMode.LIST -> PodcastRowItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,
@@ -303,7 +286,6 @@ fun PodcastWithMenu(
             ViewMode.GRID -> PodcastGridItem(
                 modifier = mod,
                 item = item,
-                serverUrl = serverUrl,
                 onClick = onClick,
                 onLongClick = onLongClick,
                 providerIconFetcher = providerIconFetcher,

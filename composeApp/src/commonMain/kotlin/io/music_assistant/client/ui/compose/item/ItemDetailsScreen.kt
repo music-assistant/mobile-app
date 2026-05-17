@@ -94,7 +94,6 @@ fun ItemDetailsScreen(
     val viewModel: ItemDetailsViewModel = koinViewModel()
     val actionsViewModel: ActionsViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle(null)
     val toastState = rememberToastState()
 
     LaunchedEffect(itemId, mediaType) {
@@ -111,7 +110,6 @@ fun ItemDetailsScreen(
     ItemDetails(
         contentPadding = contentPadding,
         state = state,
-        serverUrl = serverUrl,
         onBack = onBack,
         viewModeProvider = { type ->
             viewModel.viewMode(type).collectAsStateWithLifecycle().value
@@ -144,7 +142,6 @@ fun ItemDetailsScreen(
 fun ItemDetails(
     contentPadding: PaddingValues = PaddingValues(),
     state: ItemDetailsViewModel.State,
-    serverUrl: String? = null,
     onBack: () -> Unit = {},
     viewModeProvider: @Composable (MediaType) -> ViewMode = { ViewMode.LIST },
     onToggleViewMode: (MediaType) -> Unit = {},
@@ -181,7 +178,6 @@ fun ItemDetails(
 
     ItemChildren(
         state = state,
-        serverUrl = serverUrl,
         toastState = toastState,
         viewModeProvider = viewModeProvider,
         onNavigateClick = { item ->
@@ -243,7 +239,6 @@ private fun tabsFor(item: AppMediaItem): List<ItemDetailsTab> = when (item) {
 @Composable
 private fun ItemChildren(
     state: ItemDetailsViewModel.State,
-    serverUrl: String?,
     toastState: ToastState,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
@@ -280,7 +275,6 @@ private fun ItemChildren(
                 ItemContent(
                     item = item,
                     state = state,
-                    serverUrl = serverUrl,
                     viewModeProvider = viewModeProvider,
                     onNavigateClick = onNavigateClick,
                     onPlayItemClick = onPlayItemClick,
@@ -315,7 +309,6 @@ private fun ItemChildren(
 private fun ItemContent(
     item: AppMediaItem,
     state: ItemDetailsViewModel.State,
-    serverUrl: String?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -339,7 +332,6 @@ private fun ItemContent(
     val heroSlot: @Composable () -> Unit = {
         ItemHeader(
             item = item,
-            serverUrl = serverUrl,
             providerIconFetcher = providerIconFetcher,
             onPlayClick = onPlayItemClick,
         )
@@ -381,7 +373,6 @@ private fun ItemContent(
                         tab = currentTab,
                         item = item,
                         state = state,
-                        serverUrl = serverUrl,
                         viewModeProvider = viewModeProvider,
                         onNavigateClick = onNavigateClick,
                         onPlayChildClick = onPlayChildClick,
@@ -479,7 +470,6 @@ private fun TabContent(
     tab: ItemDetailsTab,
     item: AppMediaItem,
     state: ItemDetailsViewModel.State,
-    serverUrl: String?,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -500,7 +490,6 @@ private fun TabContent(
             -> AlbumsTabContent(
             albumsState = state.albumsState,
             viewModeProvider = viewModeProvider,
-            serverUrl = serverUrl,
             onNavigateClick = onNavigateClick,
             onPlayChildClick = onPlayChildClick,
             libraryActions = libraryActions,
@@ -519,7 +508,6 @@ private fun TabContent(
             playableItemsState = state.playableItemsState,
             parentItem = item,
             viewModeProvider = viewModeProvider,
-            serverUrl = serverUrl,
             onPlayChildClick = onPlayChildClick,
             playlistActions = playlistActions,
             progressActions = progressActions,
@@ -535,7 +523,6 @@ private fun TabContent(
         ItemDetailsTab.GENRE_ARTISTS -> ArtistsTabContent(
             artistsState = state.artistsState,
             viewModeProvider = viewModeProvider,
-            serverUrl = serverUrl,
             onNavigateClick = onNavigateClick,
             onPlayChildClick = onPlayChildClick,
             libraryActions = libraryActions,
@@ -561,7 +548,6 @@ private fun TabContent(
 private fun AlbumsTabContent(
     albumsState: DataState<List<Album>>,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
-    serverUrl: String?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -597,7 +583,6 @@ private fun AlbumsTabContent(
                 AlbumWithMenu(
                     item = album,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayChildClick,
                     libraryActions = libraryActions,
@@ -618,7 +603,6 @@ private fun AlbumsTabContent(
 private fun ArtistsTabContent(
     artistsState: DataState<List<Artist>>,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
-    serverUrl: String?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -654,7 +638,6 @@ private fun ArtistsTabContent(
                 ArtistWithMenu(
                     item = artist,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayChildClick,
                     libraryActions = libraryActions,
@@ -676,7 +659,6 @@ private fun PlayablesTabContent(
     playableItemsState: DataState<List<PlayableItem>>,
     parentItem: AppMediaItem,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
-    serverUrl: String?,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     playlistActions: ActionsViewModel.PlaylistActions,
     progressActions: ActionsViewModel.ProgressActions?,
@@ -715,7 +697,6 @@ private fun PlayablesTabContent(
                         when (track) {
                             is Track -> TrackWithMenu(
                                 item = track,
-                                serverUrl = serverUrl,
                                 viewMode = viewMode,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = playlistActions,
@@ -730,7 +711,6 @@ private fun PlayablesTabContent(
 
                             is PodcastEpisode -> PodcastEpisodeWithMenu(
                                 item = track,
-                                serverUrl = serverUrl,
                                 viewMode = viewMode,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = null,

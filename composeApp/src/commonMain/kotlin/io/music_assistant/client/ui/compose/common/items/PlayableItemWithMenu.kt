@@ -75,7 +75,6 @@ fun TrackWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -92,7 +91,6 @@ fun TrackWithMenu(
                 ViewMode.LIST -> TrackRowItem(
                     modifier = mod,
                     item = item,
-                    serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
@@ -101,7 +99,6 @@ fun TrackWithMenu(
                 ViewMode.GRID -> TrackGridItem(
                     modifier = mod,
                     item = item,
-                    serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
@@ -121,7 +118,6 @@ fun PodcastEpisodeWithMenu(
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -139,7 +135,6 @@ fun PodcastEpisodeWithMenu(
                 ViewMode.LIST -> PodcastEpisodeRowItem(
                     modifier = mod,
                     item = item,
-                    serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
@@ -148,7 +143,6 @@ fun PodcastEpisodeWithMenu(
                 ViewMode.GRID -> PodcastEpisodeGridItem(
                     modifier = mod,
                     item = item,
-                    serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
@@ -167,7 +161,6 @@ fun RadioWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
-    serverUrl: String?,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -184,7 +177,6 @@ fun RadioWithMenu(
                 ViewMode.LIST -> RadioRowItem(
                     modifier = mod,
                     item = item,
-                    serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
@@ -193,7 +185,6 @@ fun RadioWithMenu(
                 ViewMode.GRID -> RadioGridItem(
                     modifier = mod,
                     item = item,
-                    serverUrl = serverUrl,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,

@@ -84,7 +84,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ItemHeader(
     item: AppMediaItem,
-    serverUrl: String? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
 ) {
@@ -92,7 +91,6 @@ fun ItemHeader(
         val image = @Composable {
             Image(
                 item = item,
-                serverUrl = serverUrl,
                 providerIconFetcher = providerIconFetcher,
             )
         }
@@ -338,7 +336,6 @@ private fun ItemText(
 @Composable
 private fun Image(
     item: AppMediaItem,
-    serverUrl: String?,
     providerIconFetcher: @Composable ((Modifier, String) -> Unit)?,
 ) {
     Box(
@@ -359,7 +356,7 @@ private fun Image(
             RoundedCornerShape(16.dp)
         }
 
-        val model = item.imageInfo?.url(serverUrl)
+        val model = item.imageInfo?.url
         AsyncImage(
             model = model,
             placeholder = placeholder,

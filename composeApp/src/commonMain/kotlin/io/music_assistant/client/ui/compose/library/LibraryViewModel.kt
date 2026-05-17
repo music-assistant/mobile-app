@@ -98,8 +98,6 @@ class LibraryViewModel(
 
     private val connectionState = apiClient.sessionState
 
-    val serverUrl = apiClient.serverBaseUrl
-
     fun toggleViewMode(tab: Tab) {
         val current = settingsRepository.viewMode(tab.mediaType).value
         settingsRepository.setViewMode(tab.mediaType, current.toggled())

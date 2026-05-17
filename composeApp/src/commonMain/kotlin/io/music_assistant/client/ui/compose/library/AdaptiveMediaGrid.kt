@@ -48,7 +48,6 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 fun AdaptiveMediaGrid(
     modifier: Modifier = Modifier,
     items: List<AppMediaItem>,
-    serverUrl: String?,
     isLoadingMore: Boolean = false,
     hasMore: Boolean = true,
     viewMode: ViewMode = ViewMode.GRID,
@@ -101,7 +100,6 @@ fun AdaptiveMediaGrid(
                 is Artist -> ArtistWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
@@ -111,7 +109,6 @@ fun AdaptiveMediaGrid(
                 is Album -> AlbumWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
@@ -121,7 +118,6 @@ fun AdaptiveMediaGrid(
                 is Playlist -> PlaylistWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
@@ -131,7 +127,6 @@ fun AdaptiveMediaGrid(
                 is Podcast -> PodcastWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
@@ -141,7 +136,6 @@ fun AdaptiveMediaGrid(
                 is Track -> TrackWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
@@ -151,7 +145,6 @@ fun AdaptiveMediaGrid(
                 is PodcastEpisode -> PodcastEpisodeWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
@@ -162,7 +155,6 @@ fun AdaptiveMediaGrid(
                 is Audiobook -> AudiobookWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
@@ -173,7 +165,6 @@ fun AdaptiveMediaGrid(
                 is Genre -> GenreWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
@@ -183,7 +174,6 @@ fun AdaptiveMediaGrid(
                 is RadioStation -> RadioWithMenu(
                     item = item,
                     viewMode = viewMode,
-                    serverUrl = serverUrl,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,

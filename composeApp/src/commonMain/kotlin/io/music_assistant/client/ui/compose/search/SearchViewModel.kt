@@ -47,8 +47,6 @@ class SearchViewModel(
     private val mainDataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
-    val serverUrl = apiClient.serverBaseUrl
-
     val searchJob = AtomicReference<Job?>(null)
 
     private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)

@@ -83,7 +83,6 @@ fun CollapsibleQueue(
     isQueueExpanded: Boolean,
     onQueueExpandedSwitch: () -> Unit,
     onGoToLibrary: () -> Unit,
-    serverUrl: String?,
     queueAction: (QueueAction) -> Unit,
     tint: Color,
     isCurrentPage: Boolean = true,
@@ -101,7 +100,7 @@ fun CollapsibleQueue(
 
         val defaultLabel = stringResource(Res.string.queue_label)
         val queueLabel = items?.let { list ->
-            val currentId = queueData?.data?.info?.currentItem?.id
+            val currentId = queueData.data.info.currentItem?.id
             val currentPos = currentId?.let { id -> list.indexOfFirst { it.id == id } }
                 ?.takeIf { it >= 0 }
                 ?.let { it + 1 }
@@ -147,7 +146,6 @@ fun CollapsibleQueue(
                 isCurrentPage = isCurrentPage,
                 contentPadding = contentPadding,
                 queueAction = queueAction,
-                serverUrl = serverUrl,
             )
         }
     }
@@ -162,7 +160,6 @@ fun Queue(
     isCurrentPage: Boolean,
     contentPadding: PaddingValues,
     queueAction: (QueueAction) -> Unit,
-    serverUrl: String?,
 ) {
     Box(
         modifier = modifier,
@@ -336,7 +333,7 @@ fun Queue(
                                             .clip(RoundedCornerShape(size = 4.dp)),
                                         placeholder = placeholder,
                                         fallback = placeholder,
-                                        model = item.track.imageInfo?.url(serverUrl),
+                                        model = item.track.imageInfo?.url,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
                                     )

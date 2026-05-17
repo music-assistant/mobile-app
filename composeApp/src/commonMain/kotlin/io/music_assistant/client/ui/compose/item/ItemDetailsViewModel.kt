@@ -51,8 +51,6 @@ class ItemDetailsViewModel(
     private var rawAlbums: List<Album> = emptyList()
     private var rawPlayableItems: List<PlayableItem> = emptyList()
 
-    val serverUrl = apiClient.serverBaseUrl
-
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
 

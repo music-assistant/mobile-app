@@ -77,7 +77,6 @@ fun HomeScreen(
     contentPadding: PaddingValues,
     connectionState: SessionState,
     dataState: DataState<List<RecommendationFolder>>,
-    serverUrl: String?,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
     onLibraryItemClick: (MediaType?) -> Unit,
@@ -165,7 +164,6 @@ fun HomeScreen(
                 ) { row ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         CategoryRow(
-                            serverUrl = serverUrl,
                             title = row.displayName,
                             rowItemType = row.rowItemType,
                             onNavigateClick = onNavigateClick,
@@ -252,7 +250,6 @@ private fun LandingPageTopBar(
 
 @Composable
 fun CategoryRow(
-    serverUrl: String?,
     title: String,
     rowItemType: MediaType?,
     onNavigateClick: (AppMediaItem) -> Unit,
@@ -331,7 +328,6 @@ fun CategoryRow(
                 when (item) {
                     is Artist -> ArtistWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
@@ -340,7 +336,6 @@ fun CategoryRow(
 
                     is Album -> AlbumWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
@@ -349,7 +344,6 @@ fun CategoryRow(
 
                     is Playlist -> PlaylistWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
@@ -358,7 +352,6 @@ fun CategoryRow(
 
                     is Podcast -> PodcastWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
@@ -367,7 +360,6 @@ fun CategoryRow(
 
                     is Track -> TrackWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onPlayOption = onPlayClick,
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
@@ -376,7 +368,6 @@ fun CategoryRow(
 
                     is PodcastEpisode -> PodcastEpisodeWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onPlayOption = onPlayClick,
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
@@ -386,7 +377,6 @@ fun CategoryRow(
 
                     is Audiobook -> AudiobookWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,
@@ -396,7 +386,6 @@ fun CategoryRow(
 
                     is RadioStation -> RadioWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onPlayOption = onPlayClick,
                         playlistActions = playlistActions,
                         libraryActions = libraryActions,
@@ -405,7 +394,6 @@ fun CategoryRow(
 
                     is Genre -> GenreWithMenu(
                         item = item,
-                        serverUrl = serverUrl,
                         onNavigateClick = onNavigateClick,
                         onPlayOption = onPlayClick,
                         libraryActions = libraryActions,

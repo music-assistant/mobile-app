@@ -79,14 +79,12 @@ import org.jetbrains.compose.resources.stringResource
  * Artist media item with circular image.
  *
  * @param item The artist item to display
- * @param serverUrl Server URL for image loading
  * @param onClick Click handler
  */
 @Composable
 fun ArtistGridItem(
     modifier: Modifier = Modifier,
     item: Artist,
-    serverUrl: String?,
     onClick: (Artist) -> Unit,
     onLongClick: (Artist) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -97,7 +95,7 @@ fun ArtistGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            ArtistImage(item, serverUrl)
+            ArtistImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -127,7 +125,6 @@ fun ArtistGridItem(
 @Composable
 private fun ArtistImage(
     item: Artist,
-    serverUrl: String?,
 ) {
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -146,7 +143,7 @@ private fun ArtistImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -158,14 +155,12 @@ private fun ArtistImage(
  * Album media item with vinyl record design.
  *
  * @param item The album item to display
- * @param serverUrl Server URL for image loading
  * @param onClick Click handler
  */
 @Composable
 fun AlbumGridItem(
     modifier: Modifier = Modifier,
     item: Album,
-    serverUrl: String?,
     onClick: (Album) -> Unit,
     onLongClick: (Album) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -176,7 +171,7 @@ fun AlbumGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            AlbumImage(item, serverUrl)
+            AlbumImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -206,7 +201,6 @@ fun AlbumGridItem(
 @Composable
 private fun AlbumImage(
     item: Album,
-    serverUrl: String?,
 ) {
     val primaryContainer = MaterialTheme.colorScheme.primary
     val background = MaterialTheme.colorScheme.background
@@ -232,7 +226,7 @@ private fun AlbumImage(
         AsyncImage(
             placeholder = vinylRecord,
             fallback = vinylRecord,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -246,7 +240,6 @@ private fun AlbumImage(
  * Playlist media item.
  *
  * @param item The playlist item to display
- * @param serverUrl Server URL for image loading
  * @param onClick Click handler
 
  */
@@ -254,7 +247,6 @@ private fun AlbumImage(
 fun PlaylistGridItem(
     modifier: Modifier = Modifier,
     item: Playlist,
-    serverUrl: String?,
     onClick: (Playlist) -> Unit,
     onLongClick: (Playlist) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
@@ -265,7 +257,7 @@ fun PlaylistGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            PlaylistImage(item, serverUrl)
+            PlaylistImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -295,7 +287,6 @@ fun PlaylistGridItem(
 @Composable
 private fun PlaylistImage(
     item: Playlist,
-    serverUrl: String?,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -353,7 +344,7 @@ private fun PlaylistImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -367,7 +358,6 @@ private fun PlaylistImage(
 fun PodcastGridItem(
     modifier: Modifier = Modifier,
     item: Podcast,
-    serverUrl: String?,
     onClick: (Podcast) -> Unit,
     onLongClick: (Podcast) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
@@ -378,7 +368,7 @@ fun PodcastGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            PodcastImage(item, serverUrl)
+            PodcastImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -408,7 +398,6 @@ fun PodcastGridItem(
 @Composable
 private fun PodcastImage(
     item: Podcast,
-    serverUrl: String?,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -456,7 +445,7 @@ private fun PodcastImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -470,7 +459,6 @@ private fun PodcastImage(
  * Track media item with waveform overlay.
  *
  * @param item The track item to display
- * @param serverUrl Server URL for image loading
  * @param onClick Click handler
 
  */
@@ -478,7 +466,6 @@ private fun PodcastImage(
 internal fun TrackGridItem(
     modifier: Modifier = Modifier,
     item: Track,
-    serverUrl: String?,
     onClick: (Track) -> Unit,
     onLongClick: (Track) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -489,7 +476,7 @@ internal fun TrackGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            TrackImage(item, serverUrl)
+            TrackImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -502,7 +489,6 @@ internal fun TrackGridItem(
 @Composable
 private fun TrackImage(
     item: PlayableItem,
-    serverUrl: String?,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -522,7 +508,7 @@ private fun TrackImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -547,7 +533,6 @@ private fun TrackImage(
 internal fun PodcastEpisodeGridItem(
     modifier: Modifier = Modifier,
     item: PodcastEpisode,
-    serverUrl: String?,
     onClick: (PodcastEpisode) -> Unit,
     onLongClick: (PodcastEpisode) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -558,7 +543,7 @@ internal fun PodcastEpisodeGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            PodcastEpisodeImage(item, serverUrl)
+            PodcastEpisodeImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -575,7 +560,6 @@ internal fun PodcastEpisodeGridItem(
 @Composable
 private fun PodcastEpisodeImage(
     item: PlayableItem,
-    serverUrl: String?,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -595,7 +579,7 @@ private fun PodcastEpisodeImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -629,7 +613,6 @@ private fun PodcastEpisodeImage(
  * Radio station media item with wavy octagon shape.
  *
  * @param item The radio station item to display
- * @param serverUrl Server URL for image loading
  * @param onClick Click handler
 
  */
@@ -637,7 +620,6 @@ private fun PodcastEpisodeImage(
 internal fun RadioGridItem(
     modifier: Modifier = Modifier,
     item: RadioStation,
-    serverUrl: String?,
     onClick: (RadioStation) -> Unit,
     onLongClick: (RadioStation) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -648,7 +630,7 @@ internal fun RadioGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            RadioImage(item, serverUrl)
+            RadioImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -661,7 +643,6 @@ internal fun RadioGridItem(
 @Composable
 private fun RadioImage(
     item: PlayableItem,
-    serverUrl: String?,
 ) {
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -680,7 +661,7 @@ private fun RadioImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -692,7 +673,6 @@ private fun RadioImage(
  * Audiobook media item with book spine design.
  *
  * @param item The audiobook item to display
- * @param serverUrl Server URL for image loading
  * @param onClick Click handler
 
  */
@@ -700,7 +680,6 @@ private fun RadioImage(
 internal fun AudiobookGridItem(
     modifier: Modifier = Modifier,
     item: Audiobook,
-    serverUrl: String?,
     onClick: (Audiobook) -> Unit,
     onLongClick: (Audiobook) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -711,7 +690,7 @@ internal fun AudiobookGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            AudiobookImage(item, serverUrl)
+            AudiobookImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -745,7 +724,6 @@ internal fun AudiobookGridItem(
 @Composable
 private fun AudiobookImage(
     item: Audiobook,
-    serverUrl: String?,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -784,7 +762,7 @@ private fun AudiobookImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -934,7 +912,6 @@ private val ROW_IMAGE_SIZE = 48.dp
 internal fun TrackRowItem(
     modifier: Modifier = Modifier,
     item: Track,
-    serverUrl: String?,
     onClick: (Track) -> Unit,
     onLongClick: (Track) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -944,7 +921,7 @@ internal fun TrackRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            TrackImage(item, serverUrl)
+            TrackImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -959,7 +936,6 @@ internal fun TrackRowItem(
 internal fun AlbumRowItem(
     modifier: Modifier = Modifier,
     item: Album,
-    serverUrl: String?,
     onClick: (Album) -> Unit,
     onLongClick: (Album) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -969,7 +945,7 @@ internal fun AlbumRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            AlbumImage(item, serverUrl)
+            AlbumImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -984,7 +960,6 @@ internal fun AlbumRowItem(
 internal fun ArtistRowItem(
     modifier: Modifier = Modifier,
     item: Artist,
-    serverUrl: String?,
     onClick: (Artist) -> Unit,
     onLongClick: (Artist) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -994,7 +969,7 @@ internal fun ArtistRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            ArtistImage(item, serverUrl)
+            ArtistImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1009,7 +984,6 @@ internal fun ArtistRowItem(
 internal fun PlaylistRowItem(
     modifier: Modifier = Modifier,
     item: Playlist,
-    serverUrl: String?,
     onClick: (Playlist) -> Unit,
     onLongClick: (Playlist) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -1019,7 +993,7 @@ internal fun PlaylistRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            PlaylistImage(item, serverUrl)
+            PlaylistImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1034,7 +1008,6 @@ internal fun PlaylistRowItem(
 internal fun PodcastRowItem(
     modifier: Modifier = Modifier,
     item: Podcast,
-    serverUrl: String?,
     onClick: (Podcast) -> Unit,
     onLongClick: (Podcast) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -1044,7 +1017,7 @@ internal fun PodcastRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            PodcastImage(item, serverUrl)
+            PodcastImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1059,7 +1032,6 @@ internal fun PodcastRowItem(
 internal fun PodcastEpisodeRowItem(
     modifier: Modifier = Modifier,
     item: PodcastEpisode,
-    serverUrl: String?,
     onClick: (PodcastEpisode) -> Unit,
     onLongClick: (PodcastEpisode) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -1069,7 +1041,7 @@ internal fun PodcastEpisodeRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            PodcastEpisodeImage(item, serverUrl)
+            PodcastEpisodeImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1088,7 +1060,6 @@ internal fun PodcastEpisodeRowItem(
 internal fun RadioRowItem(
     modifier: Modifier = Modifier,
     item: RadioStation,
-    serverUrl: String?,
     onClick: (RadioStation) -> Unit,
     onLongClick: (RadioStation) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -1098,7 +1069,7 @@ internal fun RadioRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            RadioImage(item, serverUrl)
+            RadioImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1113,7 +1084,6 @@ internal fun RadioRowItem(
 fun GenreGridItem(
     modifier: Modifier = Modifier,
     item: Genre,
-    serverUrl: String?,
     onClick: (Genre) -> Unit,
     onLongClick: (Genre) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
@@ -1124,7 +1094,7 @@ fun GenreGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            GenreImage(item, serverUrl)
+            GenreImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1154,7 +1124,6 @@ fun GenreGridItem(
 @Composable
 private fun GenreImage(
     item: Genre,
-    serverUrl: String?,
 ) {
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1173,7 +1142,7 @@ private fun GenreImage(
         AsyncImage(
             placeholder = placeholder,
             fallback = placeholder,
-            model = item.imageInfo?.url(serverUrl),
+            model = item.imageInfo?.url,
             contentDescription = item.displayName,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -1185,7 +1154,6 @@ private fun GenreImage(
 internal fun GenreRowItem(
     modifier: Modifier = Modifier,
     item: Genre,
-    serverUrl: String?,
     onClick: (Genre) -> Unit,
     onLongClick: (Genre) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -1195,7 +1163,7 @@ internal fun GenreRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            GenreImage(item, serverUrl)
+            GenreImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1210,7 +1178,6 @@ internal fun GenreRowItem(
 internal fun AudiobookRowItem(
     modifier: Modifier = Modifier,
     item: Audiobook,
-    serverUrl: String?,
     onClick: (Audiobook) -> Unit,
     onLongClick: (Audiobook) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -1220,7 +1187,7 @@ internal fun AudiobookRowItem(
         name = item.displayName,
         subtitle = item.subtitle,
         imageContent = {
-            AudiobookImage(item, serverUrl)
+            AudiobookImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
