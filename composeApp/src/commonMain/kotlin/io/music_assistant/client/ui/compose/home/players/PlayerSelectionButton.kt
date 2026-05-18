@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,12 +45,14 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun PlayerSelectionButton(
     player: PlayerData,
+    controlTint: Color = MaterialTheme.colorScheme.primary,
     sendSpinState: SendspinState?,
     onSelectPlayer: () -> Unit = {},
     onGroupButton: () -> Unit = {},
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
+    val onTint = if (controlTint.luminance() > 0.5f) Color.Black else Color.White
     val hasGroupChildren = player.childrenBinds.isNotEmpty()
     val hasBoundChildren = player.childrenBinds.any { it.isBound }
 
@@ -74,7 +77,13 @@ fun PlayerSelectionButton(
             trailingButton = {
                 if (hasGroupChildren) {
                     val (colors, border) = if (hasBoundChildren) {
-                        Pair(ButtonDefaults.buttonColors(), null)
+                        Pair(
+                            ButtonDefaults.buttonColors(
+                                containerColor = controlTint,
+                                contentColor = onTint,
+                            ),
+                            null,
+                        )
                     } else {
                         Pair(
                             ButtonDefaults.outlinedButtonColors(),

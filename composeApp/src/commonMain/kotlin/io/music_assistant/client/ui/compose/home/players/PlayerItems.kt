@@ -177,6 +177,7 @@ fun CompactPlayerItem(
             ) {
                 PlayerSelectionButton(
                     player = item,
+                    controlTint = colors.controlTint,
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton ?: {},

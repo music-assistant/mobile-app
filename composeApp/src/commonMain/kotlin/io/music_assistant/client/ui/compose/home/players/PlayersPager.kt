@@ -394,6 +394,7 @@ private fun ExpandedPlayerPage(
             ) {
                 PlayerSelectionButton(
                     player = player,
+                    controlTint = colors.controlTint,
                     sendSpinState = sendspinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton,
@@ -723,6 +724,7 @@ private fun CollapsedPlayerPage(
         ) {
             PlayerSelectionButton(
                 player = player,
+                controlTint = colors.controlTint,
                 sendSpinState = sendspinState,
                 onSelectPlayer = onSelectPlayer,
                 onGroupButton = onGroupButton,
