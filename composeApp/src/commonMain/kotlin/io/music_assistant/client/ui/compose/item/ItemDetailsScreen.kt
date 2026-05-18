@@ -29,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Chapter
-import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
@@ -65,7 +63,6 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -74,8 +71,6 @@ import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
-import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
-import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -107,7 +102,6 @@ fun ItemDetailsScreen(
     ItemDetails(
         contentPadding = contentPadding,
         state = state,
-        fetchColors = rememberExtractedColorsFetcher(),
         onBack = onBack,
         viewModeProvider = { type ->
             itemDetailsViewModel.viewMode(type).collectAsStateWithLifecycle().value
@@ -140,7 +134,6 @@ fun ItemDetailsScreen(
 fun ItemDetails(
     contentPadding: PaddingValues = PaddingValues(),
     state: ItemDetailsViewModel.State,
-    fetchColors: ExtractedColorsFetcher = { null },
     onBack: () -> Unit = {},
     viewModeProvider: @Composable (MediaType) -> ViewMode = { ViewMode.LIST },
     onToggleViewMode: (MediaType) -> Unit = {},
@@ -178,7 +171,6 @@ fun ItemDetails(
     ItemChildren(
         state = state,
         toastState = toastState,
-        fetchColors = fetchColors,
         viewModeProvider = viewModeProvider,
         onNavigateClick = { item ->
             when (item) {
@@ -240,7 +232,6 @@ private fun tabsFor(item: AppMediaItem): List<ItemDetailsTab> = when (item) {
 private fun ItemChildren(
     state: ItemDetailsViewModel.State,
     toastState: ToastState,
-    fetchColors: ExtractedColorsFetcher,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
@@ -276,7 +267,6 @@ private fun ItemChildren(
                 ItemContent(
                     item = item,
                     state = state,
-                    fetchColors = fetchColors,
                     viewModeProvider = viewModeProvider,
                     onNavigateClick = onNavigateClick,
                     onPlayItemClick = onPlayItemClick,
@@ -311,7 +301,6 @@ private fun ItemChildren(
 private fun ItemContent(
     item: AppMediaItem,
     state: ItemDetailsViewModel.State,
-    fetchColors: ExtractedColorsFetcher,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
@@ -332,19 +321,11 @@ private fun ItemContent(
     var selectedIndex by rememberSaveable(item.mediaType) { mutableStateOf(0) }
     val safeIndex = selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))
 
-    val playerColors by rememberAnimatedPlayerColors(
-        imageUrl = item.image(ImageType.THUMB)?.url,
-        fallback = MaterialTheme.colorScheme.primary,
-        fetchColors = fetchColors,
-    )
-    val controlTint = playerColors.controlTint
-
     val heroSlot: @Composable () -> Unit = {
         ItemHeader(
             item = item,
             providerIconFetcher = providerIconFetcher,
             onPlayClick = onPlayItemClick,
-            controlTint = controlTint,
         )
     }
 
@@ -376,7 +357,6 @@ private fun ItemContent(
                         onPlayableItemsSortChanged = onPlayableItemsSortChanged,
                         viewModeProvider = viewModeProvider,
                         onToggleViewMode = onToggleViewMode,
-                        controlTint = controlTint,
                     )
                 }
                 val gridState = rememberLazyGridState()
@@ -416,7 +396,6 @@ private fun TabsBar(
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
-    controlTint: Color,
 ) {
     val currentTab = tabs[selectedIndex]
     val sortCtx = currentTab.sortContext
@@ -440,14 +419,7 @@ private fun TabsBar(
         PrimaryScrollableTabRow(
             selectedTabIndex = selectedIndex,
             containerColor = Color.Transparent,
-            contentColor = controlTint,
             edgePadding = 0.dp,
-            indicator = {
-                TabRowDefaults.PrimaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(selectedIndex, matchContentSize = true),
-                    color = controlTint,
-                )
-            },
             modifier = Modifier.weight(1f),
         ) {
             tabs.forEachIndexed { i, tab ->
