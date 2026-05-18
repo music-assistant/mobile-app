@@ -41,7 +41,10 @@ fun rememberExtractedColorsFetcher(): ExtractedColorsFetcher {
     val viewModel: DominantColorViewModel = koinInject()
     val platformContext = LocalPlatformContext.current
     return remember(viewModel, platformContext) {
-        { url -> viewModel.getColors(platformContext, url) }
+        {
+            url ->
+                viewModel.getColors(platformContext, url)
+            }
     }
 }
 
