@@ -36,7 +36,6 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import coil3.compose.LocalPlatformContext
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -47,8 +46,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.DominantColorViewModel
-import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -410,14 +408,7 @@ private fun Players(
                 homeScreenViewModel.onPlayersSortChanged(newPlayerIds)
             }
         }
-        val dominantColorViewModel: DominantColorViewModel = koinInject()
-        val platformContext = LocalPlatformContext.current
-        val fetchColors = remember<ExtractedColorsFetcher>(dominantColorViewModel, platformContext) {
-            {
-                url ->
-                    dominantColorViewModel.getColors(platformContext, url)
-                }
-        }
+        val fetchColors = rememberExtractedColorsFetcher()
 
         PlayersPager(
             playerPagerState = playerPagerState,

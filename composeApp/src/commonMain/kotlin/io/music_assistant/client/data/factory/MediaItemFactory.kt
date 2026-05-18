@@ -251,6 +251,7 @@ class MediaItemFactory(
         metadata: ServerMetadata?,
     ) = buildMap {
         image?.let { put(ImageType.MAIN, createImageInfo(it)) }
-        metadata?.images?.map { createImageInfo(it) }?.forEach { put(it.type, it) }
+        metadata?.images?.map { createImageInfo(it) }
+            ?.forEach { if (get(it.type) == null) put(it.type, it) }
     }
 }

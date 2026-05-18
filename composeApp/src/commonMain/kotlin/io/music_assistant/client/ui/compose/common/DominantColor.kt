@@ -16,7 +16,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import coil3.compose.LocalPlatformContext
 import com.kmpalette.palette.graphics.Palette
+import org.koin.compose.koinInject
 
 /**
  * Theme-independent extraction result kept in [DominantColorViewModel]'s cache.
@@ -33,6 +35,15 @@ data class ExtractedColors(
  * so the composable doesn't depend on Koin and is trivially testable with a fake.
  */
 typealias ExtractedColorsFetcher = suspend (imageUrl: String) -> ExtractedColors?
+
+@Composable
+fun rememberExtractedColorsFetcher(): ExtractedColorsFetcher {
+    val viewModel: DominantColorViewModel = koinInject()
+    val platformContext = LocalPlatformContext.current
+    return remember(viewModel, platformContext) {
+        { url -> viewModel.getColors(platformContext, url) }
+    }
+}
 
 /**
  * Dominant color extracted from artwork plus its theme-adjusted control tint.

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SplitButtonDefaults.LeadingButton
@@ -17,6 +18,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -41,7 +44,15 @@ fun ItemPlayButton(
     item: AppMediaItem,
     onPlayClick: (QueueOption, Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    tint: Color? = null,
 ) {
+    val buttonColors = tint?.let {
+        val onTint = if (it.luminance() > 0.5f) Color.Black else Color.White
+        ButtonDefaults.filledTonalButtonColors(
+            containerColor = it,
+            contentColor = onTint,
+        )
+    }
     SplitButtonLayout(
         modifier = modifier,
         leadingButton = {
@@ -49,6 +60,7 @@ fun ItemPlayButton(
             LeadingButton(
                 modifier = Modifier.semantics { contentDescription = playNowText },
                 onClick = { onPlayClick(QueueOption.REPLACE, false) },
+                colors = buttonColors ?: ButtonDefaults.filledTonalButtonColors(),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -66,6 +78,7 @@ fun ItemPlayButton(
             ) { onClick ->
                 TrailingButton(
                     onClick = onClick,
+                    colors = buttonColors ?: ButtonDefaults.filledTonalButtonColors(),
                 ) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,

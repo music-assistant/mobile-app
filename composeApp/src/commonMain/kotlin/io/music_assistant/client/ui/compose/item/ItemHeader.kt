@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -87,6 +88,7 @@ fun ItemHeader(
     item: AppMediaItem,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
+    controlTint: Color? = null,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val image = @Composable {
@@ -102,6 +104,7 @@ fun ItemHeader(
                 item,
                 onPlayClick = onPlayClick,
                 modifier = Modifier.padding(top = 8.dp),
+                tint = controlTint,
             )
         }
 
