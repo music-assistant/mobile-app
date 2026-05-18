@@ -17,13 +17,8 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.widget.Toast
 import androidx.media.MediaBrowserServiceCompat
 import co.touchlab.kermit.Logger
-import coil3.BitmapImage
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.SuccessResult
-import coil3.request.allowHardware
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -165,7 +160,12 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
         scope.launch {
             // 200ms debounce coalesces rapid notification updates without delaying perceptibly.
-            mediaNotificationData.debounce(timeoutMillis = 200).collect { updatePlaybackState(it) }
+            // Bitmap loading runs async via [withAsyncBitmap] so a slow artwork fetch never
+            // blocks the state write or notification refresh.
+            mediaNotificationData
+                .withAsyncBitmap(scope) { loadCoilBitmap(this@MainMediaPlaybackService, imageLoader, it) }
+                .debounce(timeoutMillis = 200)
+                .collect { (data, bitmap) -> updatePlaybackState(data, bitmap) }
         }
         scope.launch {
             // Block until everything is stopped, then bail
@@ -337,21 +337,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         super.onDestroy()
     }
 
-    private suspend fun updatePlaybackState(data: MediaNotificationData) {
-        val bitmap = data.imageUrl?.let {
-            (
-                (
-                    imageLoader.execute(
-                ImageRequest.Builder(this@MainMediaPlaybackService)
-                    .data(it)
-                    .allowHardware(false)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .memoryCacheKey(it)
-                    .build(),
-            ) as? SuccessResult
-                )?.image as? BitmapImage
-            )?.bitmap
-        }
+    private fun updatePlaybackState(data: MediaNotificationData, bitmap: android.graphics.Bitmap?) {
         // Only write to the shared session when AA is NOT active.
         // When AA is active, it is the sole writer (with its own data flow).
         // The notification still picks up metadata from the shared session via MediaStyle.

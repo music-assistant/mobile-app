@@ -16,13 +16,8 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
 import co.touchlab.kermit.Logger
-import coil3.BitmapImage
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.SuccessResult
-import coil3.request.allowHardware
 import io.music_assistant.client.R
 import io.music_assistant.client.auto.AutoLibrary
 import io.music_assistant.client.auto.MediaIds
@@ -94,11 +89,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         // SharedMediaSessionManager coordinates with error state: if an error is set,
         // updatePlaybackState will still cache the data but show the error to the user.
         // When clearErrorState is called, it restores the cached data automatically.
+        //
+        // The session is updated whenever EITHER the data OR the bitmap changes
+        // (see [withAsyncBitmap]); bitmap loading never blocks state writes.
         scope.launch {
-            mediaNotificationData.debounce(200).collect { data ->
-                val bitmap = loadBitmap(data)
-                sharedSession.updatePlaybackState(data, bitmap, multiPlayer = false)
-            }
+            mediaNotificationData
+                .withAsyncBitmap(scope) { loadCoilBitmap(this@AndroidAutoPlaybackService, imageLoader, it) }
+                .debounce(200)
+                .collect { (data, bitmap) ->
+                    sharedSession.updatePlaybackState(data, bitmap, multiPlayer = false)
+                }
         }
 
         // Queue updates (separate MediaSession property — no conflict with playback state).
@@ -431,22 +431,6 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         scope.cancel()
         super.onDestroy()
     }
-
-    private suspend fun loadBitmap(data: MediaNotificationData): android.graphics.Bitmap? =
-        data.imageUrl?.let {
-            (
-                (
-                    imageLoader.execute(
-                ImageRequest.Builder(this@AndroidAutoPlaybackService)
-                    .data(it)
-                    .allowHardware(false)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .memoryCacheKey(it)
-                    .build(),
-            ) as? SuccessResult
-                )?.image as? BitmapImage
-            )?.bitmap
-        }
 
     private companion object {
         // Cold-start window: voice intent may arrive before auth + local player
