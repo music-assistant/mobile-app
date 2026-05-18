@@ -85,29 +85,21 @@ import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 @Composable
 fun ItemDetailsScreen(
-    itemId: String,
-    mediaType: MediaType,
-    providerId: String,
+    itemDetailsViewModel: ItemDetailsViewModel,
     actionsViewModel: ActionsViewModel,
     onBack: () -> Unit,
     onNavigateToItem: (String, MediaType, String) -> Unit,
     contentPadding: PaddingValues,
 ) {
-    val viewModel: ItemDetailsViewModel = koinViewModel {
-        parametersOf(itemId, mediaType, providerId)
-    }
-
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val state by itemDetailsViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     // Collect toasts
     LaunchedEffect(Unit) {
-        viewModel.toasts.collect { toast ->
+        itemDetailsViewModel.toasts.collect { toast ->
             toastState.showToast(toast)
         }
     }
@@ -118,9 +110,9 @@ fun ItemDetailsScreen(
         fetchColors = rememberExtractedColorsFetcher(),
         onBack = onBack,
         viewModeProvider = { type ->
-            viewModel.viewMode(type).collectAsStateWithLifecycle().value
+            itemDetailsViewModel.viewMode(type).collectAsStateWithLifecycle().value
         },
-        onToggleViewMode = viewModel::toggleViewMode,
+        onToggleViewMode = itemDetailsViewModel::toggleViewMode,
         toastState = toastState,
         onNavigateToItem = onNavigateToItem,
         geEditablePlaylists = actionsViewModel::getEditablePlaylists,
@@ -130,17 +122,17 @@ fun ItemDetailsScreen(
         onMarkPlayed = actionsViewModel::onMarkPlayed,
         onMarkUnplayed = actionsViewModel::onMarkUnplayed,
         onRemoveFromPlaylist = { id, pos ->
-            actionsViewModel.removeFromPlaylist(id, pos, viewModel::reload)
+            actionsViewModel.removeFromPlaylist(id, pos, itemDetailsViewModel::reload)
         },
         providerIconFetcher = { modifier, provider ->
             actionsViewModel.getProviderIcon(provider)
                 ?.let { ProviderIcon(modifier, it) }
         },
-        onPlayClick = viewModel::onPlayClick,
-        onChapterClick = viewModel::onChapterClick,
-        onChildPlayClick = viewModel::onPlayClick,
-        onAlbumsSortChanged = viewModel::onAlbumsSortChanged,
-        onPlayableItemsSortChanged = viewModel::onPlayableItemsSortChanged,
+        onPlayClick = itemDetailsViewModel::onPlayClick,
+        onChapterClick = itemDetailsViewModel::onChapterClick,
+        onChildPlayClick = itemDetailsViewModel::onPlayClick,
+        onAlbumsSortChanged = itemDetailsViewModel::onAlbumsSortChanged,
+        onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
     )
 }
 

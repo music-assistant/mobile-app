@@ -127,6 +127,7 @@ internal fun PlayersPager(
     fetchColors: ExtractedColorsFetcher,
     observePosition: (queueId: String) -> Flow<Double>,
     compact: Boolean,
+    dspSettingsViewModel: DspSettingsViewModel,
 ) {
     var isQueueExpanded by remember { mutableStateOf(false) }
 
@@ -196,6 +197,7 @@ internal fun PlayersPager(
             if (showDspDialog) {
                 DspSettingsDialog(
                     playerId = player.player.id,
+                    dspSettingsViewModel = dspSettingsViewModel,
                     onDismissRequest = { showDspDialog = false },
                 )
             }

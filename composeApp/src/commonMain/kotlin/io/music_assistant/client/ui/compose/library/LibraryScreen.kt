@@ -87,21 +87,20 @@ import musicassistantclient.composeapp.generated.resources.playlist_add_new
 import musicassistantclient.composeapp.generated.resources.playlist_create_title
 import musicassistantclient.composeapp.generated.resources.playlist_name_label
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun LibraryScreen(
+    libraryViewModel: LibraryViewModel,
     contentPadding: PaddingValues,
     initialTabType: MediaType?,
     actionsViewModel: ActionsViewModel,
     onNavigateClick: (AppMediaItem) -> Unit,
 ) {
-    val viewModel: LibraryViewModel = koinViewModel()
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val state by libraryViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
-        viewModel.applyInitialTabIfNeeded(initialTabType)
+        libraryViewModel.applyInitialTabIfNeeded(initialTabType)
     }
 
     // Collect toasts
@@ -121,7 +120,7 @@ fun LibraryScreen(
         CustomizeTabsDialog(
             initialConfig = state.tabs.map { it.tab to it.enabled },
             onDismissRequest = { showCustomizeDialog = false },
-            onConfirm = viewModel::onTabsConfigChanged,
+            onConfirm = libraryViewModel::onTabsConfigChanged,
         )
     }
 
@@ -130,14 +129,14 @@ fun LibraryScreen(
             LibraryTopBar(
                 tabs = visibleTabs,
                 selectedTab = selectedTab,
-                onTabSelected = viewModel::onTabSelected,
+                onTabSelected = libraryViewModel::onTabSelected,
                 viewMode = selectedTab.viewMode,
-                onToggleViewMode = { viewModel.toggleViewMode(selectedTab.tab) },
+                onToggleViewMode = { libraryViewModel.toggleViewMode(selectedTab.tab) },
                 onCustomizeClick = { showCustomizeDialog = true },
                 scrollBehavior = scrollBehavior,
-                onSearchQueryChanged = viewModel::onSearchQueryChanged,
-                onOnlyFavoritesClicked = viewModel::onOnlyFavoritesClicked,
-                onSortChanged = viewModel::onSortChanged,
+                onSearchQueryChanged = libraryViewModel::onSearchQueryChanged,
+                onOnlyFavoritesClicked = libraryViewModel::onOnlyFavoritesClicked,
+                onSortChanged = libraryViewModel::onSortChanged,
             )
         },
     ) {
@@ -147,11 +146,11 @@ fun LibraryScreen(
             showCreatePlaylistDialog = state.showCreatePlaylistDialog,
             toastState = toastState,
             onNavigateClick = onNavigateClick,
-            onPlayClick = viewModel::onPlayClick,
-            onCreatePlaylistClick = viewModel::onCreatePlaylistClick,
-            onLoadMore = viewModel::loadMore,
-            onDismissCreatePlaylistDialog = viewModel::onDismissCreatePlaylistDialog,
-            onCreatePlaylist = viewModel::createPlaylist,
+            onPlayClick = libraryViewModel::onPlayClick,
+            onCreatePlaylistClick = libraryViewModel::onCreatePlaylistClick,
+            onLoadMore = libraryViewModel::loadMore,
+            onDismissCreatePlaylistDialog = libraryViewModel::onDismissCreatePlaylistDialog,
+            onCreatePlaylist = libraryViewModel::createPlaylist,
             playlistActions = ActionsViewModel.PlaylistActions(
                 onLoadPlaylists = actionsViewModel::getEditablePlaylists,
                 onAddToPlaylist = actionsViewModel::addToPlaylist,
@@ -206,17 +205,21 @@ private fun LibraryTopBar(
                                             LibraryViewModel.Tab.ARTISTS -> stringResource(
                                                 Res.string.media_type_artists,
                                             )
+
                                             LibraryViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
                                             LibraryViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
                                             LibraryViewModel.Tab.PLAYLISTS -> stringResource(
                                                 Res.string.media_type_playlists,
                                             )
+
                                             LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(
                                                 Res.string.media_type_audiobooks,
                                             )
+
                                             LibraryViewModel.Tab.PODCASTS -> stringResource(
                                                 Res.string.media_type_podcasts,
                                             )
+
                                             LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
                                             LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
                                         },

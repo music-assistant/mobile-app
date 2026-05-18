@@ -37,19 +37,18 @@ import io.music_assistant.client.ui.alphaOn
 import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun DspSettingsDialog(
     playerId: String,
-    viewModel: DspSettingsViewModel = koinViewModel(),
+    dspSettingsViewModel: DspSettingsViewModel,
     onDismissRequest: () -> Unit,
 ) {
     LaunchedEffect(playerId) {
-        viewModel.load(playerId)
+        dspSettingsViewModel.load(playerId)
     }
 
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val state by dspSettingsViewModel.state.collectAsStateWithLifecycle()
 
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -88,8 +87,8 @@ fun DspSettingsDialog(
                         is DspSettingsViewModel.DspDialogState.Content -> {
                             DspContent(
                                 state = s,
-                                onToggleEnabled = { viewModel.toggleEnabled(playerId) },
-                                onApplyPreset = { viewModel.applyPreset(playerId, it) },
+                                onToggleEnabled = { dspSettingsViewModel.toggleEnabled(playerId) },
+                                onApplyPreset = { dspSettingsViewModel.applyPreset(playerId, it) },
                             )
                         }
                     }

@@ -58,15 +58,19 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
+import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
 import io.music_assistant.client.ui.compose.library.LibraryScreen
+import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.SearchScreen
+import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
@@ -80,21 +84,23 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainNavigationRoot(
-    viewModel: HomeScreenViewModel = koinViewModel(),
+    homeScreenViewModel: HomeScreenViewModel = koinViewModel(),
     actionsViewModel: ActionsViewModel = koinViewModel(),
+    dspSettingsViewModel: DspSettingsViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
-        viewModel.links.collectLatest { url -> uriHandler.openUri(url) }
+        homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
     }
 
     // Collect toasts
@@ -104,8 +110,8 @@ fun MainNavigationRoot(
         }
     }
 
-    val recommendationsState = viewModel.recommendationsState.collectAsStateWithLifecycle()
-    val playersState by viewModel.playersState.collectAsStateWithLifecycle()
+    val recommendationsState = homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
+    val playersState by homeScreenViewModel.playersState.collectAsStateWithLifecycle()
     // Single pager state used across all views
     val data = playersState as? HomeScreenViewModel.PlayersState.Data
     val playerPagerState = rememberPagerState(
@@ -125,7 +131,7 @@ fun MainNavigationRoot(
 
         snapshotFlow { playerPagerState.settledPage }.collect { currentPage ->
             currentData.playerData.getOrNull(currentPage)?.let { playerData ->
-                viewModel.selectPlayer(playerData.player)
+                homeScreenViewModel.selectPlayer(playerData.player)
             }
         }
     }
@@ -204,8 +210,9 @@ fun MainNavigationRoot(
                         Players(
                             playerPagerState = playerPagerState,
                             state = playersState,
-                            homeScreenViewModel = viewModel,
+                            homeScreenViewModel = homeScreenViewModel,
                             actionsViewModel = actionsViewModel,
+                            dspSettingsViewModel = dspSettingsViewModel,
                             expanded = expanded,
                             onClose = { playerExpanded = false },
                             contentPadding = contentPadding,
@@ -234,7 +241,7 @@ fun MainNavigationRoot(
                                 hiddenFolderIds,
 
                                 multiBackStack,
-                                viewModel,
+                                homeScreenViewModel,
                                 playlistActions,
                                 libraryActions,
                                 progressActions,
@@ -311,40 +318,44 @@ private fun mainNavEntryProvider(
         }
 
         entry<MainNav.Library> {
+            val libraryViewModel = koinViewModel<LibraryViewModel>()
+
             LibraryScreen(
+                libraryViewModel = libraryViewModel,
                 contentPadding = contentPadding,
                 initialTabType = it.type,
-                onNavigateClick = { item ->
-                    when (item) {
-                        is Artist,
-                        is Album,
-                        is Playlist,
-                        is Podcast,
-                        is Audiobook,
-                        is Genre,
-                        -> {
-                            multiBackStack.add(
-                                MainNav.ItemDetails(
-                                    itemId = item.itemId,
-                                    mediaType = item.mediaType,
-                                    providerId = item.provider,
-                                ),
-                            )
-                        }
-
-                        else -> Unit
-                    }
-                },
                 actionsViewModel = actionsViewModel,
-            )
+            ) { item ->
+                when (item) {
+                    is Artist,
+                    is Album,
+                    is Playlist,
+                    is Podcast,
+                    is Audiobook,
+                    is Genre,
+                        -> {
+                        multiBackStack.add(
+                            MainNav.ItemDetails(
+                                itemId = item.itemId,
+                                mediaType = item.mediaType,
+                                providerId = item.provider,
+                            ),
+                        )
+                    }
+
+                    else -> Unit
+                }
+            }
         }
 
         entry<MainNav.ItemDetails> {
+            val itemDetailsViewModel = koinViewModel<ItemDetailsViewModel> {
+                parametersOf(it.itemId, it.mediaType, it.providerId)
+            }
+
             ItemDetailsScreen(
-                contentPadding = contentPadding,
-                itemId = it.itemId,
-                mediaType = it.mediaType,
-                providerId = it.providerId,
+                itemDetailsViewModel = itemDetailsViewModel,
+                actionsViewModel = actionsViewModel,
                 onBack = { multiBackStack.removeLastOrNull() },
                 onNavigateToItem = { itemId, mediaType, providerId ->
                     multiBackStack.add(
@@ -355,12 +366,15 @@ private fun mainNavEntryProvider(
                         ),
                     )
                 },
-                actionsViewModel = actionsViewModel,
+                contentPadding = contentPadding,
             )
         }
 
         entry<MainNav.Search> {
+            val searchViewModel = koinViewModel<SearchViewModel>()
+
             SearchScreen(
+                searchViewModel = searchViewModel,
                 onNavigateToItem = { itemId, mediaType, providerId ->
                     multiBackStack.add(
                         MainNav.ItemDetails(
@@ -383,6 +397,7 @@ private fun Players(
     state: HomeScreenViewModel.PlayersState,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
+    dspSettingsViewModel: DspSettingsViewModel,
     expanded: Boolean,
     onClose: () -> Unit,
     contentPadding: PaddingValues,
@@ -454,6 +469,7 @@ private fun Players(
             fetchColors = fetchColors,
             observePosition = homeScreenViewModel::observePosition,
             compact = !expanded,
+            dspSettingsViewModel = dspSettingsViewModel,
         )
     } else {
         Box(Modifier.fillMaxWidth().height(84.dp)) {
