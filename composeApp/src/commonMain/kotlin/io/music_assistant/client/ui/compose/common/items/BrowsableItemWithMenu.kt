@@ -8,10 +8,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,8 +47,22 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import kotlinx.coroutines.launch
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_add_to_bottom
+import musicassistantclient.composeapp.generated.resources.action_add_to_library
+import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
+import musicassistantclient.composeapp.generated.resources.action_favorite
+import musicassistantclient.composeapp.generated.resources.action_insert_next
+import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
+import musicassistantclient.composeapp.generated.resources.action_mark_played
+import musicassistantclient.composeapp.generated.resources.action_mark_unplayed
+import musicassistantclient.composeapp.generated.resources.action_play_now
+import musicassistantclient.composeapp.generated.resources.action_remove_from_library
+import musicassistantclient.composeapp.generated.resources.action_start_radio
+import musicassistantclient.composeapp.generated.resources.action_unfavorite
+import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.playlist_add_to_title
+import musicassistantclient.composeapp.generated.resources.playlist_no_editable
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -384,7 +398,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Radio,
+                            imageVector = Icons.Default.CellTower,
                             contentDescription = stringResource(Res.string.action_start_radio),
                         )
                     },

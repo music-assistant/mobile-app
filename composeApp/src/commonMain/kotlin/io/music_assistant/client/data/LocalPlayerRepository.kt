@@ -102,6 +102,10 @@ class LocalPlayerRepository(
                 updateOptimisticQueueInfo { it.copy(repeatMode = nextMode) }
             }
 
+            is PlayerAction.ToggleDontStopTheMusic -> {
+                updateOptimisticQueueInfo { it.copy(dontStopTheMusicEnabled = !action.current) }
+            }
+
             is PlayerAction.SeekTo -> {
                 // Optimistic anchor jump so the slider doesn't snap back to the pre-seek
                 // position while waiting for the server's QueueTimeUpdatedEvent to confirm.
@@ -276,6 +280,11 @@ class LocalPlayerRepository(
                 is PlayerAction.ToggleRepeatMode -> {
                     commandQueue.removeAll { it.action is PlayerAction.ToggleRepeatMode }
                     commandQueue.add(entry)
+                }
+
+                is PlayerAction.ToggleDontStopTheMusic -> {
+                    val idx = commandQueue.indexOfFirst { it.action is PlayerAction.ToggleDontStopTheMusic }
+                    if (idx >= 0) commandQueue.removeAt(idx) else commandQueue.add(entry)
                 }
 
                 is PlayerAction.SeekTo -> {

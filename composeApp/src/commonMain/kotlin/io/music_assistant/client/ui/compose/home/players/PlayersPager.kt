@@ -646,22 +646,41 @@ private fun PlayerOverflowMenu(
     var transferMenuExpanded by remember { mutableStateOf(false) }
 
     val queueData = currentPlayer.queue as? DataState.Data
-    val queueId = queueData?.data?.info?.id
+    val queueInfo = queueData?.data?.info
+    val queueId = queueInfo?.id
     val queueHasItems = !(queueData?.data?.items as? DataState.Data)?.data.isNullOrEmpty()
     val queueOptions = if (queueId != null && queueHasItems) {
-        listOf(
-            OverflowMenuOption(
+        buildList {
+            add(OverflowMenuOption(
                 title = stringResource(Res.string.queue_transfer),
                 icon = Icons.Default.SwapHoriz,
                 trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
                 onClick = { transferMenuExpanded = true },
-            ),
-            OverflowMenuOption(
+            ))
+            add(OverflowMenuOption(
                 title = stringResource(Res.string.queue_clear),
                 icon = Icons.Default.DeleteSweep,
                 onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
-            ),
-        )
+            ))
+            if(queueData.data.info.let { it.dontStopTheMusicEnabled != null && !it.isDynamic }) {
+                add(OverflowMenuOption(
+                    title = if (queueData.data.info.dontStopTheMusicEnabled == true) {
+                        "Disable Don't Stop The Music"
+                    } else {
+                        "Enable Don't Stop The Music"
+                    },
+                    icon = VolumeIcon,
+                    onClick = {
+                        queueAction(
+                            SetDontStopTheMusic(
+                                queueId,
+                                !(queueData.data.info.dontStopTheMusicEnabled ?: false),
+                            ),
+                        )
+                    },
+                ))
+            }
+        }
     } else {
         emptyList()
     }

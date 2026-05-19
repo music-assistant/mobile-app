@@ -22,5 +22,7 @@ sealed interface PlayerAction {
         PlayerAction
     data class ToggleShuffle(val current: Boolean) : PlayerAction
     data class ToggleRepeatMode(val current: RepeatMode) : PlayerAction
+
+    data class ToggleDontStopTheMusic(val current: Boolean) : PlayerAction
     data class SeekTo(val position: Long) : PlayerAction
 }

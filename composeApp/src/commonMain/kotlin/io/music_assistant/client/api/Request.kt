@@ -206,6 +206,17 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("shuffle_enabled", JsonPrimitive(enabled))
             },
         )
+
+        fun setDontStopTheMusic(
+            queueId: String,
+            enabled: Boolean,
+        ) = Request(
+            command = APICommands.PLAYER_QUEUES_DONT_STOP_THE_MUSIC,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+                put("dont_stop_the_music_enabled", JsonPrimitive(enabled))
+            },
+        )
     }
 
     data object Playlist {

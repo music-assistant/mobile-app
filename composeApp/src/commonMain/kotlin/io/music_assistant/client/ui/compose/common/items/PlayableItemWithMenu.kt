@@ -8,11 +8,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -290,7 +290,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Radio,
+                            imageVector = Icons.Default.CellTower,
                             contentDescription = stringResource(Res.string.action_start_radio),
                         )
                     },

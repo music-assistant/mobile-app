@@ -4,10 +4,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SplitButtonDefaults.LeadingButton
@@ -114,7 +114,7 @@ private fun PlayOverflow(
                 add(
                     OverflowMenuOption(
                         title = stringResource(Res.string.action_start_radio),
-                        icon = Icons.Default.Radio,
+                        icon = Icons.Default.CellTower,
                     ) {
                         onPlayClick(QueueOption.REPLACE, true)
                     },

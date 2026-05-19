@@ -1205,7 +1205,10 @@ class MainDataSource(
             if (data.isLocal) {
                 localPlayerRepository.sendOrQueue(action, request)
             } else {
-                apiClient.sendRequest(request)
+                val result = apiClient.sendRequest(request)
+                if(result.isFailure) {
+                    log.e(result.exceptionOrNull()) { "Failed to send player action request for ${data.player.name}: $action" }
+                }
             }
         }
     }
@@ -1272,6 +1275,11 @@ class MainDataSource(
             is PlayerAction.ToggleShuffle -> {
                 val queueId = data.queueInfo?.id ?: return null
                 Request.Queue.setShuffle(queueId = queueId, enabled = !action.current)
+            }
+
+            is PlayerAction.ToggleDontStopTheMusic -> {
+                val queueId = data.queueInfo?.id ?: return null
+                Request.Queue.setDontStopTheMusic(queueId = queueId, enabled = !action.current)
             }
 
             PlayerAction.VolumeDown ->
