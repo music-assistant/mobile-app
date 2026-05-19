@@ -37,6 +37,7 @@ import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
@@ -55,7 +56,7 @@ fun AdaptiveMediaGrid(
     onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
     onLoadMore: () -> Unit = {},
     gridState: LazyGridState = rememberLazyGridState(),
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,

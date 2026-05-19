@@ -56,6 +56,7 @@ import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
@@ -119,10 +120,7 @@ fun SearchScreen(
                 }
             },
             onPlayClick = searchViewModel::onPlayClick,
-            playlistActions = ActionsViewModel.PlaylistActions(
-                onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                onAddToPlaylist = actionsViewModel::addToPlaylist,
-            ),
+            playlistActions = actionsViewModel,
             libraryActions = ActionsViewModel.LibraryActions(
                 onLibraryClick = actionsViewModel::onLibraryClick,
                 onFavoriteClick = actionsViewModel::onFavoriteClick,
@@ -189,7 +187,7 @@ private fun SearchContent(
     toastState: ToastState,
     onItemClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),

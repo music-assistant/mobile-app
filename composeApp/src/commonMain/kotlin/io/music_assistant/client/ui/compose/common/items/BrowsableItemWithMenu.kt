@@ -58,7 +58,7 @@ fun AlbumWithMenu(
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Album) -> Unit,
     onPlayOption: ((Album, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -98,7 +98,7 @@ fun ArtistWithMenu(
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Artist) -> Unit,
     onPlayOption: ((Artist, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -138,7 +138,7 @@ fun PlaylistWithMenu(
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Playlist) -> Unit,
     onPlayOption: ((Playlist, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -178,7 +178,7 @@ fun AudiobookWithMenu(
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Audiobook) -> Unit,
     onPlayOption: ((Audiobook, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -220,7 +220,7 @@ fun GenreWithMenu(
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Genre) -> Unit,
     onPlayOption: ((Genre, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -260,7 +260,7 @@ fun PodcastWithMenu(
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Podcast) -> Unit,
     onPlayOption: ((Podcast, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -300,7 +300,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     item: T,
     onNavigateClick: (T) -> Unit,
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     libraryActions: ActionsViewModel.LibraryActions? = null,
     progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
@@ -460,7 +460,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                         // Load playlists when dialogue opens
                         coroutineScope.launch {
                             isLoadingPlaylists = true
-                            playlists = playlistActions.onLoadPlaylists()
+                            playlists = playlistActions.getEditablePlaylists()
                             isLoadingPlaylists = false
                         }
                     },
@@ -539,8 +539,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                             ) { playlist ->
                                 TextButton(
                                     onClick = {
-                                        playlistActions?.onAddToPlaylist
-                                            ?.invoke(item, playlist)
+                                        playlistActions?.addToPlaylist(item, playlist)
                                         showPlaylistDialog = false
                                         playlists = emptyList()
                                     },

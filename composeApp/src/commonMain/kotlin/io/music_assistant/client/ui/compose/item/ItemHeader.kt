@@ -64,6 +64,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.Badges
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -132,7 +133,7 @@ internal fun ItemTopBar(
     item: AppMediaItem,
     onBack: () -> Unit,
     libraryActions: ActionsViewModel.LibraryActions?,
-    playlistActions: ActionsViewModel.PlaylistActions?,
+    playlistActions: PlaylistActions?,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     navigateToItem: (AppMediaItem) -> Unit,
 ) {
@@ -159,7 +160,7 @@ internal fun ItemTopBar(
 private fun ItemOverflow(
     item: AppMediaItem,
     libraryActions: ActionsViewModel.LibraryActions?,
-    playlistActions: ActionsViewModel.PlaylistActions?,
+    playlistActions: PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -218,7 +219,7 @@ private fun ItemOverflow(
                         // Load playlists when dialog opens
                         coroutineScope.launch {
                             isLoadingPlaylists = true
-                            playlists = it.onLoadPlaylists()
+                            playlists = it.getEditablePlaylists()
                             isLoadingPlaylists = false
                         }
                     },
@@ -259,7 +260,7 @@ private fun ItemOverflow(
                         playlists.forEach { playlist ->
                             TextButton(
                                 onClick = {
-                                    playlistActions?.onAddToPlaylist(item, playlist)
+                                    playlistActions?.addToPlaylist(item, playlist)
                                     showPlaylistDialog = false
                                     playlists = emptyList()
                                 },

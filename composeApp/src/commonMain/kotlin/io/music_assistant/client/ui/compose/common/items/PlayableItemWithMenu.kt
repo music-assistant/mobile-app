@@ -71,7 +71,7 @@ fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
     onPlayOption: ((Track, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -113,7 +113,7 @@ fun PodcastEpisodeWithMenu(
     item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
     onPlayOption: ((PodcastEpisode, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
@@ -157,7 +157,7 @@ fun RadioWithMenu(
     item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
     onPlayOption: ((RadioStation, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -205,7 +205,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
     modifier: Modifier = Modifier,
     item: T,
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
-    playlistActions: ActionsViewModel.PlaylistActions? = null,
+    playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
@@ -362,7 +362,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                         // Load playlists when dialogue opens
                         coroutineScope.launch {
                             isLoadingPlaylists = true
-                            playlists = playlistActions.onLoadPlaylists()
+                            playlists = playlistActions.getEditablePlaylists()
                             isLoadingPlaylists = false
                         }
                     },
@@ -456,8 +456,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                             ) { playlist ->
                                 TextButton(
                                     onClick = {
-                                        playlistActions?.onAddToPlaylist
-                                            ?.invoke(item, playlist)
+                                        playlistActions?.addToPlaylist(item, playlist)
                                         showPlaylistDialog = false
                                         playlists = emptyList()
                                     },

@@ -68,6 +68,7 @@ import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -153,10 +154,18 @@ fun ItemDetails(
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
 ) {
-    val playlistActions = ActionsViewModel.PlaylistActions(
-        onLoadPlaylists = geEditablePlaylists,
-        onAddToPlaylist = addToPlaylist,
-    )
+    val playlistActions = object : PlaylistActions {
+        override suspend fun getEditablePlaylists(): List<Playlist> {
+            return geEditablePlaylists()
+        }
+
+        override fun addToPlaylist(
+            mediaItem: AppMediaItem,
+            playlist: Playlist,
+        ) {
+            addToPlaylist(mediaItem, playlist)
+        }
+    }
 
     val libraryActions = ActionsViewModel.LibraryActions(
         onLibraryClick = onLibraryClick,
@@ -237,7 +246,7 @@ private fun ItemChildren(
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onChapterClick: (Int) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -305,7 +314,7 @@ private fun ItemContent(
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onChapterClick: (Int) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     progressActions: ActionsViewModel.ProgressActions?,
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -466,7 +475,7 @@ private fun TabContent(
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onChapterClick: (Int) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     progressActions: ActionsViewModel.ProgressActions?,
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,
@@ -652,7 +661,7 @@ private fun PlayablesTabContent(
     parentItem: AppMediaItem,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     progressActions: ActionsViewModel.ProgressActions?,
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: ActionsViewModel.LibraryActions,

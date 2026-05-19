@@ -61,6 +61,7 @@ import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -151,10 +152,7 @@ fun LibraryScreen(
             onLoadMore = libraryViewModel::loadMore,
             onDismissCreatePlaylistDialog = libraryViewModel::onDismissCreatePlaylistDialog,
             onCreatePlaylist = libraryViewModel::createPlaylist,
-            playlistActions = ActionsViewModel.PlaylistActions(
-                onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-                onAddToPlaylist = actionsViewModel::addToPlaylist,
-            ),
+            playlistActions = actionsViewModel,
             libraryActions = ActionsViewModel.LibraryActions(
                 onLibraryClick = actionsViewModel::onLibraryClick,
                 onFavoriteClick = actionsViewModel::onFavoriteClick,
@@ -303,7 +301,7 @@ private fun Library(
     onLoadMore: (LibraryViewModel.Tab) -> Unit,
     onDismissCreatePlaylistDialog: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,
@@ -399,7 +397,7 @@ private fun TabContent(
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
     onLoadMore: () -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
+    playlistActions: PlaylistActions,
     libraryActions: ActionsViewModel.LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,

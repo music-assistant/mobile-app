@@ -8,6 +8,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -20,7 +21,7 @@ class ActionsViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
-) : ViewModel() {
+) : ViewModel(), PlaylistActions {
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
 
@@ -59,14 +60,14 @@ class ActionsViewModel(
         }
     }
 
-    suspend fun getEditablePlaylists(): List<Playlist> =
+    override suspend fun getEditablePlaylists(): List<Playlist> =
         mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
             .getOrNull()
             ?.filterIsInstance<Playlist>()
             ?.filter { it.isEditable }
             ?: emptyList()
 
-    fun addToPlaylist(
+    override fun addToPlaylist(
         mediaItem: AppMediaItem,
         playlist: Playlist,
     ) {
@@ -136,11 +137,6 @@ class ActionsViewModel(
     }
 
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
-
-    data class PlaylistActions(
-        val onLoadPlaylists: suspend () -> List<Playlist>,
-        val onAddToPlaylist: (AppMediaItem, Playlist) -> Unit,
-    )
 
     data class LibraryActions(
         val onLibraryClick: ((AppMediaItem) -> Unit),
