@@ -63,6 +63,7 @@ import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
+import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -181,10 +182,7 @@ fun HomeScreen(
                             mediaItems = row.items.orEmpty(),
                             playlistActions = actionsViewModel,
                             libraryActions = actionsViewModel,
-                            progressActions = ActionsViewModel.ProgressActions(
-                                onMarkPlayed = actionsViewModel::onMarkPlayed,
-                                onMarkUnplayed = actionsViewModel::onMarkUnplayed,
-                            ),
+                            progressActions = actionsViewModel,
                             providerIconFetcher = providerIconFetcher,
                         )
                         if (editMode) {
@@ -270,7 +268,7 @@ fun CategoryRow(
     mediaItems: List<AppMediaItem>,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
 ) {
     val rowListState = rememberLazyListState()

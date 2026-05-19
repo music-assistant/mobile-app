@@ -15,3 +15,8 @@ interface LibraryActions {
     fun onLibraryClick(item: AppMediaItem)
     fun onFavoriteClick(item: AppMediaItem)
 }
+
+interface ProgressActions {
+    fun onMarkPlayed(item: AppMediaItem)
+    fun onMarkUnplayed(item: AppMediaItem)
+}

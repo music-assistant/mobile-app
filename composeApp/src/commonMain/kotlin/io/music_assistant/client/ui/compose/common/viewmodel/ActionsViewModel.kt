@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
+import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -22,7 +23,7 @@ class ActionsViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
-) : ViewModel(), PlaylistActions, LibraryActions {
+) : ViewModel(), PlaylistActions, LibraryActions, ProgressActions {
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
 
@@ -114,7 +115,7 @@ class ActionsViewModel(
     /**
      * Mark an audiobook or podcast episode as fully played.
      */
-    fun onMarkPlayed(item: AppMediaItem) {
+    override fun onMarkPlayed(item: AppMediaItem) {
         viewModelScope.launch {
             item.uri?.let { uri ->
                 apiClient.sendRequest(Request.Library.markPlayed(uri))
@@ -127,7 +128,7 @@ class ActionsViewModel(
     /**
      * Mark an audiobook or podcast episode as unplayed (resets progress).
      */
-    fun onMarkUnplayed(item: AppMediaItem) {
+    override fun onMarkUnplayed(item: AppMediaItem) {
         viewModelScope.launch {
             item.uri?.let { uri ->
                 apiClient.sendRequest(Request.Library.markUnplayed(uri))
@@ -138,9 +139,4 @@ class ActionsViewModel(
     }
 
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
-
-    data class ProgressActions(
-        val onMarkPlayed: ((AppMediaItem) -> Unit),
-        val onMarkUnplayed: ((AppMediaItem) -> Unit),
-    )
 }

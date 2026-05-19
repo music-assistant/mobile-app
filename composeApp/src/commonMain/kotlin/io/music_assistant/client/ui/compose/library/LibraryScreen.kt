@@ -63,6 +63,7 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
+import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -155,10 +156,7 @@ fun LibraryScreen(
             onCreatePlaylist = libraryViewModel::createPlaylist,
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
-            progressActions = ActionsViewModel.ProgressActions(
-                onMarkPlayed = actionsViewModel::onMarkPlayed,
-                onMarkUnplayed = actionsViewModel::onMarkUnplayed,
-            ),
+            progressActions = actionsViewModel,
         )
     }
 }
@@ -301,7 +299,7 @@ private fun Library(
     onCreatePlaylist: (String) -> Unit,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {
     Box(modifier = modifier) {
@@ -397,7 +395,7 @@ private fun TabContent(
     onLoadMore: () -> Unit,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {
     // Create separate grid states for each tab to preserve scroll position

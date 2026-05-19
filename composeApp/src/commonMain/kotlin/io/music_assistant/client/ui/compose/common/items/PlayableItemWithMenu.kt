@@ -45,7 +45,6 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
-import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_bottom
@@ -116,7 +115,7 @@ fun PodcastEpisodeWithMenu(
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     PlayableItemWithMenu(
@@ -208,7 +207,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,

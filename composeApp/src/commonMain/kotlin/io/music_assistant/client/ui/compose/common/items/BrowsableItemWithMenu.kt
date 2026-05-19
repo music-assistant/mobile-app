@@ -46,7 +46,6 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
-import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
@@ -180,7 +179,7 @@ fun AudiobookWithMenu(
     onPlayOption: ((Audiobook, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     libraryActions: LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     BrowsableItemWithMenu(
@@ -302,7 +301,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     libraryActions: LibraryActions? = null,
-    progressActions: ActionsViewModel.ProgressActions? = null,
+    progressActions: ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
