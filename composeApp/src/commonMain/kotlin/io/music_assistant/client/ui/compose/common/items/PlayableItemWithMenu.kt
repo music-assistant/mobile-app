@@ -73,7 +73,7 @@ fun TrackWithMenu(
     onPlayOption: ((Track, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     PlayableItemWithMenu(
@@ -115,7 +115,7 @@ fun PodcastEpisodeWithMenu(
     onPlayOption: ((PodcastEpisode, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -159,7 +159,7 @@ fun RadioWithMenu(
     onPlayOption: ((RadioStation, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     PlayableItemWithMenu(
@@ -207,7 +207,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,

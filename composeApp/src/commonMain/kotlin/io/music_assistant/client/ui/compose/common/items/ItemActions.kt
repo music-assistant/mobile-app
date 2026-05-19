@@ -10,3 +10,8 @@ interface PlaylistActions {
         playlist: Playlist,
     )
 }
+
+interface LibraryActions {
+    fun onLibraryClick(item: AppMediaItem)
+    fun onFavoriteClick(item: AppMediaItem)
+}

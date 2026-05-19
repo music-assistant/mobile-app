@@ -61,6 +61,7 @@ import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
+import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -153,10 +154,7 @@ fun LibraryScreen(
             onDismissCreatePlaylistDialog = libraryViewModel::onDismissCreatePlaylistDialog,
             onCreatePlaylist = libraryViewModel::createPlaylist,
             playlistActions = actionsViewModel,
-            libraryActions = ActionsViewModel.LibraryActions(
-                onLibraryClick = actionsViewModel::onLibraryClick,
-                onFavoriteClick = actionsViewModel::onFavoriteClick,
-            ),
+            libraryActions = actionsViewModel,
             progressActions = ActionsViewModel.ProgressActions(
                 onMarkPlayed = actionsViewModel::onMarkPlayed,
                 onMarkUnplayed = actionsViewModel::onMarkUnplayed,
@@ -302,7 +300,7 @@ private fun Library(
     onDismissCreatePlaylistDialog: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
     playlistActions: PlaylistActions,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {
@@ -398,7 +396,7 @@ private fun TabContent(
     onCreatePlaylistClick: () -> Unit,
     onLoadMore: () -> Unit,
     playlistActions: PlaylistActions,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     contentPadding: PaddingValues,
 ) {

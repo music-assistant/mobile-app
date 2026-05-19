@@ -59,7 +59,7 @@ fun AlbumWithMenu(
     onNavigateClick: (Album) -> Unit,
     onPlayOption: ((Album, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     BrowsableItemWithMenu(
@@ -99,7 +99,7 @@ fun ArtistWithMenu(
     onNavigateClick: (Artist) -> Unit,
     onPlayOption: ((Artist, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     BrowsableItemWithMenu(
@@ -139,7 +139,7 @@ fun PlaylistWithMenu(
     onNavigateClick: (Playlist) -> Unit,
     onPlayOption: ((Playlist, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     BrowsableItemWithMenu(
@@ -179,7 +179,7 @@ fun AudiobookWithMenu(
     onNavigateClick: (Audiobook) -> Unit,
     onPlayOption: ((Audiobook, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
@@ -221,7 +221,7 @@ fun GenreWithMenu(
     onNavigateClick: (Genre) -> Unit,
     onPlayOption: ((Genre, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     BrowsableItemWithMenu(
@@ -261,7 +261,7 @@ fun PodcastWithMenu(
     onNavigateClick: (Podcast) -> Unit,
     onPlayOption: ((Podcast, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions,
+    libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
 ) {
     BrowsableItemWithMenu(
@@ -301,7 +301,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     onNavigateClick: (T) -> Unit,
     onPlayOption: ((T, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
-    libraryActions: ActionsViewModel.LibraryActions? = null,
+    libraryActions: LibraryActions? = null,
     progressActions: ActionsViewModel.ProgressActions? = null,
     itemComposable: @Composable (
         modifier: Modifier,

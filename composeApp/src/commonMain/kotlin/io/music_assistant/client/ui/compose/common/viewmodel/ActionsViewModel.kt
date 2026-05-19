@@ -8,6 +8,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -21,7 +22,7 @@ class ActionsViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
-) : ViewModel(), PlaylistActions {
+) : ViewModel(), PlaylistActions, LibraryActions {
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
 
@@ -29,7 +30,7 @@ class ActionsViewModel(
      * Toggles library status of the item.
      * Adds to library if not in library, removes if already in library.
      */
-    fun onLibraryClick(item: AppMediaItem) {
+    override fun onLibraryClick(item: AppMediaItem) {
         viewModelScope.launch {
             if (item.isInLibrary) {
                 apiClient.sendRequest(
@@ -46,9 +47,9 @@ class ActionsViewModel(
     /**
      * Sets exact or toggles favorite status of the item.
      */
-    fun onFavoriteClick(item: AppMediaItem, newState: Boolean? = null) {
+    override fun onFavoriteClick(item: AppMediaItem) {
         viewModelScope.launch {
-            if (newState ?: (item.favorite != true)) {
+            if (item.favorite != true) {
                 item.uri?.let {
                     apiClient.sendRequest(Request.Library.addFavorite(it))
                 }
@@ -137,11 +138,6 @@ class ActionsViewModel(
     }
 
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
-
-    data class LibraryActions(
-        val onLibraryClick: ((AppMediaItem) -> Unit),
-        val onFavoriteClick: ((AppMediaItem) -> Unit),
-    )
 
     data class ProgressActions(
         val onMarkPlayed: ((AppMediaItem) -> Unit),
