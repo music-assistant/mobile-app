@@ -7,9 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -19,7 +16,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,10 +23,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
@@ -42,9 +36,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.Album
-import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
@@ -52,10 +44,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
-import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
@@ -142,25 +131,6 @@ fun MainNavigationRoot(
 
     var playerExpanded by remember { mutableStateOf(false) }
 
-    val playlistActions = remember(actionsViewModel) {
-        ActionsViewModel.PlaylistActions(
-            onLoadPlaylists = actionsViewModel::getEditablePlaylists,
-            onAddToPlaylist = actionsViewModel::addToPlaylist,
-        )
-    }
-    val libraryActions = remember(actionsViewModel) {
-        ActionsViewModel.LibraryActions(
-            onLibraryClick = actionsViewModel::onLibraryClick,
-            onFavoriteClick = actionsViewModel::onFavoriteClick,
-        )
-    }
-    val progressActions = remember(actionsViewModel) {
-        ActionsViewModel.ProgressActions(
-            onMarkPlayed = actionsViewModel::onMarkPlayed,
-            onMarkUnplayed = actionsViewModel::onMarkUnplayed,
-        )
-    }
-
     val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
 
     val backStacks = listOf(
@@ -207,7 +177,7 @@ fun MainNavigationRoot(
                     expanded = playerExpanded,
                     onExpand = onExpandPlayer,
                     { expanded, contentPadding ->
-                        Players(
+                        PlayersPager(
                             playerPagerState = playerPagerState,
                             state = playersState,
                             homeScreenViewModel = homeScreenViewModel,
@@ -216,8 +186,15 @@ fun MainNavigationRoot(
                             expanded = expanded,
                             onClose = { playerExpanded = false },
                             contentPadding = contentPadding,
-                            backStack = multiBackStack,
-                        )
+                        ) { item ->
+                            multiBackStack.add(
+                                MainNav.ItemDetails(
+                                    itemId = item.itemId,
+                                    mediaType = item.mediaType,
+                                    providerId = item.provider,
+                                ),
+                            )
+                        }
                     },
                 )
             },
@@ -239,12 +216,8 @@ fun MainNavigationRoot(
                                 connectionState,
                                 dataState,
                                 hiddenFolderIds,
-
                                 multiBackStack,
                                 homeScreenViewModel,
-                                playlistActions,
-                                libraryActions,
-                                progressActions,
                                 actionsViewModel,
                             ),
                         ),
@@ -265,10 +238,7 @@ private fun mainNavEntryProvider(
     dataState: DataState<List<RecommendationFolder>>,
     hiddenFolderIds: Set<String>,
     multiBackStack: MultiBackStack<NavKey>,
-    viewModel: HomeScreenViewModel,
-    playlistActions: ActionsViewModel.PlaylistActions,
-    libraryActions: ActionsViewModel.LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions,
+    homeScrenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
 ): (NavKey) -> NavEntry<NavKey> {
     val libraryNavCoordinator: LibraryNavCoordinator = koinInject()
@@ -299,21 +269,19 @@ private fun mainNavEntryProvider(
                         else -> Unit
                     }
                 },
-                onPlayClick = viewModel::onPlayClick,
+                onPlayClick = homeScrenViewModel::onPlayClick,
                 onLibraryItemClick = { type ->
                     type?.let { libraryNavCoordinator.requestTab(it) }
                     multiBackStack.switchTo(1, MainNav.Library(type))
                 },
-                playlistActions = playlistActions,
-                libraryActions = libraryActions,
-                progressActions = progressActions,
                 providerIconFetcher = { modifier, provider ->
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
-                onRefresh = { viewModel.loadRecommendations() },
+                onRefresh = { homeScrenViewModel.loadRecommendations() },
                 hiddenFolderIds = hiddenFolderIds,
-                onSaveHiddenFolders = viewModel::saveHiddenRecommendationFolders,
+                onSaveHiddenFolders = homeScrenViewModel::saveHiddenRecommendationFolders,
+                actionsViewModel = actionsViewModel,
             )
         }
 
@@ -386,104 +354,6 @@ private fun mainNavEntryProvider(
                 },
                 contentPadding = contentPadding,
                 actionsViewModel = actionsViewModel,
-            )
-        }
-    }
-}
-
-@Composable
-private fun Players(
-    playerPagerState: PagerState,
-    state: HomeScreenViewModel.PlayersState,
-    homeScreenViewModel: HomeScreenViewModel,
-    actionsViewModel: ActionsViewModel,
-    dspSettingsViewModel: DspSettingsViewModel,
-    expanded: Boolean,
-    onClose: () -> Unit,
-    contentPadding: PaddingValues,
-    backStack: MultiBackStack<NavKey>,
-) {
-    if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
-        val simplePlayerAction = remember(homeScreenViewModel) {
-            {
-                playerId: String, action: PlayerAction ->
-                homeScreenViewModel.playerAction(playerId, action)
-            }
-        }
-        val playerAction = remember(homeScreenViewModel) {
-            {
-                playerData: PlayerData, action: PlayerAction ->
-                homeScreenViewModel.playerAction(playerData, action)
-            }
-        }
-        val onFavoriteClick = remember(actionsViewModel) {
-            {
-                item: AppMediaItem ->
-                    actionsViewModel.onFavoriteClick(item)
-                }
-        }
-        val queueAction = remember(homeScreenViewModel) {
-            {
-                action: QueueAction ->
-                    homeScreenViewModel.queueAction(action)
-                }
-        }
-        val moveToPlayer = remember(state, homeScreenViewModel) {
-            {
-                id: String ->
-                state.playerData.find { it.player.id == id }
-                    ?.let { homeScreenViewModel.selectPlayer(it.player) }
-                Unit
-            }
-        }
-        val onPlayersReorder = remember(homeScreenViewModel) {
-            {
-                newPlayerIds: List<String> ->
-                homeScreenViewModel.onPlayersSortChanged(newPlayerIds)
-            }
-        }
-        val fetchColors = rememberExtractedColorsFetcher()
-
-        PlayersPager(
-            playerPagerState = playerPagerState,
-            playersState = state,
-            simplePlayerAction = simplePlayerAction,
-            playerAction = playerAction,
-            onFavoriteClick = onFavoriteClick,
-            onClose = onClose,
-            navigateToItem = { item ->
-                backStack.add(
-                    MainNav.ItemDetails(
-                        itemId = item.itemId,
-                        mediaType = item.mediaType,
-                        providerId = item.provider,
-                    ),
-                )
-            },
-            onPlayersReorder = onPlayersReorder,
-            queueAction = queueAction,
-            moveToPlayer = moveToPlayer,
-            contentPadding = contentPadding,
-            localPlayerId = homeScreenViewModel.localPlayerId,
-            onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
-            fetchColors = fetchColors,
-            observePosition = homeScreenViewModel::observePosition,
-            compact = !expanded,
-            dspSettingsViewModel = dspSettingsViewModel,
-        )
-    } else {
-        Box(Modifier.fillMaxWidth().height(84.dp)) {
-            val text = when (state) {
-                is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
-                is HomeScreenViewModel.PlayersState.Data -> "No players available"
-                else -> "No players available"
-            }
-
-            Text(
-                modifier = Modifier.align(Alignment.Center),
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

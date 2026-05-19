@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
 // Compose layout values (sizes, alphas, animation durations) are visual design tokens.
 @file:Suppress("MagicNumber")
 
@@ -48,6 +47,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,7 +76,6 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -88,6 +87,8 @@ import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
@@ -107,158 +108,186 @@ import musicassistantclient.composeapp.generated.resources.queue_transfer
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PlayersPager(
-    modifier: Modifier = Modifier,
+@OptIn(ExperimentalMaterial3Api::class)
+fun PlayersPager(
     playerPagerState: PagerState,
-    playersState: HomeScreenViewModel.PlayersState.Data,
-    simplePlayerAction: (String, PlayerAction) -> Unit,
-    playerAction: (PlayerData, PlayerAction) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit,
-    onClose: () -> Unit,
-    navigateToItem: (AppMediaItem) -> Unit,
-    onPlayersReorder: (List<String>) -> Unit,
-    queueAction: (QueueAction) -> Unit,
-    moveToPlayer: (String) -> Unit,
-    contentPadding: PaddingValues,
-    localPlayerId: String,
-    onAdjustPlaybackDelay: (Int) -> Unit,
-    fetchColors: ExtractedColorsFetcher,
-    observePosition: (queueId: String) -> Flow<Double>,
-    compact: Boolean,
+    state: HomeScreenViewModel.PlayersState,
+    homeScreenViewModel: HomeScreenViewModel,
+    actionsViewModel: ActionsViewModel,
     dspSettingsViewModel: DspSettingsViewModel,
+    expanded: Boolean,
+    onClose: () -> Unit,
+    contentPadding: PaddingValues,
+    navigateToItem: (AppMediaItem) -> Unit,
 ) {
-    var isQueueExpanded by remember { mutableStateOf(false) }
-
-    // Extract playerData list to ensure proper recomposition
-    val playerDataList = playersState.playerData
-
-    // Select-player dialog is hoisted out of the pager so that reordering-induced
-    // pager scrolls don't tear down the dialog's composable.
-    var selectDialogPlayerId by remember { mutableStateOf<String?>(null) }
-    val selectDialogPlayer = selectDialogPlayerId?.let { id ->
-        playerDataList.firstOrNull { it.player.id == id }
-    }
-    if (selectDialogPlayer != null) {
-        SelectPlayerDialog(
-            selectedPlayer = selectDialogPlayer,
-            players = playerDataList,
-            onDismissRequest = { selectDialogPlayerId = null },
-            onMoveToPlayer = { moveToPlayer(it) },
-            onReorder = onPlayersReorder,
-        )
-    }
-
-    val playerColors = playerDataList.associateWith {
-        val imageUrl = it.player.currentMedia?.imageUrl
-        rememberAnimatedPlayerColors(
-            imageUrl = imageUrl,
-            fallback = MaterialTheme.colorScheme.primaryContainer,
-            fetchColors = fetchColors,
-        )
-    }
-
-    val isExpandedScreen = WindowClass.isAtLeastExpanded()
-    val modifier = if (compact) {
-        modifier
-    } else {
-        modifier.statusBarsPadding()
-    }
-
-    Column(modifier = modifier) {
-        if (playerDataList.size > 1) {
-            HorizontalPagerIndicator(
-                modifier = Modifier.padding(top = 4.dp),
-                pagerState = playerPagerState,
-            )
+    if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
+        val moveToPlayer: (String) -> Unit = { id: String ->
+            state.playerData.find { it.player.id == id }
+                ?.let { homeScreenViewModel.selectPlayer(it.player) }
         }
 
-        HorizontalPager(
-            modifier = Modifier,
-            state = playerPagerState,
-            key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page },
-        ) { page ->
-            val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
-            var showGroupDialog by remember { mutableStateOf(false) }
-            var showDspDialog by remember { mutableStateOf(false) }
-            val onSelectPlayer = { selectDialogPlayerId = player.player.id }
-            val onGroupButton = { showGroupDialog = true }
-            val onDspButton = { showDspDialog = true }
-            if (showGroupDialog) {
-                GroupSettingsDialog(
-                    player = player,
-                    onDismissRequest = { showGroupDialog = false },
-                    groupAction = simplePlayerAction,
-                    localPlayerId = localPlayerId,
-                    onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+        val fetchColors = rememberExtractedColorsFetcher()
+
+        val playerAction1 =
+            { data: PlayerData, action: PlayerAction ->
+                homeScreenViewModel.playerAction(
+                    data,
+                    action,
                 )
             }
-            if (showDspDialog) {
-                DspSettingsDialog(
-                    playerId = player.player.id,
-                    dspSettingsViewModel = dspSettingsViewModel,
-                    onDismissRequest = { showDspDialog = false },
+        var isQueueExpanded by remember { mutableStateOf(false) }
+        // Extract playerData list to ensure proper recomposition
+        val playerDataList = state.playerData
+        // Select-player dialog is hoisted out of the pager so that reordering-induced
+        // pager scrolls don't tear down the dialog's composable.
+        var selectDialogPlayerId by remember<MutableState<String?>> { mutableStateOf(null) }
+        val selectDialogPlayer = selectDialogPlayerId?.let { id ->
+            playerDataList.firstOrNull { it.player.id == id }
+        }
+        if (selectDialogPlayer != null) {
+            SelectPlayerDialog(
+                selectedPlayer = selectDialogPlayer,
+                players = playerDataList,
+                onDismissRequest = { selectDialogPlayerId = null },
+                onMoveToPlayer = { moveToPlayer(it) },
+                onReorder = { homeScreenViewModel.onPlayersSortChanged(it) },
+            )
+        }
+        val playerColors = playerDataList.associateWith {
+            val imageUrl = it.player.currentMedia?.imageUrl
+            rememberAnimatedPlayerColors(
+                imageUrl = imageUrl,
+                fallback = MaterialTheme.colorScheme.primaryContainer,
+                fetchColors = fetchColors,
+            )
+        }
+        val isExpandedScreen = WindowClass.isAtLeastExpanded()
+        val modifier = if (!expanded) {
+            Modifier
+        } else {
+            Modifier.statusBarsPadding()
+        }
+        Column(modifier = modifier) {
+            if (playerDataList.size > 1) {
+                HorizontalPagerIndicator(
+                    modifier = Modifier.padding(top = 4.dp),
+                    pagerState = playerPagerState,
                 )
             }
 
-            val colors by playerColors.getValue(player)
+            HorizontalPager(
+                modifier = Modifier,
+                state = playerPagerState,
+                key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page },
+            ) { page ->
+                val player = playerDataList.getOrNull(page) ?: return@HorizontalPager
+                var showGroupDialog by remember { mutableStateOf(false) }
+                var showDspDialog by remember { mutableStateOf(false) }
+                val onSelectPlayer = { selectDialogPlayerId = player.player.id }
+                val onGroupButton = { showGroupDialog = true }
+                val onDspButton = { showDspDialog = true }
+                if (showGroupDialog) {
+                    GroupSettingsDialog(
+                        player = player,
+                        onDismissRequest = { showGroupDialog = false },
+                        groupAction = { playerId: String, action: PlayerAction ->
+                            homeScreenViewModel.playerAction(
+                                playerId,
+                                action,
+                            )
+                        },
+                        localPlayerId = homeScreenViewModel.localPlayerId,
+                        onAdjustPlaybackDelay = {
+                            homeScreenViewModel.adjustSendspinStaticDelayMs(it)
+                        },
+                    )
+                }
+                if (showDspDialog) {
+                    DspSettingsDialog(
+                        playerId = player.player.id,
+                        dspSettingsViewModel = dspSettingsViewModel,
+                        onDismissRequest = { showDspDialog = false },
+                    )
+                }
 
-            Box(modifier = Modifier.wrapContentHeight()) {
-                Column(
-                    Modifier
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    colors.dominant.inactive(),
+                val colors by playerColors.getValue(player)
+
+                Box(modifier = Modifier.wrapContentHeight()) {
+                    Column(
+                        Modifier
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        colors.dominant.inactive(),
+                                    ),
                                 ),
                             ),
-                        ),
-                ) {
-                    if (compact) {
-                        CollapsedPlayerPage(
-                            isExpandedScreen = isExpandedScreen,
-                            player = player,
-                            colors = colors,
-                            sendspinState = playersState.sendspinState,
-                            onSelectPlayer = onSelectPlayer,
-                            onGroupButton = onGroupButton,
-                            playerAction = playerAction,
-                        )
-                    } else {
-                        ExpandedPlayerPage(
-                            player = player,
-                            colors = colors,
-                            onSelectPlayer = onSelectPlayer,
-                            onGroupButton = onGroupButton,
-                            onDspButton = onDspButton.takeIf { !player.player.isGroup },
-                            playerAction = playerAction,
-                            onFavoriteClick = onFavoriteClick,
-                            onClose = onClose,
-                            queueAction = queueAction,
-                            allPlayers = playerDataList,
+                    ) {
+                        if (!expanded) {
+                            CollapsedPlayerPage(
+                                isExpandedScreen = isExpandedScreen,
+                                player = player,
+                                colors = colors,
+                                sendspinState = state.sendspinState,
+                                onSelectPlayer = onSelectPlayer,
+                                onGroupButton = onGroupButton,
+                                playerAction = playerAction1,
+                            )
+                        } else {
+                            ExpandedPlayerPage(
+                                player = player,
+                                colors = colors,
+                                onSelectPlayer = onSelectPlayer,
+                                onGroupButton = onGroupButton,
+                                onDspButton = onDspButton.takeIf { !player.player.isGroup },
+                                playerAction = playerAction1,
+                                onFavoriteClick = {
+                                    actionsViewModel.onFavoriteClick(it)
+                                },
+                                onClose = onClose,
+                                queueAction = { homeScreenViewModel.queueAction(it) },
+                                allPlayers = playerDataList,
+                                moveToPlayer = moveToPlayer,
+                                isExpandedScreen = isExpandedScreen,
+                                sendspinState = state.sendspinState,
+                                isQueueExpanded = isQueueExpanded,
+                                onExpandQueue = { isQueueExpanded = it },
+                                contentPadding = contentPadding,
+                                isCurrentPage = page == playerPagerState.currentPage,
+                                navigateToItem = navigateToItem,
+                                livePositionFlow = player.queueInfo?.id?.let(block = {
+                                    homeScreenViewModel.observePosition(it)
+                                }),
+                            )
+                        }
+                    }
+                    player.parentBind?.let {
+                        BoundPlayerInfo(
+                            modifier = Modifier.matchParentSize(),
+                            playerName = player.player.name,
+                            parent = it,
                             moveToPlayer = moveToPlayer,
-                            isExpandedScreen = isExpandedScreen,
-                            sendspinState = playersState.sendspinState,
-                            isQueueExpanded = isQueueExpanded,
-                            onExpandQueue = { isQueueExpanded = it },
-                            contentPadding = contentPadding,
-                            isCurrentPage = page == playerPagerState.currentPage,
-                            navigateToItem = navigateToItem,
-                            livePositionFlow = player.queueInfo?.id?.let(observePosition),
                         )
                     }
                 }
-                player.parentBind?.let {
-                    BoundPlayerInfo(
-                        modifier = Modifier.matchParentSize(),
-                        playerName = player.player.name,
-                        parent = it,
-                        moveToPlayer = moveToPlayer,
-                    )
-                }
             }
+        }
+    } else {
+        Box(Modifier.fillMaxWidth().height(84.dp)) {
+            val text = when (state) {
+                is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
+                is HomeScreenViewModel.PlayersState.Data -> "No players available"
+                else -> "No players available"
+            }
+
+            Text(
+                modifier = Modifier.align(Alignment.Center),
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

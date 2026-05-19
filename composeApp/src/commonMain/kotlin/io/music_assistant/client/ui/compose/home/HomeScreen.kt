@@ -91,13 +91,11 @@ fun HomeScreen(
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
     onLibraryItemClick: (MediaType?) -> Unit,
-    playlistActions: ActionsViewModel.PlaylistActions,
-    libraryActions: ActionsViewModel.LibraryActions,
-    progressActions: ActionsViewModel.ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     onRefresh: () -> Unit,
     hiddenFolderIds: Set<String>,
     onSaveHiddenFolders: (Set<String>) -> Unit,
+    actionsViewModel: ActionsViewModel,
 ) {
     var editMode by remember { mutableStateOf(false) }
     var pendingHidden by remember { mutableStateOf(hiddenFolderIds) }
@@ -181,9 +179,18 @@ fun HomeScreen(
                             onPlayClick = onPlayClick,
                             onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
                             mediaItems = row.items.orEmpty(),
-                            playlistActions = playlistActions,
-                            libraryActions = libraryActions,
-                            progressActions = progressActions,
+                            playlistActions = ActionsViewModel.PlaylistActions(
+                                onLoadPlaylists = actionsViewModel::getEditablePlaylists,
+                                onAddToPlaylist = actionsViewModel::addToPlaylist,
+                            ),
+                            libraryActions = ActionsViewModel.LibraryActions(
+                                onLibraryClick = actionsViewModel::onLibraryClick,
+                                onFavoriteClick = actionsViewModel::onFavoriteClick,
+                            ),
+                            progressActions = ActionsViewModel.ProgressActions(
+                                onMarkPlayed = actionsViewModel::onMarkPlayed,
+                                onMarkUnplayed = actionsViewModel::onMarkUnplayed,
+                            ),
                             providerIconFetcher = providerIconFetcher,
                         )
                         if (editMode) {
