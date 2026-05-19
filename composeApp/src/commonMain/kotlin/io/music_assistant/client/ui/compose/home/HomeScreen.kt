@@ -84,17 +84,15 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun HomeScreen(
+    homeScreenViewModel: HomeScreenViewModel,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
     connectionState: SessionState,
     dataState: DataState<List<RecommendationFolder>>,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
     onLibraryItemClick: (MediaType?) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    onRefresh: () -> Unit,
     hiddenFolderIds: Set<String>,
-    onSaveHiddenFolders: (Set<String>) -> Unit,
     actionsViewModel: ActionsViewModel,
 ) {
     var editMode by remember { mutableStateOf(false) }
@@ -140,10 +138,10 @@ fun HomeScreen(
             LandingPageTopBar(
                 scrollBehavior = scrollBehavior,
                 editMode = editMode,
-                onRefresh = onRefresh,
+                onRefresh = { homeScreenViewModel.loadRecommendations() },
                 onToggleEditMode = {
                     if (editMode) {
-                        onSaveHiddenFolders(pendingHidden)
+                        homeScreenViewModel.saveHiddenRecommendationFolders(pendingHidden)
                         editMode = false
                     } else {
                         pendingHidden = hiddenFolderIds
@@ -176,7 +174,7 @@ fun HomeScreen(
                             title = row.displayName,
                             rowItemType = row.rowItemType,
                             onNavigateClick = onNavigateClick,
-                            onPlayClick = onPlayClick,
+                            onPlayClick = homeScreenViewModel::onPlayClick,
                             onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
                             mediaItems = row.items.orEmpty(),
                             playlistActions = ActionsViewModel.PlaylistActions(

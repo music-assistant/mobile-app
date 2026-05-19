@@ -238,13 +238,14 @@ private fun mainNavEntryProvider(
     dataState: DataState<List<RecommendationFolder>>,
     hiddenFolderIds: Set<String>,
     multiBackStack: MultiBackStack<NavKey>,
-    homeScrenViewModel: HomeScreenViewModel,
+    homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
 ): (NavKey) -> NavEntry<NavKey> {
     val libraryNavCoordinator: LibraryNavCoordinator = koinInject()
     return entryProvider {
         entry<MainNav.Landing> {
             HomeScreen(
+                homeScreenViewModel,
                 contentPadding = contentPadding,
                 connectionState = connectionState,
                 dataState = dataState,
@@ -269,7 +270,6 @@ private fun mainNavEntryProvider(
                         else -> Unit
                     }
                 },
-                onPlayClick = homeScrenViewModel::onPlayClick,
                 onLibraryItemClick = { type ->
                     type?.let { libraryNavCoordinator.requestTab(it) }
                     multiBackStack.switchTo(1, MainNav.Library(type))
@@ -278,9 +278,7 @@ private fun mainNavEntryProvider(
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
-                onRefresh = { homeScrenViewModel.loadRecommendations() },
                 hiddenFolderIds = hiddenFolderIds,
-                onSaveHiddenFolders = homeScrenViewModel::saveHiddenRecommendationFolders,
                 actionsViewModel = actionsViewModel,
             )
         }
