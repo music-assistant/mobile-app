@@ -91,7 +91,13 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
     override val sessionState = _sessionState.asStateFlow()
 
     override val serverBaseUrl: StateFlow<String?> = _sessionState
-        .map { (it as? HasConnectionData)?.serverInfo?.baseUrl }
+        .map { state ->
+            when (state) {
+                is SessionState.Connected.Direct -> state.connectionInfo.webUrl
+                is SessionState.Reconnecting.Direct -> state.connectionInfo.webUrl
+                else -> null
+            }
+        }
         .stateIn(this, SharingStarted.Eagerly, null)
 
     override val isReadyForCommands: StateFlow<Boolean> = _sessionState
