@@ -671,14 +671,14 @@ private fun PlayerOverflowMenu(
                     icon = Icons.Default.SwapHoriz,
                     trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
                     onClick = { transferMenuExpanded = true },
-                )
+                ),
             )
             add(
                 OverflowMenuOption(
                     title = stringResource(Res.string.queue_clear),
                     icon = Icons.Default.DeleteSweep,
                     onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
-                )
+                ),
             )
             if (queueData.data.info.let { it.dontStopTheMusicEnabled != null && !it.isDynamicPlaylist }) {
                 add(
@@ -692,11 +692,11 @@ private fun PlayerOverflowMenu(
                         onClick = {
                             playerAction(
                                 PlayerAction.ToggleDontStopTheMusic(
-                                    queueData.data.info.dontStopTheMusicEnabled == true
+                                    queueData.data.info.dontStopTheMusicEnabled == true,
                                 ),
                             )
                         },
-                    )
+                    ),
                 )
             }
         }
@@ -816,7 +816,7 @@ fun ExpandedPlayerPagePreview() {
     MaterialTheme(colorScheme = darkColorScheme()) {
         val track = AppMediaItemFixtures.track()
         val playerData = PlayerDataFixtures.playerData(
-            listOf(track.toQueueTrack()).toQueue(true)
+            listOf(track.toQueueTrack()).toQueue(true),
         )
 
         ExpandedPlayerPage(

@@ -1206,8 +1206,10 @@ class MainDataSource(
                 localPlayerRepository.sendOrQueue(action, request)
             } else {
                 val result = apiClient.sendRequest(request)
-                if(result.isFailure) {
-                    log.e(result.exceptionOrNull()) { "Failed to send player action request for ${data.player.name}: $action" }
+                if (result.isFailure) {
+                    log.e(
+                        result.exceptionOrNull(),
+                    ) { "Failed to send player action request for ${data.player.name}: $action" }
                 }
             }
         }

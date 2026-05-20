@@ -75,7 +75,7 @@ fun PlayerSelectionButton(
                         isLocalPlayer = isLocalPlayer,
                         player = player,
                         controlTint = controlTint,
-                        dotColor = dotColor
+                        dotColor = dotColor,
                     )
                 }
             },
@@ -108,7 +108,7 @@ fun PlayerSelectionButton(
                                 modifier = Modifier.size(16.dp),
                                 imageVector = Icons.Default.Link,
                                 contentDescription = null,
-                                tint = it
+                                tint = it,
                             )
                         } ?: Icon(
                             modifier = Modifier.size(16.dp),
@@ -128,7 +128,7 @@ fun PlayerSelectionButton(
                 isLocalPlayer = isLocalPlayer,
                 player = player,
                 controlTint = controlTint,
-                dotColor = dotColor
+                dotColor = dotColor,
             )
         }
     }
