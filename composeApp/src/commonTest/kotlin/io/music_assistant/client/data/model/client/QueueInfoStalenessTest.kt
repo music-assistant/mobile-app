@@ -30,6 +30,7 @@ class QueueInfoStalenessTest {
         elapsedTimeLastUpdated = elapsedTimeLastUpdated,
         currentItem = null,
         radioSource = emptyList(),
+        dontStopTheMusicEnabled = false,
     )
 
     @Test
