@@ -69,9 +69,9 @@ import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
+import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
 import io.music_assistant.client.utils.gridItemMinSize
 import io.music_assistant.client.utils.rowImageSize
-import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_fully_played
