@@ -78,6 +78,7 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.theme.AppTheme
+import io.music_assistant.client.utils.gridItemMinSize
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.item_error
@@ -574,7 +575,7 @@ private fun AlbumsTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 108.dp),
+        columns = GridCells.Adaptive(minSize = gridItemMinSize()),
         contentPadding = contentPadding + PaddingValues(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -629,7 +630,7 @@ private fun ArtistsTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 108.dp),
+        columns = GridCells.Adaptive(minSize = gridItemMinSize()),
         contentPadding = contentPadding + PaddingValues(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -687,7 +688,7 @@ private fun PlayablesTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 108.dp),
+        columns = GridCells.Adaptive(minSize = gridItemMinSize()),
         contentPadding = contentPadding + PaddingValues(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -757,7 +758,7 @@ private fun ChaptersTabContent(
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = 108.dp),
+        columns = GridCells.Adaptive(minSize = gridItemMinSize()),
         contentPadding = contentPadding + PaddingValues(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),

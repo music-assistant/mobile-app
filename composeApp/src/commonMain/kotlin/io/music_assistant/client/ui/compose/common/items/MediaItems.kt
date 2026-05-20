@@ -69,6 +69,8 @@ import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
+import io.music_assistant.client.utils.gridItemMinSize
+import io.music_assistant.client.utils.rowImageSize
 import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_favorite
@@ -813,7 +815,7 @@ private fun GridItem(
         val cellWidthModifier = if (constraints.hasBoundedWidth) {
             Modifier.fillMaxWidth()
         } else {
-            Modifier.width(108.dp)
+            Modifier.width(gridItemMinSize())
         }
         Column(
             modifier = cellWidthModifier
@@ -907,8 +909,6 @@ fun BoxScope.ProgressBadge(
 }
 
 // ── Row layout ────────────────────────────────────────────────────────────────
-
-private val ROW_IMAGE_SIZE = 48.dp
 
 @Composable
 internal fun TrackRowItem(
@@ -1221,7 +1221,7 @@ private fun RowItem(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(ROW_IMAGE_SIZE)) { imageContent() }
+        Box(modifier = Modifier.size(rowImageSize())) { imageContent() }
         Spacer(Modifier.width(12.dp))
         Column(
             modifier = Modifier.weight(1f),

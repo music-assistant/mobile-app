@@ -45,6 +45,7 @@ import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
+import io.music_assistant.client.utils.gridItemMinSize
 
 @Composable
 fun AdaptiveMediaGrid(
@@ -84,7 +85,7 @@ fun AdaptiveMediaGrid(
     LazyVerticalGrid(
         modifier = modifier,
         state = gridState,
-        columns = GridCells.Adaptive(minSize = 108.dp),
+        columns = GridCells.Adaptive(minSize = gridItemMinSize()),
         contentPadding = contentPadding + PaddingValues(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
