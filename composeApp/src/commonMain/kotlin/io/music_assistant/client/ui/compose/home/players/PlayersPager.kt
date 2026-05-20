@@ -63,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -404,26 +405,18 @@ private fun ExpandedPlayerPage(
             },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                IconButton(
-                    onClick = onClose,
-                ) {
+        CenteredThreeSlotRow(
+            modifier = Modifier.fillMaxWidth(),
+            start = {
+                IconButton(onClick = onClose) {
                     Icon(
                         Icons.Default.ExpandMore,
                         "Collapse",
                         modifier = Modifier.size(32.dp),
                     )
                 }
-            }
-
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
+            },
+            center = {
                 PlayerSelectionButton(
                     player = player,
                     controlTint = colors.controlTint,
@@ -431,35 +424,32 @@ private fun ExpandedPlayerPage(
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton,
                 )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (player.queueInfo?.isRadioOn == true) {
-                    Icon(
-                        imageVector = Icons.Default.CellTower,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = colors.controlTint,
+            },
+            end = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (player.queueInfo?.isRadioOn == true) {
+                        Icon(
+                            imageVector = Icons.Default.CellTower,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = colors.controlTint,
+                        )
+                    }
+                    PlayerOverflowMenu(
+                        currentPlayer = player,
+                        allPlayers = allPlayers,
+                        playerAction = { playerAction(player, it) },
+                        queueAction = queueAction,
+                        navigateToItem = {
+                            navigateToItem(it)
+                            onClose()
+                        },
+                        onPlayerSelected = { moveToPlayer(it) },
+                        onOpenDsp = onDspButton,
                     )
                 }
-                PlayerOverflowMenu(
-                    currentPlayer = player,
-                    allPlayers = allPlayers,
-                    playerAction = { playerAction(player, it) },
-                    queueAction = queueAction,
-                    navigateToItem = {
-                        navigateToItem(it)
-                        onClose()
-                    },
-                    onPlayerSelected = { moveToPlayer(it) },
-                    onOpenDsp = onDspButton,
-                )
-            }
-        }
+            },
+        )
 
         AnimatedVisibility(
             visible = isQueueExpanded,
@@ -770,6 +760,56 @@ private fun PlayerOverflowMenu(
                     contentDescription = stringResource(Res.string.cd_more),
                 )
             }
+        }
+    }
+}
+
+// Three-slot row that centers `center` against the parent width while reserving
+// equal side gutters sized to the wider of `start`/`end`, so a long center
+// child shrinks instead of overlapping the side slots.
+@Composable
+private fun CenteredThreeSlotRow(
+    start: @Composable () -> Unit,
+    center: @Composable () -> Unit,
+    end: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Layout(
+        modifier = modifier,
+        content = {
+            Box { start() }
+            Box { center() }
+            Box { end() }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val startPlaceable = measurables[0].measure(loose)
+        val endPlaceable = measurables[2].measure(loose)
+        val side = maxOf(startPlaceable.width, endPlaceable.width)
+        val parentWidth = if (constraints.hasBoundedWidth) {
+            constraints.maxWidth
+        } else {
+            startPlaceable.width + endPlaceable.width
+        }
+        val centerMaxWidth = (parentWidth - 2 * side).coerceAtLeast(0)
+        val centerPlaceable = measurables[1].measure(
+            loose.copy(maxWidth = centerMaxWidth),
+        )
+        val height = maxOf(
+            startPlaceable.height,
+            centerPlaceable.height,
+            endPlaceable.height,
+        )
+        layout(parentWidth, height) {
+            startPlaceable.placeRelative(0, (height - startPlaceable.height) / 2)
+            centerPlaceable.placeRelative(
+                (parentWidth - centerPlaceable.width) / 2,
+                (height - centerPlaceable.height) / 2,
+            )
+            endPlaceable.placeRelative(
+                parentWidth - endPlaceable.width,
+                (height - endPlaceable.height) / 2,
+            )
         }
     }
 }
