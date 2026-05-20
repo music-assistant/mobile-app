@@ -53,7 +53,10 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
-class KtorServiceClient(private val settings: SettingsRepository) : ServiceClient, CoroutineScope, KoinComponent {
+class KtorServiceClient(
+    private val settings: SettingsRepository,
+    private val errorBus: ErrorMessageBus,
+) : ServiceClient, CoroutineScope, KoinComponent {
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
@@ -269,14 +272,17 @@ class KtorServiceClient(private val settings: SettingsRepository) : ServiceClien
         DataConnectionState.Authenticated -> "Authenticated"
     }
 
-    private val rpcEngine = RpcEngine {
-        _sessionState.update {
-            (it as? SessionState.Connected)?.update(
-                user = null,
-                authProcessState = AuthProcessState.NotStarted,
-            ) ?: it
-        }
-    }
+    private val rpcEngine = RpcEngine(
+        onAuthError = {
+            _sessionState.update {
+                (it as? SessionState.Connected)?.update(
+                    user = null,
+                    authProcessState = AuthProcessState.NotStarted,
+                ) ?: it
+            }
+        },
+        onError = errorBus::emit,
+    )
 
     init {
         launch {

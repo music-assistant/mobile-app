@@ -72,7 +72,7 @@ fun PlayerControls(
                     },
                     tint = tint,
                     size = smallButtonSize,
-                    enabled = playerEnabled && buttonsEnabled && !it.isDynamic,
+                    enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
                 ) {
                     playerAction(
                         playerData,
@@ -142,7 +142,7 @@ fun PlayerControls(
                     },
                     tint = tint,
                     size = smallButtonSize,
-                    enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamic,
+                    enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist,
                 ) {
                     repeatMode?.let {
                         playerAction(

@@ -46,7 +46,7 @@ fun HorizontalPagerIndicator(
                         .clip(CircleShape)
                         .background(
                             if (index == pagerState.currentPage) {
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.onSurfaceVariant
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(
                                     alpha = 0.3f,

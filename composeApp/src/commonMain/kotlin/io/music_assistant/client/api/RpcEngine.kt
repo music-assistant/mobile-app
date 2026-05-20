@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
@@ -31,9 +32,14 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  *
  * @param onAuthError Called when the server returns `error_code 20`
  *   (token expired/invalid).
+ * @param onError Called with the server-supplied `details` string for any
+ *   other RPC error, so the app can surface it to the user.
  */
 @OptIn(ExperimentalAtomicApi::class)
-class RpcEngine(private val onAuthError: () -> Unit) {
+class RpcEngine(
+    private val onAuthError: () -> Unit,
+    private val onError: (String) -> Unit,
+) {
     private val logger = Logger.withTag("RpcEngine")
 
     private val pendingResponses =
@@ -81,8 +87,13 @@ class RpcEngine(private val onAuthError: () -> Unit) {
         val answer = Answer(finalMessage)
         if (answer.json.containsKey("error_code")) {
             logger.e { "RPC error for message $messageId: $answer" }
-            if (answer.json["error_code"]?.jsonPrimitive?.int == ERROR_CODE_AUTH_REQUIRED) {
+            val errorCode = answer.json["error_code"]?.jsonPrimitive?.int
+            if (errorCode == ERROR_CODE_AUTH_REQUIRED) {
                 onAuthError()
+            } else {
+                answer.json["details"]?.jsonPrimitive?.contentOrNull
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(onError)
             }
         }
         callback.invoke(answer)

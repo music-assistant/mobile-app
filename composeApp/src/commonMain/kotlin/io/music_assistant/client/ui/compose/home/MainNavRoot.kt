@@ -42,8 +42,11 @@ import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.ToastDuration
+import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -87,15 +90,18 @@ fun MainNavigationRoot(
 ) {
     val uriHandler = LocalUriHandler.current
     val toastState = rememberToastState()
+    val errorBus: ErrorMessageBus = koinInject()
 
     LaunchedEffect(Unit) {
         homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
     }
 
-    // Collect toasts
+    // Surface server-side RPC errors as toasts on top of whichever screen is active.
+    // (Per-screen ToastHosts handle ActionsViewModel toasts.)
     LaunchedEffect(Unit) {
-        actionsViewModel.toasts.collect { toast ->
-            toastState.showToast(toast)
+        errorBus.messages.collect { msg ->
+            val truncated = if (msg.length > 150) msg.take(150) + "…" else msg
+            toastState.showToast(truncated, ToastDuration.LONG)
         }
     }
 
@@ -164,6 +170,7 @@ fun MainNavigationRoot(
         ),
     )
 
+    Box(modifier = Modifier.fillMaxSize()) {
     AdaptiveNavigationScaffold(
         showNavBar = !playerExpanded,
         navigationItems = navigationItems,
@@ -228,6 +235,8 @@ fun MainNavigationRoot(
                 )
             }
         }
+    }
+        ToastHost(toastState = toastState)
     }
 }
 

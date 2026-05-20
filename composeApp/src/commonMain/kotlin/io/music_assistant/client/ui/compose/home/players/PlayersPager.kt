@@ -32,6 +32,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -46,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -430,13 +433,23 @@ private fun ExpandedPlayerPage(
                 )
             }
 
-            Box(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterEnd,
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (player.queueInfo?.isRadioOn == true) {
+                    Icon(
+                        imageVector = Icons.Default.CellTower,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = colors.controlTint,
+                    )
+                }
                 PlayerOverflowMenu(
                     currentPlayer = player,
                     allPlayers = allPlayers,
+                    playerAction = { playerAction(player, it) },
                     queueAction = queueAction,
                     navigateToItem = {
                         navigateToItem(it)
@@ -638,6 +651,7 @@ private fun ExpandedPlayerPage(
 private fun PlayerOverflowMenu(
     currentPlayer: PlayerData,
     allPlayers: List<PlayerData>,
+    playerAction: (PlayerAction) -> Unit,
     queueAction: (QueueAction) -> Unit,
     navigateToItem: (AppMediaItem) -> Unit,
     onPlayerSelected: (String) -> Unit,
@@ -651,34 +665,39 @@ private fun PlayerOverflowMenu(
     val queueHasItems = !(queueData?.data?.items as? DataState.Data)?.data.isNullOrEmpty()
     val queueOptions = if (queueId != null && queueHasItems) {
         buildList {
-            add(OverflowMenuOption(
-                title = stringResource(Res.string.queue_transfer),
-                icon = Icons.Default.SwapHoriz,
-                trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
-                onClick = { transferMenuExpanded = true },
-            ))
-            add(OverflowMenuOption(
-                title = stringResource(Res.string.queue_clear),
-                icon = Icons.Default.DeleteSweep,
-                onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
-            ))
-            if(queueData.data.info.let { it.dontStopTheMusicEnabled != null && !it.isDynamic }) {
-                add(OverflowMenuOption(
-                    title = if (queueData.data.info.dontStopTheMusicEnabled == true) {
-                        "Disable Don't Stop The Music"
-                    } else {
-                        "Enable Don't Stop The Music"
-                    },
-                    icon = VolumeIcon,
-                    onClick = {
-                        queueAction(
-                            SetDontStopTheMusic(
-                                queueId,
-                                !(queueData.data.info.dontStopTheMusicEnabled ?: false),
-                            ),
-                        )
-                    },
-                ))
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.queue_transfer),
+                    icon = Icons.Default.SwapHoriz,
+                    trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
+                    onClick = { transferMenuExpanded = true },
+                )
+            )
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.queue_clear),
+                    icon = Icons.Default.DeleteSweep,
+                    onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
+                )
+            )
+            if (queueData.data.info.let { it.dontStopTheMusicEnabled != null && !it.isDynamicPlaylist }) {
+                add(
+                    OverflowMenuOption(
+                        title = if (queueData.data.info.dontStopTheMusicEnabled == true) {
+                            "Disable Don't Stop The Music"
+                        } else {
+                            "Enable Don't Stop The Music"
+                        },
+                        icon = Icons.Default.AllInclusive,
+                        onClick = {
+                            playerAction(
+                                PlayerAction.ToggleDontStopTheMusic(
+                                    queueData.data.info.dontStopTheMusicEnabled == true
+                                ),
+                            )
+                        },
+                    )
+                )
             }
         }
     } else {
@@ -794,9 +813,11 @@ private fun CollapsedPlayerPage(
 @Preview
 @Composable
 fun ExpandedPlayerPagePreview() {
-    MaterialTheme {
+    MaterialTheme(colorScheme = darkColorScheme()) {
         val track = AppMediaItemFixtures.track()
-        val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
+        val playerData = PlayerDataFixtures.playerData(
+            listOf(track.toQueueTrack()).toQueue(true)
+        )
 
         ExpandedPlayerPage(
             player = playerData,
@@ -830,7 +851,7 @@ fun ExpandedPlayerPagePreview() {
 )
 @Composable
 fun ExpandedPlayerPageMediumScreenPreview() {
-    MaterialTheme {
+    MaterialTheme(colorScheme = darkColorScheme()) {
         val track = AppMediaItemFixtures.track()
         val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
 
@@ -866,7 +887,7 @@ fun ExpandedPlayerPageMediumScreenPreview() {
 )
 @Composable
 fun ExpandedPlayerPageExpandedScreenPreview() {
-    MaterialTheme {
+    MaterialTheme(colorScheme = darkColorScheme()) {
         val track = AppMediaItemFixtures.track()
         val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
 
@@ -902,7 +923,7 @@ fun ExpandedPlayerPageExpandedScreenPreview() {
 )
 @Composable
 fun ExpandedPlayerPageLargeScreenPreview() {
-    MaterialTheme {
+    MaterialTheme(colorScheme = darkColorScheme()) {
         val track = AppMediaItemFixtures.track()
         val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
 

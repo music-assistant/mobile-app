@@ -71,32 +71,46 @@ fun PlayerSelectionButton(
                     colors = ButtonDefaults.outlinedButtonColors(),
                     border = ButtonDefaults.outlinedButtonBorder(),
                 ) {
-                    PlayerButtonContent(isLocalPlayer, player, dotColor)
+                    PlayerButtonContent(
+                        isLocalPlayer = isLocalPlayer,
+                        player = player,
+                        controlTint = controlTint,
+                        dotColor = dotColor
+                    )
                 }
             },
             trailingButton = {
                 if (hasGroupChildren) {
-                    val (colors, border) = if (hasBoundChildren) {
-                        Pair(
+                    val (buttonColor, iconColor, border) = if (hasBoundChildren) {
+                        Triple(
                             ButtonDefaults.buttonColors(
                                 containerColor = controlTint,
                                 contentColor = onTint,
                             ),
                             null,
+                            null,
                         )
                     } else {
-                        Pair(
+                        Triple(
                             ButtonDefaults.outlinedButtonColors(),
+                            controlTint,
                             ButtonDefaults.outlinedButtonBorder(),
                         )
                     }
 
                     TrailingButton(
                         onClick = onGroupButton,
-                        colors = colors,
+                        colors = buttonColor,
                         border = border,
                     ) {
-                        Icon(
+                        iconColor?.let {
+                            Icon(
+                                modifier = Modifier.size(16.dp),
+                                imageVector = Icons.Default.Link,
+                                contentDescription = null,
+                                tint = it
+                            )
+                        } ?: Icon(
                             modifier = Modifier.size(16.dp),
                             imageVector = Icons.Default.Link,
                             contentDescription = null,
@@ -110,7 +124,12 @@ fun PlayerSelectionButton(
             modifier = modifier,
             onClick = onSelectPlayer,
         ) {
-            PlayerButtonContent(isLocalPlayer = isLocalPlayer, player = player, dotColor = dotColor)
+            PlayerButtonContent(
+                isLocalPlayer = isLocalPlayer,
+                player = player,
+                controlTint = controlTint,
+                dotColor = dotColor
+            )
         }
     }
 }
@@ -119,6 +138,7 @@ fun PlayerSelectionButton(
 private fun PlayerButtonContent(
     isLocalPlayer: Boolean,
     player: PlayerData,
+    controlTint: Color,
     dotColor: Color?,
 ) {
     Row(
@@ -133,6 +153,7 @@ private fun PlayerButtonContent(
             },
             contentDescription = null,
             modifier = Modifier.size(16.dp),
+            tint = controlTint,
         )
         dotColor?.let {
             Box(

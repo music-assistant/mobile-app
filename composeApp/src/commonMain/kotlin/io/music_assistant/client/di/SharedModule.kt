@@ -1,5 +1,6 @@
 package io.music_assistant.client.di
 
+import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.api.KtorServiceClient
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
@@ -31,11 +32,14 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
-fun sharedModule(serviceClientConstructor: (SettingsRepository) -> ServiceClient = ::KtorServiceClient) =
+fun sharedModule(
+    serviceClientConstructor: (SettingsRepository, ErrorMessageBus) -> ServiceClient = ::KtorServiceClient,
+) =
     module {
         single { provideSettings() }
         singleOf(::SettingsRepository)
         singleOf(::NetworkMonitor)
+        singleOf(::ErrorMessageBus)
         singleOf(serviceClientConstructor) { bind<ServiceClient>() }
         singleOf(::LogSharer)
         single(createdAtStart = true) {

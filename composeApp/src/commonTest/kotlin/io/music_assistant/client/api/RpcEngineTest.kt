@@ -34,7 +34,10 @@ import kotlin.test.assertTrue
  * its bucket array and throw `ArrayIndexOutOfBoundsException`.
  */
 class RpcEngineTest {
-    private fun engine(onAuthError: () -> Unit = {}): RpcEngine = RpcEngine(onAuthError)
+    private fun engine(
+        onAuthError: () -> Unit = {},
+        onError: (String) -> Unit = {},
+    ): RpcEngine = RpcEngine(onAuthError, onError)
 
     private fun message(raw: String): JsonObject =
         Json.parseToJsonElement(raw) as JsonObject

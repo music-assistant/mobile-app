@@ -1,6 +1,7 @@
 package io.music_assistant.client.support.rules
 
 import androidx.test.core.app.ApplicationProvider
+import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.di.androidModule
 import io.music_assistant.client.di.appModule
 import io.music_assistant.client.di.sharedModule
@@ -22,6 +23,9 @@ fun createKoinTestRule(): KoinTestRule {
     }
 }
 
-private fun createFakeServiceClient(settingsRepository: SettingsRepository): FakeServiceClient {
+private fun createFakeServiceClient(
+    settingsRepository: SettingsRepository,
+    @Suppress("UNUSED_PARAMETER") errorBus: ErrorMessageBus,
+): FakeServiceClient {
     return FakeServiceClient(settingsRepository)
 }
