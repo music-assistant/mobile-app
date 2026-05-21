@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -435,9 +436,14 @@ class KtorServiceClient(
     ) {
         transportObserverJob?.cancel()
         transportObserverJob = launch {
-            // State collector
+            // State collector. `drop(1)` skips the StateFlow's initial-value replay
+            // (`TransportState.Disconnected`, the default), which would otherwise overwrite
+            // the `SessionState.Connecting` we just set in `connect()` / `connectWebRTC()`
+            // before the transport's own coroutine has had a chance to flip to `Connecting`.
+            // For Direct the resulting form-flicker is ~100 ms and invisible; for WebRTC the
+            // form stays put for the entire signaling + ICE window.
             launch {
-                transport.state.collect { transportState ->
+                transport.state.drop(1).collect { transportState ->
                     when (transportState) {
                         TransportState.Connected -> {
                             val preserved =
