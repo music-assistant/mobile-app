@@ -182,7 +182,7 @@
     <string name="settings_remote_id">Remote ID</string>
     <string name="settings_remote_id_hint">Enter the Remote ID from your Music Assistant server settings</string>
     <string name="settings_remote_id_invalid">Invalid Remote ID format</string>
-    <string name="settings_webrtc_info">WebRTC uses cloud signaling with end-to-end encryption. Works through most firewalls and NATs.</string>
+    <string name="settings_webrtc_info">WebRTC uses cloud signalling with end-to-end encryption. Works through most firewalls and NATs.</string>
     <string name="settings_connect_webrtc">Connect via WebRTC</string>
     <string name="settings_connected">Connected</string>
     <string name="settings_connecting">Connecting...</string>
