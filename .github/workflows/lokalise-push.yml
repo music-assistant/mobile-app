@@ -1,6 +1,7 @@
 name: Push strings to Lokalise
 
 on:
+  workflow_dispatch:
   push:
     branches: [dev]
     paths:
@@ -28,3 +29,4 @@ jobs:
             composeApp/src/commonMain/composeResources
           file_ext: |
             xml
+          name_pattern: "values/strings.xml"
