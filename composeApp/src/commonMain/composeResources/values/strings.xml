@@ -1,244 +1,193 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
-    <!-- Navigation -->
-    <string name="nav_home">Home</string>
-    <string name="nav_library">Library</string>
-    <string name="nav_search">Search</string>
-    <string name="nav_settings">Settings</string>
-
-    <!-- Common actions -->
-    <string name="action_play_now">Play now</string>
-    <string name="action_insert_next_and_play">Insert next and play</string>
-    <string name="action_insert_next">Insert next</string>
-    <string name="action_add_to_bottom">Add to bottom</string>
-    <string name="action_start_radio">Start radio</string>
-    <string name="action_add_to_library">Add to library</string>
-    <string name="action_remove_from_library">Remove from library</string>
-    <string name="action_favorite">Favorite</string>
-    <string name="action_unfavorite">Unfavorite</string>
-    <string name="action_add_to_playlist">Add to playlist</string>
-    <string name="action_remove_from_playlist">Remove from playlist</string>
-    <string name="action_mark_played">Mark as played</string>
-    <string name="action_mark_unplayed">Mark as unplayed</string>
-    <string name="action_go_to_artist">Go to artist</string>
-    <string name="action_go_to_album">Go to album</string>
-    <string name="action_play">Play</string>
-    <string name="action_pause">Pause</string>
-    <string name="action_play_next">Play next</string>
-    <string name="action_add_to_queue">Add to queue</string>
-    <string name="refresh">Refresh</string>
-    <string name="home_edit_rows">Edit rows</string>
-    <string name="home_save_rows">Save rows</string>
-
-    <!-- Common UI -->
-    <string name="common_cancel">Cancel</string>
-    <string name="common_back">Back</string>
-    <string name="common_clear">Clear</string>
-    <string name="common_delete">Delete</string>
-    <string name="common_create">Create</string>
-    <string name="common_done">Done</string>
-
-    <!-- Content descriptions -->
-    <string name="cd_play_now">Play now</string>
-    <string name="cd_play_options">Play options</string>
-    <string name="cd_toggle_queue">Toggle Queue</string>
-    <string name="cd_toggle_view_mode">Toggle view mode</string>
-    <string name="cd_customize_tabs">Customize tabs</string>
-    <string name="cd_sort_direction">Sort direction</string>
-    <string name="cd_more">More</string>
-    <string name="cd_add_to_group">Add to group</string>
-    <string name="cd_remove_from_group">Remove from group</string>
-    <string name="cd_mute">Mute</string>
-    <string name="cd_unmute">Unmute</string>
-    <string name="cd_connection_history">Connection history</string>
-    <string name="cd_scan_qr_code">Scan QR code</string>
-    <string name="cd_select_codec">Select codec</string>
-    <string name="cd_applied">Applied</string>
-    <string name="cd_delete_crash_logs">Delete crash logs</string>
-    <string name="cd_add_playlist">Add playlist</string>
-    <string name="cd_vinyl_record">Vinyl Record</string>
-    <string name="cd_favorite">Favorite</string>
-    <string name="cd_fully_played">Fully played</string>
-    <string name="cd_in_progress">In progress</string>
-    <string name="cd_provider_icon">Provider Icon</string>
-    <string name="cd_playing">Playing %1$s</string>
-    <string name="cd_current_player">Current player: %1$s</string>
-
-    <!-- Playlist dialog -->
-    <string name="playlist_add_to_title">Add to Playlist</string>
-    <string name="playlist_no_editable">No editable playlists available</string>
-    <string name="playlist_create_title">Create New Playlist</string>
-    <string name="playlist_name_label">Playlist name</string>
-    <string name="playlist_add_new">Add new</string>
-
-    <!-- Auth -->
-    <string name="auth_logged_in_as">Logged in as %1$s</string>
-    <string name="auth_logout">Logout</string>
-    <string name="auth_login">Login</string>
-    <string name="auth_username">Username</string>
-    <string name="auth_password">Password</string>
-    <string name="auth_show_password">Show password</string>
-    <string name="auth_hide_password">Hide password</string>
-    <string name="auth_authorize_ha">Authorize with Home Assistant</string>
-    <string name="auth_loading_providers">Loading authentication providers...</string>
-    <string name="auth_retry_providers">Retry Loading Providers</string>
-    <string name="auth_authenticating">Authenticating...</string>
-    <string name="auth_title">Authentication</string>
-
-    <!-- Search -->
-    <string name="search_title">Global search</string>
-    <string name="search_no_results">No results found</string>
-    <string name="search_start">Start searching...</string>
-    <string name="search_error">Error loading search results</string>
-    <string name="search_query_label">Search query</string>
-    <string name="search_in_library_only">In library only</string>
-
-    <!-- Library -->
-    <string name="library_quick_search">Quick search</string>
-    <string name="library_customize">Customize</string>
-    <string name="library_error">Error loading data</string>
-    <string name="library_empty">No items found</string>
-
-    <!-- Media types -->
-    <string name="media_type_artists">Artists</string>
-    <string name="media_type_albums">Albums</string>
-    <string name="media_type_tracks">Tracks</string>
-    <string name="media_type_playlists">Playlists</string>
-    <string name="media_type_audiobooks">Audiobooks</string>
-    <string name="media_type_podcasts">Podcasts</string>
-    <string name="media_type_radio">Radio</string>
-    <string name="media_type_genres">Genres</string>
-    <string name="media_type_episodes">Episodes</string>
-    <string name="media_type_chapters">Chapters</string>
-
-    <!-- "All X" buttons on home screen -->
-    <string name="all_tracks">All tracks</string>
-    <string name="all_albums">All albums</string>
-    <string name="all_artists">All artists</string>
-    <string name="all_playlists">All playlists</string>
-    <string name="all_audiobooks">All audiobooks</string>
-    <string name="all_podcasts">All podcasts</string>
-    <string name="all_radio">All radio stations</string>
-    <string name="all_genres">All genres</string>
-
-    <!-- Sort fields -->
-    <string name="sort_original">Original</string>
-    <string name="sort_name">Name</string>
-    <string name="sort_duration">Duration</string>
-    <string name="sort_date_added">Date added</string>
-    <string name="sort_date_modified">Date modified</string>
-    <string name="sort_last_played">Last played</string>
-    <string name="sort_play_count">Play count</string>
-    <string name="sort_year">Year</string>
-    <string name="sort_position">Position</string>
-    <string name="sort_artist">Artist</string>
-    <string name="sort_release_date">Release date</string>
-
-    <!-- Queue -->
-    <string name="queue_label">Queue</string>
-    <string name="queue_label_with_position">Queue (%1$d/%2$d)</string>
-    <string name="queue_empty">Queue is empty</string>
-    <string name="queue_browse_library">BROWSE LIBRARY</string>
-    <string name="queue_no_other_players">No other players available</string>
-    <string name="queue_error">Error loading queue</string>
-    <string name="queue_loading">Loading queue...</string>
-    <string name="queue_no_items">No items</string>
-    <string name="queue_not_loaded">Not loaded</string>
-    <string name="queue_cannot_play">Cannot play this item</string>
-    <string name="queue_clear">Clear queue</string>
-    <string name="queue_transfer">Transfer queue</string>
-
-    <!-- Players -->
-    <string name="players_title">Players</string>
-    <string name="players_group_settings">Group settings</string>
-    <string name="players_group_volume">%1$s group volume</string>
-    <string name="players_nothing">Nothing playing</string>
-    <string name="players_dsp_settings">DSP settings</string>
-
-    <!-- DSP -->
-    <string name="dsp_title">DSP settings</string>
-    <string name="dsp_error">Failed to load DSP configuration</string>
-    <string name="dsp_enable">Enable DSP</string>
-    <string name="dsp_presets">Presets</string>
-
-    <!-- Item details -->
-    <string name="item_error">Error loading item</string>
-    <string name="item_no_data">No data available</string>
-
-    <!-- Settings: About -->
-    <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
-    <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
-
-    <!-- Settings: Connection -->
-    <string name="settings_connection_method">Connection Method</string>
-    <string name="settings_connection_direct">Direct</string>
-    <string name="settings_connection_webrtc">WebRTC</string>
-    <string name="settings_server_host">Server host</string>
-    <string name="settings_port">Port</string>
-    <string name="settings_use_tls">Use TLS (wss://)</string>
-    <string name="settings_connect">Connect</string>
-    <string name="settings_connect_saved">Connect with saved credentials</string>
-    <string name="settings_webrtc_description">Connect from anywhere without port forwarding</string>
-    <string name="settings_remote_id">Remote ID</string>
-    <string name="settings_remote_id_hint">Enter the Remote ID from your Music Assistant server settings</string>
-    <string name="settings_remote_id_invalid">Invalid Remote ID format</string>
-    <string name="settings_webrtc_info">WebRTC uses cloud signalling with end-to-end encryption. Works through most firewalls and NATs.</string>
-    <string name="settings_connect_webrtc">Connect via WebRTC</string>
-    <string name="settings_connected">Connected</string>
-    <string name="settings_connecting">Connecting...</string>
-    <string name="settings_scan_qr">Scan QR code</string>
-
-    <!-- Settings: Connecting status -->
-    <string name="settings_connecting_remote">Connecting to remote server...</string>
-    <string name="settings_connecting_to">Connecting to %1$s:%2$s...</string>
-
-    <!-- Settings: Server info -->
-    <string name="settings_server">Server</string>
-    <string name="settings_connected_webrtc">Connected via WebRTC</string>
-    <string name="settings_connected_to">Connected to %1$s:%2$d</string>
-    <string name="settings_version_info">Version %1$s, Schema %2$s</string>
-    <string name="settings_disconnect">Disconnect</string>
-
-    <!-- Settings: Local player -->
-    <string name="settings_local_player_enabled">Local player enabled</string>
-    <string name="settings_local_player_disabled">Local player (Sendspin protocol)</string>
-    <string name="settings_player_name">Player name</string>
-    <string name="settings_codec_preference">Codec preference</string>
-    <string name="settings_custom_sendspin">Custom Sendspin connection</string>
-    <string name="settings_host">Host</string>
-    <string name="settings_port_default">Port (8095 by default)</string>
-    <string name="settings_path">Path</string>
-    <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
-    <string name="settings_disable_local_player">Disable local player</string>
-    <string name="settings_enable_local_player">Enable local player</string>
-
-    <!-- Settings: Connection history -->
-    <string name="settings_saved_connections">Saved Connections</string>
-    <string name="settings_no_saved_connections">No saved connections yet</string>
-    <string name="settings_history_direct">Direct</string>
-    <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
-
-    <!-- Settings: Misc -->
-    <string name="settings_misc">Misc</string>
-    <string name="settings_share_logs">Share logs</string>
-    <string name="settings_share_crash_logs">Share crash logs</string>
-
-    <!-- Settings: Exit -->
-    <string name="settings_exit_app">EXIT APP</string>
-
-    <!-- Codec titles -->
-    <string name="codec_opus">Opus (compressed, lowest bandwidth)</string>
-    <string name="codec_flac">FLAC (lossless, medium bandwidth)</string>
-    <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
-
-    <!-- Connection banner -->
-    <string name="banner_reconnecting">Reconnecting... (attempt %1$d)</string>
-
-    <!-- Toast messages (deferred — used in ViewModel) -->
-    <string name="toast_no_uri">Media item has no URI</string>
-    <string name="toast_error_add_playlist">Error adding to playlist</string>
-    <string name="toast_marked_played">Marked as played</string>
-    <string name="toast_error_mark_played">Error marking as played</string>
-    <string name="toast_marked_unplayed">Marked as unplayed</string>
-    <string name="toast_error_mark_unplayed">Error marking as unplayed</string>
+  <string name="action_add_to_bottom">Add to bottom</string>
+  <string name="action_add_to_library">Add to library</string>
+  <string name="action_add_to_playlist">Add to playlist</string>
+  <string name="action_add_to_queue">Add to queue</string>
+  <string name="action_favorite">Favorite</string>
+  <string name="action_go_to_album">Go to album</string>
+  <string name="action_go_to_artist">Go to artist</string>
+  <string name="action_insert_next">Insert next</string>
+  <string name="action_insert_next_and_play">Insert next and play</string>
+  <string name="action_mark_played">Mark as played</string>
+  <string name="action_mark_unplayed">Mark as unplayed</string>
+  <string name="action_pause">Pause</string>
+  <string name="action_play">Play</string>
+  <string name="action_play_next">Play next</string>
+  <string name="action_play_now">Play now</string>
+  <string name="action_remove_from_library">Remove from library</string>
+  <string name="action_remove_from_playlist">Remove from playlist</string>
+  <string name="action_start_radio">Start radio</string>
+  <string name="action_unfavorite">Unfavorite</string>
+  <string name="all_albums">All albums</string>
+  <string name="all_artists">All artists</string>
+  <string name="all_audiobooks">All audiobooks</string>
+  <string name="all_genres">All genres</string>
+  <string name="all_playlists">All playlists</string>
+  <string name="all_podcasts">All podcasts</string>
+  <string name="all_radio">All radio stations</string>
+  <string name="all_tracks">All tracks</string>
+  <string name="auth_authenticating">Authenticating...</string>
+  <string name="auth_authorize_ha">Authorize with Home Assistant</string>
+  <string name="auth_hide_password">Hide password</string>
+  <string name="auth_loading_providers">Loading authentication providers...</string>
+  <string name="auth_logged_in_as">Logged in as %1$s</string>
+  <string name="auth_login">Login</string>
+  <string name="auth_logout">Logout</string>
+  <string name="auth_password">Password</string>
+  <string name="auth_retry_providers">Retry Loading Providers</string>
+  <string name="auth_show_password">Show password</string>
+  <string name="auth_title">Authentication</string>
+  <string name="auth_username">Username</string>
+  <string name="banner_reconnecting">Reconnecting... (attempt %1$d)</string>
+  <string name="cd_add_playlist">Add playlist</string>
+  <string name="cd_add_to_group">Add to group</string>
+  <string name="cd_applied">Applied</string>
+  <string name="cd_connection_history">Connection history</string>
+  <string name="cd_current_player">Current player: %1$s</string>
+  <string name="cd_customize_tabs">Customize tabs</string>
+  <string name="cd_delete_crash_logs">Delete crash logs</string>
+  <string name="cd_favorite">Favorite</string>
+  <string name="cd_fully_played">Fully played</string>
+  <string name="cd_in_progress">In progress</string>
+  <string name="cd_more">More</string>
+  <string name="cd_mute">Mute</string>
+  <string name="cd_play_now">Play now</string>
+  <string name="cd_play_options">Play options</string>
+  <string name="cd_playing">Playing %1$s</string>
+  <string name="cd_provider_icon">Provider Icon</string>
+  <string name="cd_remove_from_group">Remove from group</string>
+  <string name="cd_scan_qr_code">Scan QR code</string>
+  <string name="cd_select_codec">Select codec</string>
+  <string name="cd_sort_direction">Sort direction</string>
+  <string name="cd_toggle_queue">Toggle Queue</string>
+  <string name="cd_toggle_view_mode">Toggle view mode</string>
+  <string name="cd_unmute">Unmute</string>
+  <string name="cd_vinyl_record">Vinyl Record</string>
+  <string name="codec_flac">FLAC (lossless, medium bandwidth)</string>
+  <string name="codec_opus">Opus (compressed, lowest bandwidth)</string>
+  <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
+  <string name="common_back">Back</string>
+  <string name="common_cancel">Cancel</string>
+  <string name="common_clear">Clear</string>
+  <string name="common_create">Create</string>
+  <string name="common_delete">Delete</string>
+  <string name="common_done">Done</string>
+  <string name="dsp_enable">Enable DSP</string>
+  <string name="dsp_error">Failed to load DSP configuration</string>
+  <string name="dsp_presets">Presets</string>
+  <string name="dsp_title">DSP settings</string>
+  <string name="home_edit_rows">Edit rows</string>
+  <string name="home_save_rows">Save rows</string>
+  <string name="item_error">Error loading item</string>
+  <string name="item_no_data">No data available</string>
+  <string name="library_customize">Customize</string>
+  <string name="library_empty">No items found</string>
+  <string name="library_error">Error loading data</string>
+  <string name="library_quick_search">Quick search</string>
+  <string name="media_type_albums">Albums</string>
+  <string name="media_type_artists">Artists</string>
+  <string name="media_type_audiobooks">Audiobooks</string>
+  <string name="media_type_chapters">Chapters</string>
+  <string name="media_type_episodes">Episodes</string>
+  <string name="media_type_genres">Genres</string>
+  <string name="media_type_playlists">Playlists</string>
+  <string name="media_type_podcasts">Podcasts</string>
+  <string name="media_type_radio">Radio</string>
+  <string name="media_type_tracks">Tracks</string>
+  <string name="nav_home">Home</string>
+  <string name="nav_library">Library</string>
+  <string name="nav_search">Search</string>
+  <string name="nav_settings">Settings</string>
+  <string name="players_dsp_settings">DSP settings</string>
+  <string name="players_group_settings">Group settings</string>
+  <string name="players_group_volume">%1$s group volume</string>
+  <string name="players_nothing">Nothing playing</string>
+  <string name="players_title">Players</string>
+  <string name="playlist_add_new">Add new</string>
+  <string name="playlist_add_to_title">Add to Playlist</string>
+  <string name="playlist_create_title">Create New Playlist</string>
+  <string name="playlist_name_label">Playlist name</string>
+  <string name="playlist_no_editable">No editable playlists available</string>
+  <string name="queue_browse_library">BROWSE LIBRARY</string>
+  <string name="queue_cannot_play">Cannot play this item</string>
+  <string name="queue_clear">Clear queue</string>
+  <string name="queue_empty">Queue is empty</string>
+  <string name="queue_error">Error loading queue</string>
+  <string name="queue_label">Queue</string>
+  <string name="queue_label_with_position">Queue (%1$d/%2$d)</string>
+  <string name="queue_loading">Loading queue...</string>
+  <string name="queue_no_items">No items</string>
+  <string name="queue_no_other_players">No other players available</string>
+  <string name="queue_not_loaded">Not loaded</string>
+  <string name="queue_transfer">Transfer queue</string>
+  <string name="refresh">Refresh</string>
+  <string name="search_error">Error loading search results</string>
+  <string name="search_in_library_only">In library only</string>
+  <string name="search_no_results">No results found</string>
+  <string name="search_query_label">Search query</string>
+  <string name="search_start">Start searching...</string>
+  <string name="search_title">Global search</string>
+  <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
+  <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
+  <string name="settings_codec_preference">Codec preference</string>
+  <string name="settings_connect">Connect</string>
+  <string name="settings_connect_saved">Connect with saved credentials</string>
+  <string name="settings_connect_webrtc">Connect via WebRTC</string>
+  <string name="settings_connected">Connected</string>
+  <string name="settings_connected_to">Connected to %1$s:%2$d</string>
+  <string name="settings_connected_webrtc">Connected via WebRTC</string>
+  <string name="settings_connecting">Connecting...</string>
+  <string name="settings_connecting_remote">Connecting to remote server...</string>
+  <string name="settings_connecting_to">Connecting to %1$s:%2$s...</string>
+  <string name="settings_connection_direct">Direct</string>
+  <string name="settings_connection_method">Connection Method</string>
+  <string name="settings_connection_webrtc">WebRTC</string>
+  <string name="settings_custom_sendspin">Custom Sendspin connection</string>
+  <string name="settings_disable_local_player">Disable local player</string>
+  <string name="settings_disconnect">Disconnect</string>
+  <string name="settings_enable_local_player">Enable local player</string>
+  <string name="settings_exit_app">EXIT APP</string>
+  <string name="settings_history_direct">Direct</string>
+  <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
+  <string name="settings_host">Host</string>
+  <string name="settings_local_player_disabled">Local player (Sendspin protocol)</string>
+  <string name="settings_local_player_enabled">Local player enabled</string>
+  <string name="settings_misc">Misc</string>
+  <string name="settings_no_saved_connections">No saved connections yet</string>
+  <string name="settings_path">Path</string>
+  <string name="settings_player_name">Player name</string>
+  <string name="settings_port">Port</string>
+  <string name="settings_port_default">Port (8095 by default)</string>
+  <string name="settings_remote_id">Remote ID</string>
+  <string name="settings_remote_id_hint">Enter the Remote ID from your Music Assistant server settings</string>
+  <string name="settings_remote_id_invalid">Invalid Remote ID format</string>
+  <string name="settings_saved_connections">Saved Connections</string>
+  <string name="settings_scan_qr">Scan QR code</string>
+  <string name="settings_server">Server</string>
+  <string name="settings_server_host">Server host</string>
+  <string name="settings_share_crash_logs">Share crash logs</string>
+  <string name="settings_share_logs">Share logs</string>
+  <string name="settings_use_tls">Use TLS (wss://)</string>
+  <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
+  <string name="settings_version_info">Version %1$s, Schema %2$s</string>
+  <string name="settings_webrtc_description">Connect from anywhere without port forwarding</string>
+  <string name="settings_webrtc_info">WebRTC uses cloud signalling with end-to-end encryption. Works through most firewalls and NATs.</string>
+  <string name="sort_artist">Artist</string>
+  <string name="sort_date_added">Date added</string>
+  <string name="sort_date_modified">Date modified</string>
+  <string name="sort_duration">Duration</string>
+  <string name="sort_last_played">Last played</string>
+  <string name="sort_name">Name</string>
+  <string name="sort_original">Original</string>
+  <string name="sort_play_count">Play count</string>
+  <string name="sort_position">Position</string>
+  <string name="sort_release_date">Release date</string>
+  <string name="sort_year">Year</string>
+  <string name="toast_error_add_playlist">Error adding to playlist</string>
+  <string name="toast_error_mark_played">Error marking as played</string>
+  <string name="toast_error_mark_unplayed">Error marking as unplayed</string>
+  <string name="toast_marked_played">Marked as played</string>
+  <string name="toast_marked_unplayed">Marked as unplayed</string>
+  <string name="toast_no_uri">Media item has no URI</string>
 </resources>
