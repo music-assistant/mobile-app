@@ -10,6 +10,5 @@ data class QueueTrack(
     val isPlayable: Boolean,
     val format: AudioFormat?,
     val dsp: Map<String, DSPSettings>?,
-) {
-    fun audioFormat(playerId: String) = dsp?.get(playerId)?.outputFormat ?: format
-}
+    val provider: String?,
+)

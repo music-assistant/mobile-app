@@ -49,6 +49,7 @@ class QueueFactory(
                     isPlayable = true,
                     format = streamDetails?.audioFormat,
                     dsp = streamDetails?.dsp,
+                    provider = streamDetails?.provider,
                 )
             } else {
                 Logger.w(
@@ -87,6 +88,7 @@ class QueueFactory(
                     isPlayable = false,
                     format = null,
                     dsp = null,
+                    provider = null,
                 )
             }
         }

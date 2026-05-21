@@ -155,6 +155,7 @@ object PlayerDataFixtures {
             isPlayable = true,
             format = null,
             dsp = null,
+            provider = null,
         )
     }
 }

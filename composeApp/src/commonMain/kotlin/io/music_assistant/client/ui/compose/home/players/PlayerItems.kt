@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.home.players
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,8 +30,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -43,7 +47,8 @@ import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
-import io.music_assistant.client.data.model.client.items.description
+import io.music_assistant.client.data.model.client.items.QualityTier
+import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.PlayerColors
@@ -285,14 +290,43 @@ fun FullPlayerItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                text = item.queueInfo?.currentItem?.audioFormat(item.playerId)?.description ?: "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            val currentQueueItem = item.queueInfo?.currentItem
+            val tier = currentQueueItem?.qualityTier
+            var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
+            val isLq = tier == QualityTier.LQ
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .alpha(if (tier != null) 1f else 0f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        if (isLq) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else {
+                            colors.controlTint
+                        },
+                    )
+                    .clickable(enabled = tier != null) { showChainDialog = true }
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = (tier ?: QualityTier.LQ).name,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isLq) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        if (colors.controlTint.luminance() > 0.5f) Color.Black else Color.White
+                    },
+                )
+            }
+            if (showChainDialog && currentQueueItem != null) {
+                AudioChainDialog(
+                    queueTrack = currentQueueItem,
+                    player = item,
+                    onDismissRequest = { showChainDialog = false },
+                )
+            }
         }
 
         val duration = currentMedia?.duration?.takeIf { it > 0 }?.toFloat()

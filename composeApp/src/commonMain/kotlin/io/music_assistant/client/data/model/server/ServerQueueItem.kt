@@ -18,7 +18,7 @@ data class ServerQueueItem(
 
 @Serializable
 data class StreamDetails(
-//    @SerialName("provider") val provider: String,
+    @SerialName("provider") val provider: String? = null,
 //    @SerialName("item_id") val itemId: String,
     @SerialName("audio_format") val audioFormat: AudioFormat,
 //    @SerialName("media_type") val mediaType: String,
