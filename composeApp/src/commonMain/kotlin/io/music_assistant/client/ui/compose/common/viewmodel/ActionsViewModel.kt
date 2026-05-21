@@ -14,6 +14,15 @@ import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.toast_added_to_playlist
+import musicassistantclient.composeapp.generated.resources.toast_error_add_playlist
+import musicassistantclient.composeapp.generated.resources.toast_error_mark_played
+import musicassistantclient.composeapp.generated.resources.toast_error_mark_unplayed
+import musicassistantclient.composeapp.generated.resources.toast_marked_played
+import musicassistantclient.composeapp.generated.resources.toast_marked_unplayed
+import musicassistantclient.composeapp.generated.resources.toast_no_uri
+import org.jetbrains.compose.resources.getString
 
 /**
  * VM that provides library and favorites actions for media items.
@@ -76,7 +85,7 @@ class ActionsViewModel(
         viewModelScope.launch {
             val itemUri = mediaItem.uri
                 ?: run {
-                    _toasts.emit("Media item has no URI")
+                    _toasts.emit(getString(Res.string.toast_no_uri))
                     return@launch
                 }
             apiClient.sendRequest(
@@ -85,12 +94,11 @@ class ActionsViewModel(
                     trackUris = listOf(itemUri),
                 ),
             )
-                .map { "Added to ${playlist.displayName}" }
-                .onSuccess { message ->
-                    _toasts.emit(message)
+                .onSuccess {
+                    _toasts.emit(getString(Res.string.toast_added_to_playlist, playlist.displayName))
                 }
                 .onFailure {
-                    _toasts.emit("Error adding to playlist")
+                    _toasts.emit(getString(Res.string.toast_error_add_playlist))
                 }
         }
     }
@@ -119,8 +127,8 @@ class ActionsViewModel(
         viewModelScope.launch {
             item.uri?.let { uri ->
                 apiClient.sendRequest(Request.Library.markPlayed(uri))
-                    .onSuccess { _toasts.emit("Marked as played") }
-                    .onFailure { _toasts.emit("Error marking as played") }
+                    .onSuccess { _toasts.emit(getString(Res.string.toast_marked_played)) }
+                    .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_played)) }
             }
         }
     }
@@ -132,8 +140,8 @@ class ActionsViewModel(
         viewModelScope.launch {
             item.uri?.let { uri ->
                 apiClient.sendRequest(Request.Library.markUnplayed(uri))
-                    .onSuccess { _toasts.emit("Marked as unplayed") }
-                    .onFailure { _toasts.emit("Error marking as unplayed") }
+                    .onSuccess { _toasts.emit(getString(Res.string.toast_marked_unplayed)) }
+                    .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_unplayed)) }
             }
         }
     }

@@ -18,5 +18,4 @@ data class Podcast(
     override val images: Map<ImageType, ImageInfo>,
 ) : AppMediaItem() {
     override val mediaType: MediaType = MediaType.PODCAST
-    override val subtitle = "Podcast"
 }

@@ -320,10 +320,12 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 }
 
                 // Misc settings - always visible
+                val shareLogsTitle = stringResource(Res.string.settings_share_logs)
+                val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
                 MiscSection(
-                    onShareLogs = { viewModel.shareLogs() },
+                    onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
-                    onShareCrashLog = { viewModel.shareCrashLog() },
+                    onShareCrashLog = { viewModel.shareCrashLog(shareCrashLogsTitle) },
                     onDeleteCrashLog = { viewModel.deleteCrashLog() },
                 )
 

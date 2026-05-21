@@ -13,20 +13,20 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
     private fun logFile() = File(context.cacheDir, "ma_client_logs.txt")
     private fun crashLogFile() = File(context.cacheDir, "ma_crash_log.txt")
 
-    actual fun shareLogs(logText: String) {
+    actual fun shareLogs(logText: String, chooserTitle: String) {
         val file = logFile()
         file.writeText(LogSanitizer.sanitize(logText))
-        shareFile(file)
+        shareFile(file, chooserTitle)
     }
 
     actual fun hasCrashLog(): Boolean = crashLogFile().exists()
 
-    actual fun shareCrashLog() {
+    actual fun shareCrashLog(chooserTitle: String) {
         val file = crashLogFile()
         if (file.exists()) {
             val sanitizedFile = File(context.cacheDir, "ma_crash_log_share.txt")
             sanitizedFile.writeText(LogSanitizer.sanitize(file.readText()))
-            shareFile(sanitizedFile)
+            shareFile(sanitizedFile, chooserTitle)
         }
     }
 
@@ -34,7 +34,7 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
         crashLogFile().delete()
     }
 
-    private fun shareFile(file: File) {
+    private fun shareFile(file: File, chooserTitle: String) {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -46,7 +46,7 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(
-            Intent.createChooser(intent, "Share logs").apply {
+            Intent.createChooser(intent, chooserTitle).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         },
         )

@@ -54,8 +54,10 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.Queue
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -64,6 +66,7 @@ import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_toggle_queue
 import musicassistantclient.composeapp.generated.resources.common_delete
+import musicassistantclient.composeapp.generated.resources.item_subtitle_unknown
 import musicassistantclient.composeapp.generated.resources.queue_browse_library
 import musicassistantclient.composeapp.generated.resources.queue_cannot_play
 import musicassistantclient.composeapp.generated.resources.queue_empty
@@ -366,7 +369,8 @@ fun Queue(
                                         Text(
                                             modifier = Modifier.fillMaxWidth().alpha(0.7f),
                                             text = if (isPlayable) {
-                                                item.track.subtitle ?: "Unknown"
+                                                (item.track as? AppMediaItem)?.localizedSubtitle()
+                                                    ?: stringResource(Res.string.item_subtitle_unknown)
                                             } else {
                                                 stringResource(Res.string.queue_cannot_play)
                                             },

@@ -5,8 +5,8 @@ package io.music_assistant.client.logging
 import io.music_assistant.client.player.PlatformContext
 
 expect class LogSharer(platformContext: PlatformContext) {
-    fun shareLogs(logText: String)
+    fun shareLogs(logText: String, chooserTitle: String)
     fun hasCrashLog(): Boolean
-    fun shareCrashLog()
+    fun shareCrashLog(chooserTitle: String)
     fun deleteCrashLog()
 }

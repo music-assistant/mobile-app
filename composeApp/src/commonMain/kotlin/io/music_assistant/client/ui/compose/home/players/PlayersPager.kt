@@ -102,10 +102,18 @@ import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.bound_player_joined_to
+import musicassistantclient.composeapp.generated.resources.bound_player_part_of_group
+import musicassistantclient.composeapp.generated.resources.bound_player_playing_with
+import musicassistantclient.composeapp.generated.resources.bound_player_playing_with_group
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
 import musicassistantclient.composeapp.generated.resources.players_dsp_settings
+import musicassistantclient.composeapp.generated.resources.players_loading
+import musicassistantclient.composeapp.generated.resources.players_none_available
+import musicassistantclient.composeapp.generated.resources.queue_dsm_disable
+import musicassistantclient.composeapp.generated.resources.queue_dsm_enable
 import musicassistantclient.composeapp.generated.resources.queue_clear
 import musicassistantclient.composeapp.generated.resources.queue_no_other_players
 import musicassistantclient.composeapp.generated.resources.queue_transfer
@@ -280,11 +288,12 @@ fun PlayersPager(
         }
     } else {
         Box(Modifier.fillMaxWidth().height(84.dp)) {
-            val text = when (state) {
-                is HomeScreenViewModel.PlayersState.Loading -> "Loading players..."
-                is HomeScreenViewModel.PlayersState.Data -> "No players available"
-                else -> "No players available"
-            }
+            val text = stringResource(
+                when (state) {
+                    is HomeScreenViewModel.PlayersState.Loading -> Res.string.players_loading
+                    else -> Res.string.players_none_available
+                },
+            )
 
             Text(
                 modifier = Modifier.align(Alignment.Center),
@@ -303,10 +312,11 @@ private fun BoundPlayerInfo(
     parent: PlayerData.ParentBind,
     moveToPlayer: (String) -> Unit,
 ) {
-    val status = when {
-        parent.isPlaying -> "playing with${if (parent.isGroup) " group" else ""}"
-        parent.isGroup -> "part of group"
-        else -> "joined to"
+    val template = when {
+        parent.isPlaying && parent.isGroup -> Res.string.bound_player_playing_with_group
+        parent.isPlaying -> Res.string.bound_player_playing_with
+        parent.isGroup -> Res.string.bound_player_part_of_group
+        else -> Res.string.bound_player_joined_to
     }
     Box(
         modifier = modifier
@@ -315,7 +325,7 @@ private fun BoundPlayerInfo(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "$playerName is $status ${parent.name}\n(tap to view)",
+            text = stringResource(template, playerName, parent.name),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onBackground,
@@ -675,11 +685,13 @@ private fun PlayerOverflowMenu(
             if (queueData.data.info.let { it.dontStopTheMusicEnabled != null && !it.isDynamicPlaylist }) {
                 add(
                     OverflowMenuOption(
-                        title = if (queueData.data.info.dontStopTheMusicEnabled == true) {
-                            "Disable Don't Stop The Music"
-                        } else {
-                            "Enable Don't Stop The Music"
-                        },
+                        title = stringResource(
+                            if (queueData.data.info.dontStopTheMusicEnabled == true) {
+                                Res.string.queue_dsm_disable
+                            } else {
+                                Res.string.queue_dsm_enable
+                            },
+                        ),
                         icon = Icons.Default.AllInclusive,
                         onClick = {
                             playerAction(

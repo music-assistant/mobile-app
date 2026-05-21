@@ -21,5 +21,4 @@ data class Playlist(
 ) : AppMediaItem() {
     override val mediaType: MediaType = MediaType.PLAYLIST
     override val canStartRadio: Boolean get() = !isDynamic
-    override val subtitle = "Playlist"
 }

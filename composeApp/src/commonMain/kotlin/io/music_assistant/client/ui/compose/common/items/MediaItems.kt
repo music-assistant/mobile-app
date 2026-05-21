@@ -116,7 +116,7 @@ fun ArtistGridItem(
         )
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.subtitle.orEmpty(),
+            text = item.localizedSubtitle().orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -192,7 +192,7 @@ fun AlbumGridItem(
         )
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.subtitle,
+            text = item.localizedSubtitle().orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -278,7 +278,7 @@ fun PlaylistGridItem(
         )
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.subtitle,
+            text = item.localizedSubtitle().orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -389,7 +389,7 @@ fun PodcastGridItem(
         )
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.subtitle,
+            text = item.localizedSubtitle().orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -715,7 +715,7 @@ internal fun AudiobookGridItem(
         )
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.subtitle,
+            text = item.localizedSubtitle().orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -778,6 +778,7 @@ private fun AudiobookImage(
 
 @Composable
 private fun GridPlayableItemLabels(item: PlayableItem) {
+    val subtitleText = (item as? AppMediaItem)?.localizedSubtitle()
     Spacer(Modifier.height(4.dp))
     Text(
         text = "${item.displayName}${
@@ -791,7 +792,7 @@ private fun GridPlayableItemLabels(item: PlayableItem) {
         textAlign = TextAlign.Center,
     )
     Text(
-        text = item.subtitle.orEmpty(),
+        text = subtitleText.orEmpty(),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
@@ -921,7 +922,7 @@ internal fun TrackRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             TrackImage(item)
             Badges(
@@ -945,7 +946,7 @@ internal fun AlbumRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             AlbumImage(item)
             Badges(
@@ -969,7 +970,7 @@ internal fun ArtistRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             ArtistImage(item)
             Badges(
@@ -993,7 +994,7 @@ internal fun PlaylistRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             PlaylistImage(item)
             Badges(
@@ -1017,7 +1018,7 @@ internal fun PodcastRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             PodcastImage(item)
             Badges(
@@ -1041,7 +1042,7 @@ internal fun PodcastEpisodeRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             PodcastEpisodeImage(item)
             Badges(
@@ -1069,7 +1070,7 @@ internal fun RadioRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             RadioImage(item)
             Badges(
@@ -1113,7 +1114,7 @@ fun GenreGridItem(
         )
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.subtitle,
+            text = item.localizedSubtitle().orEmpty(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -1163,7 +1164,7 @@ internal fun GenreRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             GenreImage(item)
             Badges(
@@ -1187,7 +1188,7 @@ internal fun AudiobookRowItem(
     RowItem(
         modifier = modifier,
         name = item.displayName,
-        subtitle = item.subtitle,
+        subtitle = item.localizedSubtitle(),
         imageContent = {
             AudiobookImage(item)
             Badges(

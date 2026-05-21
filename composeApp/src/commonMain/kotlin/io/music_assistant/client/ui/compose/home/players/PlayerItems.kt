@@ -62,6 +62,7 @@ import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.players_nothing
+import musicassistantclient.composeapp.generated.resources.queue_cannot_play
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.DurationUnit
 
@@ -153,7 +154,7 @@ fun CompactPlayerItem(
                 } ?: run {
                     if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
                         Text(
-                            text = "Cannot play this item",
+                            text = stringResource(Res.string.queue_cannot_play),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
                             maxLines = 1,
@@ -274,7 +275,7 @@ fun FullPlayerItem(
             )
             if (item.queueInfo?.currentItem?.isPlayable == false) {
                 Text(
-                    text = "Cannot play this item",
+                    text = stringResource(Res.string.queue_cannot_play),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
                     maxLines = 1,

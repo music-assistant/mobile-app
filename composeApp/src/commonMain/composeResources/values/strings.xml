@@ -40,6 +40,10 @@
   <string name="auth_title">Authentication</string>
   <string name="auth_username">Username</string>
   <string name="banner_reconnecting">Reconnecting... (attempt %1$d)</string>
+  <string name="bound_player_joined_to">%1$s is joined to %2$s\n(tap to view)</string>
+  <string name="bound_player_part_of_group">%1$s is part of group %2$s\n(tap to view)</string>
+  <string name="bound_player_playing_with">%1$s is playing with %2$s\n(tap to view)</string>
+  <string name="bound_player_playing_with_group">%1$s is playing with group %2$s\n(tap to view)</string>
   <string name="cd_add_playlist">Add playlist</string>
   <string name="cd_add_to_group">Add to group</string>
   <string name="cd_applied">Applied</string>
@@ -81,6 +85,11 @@
   <string name="home_save_rows">Save rows</string>
   <string name="item_error">Error loading item</string>
   <string name="item_no_data">No data available</string>
+  <string name="item_subtitle_genre">Genre</string>
+  <string name="item_subtitle_playlist">Playlist</string>
+  <string name="item_subtitle_podcast">Podcast</string>
+  <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_unknown">Unknown</string>
   <string name="library_customize">Customize</string>
   <string name="library_empty">No items found</string>
   <string name="library_error">Error loading data</string>
@@ -102,6 +111,8 @@
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
+  <string name="players_loading">Loading players...</string>
+  <string name="players_none_available">No players available</string>
   <string name="players_nothing">Nothing playing</string>
   <string name="players_title">Players</string>
   <string name="playlist_add_new">Add new</string>
@@ -112,6 +123,8 @@
   <string name="queue_browse_library">BROWSE LIBRARY</string>
   <string name="queue_cannot_play">Cannot play this item</string>
   <string name="queue_clear">Clear queue</string>
+  <string name="queue_dsm_disable">Disable Don't Stop The Music</string>
+  <string name="queue_dsm_enable">Enable Don't Stop The Music</string>
   <string name="queue_empty">Queue is empty</string>
   <string name="queue_error">Error loading queue</string>
   <string name="queue_label">Queue</string>
@@ -184,6 +197,7 @@
   <string name="sort_position">Position</string>
   <string name="sort_release_date">Release date</string>
   <string name="sort_year">Year</string>
+  <string name="toast_added_to_playlist">Added to %1$s</string>
   <string name="toast_error_add_playlist">Error adding to playlist</string>
   <string name="toast_error_mark_played">Error marking as played</string>
   <string name="toast_error_mark_unplayed">Error marking as unplayed</string>

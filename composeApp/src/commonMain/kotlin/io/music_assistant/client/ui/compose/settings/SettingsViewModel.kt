@@ -24,12 +24,12 @@ class SettingsViewModel(
     private val _hasCrashLog = MutableStateFlow(logSharer.hasCrashLog())
     val hasCrashLog: StateFlow<Boolean> = _hasCrashLog
 
-    fun shareLogs() {
-        logSharer.shareLogs(InMemoryLogWriter.getLogText())
+    fun shareLogs(chooserTitle: String) {
+        logSharer.shareLogs(InMemoryLogWriter.getLogText(), chooserTitle)
     }
 
-    fun shareCrashLog() {
-        logSharer.shareCrashLog()
+    fun shareCrashLog(chooserTitle: String) {
+        logSharer.shareCrashLog(chooserTitle)
     }
 
     fun deleteCrashLog() {

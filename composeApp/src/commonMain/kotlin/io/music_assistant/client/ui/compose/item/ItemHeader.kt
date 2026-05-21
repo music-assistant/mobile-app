@@ -66,6 +66,7 @@ import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
+import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.WindowClass
@@ -324,7 +325,7 @@ private fun ItemText(
             }
         }
 
-        item.subtitle?.let {
+        item.localizedSubtitle()?.let {
             Text(
                 modifier = Modifier.basicMarquee(),
                 text = it,

@@ -18,7 +18,6 @@ data class Genre(
     override val images: Map<ImageType, ImageInfo>,
 ) : AppMediaItem() {
     override val mediaType: MediaType = MediaType.GENRE
-    override val subtitle = "Genre"
     override val mediaUri: String
         get() = uri ?: "$provider://genre/$itemId"
 }
