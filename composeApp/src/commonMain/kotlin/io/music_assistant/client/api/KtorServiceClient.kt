@@ -4,6 +4,10 @@ import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.http.appendPathSegments
+import io.ktor.http.encodeURLQueryComponent
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
@@ -119,6 +123,71 @@ class KtorServiceClient(
      */
     override val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
         get() = (transport as? WebRTCTransport)?.sendspinDataChannel
+
+    override val webRTCHttpProxy: io.music_assistant.client.webrtc.WebRTCHttpProxy?
+        get() = (transport as? WebRTCTransport)?.httpProxy
+
+    override fun resolveImageUrl(
+        path: String,
+        provider: String,
+        isRemotelyAccessible: Boolean,
+    ): String? {
+        if (isRemotelyAccessible && path.startsWith("https")) return path
+        return when (val state = _sessionState.value) {
+            is SessionState.Connected.Direct -> buildHttpImageProxyUrl(state.connectionInfo.webUrl, path, provider)
+            is SessionState.Reconnecting.Direct -> buildHttpImageProxyUrl(state.connectionInfo.webUrl, path, provider)
+            is SessionState.Connected.WebRTC,
+            is SessionState.Reconnecting.WebRTC,
+                -> resolveWebRTCImageUrl(path, provider)
+            else -> null
+        }
+    }
+
+    // In WebRTC mode the client has internet access while the server only sees us through
+    // signaling/SCTP. Any public `https://` artwork should be fetched directly by Coil instead
+    // of relayed through the (slow, single-channel) data-channel proxy. The proxy is reserved
+    // for paths the client cannot reach (LAN URLs, server-local file paths, etc.).
+    private fun resolveWebRTCImageUrl(path: String, provider: String): String =
+        if (path.startsWith("https://")) path else buildWebRTCImageProxyUrl(path, provider)
+
+    private fun buildHttpImageProxyUrl(base: String, path: String, provider: String): String =
+        URLBuilder(base).apply {
+            appendPathSegments("imageproxy")
+            parameters.apply {
+                append("path", path.encodeURLQueryComponent())
+                append("provider", provider)
+                append("checksum", "")
+            }
+        }.buildString()
+
+    // Synthetic URL consumed by WebRTCImageFetcher. Scheme is matched by the Coil fetcher
+    // factory; path+query are reconstructed verbatim into the http-proxy-request `path` field.
+    private fun buildWebRTCImageProxyUrl(path: String, provider: String): String =
+        "$WEBRTC_PROXY_BASE/imageproxy" +
+            "?path=${path.encodeURLQueryComponent()}" +
+            "&provider=${provider.encodeURLQueryComponent()}" +
+            "&checksum="
+
+    // Rebases a server-issued image URL (which embeds the server's self-view of its origin,
+    // typically a LAN address) onto whatever base is reachable from this client. Used for
+    // player-current-item artwork, which the server pushes as fully-qualified `image_url`.
+    // External (non-imageproxy) URLs pass through untouched.
+    override fun rebaseServerImageUrl(rawUrl: String): String? {
+        if (rawUrl.isEmpty()) return null
+        val parsed = runCatching { Url(rawUrl) }.getOrNull() ?: return rawUrl
+        val path = parsed.encodedPath
+        if (!path.contains("imageproxy", ignoreCase = true)) return rawUrl
+        val tail = parsed.encodedQuery.let { if (it.isEmpty()) path else "$path?$it" }
+        val base = when (val state = _sessionState.value) {
+            is SessionState.Connected.Direct -> state.connectionInfo.webUrl
+            is SessionState.Reconnecting.Direct -> state.connectionInfo.webUrl
+            is SessionState.Connected.WebRTC,
+            is SessionState.Reconnecting.WebRTC,
+                -> WEBRTC_PROXY_BASE
+            else -> return null
+        }
+        return base.trimEnd('/') + tail
+    }
 
     private val logger = Logger.withTag("ServiceClient")
 
@@ -859,5 +928,6 @@ class KtorServiceClient(
 
     companion object {
         private const val STALE_CONNECTION_THRESHOLD_MS = 30_000L
+        private const val WEBRTC_PROXY_BASE = "mawebrtc://proxy"
     }
 }

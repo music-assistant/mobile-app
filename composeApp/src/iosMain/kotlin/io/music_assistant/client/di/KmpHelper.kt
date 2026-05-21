@@ -1,6 +1,12 @@
+@file:OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+
 package io.music_assistant.client.di
 
 import co.touchlab.kermit.Logger
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.readBytes
+import io.ktor.http.Url
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
@@ -16,6 +22,11 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.currentTimeMillis
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +36,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.koin.core.qualifier.named
+import platform.Foundation.NSData
+import platform.Foundation.create
 
 private val log = Logger.withTag("KmpHelper")
 
@@ -42,6 +56,7 @@ object KmpHelper : KoinComponent {
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
+    private val artworkHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -66,6 +81,57 @@ object KmpHelper : KoinComponent {
 
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
+
+    // MARK: - Artwork loader (Swift-callable)
+    //
+    // Swift CarPlay / MPNowPlayingInfoCenter previously fetched artwork through
+    // `URLSession.shared.dataTask(...)`. That bypasses the WebRTC data-channel proxy
+    // (URLSession can't speak `mawebrtc://`) and breaks lock-screen / CarPlay artwork
+    // whenever the URL we hand Swift is a synthetic proxy URL. This helper routes:
+    //   - `mawebrtc://...` → `WebRTCHttpProxy.get(...)` (returns hex-decoded bytes)
+    //   - `http(s)://...`  → Ktor GET
+    // Swift consumes the NSData and builds the UIImage.
+    fun loadArtworkBytes(
+        urlString: String,
+        completion: (NSData?) -> Unit,
+    ): Cancellable {
+        val job = mainScope.launch {
+            val bytes = try {
+                fetchArtworkInternal(urlString)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                log.w(e) { "loadArtworkBytes failed for $urlString" }
+                null
+            }
+            completion(bytes?.toNSData())
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    private suspend fun fetchArtworkInternal(urlString: String): ByteArray? = when {
+        urlString.startsWith("mawebrtc://") -> {
+            val proxy = serviceClient.webRTCHttpProxy ?: return null
+            val parsed = Url(urlString)
+            val tail = parsed.encodedQuery.let { q ->
+                if (q.isEmpty()) parsed.encodedPath else "${parsed.encodedPath}?$q"
+            }
+            val response = proxy.get(tail)
+            response.body.takeIf { response.status in 200..299 }
+        }
+        urlString.startsWith("http://") || urlString.startsWith("https://") -> {
+            val response = artworkHttpClient.get(urlString)
+            response.readBytes().takeIf { response.status.value in 200..299 }
+        }
+        else -> null
+    }
+
+    private fun ByteArray.toNSData(): NSData {
+        if (isEmpty()) return NSData()
+        return usePinned { pinned ->
+            NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
+        }
+    }
 
     // MARK: - Readiness observation
 

@@ -1,6 +1,7 @@
 import Foundation
 import MediaPlayer
 import AVFoundation
+import ComposeApp
 
 /// Manages iOS Now Playing info (Control Center, Lock Screen)
 /// and remote command handling (play/pause/next/prev buttons)
@@ -17,7 +18,7 @@ class NowPlayingManager {
     // State for caching and flicker prevention
     private var lastTrackIdentifier: String?
     private var cachedArtwork: MPMediaItemArtwork?
-    private var currentTask: URLSessionDataTask?
+    private var currentArtworkLoad: Cancellable?
     
     // Track current metadata state to determine if we need to fetch new artwork
     private var currentTitle: String?
@@ -158,10 +159,11 @@ class NowPlayingManager {
         }
 
         // Cancel any previous pending load
-        currentTask?.cancel()
+        currentArtworkLoad?.cancel()
+        currentArtworkLoad = nil
 
         // If no artwork URL, update immediately with nil artwork
-        guard let urlString = artworkUrl, let url = URL(string: urlString) else {
+        guard let urlString = artworkUrl, !urlString.isEmpty else {
             self.cachedArtwork = nil
             self.updateCurrentState(title: title, artist: artist, album: album)
             self.applyMergedUpdate(
@@ -174,8 +176,8 @@ class NowPlayingManager {
             return
         }
 
-        // Load artwork asynchronously
-        self.currentTask = loadArtwork(from: url) { [weak self] artwork in
+        // Load artwork asynchronously via KmpHelper (handles mawebrtc:// + http(s)://)
+        self.currentArtworkLoad = loadArtwork(urlString: urlString) { [weak self] artwork in
             guard let self = self else { return }
 
             // Check if this result is still relevant
@@ -320,16 +322,14 @@ class NowPlayingManager {
         commandCenter.skipBackwardCommand.isEnabled = false
     }
     
-    private func loadArtwork(from url: URL, completion: @escaping (MPMediaItemArtwork?) -> Void) -> URLSessionDataTask {
-        let task = URLSession.shared.dataTask(with: url) { data, _, _ in
-            guard let data = data, let image = UIImage(data: data) else {
+    private func loadArtwork(urlString: String, completion: @escaping (MPMediaItemArtwork?) -> Void) -> Cancellable {
+        return KmpHelper.shared.loadArtworkBytes(urlString: urlString) { data in
+            guard let data = data as Data?, let image = UIImage(data: data) else {
                 completion(nil)
                 return
             }
             let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             completion(artwork)
         }
-        task.resume()
-        return task
     }
 }

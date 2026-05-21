@@ -9,6 +9,7 @@ import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.SignalingClient
 import io.music_assistant.client.webrtc.WebRTCConnectionManager
+import io.music_assistant.client.webrtc.WebRTCHttpProxy
 import io.music_assistant.client.webrtc.model.RemoteId
 import io.music_assistant.client.webrtc.model.WebRTCConnectionState
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,23 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
+private const val HTTP_PROXY_TYPE_SCAN_WINDOW = 256
+private const val HTTP_PROXY_TYPE_TOKEN = "\"type\":\"http-proxy-response\""
+
+private fun isHttpProxyResponse(jsonString: String): Boolean {
+    val end = minOf(HTTP_PROXY_TYPE_SCAN_WINDOW, jsonString.length)
+    // Compact form (no whitespace) is what `json.dumps` / `JSON.stringify` produce by default.
+    if (jsonString.regionMatches(0, "{", 0, 1) &&
+        jsonString.indexOf(HTTP_PROXY_TYPE_TOKEN, startIndex = 0, ignoreCase = false) in 0 until end
+    ) {
+        return true
+    }
+    // Whitespace-tolerant fallback (rare — only if server pretty-prints).
+    return HTTP_PROXY_TYPE_REGEX.containsMatchIn(jsonString.substring(0, end))
+}
+
+private val HTTP_PROXY_TYPE_REGEX = Regex("\"type\"\\s*:\\s*\"http-proxy-response\"")
+
 class WebRTCTransport(
     private val httpClient: HttpClient,
     private val remoteId: RemoteId,
@@ -35,7 +53,10 @@ class WebRTCTransport(
     private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
     override val state = _state.asStateFlow()
 
-    private val _messages = MutableSharedFlow<JsonObject>(extraBufferCapacity = 10)
+    // Larger buffer: under image-burst load on the shared `ma-api` channel, RpcEngine can lag
+    // briefly behind the listener. A bigger buffer avoids backpressuring the listener (which
+    // would otherwise stall hex-decoded image responses behind control-plane frame parsing).
+    private val _messages = MutableSharedFlow<JsonObject>(extraBufferCapacity = 64)
     override val messages = _messages.asSharedFlow()
 
     private var manager: WebRTCConnectionManager? = null
@@ -47,6 +68,8 @@ class WebRTCTransport(
 
     val sendspinDataChannel: DataChannelWrapper?
         get() = manager?.sendspinDataChannel
+
+    val httpProxy: WebRTCHttpProxy = WebRTCHttpProxy(sender = { json -> send(json) })
 
     override fun connect() {
         connectionJob?.cancel()
@@ -137,8 +160,16 @@ class WebRTCTransport(
             try {
                 mgr.incomingMessages.collect { jsonString ->
                     try {
-                        val jsonObject = myJson.decodeFromString<JsonObject>(jsonString)
-                        _messages.emit(jsonObject)
+                        // CHEAP peek: avoid full JSON parse for multi-MB http-proxy-response frames.
+                        // The full parse would block the listener (single coroutine), queueing every
+                        // subsequent control-plane message behind each image body for hundreds of ms.
+                        // Bounded to first 256 chars — `type` is always early in the object.
+                        if (isHttpProxyResponse(jsonString)) {
+                            httpProxy.dispatchRawResponse(jsonString)
+                        } else {
+                            val jsonObject = myJson.decodeFromString<JsonObject>(jsonString)
+                            _messages.emit(jsonObject)
+                        }
                     } catch (e: Exception) {
                         logger.e(e) { "Failed to parse incoming WebRTC message: ${jsonString.take(200)}" }
                     }
@@ -214,7 +245,10 @@ class WebRTCTransport(
         val mgr = manager
         manager = null
         if (mgr != null) {
-            scope.launch { mgr.disconnect() }
+            scope.launch {
+                mgr.disconnect()
+                httpProxy.cancelAll(IllegalStateException("WebRTC transport disconnected"))
+            }
         }
         _state.value = TransportState.Disconnected
     }
@@ -227,6 +261,7 @@ class WebRTCTransport(
         stateMonitorJob = null
         manager?.disconnect()
         manager = null
+        httpProxy.cancelAll(IllegalStateException("WebRTC transport cleanup"))
     }
 
     private fun createManager(): WebRTCConnectionManager {

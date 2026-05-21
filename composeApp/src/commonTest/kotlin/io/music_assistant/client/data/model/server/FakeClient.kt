@@ -20,15 +20,12 @@ class FakeClient : ServiceClient {
     }
 
     override suspend fun login(username: String, password: String) {
-        TODO("Not yet implemented")
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
-        TODO("Not yet implemented")
     }
 
     override fun logout() {
-        TODO("Not yet implemented")
     }
 
     override val isReadyForCommands: StateFlow<Boolean>
@@ -36,51 +33,46 @@ class FakeClient : ServiceClient {
     override val serverBaseUrl: StateFlow<String?>
         get() = TODO("Not yet implemented")
 
+    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean): String? = null
+
+    override fun rebaseServerImageUrl(rawUrl: String): String? = null
+
+    override val webRTCHttpProxy: io.music_assistant.client.webrtc.WebRTCHttpProxy? = null
+
     override fun forceWebRTCReconnect() {
-        TODO("Not yet implemented")
     }
 
     override val events: Flow<Event<out Any>>
         get() = TODO("Not yet implemented")
-    override val webrtcSendspinChannel: DataChannelWrapper?
-        get() = TODO("Not yet implemented")
+    override val webrtcSendspinChannel: DataChannelWrapper? = null
 
     override fun onAppForeground() {
-        TODO("Not yet implemented")
     }
 
     override fun onAppBackground() {
-        TODO("Not yet implemented")
     }
 
     override val foregroundEvents: Flow<Unit>
         get() = TODO("Not yet implemented")
 
     override fun disconnectByUser() {
-        TODO("Not yet implemented")
     }
 
     override fun connect(connection: ConnectionInfo) {
-        TODO("Not yet implemented")
     }
 
     override fun connectWebRTC(remoteId: RemoteId) {
-        TODO("Not yet implemented")
     }
 
     override fun onExternalConsumerActive() {
-        TODO("Not yet implemented")
     }
 
     override fun onPlaybackActive() {
-        TODO("Not yet implemented")
     }
 
     override fun onExternalConsumerInactive() {
-        TODO("Not yet implemented")
     }
 
     override fun onPlaybackInactive() {
-        TODO("Not yet implemented")
     }
 }

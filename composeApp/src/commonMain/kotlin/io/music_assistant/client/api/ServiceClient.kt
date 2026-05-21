@@ -3,6 +3,7 @@ package io.music_assistant.client.api
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.webrtc.DataChannelWrapper
+import io.music_assistant.client.webrtc.WebRTCHttpProxy
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,9 @@ interface ServiceClient {
     fun logout()
     val isReadyForCommands: StateFlow<Boolean>
     val serverBaseUrl: StateFlow<String?>
+    fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean): String?
+    fun rebaseServerImageUrl(rawUrl: String): String?
+    val webRTCHttpProxy: WebRTCHttpProxy?
     fun forceWebRTCReconnect()
     val events: Flow<Event<out Any>>
     val webrtcSendspinChannel: DataChannelWrapper?

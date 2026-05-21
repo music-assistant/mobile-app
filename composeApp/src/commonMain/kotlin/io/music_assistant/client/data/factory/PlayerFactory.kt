@@ -1,6 +1,5 @@
 package io.music_assistant.client.data.factory
 
-import io.ktor.http.Url
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Player
@@ -57,28 +56,13 @@ class PlayerFactory(
             title = title,
             artist = artist,
             album = album,
-            imageUrl = rewriteServerImageUrl(imageUrl),
+            imageUrl = imageUrl?.let(apiClient::rebaseServerImageUrl),
             duration = duration.takeIf { clientMediaType != MediaType.RADIO },
             queueId = queueId,
             queueItemId = queueItemId,
             mediaType = clientMediaType,
             uri = uri,
         )
-    }
-
-    // Server-issued `image_url` embeds the server's self-view of its origin
-    // (typically a LAN address), which is unreachable on proxied / WebRTC
-    // connections. Rebase proxy URLs onto the client-reachable base; leave
-    // external URLs alone. Null when no HTTP base is available (WebRTC).
-    private fun rewriteServerImageUrl(raw: String?): String? {
-        if (raw.isNullOrEmpty()) return null
-        val parsed = runCatching { Url(raw) }.getOrNull() ?: return raw
-        val path = parsed.encodedPath
-        if (!path.contains("imageproxy", ignoreCase = true)) return raw
-        val query = parsed.encodedQuery
-        val tail = if (query.isEmpty()) path else "$path?$query"
-        val base = apiClient.serverBaseUrl.value ?: return null
-        return base.trimEnd('/') + tail
     }
 
     private companion object {

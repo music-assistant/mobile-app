@@ -33,7 +33,9 @@ actual class DataChannelWrapper(
     private val _state = MutableStateFlow(dataChannel.readyState)
     actual val state: StateFlow<DataChannelState> = _state.asStateFlow()
 
-    private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 50)
+    // Shared `ma-api` channel carries both control-plane RPCs and http-proxy responses.
+    // Buffer sized to absorb image-burst responses without dropping control frames.
+    private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 200)
     actual val messages: Flow<String> = _textMessages.asSharedFlow()
 
     // CRITICAL: Binary messages (audio chunks) arrive at real-time streaming rate (~50-100/sec).

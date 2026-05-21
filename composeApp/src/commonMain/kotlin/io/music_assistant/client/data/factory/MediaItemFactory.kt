@@ -1,8 +1,5 @@
 package io.music_assistant.client.data.factory
 
-import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
-import io.ktor.http.encodeURLQueryComponent
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.Chapter
 import io.music_assistant.client.data.model.client.ImageInfo
@@ -226,25 +223,8 @@ class MediaItemFactory(
             path = server.path,
             isRemotelyAccessible = server.remotelyAccessible,
             provider = server.provider,
-            url = buildImageUrl(server.path, server.provider, server.remotelyAccessible),
+            url = apiClient.resolveImageUrl(server.path, server.provider, server.remotelyAccessible),
         )
-
-    private fun buildImageUrl(
-        path: String,
-        provider: String,
-        isRemotelyAccessible: Boolean,
-    ): String? =
-        path.takeIf { isRemotelyAccessible && it.startsWith("https") }
-            ?: apiClient.serverBaseUrl.value?.let { server ->
-                URLBuilder(server).apply {
-                    appendPathSegments("imageproxy")
-                    parameters.apply {
-                        append("path", path.encodeURLQueryComponent())
-                        append("provider", provider)
-                        append("checksum", "")
-                    }
-                }.buildString()
-            }
 
     private fun resolveImageInfo(
         image: ServerMediaItemImage?,

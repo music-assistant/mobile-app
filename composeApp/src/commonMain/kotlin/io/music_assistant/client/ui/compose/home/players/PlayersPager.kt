@@ -965,7 +965,7 @@ fun ExpandedPlayerPageExpandedScreenPreview() {
 fun ExpandedPlayerPageLargeScreenPreview() {
     MaterialTheme(colorScheme = darkColorScheme()) {
         val track = AppMediaItemFixtures.track()
-        val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
+        val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue(hasRadio = true))
 
         ExpandedPlayerPage(
             player = playerData,
