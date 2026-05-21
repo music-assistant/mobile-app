@@ -84,6 +84,7 @@ class WebRTCConnectionManager(
     private var messageListenerJob: Job? = null
     private var dataChannelStateJob: Job? = null
     private var connectionTimeoutJob: Job? = null
+    private var iceDisconnectGraceJob: Job? = null
     private var currentSessionId: String? = null
     private var currentRemoteId: RemoteId? = null
 
@@ -270,6 +271,9 @@ class WebRTCConnectionManager(
                         logger.d { "Peer connection state: $state" }
                         when (state) {
                             PeerConnectionStateValue.FAILED -> {
+                                // Terminal: cancel any pending grace timer and fail immediately.
+                                iceDisconnectGraceJob?.cancel()
+                                iceDisconnectGraceJob = null
                                 logger.e { "ICE connection failed" }
                                 _connectionState.value = WebRTCConnectionState.Error(
                                     WebRTCError.ConnectionError("ICE connection failed"),
@@ -278,16 +282,39 @@ class WebRTCConnectionManager(
                             }
 
                             PeerConnectionStateValue.DISCONNECTED -> {
-                                logger.w { "ICE connection disconnected" }
-                                // Treat disconnected as immediate failure to enable fast reconnection
-                                // Even if temporary, reconnection will succeed quickly
-                                _connectionState.value = WebRTCConnectionState.Error(
-                                    WebRTCError.ConnectionError("ICE connection disconnected"),
-                                )
-                                cleanup()
+                                // libwebrtc routinely flips connected ↔ disconnected during brief
+                                // network noise. Give it a grace window to recover instead of
+                                // tearing down on every blip — a full SDP renegotiation + re-auth
+                                // is far more disruptive than ~4 s of un-noticed downtime.
+                                if (iceDisconnectGraceJob?.isActive == true) return@collect
+                                logger.w { "ICE connection disconnected — waiting ${ICE_DISCONNECT_GRACE_MS}ms for recovery" }
+                                iceDisconnectGraceJob = scope.launch {
+                                    delay(ICE_DISCONNECT_GRACE_MS)
+                                    // Re-check the live state on the wrapper, not on a captured value —
+                                    // the collector may not have re-emitted CONNECTED yet at the cancel
+                                    // edge, but the wrapper's flow value is authoritative.
+                                    val current = pc.connectionState.value
+                                    if (current == PeerConnectionStateValue.CONNECTED) {
+                                        logger.i { "ICE recovered during grace window" }
+                                    } else {
+                                        logger.e { "ICE still $current after grace window — failing" }
+                                        _connectionState.value = WebRTCConnectionState.Error(
+                                            WebRTCError.ConnectionError("ICE connection disconnected"),
+                                        )
+                                        cleanup()
+                                    }
+                                }
+                            }
+
+                            PeerConnectionStateValue.CONNECTED -> {
+                                // Recovered (or initial reach). Cancel pending grace timer.
+                                iceDisconnectGraceJob?.cancel()
+                                iceDisconnectGraceJob = null
                             }
 
                             PeerConnectionStateValue.CLOSED -> {
+                                iceDisconnectGraceJob?.cancel()
+                                iceDisconnectGraceJob = null
                                 logger.i { "ICE connection closed" }
                                 if (_connectionState.value !is WebRTCConnectionState.Idle) {
                                     _connectionState.value = WebRTCConnectionState.Error(
@@ -298,7 +325,7 @@ class WebRTCConnectionManager(
                             }
 
                             else -> {
-                                // Normal states (NEW, CONNECTING, CONNECTED)
+                                // Normal transient states (NEW, CONNECTING)
                             }
                         }
                     }
@@ -514,6 +541,9 @@ class WebRTCConnectionManager(
         connectionTimeoutJob?.cancel()
         connectionTimeoutJob = null
 
+        iceDisconnectGraceJob?.cancel()
+        iceDisconnectGraceJob = null
+
         dataChannel?.close()
         dataChannel = null
 
@@ -526,5 +556,12 @@ class WebRTCConnectionManager(
         signalingClient.disconnect()
 
         currentSessionId = null
+    }
+
+    companion object {
+        // Long enough to absorb typical WiFi roaming and cell-tower handoffs, short enough
+        // that genuinely-dead links don't feel sticky. See the DISCONNECTED branch in the
+        // connection-state collector for rationale.
+        private const val ICE_DISCONNECT_GRACE_MS = 4_000L
     }
 }

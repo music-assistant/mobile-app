@@ -10,6 +10,7 @@ import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
@@ -40,6 +41,7 @@ fun sharedModule(
         singleOf(::SettingsRepository)
         singleOf(::NetworkMonitor)
         singleOf(::ErrorMessageBus)
+        singleOf(::ImageCacheInvalidator)
         singleOf(serviceClientConstructor) { bind<ServiceClient>() }
         singleOf(::LogSharer)
         single(createdAtStart = true) {

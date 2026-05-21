@@ -76,21 +76,34 @@ class WebRTCHttpProxy(
         path: String,
         headers: Map<String, String> = emptyMap(),
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
-    ): ProxyResponse = concurrencyGate.withPermit {
-        val id = nextRequestId()
-        val deferred = CompletableDeferred<String>()
-        pendingMutex.withLock { pending[id] = deferred }
-        val startMs = currentTimeMillis()
-        logger.d { "GET $path id=$id (in-flight after acquire)" }
-        val rawJsonString = try {
-            sender(buildRequest(id, path, headers))
-            withTimeout(timeoutMs) { deferred.await() }
-        } finally {
-            pendingMutex.withLock { pending.remove(id) }
+    ): ProxyResponse {
+        // Instrumentation (Phase 2a): measure how long callers wait for the semaphore vs
+        // how long they hold it. acquire_wait_ms close to 0 → semaphore isn't the bottleneck;
+        // sustained acquire_wait_ms ≫ held_ms → caller queue is starving on the gate.
+        val queuedAtMs = currentTimeMillis()
+        return concurrencyGate.withPermit {
+            val permitAcquiredMs = currentTimeMillis()
+            val acquireWaitMs = permitAcquiredMs - queuedAtMs
+            val id = nextRequestId()
+            val deferred = CompletableDeferred<String>()
+            pendingMutex.withLock { pending[id] = deferred }
+            logger.d { "GET $path id=$id acquire_wait_ms=$acquireWaitMs" }
+            val rawJsonString = try {
+                sender(buildRequest(id, path, headers))
+                withTimeout(timeoutMs) { deferred.await() }
+            } finally {
+                pendingMutex.withLock { pending.remove(id) }
+            }
+            val parseStartMs = currentTimeMillis()
+            val response = parseResponse(rawJsonString)
+            val nowMs = currentTimeMillis()
+            logger.d {
+                "← id=$id status=${response.status} bytes=${response.body.size} " +
+                    "acquire_wait_ms=$acquireWaitMs held_ms=${nowMs - permitAcquiredMs} " +
+                    "parse_ms=${nowMs - parseStartMs}"
+            }
+            response
         }
-        val response = parseResponse(rawJsonString)
-        logger.d { "← id=$id status=${response.status} bytes=${response.body.size} in ${currentTimeMillis() - startMs}ms" }
-        response
     }
 
     /**
@@ -136,17 +149,77 @@ class WebRTCHttpProxy(
         )
     }
 
-    // Runs in the awaiter's coroutine. Both the JSON parse and the hex→bytes conversion happen
-    // here on Dispatchers.Default — never on the message-listener coroutine — so a large image
-    // response can't stall control-plane traffic on the shared `ma-api` channel.
+    // Runs in the awaiter's coroutine on Dispatchers.Default — never on the message-listener.
+    // Fast path scans the frame with indexOf, never materialising the full JsonObject (the hex
+    // `body` field would otherwise allocate ~2× the wire-size as a JsonPrimitive). On any
+    // extraction failure we fall back to the full kotlinx parse, behind a one-line warn so
+    // divergence from the wire schema is visible.
     private suspend fun parseResponse(rawJsonString: String): ProxyResponse = withContext(Dispatchers.Default) {
+        fastParseResponse(rawJsonString) ?: run {
+            logger.w { "Falling back to full kotlinx parse for http-proxy-response" }
+            slowParseResponse(rawJsonString)
+        }
+    }
+
+    private fun fastParseResponse(raw: String): ProxyResponse? {
+        // `body` is the only large field. Locate `"body":"` and read until the closing `"`.
+        // Hex is `[0-9a-fA-F]` only — no escapes to worry about. Frame is compact JSON
+        // (server uses json.dumps, no whitespace), so we don't tolerate spaces around `:`.
+        val bodyKeyIdx = raw.indexOf(BODY_KEY)
+        if (bodyKeyIdx < 0) return null
+        val bodyStart = bodyKeyIdx + BODY_KEY.length
+        val bodyEnd = raw.indexOf('"', startIndex = bodyStart)
+        if (bodyEnd < 0) return null
+
+        // status / headers always precede `body` in the wire format. Restrict the scan window
+        // to the prefix so we never re-walk megabytes of hex.
+        val status = findStatusBefore(raw, bodyKeyIdx) ?: return null
+        val headers = extractHeadersBefore(raw, bodyKeyIdx) ?: return null
+
+        val body = hexToBytes(raw, bodyStart, bodyEnd)
+        return ProxyResponse(status, headers, body)
+    }
+
+    private fun findStatusBefore(raw: String, limit: Int): Int? {
+        val keyIdx = raw.indexOf(STATUS_KEY)
+        if (keyIdx !in 0..<limit) return null
+        var i = keyIdx + STATUS_KEY.length
+        // skip optional whitespace (defensive — server emits compact JSON, but cheap)
+        while (i < limit && raw[i].isWhitespace()) i++
+        var value = 0
+        var any = false
+        while (i < limit) {
+            val c = raw[i]
+            if (c !in '0'..'9') break
+            value = value * RADIX_10 + (c.code - '0'.code)
+            any = true
+            i++
+        }
+        return if (any) value else null
+    }
+
+    private fun extractHeadersBefore(raw: String, limit: Int): Map<String, String>? {
+        val keyIdx = raw.indexOf(HEADERS_KEY)
+        if (keyIdx !in 0..<limit) return emptyMap()
+        val objStart = raw.indexOf('{', startIndex = keyIdx + HEADERS_KEY.length)
+        if (objStart !in 0..<limit) return null
+        val objEnd = raw.indexOf('}', startIndex = objStart)
+        if (objEnd !in 0..<limit) return null
+        // Headers are a small flat string→string object — parse only this slice.
+        return runCatching {
+            myJson.decodeFromString<JsonObject>(raw.substring(objStart, objEnd + 1))
+                .mapValues { it.value.jsonPrimitive.contentOrNull.orEmpty() }
+        }.getOrNull()
+    }
+
+    private fun slowParseResponse(rawJsonString: String): ProxyResponse {
         val json = myJson.decodeFromString<JsonObject>(rawJsonString)
         val status = json["status"]?.jsonPrimitive?.intOrNull ?: 0
         val headers = json["headers"]?.jsonObject
             ?.mapValues { it.value.jsonPrimitive.contentOrNull.orEmpty() }
             .orEmpty()
         val bodyHex = json["body"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        ProxyResponse(status, headers, hexToBytes(bodyHex))
+        return ProxyResponse(status, headers, hexToBytes(bodyHex))
     }
 
     private fun extractId(rawJsonString: String): String? {
@@ -163,23 +236,38 @@ class WebRTCHttpProxy(
     private var requestCounter = 0L
 
     companion object {
-        // 2 in-flight requests is a compromise: enough to overlap network/decode work, low
-        // enough to leave room on the shared `ma-api` SCTP stream for control-plane events.
-        private const val DEFAULT_MAX_CONCURRENT = 2
+        // 6 in-flight requests, raised from the original conservative `2` after real-workload
+        // logging (Phase 2a) showed acquire_wait_ms reaching ~326 ms on artwork-burst screens
+        // while held_ms stayed at ~100 ms — i.e. the gate, not the network, was the
+        // bottleneck. Typical artwork bodies on this codepath are 50–450 KB, well below the
+        // multi-MB blobs the original `2` was defending against. If control-plane RPC latency
+        // regresses noticeably under sustained image bursts, drop to 4.
+        private const val DEFAULT_MAX_CONCURRENT = 6
         private const val DEFAULT_TIMEOUT_MS = 30_000L
         private const val ID_SCAN_WINDOW = 256
 
         // Matches both `"id":"..."` and `"id": "..."` (with optional whitespace).
         private val ID_REGEX = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"")
         private const val RADIX = 16
+        private const val RADIX_10 = 10
         private const val SHIFT = 4
 
-        fun hexToBytes(hex: String): ByteArray {
-            require(hex.length % 2 == 0) { "Hex string must have even length" }
-            val out = ByteArray(hex.length / 2)
-            var i = 0
-            while (i < hex.length) {
-                out[i / 2] = ((hex[i].digitToInt(RADIX) shl SHIFT) or hex[i + 1].digitToInt(RADIX)).toByte()
+        // Compact-JSON keys the wire uses (server emits via `json.dumps`, no whitespace).
+        // If the server ever pretty-prints, fastParseResponse returns null and we fall back.
+        private const val BODY_KEY = "\"body\":\""
+        private const val STATUS_KEY = "\"status\":"
+        private const val HEADERS_KEY = "\"headers\":"
+
+        fun hexToBytes(hex: String): ByteArray = hexToBytes(hex, 0, hex.length)
+
+        fun hexToBytes(src: String, start: Int, endExclusive: Int): ByteArray {
+            val len = endExclusive - start
+            require(len % 2 == 0) { "Hex range must have even length" }
+            val out = ByteArray(len / 2)
+            var i = start
+            var o = 0
+            while (i < endExclusive) {
+                out[o++] = ((src[i].digitToInt(RADIX) shl SHIFT) or src[i + 1].digitToInt(RADIX)).toByte()
                 i += 2
             }
             return out

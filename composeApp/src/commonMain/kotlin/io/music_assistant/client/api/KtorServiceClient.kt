@@ -13,6 +13,7 @@ import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
@@ -75,6 +76,7 @@ class KtorServiceClient(
     private val webrtcHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
     private val networkMonitor: NetworkMonitor by inject()
+    private val imageCacheInvalidator: ImageCacheInvalidator by inject()
 
     // --- Transport ---
     private var transport: Transport? = null
@@ -625,6 +627,11 @@ class KtorServiceClient(
             onReconnected = {
                 // Re-auth is owned by AuthenticationManager (driven by the
                 // `needsReauthOnReconnect = true` gate above); nothing to do here.
+                // But we DO need to evict `mawebrtc://` entries from Coil's memory cache:
+                // `WebRTCHttpProxy.cancelAll()` ran on the previous transport's tear-down,
+                // failing every in-flight image request — Coil caches those errors and
+                // won't retry on its own, so visible tiles stay broken until invalidated.
+                imageCacheInvalidator.evictWebRTCEntries()
                 logger.i { "WebRTC reconnection successful — awaiting AuthenticationManager re-auth" }
             },
             needsReauthOnReconnect = true,
