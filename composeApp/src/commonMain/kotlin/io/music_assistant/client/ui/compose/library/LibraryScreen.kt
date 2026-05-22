@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Clear
@@ -46,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
@@ -174,6 +178,7 @@ private fun LibraryTopBar(
     onOnlyFavoritesClicked: (LibraryViewModel.Tab) -> Unit,
     onSortChanged: (LibraryViewModel.Tab, SortOption) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
     TopAppBar(
         title = {
             Column(
@@ -251,6 +256,8 @@ private fun LibraryTopBar(
                         null
                     },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 )
                 Row(
                     modifier = modifier,
@@ -348,6 +355,7 @@ private fun CreatePlaylistDialog(
     onCreate: (String) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     var playlistName by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -364,6 +372,14 @@ private fun CreatePlaylistDialog(
                 onValueChange = { playlistName = it },
                 label = { Text(stringResource(Res.string.playlist_name_label)) },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        val trimmed = playlistName.trim()
+                        if (trimmed.isNotEmpty()) onCreate(trimmed)
+                    },
+                ),
             )
         },
         confirmButton = {

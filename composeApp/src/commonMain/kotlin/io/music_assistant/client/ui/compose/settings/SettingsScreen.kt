@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -47,7 +48,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,6 +67,7 @@ import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -188,6 +193,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
+                    .clearFocusOnScroll()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -540,6 +546,8 @@ private fun DirectConnectionContent(
     enabled: Boolean,
     onShowHistory: () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+
     // Host input
     TextField(
         modifier = Modifier
@@ -550,6 +558,10 @@ private fun DirectConnectionContent(
         label = { Text(stringResource(Res.string.settings_server_host)) },
         placeholder = { Text("homeassistant.local") },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+        ),
         colors = TextFieldDefaults.colors(
             focusedTextColor = MaterialTheme.colorScheme.onBackground,
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -566,7 +578,11 @@ private fun DirectConnectionContent(
         label = { Text(stringResource(Res.string.settings_port)) },
         placeholder = { Text("8095") },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done,
+        ),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
         colors = TextFieldDefaults.colors(
             focusedTextColor = MaterialTheme.colorScheme.onBackground,
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -629,6 +645,7 @@ private fun WebRTCConnectionContent(
     val isConnected = sessionState is SessionState.Connected.WebRTC
     val isConnecting = sessionState is SessionState.Connecting
     var showQrDialog by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     Text(
         text = stringResource(Res.string.settings_webrtc_description),
@@ -648,6 +665,17 @@ private fun WebRTCConnectionContent(
             label = { Text(stringResource(Res.string.settings_remote_id)) },
             placeholder = { Text("XXXXXXXX-XXXXX-XXXXX-XXXXXXXX") },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManager.clearFocus()
+                    if (remoteId.isNotBlank() && !isInvalidRemoteId &&
+                        !isConnected && !isConnecting
+                    ) {
+                        onConnect()
+                    }
+                },
+            ),
             colors = TextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -873,6 +901,7 @@ private fun SendspinSection(
     viewModel: SettingsViewModel,
 ) {
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
+    val focusManager = LocalFocusManager.current
     val sendspinDeviceName by viewModel.sendspinDeviceName.collectAsStateWithLifecycle()
     val sendspinUseCustomConnection by viewModel.sendspinUseCustomConnection.collectAsStateWithLifecycle()
     val sendspinPort by viewModel.sendspinPort.collectAsStateWithLifecycle()
@@ -900,6 +929,8 @@ private fun SendspinSection(
             label = { Text(stringResource(Res.string.settings_player_name)) },
             singleLine = true,
             enabled = !sendspinEnabled,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
             colors = TextFieldDefaults.colors(
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -989,6 +1020,10 @@ private fun SendspinSection(
                 label = { Text(stringResource(Res.string.settings_host)) },
                 singleLine = true,
                 enabled = !sendspinEnabled,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                ),
                 colors = TextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
                     unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -1011,6 +1046,13 @@ private fun SendspinSection(
                     label = { Text(stringResource(Res.string.settings_port_default)) },
                     singleLine = true,
                     enabled = !sendspinEnabled,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next,
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Next) },
+                    ),
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -1027,6 +1069,8 @@ private fun SendspinSection(
                     label = { Text(stringResource(Res.string.settings_path)) },
                     singleLine = true,
                     enabled = !sendspinEnabled,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,

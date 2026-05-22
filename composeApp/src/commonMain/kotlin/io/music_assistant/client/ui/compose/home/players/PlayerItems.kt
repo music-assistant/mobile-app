@@ -221,7 +221,7 @@ fun FullPlayerItem(
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
             modifier = Modifier
@@ -289,43 +289,6 @@ fun FullPlayerItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                )
-            }
-            val currentQueueItem = item.queueInfo?.currentItem
-            val tier = currentQueueItem?.qualityTier
-            var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
-            val isLq = tier == QualityTier.LQ
-            Box(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .alpha(if (tier != null) 1f else 0f)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(
-                        if (isLq) {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        } else {
-                            colors.controlTint
-                        },
-                    )
-                    .clickable(enabled = tier != null) { showChainDialog = true }
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = (tier ?: QualityTier.LQ).name,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isLq) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        if (colors.controlTint.luminance() > 0.5f) Color.Black else Color.White
-                    },
-                )
-            }
-            if (showChainDialog && currentQueueItem != null) {
-                AudioChainDialog(
-                    queueTrack = currentQueueItem,
-                    player = item,
-                    onDismissRequest = { showChainDialog = false },
                 )
             }
         }
@@ -415,6 +378,7 @@ fun FullPlayerItem(
             // Duration labels
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
@@ -424,6 +388,43 @@ fun FullPlayerItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                val currentQueueItem = item.queueInfo?.currentItem
+                val tier = currentQueueItem?.qualityTier
+                var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
+                val isLq = tier == QualityTier.LQ
+
+                if (showChainDialog && currentQueueItem != null) {
+                    AudioChainDialog(
+                        queueTrack = currentQueueItem,
+                        player = item,
+                        onDismissRequest = { showChainDialog = false },
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .alpha(if (tier != null) 1f else 0f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (isLq) {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            } else {
+                                colors.controlTint
+                            },
+                        )
+                        .clickable(enabled = tier != null) { showChainDialog = true }
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = (tier ?: QualityTier.LQ).name,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isLq) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            if (colors.controlTint.luminance() > 0.5f) Color.Black else Color.White
+                        },
+                    )
+                }
                 Text(
                     text = currentMedia
                         ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }

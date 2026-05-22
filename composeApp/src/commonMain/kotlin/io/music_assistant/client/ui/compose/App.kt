@@ -1,13 +1,17 @@
 package io.music_assistant.client.ui.compose
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.ui.theme.SystemAppearance
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -48,6 +52,8 @@ fun App() {
     }
     SystemAppearance(isDarkTheme = darkTheme)
     AppTheme(darkTheme = darkTheme) {
-        TopLevelNavRoot()
+        Box(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
+            TopLevelNavRoot()
+        }
     }
 }
