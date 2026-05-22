@@ -1,8 +1,5 @@
 package io.music_assistant.client.ui.compose.common
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,49 +30,46 @@ fun AutoLoginSplash(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    AnimatedVisibility(
-        modifier = modifier,
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                            MaterialTheme.colorScheme.surfaceContainerLow,
-                        ),
+    // No AnimatedVisibility wrapper — workaround for CMP 1.10.3 iOS first-frame
+    // crash where overlapping animated subtrees + LazyLayout subcompose trip a
+    // SubcomposeLayout precondition. Splash now appears/disappears without fade.
+    if (!visible) return
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        MaterialTheme.colorScheme.surfaceContainerLow,
                     ),
                 ),
+            ),
+    ) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.mass),
-                    contentDescription = null,
-                    modifier = Modifier.size(128.dp),
-                )
-                CircularProgressIndicator()
-                Text(
-                    text = stringResource(Res.string.settings_connecting),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            OutlinedButton(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp),
-                onClick = onCancel,
-            ) {
-                Text(stringResource(Res.string.common_cancel))
-            }
+            Image(
+                painter = painterResource(Res.drawable.mass),
+                contentDescription = null,
+                modifier = Modifier.size(128.dp),
+            )
+            CircularProgressIndicator()
+            Text(
+                text = stringResource(Res.string.settings_connecting),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        OutlinedButton(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp),
+            onClick = onCancel,
+        ) {
+            Text(stringResource(Res.string.common_cancel))
         }
     }
 }

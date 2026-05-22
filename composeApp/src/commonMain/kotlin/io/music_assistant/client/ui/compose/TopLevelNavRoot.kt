@@ -1,5 +1,8 @@
 package io.music_assistant.client.ui.compose
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -151,12 +154,19 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
-            sceneStrategy = bottomSheetStrategy.then(dialogStrategy),
+            sceneStrategies = listOf(bottomSheetStrategy, dialogStrategy),
             entryDecorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator(
                     rememberSaveableStateHolder(),
                 ),
             ),
+            // Workaround for CMP 1.10.3 iOS crash: LazyLayout measured inside
+            // AnimatedContent + CupertinoOverscroll trips a SubcomposeLayout
+            // precondition on first frame. Disabling transitions removes the
+            // animating measure path.
+            transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+            popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+            predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             entryProvider = entryProvider {
                 entry<Nav.Main> {
                     MainNavigationRoot(

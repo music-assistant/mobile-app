@@ -32,7 +32,6 @@ kotlin {
     }
 
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
@@ -51,7 +50,7 @@ kotlin {
         // tasks fail at `linkDebugTest*` with `framework 'WebRTC' not found`.
         val webrtcSlice = when (iosTarget.targetName) {
             "iosArm64" -> "ios-arm64"
-            "iosSimulatorArm64", "iosX64" -> "ios-arm64_x86_64-simulator"
+            "iosSimulatorArm64" -> "ios-arm64_x86_64-simulator"
             else -> error("Unexpected iOS target: ${iosTarget.targetName}")
         }
         val webrtcSliceDir = rootProject.layout.projectDirectory
