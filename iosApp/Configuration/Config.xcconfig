@@ -2,3 +2,8 @@ TEAM_ID=5J5R9QK64D
 PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
 APP_NAME=MusicAssistantClient
 IPHONEOS_DEPLOYMENT_TARGET = 18.5
+
+// Intel-simulator slice was removed from the KMP build (iosX64 dropped after CMP 1.11.0).
+// Without this exclusion, xcodebuild on CI builds a universal simulator slice and the
+// :composeApp:syncComposeResourcesForIos task fails with "Unknown iOS simulator arch: 'x86_64'".
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64

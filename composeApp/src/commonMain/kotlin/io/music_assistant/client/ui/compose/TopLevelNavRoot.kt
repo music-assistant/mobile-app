@@ -78,15 +78,21 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
         if (terminal) splashDismissed = true
     }
 
-    // Determine initial screen based on authentication state
-    val initialScreen = when (val state = sessionState) {
-        is SessionState.Connected -> {
-            when (state.dataConnectionState) {
+    // Determine initial screen based on authentication state.
+    //
+    // If auto-login is going to run on this cold launch, bias the initial screen to Main
+    // so the splash overlay covers Main while it loads. When auth resolves successfully
+    // splash dismisses and the user lands directly on Main — without this bias the
+    // transition-less NavDisplay (workaround for the iOS SubcomposeLayout crash) would
+    // briefly flash Settings before the LaunchedEffect below navigates to Main.
+    // Auto-login failure is also covered: splash stays up until terminal state, and the
+    // LaunchedEffect below redirects Main → Settings in the same recomposition pass.
+    val initialScreen = when {
+        sessionState is SessionState.Connected &&
+                (sessionState as SessionState.Connected).dataConnectionState ==
                 DataConnectionState.Authenticated -> Nav.Main
-                else -> Nav.Settings
-            }
-        }
 
+        authManager.willAutoLoginOnLaunch -> Nav.Main
         else -> Nav.Settings
     }
 
@@ -129,15 +135,27 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 val connectedState = sessionState as SessionState.Connected
                 val connState = connectedState.dataConnectionState
 
-                // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
-                if (connState == DataConnectionState.Authenticated && connectedState.wasAutoLogin) {
-                    if (backStack.last() !is Nav.Main) {
-                        backStack.clear()
-                        backStack.add(Nav.Main)
+                when {
+                    // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
+                    connState == DataConnectionState.Authenticated && connectedState.wasAutoLogin -> {
+                        if (backStack.last() !is Nav.Main) {
+                            backStack.clear()
+                            backStack.add(Nav.Main)
+                        }
+                    }
+
+                    // Transport is up but auth was rejected (disabled user, expired/invalid token).
+                    // Necessary because initial screen is biased to Main on auto-login launches;
+                    // without this, the splash would dismiss and reveal Main behind a failed auth.
+                    connectedState.authProcessState is AuthProcessState.Failed -> {
+                        if (backStack.last() !is Nav.Settings) {
+                            backStack.clear()
+                            backStack.add(Nav.Settings)
+                        }
                     }
                 }
-                // Don't navigate to Settings here - we handle Disconnected states separately
-                // This prevents navigation during reconnection when auth might not be loaded yet
+                // Other Connected sub-states intentionally don't navigate here — we let
+                // Disconnected handling drive Settings redirects to avoid racing reconnection.
             }
 
             is SessionState.Connecting -> {
