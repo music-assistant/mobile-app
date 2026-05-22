@@ -1,20 +1,20 @@
 package io.music_assistant.client.support.pages
 
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.ComposeTestRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
+import io.music_assistant.client.support.isTab
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.media_type_albums
-import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 
-class LibraryPage(composeTestRule: ComposeTestRule) :
+class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
     ComposePage(composeTestRule) {
     override fun assert() {
+        composeTestRule.onNode(isTab(type)).assertIsSelected()
         assertNavBar(
             items = listOf(
                 Res.string.nav_home.get(),
@@ -26,16 +26,7 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
         )
     }
 
-    fun clickAlbums(): ItemListPage {
-        return clickType(Res.string.media_type_albums.get())
-    }
-
-    fun clickArtists(): ItemListPage {
-        return clickType(Res.string.media_type_artists.get())
-    }
-
-    private fun clickType(type: String): ItemListPage {
-        composeTestRule.onNodeWithText(type).performClick()
-        return ItemListPage(type, composeTestRule).assertOnPage()
+    fun clickOnMedia(item: ServerMediaItem): MediaItemPage {
+        return clickOnMedia(item, Res.string.nav_library.get())
     }
 }

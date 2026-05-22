@@ -15,7 +15,6 @@ import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import org.junit.Rule
@@ -98,6 +97,6 @@ class LibraryTest {
             .clickLibrary()
             .clickAlbums()
             .clickOnMedia(album)
-            .clickLibrary(LibraryPage(Res.string.media_type_albums.get(), composeTestRule))
+            .clickLibrary(LibraryPage(composeTestRule))
     }
 }

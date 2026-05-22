@@ -57,9 +57,9 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun CustomizeTabsDialog(
-    initialConfig: List<Pair<LibraryViewModel.Tab, Boolean>>,
+    initialConfig: List<Pair<ItemListViewModel.Tab, Boolean>>,
     onDismissRequest: () -> Unit,
-    onConfirm: (List<Pair<LibraryViewModel.Tab, Boolean>>) -> Unit,
+    onConfirm: (List<Pair<ItemListViewModel.Tab, Boolean>>) -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -87,8 +87,8 @@ fun CustomizeTabsDialog(
 
 @Composable
 private fun TabsCustomizeList(
-    initialConfig: List<Pair<LibraryViewModel.Tab, Boolean>>,
-    onDone: (List<Pair<LibraryViewModel.Tab, Boolean>>) -> Unit,
+    initialConfig: List<Pair<ItemListViewModel.Tab, Boolean>>,
+    onDone: (List<Pair<ItemListViewModel.Tab, Boolean>>) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
     var items by remember { mutableStateOf(initialConfig) }
@@ -171,22 +171,22 @@ private fun TabsCustomizeList(
     }
 }
 
-private fun LibraryViewModel.Tab.labelRes(): StringResource = when (this) {
-    LibraryViewModel.Tab.ARTISTS -> Res.string.media_type_artists
-    LibraryViewModel.Tab.ALBUMS -> Res.string.media_type_albums
-    LibraryViewModel.Tab.TRACKS -> Res.string.media_type_tracks
-    LibraryViewModel.Tab.PLAYLISTS -> Res.string.media_type_playlists
-    LibraryViewModel.Tab.AUDIOBOOKS -> Res.string.media_type_audiobooks
-    LibraryViewModel.Tab.PODCASTS -> Res.string.media_type_podcasts
-    LibraryViewModel.Tab.RADIOS -> Res.string.media_type_radio
-    LibraryViewModel.Tab.GENRES -> Res.string.media_type_genres
+private fun ItemListViewModel.Tab.labelRes(): StringResource = when (this) {
+    ItemListViewModel.Tab.ARTISTS -> Res.string.media_type_artists
+    ItemListViewModel.Tab.ALBUMS -> Res.string.media_type_albums
+    ItemListViewModel.Tab.TRACKS -> Res.string.media_type_tracks
+    ItemListViewModel.Tab.PLAYLISTS -> Res.string.media_type_playlists
+    ItemListViewModel.Tab.AUDIOBOOKS -> Res.string.media_type_audiobooks
+    ItemListViewModel.Tab.PODCASTS -> Res.string.media_type_podcasts
+    ItemListViewModel.Tab.RADIOS -> Res.string.media_type_radio
+    ItemListViewModel.Tab.GENRES -> Res.string.media_type_genres
 }
 
 @Preview
 @Composable
 private fun PreviewCustomizeTabsDialog() {
     CustomizeTabsDialog(
-        initialConfig = LibraryViewModel.Tab.entries.mapIndexed { i, t -> t to (i < 5) },
+        initialConfig = ItemListViewModel.Tab.entries.mapIndexed { i, t -> t to (i < 5) },
         onDismissRequest = {},
         onConfirm = {},
     )

@@ -96,18 +96,18 @@ import musicassistantclient.composeapp.generated.resources.playlist_name_label
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun LibraryScreen(
-    libraryViewModel: LibraryViewModel,
+fun ItemListScreen(
+    itemListViewModel: ItemListViewModel,
     contentPadding: PaddingValues,
     initialTabType: MediaType?,
     actionsViewModel: ActionsViewModel,
     onNavigateClick: (AppMediaItem) -> Unit,
 ) {
-    val state by libraryViewModel.state.collectAsStateWithLifecycle()
+    val state by itemListViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
-        libraryViewModel.applyInitialTabIfNeeded(initialTabType)
+        itemListViewModel.applyInitialTabIfNeeded(initialTabType)
     }
 
     // Collect toasts
@@ -127,37 +127,37 @@ fun LibraryScreen(
         CustomizeTabsDialog(
             initialConfig = state.tabs.map { it.tab to it.enabled },
             onDismissRequest = { showCustomizeDialog = false },
-            onConfirm = libraryViewModel::onTabsConfigChanged,
+            onConfirm = itemListViewModel::onTabsConfigChanged,
         )
     }
 
     Screen(
         topBar = { scrollBehavior ->
-            LibraryTopBar(
+            ItemListTopBar(
                 tabs = visibleTabs,
                 selectedTab = selectedTab,
-                onTabSelected = libraryViewModel::onTabSelected,
+                onTabSelected = itemListViewModel::onTabSelected,
                 viewMode = selectedTab.viewMode,
-                onToggleViewMode = { libraryViewModel.toggleViewMode(selectedTab.tab) },
+                onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
                 onCustomizeClick = { showCustomizeDialog = true },
                 scrollBehavior = scrollBehavior,
-                onSearchQueryChanged = libraryViewModel::onSearchQueryChanged,
-                onOnlyFavoritesClicked = libraryViewModel::onOnlyFavoritesClicked,
-                onSortChanged = libraryViewModel::onSortChanged,
+                onSearchQueryChanged = itemListViewModel::onSearchQueryChanged,
+                onOnlyFavoritesClicked = itemListViewModel::onOnlyFavoritesClicked,
+                onSortChanged = itemListViewModel::onSortChanged,
             )
         },
     ) {
-        Library(
+        ItemList(
             contentPadding = contentPadding,
             selectedTab = selectedTab,
             showCreatePlaylistDialog = state.showCreatePlaylistDialog,
             toastState = toastState,
             onNavigateClick = onNavigateClick,
-            onPlayClick = libraryViewModel::onPlayClick,
-            onCreatePlaylistClick = libraryViewModel::onCreatePlaylistClick,
-            onLoadMore = libraryViewModel::loadMore,
-            onDismissCreatePlaylistDialog = libraryViewModel::onDismissCreatePlaylistDialog,
-            onCreatePlaylist = libraryViewModel::createPlaylist,
+            onPlayClick = itemListViewModel::onPlayClick,
+            onCreatePlaylistClick = itemListViewModel::onCreatePlaylistClick,
+            onLoadMore = itemListViewModel::loadMore,
+            onDismissCreatePlaylistDialog = itemListViewModel::onDismissCreatePlaylistDialog,
+            onCreatePlaylist = itemListViewModel::createPlaylist,
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,
@@ -166,17 +166,17 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun LibraryTopBar(
-    tabs: List<LibraryViewModel.TabState>,
-    selectedTab: LibraryViewModel.TabState,
-    onTabSelected: (LibraryViewModel.Tab) -> Unit,
+private fun ItemListTopBar(
+    tabs: List<ItemListViewModel.TabState>,
+    selectedTab: ItemListViewModel.TabState,
+    onTabSelected: (ItemListViewModel.Tab) -> Unit,
     viewMode: ViewMode,
     onToggleViewMode: () -> Unit,
     onCustomizeClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    onSearchQueryChanged: (LibraryViewModel.Tab, String) -> Unit,
-    onOnlyFavoritesClicked: (LibraryViewModel.Tab) -> Unit,
-    onSortChanged: (LibraryViewModel.Tab, SortOption) -> Unit,
+    onSearchQueryChanged: (ItemListViewModel.Tab, String) -> Unit,
+    onOnlyFavoritesClicked: (ItemListViewModel.Tab) -> Unit,
+    onSortChanged: (ItemListViewModel.Tab, SortOption) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     TopAppBar(
@@ -201,26 +201,26 @@ private fun LibraryTopBar(
                                 text = {
                                     Text(
                                         when (tabState.tab) {
-                                            LibraryViewModel.Tab.ARTISTS -> stringResource(
+                                            ItemListViewModel.Tab.ARTISTS -> stringResource(
                                                 Res.string.media_type_artists,
                                             )
 
-                                            LibraryViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
-                                            LibraryViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
-                                            LibraryViewModel.Tab.PLAYLISTS -> stringResource(
+                                            ItemListViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
+                                            ItemListViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
+                                            ItemListViewModel.Tab.PLAYLISTS -> stringResource(
                                                 Res.string.media_type_playlists,
                                             )
 
-                                            LibraryViewModel.Tab.AUDIOBOOKS -> stringResource(
+                                            ItemListViewModel.Tab.AUDIOBOOKS -> stringResource(
                                                 Res.string.media_type_audiobooks,
                                             )
 
-                                            LibraryViewModel.Tab.PODCASTS -> stringResource(
+                                            ItemListViewModel.Tab.PODCASTS -> stringResource(
                                                 Res.string.media_type_podcasts,
                                             )
 
-                                            LibraryViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
-                                            LibraryViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+                                            ItemListViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
+                                            ItemListViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
                                         },
                                     )
                                 },
@@ -293,15 +293,15 @@ private fun LibraryTopBar(
 }
 
 @Composable
-private fun Library(
+private fun ItemList(
     modifier: Modifier = Modifier,
-    selectedTab: LibraryViewModel.TabState,
+    selectedTab: ItemListViewModel.TabState,
     showCreatePlaylistDialog: Boolean,
     toastState: ToastState,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
-    onLoadMore: (LibraryViewModel.Tab) -> Unit,
+    onLoadMore: (ItemListViewModel.Tab) -> Unit,
     onDismissCreatePlaylistDialog: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
     playlistActions: PlaylistActions,
@@ -404,7 +404,7 @@ private fun CreatePlaylistDialog(
 
 @Composable
 private fun TabContent(
-    tabState: LibraryViewModel.TabState,
+    tabState: ItemListViewModel.TabState,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
@@ -436,14 +436,14 @@ private fun TabContent(
             genresGridState,
         ) {
             mapOf(
-                LibraryViewModel.Tab.ARTISTS to artistsGridState,
-                LibraryViewModel.Tab.ALBUMS to albumsGridState,
-                LibraryViewModel.Tab.TRACKS to tracksGridState,
-                LibraryViewModel.Tab.PLAYLISTS to playlistsGridState,
-                LibraryViewModel.Tab.AUDIOBOOKS to audiobooksGridState,
-                LibraryViewModel.Tab.PODCASTS to podcastsGridState,
-                LibraryViewModel.Tab.RADIOS to radiosGridState,
-                LibraryViewModel.Tab.GENRES to genresGridState,
+                ItemListViewModel.Tab.ARTISTS to artistsGridState,
+                ItemListViewModel.Tab.ALBUMS to albumsGridState,
+                ItemListViewModel.Tab.TRACKS to tracksGridState,
+                ItemListViewModel.Tab.PLAYLISTS to playlistsGridState,
+                ItemListViewModel.Tab.AUDIOBOOKS to audiobooksGridState,
+                ItemListViewModel.Tab.PODCASTS to podcastsGridState,
+                ItemListViewModel.Tab.RADIOS to radiosGridState,
+                ItemListViewModel.Tab.GENRES to genresGridState,
             )
         }
 
@@ -464,7 +464,7 @@ private fun TabContent(
             } else {
                 key(tabState.tab) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        if (tabState.tab == LibraryViewModel.Tab.PLAYLISTS) {
+                        if (tabState.tab == ItemListViewModel.Tab.PLAYLISTS) {
                             OutlinedButton(
                                 modifier = Modifier
                                     .fillMaxWidth()

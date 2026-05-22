@@ -18,7 +18,6 @@ import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.cd_playing
-import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -74,7 +73,7 @@ fun <T : Page> ComposePage.clickHome(destination: T): T {
 
 fun ComposePage.clickLibrary(): LibraryPage {
     clickNavBarItem(Res.string.nav_library.get())
-    return LibraryPage(Res.string.media_type_artists.get(), composeTestRule).assertOnPage()
+    return LibraryPage(composeTestRule).assertOnPage()
 }
 
 fun <T : Page> ComposePage.clickLibrary(destination: T): T {

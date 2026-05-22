@@ -28,7 +28,7 @@ import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
-import io.music_assistant.client.ui.compose.library.LibraryViewModel
+import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
@@ -133,7 +133,7 @@ class AutoLibrary(
         val stored = settingsRepository.libraryTabsConfig.value
         val ordered: List<MediaType> = stored?.mapNotNull { pref ->
             if (!pref.enabled) return@mapNotNull null
-            val tab = runCatching { LibraryViewModel.Tab.valueOf(pref.name) }.getOrNull()
+            val tab = runCatching { ItemListViewModel.Tab.valueOf(pref.name) }.getOrNull()
                 ?: return@mapNotNull null
             tab.mediaType.takeIf { it in supportedTypes }
         }

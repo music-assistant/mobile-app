@@ -57,9 +57,9 @@ import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
+import io.music_assistant.client.ui.compose.library.ItemListScreen
+import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
-import io.music_assistant.client.ui.compose.library.LibraryScreen
-import io.music_assistant.client.ui.compose.library.LibraryViewModel
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
@@ -303,10 +303,10 @@ private fun mainNavEntryProvider(
         }
 
         entry<MainNav.Library> {
-            val libraryViewModel = koinViewModel<LibraryViewModel>()
+            val itemListViewModel = koinViewModel<ItemListViewModel>()
 
-            LibraryScreen(
-                libraryViewModel = libraryViewModel,
+            ItemListScreen(
+                itemListViewModel = itemListViewModel,
                 contentPadding = contentPadding,
                 initialTabType = it.type,
                 actionsViewModel = actionsViewModel,

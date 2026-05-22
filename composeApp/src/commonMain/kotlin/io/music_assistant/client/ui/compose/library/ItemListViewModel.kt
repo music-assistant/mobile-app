@@ -36,7 +36,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
-class LibraryViewModel(
+class ItemListViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
