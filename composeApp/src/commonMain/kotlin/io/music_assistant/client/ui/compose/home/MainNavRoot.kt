@@ -60,6 +60,7 @@ import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListScreen
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
+import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
@@ -144,7 +145,7 @@ fun MainNavigationRoot(
 
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
-        rememberMainNavBackStack(MainNav.Library(null)),
+        rememberMainNavBackStack(MainNav.Library),
         rememberMainNavBackStack(MainNav.Search),
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }
@@ -291,7 +292,7 @@ private fun mainNavEntryProvider(
                 },
                 onLibraryItemClick = { type ->
                     type?.let { libraryNavCoordinator.requestTab(it) }
-                    multiBackStack.switchTo(1, MainNav.Library(type))
+                    multiBackStack.switchTo(1, MainNav.ItemList(type))
                 },
                 providerIconFetcher = { modifier, provider ->
                     actionsViewModel.getProviderIcon(provider)
@@ -303,6 +304,14 @@ private fun mainNavEntryProvider(
         }
 
         entry<MainNav.Library> {
+            LibraryScreen(
+                onTypeClick = {
+                    multiBackStack.add(MainNav.ItemList(it))
+                },
+            )
+        }
+
+        entry<MainNav.ItemList> {
             val itemListViewModel = koinViewModel<ItemListViewModel>()
 
             ItemListScreen(
@@ -381,7 +390,10 @@ private sealed interface MainNav : NavKey {
     data object Landing : MainNav
 
     @Serializable
-    data class Library(val type: MediaType?) : MainNav
+    data object Library : MainNav
+
+    @Serializable
+    data class ItemList(val type: MediaType) : MainNav
 
     /**
      * Multiple instances of the same item can appear in a back stack - [stackingId] ensures they
@@ -409,6 +421,7 @@ private fun rememberMainNavBackStack(bottom: MainNav) = rememberNavBackStack(
                 polymorphic(NavKey::class) {
                     subclass(MainNav.Landing::class, MainNav.Landing.serializer())
                     subclass(MainNav.Library::class, MainNav.Library.serializer())
+                    subclass(MainNav.ItemList::class, MainNav.ItemList.serializer())
                     subclass(
                         MainNav.ItemDetails::class,
                         MainNav.ItemDetails.serializer(),

@@ -94,7 +94,7 @@ fun HomeScreen(
     connectionState: SessionState,
     dataState: DataState<List<RecommendationFolder>>,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onLibraryItemClick: (MediaType?) -> Unit,
+    onLibraryItemClick: (MediaType) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     hiddenFolderIds: Set<String>,
     actionsViewModel: ActionsViewModel,
