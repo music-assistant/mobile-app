@@ -7,7 +7,12 @@ import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
+import musicassistantclient.composeapp.generated.resources.media_type_genres
 import musicassistantclient.composeapp.generated.resources.media_type_playlists
+import musicassistantclient.composeapp.generated.resources.media_type_podcasts
+import musicassistantclient.composeapp.generated.resources.media_type_radio
+import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -37,6 +42,26 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
 
     fun clickPlaylists(): ItemListPage {
         return clickType(Res.string.media_type_playlists.get())
+    }
+
+    fun clickTracks(): ItemListPage {
+        return clickType(Res.string.media_type_tracks.get())
+    }
+
+    fun clickAudiobooks(): ItemListPage {
+        return clickType(Res.string.media_type_audiobooks.get())
+    }
+
+    fun clickPodcasts(): ItemListPage {
+        return clickType(Res.string.media_type_podcasts.get())
+    }
+
+    fun clickRadio(): ItemListPage {
+        return clickType(Res.string.media_type_radio.get())
+    }
+
+    fun clickGenres(): ItemListPage {
+        return clickType(Res.string.media_type_genres.get())
     }
 
     private fun clickType(type: String): ItemListPage {

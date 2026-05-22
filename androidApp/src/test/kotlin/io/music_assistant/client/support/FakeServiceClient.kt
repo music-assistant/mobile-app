@@ -69,6 +69,26 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             return items.filter { it.mediaType == MediaType.PLAYLIST.serverValue }
         }
 
+    private val audiobooks: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.AUDIOBOOK.serverValue }
+        }
+
+    private val podcasts: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.PODCAST.serverValue }
+        }
+
+    private val radios: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.RADIO.serverValue }
+        }
+
+    private val genres: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.GENRE.serverValue }
+        }
+
     val username = "user"
     val password = "password"
 
@@ -196,6 +216,51 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     answer(
                         request = request,
                         result = playlists,
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_TRACKS_LIBRARY_ITEMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = tracks,
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_AUDIOBOOKS_LIBRARY_ITEMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = audiobooks,
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_PODCASTS_LIBRARY_ITEMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = podcasts,
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_RADIOS_LIBRARY_ITEMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = radios,
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_GENRES_LIBRARY_ITEMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = genres,
                     ),
                 )
             }

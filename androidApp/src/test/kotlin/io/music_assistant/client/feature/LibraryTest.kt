@@ -74,6 +74,71 @@ class LibraryTest {
     }
 
     @Test
+    fun `can browse tracks`() {
+        val track1 = ServerMediaItemFixtures.track()
+        val track2 = ServerMediaItemFixtures.track()
+        serviceClient.addToLibrary(track1, track2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickTracks()
+            .assertMediaDisplayed(track1.name)
+            .assertMediaDisplayed(track2.name)
+    }
+
+    @Test
+    fun `can browse audiobooks`() {
+        val audiobook1 = ServerMediaItemFixtures.audiobook()
+        val audiobook2 = ServerMediaItemFixtures.audiobook()
+        serviceClient.addToLibrary(audiobook1, audiobook2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickAudiobooks()
+            .assertMediaDisplayed(audiobook1.name)
+            .assertMediaDisplayed(audiobook2.name)
+    }
+
+    @Test
+    fun `can browse podcasts`() {
+        val podcast1 = ServerMediaItemFixtures.podcast()
+        val podcast2 = ServerMediaItemFixtures.podcast()
+        serviceClient.addToLibrary(podcast1, podcast2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickPodcasts()
+            .assertMediaDisplayed(podcast1.name)
+            .assertMediaDisplayed(podcast2.name)
+    }
+
+    @Test
+    fun `can browse radio`() {
+        val radio1 = ServerMediaItemFixtures.radio()
+        val radio2 = ServerMediaItemFixtures.radio()
+        serviceClient.addToLibrary(radio1, radio2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickRadio()
+            .assertMediaDisplayed(radio1.name)
+            .assertMediaDisplayed(radio2.name)
+    }
+
+    @Test
+    fun `can browse genres`() {
+        val genre1 = ServerMediaItemFixtures.genre()
+        val genre2 = ServerMediaItemFixtures.genre()
+        serviceClient.addToLibrary(genre1, genre2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickGenres()
+            .assertMediaDisplayed(genre1.name)
+            .assertMediaDisplayed(genre2.name)
+    }
+
+    @Test
     fun `library has its own backstack`() {
         val album1 = ServerMediaItemFixtures.album()
         val album2 = ServerMediaItemFixtures.album()
