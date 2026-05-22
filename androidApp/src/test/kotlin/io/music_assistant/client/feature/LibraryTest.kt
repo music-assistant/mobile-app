@@ -75,17 +75,17 @@ class LibraryTest {
             .clickOnMedia(album2)
             .clickHome(
                 MediaItemPage(
-                album1,
-                navigationItem = Res.string.nav_home.get(),
-                composeTestRule = composeTestRule,
-            ),
+                    album1,
+                    navigationItem = Res.string.nav_home.get(),
+                    composeTestRule = composeTestRule,
+                ),
             )
             .clickLibrary(
                 MediaItemPage(
-                album2,
-                navigationItem = Res.string.nav_library.get(),
-                composeTestRule = composeTestRule,
-            ),
+                    album2,
+                    navigationItem = Res.string.nav_library.get(),
+                    composeTestRule = composeTestRule,
+                ),
             )
     }
 
