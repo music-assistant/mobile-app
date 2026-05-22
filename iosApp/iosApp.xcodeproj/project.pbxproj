@@ -18,7 +18,6 @@
 		C8AV00012F2C000000000001 /* AppIntentVocabulary.plist in Resources */ = {isa = PBXBuildFile; fileRef = C8AV00022F2C000000000002 /* AppIntentVocabulary.plist */; };
 		C8CP00012F1A000000000001 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */; };
 		C8CP00022F1A000000000002 /* CarPlayContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00042F1A000000000002 /* CarPlayContentManager.swift */; };
-		C8CR00012F2A000000000001 /* ComposeRenderingGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CR00022F2A000000000002 /* ComposeRenderingGuard.swift */; };
 		C8FCC1922F17C6A9005E8312 /* NowPlayingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1912F17C6A9005E8312 /* NowPlayingManager.swift */; };
 		C8FCC1952F17E001005E8312 /* NativeAudioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1962F17E001005E8312 /* NativeAudioController.swift */; };
 		C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1982F17E001005E8312 /* AudioDecoders.swift */; };
@@ -36,7 +35,6 @@
 		C8AV00032F2C000000000003 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = en; path = en.lproj/AppIntentVocabulary.plist; sourceTree = "<group>"; };
 		C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		C8CP00042F1A000000000002 /* CarPlayContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayContentManager.swift; sourceTree = "<group>"; };
-		C8CR00022F2A000000000002 /* ComposeRenderingGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeRenderingGuard.swift; sourceTree = "<group>"; };
 		C8FCC1912F17C6A9005E8312 /* NowPlayingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingManager.swift; sourceTree = "<group>"; };
 		C8FCC1962F17E001005E8312 /* NativeAudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAudioController.swift; sourceTree = "<group>"; };
 		C8FCC1982F17E001005E8312 /* AudioDecoders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoders.swift; sourceTree = "<group>"; };
@@ -101,7 +99,6 @@
 				7555FF82242A565900829871 /* ContentView.swift */,
 				7555FF8C242A565B00829871 /* Info.plist */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
-				C8CR00022F2A000000000002 /* ComposeRenderingGuard.swift */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
 				C8CP00052F1A000000000003 /* CarPlay */,
 				C8AV00022F2C000000000002 /* AppIntentVocabulary.plist */,
@@ -240,7 +237,6 @@
 				C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */,
 				C8CP00012F1A000000000001 /* CarPlaySceneDelegate.swift in Sources */,
 				C8CP00022F1A000000000002 /* CarPlayContentManager.swift in Sources */,
-				C8CR00012F2A000000000001 /* ComposeRenderingGuard.swift in Sources */,
 				C8SI00012F1B000000000001 /* SiriIntentHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

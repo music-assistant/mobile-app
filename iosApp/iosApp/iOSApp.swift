@@ -98,12 +98,6 @@ struct iOSApp: App {
         // Initialize NowPlayingManager early to configure AudioSession
         _ = NowPlayingManager.shared
 
-        // Subscribe to scene background/foreground notifications before any scene connects,
-        // so we can halt Compose's Metal render loop while backgrounded. UIBackgroundModes:
-        // audio keeps our run loop alive, which would otherwise let CMP keep submitting GPU
-        // work that iOS rejects.
-        _ = ComposeRenderingGuard.shared
-
         // KMP/Koin init MUST run here, not in any SwiftUI lifecycle callback.
         // A CarPlay-only cold launch (head unit tap) connects only the
         // `CPTemplateApplicationScene` — SwiftUI's `WindowGroup` never

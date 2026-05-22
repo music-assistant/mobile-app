@@ -24,7 +24,7 @@ ktor = "3.5.0"
 koin = "4.2.1"
 koinComposeMultiplatform = "4.2.1"
 
-coil = "3.4.0"
+coil = "3.5.0-beta01"
 
 materialIcons = "1.7.3"
 fontIconsVersion = "1.1.1"
