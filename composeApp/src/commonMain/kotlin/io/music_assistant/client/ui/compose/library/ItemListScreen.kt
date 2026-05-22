@@ -15,6 +15,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +50,7 @@ import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -60,6 +63,7 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
+import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_create
@@ -121,6 +125,8 @@ fun ItemListScreen(
                 selectedTab = selectedTab,
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
+                viewMode = selectedTab.viewMode,
+                onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
             )
         },
     ) {
@@ -148,6 +154,8 @@ private fun ItemListTopBar(
     selectedTab: ItemListViewModel.TabState,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onBack: () -> Unit,
+    onToggleViewMode: () -> Unit,
+    viewMode: ViewMode,
 ) {
     TopAppBar(
         title = {
@@ -218,15 +226,6 @@ private fun ItemListTopBar(
 //                        availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
 //                        onSortChanged = { onSortChanged(selectedTab.tab, it) },
 //                    )
-//                    IconButton(onClick = onToggleViewMode) {
-//                        Icon(
-//                            imageVector = when (viewMode) {
-//                                ViewMode.LIST -> Icons.Default.GridView
-//                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-//                            },
-//                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-//                        )
-//                    }
 //                }
 //            }
         },
@@ -236,6 +235,17 @@ private fun ItemListTopBar(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
             }
         },
+        actions = {
+            IconButton(onClick = onToggleViewMode) {
+                Icon(
+                    imageVector = when (viewMode) {
+                        ViewMode.LIST -> Icons.Default.GridView
+                        ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                    },
+                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                )
+            }
+        }
     )
 }
 
