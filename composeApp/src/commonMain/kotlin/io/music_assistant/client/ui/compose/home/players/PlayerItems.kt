@@ -51,6 +51,7 @@ import io.music_assistant.client.data.model.client.items.QualityTier
 import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
+import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
@@ -376,63 +377,67 @@ fun FullPlayerItem(
             )
 
             // Duration labels
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = sliderPosition.takeIf { currentMedia != null }
-                        .formatDuration(DurationUnit.SECONDS)
-                        .takeIf { duration != null } ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                val currentQueueItem = item.queueInfo?.currentItem
-                val tier = currentQueueItem?.qualityTier
-                var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
-                val isLq = tier == QualityTier.LQ
+            val currentQueueItem = item.queueInfo?.currentItem
+            val tier = currentQueueItem?.qualityTier
+            val isLq = tier == QualityTier.LQ
+            var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
 
-                if (showChainDialog && currentQueueItem != null) {
-                    AudioChainDialog(
-                        queueTrack = currentQueueItem,
-                        player = item,
-                        onDismissRequest = { showChainDialog = false },
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .alpha(if (tier != null) 1f else 0f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            if (isLq) {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            } else {
-                                colors.controlTint
-                            },
-                        )
-                        .clickable(enabled = tier != null) { showChainDialog = true }
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = (tier ?: QualityTier.LQ).name,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isLq) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            if (colors.controlTint.luminance() > 0.5f) Color.Black else Color.White
-                        },
-                    )
-                }
-                Text(
-                    text = currentMedia
-                        ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
-                        ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (showChainDialog && currentQueueItem != null) {
+                AudioChainDialog(
+                    queueTrack = currentQueueItem,
+                    player = item,
+                    onDismissRequest = { showChainDialog = false },
                 )
             }
+
+            CenteredThreeSlotRow(
+                modifier = Modifier.fillMaxWidth(),
+                start = {
+                    Text(
+                        text = sliderPosition.takeIf { currentMedia != null }
+                            .formatDuration(DurationUnit.SECONDS)
+                            .takeIf { duration != null } ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                center = {
+                    Box(
+                        modifier = Modifier
+                            .alpha(if (tier != null) 1f else 0f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (isLq) {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                } else {
+                                    colors.controlTint
+                                },
+                            )
+                            .clickable(enabled = tier != null) { showChainDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = (tier ?: QualityTier.LQ).name,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isLq) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                if (colors.controlTint.luminance() > 0.5f) Color.Black else Color.White
+                            },
+                        )
+                    }
+                },
+                end = {
+                    Text(
+                        text = currentMedia
+                            ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
+                            ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+            )
         }
 
         PlayerControls(

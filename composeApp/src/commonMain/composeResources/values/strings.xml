@@ -120,6 +120,9 @@
   <string name="playlist_create_title">Create New Playlist</string>
   <string name="playlist_name_label">Playlist name</string>
   <string name="playlist_no_editable">No editable playlists available</string>
+  <string name="quality_dialog_title">Audio chain</string>
+  <string name="quality_dialog_input">Input</string>
+  <string name="quality_dialog_output">Output</string>
   <string name="queue_browse_library">BROWSE LIBRARY</string>
   <string name="queue_cannot_play">Cannot play this item</string>
   <string name="queue_clear">Clear queue</string>

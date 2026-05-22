@@ -68,7 +68,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.style.TextAlign
@@ -85,6 +84,7 @@ import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTra
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
+import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
@@ -846,56 +846,6 @@ private fun PlayerOverflowMenu(
                     contentDescription = stringResource(Res.string.cd_more),
                 )
             }
-        }
-    }
-}
-
-// Three-slot row that centers `center` against the parent width while reserving
-// equal side gutters sized to the wider of `start`/`end`, so a long center
-// child shrinks instead of overlapping the side slots.
-@Composable
-private fun CenteredThreeSlotRow(
-    start: @Composable () -> Unit,
-    center: @Composable () -> Unit,
-    end: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Layout(
-        modifier = modifier,
-        content = {
-            Box { start() }
-            Box { center() }
-            Box { end() }
-        },
-    ) { measurables, constraints ->
-        val loose = constraints.copy(minWidth = 0, minHeight = 0)
-        val startPlaceable = measurables[0].measure(loose)
-        val endPlaceable = measurables[2].measure(loose)
-        val side = maxOf(startPlaceable.width, endPlaceable.width)
-        val parentWidth = if (constraints.hasBoundedWidth) {
-            constraints.maxWidth
-        } else {
-            startPlaceable.width + endPlaceable.width
-        }
-        val centerMaxWidth = (parentWidth - 2 * side).coerceAtLeast(0)
-        val centerPlaceable = measurables[1].measure(
-            loose.copy(maxWidth = centerMaxWidth),
-        )
-        val height = maxOf(
-            startPlaceable.height,
-            centerPlaceable.height,
-            endPlaceable.height,
-        )
-        layout(parentWidth, height) {
-            startPlaceable.placeRelative(0, (height - startPlaceable.height) / 2)
-            centerPlaceable.placeRelative(
-                (parentWidth - centerPlaceable.width) / 2,
-                (height - centerPlaceable.height) / 2,
-            )
-            endPlaceable.placeRelative(
-                parentWidth - endPlaceable.width,
-                (height - endPlaceable.height) / 2,
-            )
         }
     }
 }

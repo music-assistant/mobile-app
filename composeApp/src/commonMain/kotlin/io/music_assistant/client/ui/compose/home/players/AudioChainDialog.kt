@@ -32,6 +32,11 @@ import io.music_assistant.client.data.model.client.items.QualityTier
 import io.music_assistant.client.data.model.client.items.description
 import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.data.model.server.AudioFormat
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.quality_dialog_input
+import musicassistantclient.composeapp.generated.resources.quality_dialog_output
+import musicassistantclient.composeapp.generated.resources.quality_dialog_title
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AudioChainDialog(
@@ -51,14 +56,16 @@ fun AudioChainDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "Audio chain",
+                    text = stringResource(Res.string.quality_dialog_title),
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 ChainStage(
-                    header = "Input",
-                    title = queueTrack.provider?.replaceFirstChar { it.uppercaseChar() },
+                    header = stringResource(Res.string.quality_dialog_input),
+                    title = queueTrack.provider
+                        ?.substringBefore("--")
+                        ?.replaceFirstChar { it.uppercaseChar() },
                     format = queueTrack.format,
                 )
 
@@ -66,7 +73,7 @@ fun AudioChainDialog(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     val playerName = playerNames[playerId] ?: playerId
                     ChainStage(
-                        header = "Output",
+                        header = stringResource(Res.string.quality_dialog_output),
                         title = playerName,
                         format = dspSettings.outputFormat,
                     )
