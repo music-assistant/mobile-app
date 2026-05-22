@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +30,11 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
+import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
+import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
+import io.music_assistant.client.ui.compose.common.icons.RadioIcon
+import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 
 @Composable
@@ -37,7 +43,12 @@ fun LibraryScreen(onTypeClick: (MediaType) -> Unit) {
         listOf(
             LibraryItem("Artists", ArtistIcon, MediaType.ARTIST),
             LibraryItem("Albums", AlbumIcon, MediaType.ALBUM),
+            LibraryItem("Tracks", TrackIcon, MediaType.TRACK),
             LibraryItem("Playlists", PlaylistIcon, MediaType.PLAYLIST),
+            LibraryItem("Audiobooks", BookAudioIcon, MediaType.AUDIOBOOK),
+            LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
+            LibraryItem("Radio", RadioIcon, MediaType.RADIO),
+            LibraryItem("Genres", GenreIcon, MediaType.GENRE),
         )
     }
 
