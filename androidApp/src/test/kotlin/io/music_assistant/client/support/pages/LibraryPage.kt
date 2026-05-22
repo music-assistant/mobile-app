@@ -7,6 +7,7 @@ import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.media_type_playlists
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -32,6 +33,10 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
 
     fun clickArtists(): ItemListPage {
         return clickType(Res.string.media_type_artists.get())
+    }
+
+    fun clickPlaylists(): ItemListPage {
+        return clickType(Res.string.media_type_playlists.get())
     }
 
     private fun clickType(type: String): ItemListPage {

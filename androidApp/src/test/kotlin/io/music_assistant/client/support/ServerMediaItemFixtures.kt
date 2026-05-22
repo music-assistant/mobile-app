@@ -50,4 +50,16 @@ object ServerMediaItemFixtures {
             uri = "http://example.com/track/$itemId",
         )
     }
+
+    fun playlist(
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Playlist $itemId",
+    ): ServerMediaItem {
+        return ServerMediaItem(
+            itemId = itemId,
+            provider = "blah",
+            name = name,
+            mediaType = MediaType.PLAYLIST.serverValue,
+        )
+    }
 }

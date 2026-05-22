@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
+import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 
 @Composable
@@ -36,6 +37,7 @@ fun LibraryScreen(onTypeClick: (MediaType) -> Unit) {
         listOf(
             LibraryItem("Artists", ArtistIcon, MediaType.ARTIST),
             LibraryItem("Albums", AlbumIcon, MediaType.ALBUM),
+            LibraryItem("Playlists", PlaylistIcon, MediaType.PLAYLIST),
         )
     }
 

@@ -58,7 +58,19 @@ class LibraryTest {
             .clickArtists()
             .assertMediaDisplayed(artist1.name)
             .assertMediaDisplayed(artist2.name)
-            .clickOnMedia(artist1)
+    }
+
+    @Test
+    fun `can browse playlists`() {
+        val playlist1 = ServerMediaItemFixtures.playlist()
+        val playlist2 = ServerMediaItemFixtures.playlist()
+        serviceClient.addToLibrary(playlist1, playlist2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickPlaylists()
+            .assertMediaDisplayed(playlist1.name)
+            .assertMediaDisplayed(playlist2.name)
     }
 
     @Test

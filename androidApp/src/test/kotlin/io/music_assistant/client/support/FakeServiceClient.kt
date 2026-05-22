@@ -64,6 +64,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             return items.filter { it.mediaType == MediaType.TRACK.serverValue }
         }
 
+    private val playlists: List<ServerMediaItem>
+        get() {
+            return items.filter { it.mediaType == MediaType.PLAYLIST.serverValue }
+        }
+
     val username = "user"
     val password = "password"
 
@@ -182,6 +187,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     answer(
                         request = request,
                         result = artists,
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_PLAYLISTS_LIBRARY_ITEMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = playlists,
                     ),
                 )
             }
