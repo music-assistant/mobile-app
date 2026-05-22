@@ -1,10 +1,11 @@
 package io.music_assistant.client.support.pages
 
-import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
-import io.music_assistant.client.support.isTab
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -14,7 +15,7 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
     ComposePage(composeTestRule) {
     override fun assert() {
-        composeTestRule.onNode(isTab(type)).assertIsSelected()
+        composeTestRule.onAllNodesWithText(type).onFirst().assertIsDisplayed()
         assertNavBar(
             items = listOf(
                 Res.string.nav_home.get(),

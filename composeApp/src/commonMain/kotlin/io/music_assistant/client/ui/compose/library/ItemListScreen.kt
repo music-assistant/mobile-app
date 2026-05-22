@@ -5,36 +5,28 @@ package io.music_assistant.client.ui.compose.library
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -56,12 +47,8 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
-import io.music_assistant.client.data.model.client.SortConfig
-import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
@@ -72,16 +59,12 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
-import musicassistantclient.composeapp.generated.resources.cd_customize_tabs
-import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
+import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
-import musicassistantclient.composeapp.generated.resources.common_clear
 import musicassistantclient.composeapp.generated.resources.common_create
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
-import musicassistantclient.composeapp.generated.resources.library_quick_search
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
@@ -102,6 +85,7 @@ fun ItemListScreen(
     initialTabType: MediaType?,
     actionsViewModel: ActionsViewModel,
     onNavigateClick: (AppMediaItem) -> Unit,
+    onBack: () -> Unit,
 ) {
     val state by itemListViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
@@ -134,16 +118,9 @@ fun ItemListScreen(
     Screen(
         topBar = { scrollBehavior ->
             ItemListTopBar(
-                tabs = visibleTabs,
                 selectedTab = selectedTab,
-                onTabSelected = itemListViewModel::onTabSelected,
-                viewMode = selectedTab.viewMode,
-                onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
-                onCustomizeClick = { showCustomizeDialog = true },
                 scrollBehavior = scrollBehavior,
-                onSearchQueryChanged = itemListViewModel::onSearchQueryChanged,
-                onOnlyFavoritesClicked = itemListViewModel::onOnlyFavoritesClicked,
-                onSortChanged = itemListViewModel::onSortChanged,
+                onBack = onBack,
             )
         },
     ) {
@@ -165,130 +142,100 @@ fun ItemListScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ItemListTopBar(
-    tabs: List<ItemListViewModel.TabState>,
     selectedTab: ItemListViewModel.TabState,
-    onTabSelected: (ItemListViewModel.Tab) -> Unit,
-    viewMode: ViewMode,
-    onToggleViewMode: () -> Unit,
-    onCustomizeClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    onSearchQueryChanged: (ItemListViewModel.Tab, String) -> Unit,
-    onOnlyFavoritesClicked: (ItemListViewModel.Tab) -> Unit,
-    onSortChanged: (ItemListViewModel.Tab, SortOption) -> Unit,
+    onBack: () -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
     TopAppBar(
         title = {
-            Column(
-                modifier = Modifier.padding(vertical = 4.dp),
-            ) {
-                Row(
-                    modifier = Modifier.height(56.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PrimaryScrollableTabRow(
-                        modifier = Modifier.weight(1f),
-                        containerColor = Color.Transparent,
-                        edgePadding = 0.dp,
-                        selectedTabIndex = tabs.indexOfFirst { it.isSelected },
-                    ) {
-                        tabs.forEach { tabState ->
-                            Tab(
-                                selected = tabState.isSelected,
-                                onClick = { onTabSelected(tabState.tab) },
-                                text = {
-                                    Text(
-                                        when (tabState.tab) {
-                                            ItemListViewModel.Tab.ARTISTS -> stringResource(
-                                                Res.string.media_type_artists,
-                                            )
-
-                                            ItemListViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
-                                            ItemListViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
-                                            ItemListViewModel.Tab.PLAYLISTS -> stringResource(
-                                                Res.string.media_type_playlists,
-                                            )
-
-                                            ItemListViewModel.Tab.AUDIOBOOKS -> stringResource(
-                                                Res.string.media_type_audiobooks,
-                                            )
-
-                                            ItemListViewModel.Tab.PODCASTS -> stringResource(
-                                                Res.string.media_type_podcasts,
-                                            )
-
-                                            ItemListViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
-                                            ItemListViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
-                                        },
-                                    )
-                                },
-                            )
-                        }
-                    }
-                    IconButton(onClick = onCustomizeClick) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = stringResource(Res.string.cd_customize_tabs),
-                        )
-                    }
-                }
-                val modifier = Modifier.padding(end = 16.dp)
-                // Quick search input
-                OutlinedTextField(
-                    modifier = modifier.fillMaxWidth(),
-                    value = selectedTab.searchQuery,
-                    onValueChange = { onSearchQueryChanged(selectedTab.tab, it) },
-                    label = {
-                        Text(text = stringResource(Res.string.library_quick_search))
-                    },
-                    trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
-                        {
-                            IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = stringResource(Res.string.common_clear),
-                                )
-                            }
-                        }
-                    } else {
-                        null
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+            val title = when (selectedTab.tab) {
+                ItemListViewModel.Tab.ARTISTS -> stringResource(
+                    Res.string.media_type_artists,
                 )
-                Row(
-                    modifier = modifier,
-                ) {
-                    FilterChip(
-                        selected = selectedTab.onlyFavorites,
-                        onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
-                        label = { Text(stringResource(Res.string.action_favorite)) },
-                    )
-                    Spacer(Modifier.weight(1f))
-                    SortChip(
-                        currentSort = selectedTab.sortOption,
-                        availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
-                        onSortChanged = { onSortChanged(selectedTab.tab, it) },
-                    )
-                    IconButton(onClick = onToggleViewMode) {
-                        Icon(
-                            imageVector = when (viewMode) {
-                                ViewMode.LIST -> Icons.Default.GridView
-                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-                            },
-                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-                        )
-                    }
-                }
+
+                ItemListViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
+                ItemListViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
+                ItemListViewModel.Tab.PLAYLISTS -> stringResource(
+                    Res.string.media_type_playlists,
+                )
+
+                ItemListViewModel.Tab.AUDIOBOOKS -> stringResource(
+                    Res.string.media_type_audiobooks,
+                )
+
+                ItemListViewModel.Tab.PODCASTS -> stringResource(
+                    Res.string.media_type_podcasts,
+                )
+
+                ItemListViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
+                ItemListViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+            }
+
+            Text(title)
+        },
+        subtitle = {
+//            val focusManager = LocalFocusManager.current
+//            Column {
+//                val modifier = Modifier.padding(end = 16.dp)
+//                // Quick search input
+//                OutlinedTextField(
+//                    modifier = modifier.fillMaxWidth(),
+//                    value = selectedTab.searchQuery,
+//                    onValueChange = { onSearchQueryChanged(selectedTab.tab, it) },
+//                    label = {
+//                        Text(text = stringResource(Res.string.library_quick_search))
+//                    },
+//                    trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
+//                        {
+//                            IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
+//                                Icon(
+//                                    Icons.Default.Clear,
+//                                    contentDescription = stringResource(Res.string.common_clear),
+//                                )
+//                            }
+//                        }
+//                    } else {
+//                        null
+//                    },
+//                    singleLine = true,
+//                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+//                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+//                )
+//                Row(
+//                    modifier = modifier,
+//                ) {
+//                    FilterChip(
+//                        selected = selectedTab.onlyFavorites,
+//                        onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
+//                        label = { Text(stringResource(Res.string.action_favorite)) },
+//                    )
+//                    Spacer(Modifier.weight(1f))
+//                    SortChip(
+//                        currentSort = selectedTab.sortOption,
+//                        availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
+//                        onSortChanged = { onSortChanged(selectedTab.tab, it) },
+//                    )
+//                    IconButton(onClick = onToggleViewMode) {
+//                        Icon(
+//                            imageVector = when (viewMode) {
+//                                ViewMode.LIST -> Icons.Default.GridView
+//                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+//                            },
+//                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+//                        )
+//                    }
+//                }
+//            }
+        },
+        scrollBehavior = scrollBehavior,
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-        scrollBehavior = scrollBehavior,
     )
 }
 

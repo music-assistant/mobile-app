@@ -319,27 +319,29 @@ private fun mainNavEntryProvider(
                 contentPadding = contentPadding,
                 initialTabType = it.type,
                 actionsViewModel = actionsViewModel,
-            ) { item ->
-                when (item) {
-                    is Artist,
-                    is Album,
-                    is Playlist,
-                    is Podcast,
-                    is Audiobook,
-                    is Genre,
-                        -> {
-                        multiBackStack.add(
-                            MainNav.ItemDetails(
-                                itemId = item.itemId,
-                                mediaType = item.mediaType,
-                                providerId = item.provider,
-                            ),
-                        )
-                    }
+                onBack = { multiBackStack.removeLastOrNull() },
+                onNavigateClick = { item ->
+                    when (item) {
+                        is Artist,
+                        is Album,
+                        is Playlist,
+                        is Podcast,
+                        is Audiobook,
+                        is Genre,
+                            -> {
+                            multiBackStack.add(
+                                MainNav.ItemDetails(
+                                    itemId = item.itemId,
+                                    mediaType = item.mediaType,
+                                    providerId = item.provider,
+                                ),
+                            )
+                        }
 
-                    else -> Unit
-                }
-            }
+                        else -> Unit
+                    }
+                },
+            )
         }
 
         entry<MainNav.ItemDetails> {
