@@ -2,6 +2,7 @@ package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
@@ -30,15 +31,15 @@ class LibraryPage(private val type: String, composeTestRule: ComposeTestRule) :
     }
 
     fun clickAlbums(): LibraryPage {
-        return clickTab(Res.string.media_type_albums.get())
+        return clickType(Res.string.media_type_albums.get())
     }
 
     fun clickArtists(): LibraryPage {
-        return clickTab(Res.string.media_type_artists.get())
+        return clickType(Res.string.media_type_artists.get())
     }
 
-    private fun clickTab(type: String): LibraryPage {
-        composeTestRule.onNode(isTab(type)).performClick()
+    private fun clickType(type: String): LibraryPage {
+        composeTestRule.onNodeWithText(type).performClick()
         return LibraryPage(type, composeTestRule).assertOnPage()
     }
 
