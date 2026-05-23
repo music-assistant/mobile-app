@@ -18,7 +18,7 @@ data class RecommendationFolder(
     override val providerMappings: List<ProviderMapping>? = null
     override val metadata: Metadata? = null
     override val favorite: Boolean? = null
-    override val mediaType: MediaType = MediaType.ARTIST
+    override val mediaType: MediaType = MediaType.FOLDER
 
     val rowItemType = when (itemId) {
         "recently_added_tracks", "recent_favorite_tracks" -> MediaType.TRACK

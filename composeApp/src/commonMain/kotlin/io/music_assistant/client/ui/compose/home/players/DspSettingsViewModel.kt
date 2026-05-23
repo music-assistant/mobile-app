@@ -21,7 +21,7 @@ class DspSettingsViewModel(
         data class Content(
             val config: DspConfig,
             val presets: List<DspConfigPreset>,
-            val appliedPresetId: String? = null,
+            val appliedPresetKey: Pair<String?, String>? = null,
         ) : DspDialogState()
 
         data object Error : DspDialogState()
@@ -40,7 +40,8 @@ class DspSettingsViewModel(
                     configDeferred.await() to presetsDeferred.await()
                 }
                 if (config != null) {
-                    _state.value = DspDialogState.Content(config = config, presets = presets)
+                    val uniquePresets = presets.distinctBy { it.presetId to it.name }
+                    _state.value = DspDialogState.Content(config = config, presets = uniquePresets)
                 } else {
                     _state.value = DspDialogState.Error
                 }
@@ -68,10 +69,13 @@ class DspSettingsViewModel(
         viewModelScope.launch {
             val saved = dataSource.saveDspConfig(playerId, configToSave)
             if (saved != null) {
-                _state.value = current.copy(config = saved, appliedPresetId = preset.presetId ?: preset.name)
+                _state.value = current.copy(
+                    config = saved,
+                    appliedPresetKey = preset.presetId to preset.name,
+                )
                 delay(1000)
                 _state.update { state ->
-                    (state as? DspDialogState.Content)?.copy(appliedPresetId = null) ?: state
+                    (state as? DspDialogState.Content)?.copy(appliedPresetKey = null) ?: state
                 }
             }
         }

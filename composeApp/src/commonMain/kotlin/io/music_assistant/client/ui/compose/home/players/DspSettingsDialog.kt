@@ -134,9 +134,9 @@ private fun DspContent(
             val iconSize = 20.dp
 
             LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                items(state.presets, key = { it.presetId ?: it.name }) { preset ->
-                    val presetKey = preset.presetId ?: preset.name
-                    val isApplied = state.appliedPresetId == presetKey
+                items(state.presets, key = { it.presetId to it.name }) { preset ->
+                    val presetKey = preset.presetId to preset.name
+                    val isApplied = state.appliedPresetKey == presetKey
 
                     Row(
                         modifier = Modifier

@@ -63,6 +63,7 @@ import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
+import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -249,7 +250,7 @@ private fun SearchContent(
                             }
                             items(
                                 items = items,
-                                key = { "${it.mediaType}_${it.provider}_${it.itemId}" },
+                                key = { it.lazyListKey() },
                             ) { item ->
                                 when (item) {
                                     is Track -> TrackWithMenu(

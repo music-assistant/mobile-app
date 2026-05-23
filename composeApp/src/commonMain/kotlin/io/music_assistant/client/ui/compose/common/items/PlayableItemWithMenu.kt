@@ -451,7 +451,7 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                         LazyColumn {
                             items(
                                 items = playlists,
-                                key = { p -> p.itemId },
+                                key = { p -> p.lazyListKey() },
                             ) { playlist ->
                                 TextButton(
                                     onClick = {

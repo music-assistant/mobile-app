@@ -66,6 +66,7 @@ import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
+import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -106,19 +107,21 @@ fun HomeScreen(
 
     val baseList = remember(dataState) {
         if (dataState is DataState.Data) {
-            dataState.data.filter {
-                it.items?.any { item ->
-                    item is Track ||
-                            item is Artist ||
-                            item is Album ||
-                            item is Playlist ||
-                            item is Audiobook ||
-                            item is Podcast ||
-                            item is PodcastEpisode ||
-                            item is RadioStation ||
-                            item is Genre
-                } == true
-            }
+            dataState.data
+                .filter {
+                    it.items?.any { item ->
+                        item is Track ||
+                                item is Artist ||
+                                item is Album ||
+                                item is Playlist ||
+                                item is Audiobook ||
+                                item is Podcast ||
+                                item is PodcastEpisode ||
+                                item is RadioStation ||
+                                item is Genre
+                    } == true
+                }
+                .distinctBy { it.lazyListKey() }
         } else {
             emptyList()
         }
@@ -170,7 +173,7 @@ fun HomeScreen(
             } else {
                 items(
                     items = displayedData,
-                    key = { it.itemId },
+                    key = { it.lazyListKey() },
                 ) { row ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         CategoryRow(
@@ -304,22 +307,7 @@ fun CategoryRow(
         ) {
             items(
                 items = mediaItems,
-                key = { item ->
-                    when (item) {
-                        is Track,
-                        is Artist,
-                        is Album,
-                        is Playlist,
-                        is Audiobook,
-                        is Podcast,
-                        is PodcastEpisode,
-                        is RadioStation,
-                        is Genre,
-                        -> "${item::class.simpleName}_${item.itemId}"
-
-                        else -> item.hashCode()
-                    }
-                },
+                key = { it.lazyListKey() },
                 contentType = { item ->
                     when (item) {
                         is Track -> "Track"

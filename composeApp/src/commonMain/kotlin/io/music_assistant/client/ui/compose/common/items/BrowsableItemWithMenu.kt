@@ -548,7 +548,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                         LazyColumn {
                             items(
                                 items = playlists,
-                                key = { p -> p.itemId },
+                                key = { p -> p.lazyListKey() },
                             ) { playlist ->
                                 TextButton(
                                     onClick = {

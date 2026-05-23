@@ -45,6 +45,7 @@ import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
+import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.utils.gridItemMinSize
 
 @Composable
@@ -92,7 +93,7 @@ fun AdaptiveMediaGrid(
     ) {
         items(
             items = items,
-            key = { "${it.mediaType}_${it.provider}_${it.itemId}" },
+            key = { it.lazyListKey() },
             span = if (isRow) {
                 { GridItemSpan(maxLineSpan) }
             } else {
