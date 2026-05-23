@@ -66,7 +66,6 @@ class DataChannelWrapper(
     private sealed interface Outgoing {
         data class Text(val data: String) : Outgoing
         data class Binary(val data: ByteArray) : Outgoing {
-
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (other == null || this::class != other::class) return false
