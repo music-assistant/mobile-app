@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -66,9 +71,11 @@ import musicassistantclient.composeapp.generated.resources.cd_add_playlist
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
+import musicassistantclient.composeapp.generated.resources.common_clear
 import musicassistantclient.composeapp.generated.resources.common_create
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
+import musicassistantclient.composeapp.generated.resources.library_quick_search
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
@@ -125,8 +132,12 @@ fun ItemListScreen(
                 selectedTab = selectedTab,
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
-                viewMode = selectedTab.viewMode,
                 onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
+                viewMode = selectedTab.viewMode,
+                searchQuery = selectedTab.searchQuery,
+                onSearchQueryChanged = {
+                    itemListViewModel.onSearchQueryChanged(selectedTab.tab, it)
+                },
             )
         },
     ) {
@@ -156,86 +167,81 @@ private fun ItemListTopBar(
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
     viewMode: ViewMode,
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
 ) {
+    var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
+
     TopAppBar(
         title = {
-            val title = when (selectedTab.tab) {
-                ItemListViewModel.Tab.ARTISTS -> stringResource(
-                    Res.string.media_type_artists,
-                )
+            if (showSearch) {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
 
-                ItemListViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
-                ItemListViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
-                ItemListViewModel.Tab.PLAYLISTS -> stringResource(
-                    Res.string.media_type_playlists,
+                SearchBarDefaults.InputField(
+                    modifier = Modifier.focusRequester(focusRequester),
+                    state = TextFieldState(initialText = searchQuery),
+                    onSearch = { onSearchQueryChanged(it) },
+                    expanded = false,
+                    onExpandedChange = {},
+                    placeholder = {
+                        Text(stringResource(Res.string.library_quick_search))
+                    },
+                    trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { onSearchQueryChanged("") }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(Res.string.common_clear),
+                                )
+                            }
+                        }
+                    } else {
+                        null
+                    }
                 )
+            } else {
+                val title = when (selectedTab.tab) {
+                    ItemListViewModel.Tab.ARTISTS -> stringResource(
+                        Res.string.media_type_artists,
+                    )
 
-                ItemListViewModel.Tab.AUDIOBOOKS -> stringResource(
-                    Res.string.media_type_audiobooks,
-                )
+                    ItemListViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
+                    ItemListViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
+                    ItemListViewModel.Tab.PLAYLISTS -> stringResource(
+                        Res.string.media_type_playlists,
+                    )
 
-                ItemListViewModel.Tab.PODCASTS -> stringResource(
-                    Res.string.media_type_podcasts,
-                )
+                    ItemListViewModel.Tab.AUDIOBOOKS -> stringResource(
+                        Res.string.media_type_audiobooks,
+                    )
 
-                ItemListViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
-                ItemListViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+                    ItemListViewModel.Tab.PODCASTS -> stringResource(
+                        Res.string.media_type_podcasts,
+                    )
+
+                    ItemListViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
+                    ItemListViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+                }
+
+                Text(title)
             }
-
-            Text(title)
-        },
-        subtitle = {
-//            val focusManager = LocalFocusManager.current
-//            Column {
-//                val modifier = Modifier.padding(end = 16.dp)
-//                // Quick search input
-//                OutlinedTextField(
-//                    modifier = modifier.fillMaxWidth(),
-//                    value = selectedTab.searchQuery,
-//                    onValueChange = { onSearchQueryChanged(selectedTab.tab, it) },
-//                    label = {
-//                        Text(text = stringResource(Res.string.library_quick_search))
-//                    },
-//                    trailingIcon = if (selectedTab.searchQuery.isNotEmpty()) {
-//                        {
-//                            IconButton(onClick = { onSearchQueryChanged(selectedTab.tab, "") }) {
-//                                Icon(
-//                                    Icons.Default.Clear,
-//                                    contentDescription = stringResource(Res.string.common_clear),
-//                                )
-//                            }
-//                        }
-//                    } else {
-//                        null
-//                    },
-//                    singleLine = true,
-//                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-//                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-//                )
-//                Row(
-//                    modifier = modifier,
-//                ) {
-//                    FilterChip(
-//                        selected = selectedTab.onlyFavorites,
-//                        onClick = { onOnlyFavoritesClicked(selectedTab.tab) },
-//                        label = { Text(stringResource(Res.string.action_favorite)) },
-//                    )
-//                    Spacer(Modifier.weight(1f))
-//                    SortChip(
-//                        currentSort = selectedTab.sortOption,
-//                        availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
-//                        onSortChanged = { onSortChanged(selectedTab.tab, it) },
-//                    )
-//                }
-//            }
         },
         scrollBehavior = scrollBehavior,
         navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
+            if (!showSearch) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        stringResource(Res.string.common_back)
+                    )
+                }
             }
         },
         actions = {
+            ->
             IconButton(onClick = onToggleViewMode) {
                 Icon(
                     imageVector = when (viewMode) {
@@ -243,6 +249,24 @@ private fun ItemListTopBar(
                         ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
                     },
                     contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                )
+            }
+
+            IconButton(onClick = {
+                if (showSearch) {
+                    onSearchQueryChanged("")
+                    showSearch = false
+                } else {
+                    showSearch = true
+                }
+            }) {
+                Icon(
+                    imageVector = if (showSearch) {
+                        Icons.Default.SearchOff
+                    } else {
+                        Icons.Default.Search
+                    },
+                    contentDescription = null,
                 )
             }
         }
