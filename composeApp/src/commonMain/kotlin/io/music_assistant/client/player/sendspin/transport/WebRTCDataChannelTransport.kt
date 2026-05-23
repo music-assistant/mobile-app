@@ -1,8 +1,8 @@
 package io.music_assistant.client.player.sendspin.transport
 
 import co.touchlab.kermit.Logger
-import com.shepeliev.webrtckmp.DataChannelState
 import io.music_assistant.client.player.sendspin.WebSocketState
+import io.music_assistant.client.webrtc.DataChannelState
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first

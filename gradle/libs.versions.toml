@@ -1,12 +1,12 @@
 [versions]
 agp = "9.2.1"
-android-compileSdk = "36"
-android-minSdk = "26"
+android-compileSdk = "37"
+android-minSdk = "28"
 android-targetSdk = "36"
 androidx-activityCompose = "1.13.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
-androidx-media = "1.7.1"
+androidx-media = "1.8.0"
 androidx-core-ktx = "1.18.0"
 androidx-espresso-core = "3.7.0"
 androidx-lifecycle = "2.10.0"
@@ -33,11 +33,10 @@ navigationComposeVersion = "2.9.2" # required by compose-multiplatform
 settingsMultiplatform = "1.3.0"
 reorderable = "3.1.0"
 concentus = "1.0.2"
-webrtcKmp = "0.125.11"
 kmpalette = "3.1.0"
 
 androidxNavigation3UI = "1.1.1"
-androidxNavigation3Material = "1.3.0-alpha03"
+androidxNavigation3Material = "1.3.0-beta01"
 androidxMaterial3 = "1.10.0"
 easyqrscan = "0.7.1"
 androidx-compose-ui-test = "1.11.2"
@@ -74,6 +73,7 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 ktor-client-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-webrtc = { module = "io.ktor:ktor-client-webrtc", version.ref = "ktor" }
 
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-test = { module = "io.insert-koin:koin-test-junit4", version.ref = "koin" }
@@ -98,7 +98,6 @@ icons-tabler = { module = "br.com.devsrsouza.compose.icons:tabler-icons", versio
 settings-multiplatform = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "settingsMultiplatform" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 concentus = { module = "io.github.jaredmdobson:concentus", version.ref = "concentus" }
-webrtc-kmp = { module = "com.shepeliev:webrtc-kmp", version.ref = "webrtcKmp" }
 kmpalette-core = { module = "com.kmpalette:kmpalette-core", version.ref = "kmpalette" }
 kmpalette-extensions-network = { module = "com.kmpalette:extensions-network", version.ref = "kmpalette" }
 

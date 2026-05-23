@@ -41,31 +41,17 @@ kotlin {
             binaryOption("bundleId", "io.music_assistant.client.composeapp")
         }
 
-        // Test binaries need to fully resolve WebRTC at link time. The main
-        // framework is static and defers WebRTC resolution to the iOS app's
-        // final Xcode link, where `iosApp/Frameworks/WebRTC.xcframework` is on
-        // the framework search path. Kotlin/Native test executables don't go
-        // through that wiring, so we point them at the matching slice of the
-        // bundled XCFramework directly. Without this, `:composeApp:*Test*`
-        // tasks fail at `linkDebugTest*` with `framework 'WebRTC' not found`.
-        val webrtcSlice = when (iosTarget.targetName) {
-            "iosArm64" -> "ios-arm64"
-            "iosSimulatorArm64" -> "ios-arm64_x86_64-simulator"
-            else -> error("Unexpected iOS target: ${iosTarget.targetName}")
-        }
-        val webrtcSliceDir = rootProject.layout.projectDirectory
-            .dir("iosApp/Frameworks/WebRTC.xcframework/$webrtcSlice")
-            .asFile
-            .absolutePath
-        listOf(
-            org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG,
-            org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.RELEASE,
-        ).forEach { buildType ->
-            iosTarget.binaries.findTest(buildType)?.linkerOpts(
-                "-F", webrtcSliceDir,
-                "-rpath", webrtcSliceDir,
-            )
-        }
+        // Note: the previous webrtc-kmp test-linker block lived here. It pointed
+        // `:composeApp:*Test*` tasks at `iosApp/Frameworks/WebRTC.xcframework` so
+        // Kotlin/Native test executables could resolve the WebRTC symbols at link
+        // time. After the Phase A migration to `io.ktor:ktor-client-webrtc`, the
+        // iOS engine pulls WebRTC via the WebRTC-SDK CocoaPod instead; that
+        // XCFramework directory is gone and the linker hook would just fail.
+        //
+        // iOS still needs a runtime WebRTC framework to be present for the
+        // ComposeApp framework to link against — see the `iosApp/iosApp.xcodeproj`
+        // build phase (currently still references the deleted XCFramework). That's
+        // a known follow-up; iOS hasn't been validated against the new engine yet.
     }
 
     sourceSets {
@@ -125,8 +111,10 @@ kotlin {
 
             implementation(libs.kermit)
 
-            // WebRTC for remote access
-            implementation(libs.webrtc.kmp)
+            // WebRTC for remote access.
+            // Phase A spike: switched from `com.shepeliev:webrtc-kmp` to Ktor EAP.
+            // See plans/let-s-investigate-possible-migration-sequential-pike.md.
+            implementation(libs.ktor.client.webrtc)
 
             implementation(libs.easyqrscan)
         }

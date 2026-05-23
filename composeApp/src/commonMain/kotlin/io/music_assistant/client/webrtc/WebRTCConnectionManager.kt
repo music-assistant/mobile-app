@@ -4,7 +4,6 @@
 package io.music_assistant.client.webrtc
 
 import co.touchlab.kermit.Logger
-import com.shepeliev.webrtckmp.DataChannelState
 import io.music_assistant.client.webrtc.model.PeerConnectionStateValue
 import io.music_assistant.client.webrtc.model.RemoteId
 import io.music_assistant.client.webrtc.model.SignalingMessage
@@ -345,11 +344,9 @@ class WebRTCConnectionManager(
             setupDataChannel(channel, message.sessionId ?: "")
 
             logger.d { "Creating sendspin data channel" }
-            // sendspin: fully reliable + ordered (same as ma-api)
-            // Previously used maxRetransmits=0 which caused 15% packet loss and constant
-            // audio distortion. SIGSEGV with retransmission was likely caused by native
-            // SCTP buffer reuse while SharedFlow held a reference — fixed by copying
-            // ByteArray in DataChannelWrapper before emitting.
+            // sendspin: fully reliable + ordered (same as ma-api). `maxRetransmits=0`
+            // (unreliable) was previously tried and caused ~15% packet loss with audible
+            // distortion; reliable delivery is mandatory for the Opus framing.
             val sendspinChannel = pc.createDataChannel(
                 label = "sendspin",
                 ordered = true,

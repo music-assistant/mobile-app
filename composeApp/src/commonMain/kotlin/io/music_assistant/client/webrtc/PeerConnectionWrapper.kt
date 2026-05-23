@@ -1,116 +1,195 @@
 package io.music_assistant.client.webrtc
 
+import co.touchlab.kermit.Logger
+import io.ktor.client.webrtc.DataChannelEvent
+import io.ktor.client.webrtc.WebRtc
+import io.ktor.client.webrtc.WebRtcClient
+import io.ktor.client.webrtc.WebRtcPeerConnection
+import io.ktor.utils.io.ExperimentalKtorApi
 import io.music_assistant.client.webrtc.model.IceCandidateData
 import io.music_assistant.client.webrtc.model.IceServer
 import io.music_assistant.client.webrtc.model.PeerConnectionStateValue
 import io.music_assistant.client.webrtc.model.SessionDescription
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /**
- * Platform-specific WebRTC peer connection wrapper.
- *
- * Abstracts webrtc-kmp library's expect/actual PeerConnection class.
- * This wrapper provides a common interface for WebRTCConnectionManager
- * while delegating to platform-specific WebRTC implementations.
+ * WebRTC peer connection wrapper backed by `io.ktor:ktor-client-webrtc`.
  *
  * Lifecycle:
- * 1. Create instance (no callbacks needed)
- * 2. Call initialize(iceServers) to set up connection
- * 3. Collect flows for events (iceCandidates, dataChannels, connectionState)
- * 4. Call createOffer() to generate SDP offer
- * 5. Exchange offer/answer via signaling
- * 6. Call setRemoteAnswer() with server's SDP answer
- * 7. ICE candidates arrive via iceCandidates flow
- * 8. Server creates data channel → emitted via dataChannels flow
- * 9. Connection state changes → tracked via connectionState flow
- * 10. Call close() when done
- *
- * Example:
- * ```kotlin
- * val pc = PeerConnectionWrapper()
- * pc.initialize(iceServers)
- *
- * // Collect events
- * launch { pc.iceCandidates.collect { candidate -> sendToSignaling(candidate) } }
- * launch { pc.dataChannels.collect { channel -> setupChannel(channel) } }
- * launch {
- *     pc.connectionState.collect { state ->
- *         when (state) {
- *             PeerConnectionStateValue.FAILED -> handleError()
- *             PeerConnectionStateValue.CONNECTED -> handleSuccess()
- *             else -> {}
- *         }
- *     }
- * }
- * ```
+ *  1. Create instance — pulls `WebRtcClient` (the Ktor engine, app-singleton) from Koin.
+ *  2. `initialize(iceServers)` — opens the native peer connection.
+ *  3. Collect [iceCandidates], [dataChannels], [connectionState].
+ *  4. `createOffer()` / `setRemoteAnswer()` for SDP negotiation.
+ *  5. `addIceCandidate()` for each remote ICE candidate received via signaling.
+ *  6. `close()` when done.
  */
-expect class PeerConnectionWrapper() {
-    /**
-     * Flow of ICE candidates discovered during connection establishment.
-     * Emit each candidate to the remote peer via signaling.
-     */
-    val iceCandidates: Flow<IceCandidateData>
+@OptIn(ExperimentalKtorApi::class)
+class PeerConnectionWrapper : KoinComponent {
+    private val logger = Logger.withTag("PeerConnectionWrapper")
+    private val webRtcClient: WebRtcClient by inject()
 
-    /**
-     * Flow of data channels created by remote peer.
-     * Emits when the remote peer creates a data channel.
-     */
-    val dataChannels: Flow<DataChannelWrapper>
+    private var peerConnection: WebRtcPeerConnection? = null
+    private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    /**
-     * Current connection state.
-     * Use to monitor connection progress and detect failures.
-     */
-    val connectionState: StateFlow<PeerConnectionStateValue>
+    // Tracks channels created locally so the `dataChannelEvents` collector only surfaces
+    // REMOTE-created channels on the `dataChannels` Flow — matching the prior webrtc-kmp
+    // `onDataChannel` semantics that this wrapper exposed.
+    //
+    // Concurrency note: written by createDataChannel, read by the events collector. In
+    // practice no race fires because Open events arrive only after SDP negotiation
+    // completes (seconds after createDataChannel returns), so the channel is already
+    // in the set by then.
+    private val locallyCreatedChannels = mutableSetOf<io.ktor.client.webrtc.WebRtcDataChannel>()
 
-    /**
-     * Initialize peer connection with ICE servers from signaling server.
-     * Must be called before createOffer().
-     *
-     * @param iceServers STUN/TURN servers for NAT traversal
-     */
-    suspend fun initialize(iceServers: List<IceServer>)
+    private val _iceCandidates = MutableSharedFlow<IceCandidateData>(extraBufferCapacity = 10)
+    val iceCandidates: Flow<IceCandidateData> = _iceCandidates.asSharedFlow()
 
-    /**
-     * Create SDP offer to send to remote peer via signaling.
-     *
-     * @return SessionDescription with type "offer" and SDP string
-     */
-    suspend fun createOffer(): SessionDescription
+    private val _dataChannels = MutableSharedFlow<DataChannelWrapper>(extraBufferCapacity = 5)
+    val dataChannels: Flow<DataChannelWrapper> = _dataChannels.asSharedFlow()
 
-    /**
-     * Set remote peer's SDP answer received via signaling.
-     *
-     * @param answer SessionDescription from remote peer
-     */
-    suspend fun setRemoteAnswer(answer: SessionDescription)
+    private val _connectionState = MutableStateFlow(PeerConnectionStateValue.NEW)
+    val connectionState: StateFlow<PeerConnectionStateValue> = _connectionState.asStateFlow()
 
-    /**
-     * Add ICE candidate received from remote peer via signaling.
-     * Called multiple times as candidates are discovered.
-     *
-     * @param candidate ICE candidate data
-     */
-    suspend fun addIceCandidate(candidate: IceCandidateData)
+    suspend fun initialize(iceServers: List<IceServer>) {
+        logger.i { "Initializing peer connection with ${iceServers.size} ICE servers" }
+        try {
+            val pc = webRtcClient.createPeerConnection {
+                this.iceServers = iceServers.map { server ->
+                    WebRtc.IceServer(
+                        urls = server.urls,
+                        username = server.username,
+                        credential = server.credential,
+                    )
+                }
+            }
+            peerConnection = pc
 
-    /**
-     * Create outgoing data channel.
-     * Note: For Music Assistant, server creates the channel, so this is rarely used.
-     *
-     * @param label Channel label (e.g., "ma-api", "sendspin")
-     * @param ordered If true, messages arrive in order (reliable). If false, unreliable delivery (better for real-time audio)
-     * @param maxRetransmits Max retransmission attempts (-1 = unlimited). Use 0 for real-time streams to avoid stalls.
-     * @return DataChannelWrapper for the created channel
-     */
-    fun createDataChannel(
+            eventScope.launch {
+                try {
+                    pc.iceCandidates.collect { candidate ->
+                        logger.d { "ICE candidate gathered" }
+                        _iceCandidates.emit(
+                            IceCandidateData(
+                                candidate = candidate.candidate,
+                                sdpMid = candidate.sdpMid,
+                                sdpMLineIndex = candidate.sdpMLineIndex,
+                            ),
+                        )
+                    }
+                } catch (e: Exception) {
+                    logger.e(e) { "ICE candidate flow failed" }
+                }
+            }
+
+            eventScope.launch {
+                try {
+                    pc.dataChannelEvents.collect { event ->
+                        if (event is DataChannelEvent.Open) {
+                            val ch = event.channel
+                            if (!locallyCreatedChannels.contains(ch)) {
+                                logger.i { "Remote data channel received: ${ch.label}" }
+                                _dataChannels.emit(DataChannelWrapper(ch, pc.dataChannelEvents))
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.e(e) { "Data channel events flow failed" }
+                }
+            }
+
+            eventScope.launch {
+                try {
+                    pc.state.collect { state ->
+                        val mapped = state.toCommon()
+                        logger.d { "Connection state: $state -> $mapped" }
+                        _connectionState.value = mapped
+                    }
+                } catch (e: Exception) {
+                    logger.e(e) { "Connection state flow failed" }
+                }
+            }
+
+            logger.d { "Peer connection initialized" }
+        } catch (e: Exception) {
+            logger.e(e) { "Failed to initialize peer connection" }
+            eventScope.cancel()
+            peerConnection = null
+            throw e
+        }
+    }
+
+    suspend fun createOffer(): SessionDescription {
+        val pc = peerConnection ?: error("Peer connection not initialized")
+        logger.d { "Creating SDP offer" }
+        val offer = pc.createOffer()
+        pc.setLocalDescription(offer)
+        return SessionDescription(sdp = offer.sdp, type = "offer")
+    }
+
+    suspend fun setRemoteAnswer(answer: SessionDescription) {
+        val pc = peerConnection ?: error("Peer connection not initialized")
+        logger.d { "Setting remote answer" }
+        pc.setRemoteDescription(
+            WebRtc.SessionDescription(
+                type = WebRtc.SessionDescriptionType.ANSWER,
+                sdp = answer.sdp,
+            ),
+        )
+    }
+
+    suspend fun addIceCandidate(candidate: IceCandidateData) {
+        val pc = peerConnection ?: error("Peer connection not initialized")
+        pc.addIceCandidate(
+            WebRtc.IceCandidate(
+                candidate = candidate.candidate,
+                sdpMid = candidate.sdpMid ?: "",
+                sdpMLineIndex = candidate.sdpMLineIndex ?: 0,
+            ),
+        )
+    }
+
+    suspend fun createDataChannel(
         label: String,
         ordered: Boolean = true,
         maxRetransmits: Int = -1,
-    ): DataChannelWrapper
+    ): DataChannelWrapper {
+        val pc = peerConnection ?: error("Peer connection not initialized")
+        logger.d { "Creating data channel: $label (ordered=$ordered, maxRetransmits=$maxRetransmits)" }
+        val ch = pc.createDataChannel(label) {
+            this.ordered = ordered
+            // Ktor uses Int? — -1 from our common API means "unlimited" (null for Ktor).
+            this.maxRetransmits = if (maxRetransmits < 0) null else maxRetransmits
+        }
+        locallyCreatedChannels.add(ch)
+        return DataChannelWrapper(ch, pc.dataChannelEvents)
+    }
 
-    /**
-     * Close peer connection and cleanup resources.
-     */
-    suspend fun close()
+    fun close() {
+        logger.i { "Closing peer connection" }
+        eventScope.cancel()
+        peerConnection?.close()
+        peerConnection = null
+        locallyCreatedChannels.clear()
+    }
+}
+
+private fun WebRtc.ConnectionState.toCommon(): PeerConnectionStateValue = when (this) {
+    WebRtc.ConnectionState.NEW -> PeerConnectionStateValue.NEW
+    WebRtc.ConnectionState.CONNECTING -> PeerConnectionStateValue.CONNECTING
+    WebRtc.ConnectionState.CONNECTED -> PeerConnectionStateValue.CONNECTED
+    WebRtc.ConnectionState.DISCONNECTED -> PeerConnectionStateValue.DISCONNECTED
+    WebRtc.ConnectionState.FAILED -> PeerConnectionStateValue.FAILED
+    WebRtc.ConnectionState.CLOSED -> PeerConnectionStateValue.CLOSED
 }
