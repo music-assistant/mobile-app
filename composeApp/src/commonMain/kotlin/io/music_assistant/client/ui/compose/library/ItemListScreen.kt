@@ -32,13 +32,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -190,33 +190,36 @@ private fun ItemListTopBar(
                     focusRequester.requestFocus()
                 }
 
-                SearchBar(
-                    state = rememberSearchBarState(),
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            modifier = Modifier.focusRequester(focusRequester),
-                            state = TextFieldState(initialText = searchQuery),
-                            onSearch = { onSearchQueryChanged(it) },
-                            expanded = false,
-                            onExpandedChange = {},
-                            placeholder = {
-                                Text(stringResource(Res.string.library_quick_search))
-                            },
-                            trailingIcon = if (searchQuery.isNotEmpty()) {
-                                {
-                                    IconButton(onClick = { onSearchQueryChanged("") }) {
-                                        Icon(
-                                            Icons.Default.Clear,
-                                            contentDescription = stringResource(Res.string.common_clear),
-                                        )
-                                    }
+                Surface(
+                    shape = SearchBarDefaults.inputFieldShape,
+                    color = SearchBarDefaults.colors().containerColor,
+                    contentColor = contentColorFor(SearchBarDefaults.colors().containerColor),
+                    tonalElevation = SearchBarDefaults.TonalElevation,
+                    shadowElevation = SearchBarDefaults.ShadowElevation,
+                ) {
+                    SearchBarDefaults.InputField(
+                        modifier = Modifier.focusRequester(focusRequester),
+                        state = TextFieldState(initialText = searchQuery),
+                        onSearch = { onSearchQueryChanged(it) },
+                        expanded = false,
+                        onExpandedChange = {},
+                        placeholder = {
+                            Text(stringResource(Res.string.library_quick_search))
+                        },
+                        trailingIcon = if (searchQuery.isNotEmpty()) {
+                            {
+                                IconButton(onClick = { onSearchQueryChanged("") }) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = stringResource(Res.string.common_clear),
+                                    )
                                 }
-                            } else {
-                                null
-                            },
-                        )
-                    },
-                )
+                            }
+                        } else {
+                            null
+                        },
+                    )
+                }
             } else {
                 val title = when (selectedTab.tab) {
                     ItemListViewModel.Tab.ARTISTS -> stringResource(
