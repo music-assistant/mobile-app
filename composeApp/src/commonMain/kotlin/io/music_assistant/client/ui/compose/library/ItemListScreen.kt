@@ -16,11 +16,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,9 +58,12 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SortDropdownMenu
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
@@ -140,6 +145,7 @@ fun ItemListScreen(
                 onSearchQueryChanged = {
                     itemListViewModel.onSearchQueryChanged(selectedTab.tab, it)
                 },
+                onSortChanged = itemListViewModel::onSortChanged,
             )
         },
     ) {
@@ -171,8 +177,10 @@ private fun ItemListTopBar(
     viewMode: ViewMode,
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
+    onSortChanged: (ItemListViewModel.Tab, SortOption) -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
+    var showSortMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
         title = {
@@ -248,25 +256,16 @@ private fun ItemListTopBar(
             }
         },
         actions = {
-            ->
-            IconButton(onClick = onToggleViewMode) {
-                Icon(
-                    imageVector = when (viewMode) {
-                        ViewMode.LIST -> Icons.Default.GridView
-                        ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-                    },
-                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-                )
-            }
-
-            IconButton(onClick = {
-                if (showSearch) {
-                    onSearchQueryChanged("")
-                    showSearch = false
-                } else {
-                    showSearch = true
-                }
-            }) {
+            IconButton(
+                onClick = {
+                    if (showSearch) {
+                        onSearchQueryChanged("")
+                        showSearch = false
+                    } else {
+                        showSearch = true
+                    }
+                },
+            ) {
                 Icon(
                     imageVector = if (showSearch) {
                         Icons.Default.SearchOff
@@ -274,6 +273,33 @@ private fun ItemListTopBar(
                         Icons.Default.Search
                     },
                     contentDescription = null,
+                )
+            }
+
+            Box {
+                IconButton(onClick = { showSortMenu = true }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Default.Sort,
+                        contentDescription = null,
+                    )
+                }
+
+                SortDropdownMenu(
+                    expanded = showSortMenu,
+                    onDismissRequest = { showSortMenu = false },
+                    currentSort = selectedTab.sortOption,
+                    availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
+                    onSortChanged = { onSortChanged(selectedTab.tab, it) },
+                )
+            }
+
+            IconButton(onClick = onToggleViewMode) {
+                Icon(
+                    imageVector = when (viewMode) {
+                        ViewMode.LIST -> Icons.Default.GridView
+                        ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                    },
+                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
                 )
             }
         },

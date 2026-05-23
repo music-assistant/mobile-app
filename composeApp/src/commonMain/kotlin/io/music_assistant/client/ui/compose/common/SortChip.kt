@@ -52,37 +52,56 @@ fun SortChip(
                 null
             },
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            availableFields.forEach { field ->
-                DropdownMenuItem(
-                    text = { Text(field.localizedName()) },
-                    onClick = {
-                        expanded = false
-                        if (field == SortField.ORIGINAL) {
-                            onSortChanged(SortOption(field))
-                        } else if (field == currentSort.field) {
-                            onSortChanged(SortOption(field, !currentSort.descending))
-                        } else {
-                            onSortChanged(SortOption(field))
-                        }
-                    },
-                    trailingIcon = if (field == currentSort.field && field != SortField.ORIGINAL) {
-                        {
-                            Icon(
-                                if (currentSort.descending) {
-                                    Icons.Default.ArrowUpward
-                                } else {
-                                    Icons.Default.ArrowDownward
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
+
+        SortDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            availableFields = availableFields,
+            onSortChanged = onSortChanged,
+            currentSort = currentSort,
+        )
+    }
+}
+
+@Composable
+fun SortDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    availableFields: List<SortField>,
+    onSortChanged: (SortOption) -> Unit,
+    currentSort: SortOption,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest) {
+        availableFields.forEach { field ->
+            DropdownMenuItem(
+                text = { Text(field.localizedName()) },
+                onClick = {
+                    onDismissRequest()
+
+                    if (field == SortField.ORIGINAL) {
+                        onSortChanged(SortOption(field))
+                    } else if (field == currentSort.field) {
+                        onSortChanged(SortOption(field, !currentSort.descending))
                     } else {
-                        null
-                    },
-                )
-            }
+                        onSortChanged(SortOption(field))
+                    }
+                },
+                trailingIcon = if (field == currentSort.field && field != SortField.ORIGINAL) {
+                    {
+                        Icon(
+                            if (currentSort.descending) {
+                                Icons.Default.ArrowUpward
+                            } else {
+                                Icons.Default.ArrowDownward
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
         }
     }
 }
