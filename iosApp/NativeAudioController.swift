@@ -32,6 +32,11 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     // MARK: - State
     private var isPlaying = false
     private var streamStarted = false
+    // True only while we hold a server pause issued in response to an audio-session
+    // interruption (phone call, Siri). On .ended we auto-resume the server only if
+    // this is set — so we never spontaneously start playback that the user didn't
+    // have running before the interruption.
+    private var pausedByInterruption = false
     
     override init() {
         super.init()
@@ -64,8 +69,15 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
         switch type {
         case .began:
-            // System has paused AudioQueue automatically
+            // System auto-pauses AudioQueue. Tell the server to pause too so playback
+            // resumes from the same position afterwards instead of skipping ahead while
+            // the call held the audio session.
             print("🎵 NativeAudioController: Audio session interrupted")
+            if isPlaying {
+                pausedByInterruption = true
+                print("🎵 NativeAudioController: Pausing server playback due to interruption")
+                remoteCommandHandler?.onCommand(command: "pause")
+            }
         case .ended:
             let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
@@ -77,6 +89,12 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
                 } catch {
                     print("🎵 NativeAudioController: ❌ Failed to resume after interruption: \(error)")
                 }
+            }
+            // Resume server playback only if WE paused it on interruption.
+            if pausedByInterruption {
+                pausedByInterruption = false
+                print("🎵 NativeAudioController: Resuming server playback after interruption")
+                remoteCommandHandler?.onCommand(command: "play")
             }
         @unknown default:
             break
@@ -304,6 +322,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         
         audioQueue = nil
         isPlaying = false
+        pausedByInterruption = false // Stream stopped — no auto-resume on .ended.
         print("🎵 NativeAudioController: AudioQueue stopped")
     }
     
