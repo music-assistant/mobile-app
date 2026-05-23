@@ -46,6 +46,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
+// Unified tag for all Android Auto logs (browse / voice / playback). Filter
+// logcat with `AndroidAuto:V *:S` to see the full pipeline. Shared across the
+// browse library and the playback service to avoid scattered withTag() calls.
+internal val androidAutoLog = Logger.withTag("AndroidAuto")
+
 @OptIn(FlowPreview::class)
 class AutoLibrary(
     private val context: Context,
@@ -57,10 +62,6 @@ class AutoLibrary(
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
         MutableStateFlow(null)
     private val defaultIconUri = R.drawable.baseline_library_music_24.toUri(context)
-
-    // Dedicated tag for voice-search debugging. Filter logcat with `AAVoice:V *:S`
-    // to isolate the entire EXTRA_MEDIA_FOCUS → search → play pipeline.
-    private val voiceLog = Logger.withTag("AAVoice")
 
     // AA hosts re-subscribe browse parents aggressively (on metadata / playback /
     // focus changes). With 27 browsable nodes (6 tabs + 5*4 sub-lists + radio
@@ -102,10 +103,9 @@ class AutoLibrary(
         id: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
-        Logger.withTag("AutoLibrary").i { "Items for $id" }
+        androidAutoLog.i { "Items for $id" }
         when {
             id == MediaIds.ROOT -> result.sendResult(rootChildren())
-            id == MediaIds.ROOT_SUGGESTED -> handleSuggested(result)
             MediaIds.parseSubListId(id) != null -> handleSubList(id, result)
             MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(id, result)
             else -> handleDrillDown(id, result)
@@ -144,21 +144,6 @@ class AutoLibrary(
     // Populates AA's "For You" surface. Without this, AA scrapes the top of the
     // browse tree to derive its own suggestions. We serve favourite tracks ordered
     // by last-played descending — directly playable in one tap, no nested browsing.
-    private fun handleSuggested(result: MediaBrowserServiceCompat.Result<List<MediaItem>>) {
-        result.detach()
-        scope.launch {
-            val items = cachedOrFetch(MediaIds.ROOT_SUGGESTED) {
-                if (!waitForCorrectState()) return@cachedOrFetch null
-                loadTabItems(
-                    MediaType.TRACK,
-                    SortOption(SortField.LAST_PLAYED, descending = true),
-                    favoritesOnly = true,
-                )
-            }
-            result.sendResult(items)
-        }
-    }
-
     private fun handleTabContent(
         tabId: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
@@ -298,15 +283,6 @@ class AutoLibrary(
                 favorite = favorite,
             )
 
-            // TRACK isn't exposed as a root tab (see defaultAutoTabs comment); this
-            // branch is only reachable via handleSuggested for the "For You" surface.
-            // Capped to keep AA scroll snappy and the WS payload small on large libraries.
-            MediaType.TRACK -> Request.Track.list(
-                orderBy = orderBy,
-                favorite = favorite,
-                limit = SUGGESTED_LIMIT,
-            )
-
             else -> return null
         }
         return apiClient.sendRequest(request)
@@ -416,7 +392,7 @@ class AutoLibrary(
         scope.launch {
             val ready = waitForCorrectState()
             if (!ready) {
-                voiceLog.w {
+                androidAutoLog.w {
                     "Server not authenticated within ${WAIT_FOR_AUTHENTICATED_TIMEOUT_MS}ms — " +
                             "aborting voice playback (query=\"$query\")."
                 }
@@ -428,7 +404,7 @@ class AutoLibrary(
             // so the warnings don't bury real ones.
             @Suppress("DEPRECATION")
             val focus = extras?.getString(MediaStore.EXTRA_MEDIA_FOCUS)
-            voiceLog.i {
+            androidAutoLog.i {
                 @Suppress("DEPRECATION")
                 val artistExtra = extras?.getString(MediaStore.EXTRA_MEDIA_ARTIST)
 
@@ -476,7 +452,7 @@ class AutoLibrary(
                     )
 
                 MediaStore.Audio.Genres.ENTRY_CONTENT_TYPE -> {
-                    voiceLog.i { "Genre focus → unstructured search on genre keyword" }
+                    androidAutoLog.i { "Genre focus → unstructured search on genre keyword" }
                     playUnstructured(
                         query = extras.getString(MediaStore.EXTRA_MEDIA_GENRE) ?: query,
                         queueId = queueId,
@@ -484,10 +460,10 @@ class AutoLibrary(
                 }
 
                 else -> if (query.isBlank()) {
-                    voiceLog.i { "No focus + blank query → random favorites" }
+                    androidAutoLog.i { "No focus + blank query → random favorites" }
                     playRandomFavorites(queueId)
                 } else {
-                    voiceLog.i { "No focus + non-blank query → unstructured cascade" }
+                    androidAutoLog.i { "No focus + non-blank query → unstructured cascade" }
                     playUnstructured(query, queueId)
                 }
             }
@@ -495,7 +471,7 @@ class AutoLibrary(
     }
 
     private suspend fun playArtist(artistName: String, queueId: String) {
-        voiceLog.i { "playArtist(\"$artistName\")" }
+        androidAutoLog.i { "playArtist(\"$artistName\")" }
         val sr = sendLogged("search ARTIST=\"$artistName\"") {
             Request.Library.search(
                 query = artistName,
@@ -503,20 +479,20 @@ class AutoLibrary(
                 libraryOnly = false,
             )
         }?.resultAs<SearchResult>()
-        voiceLog.i { "  → artists found: ${sr?.artists?.size ?: 0}" }
+        androidAutoLog.i { "  → artists found: ${sr?.artists?.size ?: 0}" }
         val artist = sr?.artists?.firstOrNull()
         if (artist == null) {
-            voiceLog.i { "No artist match for \"$artistName\" — nothing to play." }
+            androidAutoLog.i { "No artist match for \"$artistName\" — nothing to play." }
             return
         }
-        voiceLog.i {
+        androidAutoLog.i {
             "  → matched artist=${artist.name} item_id=${artist.itemId} provider=${artist.provider} uri=${artist.uri}"
         }
         playArtistTracksShuffled(artist, queueId)
     }
 
     private suspend fun playAlbum(albumName: String, artistName: String?, queueId: String) {
-        voiceLog.i { "playAlbum(\"$albumName\", artist=\"$artistName\")" }
+        androidAutoLog.i { "playAlbum(\"$albumName\", artist=\"$artistName\")" }
         val combinedQuery = listOfNotNull(albumName, artistName).joinToString(" ")
         val sr = sendLogged("search ALBUM=\"$combinedQuery\"") {
             Request.Library.search(
@@ -525,7 +501,7 @@ class AutoLibrary(
                 libraryOnly = false,
             )
         }?.resultAs<SearchResult>()
-        voiceLog.i { "  → albums found: ${sr?.albums?.size ?: 0}" }
+        androidAutoLog.i { "  → albums found: ${sr?.albums?.size ?: 0}" }
         val match = artistName?.let { wanted ->
             sr?.albums?.firstOrNull { album ->
                 album.artists?.any { it.name.equals(wanted, ignoreCase = true) } == true
@@ -533,15 +509,15 @@ class AutoLibrary(
         } ?: sr?.albums?.firstOrNull()
         val uri = match?.uri
         if (uri == null) {
-            voiceLog.i { "No album match (refined-by-artist=${artistName != null}) — nothing to play." }
+            androidAutoLog.i { "No album match (refined-by-artist=${artistName != null}) — nothing to play." }
             return
         }
-        voiceLog.i { "  → matched album uri=$uri" }
+        androidAutoLog.i { "  → matched album uri=$uri" }
         playUris(listOf(uri), queueId)
     }
 
     private suspend fun playTrack(title: String, artistName: String?, queueId: String) {
-        voiceLog.i { "playTrack(\"$title\", artist=\"$artistName\")" }
+        androidAutoLog.i { "playTrack(\"$title\", artist=\"$artistName\")" }
         val combinedQuery = listOfNotNull(title, artistName).joinToString(" ")
         val sr = sendLogged("search TRACK=\"$combinedQuery\"") {
             Request.Library.search(
@@ -550,7 +526,7 @@ class AutoLibrary(
                 libraryOnly = false,
             )
         }?.resultAs<SearchResult>()
-        voiceLog.i { "  → tracks found: ${sr?.tracks?.size ?: 0}" }
+        androidAutoLog.i { "  → tracks found: ${sr?.tracks?.size ?: 0}" }
         val match = artistName?.let { wanted ->
             sr?.tracks?.firstOrNull { track ->
                 track.artists?.any { it.name.equals(wanted, ignoreCase = true) } == true
@@ -558,15 +534,15 @@ class AutoLibrary(
         } ?: sr?.tracks?.firstOrNull()
         val uri = match?.uri
         if (uri == null) {
-            voiceLog.i { "No track match (refined-by-artist=${artistName != null}) — nothing to play." }
+            androidAutoLog.i { "No track match (refined-by-artist=${artistName != null}) — nothing to play." }
             return
         }
-        voiceLog.i { "  → matched track uri=$uri" }
+        androidAutoLog.i { "  → matched track uri=$uri" }
         playUris(listOf(uri), queueId)
     }
 
     private suspend fun playPlaylist(playlistName: String, queueId: String) {
-        voiceLog.i { "playPlaylist(\"$playlistName\")" }
+        androidAutoLog.i { "playPlaylist(\"$playlistName\")" }
         val sr = sendLogged("search PLAYLIST=\"$playlistName\"") {
             Request.Library.search(
                 query = playlistName,
@@ -574,18 +550,18 @@ class AutoLibrary(
                 libraryOnly = false,
             )
         }?.resultAs<SearchResult>()
-        voiceLog.i { "  → playlists found: ${sr?.playlists?.size ?: 0}" }
+        androidAutoLog.i { "  → playlists found: ${sr?.playlists?.size ?: 0}" }
         val uri = sr?.playlists?.firstOrNull()?.uri
         if (uri == null) {
-            voiceLog.i { "No playlist match — nothing to play." }
+            androidAutoLog.i { "No playlist match — nothing to play." }
             return
         }
-        voiceLog.i { "  → matched playlist uri=$uri" }
+        androidAutoLog.i { "  → matched playlist uri=$uri" }
         playUris(listOf(uri), queueId)
     }
 
     private suspend fun playUnstructured(query: String, queueId: String) {
-        voiceLog.i { "playUnstructured(\"$query\")" }
+        androidAutoLog.i { "playUnstructured(\"$query\")" }
         val sr = sendLogged("search UNSTRUCTURED=\"$query\"") {
             Request.Library.search(
                 query = query,
@@ -601,10 +577,10 @@ class AutoLibrary(
             )
         }?.resultAs<SearchResult>()
         if (sr == null) {
-            voiceLog.w { "Unstructured search returned null result — nothing to play." }
+            androidAutoLog.w { "Unstructured search returned null result — nothing to play." }
             return
         }
-        voiceLog.i {
+        androidAutoLog.i {
             "  → hits: tracks=${sr.tracks.size} artists=${sr.artists.size} " +
                     "albums=${sr.albums.size} playlists=${sr.playlists.size} " +
                     "podcasts=${sr.podcasts.size} radio=${sr.radio.size}"
@@ -613,36 +589,36 @@ class AutoLibrary(
         // shuffled discography; podcast match plays latest episode; everything else
         // is queued by its own URI.
         sr.tracks.firstOrNull()?.uri?.let {
-            voiceLog.i { "  → picked TRACK uri=$it" }
+            androidAutoLog.i { "  → picked TRACK uri=$it" }
             playUris(listOf(it), queueId)
             return
         }
         sr.artists.firstOrNull()?.let {
-            voiceLog.i { "  → picked ARTIST name=${it.name} item_id=${it.itemId} provider=${it.provider}" }
+            androidAutoLog.i { "  → picked ARTIST name=${it.name} item_id=${it.itemId} provider=${it.provider}" }
             playArtistTracksShuffled(it, queueId)
             return
         }
         sr.albums.firstOrNull()?.uri?.let {
-            voiceLog.i { "  → picked ALBUM uri=$it" }
+            androidAutoLog.i { "  → picked ALBUM uri=$it" }
             playUris(listOf(it), queueId)
             return
         }
         sr.playlists.firstOrNull()?.uri?.let {
-            voiceLog.i { "  → picked PLAYLIST uri=$it" }
+            androidAutoLog.i { "  → picked PLAYLIST uri=$it" }
             playUris(listOf(it), queueId)
             return
         }
         sr.podcasts.firstOrNull()?.let {
-            voiceLog.i { "  → picked PODCAST item_id=${it.itemId} provider=${it.provider}" }
+            androidAutoLog.i { "  → picked PODCAST item_id=${it.itemId} provider=${it.provider}" }
             playPodcastLatest(it, queueId)
             return
         }
         sr.radio.firstOrNull()?.uri?.let {
-            voiceLog.i { "  → picked RADIO uri=$it" }
+            androidAutoLog.i { "  → picked RADIO uri=$it" }
             playUris(listOf(it), queueId)
             return
         }
-        voiceLog.i { "Unstructured search for \"$query\" produced zero hits across all media types." }
+        androidAutoLog.i { "Unstructured search for \"$query\" produced zero hits across all media types." }
     }
 
     private suspend fun playArtistTracksShuffled(artist: ServerMediaItem, queueId: String) {
@@ -654,17 +630,17 @@ class AutoLibrary(
             ?.mapNotNull { it.uri }
             ?.shuffled()
             .orEmpty()
-        voiceLog.i { "  → artist track count: ${trackUris.size}" }
+        androidAutoLog.i { "  → artist track count: ${trackUris.size}" }
         val media = trackUris.takeIf { it.isNotEmpty() } ?: listOfNotNull(artist.uri).also {
             if (it.isNotEmpty()) {
-                voiceLog.i {
+                androidAutoLog.i {
                     "Artist.getTracks returned empty — falling back to artist URI ${artist.uri}. " +
                             "Server expansion of artist URIs is provider-dependent."
                 }
             }
         }
         if (media.isEmpty()) {
-            voiceLog.i { "Artist has no playable URIs (tracks empty AND artist.uri null)." }
+            androidAutoLog.i { "Artist has no playable URIs (tracks empty AND artist.uri null)." }
             return
         }
         playAndShuffle(media, queueId, shuffle = true)
@@ -675,31 +651,31 @@ class AutoLibrary(
             sendLogged("Podcast.getEpisodes item_id=${podcast.itemId} provider=${podcast.provider}") {
                 Request.Podcast.getEpisodes(podcast.itemId, podcast.provider)
             }?.resultAs<List<ServerMediaItem>>()
-        voiceLog.i { "  → episode count: ${episodes?.size ?: 0}" }
+        androidAutoLog.i { "  → episode count: ${episodes?.size ?: 0}" }
         val latestUri = episodes?.maxByOrNull { it.metadata?.releaseDate.orEmpty() }?.uri
             ?: podcast.uri
         if (latestUri == null) {
-            voiceLog.i { "Podcast has no playable URIs (no episodes AND podcast.uri null)." }
+            androidAutoLog.i { "Podcast has no playable URIs (no episodes AND podcast.uri null)." }
             return
         }
-        voiceLog.i { "  → playing podcast uri=$latestUri" }
+        androidAutoLog.i { "  → playing podcast uri=$latestUri" }
         playUris(listOf(latestUri), queueId)
     }
 
     private suspend fun playRandomFavorites(queueId: String) {
-        voiceLog.i { "playRandomFavorites" }
+        androidAutoLog.i { "playRandomFavorites" }
         val favoriteUris = sendLogged("Track.list favorite=true limit=$RANDOM_POOL_SIZE") {
             Request.Track.list(favorite = true, limit = RANDOM_POOL_SIZE)
         }?.resultAs<List<ServerMediaItem>>()?.mapNotNull { it.uri }.orEmpty()
-        voiceLog.i { "  → favorite tracks: ${favoriteUris.size}" }
+        androidAutoLog.i { "  → favorite tracks: ${favoriteUris.size}" }
         val pool = favoriteUris.ifEmpty {
-            voiceLog.i { "  → favorites empty, falling back to last_played_desc" }
+            androidAutoLog.i { "  → favorites empty, falling back to last_played_desc" }
             sendLogged("Track.list orderBy=last_played_desc limit=$RANDOM_POOL_SIZE") {
                 Request.Track.list(orderBy = "last_played_desc", limit = RANDOM_POOL_SIZE)
             }?.resultAs<List<ServerMediaItem>>()?.mapNotNull { it.uri }.orEmpty()
         }
         if (pool.isEmpty()) {
-            voiceLog.i { "No favorites AND no recently-played tracks — random fallback has no pool." }
+            androidAutoLog.i { "No favorites AND no recently-played tracks — random fallback has no pool." }
             return
         }
         playAndShuffle(pool.shuffled(), queueId, shuffle = true)
@@ -707,10 +683,10 @@ class AutoLibrary(
 
     private suspend fun playUris(media: List<String>, queueId: String) {
         if (media.isEmpty()) {
-            voiceLog.w { "playUris called with empty media list — no-op." }
+            androidAutoLog.w { "playUris called with empty media list — no-op." }
             return
         }
-        voiceLog.i {
+        androidAutoLog.i {
             "Library.play REPLACE queueId=$queueId items=${media.size} first=${media.first()}"
         }
         sendLogged("Library.play (${media.size} items)") {
@@ -726,7 +702,7 @@ class AutoLibrary(
     private suspend fun playAndShuffle(media: List<String>, queueId: String, shuffle: Boolean) {
         playUris(media, queueId)
         if (shuffle) {
-            voiceLog.i { "Queue.setShuffle enabled=true queueId=$queueId" }
+            androidAutoLog.i { "Queue.setShuffle enabled=true queueId=$queueId" }
             sendLogged("Queue.setShuffle enabled=true") {
                 Request.Queue.setShuffle(queueId = queueId, enabled = true)
             }
@@ -742,11 +718,11 @@ class AutoLibrary(
     private suspend fun sendLogged(label: String, request: () -> Request): Answer? =
         apiClient.sendRequest(request()).fold(
             onSuccess = { answer ->
-                voiceLog.d { "[$label] ok message_id=${answer.messageId}" }
+                androidAutoLog.d { "[$label] ok message_id=${answer.messageId}" }
                 answer
             },
             onFailure = { t ->
-                voiceLog.w(t) { "[$label] RPC failure: ${t.message}" }
+                androidAutoLog.w(t) { "[$label] RPC failure: ${t.message}" }
                 null
             },
         )
@@ -806,10 +782,6 @@ class AutoLibrary(
         // Random-favorites pool size. 200 keeps the shuffle interesting without
         // overloading the play_media RPC payload for users with large libraries.
         const val RANDOM_POOL_SIZE = 200
-
-        // "For You" surface cap. AA scrolls poorly with long lists; this also
-        // bounds the WS payload on large libraries.
-        const val SUGGESTED_LIMIT = 50
     }
 }
 
@@ -821,7 +793,6 @@ private const val PARENT_REF_PROVIDER_PARAM_INDEX = 3
 
 internal object MediaIds {
     const val ROOT = "auto_lib_root"
-    const val ROOT_SUGGESTED = "auto_lib_suggested"
     const val TAB_ARTISTS = "auto_lib_artists"
     const val TAB_ALBUMS = "auto_lib_albums"
     const val TAB_PLAYLISTS = "auto_lib_playlists"

@@ -14,9 +14,8 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.MediaSessionCompat.QueueItem
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
-import androidx.media.MediaBrowserServiceCompat.BrowserRoot
 import androidx.media.utils.MediaConstants
-import co.touchlab.kermit.Logger
+import io.music_assistant.client.auto.androidAutoLog
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import io.music_assistant.client.R
@@ -78,7 +77,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-        Logger.withTag("AAService").i { "onCreate — acquiring session as AA callback owner" }
+        androidAutoLog.i { "onCreate — acquiring session as AA callback owner" }
         val token = sharedSession.acquire(
             callback = createCallback(),
             isAutoService = true,
@@ -170,13 +169,11 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             }
 
             override fun onPlayFromSearch(query: String?, extras: Bundle?) {
-                val log = Logger.withTag("AAPlayFromSearch")
-
                 @Suppress("DEPRECATION") // Bundle.get(key) is the only untyped log-dump accessor.
                 val extrasDump = extras?.keySet()?.joinToString { k -> "$k=${extras.get(k)}" }
-                log.i { "onPlayFromSearch query=\"$query\" extras={$extrasDump}" }
+                androidAutoLog.i { "onPlayFromSearch query=\"$query\" extras={$extrasDump}" }
                 if (query.isNullOrBlank() && extras == null) {
-                    log.w { "Blank query AND null extras — nothing to act on, no-op." }
+                    androidAutoLog.w { "Blank query AND null extras — nothing to act on, no-op." }
                     return
                 }
                 // Cold-start case (phone-side voice dispatch via MediaBrowser bind):
@@ -189,14 +186,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         currentPlayerData.filterNotNull().first()
                     }
                     if (playerData == null) {
-                        log.w {
+                        androidAutoLog.w {
                             "Local player did not initialize within 10s — dropping " +
                                 "(query=\"$query\"). Open the app once to bootstrap it."
                         }
                         return@launch
                     }
                     val queueId = playerData.queueInfo?.id ?: playerData.player.id
-                    log.i { "Dispatching to AutoLibrary with queueId=$queueId (local player)" }
+                    androidAutoLog.i {
+                        "Dispatching to AutoLibrary with queueId=$queueId (local player)"
+                    }
                     library.searchAndPlay(
                         query = query.orEmpty(),
                         extras = extras,
@@ -277,7 +276,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
 
     override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
-        Logger.withTag("AAService").i { "onGetRoot from package=$packageName uid=$uID" }
+        androidAutoLog.i { "onGetRoot from package=$packageName uid=$uID" }
         val extras = Bundle().apply {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
             putInt(
@@ -289,12 +288,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
             )
         }
-        // AA queries with EXTRA_SUGGESTED=true to populate the "For You" surface.
-        // Returning a distinct root id opts out of AA's default "scrape top of browse
-        // tree" behavior and lets us serve curated favourite tracks instead.
-        val suggested = hints?.getBoolean(BrowserRoot.EXTRA_SUGGESTED) == true
-        val rootId = if (suggested) MediaIds.ROOT_SUGGESTED else MediaIds.ROOT
-        return BrowserRoot(rootId, extras)
+        return BrowserRoot(MediaIds.ROOT, extras)
     }
 
     override fun onLoadChildren(
@@ -420,8 +414,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                             e is ForegroundServiceStartNotAllowedException
                         ) {
-                            Logger.withTag("AndroidAutoPlaybackService")
-                                .w("Cannot start MainMediaPlaybackService from background")
+                            androidAutoLog.w("Cannot start MainMediaPlaybackService from background")
                         } else {
                             throw e
                         }
