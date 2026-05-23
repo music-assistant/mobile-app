@@ -14,6 +14,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.MediaSessionCompat.QueueItem
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
+import androidx.media.MediaBrowserServiceCompat.BrowserRoot
 import androidx.media.utils.MediaConstants
 import co.touchlab.kermit.Logger
 import coil3.ImageLoader
@@ -288,7 +289,12 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
             )
         }
-        return BrowserRoot(MediaIds.ROOT, extras)
+        // AA queries with EXTRA_SUGGESTED=true to populate the "For You" surface.
+        // Returning a distinct root id opts out of AA's default "scrape top of browse
+        // tree" behavior and lets us serve curated favourite tracks instead.
+        val suggested = hints?.getBoolean(BrowserRoot.EXTRA_SUGGESTED) == true
+        val rootId = if (suggested) MediaIds.ROOT_SUGGESTED else MediaIds.ROOT
+        return BrowserRoot(rootId, extras)
     }
 
     override fun onLoadChildren(

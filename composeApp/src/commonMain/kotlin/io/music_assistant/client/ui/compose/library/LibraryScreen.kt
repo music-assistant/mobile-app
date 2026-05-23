@@ -458,7 +458,6 @@ private fun TabContent(
             val items = when (dataState) {
                 is DataState.Data -> dataState.data
                 is DataState.Stale -> dataState.data
-                else -> emptyList()
             }
             if (items.isEmpty()) {
                 EmptyState()

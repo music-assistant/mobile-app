@@ -12,6 +12,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Build
+import androidx.annotation.RequiresApi
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 
@@ -44,6 +45,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     // @Volatile: read by audio dispatcher thread, written by focus-callback thread
     @Volatile private var shouldPlayAudio = false
 
+    // True only while we hold a pause issued in response to audio-focus / telephony loss.
+    // GAIN auto-resumes only when this is set, so we never spontaneously start playback
+    // that the user didn't have running before the interruption.
+    @Volatile private var pausedByFocusLoss = false
+
     // Volume state (0-100)
     private var currentVolume: Int = 100
     private var isMuted: Boolean = false
@@ -59,6 +65,26 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
     private var isNoisyReceiverRegistered = false
+
+    // Telephony backup for focus events: some Bluetooth / Android Auto routings don't
+    // deliver AUDIOFOCUS_LOSS_TRANSIENT cleanly on incoming calls. OnModeChangedListener
+    // (API 31+) fires on MODE_IN_CALL / MODE_IN_COMMUNICATION transitions and needs no
+    // runtime permission, so we use it as a redundant signal.
+    @RequiresApi(Build.VERSION_CODES.S)
+    private val modeChangedListener = AudioManager.OnModeChangedListener { mode ->
+        val inCall = mode == AudioManager.MODE_IN_CALL ||
+            mode == AudioManager.MODE_IN_COMMUNICATION
+        if (inCall && shouldPlayAudio) {
+            logger.i { "Telephony mode=$mode — pausing server playback (focus backup)" }
+            shouldPlayAudio = false
+            pausedByFocusLoss = true
+            audioTrack?.pause()
+            onRemoteCommand?.invoke("pause")
+        }
+        // Resume is driven by AUDIOFOCUS_GAIN only — mode can return to NORMAL before
+        // focus is restored, and we only auto-resume what we paused.
+    }
+    private var isModeChangedListenerRegistered = false
 
     // AudioFocus listener for handling focus changes (Android Auto, phone calls, etc.)
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
@@ -79,6 +105,14 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
                 }
                 // Restore volume if it was ducked
                 applyVolume()
+
+                // Only resume server playback if WE paused it on focus loss.
+                // Otherwise stay paused — don't start playing music the user hadn't started.
+                if (pausedByFocusLoss) {
+                    pausedByFocusLoss = false
+                    logger.i { "Resuming server playback after focus regain" }
+                    onRemoteCommand?.invoke("play")
+                }
             }
 
             AudioManager.AUDIOFOCUS_LOSS -> {
@@ -90,19 +124,16 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                // Check if AudioTrack was just created (track transition)
-                // If so, ignore transient focus loss to prevent interrupting new track
-                val timeSinceCreation = System.currentTimeMillis() - audioTrackCreationTime
-                if (timeSinceCreation < 1000) {
-                    logger.i { "AudioFocus lost temporarily, but ignoring (track was just created ${timeSinceCreation}ms ago)" }
-                    return@OnAudioFocusChangeListener
-                }
-
                 logger.i { "AudioFocus lost temporarily" }
                 hasAudioFocus = false
+                val wasPlaying = shouldPlayAudio
                 shouldPlayAudio = false
-                // Pause playback
                 audioTrack?.pause()
+                if (wasPlaying) {
+                    pausedByFocusLoss = true
+                    logger.i { "Pausing server playback due to focus loss" }
+                    onRemoteCommand?.invoke("pause")
+                }
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
@@ -208,6 +239,9 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
 
         // Register noisy audio receiver (headphone unplug detection)
         registerNoisyAudioReceiver()
+
+        // Register telephony-mode listener (focus backup for incoming calls on AA/BT)
+        registerModeChangedListener()
 
         // Release existing AudioTrack if any
         audioTrack?.release()
@@ -368,6 +402,8 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     }
 
     actual fun pauseSink() {
+        // Any non-focus pause forfeits the auto-resume claim.
+        pausedByFocusLoss = false
         audioTrack?.pause()
     }
 
@@ -395,6 +431,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         logger.i { "Stopping raw PCM stream" }
 
         shouldPlayAudio = false
+        pausedByFocusLoss = false // Stream stopped — no auto-resume on focus gain.
         currentListener = null // Clear listener reference
 
         audioTrack?.let { track ->
@@ -467,6 +504,32 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
 
+    private fun registerModeChangedListener() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || isModeChangedListenerRegistered) {
+            return
+        }
+        try {
+            audioManager.addOnModeChangedListener(context.mainExecutor, modeChangedListener)
+            isModeChangedListenerRegistered = true
+            logger.d { "Registered telephony-mode listener" }
+        } catch (e: Exception) {
+            logger.w(e) { "Failed to register telephony-mode listener" }
+        }
+    }
+
+    private fun unregisterModeChangedListener() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || !isModeChangedListenerRegistered) {
+            return
+        }
+        try {
+            audioManager.removeOnModeChangedListener(modeChangedListener)
+            isModeChangedListenerRegistered = false
+            logger.d { "Unregistered telephony-mode listener" }
+        } catch (e: Exception) {
+            logger.w(e) { "Failed to unregister telephony-mode listener" }
+        }
+    }
+
     private fun unregisterNoisyAudioReceiver() {
         if (isNoisyReceiverRegistered) {
             try {
@@ -499,6 +562,7 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     actual fun release() {
         logger.i { "Releasing MediaPlayerController" }
         unregisterNoisyAudioReceiver()
+        unregisterModeChangedListener()
         stopRawPcmStream()
         releaseAudioFocus()
     }

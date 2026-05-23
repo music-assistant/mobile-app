@@ -105,6 +105,7 @@ class AutoLibrary(
         Logger.withTag("AutoLibrary").i { "Items for $id" }
         when {
             id == MediaIds.ROOT -> result.sendResult(rootChildren())
+            id == MediaIds.ROOT_SUGGESTED -> handleSuggested(result)
             MediaIds.parseSubListId(id) != null -> handleSubList(id, result)
             MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(id, result)
             else -> handleDrillDown(id, result)
@@ -138,6 +139,24 @@ class AutoLibrary(
         }
             ?: defaultAutoTabs.map { it.first }
         return ordered.map { type -> rootTabItem(titles.getValue(type), MediaIds.tabIdOf(type)) }
+    }
+
+    // Populates AA's "For You" surface. Without this, AA scrapes the top of the
+    // browse tree to derive its own suggestions. We serve favourite tracks ordered
+    // by last-played descending — directly playable in one tap, no nested browsing.
+    private fun handleSuggested(result: MediaBrowserServiceCompat.Result<List<MediaItem>>) {
+        result.detach()
+        scope.launch {
+            val items = cachedOrFetch(MediaIds.ROOT_SUGGESTED) {
+                if (!waitForCorrectState()) return@cachedOrFetch null
+                loadTabItems(
+                    MediaType.TRACK,
+                    SortOption(SortField.LAST_PLAYED, descending = true),
+                    favoritesOnly = true,
+                )
+            }
+            result.sendResult(items)
+        }
     }
 
     private fun handleTabContent(
@@ -277,6 +296,15 @@ class AutoLibrary(
             MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
                 orderBy = orderBy,
                 favorite = favorite,
+            )
+
+            // TRACK isn't exposed as a root tab (see defaultAutoTabs comment); this
+            // branch is only reachable via handleSuggested for the "For You" surface.
+            // Capped to keep AA scroll snappy and the WS payload small on large libraries.
+            MediaType.TRACK -> Request.Track.list(
+                orderBy = orderBy,
+                favorite = favorite,
+                limit = SUGGESTED_LIMIT,
             )
 
             else -> return null
@@ -778,6 +806,10 @@ class AutoLibrary(
         // Random-favorites pool size. 200 keeps the shuffle interesting without
         // overloading the play_media RPC payload for users with large libraries.
         const val RANDOM_POOL_SIZE = 200
+
+        // "For You" surface cap. AA scrolls poorly with long lists; this also
+        // bounds the WS payload on large libraries.
+        const val SUGGESTED_LIMIT = 50
     }
 }
 
@@ -789,6 +821,7 @@ private const val PARENT_REF_PROVIDER_PARAM_INDEX = 3
 
 internal object MediaIds {
     const val ROOT = "auto_lib_root"
+    const val ROOT_SUGGESTED = "auto_lib_suggested"
     const val TAB_ARTISTS = "auto_lib_artists"
     const val TAB_ALBUMS = "auto_lib_albums"
     const val TAB_PLAYLISTS = "auto_lib_playlists"
