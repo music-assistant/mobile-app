@@ -309,12 +309,13 @@ private fun mainNavEntryProvider(
         }
 
         entry<MainNav.ItemList> {
-            val itemListViewModel = koinViewModel<ItemListViewModel>()
+            val itemListViewModel = koinViewModel<ItemListViewModel> {
+                parametersOf(it.mediaType)
+            }
 
             ItemListScreen(
                 itemListViewModel = itemListViewModel,
                 contentPadding = contentPadding,
-                initialTabType = it.type,
                 actionsViewModel = actionsViewModel,
                 onBack = { multiBackStack.removeLastOrNull() },
                 onNavigateClick = { item ->
@@ -392,7 +393,7 @@ private sealed interface MainNav : NavKey {
     data object Library : MainNav
 
     @Serializable
-    data class ItemList(val type: MediaType) : MainNav
+    data class ItemList(val mediaType: MediaType) : MainNav
 
     /**
      * Multiple instances of the same item can appear in a back stack - [stackingId] ensures they

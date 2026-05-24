@@ -99,18 +99,11 @@ import org.jetbrains.compose.resources.stringResource
 fun ItemListScreen(
     itemListViewModel: ItemListViewModel,
     contentPadding: PaddingValues,
-    initialTabType: MediaType?,
     actionsViewModel: ActionsViewModel,
     onNavigateClick: (AppMediaItem) -> Unit,
     onBack: () -> Unit,
 ) {
-    val tabsState by itemListViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
-
-    LaunchedEffect(Unit) {
-        itemListViewModel.applyInitialTabIfNeeded(initialTabType)
-    }
-
     // Collect toasts
     LaunchedEffect(Unit) {
         actionsViewModel.toasts.collect { toast ->
@@ -118,33 +111,20 @@ fun ItemListScreen(
         }
     }
 
-    val visibleTabs = tabsState.tabs.filter { it.enabled }
-    val selectedTab = visibleTabs.find { it.isSelected }
-        ?: visibleTabs.firstOrNull()
-        ?: tabsState.tabs.first()
-
-    val state = State(
-        dataState = selectedTab.dataState,
-        mediaType = selectedTab.tab.mediaType,
-        isLoadingMore = selectedTab.isLoadingMore,
-        hasMore = selectedTab.hasMore,
-        viewMode = selectedTab.viewMode,
-        sortOption = selectedTab.sortOption,
-        searchQuery = selectedTab.searchQuery,
-    )
+    val state by itemListViewModel.state.collectAsStateWithLifecycle()
 
     Screen(
         topBar = { scrollBehavior ->
             ItemListTopBar(
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
-                onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
+                onToggleViewMode = { itemListViewModel.toggleViewMode() },
                 viewMode = state.viewMode,
                 searchQuery = state.searchQuery,
                 onSearchQueryChanged = {
-                    itemListViewModel.onSearchQueryChanged(selectedTab.tab, it)
+                    itemListViewModel.onSearchQueryChanged(it)
                 },
-                onSortChanged = { itemListViewModel.onSortChanged(selectedTab.tab, it) },
+                onSortChanged = { itemListViewModel.onSortChanged(it) },
                 mediaType = state.mediaType,
                 sortOption = state.sortOption,
             )
@@ -157,7 +137,7 @@ fun ItemListScreen(
             onNavigateClick = onNavigateClick,
             onPlayClick = itemListViewModel::onPlayClick,
             onCreatePlaylistClick = { showCreatePlaylistDialog = true },
-            onLoadMore = { itemListViewModel.loadMore(selectedTab.tab) },
+            onLoadMore = { itemListViewModel.loadMore() },
             onDismissCreatePlaylistDialog = { showCreatePlaylistDialog = false },
             onCreatePlaylist = itemListViewModel::createPlaylist,
             playlistActions = actionsViewModel,
@@ -250,7 +230,7 @@ private fun ItemListTopBar(
                     MediaType.RADIO -> stringResource(Res.string.media_type_radio)
                     MediaType.GENRE -> stringResource(Res.string.media_type_genres)
                     else -> {
-                        throw IllegalArgumentException()
+                        throw IllegalArgumentException("Invalid MediaType for ItemListScreen!")
                     }
                 }
 
@@ -512,13 +492,3 @@ private fun EmptyState() {
         )
     }
 }
-
-data class State(
-    val dataState: DataState<List<AppMediaItem>>,
-    val mediaType: MediaType,
-    val isLoadingMore: Boolean,
-    val hasMore: Boolean,
-    val viewMode: ViewMode,
-    val sortOption: SortOption,
-    val searchQuery: String,
-)
