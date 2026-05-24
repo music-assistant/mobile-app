@@ -37,7 +37,7 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
             .assertIsDisplayed()
             .performTextInput(query)
 
-        composeTestRule.onNodeWithText(Res.string.search_query_label.get())
+        composeTestRule.onNodeWithText(query)
             .performImeAction()
 
         return this

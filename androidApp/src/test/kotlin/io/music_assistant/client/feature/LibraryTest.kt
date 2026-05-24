@@ -11,6 +11,7 @@ import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.LibraryPage
 import io.music_assistant.client.support.pages.MediaItemPage
 import io.music_assistant.client.support.pages.assertMediaDisplayed
+import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -136,6 +137,21 @@ class LibraryTest {
             .clickGenres()
             .assertMediaDisplayed(genre1.name)
             .assertMediaDisplayed(genre2.name)
+    }
+
+    @Test
+    fun `can search item`() {
+        val album1 = ServerMediaItemFixtures.album(name = "Balloon Trapeze Experience")
+        val album2 = ServerMediaItemFixtures.album(name = "Frontal Lobe Annihilation Puzzle")
+        serviceClient.addToLibrary(album1, album2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickAlbums()
+            .openSearch()
+            .search("lobe")
+            .assertMediaDisplayed(album2.name)
+            .assertMediaNotDisplayed(album1.name)
     }
 
     @Test

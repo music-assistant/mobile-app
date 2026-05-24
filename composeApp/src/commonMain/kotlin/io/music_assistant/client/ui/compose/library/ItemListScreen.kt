@@ -275,7 +275,7 @@ private fun ItemListTopBar(
                     } else {
                         Icons.Default.Search
                     },
-                    contentDescription = null,
+                    contentDescription = stringResource(Res.string.library_quick_search),
                 )
             }
 

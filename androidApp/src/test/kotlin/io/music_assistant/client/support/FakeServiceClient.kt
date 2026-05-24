@@ -155,7 +155,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                         request = request,
                         result = SearchResult(
                             artists = emptyList(),
-                            albums = searchItems(request, items),
+                            albums = searchItems(request, "search_query", items),
                             tracks = emptyList(),
                             playlists = emptyList(),
                             podcasts = emptyList(),
@@ -188,7 +188,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = albums,
+                        result = searchItems(request, "search", albums),
                     ),
                 )
             }
@@ -206,7 +206,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = artists,
+                        result = searchItems(request, "search", artists),
                     ),
                 )
             }
@@ -215,7 +215,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = playlists,
+                        result = searchItems(request, "search", playlists),
                     ),
                 )
             }
@@ -233,7 +233,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = audiobooks,
+                        result = searchItems(request, "search", audiobooks),
                     ),
                 )
             }
@@ -242,7 +242,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = podcasts,
+                        result = searchItems(request, "search", podcasts),
                     ),
                 )
             }
@@ -251,7 +251,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = radios,
+                        result = searchItems(request, "search", radios),
                     ),
                 )
             }
@@ -260,7 +260,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 Result.success(
                     answer(
                         request = request,
-                        result = genres,
+                        result = searchItems(request, "search", genres),
                     ),
                 )
             }
@@ -571,11 +571,12 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     private fun searchItems(
         request: Request,
+        requestArg: String,
         items: Collection<ServerMediaItem>,
     ): List<ServerMediaItem> {
         return items.filter {
             it.name.contains(
-                (request.args!!["search_query"]!! as JsonPrimitive).content,
+                (request.args!![requestArg]!! as JsonPrimitive).content,
                 ignoreCase = true,
             )
         }

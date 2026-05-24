@@ -23,6 +23,7 @@ import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
@@ -44,7 +45,6 @@ class ItemListViewModel(
 ) : ViewModel() {
     companion object Companion {
         private const val PAGE_SIZE = 50
-        const val LIBRARY_SORT_DEBOUNCE_MS = 500L
 
         private fun tabFor(type: MediaType): Tab = when (type) {
             MediaType.ARTIST -> Tab.ARTISTS
@@ -214,7 +214,7 @@ class ItemListViewModel(
                     }
                 }
                     .distinctUntilChanged()
-                    .debounce { LIBRARY_SORT_DEBOUNCE_MS }
+                    .debounce { Timings.INPUT_DEBOUNCE }
                     .collect {
                         when (tab) {
                             Tab.ARTISTS -> loadArtists()
