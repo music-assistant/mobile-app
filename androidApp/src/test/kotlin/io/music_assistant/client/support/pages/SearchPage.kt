@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
@@ -16,7 +17,6 @@ import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.search_query_label
 import musicassistantclient.composeapp.generated.resources.search_start
-import musicassistantclient.composeapp.generated.resources.search_title
 
 class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
@@ -36,8 +36,9 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
         composeTestRule.onNodeWithText(Res.string.search_query_label.get())
             .assertIsDisplayed()
             .performTextInput(query)
-        composeTestRule.onNodeWithContentDescription(Res.string.search_title.get())
-            .performClick()
+
+        composeTestRule.onNodeWithText(Res.string.search_query_label.get())
+            .performImeAction()
 
         return this
     }
