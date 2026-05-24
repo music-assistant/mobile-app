@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,7 +41,6 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -136,7 +134,6 @@ fun ItemListScreen(
     Screen(
         topBar = { scrollBehavior ->
             ItemListTopBar(
-                selectedTab = selectedTab,
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
                 onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
@@ -145,24 +142,30 @@ fun ItemListScreen(
                 onSearchQueryChanged = {
                     itemListViewModel.onSearchQueryChanged(selectedTab.tab, it)
                 },
-                onSortChanged = itemListViewModel::onSortChanged,
+                onSortChanged = { itemListViewModel.onSortChanged(selectedTab.tab, it) },
+                mediaType = selectedTab.tab.mediaType,
+                sortOption = selectedTab.sortOption,
             )
         },
     ) {
         ItemList(
-            contentPadding = contentPadding,
-            selectedTab = selectedTab,
             showCreatePlaylistDialog = state.showCreatePlaylistDialog,
             toastState = toastState,
             onNavigateClick = onNavigateClick,
             onPlayClick = itemListViewModel::onPlayClick,
             onCreatePlaylistClick = itemListViewModel::onCreatePlaylistClick,
-            onLoadMore = itemListViewModel::loadMore,
+            onLoadMore = { itemListViewModel.loadMore(selectedTab.tab) },
             onDismissCreatePlaylistDialog = itemListViewModel::onDismissCreatePlaylistDialog,
             onCreatePlaylist = itemListViewModel::createPlaylist,
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,
+            contentPadding = contentPadding,
+            dataState = selectedTab.dataState,
+            mediaType = selectedTab.tab.mediaType,
+            isLoadingMore = selectedTab.isLoadingMore,
+            hasMore = selectedTab.hasMore,
+            viewMode = selectedTab.viewMode,
         )
     }
 }
@@ -170,14 +173,15 @@ fun ItemListScreen(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ItemListTopBar(
-    selectedTab: ItemListViewModel.TabState,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
     viewMode: ViewMode,
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
-    onSortChanged: (ItemListViewModel.Tab, SortOption) -> Unit,
+    onSortChanged: (SortOption) -> Unit,
+    mediaType: MediaType,
+    sortOption: SortOption,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -221,27 +225,30 @@ private fun ItemListTopBar(
                     )
                 }
             } else {
-                val title = when (selectedTab.tab) {
-                    ItemListViewModel.Tab.ARTISTS -> stringResource(
+                val title = when (mediaType) {
+                    MediaType.ARTIST -> stringResource(
                         Res.string.media_type_artists,
                     )
 
-                    ItemListViewModel.Tab.ALBUMS -> stringResource(Res.string.media_type_albums)
-                    ItemListViewModel.Tab.TRACKS -> stringResource(Res.string.media_type_tracks)
-                    ItemListViewModel.Tab.PLAYLISTS -> stringResource(
+                    MediaType.ALBUM -> stringResource(Res.string.media_type_albums)
+                    MediaType.TRACK -> stringResource(Res.string.media_type_tracks)
+                    MediaType.PLAYLIST -> stringResource(
                         Res.string.media_type_playlists,
                     )
 
-                    ItemListViewModel.Tab.AUDIOBOOKS -> stringResource(
+                    MediaType.AUDIOBOOK -> stringResource(
                         Res.string.media_type_audiobooks,
                     )
 
-                    ItemListViewModel.Tab.PODCASTS -> stringResource(
+                    MediaType.PODCAST -> stringResource(
                         Res.string.media_type_podcasts,
                     )
 
-                    ItemListViewModel.Tab.RADIOS -> stringResource(Res.string.media_type_radio)
-                    ItemListViewModel.Tab.GENRES -> stringResource(Res.string.media_type_genres)
+                    MediaType.RADIO -> stringResource(Res.string.media_type_radio)
+                    MediaType.GENRE -> stringResource(Res.string.media_type_genres)
+                    else -> {
+                        throw IllegalArgumentException()
+                    }
                 }
 
                 Text(title)
@@ -290,9 +297,9 @@ private fun ItemListTopBar(
                 SortDropdownMenu(
                     expanded = showSortMenu,
                     onDismissRequest = { showSortMenu = false },
-                    currentSort = selectedTab.sortOption,
-                    availableFields = SortConfig.fieldsFor(selectedTab.tab.mediaType),
-                    onSortChanged = { onSortChanged(selectedTab.tab, it) },
+                    currentSort = sortOption,
+                    availableFields = SortConfig.fieldsFor(mediaType),
+                    onSortChanged = { onSortChanged(it) },
                 )
             }
 
@@ -312,19 +319,23 @@ private fun ItemListTopBar(
 @Composable
 private fun ItemList(
     modifier: Modifier = Modifier,
-    selectedTab: ItemListViewModel.TabState,
     showCreatePlaylistDialog: Boolean,
     toastState: ToastState,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
-    onLoadMore: (ItemListViewModel.Tab) -> Unit,
+    onLoadMore: () -> Unit,
     onDismissCreatePlaylistDialog: () -> Unit,
     onCreatePlaylist: (String) -> Unit,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     contentPadding: PaddingValues,
+    dataState: DataState<List<AppMediaItem>>,
+    mediaType: MediaType,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    viewMode: ViewMode,
 ) {
     Box(modifier = modifier) {
         Column(
@@ -334,17 +345,59 @@ private fun ItemList(
         ) {
             // Content area
             Box(modifier = Modifier.fillMaxSize()) {
-                TabContent(
-                    tabState = selectedTab,
-                    onNavigateClick = onNavigateClick,
-                    onPlayClick = onPlayClick,
-                    onCreatePlaylistClick = onCreatePlaylistClick,
-                    onLoadMore = { onLoadMore(selectedTab.tab) },
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    progressActions = progressActions,
-                    contentPadding,
-                )
+                when (val dataState = dataState) {
+                    is DataState.Loading -> LoadingState()
+                    is DataState.Error -> ErrorState()
+                    is DataState.NoData -> EmptyState()
+                    is DataState.Stale,
+                    is DataState.Data,
+                        -> {
+                        // Handle both Data and Stale - both contain valid library data
+                        val items = when (dataState) {
+                            is DataState.Data -> dataState.data
+                            is DataState.Stale -> dataState.data
+                            else -> emptyList()
+                        }
+                        if (items.isEmpty()) {
+                            EmptyState()
+                        } else {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                if (mediaType == MediaType.PLAYLIST) {
+                                    OutlinedButton(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        onClick = onCreatePlaylistClick,
+                                    ) {
+                                        Icon(
+                                            TablerIcons.Plus,
+                                            contentDescription = stringResource(Res.string.cd_add_playlist),
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(stringResource(Res.string.playlist_add_new))
+                                    }
+                                }
+
+                                val gridState = rememberLazyGridState()
+                                AdaptiveMediaGrid(
+                                    modifier = Modifier.fillMaxSize(),
+                                    items = items,
+                                    isLoadingMore = isLoadingMore,
+                                    hasMore = hasMore,
+                                    viewMode = viewMode,
+                                    onNavigateClick = onNavigateClick,
+                                    onPlayClick = onPlayClick,
+                                    onLoadMore = onLoadMore,
+                                    gridState = gridState,
+                                    playlistActions = playlistActions,
+                                    libraryActions = libraryActions,
+                                    progressActions = progressActions,
+                                    contentPadding = contentPadding,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -417,107 +470,6 @@ private fun CreatePlaylistDialog(
             }
         },
     )
-}
-
-@Composable
-private fun TabContent(
-    tabState: ItemListViewModel.TabState,
-    onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
-    onCreatePlaylistClick: () -> Unit,
-    onLoadMore: () -> Unit,
-    playlistActions: PlaylistActions,
-    libraryActions: LibraryActions,
-    progressActions: ProgressActions? = null,
-    contentPadding: PaddingValues,
-) {
-    // Create separate grid states for each tab to preserve scroll position
-    val artistsGridState = rememberLazyGridState()
-    val albumsGridState = rememberLazyGridState()
-    val tracksGridState = rememberLazyGridState()
-    val playlistsGridState = rememberLazyGridState()
-    val audiobooksGridState = rememberLazyGridState()
-    val podcastsGridState = rememberLazyGridState()
-    val radiosGridState = rememberLazyGridState()
-    val genresGridState = rememberLazyGridState()
-
-    val gridStates =
-        remember(
-            artistsGridState,
-            albumsGridState,
-            tracksGridState,
-            playlistsGridState,
-            audiobooksGridState,
-            podcastsGridState,
-            radiosGridState,
-            genresGridState,
-        ) {
-            mapOf(
-                ItemListViewModel.Tab.ARTISTS to artistsGridState,
-                ItemListViewModel.Tab.ALBUMS to albumsGridState,
-                ItemListViewModel.Tab.TRACKS to tracksGridState,
-                ItemListViewModel.Tab.PLAYLISTS to playlistsGridState,
-                ItemListViewModel.Tab.AUDIOBOOKS to audiobooksGridState,
-                ItemListViewModel.Tab.PODCASTS to podcastsGridState,
-                ItemListViewModel.Tab.RADIOS to radiosGridState,
-                ItemListViewModel.Tab.GENRES to genresGridState,
-            )
-        }
-
-    when (val dataState = tabState.dataState) {
-        is DataState.Loading -> LoadingState()
-        is DataState.Error -> ErrorState()
-        is DataState.NoData -> EmptyState()
-        is DataState.Stale,
-        is DataState.Data,
-            -> {
-            // Handle both Data and Stale - both contain valid library data
-            val items = when (dataState) {
-                is DataState.Data -> dataState.data
-                is DataState.Stale -> dataState.data
-            }
-            if (items.isEmpty()) {
-                EmptyState()
-            } else {
-                key(tabState.tab) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        if (tabState.tab == ItemListViewModel.Tab.PLAYLISTS) {
-                            OutlinedButton(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                onClick = onCreatePlaylistClick,
-                            ) {
-                                Icon(
-                                    TablerIcons.Plus,
-                                    contentDescription = stringResource(Res.string.cd_add_playlist),
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(stringResource(Res.string.playlist_add_new))
-                            }
-                        }
-                        gridStates[tabState.tab]?.let {
-                            AdaptiveMediaGrid(
-                                modifier = Modifier.fillMaxSize(),
-                                items = items,
-                                isLoadingMore = tabState.isLoadingMore,
-                                hasMore = tabState.hasMore,
-                                viewMode = tabState.viewMode,
-                                onNavigateClick = onNavigateClick,
-                                onPlayClick = onPlayClick,
-                                onLoadMore = onLoadMore,
-                                gridState = it,
-                                playlistActions = playlistActions,
-                                libraryActions = libraryActions,
-                                progressActions = progressActions,
-                                contentPadding = contentPadding,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
