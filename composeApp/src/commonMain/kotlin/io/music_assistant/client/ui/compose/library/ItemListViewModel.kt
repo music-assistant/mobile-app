@@ -40,7 +40,6 @@ class ItemListViewModel(
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
-    private val libraryNavCoordinator: LibraryNavCoordinator,
     private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     companion object Companion {
@@ -208,9 +207,8 @@ class ItemListViewModel(
             viewModelScope.launch {
                 _state.map { state ->
                     state.tabs.find { it.tab == tab }.let {
-                        Triple(
+                        Pair(
                             it?.searchQuery ?: "",
-                            it?.onlyFavorites?.takeIf { favs -> favs },
                             it?.sortOption,
                         )
                     }
@@ -229,12 +227,6 @@ class ItemListViewModel(
                             Tab.GENRES -> loadGenres()
                         }
                     }
-            }
-        }
-
-        viewModelScope.launch {
-            libraryNavCoordinator.tabRequests.collect { type ->
-                onTabSelected(tabFor(type))
             }
         }
 
@@ -290,20 +282,6 @@ class ItemListViewModel(
                 tabs = s.tabs.map { tabState ->
                     if (tabState.tab == tab) {
                         tabState.copy(searchQuery = query)
-                    } else {
-                        tabState
-                    }
-                },
-            )
-        }
-    }
-
-    fun onOnlyFavoritesClicked(tab: Tab) {
-        _state.update { s ->
-            s.copy(
-                tabs = s.tabs.map { tabState ->
-                    if (tabState.tab == tab) {
-                        tabState.copy(onlyFavorites = !tabState.onlyFavorites)
                     } else {
                         tabState
                     }

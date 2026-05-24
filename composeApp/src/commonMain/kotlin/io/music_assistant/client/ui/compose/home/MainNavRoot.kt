@@ -59,7 +59,6 @@ import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListScreen
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
-import io.music_assistant.client.ui.compose.library.LibraryNavCoordinator
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
@@ -261,7 +260,6 @@ private fun mainNavEntryProvider(
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
 ): (NavKey) -> NavEntry<NavKey> {
-    val libraryNavCoordinator: LibraryNavCoordinator = koinInject()
     return entryProvider {
         entry<MainNav.Landing> {
             HomeScreen(
@@ -291,7 +289,6 @@ private fun mainNavEntryProvider(
                     }
                 },
                 onLibraryItemClick = { type ->
-                    type?.let { libraryNavCoordinator.requestTab(it) }
                     multiBackStack.switchTo(1, MainNav.ItemList(type))
                 },
                 providerIconFetcher = { modifier, provider ->
