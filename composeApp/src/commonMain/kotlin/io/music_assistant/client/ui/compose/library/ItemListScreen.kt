@@ -43,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,7 +104,7 @@ fun ItemListScreen(
     onNavigateClick: (AppMediaItem) -> Unit,
     onBack: () -> Unit,
 ) {
-    val state by itemListViewModel.state.collectAsStateWithLifecycle()
+    val tabsState by itemListViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
@@ -117,19 +118,20 @@ fun ItemListScreen(
         }
     }
 
-    val visibleTabs = state.tabs.filter { it.enabled }
+    val visibleTabs = tabsState.tabs.filter { it.enabled }
     val selectedTab = visibleTabs.find { it.isSelected }
         ?: visibleTabs.firstOrNull()
-        ?: state.tabs.first()
+        ?: tabsState.tabs.first()
 
-    var showCustomizeDialog by remember { mutableStateOf(false) }
-    if (showCustomizeDialog) {
-        CustomizeTabsDialog(
-            initialConfig = state.tabs.map { it.tab to it.enabled },
-            onDismissRequest = { showCustomizeDialog = false },
-            onConfirm = itemListViewModel::onTabsConfigChanged,
-        )
-    }
+    val state = State(
+        dataState = selectedTab.dataState,
+        mediaType = selectedTab.tab.mediaType,
+        isLoadingMore = selectedTab.isLoadingMore,
+        hasMore = selectedTab.hasMore,
+        viewMode = selectedTab.viewMode,
+        sortOption = selectedTab.sortOption,
+        searchQuery = selectedTab.searchQuery,
+    )
 
     Screen(
         topBar = { scrollBehavior ->
@@ -137,35 +139,36 @@ fun ItemListScreen(
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
                 onToggleViewMode = { itemListViewModel.toggleViewMode(selectedTab.tab) },
-                viewMode = selectedTab.viewMode,
-                searchQuery = selectedTab.searchQuery,
+                viewMode = state.viewMode,
+                searchQuery = state.searchQuery,
                 onSearchQueryChanged = {
                     itemListViewModel.onSearchQueryChanged(selectedTab.tab, it)
                 },
                 onSortChanged = { itemListViewModel.onSortChanged(selectedTab.tab, it) },
-                mediaType = selectedTab.tab.mediaType,
-                sortOption = selectedTab.sortOption,
+                mediaType = state.mediaType,
+                sortOption = state.sortOption,
             )
         },
     ) {
+        var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
         ItemList(
-            showCreatePlaylistDialog = state.showCreatePlaylistDialog,
+            showCreatePlaylistDialog = showCreatePlaylistDialog,
             toastState = toastState,
             onNavigateClick = onNavigateClick,
             onPlayClick = itemListViewModel::onPlayClick,
-            onCreatePlaylistClick = itemListViewModel::onCreatePlaylistClick,
+            onCreatePlaylistClick = { showCreatePlaylistDialog = true },
             onLoadMore = { itemListViewModel.loadMore(selectedTab.tab) },
-            onDismissCreatePlaylistDialog = itemListViewModel::onDismissCreatePlaylistDialog,
+            onDismissCreatePlaylistDialog = { showCreatePlaylistDialog = false },
             onCreatePlaylist = itemListViewModel::createPlaylist,
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,
             contentPadding = contentPadding,
-            dataState = selectedTab.dataState,
-            mediaType = selectedTab.tab.mediaType,
-            isLoadingMore = selectedTab.isLoadingMore,
-            hasMore = selectedTab.hasMore,
-            viewMode = selectedTab.viewMode,
+            dataState = state.dataState,
+            mediaType = state.mediaType,
+            isLoadingMore = state.isLoadingMore,
+            hasMore = state.hasMore,
+            viewMode = state.viewMode,
         )
     }
 }
@@ -509,3 +512,13 @@ private fun EmptyState() {
         )
     }
 }
+
+data class State(
+    val dataState: DataState<List<AppMediaItem>>,
+    val mediaType: MediaType,
+    val isLoadingMore: Boolean,
+    val hasMore: Boolean,
+    val viewMode: ViewMode,
+    val sortOption: SortOption,
+    val searchQuery: String,
+)
