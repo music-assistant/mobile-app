@@ -998,7 +998,9 @@ class KtorServiceClient(
     private fun savedTokenForState(state: SessionState.Connected): String? {
         val id = when (state) {
             is SessionState.Connected.Direct -> settings.getDirectServerIdentifier(
-                state.connectionInfo.host, state.connectionInfo.port, state.connectionInfo.isTls,
+                state.connectionInfo.host,
+                state.connectionInfo.port,
+                state.connectionInfo.isTls,
             )
             is SessionState.Connected.WebRTC -> settings.getWebRTCServerIdentifier(state.remoteId.rawId)
         }

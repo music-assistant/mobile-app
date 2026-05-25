@@ -15,12 +15,12 @@ import android.support.v4.media.session.MediaSessionCompat.QueueItem
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
-import io.music_assistant.client.auto.androidAutoLog
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import io.music_assistant.client.R
 import io.music_assistant.client.auto.AutoLibrary
 import io.music_assistant.client.auto.MediaIds
+import io.music_assistant.client.auto.androidAutoLog
 import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
 import io.music_assistant.client.data.MainDataSource
