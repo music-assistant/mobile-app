@@ -49,17 +49,17 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun LibraryScreen(
-    libraryCategoriesViewModel: LibraryCategoriesViewModel,
+    libraryTabsViewModel: LibraryTabsViewModel,
     onTypeClick: (MediaType) -> Unit,
 ) {
-    val state by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
+    val state by libraryTabsViewModel.state.collectAsStateWithLifecycle()
 
     var showCustomizeDialog by remember { mutableStateOf(false) }
     if (showCustomizeDialog) {
         CustomizeTabsDialog(
             initialConfig = state.tabs.map { it.tab to it.enabled },
             onDismissRequest = { showCustomizeDialog = false },
-            onConfirm = libraryCategoriesViewModel::onTabsConfigChanged,
+            onConfirm = libraryTabsViewModel::onTabsConfigChanged,
         )
     }
 
@@ -78,60 +78,78 @@ fun LibraryScreen(
             )
         },
     ) {
-        val libraryItems = remember {
-            listOf(
-                LibraryItem("Artists", ArtistIcon, MediaType.ARTIST),
-                LibraryItem("Albums", AlbumIcon, MediaType.ALBUM),
-                LibraryItem("Tracks", TrackIcon, MediaType.TRACK),
-                LibraryItem("Playlists", PlaylistIcon, MediaType.PLAYLIST),
-                LibraryItem("Audiobooks", BookAudioIcon, MediaType.AUDIOBOOK),
-                LibraryItem("Podcasts", Icons.Default.Podcasts, MediaType.PODCAST),
-                LibraryItem("Radio", RadioIcon, MediaType.RADIO),
-                LibraryItem("Genres", GenreIcon, MediaType.GENRE),
-            )
+        val libraryCategories = remember(state.tabs) {
+            state.tabs.filter { it.enabled }.map {
+                when (it.tab) {
+                    LibraryTabsViewModel.Tab.ARTISTS -> LibraryCategory("Artists", ArtistIcon, MediaType.ARTIST)
+                    LibraryTabsViewModel.Tab.ALBUMS -> LibraryCategory("Albums", AlbumIcon, MediaType.ALBUM)
+                    LibraryTabsViewModel.Tab.TRACKS -> LibraryCategory("Tracks", TrackIcon, MediaType.TRACK)
+                    LibraryTabsViewModel.Tab.PLAYLISTS -> LibraryCategory("Playlists", PlaylistIcon, MediaType.PLAYLIST)
+                    LibraryTabsViewModel.Tab.AUDIOBOOKS -> LibraryCategory(
+                        "Audiobooks",
+                        BookAudioIcon,
+                        MediaType.AUDIOBOOK,
+                    )
+                    LibraryTabsViewModel.Tab.PODCASTS -> LibraryCategory(
+                        "Podcasts",
+                        Icons.Default.Podcasts,
+                        MediaType.PODCAST,
+                    )
+                    LibraryTabsViewModel.Tab.RADIOS -> LibraryCategory("Radio", RadioIcon, MediaType.RADIO)
+                    LibraryTabsViewModel.Tab.GENRES -> LibraryCategory("Genres", GenreIcon, MediaType.GENRE)
+                }
+            }
         }
 
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 140.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-        ) {
-            items(libraryItems) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = { onTypeClick(it.type) })
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(horizontal = 8.dp, vertical = 16.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            modifier = Modifier.size(24.dp),
-                            imageVector = it.icon,
-                            contentDescription = it.name,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
+        LibraryGrid(libraryCategories, onTypeClick)
+    }
+}
 
-                        Text(
-                            modifier = Modifier.padding(start = 16.dp),
-                            text = it.name,
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
+@Composable
+private fun LibraryGrid(
+    libraryCategories: List<LibraryCategory>,
+    onTypeClick: (MediaType) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 140.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        items(libraryCategories) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = { onTypeClick(it.type) })
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 8.dp, vertical = 16.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = it.icon,
+                        contentDescription = it.name,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+
+                    Text(
+                        modifier = Modifier.padding(start = 16.dp),
+                        text = it.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
                 }
             }
         }
     }
 }
 
-private data class LibraryItem(
+private data class LibraryCategory(
     val name: String,
     val icon: ImageVector,
     val type: MediaType,

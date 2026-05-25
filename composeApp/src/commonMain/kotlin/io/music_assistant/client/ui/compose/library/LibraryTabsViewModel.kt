@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
-class LibraryCategoriesViewModel(
+class LibraryTabsViewModel(
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     enum class Tab {
@@ -44,7 +44,12 @@ class LibraryCategoriesViewModel(
 
     private fun buildInitialTabs(): List<TabState> {
         val stored = settingsRepository.libraryTabsConfig.value
-        return stored?.map { TabState(Tab.valueOf(it.name), it.enabled) } ?: emptyList()
+
+        return if (stored != null) {
+            stored.map { TabState(Tab.valueOf(it.name), it.enabled) }
+        } else {
+            Tab.entries.map { TabState(it, true) }
+        }
     }
 
     init {
