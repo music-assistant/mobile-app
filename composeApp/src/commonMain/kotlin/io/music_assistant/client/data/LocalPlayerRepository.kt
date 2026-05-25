@@ -120,11 +120,15 @@ class LocalPlayerRepository(
     // --- Command queue (online: send immediately, offline: queue with dedup) ---
 
     suspend fun sendOrQueue(action: PlayerAction, request: Request) {
-        if (apiClient.isReadyForCommands.value) {
-            apiClient.sendRequest(request)
-        } else {
+        // Fast-path queue when known-offline avoids burning the gate's 10s timeout
+        // on actions the user already perceives as "do this when we're back."
+        // The Result.isFailure fallback closes the TOCTOU window where the state
+        // flips between the check and the send.
+        if (!apiClient.isReadyForCommands.value) {
             enqueue(action, request)
+            return
         }
+        if (apiClient.sendRequest(request).isFailure) enqueue(action, request)
     }
 
     fun drainCommandQueue() {

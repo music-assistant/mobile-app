@@ -43,11 +43,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -236,26 +240,49 @@ class KtorServiceClient(
         logger.i { "External consumer active (state=${stateLabel(state)})" }
 
         if (state is SessionState.Disconnected.Backgrounded) {
-            val savedInfo = backgroundedConnectionInfo
-            if (savedInfo == null) {
+            if (!reconnectFromCurrent("external consumer active (was Backgrounded)")) {
                 logger.i { "External consumer active: state=Backgrounded but no savedInfo, no reconnect" }
-                return
             }
-            backgroundedConnectionInfo = null
-            logger.i { "External consumer active: reconnecting (was backgrounded)" }
-            when (savedInfo) {
-                is BackgroundedConnectionInfo.Direct -> {
-                    val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
-                    connect(connInfo)
-                }
-
-                is BackgroundedConnectionInfo.WebRTC -> {
-                    connectWebRTC(savedInfo.remoteId)
-                }
-            }
-        } else {
-            logger.i { "External consumer active: reconnect not applicable for state=${stateLabel(state)}" }
+            return
         }
+
+        // AA hookup is functionally equivalent to phone foreground: cache may be
+        // empty, AA's first sendRequest assumes the gate handles staleness — but
+        // the gate trusts `isReadyForCommands`, which stays true for a half-open
+        // WS. Same probe as `onAppForeground` to catch that case.
+        val elapsed = currentTimeMillis() - backgroundedAt
+        if (elapsed > STALE_CONNECTION_THRESHOLD_MS && state is SessionState.Connected) {
+            logger.i { "External consumer active: probing connection after ${elapsed}ms in background" }
+            transport?.verifyConnection()
+        }
+    }
+
+    /**
+     * Tears down the current transport and reconnects using either the saved
+     * [backgroundedConnectionInfo] or, failing that, the connection identity of
+     * the current [SessionState.Connected]. Returns false when neither source
+     * can supply a target — caller decides what (if anything) to log.
+     */
+    private fun reconnectFromCurrent(reason: String): Boolean {
+        val info = backgroundedConnectionInfo
+            ?: when (val s = _sessionState.value) {
+                is SessionState.Connected.Direct -> BackgroundedConnectionInfo.Direct(s.connectionInfo)
+                is SessionState.Connected.WebRTC -> BackgroundedConnectionInfo.WebRTC(s.remoteId)
+                else -> null
+            } ?: return false
+        backgroundedConnectionInfo = null
+        logger.i { "Force reconnect: $reason" }
+
+        // forceConnect / forceConnectWebRTC bypass the public guard and handle
+        // their own teardown — no transient state sentinel needed here.
+        when (info) {
+            is BackgroundedConnectionInfo.Direct -> {
+                val connInfo = settings.connectionInfo.value ?: info.connectionInfo
+                forceConnect(connInfo)
+            }
+            is BackgroundedConnectionInfo.WebRTC -> forceConnectWebRTC(info.remoteId)
+        }
+        return true
     }
 
     /**
@@ -293,33 +320,18 @@ class KtorServiceClient(
 
         if (wasInBackground) _foregroundEvents.tryEmit(Unit)
 
-        val savedInfo = backgroundedConnectionInfo
-        if (savedInfo != null) {
-            backgroundedConnectionInfo = null
-            logger.i { "App foregrounded: reconnecting (was backgrounded)" }
-            when (savedInfo) {
-                is BackgroundedConnectionInfo.Direct -> {
-                    val connInfo = settings.connectionInfo.value ?: savedInfo.connectionInfo
-                    connect(connInfo)
-                }
-
-                is BackgroundedConnectionInfo.WebRTC -> {
-                    connectWebRTC(savedInfo.remoteId)
-                }
-            }
+        if (backgroundedConnectionInfo != null) {
+            reconnectFromCurrent("was Backgrounded")
             return
         }
 
-        // Connection appears alive — probe it if we've been in background long enough
-        // for a half-open TCP zombie to form.
+        // Cheap probe for half-open TCP. Anything more invasive (re-auth, full
+        // reconnect) is request-driven via `ensureReadyForCommands` — see
+        // `feedback_request_driven_recovery` for the rationale.
         val elapsed = currentTimeMillis() - backgroundedAt
         if (elapsed > STALE_CONNECTION_THRESHOLD_MS && state is SessionState.Connected) {
             logger.i { "App foregrounded: probing connection after ${elapsed}ms in background" }
             transport?.verifyConnection()
-        } else if (state !is SessionState.Connected) {
-            // Foregrounding while disconnected with no saved reconnect info means
-            // we won't auto-recover — log so a stuck session is traceable.
-            logger.i { "App foregrounded: no recovery taken (state=${stateLabel(state)}, elapsed=${elapsed}ms)" }
         }
     }
 
@@ -550,7 +562,16 @@ class KtorServiceClient(
 
     override fun connect(connection: ConnectionInfo) {
         if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
+        forceConnect(connection)
+    }
 
+    /**
+     * Bypass of [connect]'s Connecting/Connected guard for callers that
+     * intentionally tear down a live transport before rebuilding (e.g. JIT
+     * reconnect from a stuck `AwaitingAuth(Failed)` session). Public callers
+     * should keep using [connect] so accidental double-connects are still cheap.
+     */
+    private fun forceConnect(connection: ConnectionInfo) {
         // Cancel observer before disconnecting transport to prevent race where the old
         // observer processes TransportState.Disconnected and briefly sets ByUser
         transportObserverJob?.cancel()
@@ -601,7 +622,11 @@ class KtorServiceClient(
 
     override fun connectWebRTC(remoteId: RemoteId) {
         if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
+        forceConnectWebRTC(remoteId)
+    }
 
+    /** WebRTC twin of [forceConnect]. */
+    private fun forceConnectWebRTC(remoteId: RemoteId) {
         transportObserverJob?.cancel()
         transport?.disconnect()
         _sessionState.update { SessionState.Connecting }
@@ -702,7 +727,7 @@ class KtorServiceClient(
 
         try {
             val response =
-                sendRequest(Request.Auth.login(username, password, settings.deviceName.value))
+                sendRequestRaw(Request.Auth.login(username, password, settings.deviceName.value))
             if (_sessionState.value !is SessionState.Connected) return
 
             if (response.isFailure) {
@@ -772,7 +797,7 @@ class KtorServiceClient(
         }
         launch {
             try {
-                sendRequest(Request.Auth.logout())
+                sendRequestRaw(Request.Auth.logout())
             } catch (_: Exception) {
             }
         }
@@ -782,7 +807,7 @@ class KtorServiceClient(
         try {
             if (_sessionState.value !is SessionState.Connected) return
             setAuthState(AuthProcessState.InProgress)
-            val response = sendRequest(Request.Auth.authorize(token, settings.deviceName.value))
+            val response = sendRequestRaw(Request.Auth.authorize(token, settings.deviceName.value))
             if (_sessionState.value !is SessionState.Connected) return
             if (response.isFailure) {
                 Logger.e(response.exceptionOrNull().toString())
@@ -886,7 +911,117 @@ class KtorServiceClient(
         }
     }
 
-    override suspend fun sendRequest(request: Request): Result<Answer> =
+    private val recoveryMutex = Mutex()
+
+    private val authHandshakeCommands = setOf(
+        APICommands.AUTH_PROVIDERS,
+        APICommands.AUTH_AUTHORIZATION_URL,
+        APICommands.AUTH_LOGIN,
+        APICommands.AUTH_LOGOUT,
+        APICommands.AUTH,
+    )
+
+    /**
+     * Request-driven recovery gate. Suspends until `isReadyForCommands` is true
+     * (or [timeoutMs] elapses), kicking the appropriate recovery on entry:
+     *
+     *   - `Disconnected.Initial/Backgrounded/Error` → reconnect from history.
+     *   - `Connected + AwaitingAuth(Failed)` w/ saved token from a prior auto-login
+     *     → reset `authProcessState=NotStarted` so AuthenticationManager re-fires.
+     *   - User-intent states (`Disconnected.ByUser`, `NoServerData`,
+     *     `AwaitingAuth(LoggedOut)`) are NOT auto-recovered — the user opted out.
+     *   - In-flight states (`Connecting`, `Reconnecting`, `AwaitingAuth(InProgress)`,
+     *     `AwaitingServerInfo`) are left to complete on their own.
+     *
+     * Returns false if not ready within the timeout — callers should fail their
+     * request with a clear "not connected/not authenticated" result.
+     */
+    private suspend fun ensureReadyForCommands(timeoutMs: Long = ENSURE_READY_TIMEOUT_MS): Boolean {
+        if (isReadyForCommands.value) return true
+        recoveryMutex.withLock {
+            if (isReadyForCommands.value) return true
+            kickRecovery()
+        }
+        return withTimeoutOrNull(timeoutMs) {
+            isReadyForCommands.first { it }
+            true
+        } == true
+    }
+
+    private fun kickRecovery() {
+        val state = _sessionState.value
+        when (state) {
+            is SessionState.Disconnected.Initial,
+            is SessionState.Disconnected.Backgrounded,
+            is SessionState.Disconnected.Error,
+                -> reconnectFromHistory(reason = "JIT: state=${stateLabel(state)}")
+            SessionState.Disconnected.ByUser,
+            SessionState.Disconnected.NoServerData,
+                -> logger.i { "JIT: honoring user-intent state=${stateLabel(state)}" }
+            SessionState.Connecting,
+            is SessionState.Reconnecting,
+                -> Unit // already in progress
+            is SessionState.Connected -> {
+                when (val dcs = state.dataConnectionState) {
+                    is DataConnectionState.AwaitingAuth -> {
+                        val auth = dcs.authProcessState
+                        val hasToken = savedTokenForState(state) != null
+                        if (auth is AuthProcessState.Failed && state.wasAutoLogin && hasToken) {
+                            logger.i { "JIT: bumping AwaitingAuth(Failed) → NotStarted to retry auto-login" }
+                            _sessionState.update {
+                                (it as? SessionState.Connected)?.update(
+                                    authProcessState = AuthProcessState.NotStarted,
+                                ) ?: it
+                            }
+                        }
+                        // NotStarted/InProgress/LoggedOut handled by AuthMgr or user; no-op.
+                    }
+                    DataConnectionState.AwaitingServerInfo -> Unit // server/hello pending
+                    DataConnectionState.Authenticated -> Unit // ready
+                }
+            }
+        }
+    }
+
+    private fun reconnectFromHistory(reason: String) {
+        val entry = settings.connectionHistory.value.firstOrNull() ?: run {
+            logger.i { "JIT: no history entry — cannot reconnect ($reason)" }
+            return
+        }
+        logger.i { "JIT reconnect via ${entry.type} ($reason)" }
+        when (entry.type) {
+            ConnectionType.DIRECT -> entry.connectionInfo?.let { forceConnect(it) }
+            ConnectionType.WEBRTC -> entry.remoteId?.let { forceConnectWebRTC(RemoteId(it)) }
+        }
+    }
+
+    private fun savedTokenForState(state: SessionState.Connected): String? {
+        val id = when (state) {
+            is SessionState.Connected.Direct -> settings.getDirectServerIdentifier(
+                state.connectionInfo.host, state.connectionInfo.port, state.connectionInfo.isTls,
+            )
+            is SessionState.Connected.WebRTC -> settings.getWebRTCServerIdentifier(state.remoteId.rawId)
+        }
+        return settings.getTokenForServer(id)
+    }
+
+    override suspend fun sendRequest(request: Request): Result<Answer> {
+        // Auth-handshake commands bypass the gate — they're the mechanism by which
+        // `ensureReadyForCommands` is *resolved*, so gating them would deadlock.
+        if (request.command in authHandshakeCommands) return sendRequestRaw(request)
+        if (!ensureReadyForCommands()) {
+            logger.i { "sendRequest gated — not ready (state=${stateLabel(_sessionState.value)})" }
+            return Result.failure(IllegalStateException("Not ready for commands"))
+        }
+        return sendRequestRaw(request)
+    }
+
+    /**
+     * Bypasses [ensureReadyForCommands]. Reserved for the auth handshake itself
+     * (login / authorize / logout / providers), which must be allowed to send
+     * while the session is still in `AwaitingAuth(*)`.
+     */
+    private suspend fun sendRequestRaw(request: Request): Result<Answer> =
         suspendCancellableCoroutine { continuation ->
             val msgId = request.messageId
             val cmd = request.command
@@ -925,7 +1060,8 @@ class KtorServiceClient(
                     logger.e(e) { "sendRequest[$msgId] cmd=$cmd send FAILED" }
                     rpcEngine.removeCallback(msgId)
                     continuation.resume(Result.failure(e))
-                    // Don't trigger full disconnect if transport is already reconnecting
+                    // Don't trigger full disconnect if transport is already reconnecting —
+                    // its own loop will surface the error via TransportState.Failed.
                     val transportState = transport?.state?.value
                     if (transportState !is TransportState.Reconnecting) {
                         disconnect(SessionState.Disconnected.Error(Exception("Error sending command: ${e.message}")))
@@ -941,6 +1077,7 @@ class KtorServiceClient(
 
     companion object {
         private const val STALE_CONNECTION_THRESHOLD_MS = 30_000L
+        private const val ENSURE_READY_TIMEOUT_MS = 10_000L
         private const val WEBRTC_PROXY_BASE = "mawebrtc://proxy"
     }
 }

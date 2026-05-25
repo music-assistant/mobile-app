@@ -16,11 +16,12 @@ import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed class AuthState {
     data object Idle : AuthState()
@@ -223,40 +224,29 @@ class AuthenticationManager(
 
     fun handleOAuthCallback(token: String) {
         Logger.d("OAuth callback received")
-        _isLoggingOut.value = false  // Reset flag when user explicitly logs in with OAuth
+        _isLoggingOut.value = false
         scope.launch {
             _authState.value = AuthState.Loading
 
-            // Wait for connection to be established if app was backgrounded
-            // Try for up to 10 seconds
-            var attempts = 0
-            while (attempts < CONNECT_POLL_MAX_ATTEMPTS) {
-                val currentState = serviceClient.sessionState.value
-
-                if (currentState is SessionState.Connected &&
-                    currentState.serverInfo != null
-                ) {
-                    // Connection is fully established
-                    try {
-                        serviceClient.authorize(token, isAutoLogin = false)
-                        // Auth state will be updated via sessionState flow
-                        return@launch
-                    } catch (e: Exception) {
-                        val error = e.message ?: "Authorization failed"
-                        Logger.e(e) { "Authorization failed" }
-                        _authState.value = AuthState.Error(error)
-                        return@launch
-                    }
+            // Wait for transport + server/hello (authorize() silently no-ops without
+            // a Connected session). The foreground/JIT recovery path elsewhere in the
+            // pipeline will drive the reconnect — we just wait for it to land.
+            val ready = withTimeoutOrNull(CONNECT_WAIT_MS) {
+                serviceClient.sessionState.first {
+                    it is SessionState.Connected && it.serverInfo != null
                 }
-
-                Logger.d("Waiting for connection... attempt ${attempts + 1}")
-                delay(CONNECT_POLL_INTERVAL_MS)
-                attempts++
             }
-
-            // Timeout - connection not established
-            Logger.e("Connection timeout - cannot authorize")
-            _authState.value = AuthState.Error("Connection timeout. Please try again.")
+            if (ready == null) {
+                Logger.e("OAuth: connection timeout — cannot authorize")
+                _authState.value = AuthState.Error("Connection timeout. Please try again.")
+                return@launch
+            }
+            try {
+                serviceClient.authorize(token, isAutoLogin = false)
+            } catch (e: Exception) {
+                Logger.e(e) { "Authorization failed" }
+                _authState.value = AuthState.Error(e.message ?: "Authorization failed")
+            }
         }
     }
 
@@ -301,8 +291,6 @@ class AuthenticationManager(
     }
 
     private companion object {
-        // Auto-login waits up to 10s for the connection to fully establish: 40 * 250ms.
-        const val CONNECT_POLL_MAX_ATTEMPTS = 40
-        const val CONNECT_POLL_INTERVAL_MS = 250L
+        const val CONNECT_WAIT_MS = 10_000L
     }
 }

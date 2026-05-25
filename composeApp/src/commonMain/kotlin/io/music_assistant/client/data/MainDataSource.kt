@@ -581,14 +581,10 @@ class MainDataSource(
         }
         launch {
             selectedPlayerIndex.filterNotNull().collect { index ->
-                // Only refresh queue if we have live data and are authenticated
-                // Don't try to load during Stale state - will error with auth issues
-                if (apiClient.isReadyForCommands.value) {
-                    (playersData.value as? DataState.Data)?.data?.let { list ->
-                        refreshPlayerQueueItems(list[index])
-                    }
-                } else {
-                    log.d { "Skipping queue refresh - not authenticated (state: ${apiClient.sessionState.value::class.simpleName})" }
+                // sendRequest's gate handles "not ready" — outer guard would only
+                // add a TOCTOU race. If we're offline, the gate fails fast.
+                (playersData.value as? DataState.Data)?.data?.let { list ->
+                    refreshPlayerQueueItems(list[index])
                 }
             }
         }
