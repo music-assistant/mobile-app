@@ -2,10 +2,13 @@
 
 package io.music_assistant.client.ui.compose.library
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GridView
@@ -26,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +65,7 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.SortDropdownMenu
+import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
@@ -73,6 +76,7 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
@@ -118,7 +122,7 @@ fun ItemListScreen(
             ItemListTopBar(
                 scrollBehavior = scrollBehavior,
                 onBack = onBack,
-                onToggleViewMode = { itemListViewModel.toggleViewMode() },
+                onToggleViewMode = itemListViewModel::toggleViewMode,
                 viewMode = state.viewMode,
                 searchQuery = state.searchQuery,
                 onSearchQueryChanged = {
@@ -127,6 +131,8 @@ fun ItemListScreen(
                 onSortChanged = { itemListViewModel.onSortChanged(it) },
                 mediaType = state.mediaType,
                 sortOption = state.sortOption,
+                onlyFavorites = state.onlyFavorites,
+                onToggleFavorites = itemListViewModel::toggleFavorites,
             )
         },
     ) {
@@ -165,138 +171,147 @@ private fun ItemListTopBar(
     onSortChanged: (SortOption) -> Unit,
     mediaType: MediaType,
     sortOption: SortOption,
+    onlyFavorites: Boolean,
+    onToggleFavorites: () -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
-    var showSortMenu by remember { mutableStateOf(false) }
 
-    TopAppBar(
-        title = {
-            if (showSearch) {
-                val focusRequester = remember { FocusRequester() }
-                LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
-                }
+    Column {
+        TopAppBar(
+            title = {
+                if (showSearch) {
+                    val focusRequester = remember { FocusRequester() }
+                    LaunchedEffect(Unit) {
+                        focusRequester.requestFocus()
+                    }
 
-                Surface(
-                    shape = SearchBarDefaults.inputFieldShape,
-                    color = SearchBarDefaults.colors().containerColor,
-                    contentColor = contentColorFor(SearchBarDefaults.colors().containerColor),
-                    tonalElevation = SearchBarDefaults.TonalElevation,
-                    shadowElevation = SearchBarDefaults.ShadowElevation,
-                ) {
-                    SearchBarDefaults.InputField(
-                        modifier = Modifier.focusRequester(focusRequester),
-                        state = TextFieldState(initialText = searchQuery),
-                        onSearch = { onSearchQueryChanged(it) },
-                        expanded = false,
-                        onExpandedChange = {},
-                        placeholder = {
-                            Text(stringResource(Res.string.library_quick_search))
-                        },
-                        trailingIcon = if (searchQuery.isNotEmpty()) {
-                            {
-                                IconButton(onClick = { onSearchQueryChanged("") }) {
-                                    Icon(
-                                        Icons.Default.Clear,
-                                        contentDescription = stringResource(Res.string.common_clear),
-                                    )
+                    Surface(
+                        shape = SearchBarDefaults.inputFieldShape,
+                        color = SearchBarDefaults.colors().containerColor,
+                        contentColor = contentColorFor(SearchBarDefaults.colors().containerColor),
+                        tonalElevation = SearchBarDefaults.TonalElevation,
+                        shadowElevation = SearchBarDefaults.ShadowElevation,
+                    ) {
+                        SearchBarDefaults.InputField(
+                            modifier = Modifier.focusRequester(focusRequester),
+                            state = TextFieldState(initialText = searchQuery),
+                            onSearch = { onSearchQueryChanged(it) },
+                            expanded = false,
+                            onExpandedChange = {},
+                            placeholder = {
+                                Text(stringResource(Res.string.library_quick_search))
+                            },
+                            trailingIcon = if (searchQuery.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = { onSearchQueryChanged("") }) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = stringResource(Res.string.common_clear),
+                                        )
+                                    }
                                 }
-                            }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                } else {
+                    val title = when (mediaType) {
+                        MediaType.ARTIST -> stringResource(
+                            Res.string.media_type_artists,
+                        )
+
+                        MediaType.ALBUM -> stringResource(Res.string.media_type_albums)
+                        MediaType.TRACK -> stringResource(Res.string.media_type_tracks)
+                        MediaType.PLAYLIST -> stringResource(
+                            Res.string.media_type_playlists,
+                        )
+
+                        MediaType.AUDIOBOOK -> stringResource(
+                            Res.string.media_type_audiobooks,
+                        )
+
+                        MediaType.PODCAST -> stringResource(
+                            Res.string.media_type_podcasts,
+                        )
+
+                        MediaType.RADIO -> stringResource(Res.string.media_type_radio)
+                        MediaType.GENRE -> stringResource(Res.string.media_type_genres)
+                        else -> {
+                            throw IllegalArgumentException("Invalid MediaType for ItemListScreen!")
+                        }
+                    }
+
+                    Text(title)
+                }
+            },
+            scrollBehavior = scrollBehavior,
+            navigationIcon = {
+                if (!showSearch) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            stringResource(Res.string.common_back),
+                        )
+                    }
+                }
+            },
+            actions = {
+                IconButton(
+                    onClick = {
+                        if (showSearch) {
+                            onSearchQueryChanged("")
+                            showSearch = false
                         } else {
-                            null
+                            showSearch = true
+                        }
+                    },
+                ) {
+                    Icon(
+                        imageVector = if (showSearch) {
+                            Icons.Default.SearchOff
+                        } else {
+                            Icons.Default.Search
                         },
+                        contentDescription = stringResource(Res.string.library_quick_search),
                     )
                 }
-            } else {
-                val title = when (mediaType) {
-                    MediaType.ARTIST -> stringResource(
-                        Res.string.media_type_artists,
-                    )
 
-                    MediaType.ALBUM -> stringResource(Res.string.media_type_albums)
-                    MediaType.TRACK -> stringResource(Res.string.media_type_tracks)
-                    MediaType.PLAYLIST -> stringResource(
-                        Res.string.media_type_playlists,
-                    )
-
-                    MediaType.AUDIOBOOK -> stringResource(
-                        Res.string.media_type_audiobooks,
-                    )
-
-                    MediaType.PODCAST -> stringResource(
-                        Res.string.media_type_podcasts,
-                    )
-
-                    MediaType.RADIO -> stringResource(Res.string.media_type_radio)
-                    MediaType.GENRE -> stringResource(Res.string.media_type_genres)
-                    else -> {
-                        throw IllegalArgumentException("Invalid MediaType for ItemListScreen!")
-                    }
-                }
-
-                Text(title)
-            }
-        },
-        scrollBehavior = scrollBehavior,
-        navigationIcon = {
-            if (!showSearch) {
-                IconButton(onClick = onBack) {
+                IconButton(onClick = onToggleViewMode) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        stringResource(Res.string.common_back),
+                        imageVector = when (viewMode) {
+                            ViewMode.LIST -> Icons.Default.GridView
+                            ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                        },
+                        contentDescription = stringResource(Res.string.cd_toggle_view_mode),
                     )
                 }
-            }
-        },
-        actions = {
-            IconButton(
-                onClick = {
-                    if (showSearch) {
-                        onSearchQueryChanged("")
-                        showSearch = false
-                    } else {
-                        showSearch = true
-                    }
-                },
-            ) {
-                Icon(
-                    imageVector = if (showSearch) {
-                        Icons.Default.SearchOff
-                    } else {
-                        Icons.Default.Search
-                    },
-                    contentDescription = stringResource(Res.string.library_quick_search),
-                )
-            }
+            },
+        )
 
-            Box {
-                IconButton(onClick = { showSortMenu = true }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Default.Sort,
-                        contentDescription = null,
+        TopAppBar(
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    FilterChip(
+                        selected = onlyFavorites,
+                        onClick = onToggleFavorites,
+                        label = { Text(stringResource(Res.string.action_favorite)) },
+                    )
+
+                    SortChip(
+                        currentSort = sortOption,
+                        availableFields = SortConfig.fieldsFor(mediaType),
+                        onSortChanged = { onSortChanged(it) },
                     )
                 }
-
-                SortDropdownMenu(
-                    expanded = showSortMenu,
-                    onDismissRequest = { showSortMenu = false },
-                    currentSort = sortOption,
-                    availableFields = SortConfig.fieldsFor(mediaType),
-                    onSortChanged = { onSortChanged(it) },
-                )
-            }
-
-            IconButton(onClick = onToggleViewMode) {
-                Icon(
-                    imageVector = when (viewMode) {
-                        ViewMode.LIST -> Icons.Default.GridView
-                        ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-                    },
-                    contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-                )
-            }
-        },
-    )
+            },
+            scrollBehavior = scrollBehavior,
+            windowInsets = WindowInsets(),
+        )
+    }
 }
 
 @Composable

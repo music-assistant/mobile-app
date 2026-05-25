@@ -44,7 +44,7 @@ class ItemListViewModel(
 
     init {
         viewModelScope.launch {
-            _state.map { Pair(it.searchQuery, it.sortOption) }
+            _state.map { Triple(it.searchQuery, it.sortOption, it.onlyFavorites) }
                 .distinctUntilChanged()
                 .debounce { Timings.INPUT_DEBOUNCE }
                 .collect { loadFirstPage() }
@@ -60,6 +60,12 @@ class ItemListViewModel(
     fun toggleViewMode() {
         val current = settingsRepository.viewMode(mediaType).value
         settingsRepository.setViewMode(mediaType, current.toggled())
+    }
+
+    fun toggleFavorites() {
+        _state.update {
+            it.copy(onlyFavorites = !it.onlyFavorites)
+        }
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -81,6 +87,7 @@ class ItemListViewModel(
         viewModelScope.launch {
             val searchQuery = currentState.searchQuery.takeIf { it.length >= 3 }
             val orderBy = currentState.sortOption.toServerString()
+            val onlyFavorites = currentState.onlyFavorites
 
             _state.update {
                 it.copy(isLoadingMore = true)
@@ -91,6 +98,7 @@ class ItemListViewModel(
                 currentState.offset,
                 orderBy,
                 searchQuery,
+                onlyFavorites,
             )
             val result = mediaItemRepository.fetchMediaItems(request)
 
@@ -121,6 +129,7 @@ class ItemListViewModel(
         offset: Int,
         orderBy: String,
         searchQuery: String?,
+        onlyFavorites: Boolean,
     ): Request {
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.listLibrary(
@@ -128,6 +137,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.ALBUM -> Request.Album.listLibrary(
@@ -135,6 +145,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.TRACK -> Request.Track.list(
@@ -142,6 +153,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.PLAYLIST -> Request.Playlist.listLibrary(
@@ -149,6 +161,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
@@ -156,6 +169,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.PODCAST -> Request.Podcast.listLibrary(
@@ -163,6 +177,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.RADIO -> Request.RadioStation.listLibrary(
@@ -170,6 +185,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             MediaType.GENRE -> Request.Genre.listLibrary(
@@ -177,6 +193,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
+                favorite = onlyFavorites,
             )
 
             else -> throw IllegalArgumentException("Invalid MediaType for ItemListViewModel!")
@@ -214,7 +231,13 @@ class ItemListViewModel(
             val orderBy = state.value.sortOption.toServerString()
             updateState(DataState.Loading())
 
-            val request = getRequest(this@ItemListViewModel.mediaType, 0, orderBy, searchQuery)
+            val request = getRequest(
+                this@ItemListViewModel.mediaType,
+                0,
+                orderBy,
+                searchQuery,
+                state.value.onlyFavorites,
+            )
             val result = mediaItemRepository.fetchMediaItems(request)
 
             result.getOrNull()
@@ -267,5 +290,6 @@ class ItemListViewModel(
         val sortOption: SortOption = SortConfig.defaultFor(mediaType),
         val viewMode: ViewMode = ViewMode.GRID,
         val offset: Int = 0,
+        val onlyFavorites: Boolean = false,
     )
 }
