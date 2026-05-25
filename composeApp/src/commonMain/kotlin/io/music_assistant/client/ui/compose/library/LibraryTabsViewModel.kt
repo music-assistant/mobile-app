@@ -42,20 +42,10 @@ class LibraryTabsViewModel(
     private val _state = MutableStateFlow(State(tabs = buildInitialTabs()))
     val state = _state.asStateFlow()
 
-    private fun buildInitialTabs(): List<TabState> {
-        val stored = settingsRepository.libraryTabsConfig.value
-
-        return if (stored != null) {
-            stored.map { TabState(Tab.valueOf(it.name), it.enabled) }
-        } else {
-            Tab.entries.map { TabState(it, true) }
-        }
-    }
-
     init {
         viewModelScope.launch {
-            settingsRepository.libraryTabsConfig.collect {
-                _state.update { it.copy(tabs = buildInitialTabs()) }
+            settingsRepository.libraryTabsConfig.collect { setting ->
+                _state.update { it.copy(tabs = getTabStates(setting)) }
             }
         }
     }
@@ -66,5 +56,18 @@ class LibraryTabsViewModel(
                 SettingsRepository.LibraryTabPref(name = tab.name, enabled = enabled)
             },
         )
+    }
+
+    private fun buildInitialTabs(): List<TabState> {
+        val stored = settingsRepository.libraryTabsConfig.value
+        return getTabStates(stored)
+    }
+
+    private fun getTabStates(setting: List<SettingsRepository.LibraryTabPref>?): List<TabState> {
+        return if (setting != null) {
+            setting.map { TabState(Tab.valueOf(it.name), it.enabled) }
+        } else {
+            Tab.entries.map { TabState(it, true) }
+        }
     }
 }
