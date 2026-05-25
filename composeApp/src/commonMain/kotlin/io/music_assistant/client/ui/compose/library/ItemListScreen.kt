@@ -276,23 +276,13 @@ private fun ItemListTopBar(
                         contentDescription = stringResource(Res.string.library_quick_search),
                     )
                 }
-
-                IconButton(onClick = onToggleViewMode) {
-                    Icon(
-                        imageVector = when (viewMode) {
-                            ViewMode.LIST -> Icons.Default.GridView
-                            ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-                        },
-                        contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-                    )
-                }
             },
         )
 
         TopAppBar(
             title = {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     FilterChip(
@@ -301,11 +291,23 @@ private fun ItemListTopBar(
                         label = { Text(stringResource(Res.string.action_favorite)) },
                     )
 
-                    SortChip(
-                        currentSort = sortOption,
-                        availableFields = SortConfig.fieldsFor(mediaType),
-                        onSortChanged = { onSortChanged(it) },
-                    )
+                    Row {
+                        SortChip(
+                            currentSort = sortOption,
+                            availableFields = SortConfig.fieldsFor(mediaType),
+                            onSortChanged = { onSortChanged(it) },
+                        )
+
+                        IconButton(onClick = onToggleViewMode) {
+                            Icon(
+                                imageVector = when (viewMode) {
+                                    ViewMode.LIST -> Icons.Default.GridView
+                                    ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                                },
+                                contentDescription = stringResource(Res.string.cd_toggle_view_mode),
+                            )
+                        }
+                    }
                 }
             },
             scrollBehavior = scrollBehavior,
