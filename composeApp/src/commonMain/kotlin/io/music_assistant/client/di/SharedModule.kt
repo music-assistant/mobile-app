@@ -63,7 +63,7 @@ fun sharedModule(
         factory { ActionsViewModel(get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }
         factory { AuthenticationViewModel(get(), get()) }
-        factory { LibraryCategoriesViewModel(get(), get(), get(), get()) }
+        factory { LibraryCategoriesViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(
