@@ -15,18 +15,24 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
@@ -37,15 +43,38 @@ import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_customize_tabs
 import musicassistantclient.composeapp.generated.resources.nav_library
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun LibraryScreen(onTypeClick: (MediaType) -> Unit) {
+fun LibraryScreen(
+    libraryCategoriesViewModel: LibraryCategoriesViewModel,
+    onTypeClick: (MediaType) -> Unit,
+) {
+    val state by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
+
+    var showCustomizeDialog by remember { mutableStateOf(false) }
+    if (showCustomizeDialog) {
+        CustomizeTabsDialog(
+            initialConfig = state.tabs.map { it.tab to it.enabled },
+            onDismissRequest = { showCustomizeDialog = false },
+            onConfirm = libraryCategoriesViewModel::onTabsConfigChanged,
+        )
+    }
+
     Screen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_library)) },
+                actions = {
+                    IconButton(onClick = { showCustomizeDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = stringResource(Res.string.cd_customize_tabs),
+                        )
+                    }
+                },
             )
         },
     ) {

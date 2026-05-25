@@ -59,6 +59,7 @@ import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListScreen
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
+import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
@@ -301,7 +302,10 @@ private fun mainNavEntryProvider(
         }
 
         entry<MainNav.Library> {
+            val libraryCategoriesViewModel = koinViewModel<LibraryCategoriesViewModel>()
+
             LibraryScreen(
+                libraryCategoriesViewModel,
                 onTypeClick = {
                     multiBackStack.add(MainNav.ItemList(it))
                 },
