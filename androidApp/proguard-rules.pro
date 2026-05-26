@@ -97,10 +97,34 @@
 -keep class io.music_assistant.client.**.*ViewModel { *; }
 
 # ---------------------------------------------------------------------------
-# easyqrscan (camera + ML Kit shim).
+# easyqrscan / CameraX / ML Kit barcode scanning.
+# CameraX discovers configs (Camera2Config, etc.) via metadata + reflection,
+# and ML Kit barcode-scanning loads detectors reflectively. Without keeping
+# these, the QR Composable NPEs during AndroidView attach.
 # ---------------------------------------------------------------------------
+-keep class io.github.kalinjul.easyqrscan.** { *; }
+-dontwarn io.github.kalinjul.easyqrscan.**
+
+-keep class androidx.camera.** { *; }
+-keep interface androidx.camera.** { *; }
+-keepclassmembers class androidx.camera.** { *; }
+-dontwarn androidx.camera.**
+
+-keep class com.google.mlkit.** { *; }
+-keep interface com.google.mlkit.** { *; }
+-keepclassmembers class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**
+
+-keep class com.google.android.gms.** { *; }
+-keep interface com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
+
+-keep class com.google.android.odml.** { *; }
+-dontwarn com.google.android.odml.**
+
+# Guava ListenableFuture stub — used across CameraX/ML Kit async APIs.
+-dontwarn com.google.common.util.concurrent.**
+-keep class com.google.common.util.concurrent.ListenableFuture { *; }
 
 # ---------------------------------------------------------------------------
 # Compose — defaults handle most of it. Keep @Composable signatures intact
