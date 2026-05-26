@@ -1,22 +1,22 @@
-name: Debug APK Release
+name: Android Github Release
 
 on:
-  push:
-    branches:
-      - dev
-    # Skip when a push to dev only touches iOS-exclusive files — the Android
-    # APK can't be affected by them. Shared code (composeApp, gradle, etc.)
-    # still triggers a build.
-    paths-ignore:
-      - 'iosApp/**'
   workflow_dispatch:
+  pull_request:
+    types: [ closed ]
+    branches: [ dev ]
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   build-and-release:
     runs-on: ubuntu-22.04
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'android_github_release'))
 
     steps:
       - name: Checkout code

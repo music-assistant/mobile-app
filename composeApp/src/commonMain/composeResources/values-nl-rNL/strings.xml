@@ -27,10 +27,10 @@
   <string name="all_podcasts">Alle podcasts</string>
   <string name="all_radio">Alle radiostations</string>
   <string name="all_tracks">Alle nummers</string>
-  <string name="auth_authenticating">Authenticeren...</string>
+  <string name="auth_authenticating">Authenticeren…</string>
   <string name="auth_authorize_ha">Autoriseer met Home Assistant</string>
   <string name="auth_hide_password">Wachtwoord verbergen</string>
-  <string name="auth_loading_providers">Authenticatieproviders worden geladen...</string>
+  <string name="auth_loading_providers">Authenticatieproviders worden geladen…</string>
   <string name="auth_logged_in_as">Ingelogd als %1$s</string>
   <string name="auth_login">Inloggen</string>
   <string name="auth_logout">Uitloggen</string>
@@ -39,7 +39,7 @@
   <string name="auth_show_password">Wachtwoord tonen</string>
   <string name="auth_title">Authenticatie</string>
   <string name="auth_username">Gebruikersnaam</string>
-  <string name="banner_reconnecting">Opnieuw verbinden... (poging %1$d)</string>
+  <string name="banner_reconnecting">Opnieuw verbinden… (poging %1$d)</string>
   <string name="bound_player_joined_to">%1$s is verbonden met %2$s\n(tik om te bekijken)</string>
   <string name="bound_player_part_of_group">%1$s is onderdeel van groep %2$s\n(tik om te bekijken)</string>
   <string name="bound_player_playing_with">%1$s speelt met %2$s\n(tik om te bekijken)</string>
@@ -111,7 +111,7 @@
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
-  <string name="players_loading">Spelers laden...</string>
+  <string name="players_loading">Spelers laden…</string>
   <string name="players_none_available">Geen spelers beschikbaar</string>
   <string name="players_nothing">Speelt niets</string>
   <string name="players_title">Spelers</string>
@@ -132,7 +132,7 @@
   <string name="queue_error">Fout bij laden wachtrij</string>
   <string name="queue_label">Wachtrij</string>
   <string name="queue_label_with_position">Wachtrij (%1$d/%2$d)</string>
-  <string name="queue_loading">Wachtrij laden...</string>
+  <string name="queue_loading">Wachtrij laden…</string>
   <string name="queue_no_items">Geen items</string>
   <string name="queue_no_other_players">Geen andere spelers beschikbaar</string>
   <string name="queue_not_loaded">Niet geladen</string>
@@ -142,7 +142,7 @@
   <string name="search_in_library_only">Alleen in bibliotheek</string>
   <string name="search_no_results">Geen resultaten gevonden</string>
   <string name="search_query_label">Zoekopdracht</string>
-  <string name="search_start">Begin met zoeken...</string>
+  <string name="search_start">Begin met zoeken…</string>
   <string name="search_title">Globaal zoeken</string>
   <string name="settings_about_description">Music Assistant is een gratis, open-source, zelfgehoste muziekserver. Maak hieronder verbinding met jouw server om door je bibliotheek te bladeren en de weergave in je hele huis te bedienen.</string>
   <string name="settings_about_learn_more">Meer informatie op music-assistant.io →</string>
@@ -153,9 +153,9 @@
   <string name="settings_connected">Verbonden</string>
   <string name="settings_connected_to">Verbonden met %1$s:%2$d</string>
   <string name="settings_connected_webrtc">Verbonden via WebRTC</string>
-  <string name="settings_connecting">Verbinden...</string>
-  <string name="settings_connecting_remote">Verbinding maken met externe server...</string>
-  <string name="settings_connecting_to">Verbinden met %1$s:%2$s...</string>
+  <string name="settings_connecting">Verbinden…</string>
+  <string name="settings_connecting_remote">Verbinding maken met externe server…</string>
+  <string name="settings_connecting_to">Verbinden met %1$s:%2$s…</string>
   <string name="settings_connection_direct">Direct</string>
   <string name="settings_connection_method">Verbindingsmethode</string>
   <string name="settings_connection_webrtc">WebRTC</string>

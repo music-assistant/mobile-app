@@ -1,15 +1,23 @@
-name: Android Release
+name: Android PlayStore Release
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches: [dev]
 
 permissions:
   contents: write
   id-token: write
+  pull-requests: read
 
 jobs:
   release:
     runs-on: ubuntu-22.04
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'android_playstore_release'))
 
     steps:
       - name: Checkout dev

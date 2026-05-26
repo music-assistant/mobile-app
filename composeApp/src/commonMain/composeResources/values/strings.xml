@@ -27,10 +27,10 @@
   <string name="all_podcasts">All podcasts</string>
   <string name="all_radio">All radio stations</string>
   <string name="all_tracks">All tracks</string>
-  <string name="auth_authenticating">Authenticating...</string>
+  <string name="auth_authenticating">Authenticating…</string>
   <string name="auth_authorize_ha">Authorize with Home Assistant</string>
   <string name="auth_hide_password">Hide password</string>
-  <string name="auth_loading_providers">Loading authentication providers...</string>
+  <string name="auth_loading_providers">Loading authentication providers…</string>
   <string name="auth_logged_in_as">Logged in as %1$s</string>
   <string name="auth_login">Login</string>
   <string name="auth_logout">Logout</string>
@@ -39,7 +39,7 @@
   <string name="auth_show_password">Show password</string>
   <string name="auth_title">Authentication</string>
   <string name="auth_username">Username</string>
-  <string name="banner_reconnecting">Reconnecting... (attempt %1$d)</string>
+  <string name="banner_reconnecting">Reconnecting… (attempt %1$d)</string>
   <string name="bound_player_joined_to">%1$s is joined to %2$s\n(tap to view)</string>
   <string name="bound_player_part_of_group">%1$s is part of group %2$s\n(tap to view)</string>
   <string name="bound_player_playing_with">%1$s is playing with %2$s\n(tap to view)</string>
@@ -111,7 +111,7 @@
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
-  <string name="players_loading">Loading players...</string>
+  <string name="players_loading">Loading players…</string>
   <string name="players_none_available">No players available</string>
   <string name="players_nothing">Nothing playing</string>
   <string name="players_title">Players</string>
@@ -132,7 +132,7 @@
   <string name="queue_error">Error loading queue</string>
   <string name="queue_label">Queue</string>
   <string name="queue_label_with_position">Queue (%1$d/%2$d)</string>
-  <string name="queue_loading">Loading queue...</string>
+  <string name="queue_loading">Loading queue…</string>
   <string name="queue_no_items">No items</string>
   <string name="queue_no_other_players">No other players available</string>
   <string name="queue_not_loaded">Not loaded</string>
@@ -142,7 +142,7 @@
   <string name="search_in_library_only">In library only</string>
   <string name="search_no_results">No results found</string>
   <string name="search_query_label">Search query</string>
-  <string name="search_start">Start searching...</string>
+  <string name="search_start">Start searching…</string>
   <string name="search_title">Global search</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
@@ -153,9 +153,9 @@
   <string name="settings_connected">Connected</string>
   <string name="settings_connected_to">Connected to %1$s:%2$d</string>
   <string name="settings_connected_webrtc">Connected via WebRTC</string>
-  <string name="settings_connecting">Connecting...</string>
-  <string name="settings_connecting_remote">Connecting to remote server...</string>
-  <string name="settings_connecting_to">Connecting to %1$s:%2$s...</string>
+  <string name="settings_connecting">Connecting…</string>
+  <string name="settings_connecting_remote">Connecting to remote server…</string>
+  <string name="settings_connecting_to">Connecting to %1$s:%2$s…</string>
   <string name="settings_connection_direct">Direct</string>
   <string name="settings_connection_method">Connection Method</string>
   <string name="settings_connection_webrtc">WebRTC</string>
