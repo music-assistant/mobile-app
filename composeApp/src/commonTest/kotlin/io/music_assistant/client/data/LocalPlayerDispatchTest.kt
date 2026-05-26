@@ -33,21 +33,22 @@ class LocalPlayerDispatchTest {
         val plan = planLocalPlayerDispatch(
             localPlayerId = null,
             localPlayerSyncedTo = null,
-            mediaUri = "library://album/42",
+            mediaUris = listOf("library://album/42"),
             option = QueueOption.PLAY,
         )
         assertNull(plan)
     }
 
     @Test
-    fun planReturnsNullWhenMediaUriMissing() {
+    fun planReturnsNullWhenMediaUrisEmpty() {
         // Container items occasionally surface without a URI (mostly Genre,
-        // pre-synthesis). The planner must refuse rather than dispatch an
-        // empty media list and let MA error out remotely.
+        // pre-synthesis); voice-search paths can also reduce to nothing playable.
+        // The planner refuses rather than dispatch an empty media list and let
+        // MA error out remotely.
         val plan = planLocalPlayerDispatch(
             localPlayerId = "sendspin-local",
             localPlayerSyncedTo = null,
-            mediaUri = null,
+            mediaUris = emptyList(),
             option = QueueOption.PLAY,
         )
         assertNull(plan)
@@ -58,12 +59,12 @@ class LocalPlayerDispatchTest {
         val plan = planLocalPlayerDispatch(
             localPlayerId = "sendspin-local",
             localPlayerSyncedTo = null,
-            mediaUri = "library://album/42",
+            mediaUris = listOf("library://album/42"),
             option = QueueOption.REPLACE,
         )
         assertNotNull(plan)
         assertEquals("sendspin-local", plan.playerId)
-        assertEquals("library://album/42", plan.mediaUri)
+        assertEquals(listOf("library://album/42"), plan.mediaUris)
         assertEquals(QueueOption.REPLACE, plan.option)
         assertNull(plan.detachFrom)
     }
@@ -73,7 +74,7 @@ class LocalPlayerDispatchTest {
         val plan = planLocalPlayerDispatch(
             localPlayerId = "sendspin-local",
             localPlayerSyncedTo = "kitchen-group",
-            mediaUri = "library://playlist/1",
+            mediaUris = listOf("library://playlist/1"),
             option = QueueOption.ADD,
         )
         assertNotNull(plan)
@@ -92,7 +93,7 @@ class LocalPlayerDispatchTest {
             val plan = planLocalPlayerDispatch(
                 localPlayerId = "p",
                 localPlayerSyncedTo = null,
-                mediaUri = "uri",
+                mediaUris = listOf("uri"),
                 option = option,
             )
             assertEquals(option, plan?.option, "option=$option round-trip mismatch")
@@ -108,7 +109,7 @@ class LocalPlayerDispatchTest {
             client,
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
-                mediaUri = "library://album/42",
+                mediaUris = listOf("library://album/42"),
                 detachFrom = null,
                 option = QueueOption.PLAY,
             ),
@@ -128,7 +129,7 @@ class LocalPlayerDispatchTest {
             client,
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
-                mediaUri = "library://album/42",
+                mediaUris = listOf("library://album/42"),
                 detachFrom = "kitchen-group",
                 option = QueueOption.REPLACE,
             ),
@@ -145,7 +146,7 @@ class LocalPlayerDispatchTest {
             client,
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
-                mediaUri = "uri",
+                mediaUris = listOf("uri"),
                 detachFrom = "kitchen-group",
                 option = QueueOption.PLAY,
             ),
@@ -159,14 +160,14 @@ class LocalPlayerDispatchTest {
     }
 
     @Test
-    fun executePlayRequestCarriesMediaUriPlayerIdAndServerEncodedOption() = runBlocking {
+    fun executePlayRequestCarriesMediaUrisPlayerIdAndServerEncodedOption() = runBlocking {
         QueueOption.entries.forEach { option ->
             val client = RecordingClient()
             executeLocalPlayerDispatch(
                 client,
                 LocalPlayerDispatchPlan(
                     playerId = "sendspin-local",
-                    mediaUri = "library://album/42",
+                    mediaUris = listOf("library://album/42"),
                     detachFrom = null,
                     option = option,
                 ),
@@ -189,6 +190,29 @@ class LocalPlayerDispatchTest {
     }
 
     @Test
+    fun executePassesMultiUriBatchVerbatimAsServerMediaArray() = runBlocking {
+        // AA's pre-ordered batches must reach the server unchanged.
+        val uris = listOf(
+            "library://track/1",
+            "library://track/2",
+            "library://track/3",
+        )
+        val client = RecordingClient()
+        executeLocalPlayerDispatch(
+            client,
+            LocalPlayerDispatchPlan(
+                playerId = "sendspin-local",
+                mediaUris = uris,
+                detachFrom = null,
+                option = QueueOption.REPLACE,
+            ),
+        )
+        val media = client.sent.single().args
+            ?.get("media")?.jsonArray?.map { it.jsonPrimitive.content }
+        assertContentEquals(uris, media)
+    }
+
+    @Test
     fun executeStillFiresPlayWhenDetachRpcFails() = runBlocking {
         // sendRequest is contractually no-throw; failures land in Result.failure.
         // The play RPC must not be skipped just because detach failed — at worst
@@ -206,7 +230,7 @@ class LocalPlayerDispatchTest {
             client,
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
-                mediaUri = "uri",
+                mediaUris = listOf("uri"),
                 detachFrom = "kitchen-group",
                 option = QueueOption.PLAY,
             ),
@@ -231,7 +255,7 @@ class LocalPlayerDispatchTest {
             client,
             LocalPlayerDispatchPlan(
                 playerId = "p",
-                mediaUri = "u",
+                mediaUris = listOf("u"),
                 detachFrom = "g",
                 option = QueueOption.REPLACE,
             ),
@@ -256,7 +280,7 @@ class LocalPlayerDispatchTest {
             client,
             LocalPlayerDispatchPlan(
                 playerId = "p",
-                mediaUri = "u",
+                mediaUris = listOf("u"),
                 detachFrom = "g",
                 option = QueueOption.PLAY,
             ),

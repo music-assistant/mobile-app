@@ -11,24 +11,24 @@ import io.music_assistant.client.data.model.client.QueueOption
  * the audio has to come out of.
  */
 
-internal data class LocalPlayerDispatchPlan(
+data class LocalPlayerDispatchPlan(
     val playerId: String,
-    val mediaUri: String,
+    val mediaUris: List<String>,
     val detachFrom: String?,
     val option: QueueOption,
 )
 
-/** Returns null when prerequisites (a local player, a media URI) are missing. */
-internal fun planLocalPlayerDispatch(
+/** Returns null when prerequisites (a local player, at least one URI) are missing. */
+fun planLocalPlayerDispatch(
     localPlayerId: String?,
     localPlayerSyncedTo: String?,
-    mediaUri: String?,
+    mediaUris: List<String>,
     option: QueueOption,
 ): LocalPlayerDispatchPlan? {
-    if (localPlayerId == null || mediaUri == null) return null
+    if (localPlayerId == null || mediaUris.isEmpty()) return null
     return LocalPlayerDispatchPlan(
         playerId = localPlayerId,
-        mediaUri = mediaUri,
+        mediaUris = mediaUris,
         detachFrom = localPlayerSyncedTo,
         option = option,
     )
@@ -40,7 +40,7 @@ internal fun planLocalPlayerDispatch(
  * [onRpcFailure] rather than try/catch: `sendRequest` is contractually
  * no-throw, and a catch-all would only break structured concurrency.
  */
-internal suspend fun executeLocalPlayerDispatch(
+suspend fun executeLocalPlayerDispatch(
     serviceClient: ServiceClient,
     plan: LocalPlayerDispatchPlan,
     onRpcFailure: (label: String, error: Throwable) -> Unit = { _, _ -> },
@@ -56,7 +56,7 @@ internal suspend fun executeLocalPlayerDispatch(
     }
     serviceClient.sendRequest(
         Request.Library.play(
-            media = listOf(plan.mediaUri),
+            media = plan.mediaUris,
             queueOrPlayerId = plan.playerId,
             option = plan.option,
             radioMode = false,

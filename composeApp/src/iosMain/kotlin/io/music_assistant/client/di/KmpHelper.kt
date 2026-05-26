@@ -355,7 +355,7 @@ object KmpHelper : KoinComponent {
         val plan = planLocalPlayerDispatch(
             localPlayerId = player?.id,
             localPlayerSyncedTo = player?.syncedTo,
-            mediaUri = item.mediaUri,
+            mediaUris = listOfNotNull(item.mediaUri),
             option = option,
         ) ?: return false
         plan.detachFrom?.let { syncedToId ->

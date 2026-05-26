@@ -157,15 +157,9 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             }
 
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
-                currentPlayerData.value?.let { playerData ->
-                    mediaId?.let {
-                        library.play(
-                            it,
-                            extras,
-                            playerData.queueInfo?.id ?: playerData.player.id,
-                        )
-                    }
-                }
+                // No readiness wait (unlike onPlayFromSearch): browse tap can only fire
+                // after the user navigated to a media item, so the local player is up.
+                mediaId?.let { library.play(it, extras) }
             }
 
             override fun onPlayFromSearch(query: String?, extras: Bundle?) {
@@ -180,7 +174,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 // the service was just created, so currentPlayerData may still be null
                 // while auth + local-player initialization complete. Wait up to 10s.
                 // For the in-car AA path the player is already up, so the await is
-                // immediate. One symmetrical entry point for both surfaces.
+                // immediate.
                 scope.launch {
                     val playerData = withTimeoutOrNull(LOCAL_PLAYER_READY_TIMEOUT_MS) {
                         currentPlayerData.filterNotNull().first()
@@ -192,15 +186,8 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         }
                         return@launch
                     }
-                    val queueId = playerData.queueInfo?.id ?: playerData.player.id
-                    androidAutoLog.i {
-                        "Dispatching to AutoLibrary with queueId=$queueId (local player)"
-                    }
-                    library.searchAndPlay(
-                        query = query.orEmpty(),
-                        extras = extras,
-                        queueId = queueId,
-                    )
+                    androidAutoLog.i { "Dispatching to AutoLibrary (local player ready)" }
+                    library.searchAndPlay(query = query.orEmpty(), extras = extras)
                 }
             }
 
