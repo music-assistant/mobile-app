@@ -45,7 +45,8 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -60,8 +61,26 @@ android {
 
         create("selfSignedRelease") {
             isDebuggable = false
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("selfSigned")
+        }
+    }
+
+    // ABI splits for the GitHub-distributed APK only. The Play AAB path
+    // (bundleRelease) handles per-device delivery natively, so leave it alone.
+    splits {
+        abi {
+            isEnable = gradle.startParameter.taskNames.any {
+                it.contains("SelfSignedRelease", ignoreCase = true)
+            }
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
     compileOptions {

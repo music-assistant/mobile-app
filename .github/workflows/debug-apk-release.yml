@@ -48,8 +48,8 @@ jobs:
           keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Build debug APK
-        run: ./gradlew :androidApp:assembleSelfSignedDebug
+      - name: Build self-signed release APKs (per-ABI + universal)
+        run: ./gradlew :androidApp:assembleSelfSignedRelease
 
       - name: Get vars
         id: vars
@@ -71,21 +71,24 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: "🚀 Debug Build ${{ steps.vars.outputs.timestamp }}"
+          name: "🚀 Build ${{ steps.vars.outputs.timestamp }}"
           body: |
-            ## Debug APK Release
-            
+            ## Self-Signed Release APK
+
             ### What's New
             ${{ github.event.head_commit.message }}
-            
-            ### Important Notes
-            - This is a **debug build** — not intended for production use
-            - Contains debug symbols and logging
-            - Performance may be slower than release builds
-            
+
             ### Installation
-            Download the APK below and install on your Android device.
-          files: androidApp/build/outputs/apk/selfSignedDebug/androidApp-selfSignedDebug.apk
+            Pick the APK that matches your device:
+            - **`*-arm64-v8a-*.apk`** — recommended for all modern Android devices (2017+).
+            - **`*-armeabi-v7a-*.apk`** — older 32-bit ARM devices only.
+            - **`*-universal-*.apk`** — fallback containing all ABIs (larger).
+
+            Signed with the consistent debug keystore, so installing over a previous build does not require uninstall.
+          files: |
+            androidApp/build/outputs/apk/selfSignedRelease/androidApp-arm64-v8a-selfSignedRelease.apk
+            androidApp/build/outputs/apk/selfSignedRelease/androidApp-armeabi-v7a-selfSignedRelease.apk
+            androidApp/build/outputs/apk/selfSignedRelease/androidApp-universal-selfSignedRelease.apk
           draft: false
           prerelease: true
         env:
