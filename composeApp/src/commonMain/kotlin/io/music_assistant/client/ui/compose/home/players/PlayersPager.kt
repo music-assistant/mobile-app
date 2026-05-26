@@ -378,7 +378,7 @@ private fun ExpandedPlayerPage(
 ) {
     val isLargeScreen = WindowClass.isAtLeastLarge()
     val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
-    val dismissNestedScroll = remember(onClose, dismissThresholdPx) {
+    val queueCollapseNestedScroll = remember(onExpandQueue, dismissThresholdPx, isQueueExpanded) {
         object : NestedScrollConnection {
             var totalDrag = 0f
             var fired = false
@@ -391,7 +391,7 @@ private fun ExpandedPlayerPage(
                     totalDrag += available.y
                     if (!fired && totalDrag > dismissThresholdPx) {
                         fired = true
-                        onClose()
+                        onExpandQueue(false)
                     }
                 }
                 return Offset.Zero
@@ -405,34 +405,7 @@ private fun ExpandedPlayerPage(
         }
     }
     Column(
-        modifier = Modifier
-            .padding(vertical = 4.dp)
-            .nestedScroll(dismissNestedScroll)
-            .pointerInput(onClose, dismissThresholdPx) {
-                var totalDrag = 0f
-                var fired = false
-                detectVerticalDragGestures(
-                    onDragStart = {
-                        totalDrag = 0f
-                        fired = false
-                    },
-                    onDragEnd = {
-                        totalDrag = 0f
-                        fired = false
-                    },
-                    onDragCancel = {
-                        totalDrag = 0f
-                        fired = false
-                    },
-                    onVerticalDrag = { _, dragAmount ->
-                        totalDrag += dragAmount
-                        if (!fired && totalDrag > dismissThresholdPx) {
-                            fired = true
-                            onClose()
-                        }
-                    },
-                )
-            },
+        modifier = Modifier.padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         CenteredThreeSlotRow(
@@ -529,7 +502,45 @@ private fun ExpandedPlayerPage(
                         exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
                     ) {
                         FullPlayerItem(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(
+                                    onClose,
+                                    onExpandQueue,
+                                    isLargeScreen,
+                                    dismissThresholdPx,
+                                ) {
+                                    var totalDrag = 0f
+                                    var fired = false
+                                    detectVerticalDragGestures(
+                                        onDragStart = {
+                                            totalDrag = 0f
+                                            fired = false
+                                        },
+                                        onDragEnd = {
+                                            totalDrag = 0f
+                                            fired = false
+                                        },
+                                        onDragCancel = {
+                                            totalDrag = 0f
+                                            fired = false
+                                        },
+                                        onVerticalDrag = { _, dragAmount ->
+                                            totalDrag += dragAmount
+                                            if (!fired) {
+                                                if (totalDrag > dismissThresholdPx) {
+                                                    fired = true
+                                                    onClose()
+                                                } else if (!isLargeScreen &&
+                                                    totalDrag < -dismissThresholdPx
+                                                ) {
+                                                    fired = true
+                                                    onExpandQueue(true)
+                                                }
+                                            }
+                                        },
+                                    )
+                                },
                             item = player,
                             colors = colors,
                             playerAction = playerAction,
@@ -702,7 +713,9 @@ private fun ExpandedPlayerPage(
                         modifier = Modifier
                             .conditional(
                                 condition = isQueueExpanded,
-                                ifTrue = { weight(1f) },
+                                ifTrue = {
+                                    weight(1f).nestedScroll(queueCollapseNestedScroll)
+                                },
                                 ifFalse = { wrapContentHeight() },
                             ),
                         queue = player.queue,
