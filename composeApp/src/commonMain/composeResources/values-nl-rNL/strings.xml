@@ -126,8 +126,8 @@
   <string name="queue_browse_library">BLADER DOOR BIBLIOTHEEK</string>
   <string name="queue_cannot_play">Kan dit item niet afspelen</string>
   <string name="queue_clear">Wachtrij wissen</string>
-  <string name="queue_dsm_disable">Don\'t Stop The Music uitschakelen</string>
-  <string name="queue_dsm_enable">Don\'t Stop The Music inschakelen</string>
+  <string name="queue_dsm_disable">Don't Stop The Music uitschakelen</string>
+  <string name="queue_dsm_enable">Don't Stop The Music inschakelen</string>
   <string name="queue_empty">De wachtrij is leeg</string>
   <string name="queue_error">Fout bij laden wachtrij</string>
   <string name="queue_label">Wachtrij</string>
@@ -188,7 +188,7 @@
   <string name="settings_use_tls_wss">Gebruik beveiligde verbinding (WSS/TLS)</string>
   <string name="settings_version_info">Versie %1$s, Schema %2$s</string>
   <string name="settings_webrtc_description">Verbind vanaf elke locatie zonder port forwarding</string>
-  <string name="settings_webrtc_info">WebRTC maakt gebruik van cloudsignalering met end-to-end-encryptie. Werkt door de meeste firewalls en NAT\'s.</string>
+  <string name="settings_webrtc_info">WebRTC maakt gebruik van cloudsignalering met end-to-end-encryptie. Werkt door de meeste firewalls en NAT's.</string>
   <string name="sort_artist">Artiest</string>
   <string name="sort_date_added">Datum toegevoegd</string>
   <string name="sort_date_modified">Datum gewijzigd</string>

@@ -34,6 +34,9 @@ jobs:
               "export_empty_as": "skip",
               "export_sort": "a_z"
             }
+          post_process_command: |
+            find composeApp/src/commonMain/composeResources -name 'strings.xml' -print0 | xargs -0 sed -i "s/\\\\'/'/g; s/\\\\\"/\"/g"
+          post_process_strict: true
           pr_title: "chore: update translations from Lokalise"
           pr_body: "Automated translation update from Lokalise."
           pr_labels: "translations,automated"
