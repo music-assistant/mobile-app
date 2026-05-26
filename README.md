@@ -52,6 +52,8 @@ Download and install debug APK from latest release on [releases page](https://gi
 
 *Disclaimer: this is debug version of application, and isn't recommended for usage beyond testing purposes!*
 
+IOS users can join [TestFlight](https://testflight.apple.com/join/4byCu2Nk)
+
 ## Android Auto & Google Assistant
 
 See [ANDROID-AUTO](docs/ANDROID-AUTO.md) for:
