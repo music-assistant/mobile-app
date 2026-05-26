@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -38,7 +37,6 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -75,6 +73,7 @@ import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
@@ -177,7 +176,7 @@ private fun ItemListTopBar(
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
 
     Column {
-        TopAppBar(
+        TwoRowTopAppBar(
             title = {
                 if (showSearch) {
                     val focusRequester = remember { FocusRequester() }
@@ -277,10 +276,7 @@ private fun ItemListTopBar(
                     )
                 }
             },
-        )
-
-        TopAppBar(
-            title = {
+            secondRow = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -310,8 +306,6 @@ private fun ItemListTopBar(
                     }
                 }
             },
-            scrollBehavior = scrollBehavior,
-            windowInsets = WindowInsets(),
         )
     }
 }
