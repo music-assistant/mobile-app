@@ -2,9 +2,6 @@ package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
@@ -14,23 +11,18 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import compose.icons.TablerIcons
 import compose.icons.tablericons.FolderMinus
 import compose.icons.tablericons.FolderPlus
@@ -39,13 +31,11 @@ import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
-import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
-import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_bottom
 import musicassistantclient.composeapp.generated.resources.action_add_to_library
@@ -60,9 +50,6 @@ import musicassistantclient.composeapp.generated.resources.action_remove_from_li
 import musicassistantclient.composeapp.generated.resources.action_remove_from_playlist
 import musicassistantclient.composeapp.generated.resources.action_start_radio
 import musicassistantclient.composeapp.generated.resources.action_unfavorite
-import musicassistantclient.composeapp.generated.resources.common_cancel
-import musicassistantclient.composeapp.generated.resources.playlist_add_to_title
-import musicassistantclient.composeapp.generated.resources.playlist_no_editable
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -216,9 +203,6 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
 ) {
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    var playlists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
-    var isLoadingPlaylists by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
     Box(modifier = modifier) {
         itemComposable(
             Modifier.align(Alignment.Center),
@@ -358,12 +342,6 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
                     onClick = {
                         showPlaylistDialog = true
                         expandedItemId = null
-                        // Load playlists when dialogue opens
-                        coroutineScope.launch {
-                            isLoadingPlaylists = true
-                            playlists = playlistActions.getEditablePlaylists()
-                            isLoadingPlaylists = false
-                        }
                     },
                     leadingIcon = {
                         Icon(
@@ -428,58 +406,11 @@ private fun <T : PlayableItem> PlayableItemWithMenu(
             }
         }
 
-        // Add to Playlist Dialogue
-        if (showPlaylistDialog && item is Track) {
-            AlertDialog(
-                onDismissRequest = {
-                    showPlaylistDialog = false
-                    playlists = emptyList()
-                    isLoadingPlaylists = false
-                },
-                title = { Text(stringResource(Res.string.playlist_add_to_title)) },
-                text = {
-                    if (isLoadingPlaylists) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    } else if (playlists.isEmpty()) {
-                        Text(stringResource(Res.string.playlist_no_editable))
-                    } else {
-                        LazyColumn {
-                            items(
-                                items = playlists,
-                                key = { p -> p.lazyListKey() },
-                            ) { playlist ->
-                                TextButton(
-                                    onClick = {
-                                        playlistActions?.addToPlaylist(item, playlist)
-                                        showPlaylistDialog = false
-                                        playlists = emptyList()
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(
-                                        text = playlist.displayName,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {},
-                dismissButton = {
-                    TextButton(onClick = {
-                        showPlaylistDialog = false
-                        playlists = emptyList()
-                        isLoadingPlaylists = false
-                    }) {
-                        Text(stringResource(Res.string.common_cancel))
-                    }
-                },
+        if (showPlaylistDialog && item is Track && playlistActions != null) {
+            AddToPlaylistDialog(
+                track = item,
+                playlistActions = playlistActions,
+                onDismiss = { showPlaylistDialog = false },
             )
         }
     }

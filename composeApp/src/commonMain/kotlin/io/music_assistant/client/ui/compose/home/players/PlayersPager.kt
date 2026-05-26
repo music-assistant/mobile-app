@@ -38,6 +38,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -86,6 +87,7 @@ import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueue
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTrack
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
@@ -99,6 +101,8 @@ import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
+import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
@@ -112,6 +116,7 @@ import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
 import musicassistantclient.composeapp.generated.resources.bound_player_joined_to
 import musicassistantclient.composeapp.generated.resources.bound_player_part_of_group
 import musicassistantclient.composeapp.generated.resources.bound_player_playing_with
@@ -268,6 +273,7 @@ fun PlayersPager(
                                 onGroupButton = onGroupButton,
                                 onDspButton = onDspButton.takeIf { !player.player.isGroup },
                                 playerAction = playerAction1,
+                                playlistActions = actionsViewModel,
                                 onFavoriteClick = {
                                     actionsViewModel.onFavoriteClick(it)
                                 },
@@ -355,6 +361,7 @@ private fun ExpandedPlayerPage(
     onGroupButton: () -> Unit,
     onDspButton: (() -> Unit)?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
+    playlistActions: PlaylistActions? = null,
     onFavoriteClick: (AppMediaItem) -> Unit,
     onClose: () -> Unit,
     queueAction: (QueueAction) -> Unit,
@@ -469,6 +476,7 @@ private fun ExpandedPlayerPage(
                         },
                         onPlayerSelected = { moveToPlayer(it) },
                         onOpenDsp = onDspButton,
+                        playlistActions = playlistActions,
                     )
                 }
             },
@@ -690,6 +698,7 @@ private fun ExpandedPlayerPage(
 
                 if (!isLargeScreen) {
                     CollapsibleQueue(
+                        playlistActions = playlistActions,
                         modifier = Modifier
                             .conditional(
                                 condition = isQueueExpanded,
@@ -721,6 +730,7 @@ private fun ExpandedPlayerPage(
                     isCurrentPage = isCurrentPage,
                     contentPadding = contentPadding,
                     queueAction = queueAction,
+                    playlistActions = playlistActions,
                 )
             }
         }
@@ -736,8 +746,11 @@ private fun PlayerOverflowMenu(
     navigateToItem: (AppMediaItem) -> Unit,
     onPlayerSelected: (String) -> Unit,
     onOpenDsp: (() -> Unit)?,
+    playlistActions: PlaylistActions? = null,
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
+    val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
+    var showAddToPlaylist by remember { mutableStateOf(false) }
 
     val queueData = currentPlayer.queue as? DataState.Data
     val queueInfo = queueData?.data?.info
@@ -822,16 +835,25 @@ private fun PlayerOverflowMenu(
         }
     }
 
-    val playerOptions = if (onOpenDsp != null) {
-        listOf(
-            OverflowMenuOption(
-                title = stringResource(Res.string.players_dsp_settings),
-                icon = Icons.Default.Tune,
-                onClick = onOpenDsp,
-            ),
-        )
-    } else {
-        emptyList()
+    val playerOptions = buildList {
+        if (onOpenDsp != null) {
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.players_dsp_settings),
+                    icon = Icons.Default.Tune,
+                    onClick = onOpenDsp,
+                ),
+            )
+        }
+        if (currentTrack != null && playlistActions != null) {
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.action_add_to_playlist),
+                    icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    onClick = { showAddToPlaylist = true },
+                ),
+            )
+        }
     }
 
     val navigationOptions =
@@ -853,6 +875,14 @@ private fun PlayerOverflowMenu(
                 )
             }
         }
+    }
+
+    if (showAddToPlaylist && currentTrack != null && playlistActions != null) {
+        AddToPlaylistDialog(
+            track = currentTrack,
+            playlistActions = playlistActions,
+            onDismiss = { showAddToPlaylist = false },
+        )
     }
 }
 

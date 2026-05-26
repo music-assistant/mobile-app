@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
@@ -55,15 +57,19 @@ import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
+import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
+import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.utils.conditional
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
 import musicassistantclient.composeapp.generated.resources.cd_toggle_queue
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.item_subtitle_unknown
@@ -92,6 +98,7 @@ fun CollapsibleQueue(
     tint: Color,
     isCurrentPage: Boolean = true,
     contentPadding: PaddingValues,
+    playlistActions: PlaylistActions? = null,
 ) {
     Column(
         modifier = modifier
@@ -151,6 +158,7 @@ fun CollapsibleQueue(
                 isCurrentPage = isCurrentPage,
                 contentPadding = contentPadding,
                 queueAction = queueAction,
+                playlistActions = playlistActions,
             )
         }
     }
@@ -165,6 +173,7 @@ fun Queue(
     isCurrentPage: Boolean,
     contentPadding: PaddingValues,
     queueAction: (QueueAction) -> Unit,
+    playlistActions: PlaylistActions? = null,
 ) {
     Box(
         modifier = modifier,
@@ -235,6 +244,7 @@ fun Queue(
                 var internalItems by remember(items) { mutableStateOf(items) }
                 var dragEndIndex by remember { mutableStateOf<Int?>(null) }
                 var menuItemId by remember { mutableStateOf<String?>(null) }
+                var addToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
                 val listState = rememberLazyListState()
                 val reorderableLazyListState =
                     rememberReorderableLazyListState(listState) { from, to ->
@@ -410,8 +420,32 @@ fun Queue(
                                     expanded = menuItemId == item.id,
                                     onDismissRequest = { menuItemId = null },
                                 ) {
+                                    val track = item.track as? Track
+                                    if (track != null && playlistActions != null) {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(stringResource(Res.string.action_add_to_playlist))
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                                                    contentDescription = null,
+                                                )
+                                            },
+                                            onClick = {
+                                                addToPlaylistTrack = track
+                                                menuItemId = null
+                                            },
+                                        )
+                                    }
                                     DropdownMenuItem(
                                         text = { Text(stringResource(Res.string.common_delete)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = null,
+                                            )
+                                        },
                                         onClick = {
                                             queueAction(
                                                 QueueAction.RemoveItems(
@@ -425,6 +459,16 @@ fun Queue(
                                 }
                             }
                         }
+                    }
+                }
+
+                addToPlaylistTrack?.let { track ->
+                    if (playlistActions != null) {
+                        AddToPlaylistDialog(
+                            track = track,
+                            playlistActions = playlistActions,
+                            onDismiss = { addToPlaylistTrack = null },
+                        )
                     }
                 }
             }
