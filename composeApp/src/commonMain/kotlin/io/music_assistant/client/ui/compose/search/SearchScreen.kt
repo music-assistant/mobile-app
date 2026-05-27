@@ -31,8 +31,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.capitalize
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +45,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
@@ -68,6 +67,7 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CategoryRow
+import io.music_assistant.client.ui.compose.library.stringResource
 import io.music_assistant.client.ui.compose.nav.Screen
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.search_error
@@ -407,7 +407,7 @@ private fun SearchFilters(
                     },
                     label = {
                         Text(
-                            text = mediaTypeSelect.type.name.lowercase().capitalize(Locale.current),
+                            text = stringResource(mediaTypeSelect.type.stringResource()),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     },

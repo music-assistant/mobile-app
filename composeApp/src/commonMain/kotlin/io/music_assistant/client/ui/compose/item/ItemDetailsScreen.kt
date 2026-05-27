@@ -61,6 +61,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SortChip
@@ -83,6 +84,8 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
+import musicassistantclient.composeapp.generated.resources.media_type_chapters
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -226,18 +229,28 @@ fun ItemDetails(
 }
 
 private enum class ItemDetailsTab(
-    val title: String,
     val sortContext: SubItemContext?,
     val viewMediaType: MediaType?,
 ) {
-    ARTIST_ALBUMS("Albums", SubItemContext.ARTIST_ALBUMS, MediaType.ALBUM),
-    ARTIST_TRACKS("Tracks", SubItemContext.ARTIST_TRACKS, MediaType.TRACK),
-    ALBUM_TRACKS("Tracks", SubItemContext.ALBUM_TRACKS, MediaType.TRACK),
-    PLAYLIST_TRACKS("Tracks", SubItemContext.PLAYLIST_TRACKS, MediaType.TRACK),
-    PODCAST_EPISODES("Episodes", SubItemContext.PODCAST_EPISODES, MediaType.TRACK),
-    AUDIOBOOK_CHAPTERS("Chapters", null, null),
-    GENRE_ARTISTS("Artists", null, MediaType.ARTIST),
-    GENRE_ALBUMS("Albums", null, MediaType.ALBUM),
+    ARTIST_ALBUMS(SubItemContext.ARTIST_ALBUMS, MediaType.ALBUM),
+    ARTIST_TRACKS(SubItemContext.ARTIST_TRACKS, MediaType.TRACK),
+    ALBUM_TRACKS(SubItemContext.ALBUM_TRACKS, MediaType.TRACK),
+    PLAYLIST_TRACKS(SubItemContext.PLAYLIST_TRACKS, MediaType.TRACK),
+    PODCAST_EPISODES(SubItemContext.PODCAST_EPISODES, MediaType.TRACK),
+    AUDIOBOOK_CHAPTERS(null, null),
+    GENRE_ARTISTS(null, MediaType.ARTIST),
+    GENRE_ALBUMS(null, MediaType.ALBUM),
+    ;
+
+    fun stringResource(): StringResource {
+        return when (this) {
+            AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
+            else -> {
+                require(viewMediaType != null) { "No string resource for ItemDetailsTab: $name" }
+                viewMediaType.stringResource()
+            }
+        }
+    }
 }
 
 private fun tabsFor(item: AppMediaItem): List<ItemDetailsTab> = when (item) {
@@ -448,7 +461,7 @@ private fun TabsBar(
                 Tab(
                     selected = i == selectedIndex,
                     onClick = { onTabSelected(i) },
-                    text = { Text(tab.title) },
+                    text = { Text(stringResource(tab.stringResource())) },
                 )
             }
         }
@@ -465,6 +478,7 @@ private fun TabsBar(
                 },
             )
         }
+
         currentTab.viewMediaType?.let { viewMediaType ->
             IconButton(onClick = { onToggleViewMode(viewMediaType) }) {
                 Icon(
