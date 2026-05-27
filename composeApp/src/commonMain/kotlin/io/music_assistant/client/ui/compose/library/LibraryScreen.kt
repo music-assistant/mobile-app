@@ -95,7 +95,7 @@ private fun LibraryGrid(
                     .clickable(onClick = { onTypeClick(it.mediaType) })
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 8.dp, vertical = 16.dp),
+                    .padding(16.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -108,7 +108,7 @@ private fun LibraryGrid(
                     )
 
                     Text(
-                        modifier = Modifier.padding(start = 16.dp),
+                        modifier = Modifier.padding(start = 8.dp),
                         text = stringResource(it.stringResource()),
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
