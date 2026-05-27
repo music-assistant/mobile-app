@@ -76,7 +76,9 @@ jobs:
             ## Self-Signed Release APK
 
             ### What's New
-            ${{ github.event.head_commit.message }}
+            ${{ github.event.pull_request.title || format('Manual build from {0}', github.ref_name) }}
+
+            ${{ github.event.pull_request.body }}
 
             ### Installation
             Pick the APK that matches your device:
@@ -89,6 +91,7 @@ jobs:
             androidApp/build/outputs/apk/selfSignedRelease/androidApp-arm64-v8a-selfSignedRelease.apk
             androidApp/build/outputs/apk/selfSignedRelease/androidApp-armeabi-v7a-selfSignedRelease.apk
             androidApp/build/outputs/apk/selfSignedRelease/androidApp-universal-selfSignedRelease.apk
+          generate_release_notes: true
           draft: false
           prerelease: true
         env:
