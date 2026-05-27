@@ -42,24 +42,15 @@ import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.library_customize
-import musicassistantclient.composeapp.generated.resources.media_type_albums
-import musicassistantclient.composeapp.generated.resources.media_type_artists
-import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
-import musicassistantclient.composeapp.generated.resources.media_type_genres
-import musicassistantclient.composeapp.generated.resources.media_type_playlists
-import musicassistantclient.composeapp.generated.resources.media_type_podcasts
-import musicassistantclient.composeapp.generated.resources.media_type_radio
-import musicassistantclient.composeapp.generated.resources.media_type_tracks
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
-fun CustomizeTabsDialog(
-    initialConfig: List<Pair<LibraryTabsViewModel.Tab, Boolean>>,
+fun CustomizeLibraryCategoriesDialog(
+    initialConfig: List<Pair<LibraryCategory, Boolean>>,
     onDismissRequest: () -> Unit,
-    onConfirm: (List<Pair<LibraryTabsViewModel.Tab, Boolean>>) -> Unit,
+    onConfirm: (List<Pair<LibraryCategory, Boolean>>) -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -87,8 +78,8 @@ fun CustomizeTabsDialog(
 
 @Composable
 private fun TabsCustomizeList(
-    initialConfig: List<Pair<LibraryTabsViewModel.Tab, Boolean>>,
-    onDone: (List<Pair<LibraryTabsViewModel.Tab, Boolean>>) -> Unit,
+    initialConfig: List<Pair<LibraryCategory, Boolean>>,
+    onDone: (List<Pair<LibraryCategory, Boolean>>) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
     var items by remember { mutableStateOf(initialConfig) }
@@ -125,7 +116,7 @@ private fun TabsCustomizeList(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = stringResource(tab.labelRes()),
+                            text = stringResource(tab.stringResource()),
                             modifier = Modifier
                                 .weight(1f)
                                 .alpha(if (enabled) 1f else 0.5f),
@@ -171,22 +162,11 @@ private fun TabsCustomizeList(
     }
 }
 
-private fun LibraryTabsViewModel.Tab.labelRes(): StringResource = when (this) {
-    LibraryTabsViewModel.Tab.ARTISTS -> Res.string.media_type_artists
-    LibraryTabsViewModel.Tab.ALBUMS -> Res.string.media_type_albums
-    LibraryTabsViewModel.Tab.TRACKS -> Res.string.media_type_tracks
-    LibraryTabsViewModel.Tab.PLAYLISTS -> Res.string.media_type_playlists
-    LibraryTabsViewModel.Tab.AUDIOBOOKS -> Res.string.media_type_audiobooks
-    LibraryTabsViewModel.Tab.PODCASTS -> Res.string.media_type_podcasts
-    LibraryTabsViewModel.Tab.RADIOS -> Res.string.media_type_radio
-    LibraryTabsViewModel.Tab.GENRES -> Res.string.media_type_genres
-}
-
 @Preview
 @Composable
-private fun PreviewCustomizeTabsDialog() {
-    CustomizeTabsDialog(
-        initialConfig = LibraryTabsViewModel.Tab.entries.mapIndexed { i, t -> t to (i < 5) },
+private fun PreviewCustomizeLibraryCategoriesDialog() {
+    CustomizeLibraryCategoriesDialog(
+        initialConfig = LibraryCategory.entries.mapIndexed { i, t -> t to (i < 5) },
         onDismissRequest = {},
         onConfirm = {},
     )

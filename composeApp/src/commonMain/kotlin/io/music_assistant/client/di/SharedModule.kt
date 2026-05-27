@@ -23,7 +23,7 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
-import io.music_assistant.client.ui.compose.library.LibraryTabsViewModel
+import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
@@ -63,7 +63,7 @@ fun sharedModule(
         factory { ActionsViewModel(get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }
         factory { AuthenticationViewModel(get(), get()) }
-        factory { LibraryTabsViewModel(get()) }
+        factory { LibraryCategoriesViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(

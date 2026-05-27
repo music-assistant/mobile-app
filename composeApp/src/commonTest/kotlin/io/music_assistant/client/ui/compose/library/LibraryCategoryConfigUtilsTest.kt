@@ -3,7 +3,7 @@ package io.music_assistant.client.ui.compose.library
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class LibraryTabConfigUtilsTest {
+class LibraryCategoryConfigUtilsTest {
     @Test
     fun `enabling a disabled tab moves it to the end of the enabled section`() {
         val items = listOf(
