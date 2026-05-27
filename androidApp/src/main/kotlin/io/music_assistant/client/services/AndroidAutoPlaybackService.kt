@@ -142,7 +142,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     // a reconnect. Drop the initial value so we don't notify on cold start.
     private fun observeLibraryTabsConfig() {
         scope.launch {
-            settingsRepository.libraryTabsConfig
+            settingsRepository.libraryCategoryConfig
                 .drop(1)
                 .collect { notifyChildrenChanged(MediaIds.ROOT) }
         }

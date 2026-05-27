@@ -134,7 +134,7 @@ class AutoLibrary(
     private fun rootChildren(): List<MediaItem> {
         val titles = defaultAutoTabs.toMap()
         val supportedTypes = titles.keys
-        val stored = settingsRepository.libraryTabsConfig.value
+        val stored = settingsRepository.libraryCategoryConfig.value
         val ordered: List<MediaType> = stored?.mapNotNull { pref ->
             if (!pref.enabled) return@mapNotNull null
             val libraryCategory = runCatching { LibraryCategory.valueOf(pref.name) }.getOrNull()

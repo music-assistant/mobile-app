@@ -123,25 +123,25 @@ class SettingsRepository(
     // Library tabs visibility + ordering. Stored as comma-separated "NAME:0|1"
     // pairs. Reconciliation against the live tab universe happens at the
     // ViewModel boundary — repo deals with raw name/enabled pairs only.
-    data class LibraryTabPref(val name: String, val enabled: Boolean)
+    data class LibraryCategoryPref(val name: String, val enabled: Boolean)
 
-    private val _libraryTabsConfig = MutableStateFlow(loadLibraryTabsConfig())
-    val libraryTabsConfig = _libraryTabsConfig.asStateFlow()
+    private val _libraryCategoryConfig = MutableStateFlow(loadLibraryCategoryConfig())
+    val libraryCategoryConfig = _libraryCategoryConfig.asStateFlow()
 
-    private fun loadLibraryTabsConfig(): List<LibraryTabPref>? {
+    private fun loadLibraryCategoryConfig(): List<LibraryCategoryPref>? {
         val raw = settings.getStringOrNull("library_tabs_config") ?: return null
         return raw.split(",").mapNotNull { entry ->
             val parts = entry.split(":")
             parts.takeIf { it.size == 2 }?.let {
-                LibraryTabPref(name = it[0], enabled = it[1] == "1")
+                LibraryCategoryPref(name = it[0], enabled = it[1] == "1")
             }
         }.takeIf { it.isNotEmpty() }
     }
 
-    fun setLibraryTabsConfig(config: List<LibraryTabPref>) {
+    fun setLibraryCategoryConfig(config: List<LibraryCategoryPref>) {
         val encoded = config.joinToString(",") { "${it.name}:${if (it.enabled) "1" else "0"}" }
         settings.putString("library_tabs_config", encoded)
-        _libraryTabsConfig.update { config }
+        _libraryCategoryConfig.update { config }
     }
 
     // Sendspin settings

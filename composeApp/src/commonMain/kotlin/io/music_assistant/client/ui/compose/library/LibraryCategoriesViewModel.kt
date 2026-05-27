@@ -18,26 +18,26 @@ class LibraryCategoriesViewModel(
 
     init {
         viewModelScope.launch {
-            settingsRepository.libraryTabsConfig.collect { setting ->
+            settingsRepository.libraryCategoryConfig.collect { setting ->
                 _state.update { it.copy(categories = getCategoryStates(setting)) }
             }
         }
     }
 
     fun onTabsConfigChanged(newOrder: List<Pair<LibraryCategory, Boolean>>) {
-        settingsRepository.setLibraryTabsConfig(
+        settingsRepository.setLibraryCategoryConfig(
             newOrder.map { (tab, enabled) ->
-                SettingsRepository.LibraryTabPref(name = tab.name, enabled = enabled)
+                SettingsRepository.LibraryCategoryPref(name = tab.name, enabled = enabled)
             },
         )
     }
 
     private fun buildInitialCategories(): List<CategoryState> {
-        val stored = settingsRepository.libraryTabsConfig.value
+        val stored = settingsRepository.libraryCategoryConfig.value
         return getCategoryStates(stored)
     }
 
-    private fun getCategoryStates(setting: List<SettingsRepository.LibraryTabPref>?): List<CategoryState> {
+    private fun getCategoryStates(setting: List<SettingsRepository.LibraryCategoryPref>?): List<CategoryState> {
         return if (setting != null) {
             setting.map { CategoryState(LibraryCategory.valueOf(it.name), it.enabled) }
         } else {

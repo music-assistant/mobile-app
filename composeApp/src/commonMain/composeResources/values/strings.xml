@@ -49,7 +49,7 @@
   <string name="cd_applied">Applied</string>
   <string name="cd_connection_history">Connection history</string>
   <string name="cd_current_player">Current player: %1$s</string>
-  <string name="cd_customize_tabs">Customize tabs</string>
+  <string name="cd_customize_tabs">Customize categories</string>
   <string name="cd_delete_crash_logs">Delete crash logs</string>
   <string name="cd_favorite">Favorite</string>
   <string name="cd_fully_played">Fully played</string>
