@@ -67,6 +67,7 @@ import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
+import io.music_assistant.client.ui.compose.common.dataOrNull
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
@@ -346,12 +347,7 @@ private fun ItemList(
                     is DataState.Stale,
                     is DataState.Data,
                         -> {
-                        // Handle both Data and Stale - both contain valid library data
-                        val items = when (dataState) {
-                            is DataState.Data -> dataState.data
-                            is DataState.Stale -> dataState.data
-                            else -> emptyList()
-                        }
+                        val items = dataState.dataOrNull.orEmpty()
                         if (items.isEmpty()) {
                             EmptyState()
                         } else {

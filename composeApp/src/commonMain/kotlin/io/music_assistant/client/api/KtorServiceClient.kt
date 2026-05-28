@@ -55,6 +55,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import org.koin.core.component.KoinComponent
@@ -543,7 +544,7 @@ class KtorServiceClient(
 
                         is TransportState.Failed -> {
                             _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
-                            logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error?.message}" }
+                            logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
                         }
 
                         TransportState.Disconnected -> {
@@ -746,7 +747,7 @@ class KtorServiceClient(
 
             if (response.getOrNull()?.json?.containsKey("error_code") == true) {
                 val errorMessage =
-                    response.getOrNull()?.json["error"]?.jsonPrimitive?.content
+                    response.getOrNull()?.json["error"]?.jsonPrimitive?.contentOrNull
                         ?: "Authentication failed"
                 clearCurrentServerToken()
                 setAuthFailed(errorMessage)
@@ -825,7 +826,7 @@ class KtorServiceClient(
             }
             if (response.getOrNull()?.json?.containsKey("error_code") == true) {
                 val errorMessage =
-                    response.getOrNull()?.json["error"]?.jsonPrimitive?.content
+                    response.getOrNull()?.json["error"]?.jsonPrimitive?.contentOrNull
                         ?: "Authentication failed"
                 clearCurrentServerToken()
                 setAuthFailed(errorMessage)

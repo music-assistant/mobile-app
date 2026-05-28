@@ -27,3 +27,19 @@ enum class StaleReason {
     RECONNECTING,          // Auto-reconnect in progress (transient)
     PERSISTENT_ERROR,      // Max attempts exhausted (manual action needed)
 }
+
+/**
+ * Returns the payload for the two payload-carrying states ([DataState.Data], [DataState.Stale])
+ * and `null` for [DataState.Loading], [DataState.Error], [DataState.NoData].
+ *
+ * Use this to avoid duplicating the `is Data → data; is Stale → data` disambiguation at call sites.
+ */
+val <T> DataState<T>.dataOrNull: T?
+    get() = when (this) {
+        is DataState.Data -> data
+        is DataState.Stale -> data
+        is DataState.Loading,
+        is DataState.Error,
+        is DataState.NoData,
+            -> null
+    }

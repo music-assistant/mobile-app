@@ -5,13 +5,14 @@ import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 
 data class Answer(
     val json: JsonObject,
 ) {
-    val messageId: String? = json["message_id"]?.jsonPrimitive?.content
+    val messageId: String? = json["message_id"]?.jsonPrimitive?.contentOrNull
     val result: JsonElement? = json["result"]
 
     /**

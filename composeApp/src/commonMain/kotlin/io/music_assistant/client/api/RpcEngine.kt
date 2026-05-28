@@ -55,7 +55,7 @@ class RpcEngine(
      * an event or other message.
      */
     fun handleResponse(message: JsonObject): Boolean {
-        val messageId = message["message_id"]?.jsonPrimitive?.content ?: return false
+        val messageId = message["message_id"]?.jsonPrimitive?.contentOrNull ?: return false
         val isPartial = message["partial"]?.jsonPrimitive?.boolean == true
 
         if (isPartial) {

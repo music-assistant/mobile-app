@@ -1,5 +1,4 @@
-@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
 
 package io.music_assistant.client.logging
 
@@ -31,12 +30,15 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
 
     actual fun shareCrashLog(@Suppress("UNUSED_PARAMETER") chooserTitle: String) {
         val path = crashLogFilePath()
-        if (NSFileManager.defaultManager.fileExistsAtPath(path)) {
-            val sanitizedPath = "${NSTemporaryDirectory()}ma_crash_log_share.txt"
-            val rawText = NSString.create(contentsOfFile = path, encoding = NSUTF8StringEncoding, error = null) as? String ?: return
-            writeTextToFile(LogSanitizer.sanitize(rawText), sanitizedPath)
-            shareFile(sanitizedPath)
-        }
+        if (!NSFileManager.defaultManager.fileExistsAtPath(path)) return
+        val rawText = NSString.create(
+            contentsOfFile = path,
+            encoding = NSUTF8StringEncoding,
+            error = null,
+        )?.toString() ?: return
+        val sanitizedPath = "${NSTemporaryDirectory()}ma_crash_log_share.txt"
+        writeTextToFile(LogSanitizer.sanitize(rawText), sanitizedPath)
+        shareFile(sanitizedPath)
     }
 
     actual fun deleteCrashLog() {

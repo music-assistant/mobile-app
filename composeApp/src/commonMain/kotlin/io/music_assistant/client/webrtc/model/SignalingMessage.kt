@@ -11,7 +11,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * Messages exchanged with the WebRTC signaling server.
@@ -162,13 +162,14 @@ sealed interface SignalingMessage {
  * The public signaling server sends a single string, while Nabu Casa sends an array.
  */
 private object FlexibleUrlListSerializer : KSerializer<List<String>> {
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     override val descriptor: SerialDescriptor = listSerialDescriptor(serialDescriptor<String>())
 
     override fun deserialize(decoder: Decoder): List<String> {
         val jsonDecoder = decoder as JsonDecoder
         return when (val element = jsonDecoder.decodeJsonElement()) {
-            is JsonArray -> element.map { it.jsonPrimitive.content }
-            is JsonPrimitive -> listOf(element.content)
+            is JsonArray -> element.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            is JsonPrimitive -> listOfNotNull(element.contentOrNull)
             else -> emptyList()
         }
     }

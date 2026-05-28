@@ -17,6 +17,13 @@ compose.resources {
 }
 
 kotlin {
+    // expect/actual classes are still marked Beta (KT-61573) but the design is
+    // stable and widely used across this codebase. Suppress the per-declaration
+    // warnings rather than littering @OptIn annotations.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidLibrary {
         namespace = "io.music_assistant.client.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()

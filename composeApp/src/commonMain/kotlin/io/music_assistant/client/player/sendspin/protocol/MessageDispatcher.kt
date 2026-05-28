@@ -134,8 +134,8 @@ class MessageDispatcher(
 
         try {
             val json = myJson.parseToJsonElement(text).jsonObject
-            val type = json["type"]?.jsonPrimitive?.content
-                ?: throw IllegalArgumentException("Message missing 'type' field")
+            val type = json["type"]?.jsonPrimitive?.contentOrNull
+                ?: throw IllegalArgumentException("Message missing or null 'type' field")
 
             when (type) {
                 "auth_ok" -> {

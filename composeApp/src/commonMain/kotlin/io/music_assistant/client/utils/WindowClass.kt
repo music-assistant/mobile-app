@@ -1,34 +1,26 @@
 package io.music_assistant.client.utils
 
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 
 object WindowClass {
     @Composable
-    fun isAtLeastExpanded(): Boolean {
-        val windowSizeClass =
-            currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
-        return windowSizeClass
-            .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
-    }
+    fun isAtLeastExpanded(): Boolean =
+        isAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
     @Composable
-    fun isAtLeastLarge(): Boolean {
-        val windowSizeClass =
-            currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
-        return windowSizeClass
-            .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_LARGE_LOWER_BOUND)
-    }
+    fun isAtLeastLarge(): Boolean =
+        isAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_LARGE_LOWER_BOUND)
 
     @Composable
-    fun isAtLeastMedium(): Boolean {
-        val windowSizeClass =
-            currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
-        return windowSizeClass
-            .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    }
+    fun isAtLeastMedium(): Boolean =
+        isAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+
+    @Composable
+    private fun isAtLeastBreakpoint(widthDp: Int): Boolean =
+        currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(widthDp)
 }
 
 @Composable

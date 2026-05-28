@@ -97,6 +97,11 @@ class SendspinWsHandler(
         }
     }
 
+    // Ktor's Frame is `expect sealed`: the metadata compile can't prove the
+    // when below is exhaustive without an `else`, but the platform compiles
+    // resolve Frame to a concrete sealed and flag the `else` as redundant.
+    // Suppress that warning here so both compiles stay clean.
+    @Suppress("REDUNDANT_ELSE_IN_WHEN")
     private fun startListening(wsSession: DefaultClientWebSocketSession) {
         listenerJob?.cancel()
         listenerJob = launch {
@@ -124,9 +129,7 @@ class SendspinWsHandler(
                             // Handled automatically by Ktor
                         }
 
-                        else -> {
-                            // Ignore other frame types
-                        }
+                        else -> Unit
                     }
                 }
             } catch (e: Exception) {
@@ -137,8 +140,7 @@ class SendspinWsHandler(
                 }
 
                 // Network error - auto-reconnect!
-                Logger.withTag("WebSocketHandler")
-                    .e { "❌ WS ERROR: ${e.message} - will auto-reconnect" }
+                logger.e(e) { "WS error - will auto-reconnect" }
                 _connectionState.value = WebSocketState.Reconnecting(reconnectAttempts)
 
                 attemptReconnect()

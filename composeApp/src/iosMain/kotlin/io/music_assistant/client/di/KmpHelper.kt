@@ -5,7 +5,7 @@ package io.music_assistant.client.di
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.statement.readBytes
+import io.ktor.client.statement.readRawBytes
 import io.ktor.http.Url
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
@@ -123,7 +123,7 @@ object KmpHelper : KoinComponent {
         }
         urlString.startsWith("http://") || urlString.startsWith("https://") -> {
             val response = artworkHttpClient.get(urlString)
-            response.readBytes().takeIf { response.status.value in 200..299 }
+            response.readRawBytes().takeIf { response.status.value in 200..299 }
         }
         else -> null
     }
