@@ -388,20 +388,22 @@ fun Queue(
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
-                                    (item.track as? Audiobook)
-                                        ?.takeIf { (it.chapters?.size ?: 0) > 0 }
-                                        ?.let { audiobook ->
-                                            Icon(
-                                                modifier = Modifier
-                                                    .size(16.dp)
-                                                    .clickable {
-                                                        navigateToItem(audiobook)
-                                                    },
-                                                imageVector = Icons.Default.Bookmarks,
-                                                contentDescription = "Chapters",
-                                                tint = MaterialTheme.colorScheme.secondary,
-                                            )
-                                        }
+                                    if (isCurrent) {
+                                        (item.track as? Audiobook)
+                                            ?.takeIf { (it.chapters?.size ?: 0) > 0 }
+                                            ?.let { audiobook ->
+                                                Icon(
+                                                    modifier = Modifier
+                                                        .size(16.dp)
+                                                        .clickable {
+                                                            navigateToItem(audiobook)
+                                                        },
+                                                    imageVector = Icons.Default.Bookmarks,
+                                                    contentDescription = "Chapters",
+                                                    tint = MaterialTheme.colorScheme.secondary,
+                                                )
+                                            }
+                                    }
                                     if (!isCurrent && !isPlayed && isPlayable) {
                                         Icon(
                                             modifier = Modifier
