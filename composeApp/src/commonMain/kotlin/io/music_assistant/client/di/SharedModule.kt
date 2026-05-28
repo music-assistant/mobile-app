@@ -3,6 +3,7 @@ package io.music_assistant.client.di
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.api.KtorServiceClient
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.data.LocalPlayerRepository
 import io.music_assistant.client.data.MainDataSource
@@ -50,6 +51,8 @@ fun sharedModule(
                 get(),
             )
         }  // Eager - needs to start monitoring immediately
+        // Expose the AuthCoordinator surface for viewmodels; same singleton instance.
+        single<AuthCoordinator> { get<AuthenticationManager>() }
         singleOf(::MediaPlayerController)  // Used by MainDataSource for Sendspin
         singleOf(::SendspinClientFactory)   // Factory for creating Sendspin clients
         singleOf(::LocalPlayerRepository)   // Optimistic local player state
@@ -62,7 +65,12 @@ fun sharedModule(
         viewModelOf(::ThemeViewModel)
         factory { ActionsViewModel(get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }
-        factory { AuthenticationViewModel(get(), get()) }
+        factory {
+            AuthenticationViewModel(
+                auth = get(),
+                sessionStateFlow = get<ServiceClient>().sessionState,
+            )
+        }
         factory { LibraryCategoriesViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get(), get(), get(), get()) }
         factory { params ->

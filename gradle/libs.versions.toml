@@ -42,6 +42,7 @@ easyqrscan = "0.7.1"
 androidx-compose-ui-test = "1.11.2"
 robolectric = "4.16.1"
 detekt = "1.23.8"
+turbine = "1.2.1"
 
 
 [libraries]
@@ -64,6 +65,8 @@ androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", nam
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
@@ -96,6 +99,7 @@ icons-fontawesome = { module = "br.com.devsrsouza.compose.icons:font-awesome", v
 icons-tabler = { module = "br.com.devsrsouza.compose.icons:tabler-icons", version.ref = "fontIconsVersion" }
 
 settings-multiplatform = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "settingsMultiplatform" }
+settings-multiplatform-test = { module = "com.russhwolf:multiplatform-settings-test", version.ref = "settingsMultiplatform" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 concentus = { module = "io.github.jaredmdobson:concentus", version.ref = "concentus" }
 kmpalette-core = { module = "com.kmpalette:kmpalette-core", version.ref = "kmpalette" }

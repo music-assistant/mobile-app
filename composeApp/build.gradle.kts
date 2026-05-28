@@ -132,6 +132,9 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.turbine)
+            implementation(libs.settings.multiplatform.test)
         }
 
         iosMain.dependencies {

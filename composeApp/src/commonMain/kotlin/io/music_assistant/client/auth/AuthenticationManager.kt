@@ -13,6 +13,7 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.mainDispatcher
 import io.music_assistant.client.utils.resultAs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -36,11 +37,11 @@ private val log = Logger.withTag("AuthMgr")
 class AuthenticationManager(
     private val serviceClient: ServiceClient,
     private val settings: SettingsRepository,
-) {
+) : AuthCoordinator {
     private val scope = CoroutineScope(SupervisorJob() + mainDispatcher)
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
-    val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    override val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     // OAuthHandler will be set by platform (e.g., MainActivity on Android)
     var oauthHandler: OAuthHandler? = null
@@ -139,7 +140,7 @@ class AuthenticationManager(
         }
     }
 
-    suspend fun getProviders(): Result<List<AuthProvider>> {
+    override suspend fun getProviders(): Result<List<AuthProvider>> {
         return try {
             _authState.value = AuthState.Loading
             val response = serviceClient.sendRequest(Request.Auth.providers())
@@ -158,6 +159,12 @@ class AuthenticationManager(
                 _authState.value = AuthState.Error(error)
                 Result.failure(Exception(error))
             }
+        } catch (e: CancellationException) {
+            // Coroutine cancellation (e.g. AuthenticationViewModel's flatMapLatest
+            // switching loads on a session-state change) must propagate, not be
+            // swallowed by the broad catch below — otherwise it would spuriously
+            // drive authState to Error on every disconnect/connection-type switch.
+            throw e
         } catch (e: Exception) {
             val error = e.message ?: "Exception fetching providers"
             _authState.value = AuthState.Error(error)
@@ -166,7 +173,7 @@ class AuthenticationManager(
     }
 
     @Suppress("UnusedParameter") // providerId reserved — current server login API doesn't yet route per-provider
-    suspend fun loginWithCredentials(
+    override suspend fun loginWithCredentials(
         providerId: String,
         username: String,
         password: String,
@@ -176,6 +183,8 @@ class AuthenticationManager(
             _authState.value = AuthState.Loading
             serviceClient.login(username, password)
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val error = e.message ?: "Login failed"
             _authState.value = AuthState.Error(error)
@@ -183,7 +192,7 @@ class AuthenticationManager(
         }
     }
 
-    suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String> {
+    override suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String> {
         return try {
             val response = serviceClient.sendRequest(
                 Request.Auth.authorizationUrl(providerId, returnUrl),
@@ -196,12 +205,14 @@ class AuthenticationManager(
             response.resultAs<OauthUrl>()?.let { oauthUrl ->
                 Result.success(oauthUrl.url)
             } ?: Result.failure(Exception("Failed to parse OAuth URL"))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    fun startOAuthFlow(oauthUrl: String): Result<Unit> {
+    override fun startOAuthFlow(oauthUrl: String): Result<Unit> {
         val handler = oauthHandler
         if (handler == null) {
             val error = "OAuth not supported on this platform"
@@ -243,6 +254,8 @@ class AuthenticationManager(
             }
             try {
                 serviceClient.authorize(token, isAutoLogin = false)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.e(e) { "Authorization failed" }
                 _authState.value = AuthState.Error(e.message ?: "Authorization failed")
@@ -253,12 +266,14 @@ class AuthenticationManager(
     private suspend fun authorizeWithSavedToken(token: String) {
         try {
             serviceClient.authorize(token, isAutoLogin = true)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             // Silent failure - user will see auth UI
         }
     }
 
-    suspend fun logout(): Result<Unit> {
+    override suspend fun logout(): Result<Unit> {
         return try {
             // Set flag FIRST, before any async operations
             _isLoggingOut.value = true
