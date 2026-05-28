@@ -89,11 +89,15 @@ class DirectTransport(
         }
     }
 
-    private suspend fun openWebSocket(info: ConnectionInfo) {
+    private suspend fun openWebSocket(
+        info: ConnectionInfo,
+        onConnected: () -> Unit = {},
+    ) {
         val block: suspend DefaultClientWebSocketSession.() -> Unit = {
             session = this
             wasConnected = true
             _state.value = TransportState.Connected
+            onConnected()
             try {
                 while (true) {
                     val message: JsonObject = receiveDeserialized()
@@ -122,14 +126,17 @@ class DirectTransport(
                 networkAvailable = networkAvailable,
                 onAttemptStarting = { _state.value = TransportState.Reconnecting(it) },
                 tryConnect = { attempt ->
+                    var connectedThisAttempt = false
                     try {
                         logger.i { "Reconnect attempt $attempt/$maxReconnectAttempts" }
-                        openWebSocket(connectionInfoProvider())
+                        openWebSocket(connectionInfoProvider()) { connectedThisAttempt = true }
                         // Returned normally = was connected, then dropped — signal success for fresh cycle
                         true
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                         logger.w { "Reconnect attempt $attempt failed: ${e.message}" }
-                        false
+                        // If we reached Connected during this attempt, treat the drop as a
+                        // fresh-cycle trigger so the next reconnect starts at attempt 0.
+                        connectedThisAttempt
                     }
                 },
             )
