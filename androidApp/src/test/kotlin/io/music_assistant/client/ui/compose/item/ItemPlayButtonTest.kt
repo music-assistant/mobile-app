@@ -56,7 +56,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Play now").performClick()
+        composeTestRule.onNodeWithText("Insert next and play").performClick()
         assertEquals(onPlayClick.arg1, QueueOption.PLAY)
         assertEquals(onPlayClick.arg2, false)
     }
@@ -71,7 +71,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Play next").performClick()
+        composeTestRule.onNodeWithText("Insert next").performClick()
         assertEquals(onPlayClick.arg1, QueueOption.NEXT)
         assertEquals(onPlayClick.arg2, false)
     }
@@ -86,7 +86,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Add to queue").performClick()
+        composeTestRule.onNodeWithText("Add to bottom").performClick()
         assertEquals(onPlayClick.arg1, QueueOption.ADD)
         assertEquals(onPlayClick.arg2, false)
     }

@@ -84,7 +84,7 @@ jobs:
           else
             NOTES="Initial release"
           fi
-          echo "${NOTES:0:500}" > distribution/whatsnew/whatsnew-en-US
+          printf '%s' "${NOTES:0:500}" > distribution/whatsnew/whatsnew-en-US
 
       - name: Authenticate to Google Cloud
         id: gcloud-auth
