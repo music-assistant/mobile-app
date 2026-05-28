@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.PauseIcon
@@ -54,7 +55,11 @@ fun PlayerControls(
     val playerEnabled = player.canPlay && !player.isAnnouncing
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
     val itemsCount = playerData.queueItems?.size ?: 0
-    val skipForwardEnabled = queue?.currentIndex?.let { it < itemsCount - 1 } ?: false
+    val skipForwardEnabled = when {
+        queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
+        (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
+        else -> false
+    }
     val smallButtonSize = (mainButtonSize.value * 0.6).dp
     Row(
         modifier = modifier

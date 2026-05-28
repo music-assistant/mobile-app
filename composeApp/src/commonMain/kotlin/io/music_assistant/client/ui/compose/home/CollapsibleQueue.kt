@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -57,6 +58,7 @@ import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.ui.compose.common.DataState
@@ -99,6 +101,7 @@ fun CollapsibleQueue(
     isCurrentPage: Boolean = true,
     contentPadding: PaddingValues,
     playlistActions: PlaylistActions? = null,
+    navigateToItem: (AppMediaItem) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -159,6 +162,7 @@ fun CollapsibleQueue(
                 contentPadding = contentPadding,
                 queueAction = queueAction,
                 playlistActions = playlistActions,
+                navigateToItem = navigateToItem,
             )
         }
     }
@@ -174,6 +178,7 @@ fun Queue(
     contentPadding: PaddingValues,
     queueAction: (QueueAction) -> Unit,
     playlistActions: PlaylistActions? = null,
+    navigateToItem: (AppMediaItem) -> Unit = {},
 ) {
     Box(
         modifier = modifier,
@@ -208,16 +213,9 @@ fun Queue(
             )
         } ?: run {
             // Handle both Data and Stale states - both contain valid queue data
-            val queueData = when (queue) {
-                is DataState.Data -> queue.data
-                is DataState.Stale -> queue.data
-                else -> return@run
-            }
-            val items = when (val itemsState = queueData.items) {
-                is DataState.Data -> itemsState.data
-                is DataState.Stale -> itemsState.data
-                else -> return@run
-            }
+
+            val queueData = queue.dataOrNull ?: return@run
+            val items = queueData.items.dataOrNull ?: return@run
 
             if (items.isEmpty()) {
                 Column(
@@ -390,6 +388,20 @@ fun Queue(
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
+                                    (item.track as? Audiobook)
+                                        ?.takeIf { (it.chapters?.size ?: 0) > 0 }
+                                        ?.let { audiobook ->
+                                            Icon(
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .clickable {
+                                                        navigateToItem(audiobook)
+                                                    },
+                                                imageVector = Icons.Default.Bookmarks,
+                                                contentDescription = "Chapters",
+                                                tint = MaterialTheme.colorScheme.secondary,
+                                            )
+                                        }
                                     if (!isCurrent && !isPlayed && isPlayable) {
                                         Icon(
                                             modifier = Modifier

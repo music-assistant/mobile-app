@@ -726,6 +726,10 @@ private fun ExpandedPlayerPage(
                         tint = colors.controlTint,
                         isCurrentPage = isCurrentPage,
                         contentPadding = contentPadding,
+                        navigateToItem = {
+                            navigateToItem(it)
+                            onClose()
+                        },
                     )
                 } else {
                     Spacer(
@@ -744,6 +748,10 @@ private fun ExpandedPlayerPage(
                     contentPadding = contentPadding,
                     queueAction = queueAction,
                     playlistActions = playlistActions,
+                    navigateToItem = {
+                        navigateToItem(it)
+                        onClose()
+                    },
                 )
             }
         }

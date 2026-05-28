@@ -14,6 +14,13 @@ sealed class DataState<T> {
         val disconnectedAt: Long,  // Timestamp when first entered stale state
         val reason: StaleReason,
     ) : DataState<T>()
+
+    val dataOrNull: T?
+        get() = when (this) {
+            is Data -> data
+            is Stale -> data
+            else -> null
+        }
 }
 
 enum class StaleReason {

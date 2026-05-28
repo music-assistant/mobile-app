@@ -1119,7 +1119,6 @@ class MainDataSource(
                 }
 
                 is PlayerAction.SeekTo -> {
-                    Logger.e("SeekTo: ${action.position}")
                     apiClient.sendRequest(
                         Request.Player.seek(
                             queueId = playerId,
@@ -1254,7 +1253,6 @@ class MainDataSource(
             }
 
             is PlayerAction.SeekTo -> {
-                Logger.e("SeekTo: ${action.position}")
                 Request.Player.seek(queueId = data.playerId, position = action.position)
             }
 
@@ -1383,7 +1381,6 @@ class MainDataSource(
                     when (event) {
                         is PlayerAddedEvent -> {
                             val newPlayer = playerFactory.create(event.data)
-                            Logger.e("Player added: $newPlayer")
                             if (newPlayer.shouldBeShown) {
                                 _serverPlayers.update { oldState ->
                                     when (oldState) {
@@ -1409,7 +1406,6 @@ class MainDataSource(
                             val playerId =
                                 event.objectId ?: event.data.takeIf { it.isNotEmpty() }
                             if (playerId != null) {
-                                Logger.e("Player removed: $playerId")
                                 _serverPlayers.update { oldState ->
                                     when (oldState) {
                                         is DataState.Data -> {
@@ -1426,7 +1422,6 @@ class MainDataSource(
 
                         is PlayerUpdatedEvent -> {
                             val data = playerFactory.create(event.data)
-                            Logger.i("Player updated: $data")
                             // Forward to local player repository if this is the local player
                             if (data.id == settings.sendspinClientId.value) {
                                 localPlayerRepository.onServerPlayerUpdate(data)
@@ -1457,7 +1452,6 @@ class MainDataSource(
                             // Server announces a queue (typically when a new
                             // player connects and MA registers its queue).
                             val data = queueFactory.create(event.data).takeIfNotStale("QueueAdded") ?: return@collect
-                            Logger.i("Queue added $data")
 
                             val localPlayerId = settings.sendspinClientId.value
                             if (data.id == localPlayerId ||
@@ -1490,7 +1484,6 @@ class MainDataSource(
                         is QueueUpdatedEvent -> {
                             val data =
                                 queueFactory.create(event.data).takeIfNotStale("QueueUpdated") ?: return@collect
-                            Logger.i("Queue updated $data")
 
                             // Forward to local player repository if this is the local player's queue
                             val localPlayerId = settings.sendspinClientId.value
