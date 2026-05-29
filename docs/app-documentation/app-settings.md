@@ -27,4 +27,4 @@ The top-right toolbar provides quick access to:
 
 To close the app entirely, tap **EXIT APP** at the top of the screen.
 
-![Screenshot of the settings screen](/docs/screenshots/app-settings/app-settings.jpeg)
+![Screenshot of the settings screen](/docs/app-documentation/screenshots/app-settings/app-settings.jpeg)

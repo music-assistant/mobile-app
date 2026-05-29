@@ -1,4 +1,4 @@
-# Connect to Server via a proxy
+# Connect to Server over Proxy
 
 To connect to your Music Assistant server via a proxy, you need to have a proxy set up. The guide below covers one way to achieve this using the HA **Duck DNS** integration and the **Nginx Proxy Manager** app, but any proxy method will work. 
 
@@ -28,7 +28,7 @@ The Nginx Proxy Manager allow you to setup to Proxy and request the SSL certific
 | **Port** | Data flows through port `443`; the proxy handles internal routing within your network. |
 | **Use TLS (wss://)** | Since a Let's Encrypt SSL certificate is configured, enable this option to secure the connection to your server. |
 
-![LAN connection via hostname](/docs/screenshots/connection-to-server-lan/hostname.jpeg)
+![LAN connection via hostname](/docs/app-documentation/screenshots/connection-to-server-lan/hostname.jpeg)
 
 Once your details are filled in, tap **Connect** to move on to the next step.
 
@@ -41,8 +41,8 @@ After connecting, you will be asked to sign in. Choose one of the following meth
 | **Music Assistant** | Sign in with the username and password of a Music Assistant user. |
 | **Home Assistant** | Sign in using Home Assistant OAuth. The Home Assistant user must be linked to the Music Assistant server. |
 
-![Sign in with Music Assistant credentials](/docs/screenshots/connection-to-server-lan/ma-credentials.jpeg)
-![Sign in using Home Assistant](/docs/screenshots/connection-to-server-lan/sign-in-using-ha.jpeg)
-![Sign in using Home Assistant](/docs/screenshots/connection-to-server-lan/ha-sign-in-screen.jpeg)
+![Sign in with Music Assistant credentials](/docs/app-documentation/screenshots/connection-to-server-lan/ma-credentials.jpeg)
+![Sign in using Home Assistant](/docs/app-documentation/screenshots/connection-to-server-lan/sign-in-using-ha.jpeg)
+![Sign in using Home Assistant](/docs/app-documentation/screenshots/connection-to-server-lan/ha-sign-in-screen.jpeg)
 
 Once signed in, you are ready to use the app.

@@ -52,7 +52,7 @@ Download and install debug APK from latest release on [releases page](https://gi
 
 *Disclaimer: this is debug version of application, and isn't recommended for usage beyond testing purposes!*
 
-IOS users can join [TestFlight](https://testflight.apple.com/join/4byCu2Nk)
+iOS users can join [TestFlight](https://testflight.apple.com/join/4byCu2Nk).
 
 ## Android Auto & Google Assistant
 
@@ -63,3 +63,7 @@ See [ANDROID-AUTO](docs/ANDROID-AUTO.md) for:
 - the full list of supported Google Assistant voice phrases (works in the car *and* on the phone);
 - shell-based testing of `MEDIA_PLAY_FROM_SEARCH` intents;
 - known limitations.
+
+## Configuring and using the app
+
+For information on configuring and using the Music Assistant Mobile app, see the [App Documentation](docs/app-documentation/index.md).
