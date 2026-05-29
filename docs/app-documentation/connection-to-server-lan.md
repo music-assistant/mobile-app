@@ -30,6 +30,6 @@ After connecting, you will be asked to sign in. Choose one of the following meth
 
 ![Sign in with Music Assistant credentials](/docs/app-documentation/screenshots/connection-to-server-lan/ma-credentials.jpeg)
 ![Sign in using Home Assistant](/docs/app-documentation/screenshots/connection-to-server-lan/sign-in-using-ha.jpeg)
-![Sign in using Home Assistant](/docs/app-documentation/screenshots/connection-to-server-lan/ha-sign-in-screen.jpeg)
+![Fill in Home Assistant credentials](/docs/app-documentation/screenshots/connection-to-server-lan/ha-sign-in-screen.jpeg)
 
 Once signed in, you are ready to use the app.
