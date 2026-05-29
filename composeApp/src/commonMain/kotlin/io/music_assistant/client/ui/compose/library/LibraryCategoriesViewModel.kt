@@ -38,11 +38,8 @@ class LibraryCategoriesViewModel(
     }
 
     private fun getCategoryStates(setting: List<SettingsRepository.LibraryCategoryPref>?): List<CategoryState> {
-        return if (setting != null) {
-            setting.map { CategoryState(LibraryCategory.valueOf(it.name), it.enabled) }
-        } else {
-            LibraryCategory.entries.map { CategoryState(it, true) }
-        }
+        return setting?.map { CategoryState(LibraryCategory.valueOf(it.name), it.enabled) }
+            ?: LibraryCategory.entries.map { CategoryState(it, true) }
     }
 
     data class State(

@@ -2,7 +2,9 @@ package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
@@ -61,7 +63,9 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
     }
 
     fun clickGenres(): ItemListPage {
-        return clickType(Res.string.media_type_genres.get())
+        val type = Res.string.media_type_genres.get()
+        composeTestRule.onNodeWithText(type).onParent().performScrollToIndex(7)
+        return clickType(type)
     }
 
     private fun clickType(type: String): ItemListPage {
