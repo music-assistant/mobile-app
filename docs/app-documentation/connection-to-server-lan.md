@@ -4,7 +4,7 @@ To connect to your Music Assistant server over LAN, you have two options: connec
 
 Connecting via hostname is recommended, as it ensures you can still reach your server even if its IP address changes. If you have a static IP set, connecting via IP address works just as well.
 
-## Fill in the Fields
+## Fill in the fields
 
 | Field | Description |
 |---|---|

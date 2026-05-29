@@ -2,7 +2,7 @@
 
 To connect to your Music Assistant server via a proxy, you need to have a proxy set up. The guide below covers one way to achieve this using the HA **Duck DNS** integration and the **Nginx Proxy Manager** app, but any proxy method will work. 
 
-Has your proxy been successfully set up? Then see the guide at the bottom of this article on how to connect the app via the setup proxy.
+Has your proxy been successfully set up? Then see [Fill in the fields](#fill-in-the-fields) at the bottom of this article on how to connect the app via the setup proxy.
 
 ## What Duck DNS integration provides
 
@@ -38,7 +38,7 @@ Once installed, configure a proxy host for Music Assistant:
 ![Nginx Proxy Details](screenshots/connection-to-server-proxy/proxy-setup-nginx-domain-host-port.jpeg)
 ![Nginx Proxy SSL](screenshots/connection-to-server-proxy/proxy-setup-nginx-ssl.jpeg)
 
-## Fill in the Fields
+## Fill in the fields
 
 | Field | Description |
 |---|---|
