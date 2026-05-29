@@ -7,14 +7,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,14 +38,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.utils.libraryItemMinWidth
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_customize_tabs
 import musicassistantclient.composeapp.generated.resources.nav_library
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     libraryCategoriesViewModel: LibraryCategoriesViewModel,
+    contentPadding: PaddingValues,
     onTypeClick: (MediaType) -> Unit,
 ) {
     val state by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
@@ -55,8 +62,10 @@ fun LibraryScreen(
         )
     }
 
+    val gridState = rememberLazyGridState()
+
     Screen(
-        topBar = {
+        topBar = { scrollBehavior ->
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_library)) },
                 actions = {
@@ -67,6 +76,7 @@ fun LibraryScreen(
                         )
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
     ) {
@@ -74,20 +84,30 @@ fun LibraryScreen(
             state.categories.filter { it.enabled }.map { it.libraryCategory }
         }
 
-        LibraryGrid(libraryCategories, onTypeClick)
+        LibraryGrid(
+            gridState = gridState,
+            paddingValues = contentPadding,
+            libraryCategories = libraryCategories,
+            onTypeClick = onTypeClick,
+        )
     }
 }
 
 @Composable
 private fun LibraryGrid(
+    gridState: LazyGridState = rememberLazyGridState(),
+    paddingValues: PaddingValues,
     libraryCategories: List<LibraryCategory>,
     onTypeClick: (MediaType) -> Unit,
 ) {
+    val width = libraryItemMinWidth()
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 140.dp),
+        modifier = Modifier.padding(horizontal = 16.dp),
+        state = gridState,
+        columns = GridCells.Adaptive(minSize = width),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = paddingValues,
     ) {
         items(libraryCategories) {
             Box(
@@ -99,19 +119,20 @@ private fun LibraryGrid(
                     .padding(16.dp),
             ) {
                 Row(
+                    modifier = Modifier.height(width / ITEM_HEIGHT_RATIO),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Icon(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(30.dp),
                         imageVector = it.icon(),
                         contentDescription = it.name,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
 
                     Text(
-                        modifier = Modifier.padding(start = 8.dp),
                         text = stringResource(it.stringResource()),
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -122,8 +143,13 @@ private fun LibraryGrid(
     }
 }
 
+private const val ITEM_HEIGHT_RATIO = 4
+
 @Preview
 @Composable
 private fun LibraryGridPreview() {
-    LibraryGrid(LibraryCategory.entries, {})
+    LibraryGrid(
+        libraryCategories = LibraryCategory.entries,
+        paddingValues = PaddingValues(vertical = 16.dp),
+    ) {}
 }

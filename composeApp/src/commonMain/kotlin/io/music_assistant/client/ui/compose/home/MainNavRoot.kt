@@ -306,6 +306,7 @@ private fun mainNavEntryProvider(
 
             LibraryScreen(
                 libraryCategoriesViewModel,
+                contentPadding = contentPadding,
                 onTypeClick = {
                     multiBackStack.add(MainNav.ItemList(it))
                 },
