@@ -2,6 +2,8 @@
 
 Information about setting up and using the Music Assistant Mobile App.
 
+> **📝 Note:** This documentation is a work in progress. Some sections and docs are still missing and will be added over time.
+
 ## 📚 Table of Contents
 
 - [First time setup](app-settings.md)
