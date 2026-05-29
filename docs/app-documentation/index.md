@@ -5,8 +5,8 @@ Information about setting up and using the Music Assistant Mobile App.
 ## 📚 Table of Contents
 
 - [First time setup](app-settings.md)
-  - [Connect to Server over LAN](connect-to-server-lan.md)
-  - [Connect to Server over Proxy](connect-to-server-proxy.md)
+  - [Connect to Server over LAN](connection-to-server-lan.md)
+  - [Connect to Server over Proxy](connection-to-server-proxy.md)
 
 ## Quick Links
 
