@@ -6,8 +6,8 @@ After installing and opening the Music Assistant Mobile App, you'll be greeted w
 
 The app supports two ways to connect to your Music Assistant server:
 
-- **Direct** — Connect directly to your server over [LAN](./CONNECTION-TO-SERVER-LAN.md)     (default) or via a [Proxied connection](./CONNECTION-TO-SERVER-PROXIED.md).
-- **WebRTC** — Connect using [WebRTC](./CONNECTION-TO-SERVER-WEBRTC.md), for easy remote connections without advanced setup.
+- **Direct** — Connect directly to your server over [LAN](/docs/app-documentation/connection-to-server-lan.md) (default) or via a [Proxied connection](/docs/app-documentation/connectrion-to-server-proxy.md).
+- **WebRTC** — Connect using [WebRTC](/docs/app-documentation/connection-to-server-webrtc.md), for easy remote connections without advanced setup.
 
 > **Tip:** Tap the list icon (☰) next to the Connect button to manage or switch between saved connection configurations.
 
