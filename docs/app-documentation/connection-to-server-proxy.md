@@ -10,7 +10,7 @@ It keeps a free `*.duckdns.org` subdomain pointed at your home's public IP addre
 
 > Configure the Duck DNS integration on your Home Assistant installation by clicking the button below. You need to have a [Duck DNS account](https://www.duckdns.org/) for this with a setup subdomain and Duck DNS account token.
 
-![Duck DNS integration setup](./screenshots/connection-to-server-proxy/duck-dns-integration-setup.jpeg)
+![Duck DNS integration setup](screenshots/connection-to-server-proxy/duck-dns-integration-setup.jpeg)
 
 [![Add DuckDNS integration in Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=duckdns)
 
@@ -35,8 +35,8 @@ Once installed, configure a proxy host for Music Assistant:
 5. On the **SSL** tab, select **Request a new SSL Certificate** and complete the remaining fields.
 6. Click **Save**. An SSL certificate will be issued and your Music Assistant proxy host will be ready.
 
-![Nginx Proxy Details](./screenshots/connection-to-server-proxy/proxy-setup-nginx-domain-host-port.jpeg)
-![Nginx Proxy SSL](./screenshots/connection-to-server-proxy/proxy-setup-nginx-ssl.jpeg)
+![Nginx Proxy Details](screenshots/connection-to-server-proxy/proxy-setup-nginx-domain-host-port.jpeg)
+![Nginx Proxy SSL](screenshots/connection-to-server-proxy/proxy-setup-nginx-ssl.jpeg)
 
 ## Fill in the Fields
 
@@ -46,7 +46,7 @@ Once installed, configure a proxy host for Music Assistant:
 | **Port** | Data flows through port `443`; the proxy handles internal routing within your network. |
 | **Use TLS (wss://)** | Since a Let's Encrypt SSL certificate is configured, enable this option to secure the connection to your server. |
 
-![LAN connection via hostname](./screenshots/connection-to-server-proxy/hostname.jpeg)
+![LAN connection via hostname](screenshots/connection-to-server-proxy/hostname.jpeg)
 
 Once your details are filled in, tap **Connect** to move on to the next step.
 
@@ -59,8 +59,8 @@ After connecting, you will be asked to sign in. Choose one of the following meth
 | **Music Assistant** | Sign in with the username and password of a Music Assistant user. |
 | **Home Assistant** | Sign in using Home Assistant OAuth. The Home Assistant user must be linked to the Music Assistant server. |
 
-![Sign in with Music Assistant credentials](./screenshots/connection-to-server-proxy/ma-credentials.jpeg)
-![Sign in using Home Assistant](./screenshots/connection-to-server-proxy/sign-in-using-ha.jpeg)
-![Fill in Home Assistant credentials](./screenshots/connection-to-server-proxy/ha-sign-in-screen.jpeg)
+![Sign in with Music Assistant credentials](screenshots/connection-to-server-proxy/ma-credentials.jpeg)
+![Sign in using Home Assistant](screenshots/connection-to-server-proxy/sign-in-using-ha.jpeg)
+![Fill in Home Assistant credentials](screenshots/connection-to-server-proxy/ha-sign-in-screen.jpeg)
 
 Once signed in, you are ready to use the app.
