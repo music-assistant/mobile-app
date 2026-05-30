@@ -8,7 +8,12 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.support.get
 import io.music_assistant.client.utils.support.MockFunction2
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_add_to_queue
+import musicassistantclient.composeapp.generated.resources.action_insert_next
+import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,7 +61,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Insert next and play").performClick()
+        composeTestRule.onNodeWithText(Res.string.action_insert_next_and_play.get()).performClick()
         assertEquals(onPlayClick.arg1, QueueOption.PLAY)
         assertEquals(onPlayClick.arg2, false)
     }
@@ -71,7 +76,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Insert next").performClick()
+        composeTestRule.onNodeWithText(Res.string.action_insert_next.get()).performClick()
         assertEquals(onPlayClick.arg1, QueueOption.NEXT)
         assertEquals(onPlayClick.arg2, false)
     }
@@ -86,7 +91,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Add to bottom").performClick()
+        composeTestRule.onNodeWithText(Res.string.action_add_to_queue.get()).performClick()
         assertEquals(onPlayClick.arg1, QueueOption.ADD)
         assertEquals(onPlayClick.arg2, false)
     }
