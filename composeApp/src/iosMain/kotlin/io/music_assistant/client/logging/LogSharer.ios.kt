@@ -19,26 +19,30 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
     private fun logFilePath() = "${NSTemporaryDirectory()}ma_client_logs.txt"
     private fun crashLogFilePath() = "${NSTemporaryDirectory()}ma_crash_log.txt"
 
-    actual fun shareLogs(logText: String, @Suppress("UNUSED_PARAMETER") chooserTitle: String) {
+    actual fun prepareLogShareFile(logText: String): String {
         val path = logFilePath()
         writeTextToFile(LogSanitizer.sanitize(logText), path)
-        shareFile(path)
+        return path
     }
 
     actual fun hasCrashLog(): Boolean =
         NSFileManager.defaultManager.fileExistsAtPath(crashLogFilePath())
 
-    actual fun shareCrashLog(@Suppress("UNUSED_PARAMETER") chooserTitle: String) {
+    actual fun prepareCrashLogShareFile(): String? {
         val path = crashLogFilePath()
-        if (!NSFileManager.defaultManager.fileExistsAtPath(path)) return
+        if (!NSFileManager.defaultManager.fileExistsAtPath(path)) return null
         val rawText = NSString.create(
             contentsOfFile = path,
             encoding = NSUTF8StringEncoding,
             error = null,
-        )?.toString() ?: return
+        )?.toString() ?: return null
         val sanitizedPath = "${NSTemporaryDirectory()}ma_crash_log_share.txt"
         writeTextToFile(LogSanitizer.sanitize(rawText), sanitizedPath)
-        shareFile(sanitizedPath)
+        return sanitizedPath
+    }
+
+    actual fun presentShareFile(path: String, @Suppress("UNUSED_PARAMETER") chooserTitle: String) {
+        shareFile(path)
     }
 
     actual fun deleteCrashLog() {

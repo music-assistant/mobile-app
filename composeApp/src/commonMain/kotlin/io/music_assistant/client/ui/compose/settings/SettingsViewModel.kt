@@ -9,9 +9,11 @@ import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.SettingsRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(
     private val apiClient: ServiceClient,
@@ -24,12 +26,37 @@ class SettingsViewModel(
     private val _hasCrashLog = MutableStateFlow(logSharer.hasCrashLog())
     val hasCrashLog: StateFlow<Boolean> = _hasCrashLog
 
+    private val _isPreparingShare = MutableStateFlow(false)
+    val isPreparingShare: StateFlow<Boolean> = _isPreparingShare
+
     fun shareLogs(chooserTitle: String) {
-        logSharer.shareLogs(InMemoryLogWriter.getLogText(), chooserTitle)
+        if (_isPreparingShare.value) return
+        viewModelScope.launch {
+            _isPreparingShare.value = true
+            try {
+                val path = withContext(Dispatchers.Default) {
+                    logSharer.prepareLogShareFile(InMemoryLogWriter.getLogText())
+                }
+                logSharer.presentShareFile(path, chooserTitle)
+            } finally {
+                _isPreparingShare.value = false
+            }
+        }
     }
 
     fun shareCrashLog(chooserTitle: String) {
-        logSharer.shareCrashLog(chooserTitle)
+        if (_isPreparingShare.value) return
+        viewModelScope.launch {
+            _isPreparingShare.value = true
+            try {
+                val path = withContext(Dispatchers.Default) {
+                    logSharer.prepareCrashLogShareFile()
+                }
+                if (path != null) logSharer.presentShareFile(path, chooserTitle)
+            } finally {
+                _isPreparingShare.value = false
+            }
+        }
     }
 
     fun deleteCrashLog() {

@@ -13,21 +13,24 @@ actual class LogSharer actual constructor(private val platformContext: PlatformC
     private fun logFile() = File(context.cacheDir, "ma_client_logs.txt")
     private fun crashLogFile() = File(context.cacheDir, "ma_crash_log.txt")
 
-    actual fun shareLogs(logText: String, chooserTitle: String) {
+    actual fun prepareLogShareFile(logText: String): String {
         val file = logFile()
         file.writeText(LogSanitizer.sanitize(logText))
-        shareFile(file, chooserTitle)
+        return file.absolutePath
     }
 
     actual fun hasCrashLog(): Boolean = crashLogFile().exists()
 
-    actual fun shareCrashLog(chooserTitle: String) {
+    actual fun prepareCrashLogShareFile(): String? {
         val file = crashLogFile()
-        if (file.exists()) {
-            val sanitizedFile = File(context.cacheDir, "ma_crash_log_share.txt")
-            sanitizedFile.writeText(LogSanitizer.sanitize(file.readText()))
-            shareFile(sanitizedFile, chooserTitle)
-        }
+        if (!file.exists()) return null
+        val sanitizedFile = File(context.cacheDir, "ma_crash_log_share.txt")
+        sanitizedFile.writeText(LogSanitizer.sanitize(file.readText()))
+        return sanitizedFile.absolutePath
+    }
+
+    actual fun presentShareFile(path: String, chooserTitle: String) {
+        shareFile(File(path), chooserTitle)
     }
 
     actual fun deleteCrashLog() {

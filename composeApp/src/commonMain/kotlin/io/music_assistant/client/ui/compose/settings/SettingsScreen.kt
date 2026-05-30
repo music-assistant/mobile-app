@@ -29,6 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -151,6 +152,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
     val isAuthenticated = dataConnection == DataConnectionState.Authenticated
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
+    val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
@@ -331,6 +333,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 MiscSection(
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
+                    isPreparingShare = isPreparingShare,
                     onShareCrashLog = { viewModel.shareCrashLog(shareCrashLogsTitle) },
                     onDeleteCrashLog = { viewModel.deleteCrashLog() },
                 )
@@ -347,6 +350,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 private fun MiscSection(
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
+    isPreparingShare: Boolean,
     onShareCrashLog: () -> Unit,
     onDeleteCrashLog: () -> Unit,
 ) {
@@ -354,8 +358,16 @@ private fun MiscSection(
         SectionTitle(stringResource(Res.string.settings_misc))
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
+            enabled = !isPreparingShare,
             onClick = onShareLogs,
         ) {
+            if (isPreparingShare) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+            }
             Text(stringResource(Res.string.settings_share_logs))
         }
         if (hasCrashLog) {
@@ -366,11 +378,15 @@ private fun MiscSection(
             ) {
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
+                    enabled = !isPreparingShare,
                     onClick = onShareCrashLog,
                 ) {
                     Text(stringResource(Res.string.settings_share_crash_logs))
                 }
-                OutlinedButton(onClick = onDeleteCrashLog) {
+                OutlinedButton(
+                    enabled = !isPreparingShare,
+                    onClick = onDeleteCrashLog,
+                ) {
                     Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.cd_delete_crash_logs))
                 }
             }

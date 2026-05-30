@@ -22,8 +22,9 @@ object LogSanitizer {
             Regex("""\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"""),
             "[REDACTED_ID]",
         ),
-        // Email addresses
-        RedactionRule(Regex("""\b[\w.+-]+@[\w.-]+\.\w{2,}\b"""), "[REDACTED_EMAIL]"),
+        // Possessive local part (`++`): the class excludes '@', so backtracking
+        // it can never match — skips rescanning every '@'-less word run.
+        RedactionRule(Regex("""\b[\w.+-]++@[\w.-]+\.\w{2,}\b"""), "[REDACTED_EMAIL]"),
     )
 
     fun sanitize(text: String): String =
