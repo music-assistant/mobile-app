@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
-  <string name="action_add_to_bottom">Voeg onderaan toe</string>
+  <string name="action_add_to_queue">Voeg onderaan toe</string>
   <string name="action_add_to_library">Toevoegen aan bibliotheek</string>
   <string name="action_add_to_playlist">Aan afspeellijst toevoegen</string>
-  <string name="action_add_to_queue">Aan wachtrij toevoegen</string>
   <string name="action_favorite">Favoriet</string>
   <string name="action_go_to_album">Ga naar album</string>
   <string name="action_go_to_artist">Ga naar artiest</string>

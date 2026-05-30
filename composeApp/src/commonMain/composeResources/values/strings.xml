@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
-  <string name="action_add_to_bottom">Add to bottom</string>
+  <string name="action_add_to_queue">Add to queue</string>
   <string name="action_add_to_library">Add to library</string>
   <string name="action_add_to_playlist">Add to playlist</string>
-  <string name="action_add_to_queue">Add to queue</string>
   <string name="action_favorite">Favorite</string>
   <string name="action_go_to_album">Go to album</string>
   <string name="action_go_to_artist">Go to artist</string>
-  <string name="action_insert_next">Insert next</string>
-  <string name="action_insert_next_and_play">Insert next and play</string>
+  <string name="action_insert_next">Add next</string>
+  <string name="action_insert_next_and_play">Add next and play</string>
   <string name="action_mark_played">Mark as played</string>
   <string name="action_mark_unplayed">Mark as unplayed</string>
   <string name="action_pause">Pause</string>

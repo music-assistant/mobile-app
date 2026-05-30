@@ -18,9 +18,9 @@ import compose.icons.tablericons.HeartBroken
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_add_to_bottom
 import musicassistantclient.composeapp.generated.resources.action_add_to_library
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
+import musicassistantclient.composeapp.generated.resources.action_add_to_queue
 import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.action_insert_next
 import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
@@ -56,7 +56,7 @@ fun ItemAction.title(): StringResource = when (this) {
         QueueOption.REPLACE -> Res.string.action_play_now
         QueueOption.PLAY -> Res.string.action_insert_next_and_play
         QueueOption.NEXT -> Res.string.action_insert_next
-        QueueOption.ADD -> Res.string.action_add_to_bottom
+        QueueOption.ADD -> Res.string.action_add_to_queue
     }
     ItemAction.StartRadio -> Res.string.action_start_radio
     ItemAction.AddToLibrary -> Res.string.action_add_to_library
