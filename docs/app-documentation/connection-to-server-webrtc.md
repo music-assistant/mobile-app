@@ -22,7 +22,7 @@ After connecting, you will be asked to sign in.
 
 | Authentication method | Description |
 |---|---|
-| **Music Assistant** | Sign in with the username and password of a Music Assistant user, . |
+| **Music Assistant** | Sign in with the username and password of a Music Assistant user. |
 
 ![Sign in with Music Assistant credentials](screenshots/connection-to-server-webrtc/sign-in-ma-user.jpeg)
 
