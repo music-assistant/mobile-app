@@ -8,6 +8,7 @@ Information about setting up and using the Music Assistant Mobile App.
 
 - [First time setup](app-settings.md)
   - [Connect to Server using a Direct Connection Method](connection-to-server-direct.md)
+  - [Connect to Server using WebRTC](connection-to-server-webrtc.md)  
 
 ## Quick Links
 
