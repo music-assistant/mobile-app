@@ -2,7 +2,7 @@
 
 WebRTC allows you to securely connect the Music Assistant App to your Music Assistant server from anywhere in the world without advanced setup.
 
-To connect to your Music Assistant server using WebRTC, make sure the <a href="https://www.music-assistant.io/settings/remote-access/" target="_blank">Remote Access Settings on your Music Assistant Server</a> on your Music Assistant Server are configured correctly.
+To connect to your Music Assistant server using WebRTC, make sure the <a href="https://www.music-assistant.io/settings/remote-access/" target="_blank">Remote Access Settings on your Music Assistant Server</a> are configured correctly.
 
 ## Fill in the fields
 
