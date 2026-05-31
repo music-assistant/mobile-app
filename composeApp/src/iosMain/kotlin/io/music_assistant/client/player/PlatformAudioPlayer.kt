@@ -58,10 +58,16 @@ interface PlatformAudioPlayer {
 }
 
 /**
- * Handler for remote commands from Control Center/Lock Screen
+ * Handler for player commands originating on the iOS side.
+ *
+ * `source` identifies who issued the command so logs can distinguish a genuine
+ * user action from an automatic one: "remote" (Control Center / lock screen),
+ * "interruption" (audio-session interruption began/ended), or "route_loss"
+ * (output device disappeared). It is diagnostic only — `command` alone drives
+ * playback.
  */
 interface RemoteCommandHandler {
-    fun onCommand(command: String)
+    fun onCommand(command: String, source: String)
 }
 
 /**

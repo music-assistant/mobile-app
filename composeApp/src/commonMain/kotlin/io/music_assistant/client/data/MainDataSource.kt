@@ -898,7 +898,7 @@ class MainDataSource(
         // Go directly through MainDataSource via REST API
         mediaPlayerController.onRemoteCommand = { command ->
             localPlayer.value?.let { playerData ->
-                log.i { "Remote command from Control Center: $command" }
+                log.i { "Remote command: $command" }
                 when (command) {
                     "play" -> playerAction(playerData, PlayerAction.Play)
                     "pause" -> playerAction(playerData, PlayerAction.Pause)

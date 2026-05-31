@@ -2,6 +2,7 @@
 
 package io.music_assistant.client.player
 
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.model.AudioCodec
 
 /**
@@ -12,6 +13,7 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
  * via libFLAC, swift-opus, and PCM passthrough.
  */
 actual class MediaPlayerController actual constructor(platformContext: PlatformContext) {
+    private val log = Logger.withTag("MediaPlayerController")
     private var isPrepared: Boolean = false
 
     // Callback for remote commands from Control Center
@@ -31,10 +33,10 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             player.prepareStream(codec.name.lowercase(), sampleRate, channels, bitDepth, codecHeader, listener)
             isPrepared = true
 
-            // Set up remote command handler for Control Center buttons
+            // Set up remote command handler for iOS-originated commands
             player.setRemoteCommandHandler(object : RemoteCommandHandler {
-                override fun onCommand(command: String) {
-                    println("🎵 MediaPlayerController: Remote command received: $command")
+                override fun onCommand(command: String, source: String) {
+                    log.i { "iOS command [$source]: $command" }
                     onRemoteCommand?.invoke(command)
                 }
             })

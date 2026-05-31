@@ -80,7 +80,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             if isPlaying {
                 pausedByInterruption = true
                 print("🎵 NativeAudioController: Pausing server playback due to interruption")
-                remoteCommandHandler?.onCommand(command: "pause")
+                remoteCommandHandler?.onCommand(command: "pause", source: "interruption")
             }
         case .ended:
             guard pausedByInterruption else { break }
@@ -92,7 +92,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             // audio device exclusively.
             if !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint {
                 print("🎵 NativeAudioController: Resuming server playback after interruption")
-                remoteCommandHandler?.onCommand(command: "play")
+                remoteCommandHandler?.onCommand(command: "play", source: "interruption")
             } else {
                 print("🎵 NativeAudioController: Another app holds audio — staying paused")
             }
@@ -133,7 +133,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         bufferLock.lock()
         pcmBuffer.removeAll()
         bufferLock.unlock()
-        remoteCommandHandler?.onCommand(command: "pause")
+        remoteCommandHandler?.onCommand(command: "pause", source: "route_loss")
     }
 
     // MARK: - PlatformAudioPlayer Protocol
@@ -437,7 +437,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
         NowPlayingManager.shared.setCommandHandler { [weak self] command in
             print("🎵 NativeAudioController: Remote command: \(command)")
-            self?.remoteCommandHandler?.onCommand(command: command)
+            self?.remoteCommandHandler?.onCommand(command: command, source: "remote")
         }
     }
 }
