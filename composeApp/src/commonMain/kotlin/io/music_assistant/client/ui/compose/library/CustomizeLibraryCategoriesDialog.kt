@@ -39,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
+import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.library_customize

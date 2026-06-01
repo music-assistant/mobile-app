@@ -46,6 +46,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
@@ -139,7 +140,7 @@ fun MainNavigationRoot(
 
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
-    val hiddenFolderIds = recommendationsState.value.hiddenFolderIds
+    val homeRowsConfig = recommendationsState.value.homeRowsConfig
 
     var playerExpanded by remember { mutableStateOf(false) }
 
@@ -232,7 +233,7 @@ fun MainNavigationRoot(
                                 floatingBarContentPadding,
                                 connectionState,
                                 dataState,
-                                hiddenFolderIds,
+                                homeRowsConfig,
                                 multiBackStack,
                                 homeScreenViewModel,
                                 actionsViewModel,
@@ -263,7 +264,7 @@ private fun mainNavEntryProvider(
     contentPadding: PaddingValues,
     connectionState: SessionState,
     dataState: DataState<List<RecommendationFolder>>,
-    hiddenFolderIds: Set<String>,
+    homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
@@ -306,7 +307,7 @@ private fun mainNavEntryProvider(
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
-                hiddenFolderIds = hiddenFolderIds,
+                homeRowsConfig = homeRowsConfig,
                 actionsViewModel = actionsViewModel,
             )
         }

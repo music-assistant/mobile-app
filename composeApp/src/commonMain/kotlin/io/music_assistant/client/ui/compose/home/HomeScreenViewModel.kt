@@ -64,7 +64,7 @@ class HomeScreenViewModel(
         RecommendationsState(
             connectionState = SessionState.Disconnected.Initial,
             recommendations = DataState.Loading(),
-            hiddenFolderIds = settings.hiddenRecommendationFolders.value,
+            homeRowsConfig = settings.homeRowsConfig.value,
         ),
     )
     val recommendationsState = _recommendationsState.asStateFlow()
@@ -163,8 +163,8 @@ class HomeScreenViewModel(
         }
 
         viewModelScope.launch {
-            settings.hiddenRecommendationFolders.collect { ids ->
-                _recommendationsState.update { it.copy(hiddenFolderIds = ids) }
+            settings.homeRowsConfig.collect { config ->
+                _recommendationsState.update { it.copy(homeRowsConfig = config) }
             }
         }
 
@@ -325,13 +325,21 @@ class HomeScreenViewModel(
         result.getOrNull()?.mapNotNull { it as? T }
     }
 
-    fun saveHiddenRecommendationFolders(ids: Set<String>) =
-        settings.setHiddenRecommendationFolders(ids)
+    /**
+     * Persists the edited working list. Prefs for folders not currently present
+     * on the server (e.g. temporarily item-less, so absent from the working list)
+     * are carried over so their visibility/order isn't lost.
+     */
+    fun saveHomeRows(working: List<SettingsRepository.HomeRowPref>) {
+        val presentIds = working.mapTo(mutableSetOf()) { it.id }
+        val carriedOver = settings.homeRowsConfig.value.filterNot { it.id in presentIds }
+        settings.setHomeRowsConfig(working + carriedOver)
+    }
 
     data class RecommendationsState(
         val connectionState: SessionState,
         val recommendations: DataState<List<RecommendationFolder>>,
-        val hiddenFolderIds: Set<String> = emptySet(),
+        val homeRowsConfig: List<SettingsRepository.HomeRowPref> = emptyList(),
     )
 
     sealed class PlayersState {

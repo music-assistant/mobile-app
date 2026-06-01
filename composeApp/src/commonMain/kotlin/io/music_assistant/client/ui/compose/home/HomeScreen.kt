@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("MagicNumber")
 
 package io.music_assistant.client.ui.compose.home
 
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -31,15 +33,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import compose.icons.TablerIcons
+import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
@@ -53,6 +57,7 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
@@ -67,6 +72,7 @@ import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListKey
+import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -85,6 +91,8 @@ import musicassistantclient.composeapp.generated.resources.home_save_rows
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun HomeScreen(
@@ -96,14 +104,10 @@ fun HomeScreen(
     onNavigateClick: (AppMediaItem) -> Unit,
     onLibraryItemClick: (MediaType) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    hiddenFolderIds: Set<String>,
+    homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     actionsViewModel: ActionsViewModel,
 ) {
     var editMode by remember { mutableStateOf(false) }
-    var pendingHidden by remember { mutableStateOf(hiddenFolderIds) }
-    LaunchedEffect(hiddenFolderIds, editMode) {
-        if (!editMode) pendingHidden = hiddenFolderIds
-    }
 
     val baseList = remember(dataState) {
         if (dataState is DataState.Data) {
@@ -126,18 +130,25 @@ fun HomeScreen(
             emptyList()
         }
     }
-    val displayedData = if (editMode) {
-        baseList
-    } else {
-        baseList.filterNot { it.itemId in hiddenFolderIds }
-    }
+    // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
+    val working = remember(baseList, homeRowsConfig) { reconcileHomeRows(baseList, homeRowsConfig) }
+
+    // Edit-mode working copy — isolated from external (real-time) updates while editing;
+    // snapshotted fresh on entering edit mode.
+    var items by remember { mutableStateOf(working) }
+    val enabledCount = items.count { it.second }
+    val enabledByKey = remember(items) { items.associate { it.first.lazyListKey() to it.second } }
+
+    val displayedData = if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
 
     val listState = rememberLazyListState()
-
-    BackHandler(enabled = editMode) {
-        pendingHidden = hiddenFolderIds
-        editMode = false
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        // Constrain reorder to the contiguous enabled section.
+        if (from.index >= enabledCount || to.index >= enabledCount) return@rememberReorderableLazyListState
+        items = items.toMutableList().apply { add(to.index, removeAt(from.index)) }
     }
+
+    BackHandler(enabled = editMode) { editMode = false }
 
     Screen(
         topBar = { scrollBehavior ->
@@ -147,16 +158,32 @@ fun HomeScreen(
                 onRefresh = { homeScreenViewModel.loadRecommendations() },
                 onToggleEditMode = {
                     if (editMode) {
-                        homeScreenViewModel.saveHiddenRecommendationFolders(pendingHidden)
+                        homeScreenViewModel.saveHomeRows(
+                            items.map { SettingsRepository.HomeRowPref(it.first.itemId, it.second) },
+                        )
                         editMode = false
                     } else {
-                        pendingHidden = hiddenFolderIds
+                        items = working
                         editMode = true
                     }
                 },
             )
         },
     ) {
+        val rowContent: @Composable (RecommendationFolder) -> Unit = { row ->
+            CategoryRow(
+                title = row.displayName,
+                rowItemType = row.rowItemType,
+                onNavigateClick = onNavigateClick,
+                onPlayClick = homeScreenViewModel::onPlayClick,
+                onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
+                mediaItems = row.items.orEmpty(),
+                playlistActions = actionsViewModel,
+                libraryActions = actionsViewModel,
+                progressActions = actionsViewModel,
+                providerIconFetcher = providerIconFetcher,
+            )
+        }
         LazyColumn(
             state = listState,
             contentPadding = contentPadding,
@@ -175,52 +202,57 @@ fun HomeScreen(
                     items = displayedData,
                     key = { it.lazyListKey() },
                 ) { row ->
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        CategoryRow(
-                            title = row.displayName,
-                            rowItemType = row.rowItemType,
-                            onNavigateClick = onNavigateClick,
-                            onPlayClick = homeScreenViewModel::onPlayClick,
-                            onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
-                            mediaItems = row.items.orEmpty(),
-                            playlistActions = actionsViewModel,
-                            libraryActions = actionsViewModel,
-                            progressActions = actionsViewModel,
-                            providerIconFetcher = providerIconFetcher,
-                        )
-                        if (editMode) {
-                            val isHidden = row.itemId in pendingHidden
-                            val overlayAlpha = if (isHidden) 0.80f else 0.60f
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .background(
-                                        MaterialTheme.colorScheme.background.copy(
-                                            alpha = overlayAlpha,
-                                        ),
-                                    )
-                                    .pointerInput(Unit) {
-                                        // Swallow taps & long-presses on the row;
-                                        // vertical drags pass through so the
-                                        // LazyColumn can still scroll.
-                                        detectTapGestures(
-                                            onTap = {},
-                                            onLongPress = {},
+                    if (editMode) {
+                        val enabled = enabledByKey[row.lazyListKey()] ?: true
+                        ReorderableItem(reorderableState, key = row.lazyListKey()) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                rowContent(row)
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .background(
+                                            MaterialTheme.colorScheme.background.copy(
+                                                alpha = if (enabled) 0.60f else 0.80f,
+                                            ),
                                         )
-                                    },
-                            )
-                            Switch(
-                                modifier = Modifier.align(Alignment.Center),
-                                checked = !isHidden,
-                                onCheckedChange = { active ->
-                                    pendingHidden = if (active) {
-                                        pendingHidden - row.itemId
-                                    } else {
-                                        pendingHidden + row.itemId
-                                    }
-                                },
-                            )
+                                        .pointerInput(Unit) {
+                                            // Swallow taps & long-presses on the row;
+                                            // vertical drags pass through so the
+                                            // LazyColumn can still scroll.
+                                            detectTapGestures(onTap = {}, onLongPress = {})
+                                        },
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .padding(end = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    // Keep at least one row visible: block disabling the last enabled one.
+                                    Switch(
+                                        checked = enabled,
+                                        enabled = !enabled || enabledCount > 1,
+                                        onCheckedChange = { newEnabled ->
+                                            items = moveToEnabledBoundary(items, row, newEnabled)
+                                        },
+                                    )
+                                    Icon(
+                                        modifier = Modifier
+                                            .padding(start = 12.dp)
+                                            .then(
+                                                if (enabled) Modifier.draggableHandle() else Modifier,
+                                            )
+                                            .alpha(if (enabled) 1f else 0.3f)
+                                            .size(24.dp),
+                                        imageVector = TablerIcons.GripVertical,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                            }
                         }
+                    } else {
+                        rowContent(row)
                     }
                 }
             }
