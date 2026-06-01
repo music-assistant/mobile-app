@@ -19,10 +19,10 @@ Changes apply immediately and are saved per device.
 
 ## Interacting with Items
 
-Tapping an item opens its detail page in [the Library](library.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
+Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
 
 Long-pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
 
 ## Section Links
 
-Some sections include a shortcut to the corresponding library view. For example, tapping **All Albums** navigates to **Library › Albums**.
+Some sections include a shortcut to the corresponding child [library](library.md). For example, tapping **All Albums** navigates to **Library › Albums**.

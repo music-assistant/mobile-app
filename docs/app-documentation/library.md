@@ -37,6 +37,6 @@ Toggle between grid and list view. This preference is saved per content type.
 
 ## Interacting with Items
 
-Tapping an item opens its detail page. For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
+Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
 
 Long-pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
