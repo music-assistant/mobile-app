@@ -27,9 +27,9 @@ If no items match your query, click **Search everywhere** to switch to [Global S
 
 Use the **Favorites** button to quickly filter your library items by favorite.
 
-### Order
+### Sort
 
-Use the **Order** button to sort items in the list. Available options vary depending on the child library you are currently in.
+Use the **Sort** button to sort items in the list. Available options vary depending on the child library you are currently in.
 
 ### Toggle View Type
 
