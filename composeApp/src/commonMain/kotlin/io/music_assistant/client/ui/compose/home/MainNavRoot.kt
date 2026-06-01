@@ -36,7 +36,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.MediaType
@@ -63,6 +62,7 @@ import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.BackHandler
+import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
@@ -212,12 +212,16 @@ fun MainNavigationRoot(
                 )
             },
         ) { floatingBarContentPadding ->
+            BackHandler(playerExpanded) {
+                playerExpanded = !playerExpanded
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
             ) {
-                NavDisplay(
+                ConditionalBackNavDisplay(
                     entries = rememberDecoratedNavEntries(
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
@@ -238,6 +242,7 @@ fun MainNavigationRoot(
                     onBack = {
                         multiBackStack.removeLastOrNull()
                     },
+                    backEnabled = !playerExpanded,
                     // Workaround for CMP 1.10.3 iOS crash: LazyLayout measured inside
                     // AnimatedContent + CupertinoOverscroll trips a SubcomposeLayout
                     // precondition on first frame. Disabling transitions removes the
@@ -246,10 +251,6 @@ fun MainNavigationRoot(
                     popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
                     predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
                 )
-
-                BackHandler(playerExpanded) {
-                    playerExpanded = !playerExpanded
-                }
             }
         }
     }
