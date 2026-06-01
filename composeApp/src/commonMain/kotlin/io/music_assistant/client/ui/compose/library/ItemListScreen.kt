@@ -75,13 +75,13 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_clear
 import musicassistantclient.composeapp.generated.resources.common_create
+import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.library_quick_search
@@ -284,7 +284,7 @@ private fun ItemListTopBar(
                     FilterChip(
                         selected = onlyFavorites,
                         onClick = onToggleFavorites,
-                        label = { Text(stringResource(Res.string.action_favorite)) },
+                        label = { Text(stringResource(Res.string.filter_favorites)) },
                     )
 
                     Row {

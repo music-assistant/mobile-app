@@ -81,6 +81,7 @@
   <string name="dsp_error">Failed to load DSP configuration</string>
   <string name="dsp_presets">Presets</string>
   <string name="dsp_title">DSP settings</string>
+  <string name="filter_favorites">Favorites</string>
   <string name="home_edit_rows">Edit rows</string>
   <string name="home_save_rows">Save rows</string>
   <string name="item_error">Error loading item</string>
