@@ -1,7 +1,5 @@
 # Setting up the Local Player (optional)
 
-The Music Assistant App serves two purposes: controlling external Music Assistant players, and playing music locally through the app on your device.
-
 You can use the app purely as a remote control for external players, with the local player disabled. Or you can configure it as a Sendspin client to play music directly through your device.
 
 The in-app Local Player is designed for personal, mobile listening — through your phone's speakers, headphones, or in-car systems like Apple CarPlay and Android Auto. It is not intended for home audio setups where the app would act as a source device feeding into DACs, amplifiers, or grouped speaker systems.
@@ -31,7 +29,7 @@ Tap **Enable local player** to activate it. The section header will update to **
 
 The codec controls how audio is compressed and streamed from your Music Assistant server to the app. Choose based on your network conditions and how much audio quality matters to you.
 
-- **Opus** *(Compressed, lowest bandwidth)* — A compressed format that uses the least data. Audio quality is good but not lossless. Best for mobile data connections, slower Wi-Fi, or when battery and bandwidth are a concern. This is the recommended default for most users.
+- **Opus** *(Compressed, lowest bandwidth)* — A lossy format that uses the least data. Audio quality is good but not lossless. Best for mobile data connections, slower Wi-Fi, or when bandwidth is a concern. This is the recommended default for most users.
 
 - **FLAC** *(Lossless, medium bandwidth)* — Streams audio in full quality without any loss, using a moderate amount of bandwidth. A good balance between quality and network load. Best suited for home Wi-Fi where you want the best sound without putting too much strain on your network.
 
