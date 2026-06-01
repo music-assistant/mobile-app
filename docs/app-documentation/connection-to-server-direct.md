@@ -32,4 +32,4 @@ After connecting, you will be asked to sign in. Choose one of the following meth
 ![Sign in using Home Assistant](screenshots/connection-to-server-direct/sign-in-using-ha.jpeg)
 ![Fill in Home Assistant credentials](screenshots/connection-to-server-direct/ha-sign-in-screen.jpeg)
 
-Once signed in, you are ready to use the app.
+After signing in, you can configure the [Local Player](local-sendspin-player-settings.md) and [start using the app](home.md) right away.

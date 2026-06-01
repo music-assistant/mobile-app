@@ -18,12 +18,15 @@ Once your Remote ID is filled in, tap **Connect via WebRTC** to move on to the n
 
 ## Authentication
 
-After connecting, you will be asked to sign in.
+After connecting, you will be asked to sign in. Choose one of the following methods:
 
 | Authentication method | Description |
 |---|---|
 | **Music Assistant** | Sign in with the username and password of a Music Assistant user. |
+| **Home Assistant** | Sign in using Home Assistant OAuth. The Home Assistant user must be linked to the Music Assistant server. |
 
 ![Sign in with Music Assistant credentials](screenshots/connection-to-server-webrtc/sign-in-ma-user.jpeg)
+![Sign in using Home Assistant](screenshots/connection-to-server-direct/sign-in-using-ha.jpeg)
+![Fill in Home Assistant credentials](screenshots/connection-to-server-direct/ha-sign-in-screen.jpeg)
 
-Once signed in, you are ready to use the app.
+After signing in, you can configure the [Local Player](local-sendspin-player-settings.md) and [start using the app](home.md) right away.
