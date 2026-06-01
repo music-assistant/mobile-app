@@ -12,6 +12,8 @@
 
 **Using the App**
 - [The Home Tab](home.md)
+- [The Library Tab](library.md)
+- [The Global Search Tab](global-search.md)
 
 ## 🔗 Quick Links
 

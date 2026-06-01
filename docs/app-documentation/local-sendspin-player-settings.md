@@ -2,15 +2,13 @@
 
 You can use the app purely as a remote control for external players, with the local player disabled. Or you can configure it as a Sendspin client to play music directly through your device.
 
----
-
 ## Enabling the Local Player
 
 In **Settings**, scroll to the **Local player (Sendspin protocol)** section.
 
 Before enabling, configure the following options:
 
-- **Player name** — The name that will appear in Music Assistant (default: your device name).
+- **Player name** — The name that will appear in Music Assistant (default: My phone).
 - **Codec preference** — The audio codec used for streaming. See [Codec Preference](#codec-preference) below.
 - **Custom Sendspin connection** — Leave unchecked unless your setup requires a custom connection (see [Custom Sendspin Connection](#custom-sendspin-connection)).
 
@@ -22,8 +20,6 @@ Tap **Enable local player** to activate it. The section header will update to **
 ![Local Player Codec Preference](screenshots/local-sendspin-player-settings/local-player-codec.jpeg)
 ![Local Player Enabled](screenshots/local-sendspin-player-settings/player-enabled.jpeg)
 
----
-
 ## Codec Preference
 
 The codec controls how audio is compressed and streamed from your Music Assistant server to the app. Choose based on your network conditions and how much audio quality matters to you.
@@ -33,8 +29,6 @@ The codec controls how audio is compressed and streamed from your Music Assistan
 - **FLAC** *(Lossless, medium bandwidth)* — Streams audio in full quality without any loss, using a moderate amount of bandwidth. Recommended over PCM for most setups — identical quality to PCM, with less network load.
 
 - **PCM** *(Lossless, high bandwidth)* — Streams uncompressed, lossless audio but uses considerably more bandwidth than FLAC for identical quality. Only use this if your device or firmware has trouble playing FLAC files.
-
----
 
 ## Custom Sendspin Connection
 
