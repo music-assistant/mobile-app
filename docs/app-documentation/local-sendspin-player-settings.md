@@ -20,6 +20,8 @@ Before enabling, configure the following options:
 
 Tap **Enable local player** to activate it. The section header will update to **Local player enabled**, and the button will change to **Disable local player**.
 
+> **Good to know:** The Local Player is hidden by default in the Music Assistant Web UI, but visible under Music Assistant > Settings > Players as long as it is registered to the server. It registers automatically when the Local Player is enabled and the app is active and connected to the server. When the app is inactive, the player is de-registered and its settings are no longer editable.
+
 ![Local Player Disabled - Setup](screenshots/local-sendspin-player-settings/local-player-disabled.jpeg)
 ![Local Player Codec Preference](screenshots/local-sendspin-player-settings/local-player-codec.jpeg)
 ![Local Player Enabled](screenshots/local-sendspin-player-settings/player-enabled.jpeg)
