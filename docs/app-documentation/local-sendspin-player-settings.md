@@ -29,13 +29,11 @@ Tap **Enable local player** to activate it. The section header will update to **
 
 The codec controls how audio is compressed and streamed from your Music Assistant server to the app. Choose based on your network conditions and how much audio quality matters to you.
 
-- **Opus** *(Compressed, lowest bandwidth)* — A lossy format that uses the least data. Audio quality is good but not lossless. Best for mobile data connections, slower Wi-Fi, or when bandwidth is a concern. This is the recommended default for most users.
+- **Opus** *(Compressed, lowest bandwidth)* — A lossy format that uses the least data. Audio quality is good but not lossless. Best for mobile data connections, slower Wi-Fi, or when bandwidth is a concern.
 
-- **FLAC** *(Lossless, medium bandwidth)* — Streams audio in full quality without any loss, using a moderate amount of bandwidth. A good balance between quality and network load. Best suited for home Wi-Fi where you want the best sound without putting too much strain on your network.
+- **FLAC** *(Lossless, medium bandwidth)* — Streams audio in full quality without any loss, using a moderate amount of bandwidth. Recommended over PCM for most setups — identical quality to PCM, with less network load.
 
-- **PCM** *(Lossless, high bandwidth)* — Streams uncompressed audio at the highest possible quality, but uses significantly more bandwidth than FLAC. Only recommended on fast, stable Wi-Fi connections where network load is not a concern.
-
-> **Not sure which to pick?** Start with **Opus**. If you're on a reliable home Wi-Fi connection and want the best audio quality, try **FLAC**.
+- **PCM** *(Lossless, high bandwidth)* — Streams uncompressed, lossless audio but uses considerably more bandwidth than FLAC for identical quality. Only use this if your device or firmware has trouble playing FLAC files.
 
 ---
 
