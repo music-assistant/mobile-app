@@ -8,6 +8,8 @@ The Music Assistant App provides its own [Player Pager](player-pager.md) for int
 
 Tap the **refresh icon** in the top right corner to refresh the Home tab. This pulls the latest Discover data from your Music Assistant server.
 
+![Home tab](screenshots/home/home.jpeg)
+
 ## Customizing Home
 
 You can personalize the Home tab by tapping the **pencil icon** in the top right corner. From here you can:
@@ -16,6 +18,8 @@ You can personalize the Home tab by tapping the **pencil icon** in the top right
 - **Reorder sections** — Drag sections into the order that works best for you.
 
 Changes apply immediately and are saved per device.
+
+![Customize Home](screenshots/home/customize-home.jpeg)
 
 ## Interacting with Items
 
