@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.library
 
+import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

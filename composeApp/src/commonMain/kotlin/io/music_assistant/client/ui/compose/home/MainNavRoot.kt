@@ -36,7 +36,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.MediaType
@@ -47,6 +46,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
@@ -62,6 +62,8 @@ import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
+import io.music_assistant.client.ui.compose.nav.BackHandler
+import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
@@ -138,7 +140,7 @@ fun MainNavigationRoot(
 
     val connectionState = recommendationsState.value.connectionState
     val dataState = recommendationsState.value.recommendations
-    val hiddenFolderIds = recommendationsState.value.hiddenFolderIds
+    val homeRowsConfig = recommendationsState.value.homeRowsConfig
 
     var playerExpanded by remember { mutableStateOf(false) }
 
@@ -188,7 +190,7 @@ fun MainNavigationRoot(
                     collapsedBottomPadding = bottomPadding,
                     expanded = playerExpanded,
                     onExpand = onExpandPlayer,
-                    { expanded, contentPadding ->
+                    content = { expanded, contentPadding ->
                         PlayersPager(
                             playerPagerState = playerPagerState,
                             state = playersState,
@@ -211,12 +213,16 @@ fun MainNavigationRoot(
                 )
             },
         ) { floatingBarContentPadding ->
+            BackHandler(playerExpanded) {
+                playerExpanded = !playerExpanded
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
             ) {
-                NavDisplay(
+                ConditionalBackNavDisplay(
                     entries = rememberDecoratedNavEntries(
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
@@ -227,7 +233,7 @@ fun MainNavigationRoot(
                                 floatingBarContentPadding,
                                 connectionState,
                                 dataState,
-                                hiddenFolderIds,
+                                homeRowsConfig,
                                 multiBackStack,
                                 homeScreenViewModel,
                                 actionsViewModel,
@@ -237,6 +243,7 @@ fun MainNavigationRoot(
                     onBack = {
                         multiBackStack.removeLastOrNull()
                     },
+                    backEnabled = !playerExpanded,
                     // Workaround for CMP 1.10.3 iOS crash: LazyLayout measured inside
                     // AnimatedContent + CupertinoOverscroll trips a SubcomposeLayout
                     // precondition on first frame. Disabling transitions removes the
@@ -257,7 +264,7 @@ private fun mainNavEntryProvider(
     contentPadding: PaddingValues,
     connectionState: SessionState,
     dataState: DataState<List<RecommendationFolder>>,
-    hiddenFolderIds: Set<String>,
+    homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
@@ -300,7 +307,7 @@ private fun mainNavEntryProvider(
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
-                hiddenFolderIds = hiddenFolderIds,
+                homeRowsConfig = homeRowsConfig,
                 actionsViewModel = actionsViewModel,
             )
         }

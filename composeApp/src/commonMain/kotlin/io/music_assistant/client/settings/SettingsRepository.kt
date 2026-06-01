@@ -14,6 +14,7 @@ import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -105,19 +106,39 @@ class SettingsRepository(
         _playersSorting.update { newValue }
     }
 
-    // Hidden home-screen recommendation folders (by itemId). Comma-separated.
-    private val _hiddenRecommendationFolders = MutableStateFlow(
-        settings.getStringOrNull("hidden_recommendation_folders")
+    // Home-screen rows: visibility + user-defined order in a single ordered list.
+    // Order = display sort; enabled=false = hidden. JSON-encoded because folder
+    // ids are arbitrary server strings (may contain the delimiters a flat string
+    // encoding would rely on). Reconciliation against the live server list happens
+    // at the ViewModel/UI boundary — the repo deals with raw id/enabled pairs only.
+    @Serializable
+    data class HomeRowPref(val id: String, val enabled: Boolean)
+
+    private val _homeRowsConfig = MutableStateFlow(loadHomeRowsConfig())
+    val homeRowsConfig = _homeRowsConfig.asStateFlow()
+
+    private fun loadHomeRowsConfig(): List<HomeRowPref> {
+        settings.getStringOrNull("home_rows_config")?.let { raw ->
+            return runCatching {
+                myJson.decodeFromString<List<HomeRowPref>>(raw)
+            }.getOrDefault(emptyList())
+        }
+        // Legacy migration.
+        val legacy = settings.getStringOrNull("hidden_recommendation_folders")
             ?.split(",")
             ?.filter { it.isNotBlank() }
-            ?.toSet()
-            ?: emptySet(),
-    )
-    val hiddenRecommendationFolders = _hiddenRecommendationFolders.asStateFlow()
+        return legacy
+            ?.map { HomeRowPref(id = it, enabled = false) }
+            ?.also {
+                settings.putString("home_rows_config", myJson.encodeToString(it))
+                settings.remove("hidden_recommendation_folders")
+            }
+            ?: emptyList()
+    }
 
-    fun setHiddenRecommendationFolders(ids: Set<String>) {
-        settings.putString("hidden_recommendation_folders", ids.joinToString(","))
-        _hiddenRecommendationFolders.update { ids }
+    fun setHomeRowsConfig(config: List<HomeRowPref>) {
+        settings.putString("home_rows_config", myJson.encodeToString(config))
+        _homeRowsConfig.update { config }
     }
 
     // Library tabs visibility + ordering. Stored as comma-separated "NAME:0|1"
@@ -287,11 +308,10 @@ class SettingsRepository(
     }
 
     // Last successful connection mode ("direct" or "webrtc")
-    // Used for autoconnect - reconnects using the last mode that worked
+    // Used for auto-connect - reconnects using the last mode that worked
     private val _lastConnectionMode = MutableStateFlow(
         settings.getStringOrNull("last_connection_mode"),
     )
-    val lastConnectionMode = _lastConnectionMode.asStateFlow()
 
     fun setLastConnectionMode(mode: String) {
         settings.putString("last_connection_mode", mode)
@@ -392,16 +412,6 @@ class SettingsRepository(
     fun setViewMode(mediaType: MediaType, mode: ViewMode) {
         settings.putString(viewModeKey(mediaType), mode.name)
         viewModeFlow(mediaType).update { mode }
-    }
-
-    fun getSortOption(mediaType: MediaType): SortOption {
-        val raw = settings.getStringOrNull("sort_${mediaType.name}")
-            ?: return SortConfig.defaultFor(mediaType)
-        return parseSortOption(raw) ?: SortConfig.defaultFor(mediaType)
-    }
-
-    fun setSortOption(mediaType: MediaType, option: SortOption) {
-        settings.putString("sort_${mediaType.name}", "${option.field.name}:${option.descending}")
     }
 
     fun getSortOption(context: SubItemContext): SortOption {

@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.ui.compose.nav.BackHandler
 
 @Composable
 fun FloatingBar(
@@ -39,10 +38,6 @@ fun FloatingBar(
     onExpand: (Boolean) -> Unit = {},
     content: @Composable (expanded: Boolean, contentPadding: PaddingValues) -> Unit,
 ) {
-    BackHandler(enabled = expanded) {
-        onExpand(false)
-    }
-
     val clip by animateDpAsState(if (expanded) 0.dp else 16.dp)
     val padding by animateDpAsState(if (expanded) 0.dp else 8.dp)
     val paddingValues = PaddingValues(padding)

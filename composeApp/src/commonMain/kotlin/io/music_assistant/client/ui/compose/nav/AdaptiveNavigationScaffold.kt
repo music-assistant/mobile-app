@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
@@ -39,7 +40,10 @@ fun AdaptiveNavigationScaffold(
     Scaffold(
         bottomBar = {
             if (showNavBar && !isExpandedScreen) {
-                NavigationBar(modifier = Modifier.height(88.dp)) {
+                NavigationBar(
+                    modifier = Modifier.height(88.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
                     navigationItems.forEach {
                         NavigationBarItem(
                             selected = it.selected,
@@ -55,7 +59,9 @@ fun AdaptiveNavigationScaffold(
     ) { contentPadding ->
         Row {
             if (showNavBar && isExpandedScreen) {
-                NavigationRail {
+                NavigationRail(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
                     navigationItems.forEach {
                         NavigationRailItem(
                             it.selected,

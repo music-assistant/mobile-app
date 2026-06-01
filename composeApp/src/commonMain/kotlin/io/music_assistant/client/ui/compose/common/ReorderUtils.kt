@@ -1,8 +1,7 @@
-package io.music_assistant.client.ui.compose.library
+package io.music_assistant.client.ui.compose.common
 
 // Toggling ON moves the item to the bottom of the enabled section.
 // Toggling OFF moves the item to the top of the disabled section.
-// In both cases the item is inserted at index `enabledCountAfterRemove`.
 internal fun <T> moveToEnabledBoundary(
     items: List<Pair<T, Boolean>>,
     target: T,

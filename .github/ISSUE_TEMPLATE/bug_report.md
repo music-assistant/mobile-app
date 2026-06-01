@@ -11,8 +11,6 @@ assignees: ''
  - App version:
  - Music Assistant server version:
 
-## Details
-
 ### Problem description
 
 A brief description of the problem you're encountering.
