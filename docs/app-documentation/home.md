@@ -1,10 +1,12 @@
 # Home
 
-The Home tab is populated with data from the **Discover** view in Music Assistant. By default, it loads all sections that Discover is populated with, excluding the frontend <a href="https://www.music-assistant.io/ui/#player-bar" target="_blank">Player Bar</a> section.
+The Home tab is populated with data from the **Discover** view in Music Assistant. By default, it loads all sections that appear in Discover, excluding the MA frontend Player Bar section.
+
+The Music Assistant App provides its own [Player Pager](player-pager.md) for interacting with your Music Assistant players.
 
 ## Refreshing Home
 
-Tap the **refresh icon** in the top right corner to reload the Home tab. This pulls the latest Discover data from your Music Assistant server.
+Tap the **refresh icon** in the top right corner to refresh the Home tab. This pulls the latest Discover data from your Music Assistant server.
 
 ## Customizing Home
 
@@ -17,7 +19,7 @@ Changes apply immediately and are saved per device.
 
 ## Interacting with Items
 
-Tapping an item opens its detail page in [the library](library.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
+Tapping an item opens its detail page in [the Library](library.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
 
 Long pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. The available actions vary depending on the type of item — for example, an album, audiobook, or podcast each offer different options.
 
