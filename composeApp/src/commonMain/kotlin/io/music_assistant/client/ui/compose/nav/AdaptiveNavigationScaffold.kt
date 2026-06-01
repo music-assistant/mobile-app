@@ -60,7 +60,7 @@ fun AdaptiveNavigationScaffold(
         Row {
             if (showNavBar && isExpandedScreen) {
                 NavigationRail(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     navigationItems.forEach {
                         NavigationRailItem(
