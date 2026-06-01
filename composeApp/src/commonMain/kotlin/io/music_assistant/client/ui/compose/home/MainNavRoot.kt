@@ -188,7 +188,7 @@ fun MainNavigationRoot(
                     collapsedBottomPadding = bottomPadding,
                     expanded = playerExpanded,
                     onExpand = onExpandPlayer,
-                    { expanded, contentPadding ->
+                    content = { expanded, contentPadding ->
                         PlayersPager(
                             playerPagerState = playerPagerState,
                             state = playersState,
