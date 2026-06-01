@@ -2,8 +2,6 @@
 
 You can use the app purely as a remote control for external players, with the local player disabled. Or you can configure it as a Sendspin client to play music directly through your device.
 
-The in-app Local Player is designed for personal, mobile listening — through your phone's speakers, headphones, or in-car systems like Apple CarPlay and Android Auto. It is not intended for home audio setups where the app would act as a source device feeding into DACs, amplifiers, or grouped speaker systems.
-
 ---
 
 ## Enabling the Local Player
@@ -23,6 +21,7 @@ Tap **Enable local player** to activate it. The section header will update to **
 ![Local Player Disabled - Setup](screenshots/local-sendspin-player-settings/local-player-disabled.jpeg)
 ![Local Player Codec Preference](screenshots/local-sendspin-player-settings/local-player-codec.jpeg)
 ![Local Player Enabled](screenshots/local-sendspin-player-settings/player-enabled.jpeg)
+
 ---
 
 ## Codec Preference
