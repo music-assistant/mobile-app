@@ -41,6 +41,14 @@ import org.jetbrains.compose.resources.StringResource
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+/**
+ * Intent to escalate an empty in-library quick search to the global Search tab.
+ *
+ * @param mediaType the referring library's type, used to pre-select the matching filter chip;
+ *   null (or a type with no chip, e.g. GENRE) searches all types.
+ */
+data class GlobalSearchRequest(val query: String, val mediaType: MediaType?)
+
 @OptIn(FlowPreview::class, ExperimentalAtomicApi::class)
 class SearchViewModel(
     private val apiClient: ServiceClient,
@@ -95,6 +103,26 @@ class SearchViewModel(
                 (change.item as? Track)?.let { updateSearchResultsIfNeeded(it) }
             }
         }
+    }
+
+    /**
+     * Escalation from an empty in-library quick search: pre-fill the query, pre-select the
+     * referring library's filter chip, and run the search.
+     */
+    fun applyGlobalSearch(request: GlobalSearchRequest) {
+        _state.update { state ->
+            state.copy(
+                searchState = state.searchState.copy(
+                    query = request.query,
+                    mediaTypes = state.searchState.mediaTypes.map { mediaTypeSelect ->
+                        // Select only the referring type; an unmatched/null type (e.g. GENRE,
+                        // which has no chip) leaves all unselected → search all types.
+                        mediaTypeSelect.copy(isSelected = mediaTypeSelect.type == request.mediaType)
+                    },
+                ),
+            )
+        }
+        searchTrigger.tryEmit(Unit)
     }
 
     fun onQueryChanged(query: String) {

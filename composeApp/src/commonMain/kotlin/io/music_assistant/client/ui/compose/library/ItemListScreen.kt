@@ -85,6 +85,7 @@ import musicassistantclient.composeapp.generated.resources.common_create
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.library_quick_search
+import musicassistantclient.composeapp.generated.resources.library_search_global
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
@@ -104,6 +105,7 @@ fun ItemListScreen(
     contentPadding: PaddingValues,
     actionsViewModel: ActionsViewModel,
     onNavigateClick: (AppMediaItem) -> Unit,
+    onGlobalSearch: (query: String) -> Unit,
     onBack: () -> Unit,
 ) {
     val toastState = rememberToastState()
@@ -140,6 +142,8 @@ fun ItemListScreen(
             showCreatePlaylistDialog = showCreatePlaylistDialog,
             toastState = toastState,
             onNavigateClick = onNavigateClick,
+            onGlobalSearch = onGlobalSearch,
+            searchQuery = state.searchQuery,
             onPlayClick = itemListViewModel::onPlayClick,
             onCreatePlaylistClick = { showCreatePlaylistDialog = true },
             onLoadMore = { itemListViewModel.loadMore() },
@@ -316,6 +320,8 @@ private fun ItemList(
     showCreatePlaylistDialog: Boolean,
     toastState: ToastState,
     onNavigateClick: (AppMediaItem) -> Unit,
+    onGlobalSearch: (query: String) -> Unit,
+    searchQuery: String,
     onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
     onCreatePlaylistClick: () -> Unit,
     onLoadMore: () -> Unit,
@@ -342,13 +348,13 @@ private fun ItemList(
                 when (val dataState = dataState) {
                     is DataState.Loading -> LoadingState()
                     is DataState.Error -> ErrorState()
-                    is DataState.NoData -> EmptyState()
+                    is DataState.NoData -> EmptyState(searchQuery, onGlobalSearch)
                     is DataState.Stale,
                     is DataState.Data,
                         -> {
                         val items = dataState.dataOrNull.orEmpty()
                         if (items.isEmpty()) {
-                            EmptyState()
+                            EmptyState(searchQuery, onGlobalSearch)
                         } else {
                             Column(modifier = Modifier.fillMaxSize()) {
                                 if (mediaType == MediaType.PLAYLIST) {
@@ -486,15 +492,34 @@ private fun ErrorState() {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(
+    searchQuery: String,
+    onGlobalSearch: (query: String) -> Unit,
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = stringResource(Res.string.library_empty),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.library_empty),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            // Offer escalation to global search only when an actual query yielded nothing.
+            if (searchQuery.isNotBlank()) {
+                OutlinedButton(onClick = { onGlobalSearch(searchQuery) }) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(Res.string.library_search_global))
+                }
+            }
+        }
     }
 }

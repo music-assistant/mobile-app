@@ -83,6 +83,8 @@ fun SearchScreen(
     onNavigateToItem: (String, MediaType, String) -> Unit,
     actionsViewModel: ActionsViewModel,
     contentPadding: PaddingValues,
+    pendingSearch: GlobalSearchRequest? = null,
+    onSearchConsumed: () -> Unit = {},
 ) {
     val state by searchViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
@@ -90,6 +92,15 @@ fun SearchScreen(
     LaunchedEffect(Unit) {
         actionsViewModel.toasts.collect { toast ->
             toastState.showToast(toast)
+        }
+    }
+
+    // Escalation from an empty in-library quick search (state hoisted in MainNavigationRoot,
+    // which outlives the per-NavEntry SearchViewModel). Apply once, then clear.
+    LaunchedEffect(pendingSearch) {
+        pendingSearch?.let {
+            searchViewModel.applyGlobalSearch(it)
+            onSearchConsumed()
         }
     }
 

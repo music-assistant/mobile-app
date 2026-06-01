@@ -94,6 +94,7 @@
   <string name="library_empty">No items found</string>
   <string name="library_error">Error loading data</string>
   <string name="library_quick_search">Quick search</string>
+  <string name="library_search_global">Search everywhere</string>
   <string name="media_type_albums">Albums</string>
   <string name="media_type_artists">Artists</string>
   <string name="media_type_audiobooks">Audiobooks</string>

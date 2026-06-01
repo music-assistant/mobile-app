@@ -65,6 +65,7 @@ import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
+import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.SessionState
@@ -261,6 +262,9 @@ private fun mainNavEntryProvider(
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
 ): (NavKey) -> NavEntry<NavKey> {
+    // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
+    // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
+    var pendingSearch by remember { mutableStateOf<GlobalSearchRequest?>(null) }
     return entryProvider {
         entry<MainNav.Landing> {
             HomeScreen(
@@ -323,6 +327,11 @@ private fun mainNavEntryProvider(
                 contentPadding = contentPadding,
                 actionsViewModel = actionsViewModel,
                 onBack = { multiBackStack.removeLastOrNull() },
+                onGlobalSearch = { query ->
+                    pendingSearch = GlobalSearchRequest(query, it.mediaType)
+                    multiBackStack.currentBackStack = 2
+                    multiBackStack.resetCurrentBackStack()
+                },
                 onNavigateClick = { item ->
                     when (item) {
                         is Artist,
@@ -385,6 +394,8 @@ private fun mainNavEntryProvider(
                 },
                 contentPadding = contentPadding,
                 actionsViewModel = actionsViewModel,
+                pendingSearch = pendingSearch,
+                onSearchConsumed = { pendingSearch = null },
             )
         }
     }
