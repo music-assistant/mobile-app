@@ -21,7 +21,7 @@ Changes apply immediately and are saved per device.
 
 Tapping an item opens its detail page in [the Library](library.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
 
-Long pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. The available actions vary depending on the type of item — for example, an album, audiobook, or podcast each offer different options.
+Long-pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
 
 ## Section Links
 
