@@ -46,6 +46,9 @@ class AuthenticationManager(
     // OAuthHandler will be set by platform (e.g., MainActivity on Android)
     var oauthHandler: OAuthHandler? = null
 
+    // True while an OAuth browser is open and we're awaiting its deep-link callback.
+    private var awaitingOAuthCallback = false
+
     // Flag to prevent auto-login during intentional logout - using StateFlow for proper synchronization
     private val _isLoggingOut = MutableStateFlow(false)
     private val isLoggingOut: Boolean
@@ -138,6 +141,19 @@ class AuthenticationManager(
                 }
             }
         }
+
+        // Recover from an abandoned OAuth flow: if the user backs out of the
+        // external browser, no callback arrives and authState is stuck on
+        // Loading.
+        scope.launch {
+            serviceClient.foregroundEvents.collect {
+                if (awaitingOAuthCallback && _authState.value is AuthState.Loading) {
+                    awaitingOAuthCallback = false
+                    log.i { "OAuth flow abandoned (foregrounded without callback)" }
+                    _authState.value = AuthState.Idle
+                }
+            }
+        }
     }
 
     override suspend fun getProviders(): Result<List<AuthProvider>> {
@@ -225,8 +241,10 @@ class AuthenticationManager(
             // Launch OAuth URL in Chrome Custom Tab
             // Token will be delivered via deep link callback to MainActivity
             handler.openOAuthUrl(oauthUrl)
+            awaitingOAuthCallback = true
             Result.success(Unit)
         } catch (e: Exception) {
+            awaitingOAuthCallback = false
             val error = e.message ?: "OAuth flow failed"
             _authState.value = AuthState.Error(error)
             Result.failure(e)
@@ -235,6 +253,9 @@ class AuthenticationManager(
 
     fun handleOAuthCallback(token: String) {
         Logger.d("OAuth callback received")
+        // Clear synchronously (before the launch) so the foreground collector,
+        // which fires after this on the success path, sees no pending flow.
+        awaitingOAuthCallback = false
         _isLoggingOut.value = false
         scope.launch {
             _authState.value = AuthState.Loading

@@ -77,8 +77,7 @@ class AuthenticationViewModel(
             !is DataConnectionState.AwaitingAuth -> null
             else -> when {
                 dcs.authProcessState is AuthProcessState.Failed -> null
-                state is SessionState.Connected.WebRTC -> ProvidersSource.Builtin
-                else -> ProvidersSource.FromApi
+                else -> ProvidersSource.FromApi(state.connectionKey())
             }
         }
         else -> null
@@ -90,30 +89,32 @@ class AuthenticationViewModel(
      * we should try again even when the auto-path would have suppressed.
      */
     private fun retrySource(state: SessionState): ProvidersSource? = when (state) {
-        is SessionState.Connected.WebRTC -> ProvidersSource.Builtin
-        is SessionState.Connected -> ProvidersSource.FromApi
+        is SessionState.Connected -> ProvidersSource.FromApi(state.connectionKey())
         else -> null
+    }
+
+    private fun SessionState.Connected.connectionKey(): String = when (this) {
+        is SessionState.Connected.Direct ->
+            "direct:${connectionInfo.host}:${connectionInfo.port}:${connectionInfo.isTls}"
+        is SessionState.Connected.WebRTC -> "webrtc:${remoteId.rawId}"
     }
 
     private fun loadFlow(source: ProvidersSource) = when (source) {
         ProvidersSource.Empty -> flowOf(emptyList())
-        ProvidersSource.Builtin -> flowOf(listOf(BUILTIN_PROVIDER))
-        ProvidersSource.FromApi -> flow {
+        is ProvidersSource.FromApi -> flow {
             auth.getProviders()
                 .onSuccess { emit(it) }
                 .onFailure { log.e(it) { "Failed to load providers" } }
         }
     }
 
-    private enum class ProvidersSource { Empty, Builtin, FromApi }
+    private sealed interface ProvidersSource {
+        data object Empty : ProvidersSource
+        data class FromApi(val connectionKey: String) : ProvidersSource
+    }
 
     private companion object {
         private val log = Logger.withTag("AuthVM")
         private const val OAUTH_RETURN_URL = "musicassistant://auth/callback"
-        private val BUILTIN_PROVIDER = AuthProvider(
-            id = "builtin",
-            type = "builtin",
-            requiresRedirect = false,
-        )
     }
 }

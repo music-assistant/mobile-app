@@ -91,16 +91,18 @@ class AuthenticationViewModelTest {
     }
 
     @Test
-    fun `transition to WebRTC AwaitingAuth emits the synthetic builtin provider without an API call`() = runTest {
+    fun `transition to WebRTC AwaitingAuth fetches providers from API`() = runTest {
+        auth.providersResult = Result.success(REMOTE_PROVIDERS)
+
         viewModel().providers.test {
             assertEquals(emptyList(), awaitItem())
 
             sessionState.value = connectedWebRTC(AuthProcessState.NotStarted)
 
-            assertEquals(listOf(BUILTIN_PROVIDER_FIXTURE), awaitItem())
+            assertEquals(REMOTE_PROVIDERS, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(0, auth.getProvidersCalls, "WebRTC must not hit the API; builtin is synthetic")
+        assertEquals(1, auth.getProvidersCalls)
     }
 
     @Test
@@ -199,7 +201,7 @@ class AuthenticationViewModelTest {
     }
 
     @Test
-    fun `connection-type switch from Direct to WebRTC cancels the API fetch and emits the builtin provider`() = runTest {
+    fun `connection-type switch from Direct to WebRTC cancels the in-flight fetch and refetches for the new connection`() = runTest {
         val gate = CompletableDeferred<Unit>()
         auth.providersGate = gate
         auth.providersResult = Result.success(REMOTE_PROVIDERS)
@@ -211,13 +213,17 @@ class AuthenticationViewModelTest {
             expectNoEvents()
             assertEquals(1, auth.getProvidersCalls)
 
-            // Switch connection type mid-fetch. The pending Direct fetch must
-            // be cancelled and the WebRTC builtin emitted instead.
+            // Switch connection type mid-fetch. The connection key changes, so
+            // the gated Direct fetch is cancelled and a fresh fetch starts for
+            // WebRTC (also gated) — distinctUntilChanged must NOT collapse it.
             sessionState.value = connectedWebRTC(AuthProcessState.NotStarted)
-            assertEquals(listOf(BUILTIN_PROVIDER_FIXTURE), awaitItem())
+            expectNoEvents()
+            assertEquals(2, auth.getProvidersCalls)
 
-            // Releasing the (cancelled) gate must not leak REMOTE_PROVIDERS.
+            // Releasing the gate: the cancelled Direct fetch must not leak;
+            // only the WebRTC fetch emits, exactly once.
             gate.complete(Unit)
+            assertEquals(REMOTE_PROVIDERS, awaitItem())
             expectNoEvents()
 
             cancelAndIgnoreRemainingEvents()
