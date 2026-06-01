@@ -27,6 +27,8 @@ Tapping an item opens its [item details page](item-details.md). For single items
 
 Long-pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
 
+![Context Menu](screenshots/home/context-menu.jpeg)
+
 ## Section Links
 
 Some sections include a shortcut to the corresponding child [library](library.md). For example, tapping **All Albums** navigates to **Library › Albums**.
