@@ -292,32 +292,32 @@ private data class PlayerBuildInputs(
                 PlayerBuildInputs(players, queues, localData, favOverrides)
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
-                .collect { (playersState, queues, localData, favOverrides) ->
+                .collect { input ->
                     _playersData.update { oldValues ->
-                        when (playersState) {
+                        when (input.players) {
                             is DataState.Error -> DataState.Error()
                             is DataState.Loading -> DataState.Loading()
                             is DataState.NoData -> DataState.NoData()
                             is DataState.Data -> DataState.Data(
                                 buildPlayerDataList(
-                                    playersState.data,
-                                    queues,
-                                    localData,
-                                    favOverrides,
+                                    input.players.data,
+                                    input.queues,
+                                    input.localData,
+                                    input.favoriteOverrides,
                                     oldValues,
                                 ),
                             )
 
                             is DataState.Stale -> DataState.Stale(
                                 data = buildPlayerDataList(
-                                    playersState.data,
-                                    queues,
-                                    localData,
-                                    favOverrides,
+                                    input.players.data,
+                                    input.queues,
+                                    input.localData,
+                                    input.favoriteOverrides,
                                     oldValues,
                                 ),
-                                disconnectedAt = playersState.disconnectedAt,
-                                reason = playersState.reason,
+                                disconnectedAt = input.players.disconnectedAt,
+                                reason = input.players.reason,
                             )
                         }
                     }
