@@ -17,8 +17,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -58,9 +62,11 @@ import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.inactive
+import io.music_assistant.client.ui.theme.favoriteTint
 import io.music_assistant.client.utils.formatDuration
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.players_nothing
 import musicassistantclient.composeapp.generated.resources.queue_cannot_play
@@ -212,7 +218,7 @@ fun FullPlayerItem(
     item: PlayerData,
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    @Suppress("UnusedParameter") onFavoriteClick: (AppMediaItem) -> Unit, // FIXME inconsistent stuff happening
+    onFavoriteClick: (AppMediaItem) -> Unit,
     livePositionFlow: Flow<Double>?,
 ) {
     val currentMedia = item.player.currentMedia
@@ -256,43 +262,62 @@ fun FullPlayerItem(
             )
         }
 
-        // Track info
+        // Track info — favorite flag lives on the queue's current Track, not on
+        // the lightweight `currentMedia`, so the heart reads from there.
         val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clearAndSetSemantics {
-                    contentDescription = trackContentDescription
-                },
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
-                text = trackName,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (item.queueInfo?.currentItem?.isPlayable == false) {
-                Text(
-                    text = stringResource(Res.string.queue_cannot_play),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else {
-                Text(
-                    modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
-                    text = currentMedia?.subtitle ?: "", // TODO take from currentItem?
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
+        val currentTrack = item.queueInfo?.currentItem?.track as? AppMediaItem
+        CenteredThreeSlotRow(
+            modifier = Modifier.fillMaxWidth(),
+            start = {},
+            center = {
+                Column(
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = trackContentDescription
+                    },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                        text = trackName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (item.queueInfo?.currentItem?.isPlayable == false) {
+                        Text(
+                            text = stringResource(Res.string.queue_cannot_play),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else {
+                        Text(
+                            modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                            text = currentMedia?.subtitle ?: "", // TODO take from currentItem?
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            },
+            end = {
+                val isFavorite = currentTrack?.favorite == true
+                IconButton(
+                    onClick = { currentTrack?.let(onFavoriteClick) },
+                    enabled = currentTrack != null,
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = stringResource(Res.string.cd_favorite),
+                        tint = if (isFavorite) favoriteTint else colors.controlTint,
+                    )
+                }
+            },
+        )
 
         val duration = currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
 

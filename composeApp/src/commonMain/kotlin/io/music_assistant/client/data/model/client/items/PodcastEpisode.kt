@@ -30,4 +30,5 @@ data class PodcastEpisode(
     override val subtitle = releaseDate?.let(::formatIsoDate)
     override val parentName: String? = podcast?.displayName
     override val defaultIcon = Icons.Default.Podcasts
+    override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
 }

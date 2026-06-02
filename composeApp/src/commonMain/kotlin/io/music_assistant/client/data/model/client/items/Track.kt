@@ -32,4 +32,5 @@ data class Track(
     override val subtitle = artists.joinToString(separator = ", ") { it.displayName }
     override val parentName: String? = album?.displayName
     override val defaultIcon = TrackIcon
+    override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
 }

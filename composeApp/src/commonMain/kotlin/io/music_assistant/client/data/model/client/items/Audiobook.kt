@@ -31,4 +31,5 @@ data class Audiobook(
         authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
     override val parentName: String? = authors?.firstOrNull()
     override val defaultIcon = BookAudioIcon
+    override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
 }

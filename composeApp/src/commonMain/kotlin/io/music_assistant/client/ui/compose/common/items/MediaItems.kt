@@ -70,6 +70,7 @@ import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
+import io.music_assistant.client.ui.theme.favoriteTint
 import io.music_assistant.client.utils.gridItemMinSize
 import io.music_assistant.client.utils.rowImageSize
 import musicassistantclient.composeapp.generated.resources.Res
@@ -845,7 +846,7 @@ fun BoxScope.Badges(
             modifier = bottomEnd,
             imageVector = Icons.Filled.Favorite,
             contentDescription = stringResource(Res.string.cd_favorite),
-            tint = Color(0xFFEF7BC4),
+            tint = favoriteTint,
         )
     } else {
         providerIconFetcher?.invoke(

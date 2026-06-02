@@ -98,6 +98,14 @@ class MainDataSource(
 ) : CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
+/** Combined inputs for a [MainDataSource] player-data rebuild. */
+private data class PlayerBuildInputs(
+    val players: DataState<List<Player>>,
+    val queues: List<QueueInfo>,
+    val localData: PlayerData?,
+    val favoriteOverrides: Map<String, Boolean>,
+)
+
     private var sendspinClient: SendspinClient? = null
     private var sendspinMonitorJobs = mutableListOf<Job>()
     private var sendspinRetryCount = 0
@@ -112,6 +120,16 @@ class MainDataSource(
     private val _serverPlayers = MutableStateFlow<DataState<List<Player>>>(DataState.Loading())
     private val _queueInfos = MutableStateFlow<List<QueueInfo>>(emptyList())
     private val _providersIcons = MutableStateFlow<Map<String, ProviderIconModel>>(emptyMap())
+
+    /**
+     * Authoritative favorite state per track, keyed by [favKey]. The server's
+     * queue payload reports a stale `favorite` for the now-playing track (it
+     * lags behind, indefinitely, after a toggle), so it cannot be trusted.
+     * This overlay is written optimistically on user toggle and reconciled by
+     * the reliable [MediaItemUpdatedEvent], then re-applied on every rebuild in
+     * [buildPlayerDataList] so queue updates can't clobber it.
+     */
+    private val _favoriteOverrides = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
     /**
      * Single source of truth for live elapsed-time per queue. Server events
@@ -269,9 +287,12 @@ class MainDataSource(
                 _players,
                 _queueInfos,
                 localPlayerRepository.localPlayerData,
-            ) { players, queues, localData -> Triple(players, queues, localData) }
+                _favoriteOverrides,
+            ) { players, queues, localData, favOverrides ->
+                PlayerBuildInputs(players, queues, localData, favOverrides)
+            }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
-                .collect { (playersState, queues, localData) ->
+                .collect { (playersState, queues, localData, favOverrides) ->
                     _playersData.update { oldValues ->
                         when (playersState) {
                             is DataState.Error -> DataState.Error()
@@ -282,6 +303,7 @@ class MainDataSource(
                                     playersState.data,
                                     queues,
                                     localData,
+                                    favOverrides,
                                     oldValues,
                                 ),
                             )
@@ -291,6 +313,7 @@ class MainDataSource(
                                     playersState.data,
                                     queues,
                                     localData,
+                                    favOverrides,
                                     oldValues,
                                 ),
                                 disconnectedAt = playersState.disconnectedAt,
@@ -741,6 +764,7 @@ class MainDataSource(
         allPlayers: List<Player>,
         queues: List<QueueInfo>,
         localData: PlayerData?,
+        favoriteOverrides: Map<String, Boolean>,
         oldValues: DataState<List<PlayerData>>,
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinClientId.value
@@ -801,11 +825,54 @@ class MainDataSource(
             }
 
         // Inject synthetic local player if not in server list
-        return if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
+        val withLocal = if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
             listOf(localData) + playerDataList
         } else {
             playerDataList
         }
+        // Re-apply favorite overrides last so the stale queue payload can't win.
+        return if (favoriteOverrides.isEmpty()) {
+            withLocal
+        } else {
+            withLocal.map { applyFavoriteOverride(it, favoriteOverrides) }
+        }
+    }
+
+    /** Stable per-track key for [_favoriteOverrides]. */
+    private fun favKey(item: AppMediaItem): String =
+        item.uri ?: "${item.provider}:${item.itemId}"
+
+    /**
+     * Optimistically set (or clear, when [favorite] is null) the favorite flag
+     * for [item] in [_favoriteOverrides]. Triggers a [_playersData] rebuild via
+     * the combine so the now-playing heart updates immediately.
+     */
+    fun setFavoriteOverride(item: AppMediaItem, favorite: Boolean?) {
+        _favoriteOverrides.update { current ->
+            if (favorite == null) current - favKey(item) else current + (favKey(item) to favorite)
+        }
+    }
+
+    /** Overrides the now-playing track's favorite flag from [overrides]. */
+    private fun applyFavoriteOverride(
+        playerData: PlayerData,
+        overrides: Map<String, Boolean>,
+    ): PlayerData {
+        val queueData = playerData.queue as? DataState.Data ?: return playerData
+        val currentItem = queueData.data.info.currentItem ?: return playerData
+        val track = currentItem.track
+        val item = track as? AppMediaItem ?: return playerData
+        val override = overrides[favKey(item)] ?: return playerData
+        if (track.favorite == override) return playerData
+        return playerData.copy(
+            queue = DataState.Data(
+                queueData.data.copy(
+                    info = queueData.data.info.copy(
+                        currentItem = currentItem.copy(track = track.withFavorite(override)),
+                    ),
+                ),
+            ),
+        )
     }
 
     /**
@@ -1514,6 +1581,7 @@ class MainDataSource(
                         is QueueItemsUpdatedEvent -> {
                             val data =
                                 queueFactory.create(event.data).takeIfNotStale("QueueItemsUpdated") ?: return@collect
+
                             _queueInfos.update { value ->
                                 value.map {
                                     if (it.id == data.id) data else it
@@ -1559,7 +1627,12 @@ class MainDataSource(
 
                         is MediaItemUpdatedEvent -> {
                             (mediaItemFactory.create(event.data) as? Track)
-                                ?.let { updateMediaTrackInfo(it) }
+                                ?.let {
+                                    // Reliable server truth — reconcile the optimistic
+                                    // overlay so it survives the stale queue payload.
+                                    it.favorite?.let { fav -> setFavoriteOverride(it, fav) }
+                                    updateMediaTrackInfo(it)
+                                }
                         }
 
                         is MediaItemAddedEvent -> {

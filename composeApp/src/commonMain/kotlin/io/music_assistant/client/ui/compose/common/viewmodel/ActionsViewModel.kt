@@ -59,15 +59,22 @@ class ActionsViewModel(
      */
     override fun onFavoriteClick(item: AppMediaItem) {
         viewModelScope.launch {
-            if (item.favorite != true) {
-                item.uri?.let {
-                    apiClient.sendRequest(Request.Library.addFavorite(it))
-                }
+            val newFavorite = item.favorite != true
+            // Optimistic: the server's queue payload reports a stale `favorite`
+            // for the now-playing track and clobbers the confirmed value, so the
+            // UI is driven from this override until MediaItemUpdatedEvent reconciles.
+            val result = if (newFavorite) {
+                val uri = item.uri ?: return@launch
+                dataSource.setFavoriteOverride(item, true)
+                apiClient.sendRequest(Request.Library.addFavorite(uri))
             } else {
+                dataSource.setFavoriteOverride(item, false)
                 apiClient.sendRequest(
                     Request.Library.removeFavorite(item.itemId, item.mediaType),
                 )
             }
+            // Roll back to the pre-toggle value if the server rejected it.
+            result.onFailure { dataSource.setFavoriteOverride(item, item.favorite) }
         }
     }
 

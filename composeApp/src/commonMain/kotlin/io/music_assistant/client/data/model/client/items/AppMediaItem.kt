@@ -25,6 +25,9 @@ interface PlayableItem {
     val longId: Long
         get() = itemId.hashCode().toLong()
     val canStartRadio: Boolean
+
+    /** Returns a copy of this item with its [favorite] flag set to [favorite]. */
+    fun withFavorite(favorite: Boolean?): PlayableItem
 }
 
 sealed class AppMediaItem {

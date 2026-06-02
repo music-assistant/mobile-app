@@ -23,4 +23,5 @@ data class RadioStation(
     override val duration: Double? = null
     override val parentName: String? = null
     override val defaultIcon = RadioIcon
+    override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
 }

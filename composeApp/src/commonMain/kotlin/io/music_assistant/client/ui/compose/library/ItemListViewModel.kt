@@ -12,6 +12,7 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.ViewMode
@@ -55,7 +56,39 @@ class ItemListViewModel(
                 _state.update { it.copy(viewMode = mode) }
             }
         }
+
+        // Reflect server-confirmed favorite changes on an already-open list, so
+        // a toggle from any surface (player, context menu, another client)
+        // updates the matching row without a refetch.
+        viewModelScope.launch {
+            mediaItemRepository.itemChanges.collect { change ->
+                if (change is MediaItemChange.Updated) patchFavorite(change.item)
+            }
+        }
     }
+
+    private fun patchFavorite(updated: AppMediaItem) {
+        if (updated.mediaType != mediaType) return
+        _state.update { st ->
+            val data = st.dataState as? DataState.Data ?: return@update st
+            val match = { item: AppMediaItem -> item.matchesIdentityOf(updated) }
+            if (data.data.none(match)) return@update st
+            val patched = if (st.onlyFavorites && updated.favorite != true) {
+                // Dropped from the favorites filter; it would be gone on refetch.
+                data.data.filterNot(match)
+            } else {
+                data.data.map { if (match(it)) updated else it }
+            }
+            st.copy(dataState = DataState.Data(patched))
+        }
+    }
+
+    // A favorited non-library item returns from the server re-keyed under the
+    // `library` provider with a new itemId, so fall back to provider-mapping
+    // identity — the convention the other `itemChanges` consumers use.
+    private fun AppMediaItem.matchesIdentityOf(other: AppMediaItem): Boolean =
+        (mediaType == other.mediaType && provider == other.provider && itemId == other.itemId) ||
+            hasAnyMappingFrom(other)
 
     fun toggleViewMode() {
         val current = settingsRepository.viewMode(mediaType).value
