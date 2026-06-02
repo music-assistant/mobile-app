@@ -12,6 +12,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -21,12 +24,14 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 
+typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean) -> Unit
+
 @Composable
 fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
     isAlbumView: Boolean = false,
-    onPlayOption: ((Track, QueueOption, Boolean) -> Unit),
+    onPlayOption: PlayHandler<Track>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
@@ -69,7 +74,7 @@ fun TrackWithMenu(
 fun PodcastEpisodeWithMenu(
     item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: ((PodcastEpisode, QueueOption, Boolean) -> Unit),
+    onPlayOption: PlayHandler<PodcastEpisode>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
@@ -113,7 +118,7 @@ fun PodcastEpisodeWithMenu(
 fun RadioWithMenu(
     item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: ((RadioStation, QueueOption, Boolean) -> Unit),
+    onPlayOption: PlayHandler<RadioStation>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
@@ -158,7 +163,7 @@ fun RadioWithMenu(
 private fun <T> PlayableItemWithMenu(
     modifier: Modifier = Modifier,
     item: T,
-    onPlayOption: ((T, QueueOption, Boolean) -> Unit),
+    onPlayOption: PlayHandler<T>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
@@ -205,6 +210,9 @@ private fun <T> PlayableItemWithMenu(
             { expandedItemId = item.itemId },
         )
         DropdownMenu(
+            modifier = Modifier.semantics {
+                role = Role.DropdownList
+            },
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
@@ -216,10 +224,12 @@ private fun <T> PlayableItemWithMenu(
                     -> runPlayAction(action)
                     ItemAction.AddToLibrary,
                     ItemAction.RemoveFromLibrary,
-                    -> libraryActions.onLibraryClick(item)
+                        -> libraryActions.onLibraryClick(item)
+
                     ItemAction.Favorite,
                     ItemAction.Unfavorite,
-                    -> libraryActions.onFavoriteClick(item)
+                        -> libraryActions.onFavoriteClick(item)
+
                     ItemAction.AddToPlaylist -> showPlaylistDialog = true
                     ItemAction.RemoveFromPlaylist -> onRemoveFromPlaylist?.invoke()
                     ItemAction.MarkPlayed -> progressActions?.onMarkPlayed(item)

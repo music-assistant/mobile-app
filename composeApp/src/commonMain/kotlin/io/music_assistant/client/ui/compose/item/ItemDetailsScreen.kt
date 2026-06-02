@@ -72,6 +72,7 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
@@ -158,9 +159,9 @@ fun ItemDetails(
     onMarkUnplayed: (AppMediaItem) -> Unit = {},
     onRemoveFromPlaylist: (String, Int) -> Unit = { _, _ -> },
     providerIconFetcher: @Composable (Modifier, String) -> Unit = { _, _ -> },
-    onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
+    onPlayClick: (QueueOption, Boolean, AppMediaItem?) -> Unit = { _, _, _ -> },
     onChapterClick: (Int) -> Unit = {},
-    onChildPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit = { _, _, _ -> },
+    onChildPlayClick: PlayHandler<AppMediaItem> = { _, _, _ -> },
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
 ) {
@@ -273,8 +274,8 @@ private fun ItemChildren(
     toastState: ToastState,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayItemClick: (QueueOption, Boolean) -> Unit,
-    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayItemClick: (QueueOption, Boolean, AppMediaItem?) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
     onChapterClick: (Int) -> Unit,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions? = null,
@@ -308,7 +309,9 @@ private fun ItemChildren(
                     state = state,
                     viewModeProvider = viewModeProvider,
                     onNavigateClick = onNavigateClick,
-                    onPlayItemClick = onPlayItemClick,
+                    onPlayItemClick = { queueOption, radio ->
+                        onPlayItemClick(queueOption, radio, null)
+                    },
                     onPlayChildClick = onPlayChildClick,
                     onChapterClick = onChapterClick,
                     playlistActions = playlistActions,
@@ -342,7 +345,7 @@ private fun ItemContent(
     state: ItemDetailsViewModel.State,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayItemClick: (QueueOption, Boolean) -> Unit,
-    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
     onChapterClick: (Int) -> Unit,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions?,
@@ -508,7 +511,7 @@ private fun TabContent(
     state: ItemDetailsViewModel.State,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
     onChapterClick: (Int) -> Unit,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions?,
@@ -586,7 +589,7 @@ private fun AlbumsTabContent(
     albumsState: DataState<List<Album>>,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
@@ -643,7 +646,7 @@ private fun ArtistsTabContent(
     artistsState: DataState<List<Artist>>,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
     libraryActions: LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
     contentPadding: PaddingValues,
@@ -698,7 +701,7 @@ private fun PlayablesTabContent(
     playableItemsState: DataState<List<PlayableItem>>,
     parentItem: AppMediaItem,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
-    onPlayChildClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions?,
     onRemoveFromPlaylist: (String, Int) -> Unit,

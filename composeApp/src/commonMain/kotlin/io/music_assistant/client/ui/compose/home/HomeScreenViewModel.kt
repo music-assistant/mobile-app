@@ -192,7 +192,11 @@ class HomeScreenViewModel(
         _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
     }
 
-    fun onPlayClick(item: AppMediaItem, option: QueueOption, radio: Boolean) {
+    fun onPlayClick(
+        item: AppMediaItem,
+        option: QueueOption,
+        radio: Boolean,
+    ) {
         dataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
             item.mediaUri?.let { mediaUri ->
                 viewModelScope.launch {

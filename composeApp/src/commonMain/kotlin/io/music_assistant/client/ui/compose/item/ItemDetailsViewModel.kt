@@ -377,22 +377,34 @@ class ItemDetailsViewModel(
         }
     }
 
-    fun onPlayClick(option: QueueOption, radio: Boolean) {
+    fun onPlayClick(option: QueueOption, radio: Boolean, startItem: AppMediaItem? = null) {
         (_state.value.itemState as? DataState.Data)?.data?.let {
-            onPlayClick(it, option, radio)
+            onPlayClick(it, option, radio, startItem)
         }
     }
 
-    fun onPlayClick(track: AppMediaItem, option: QueueOption, radio: Boolean) {
+    fun onPlayClick(
+        item: AppMediaItem,
+        option: QueueOption,
+        radio: Boolean,
+        parent: AppMediaItem? = null,
+    ) {
+        val (itemToPlay, startItem) = if (parent != null) {
+            Pair(parent, item)
+        } else {
+            Pair(item, null)
+        }
+
         viewModelScope.launch {
-            val mediaUri = track.mediaUri ?: return@launch
+            val mediaUri = itemToPlay.mediaUri ?: return@launch
             mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
                 apiClient.sendRequest(
                     Request.Library.play(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && track !is Genre,
+                        radioMode = radio && item !is Genre,
+                        startItem = startItem?.itemId,
                     ),
                 )
             }

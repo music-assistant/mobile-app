@@ -155,7 +155,11 @@ class SearchViewModel(
         searchTrigger.tryEmit(Unit)
     }
 
-    fun onPlayClick(track: AppMediaItem, option: QueueOption, radio: Boolean) {
+    fun onPlayClick(
+        track: AppMediaItem,
+        option: QueueOption,
+        radio: Boolean,
+    ) {
         viewModelScope.launch {
             mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
                 track.mediaUri?.let { mediaUri ->

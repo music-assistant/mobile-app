@@ -591,6 +591,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             )
         }
     }
+
+    fun getQueueForPlayer(player: ServerPlayer): List<ServerMediaItem> {
+        return queueItems[player.activeSource]!!.map { it.mediaItem!! }
+    }
 }
 
 private fun answer(request: Request, result: JsonElement): Answer {

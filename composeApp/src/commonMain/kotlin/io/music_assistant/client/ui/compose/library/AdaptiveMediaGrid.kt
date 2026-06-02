@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -38,6 +37,7 @@ import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
@@ -56,7 +56,7 @@ fun AdaptiveMediaGrid(
     hasMore: Boolean = true,
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayClick: ((AppMediaItem, QueueOption, Boolean) -> Unit),
+    onPlayClick: PlayHandler<AppMediaItem>,
     onLoadMore: () -> Unit = {},
     gridState: LazyGridState = rememberLazyGridState(),
     playlistActions: PlaylistActions,

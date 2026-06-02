@@ -25,3 +25,7 @@ fun isTab(text: String): SemanticsMatcher {
 fun withinTag(testTag: String): SemanticsMatcher {
     return hasAnyAncestor(hasTestTag(testTag))
 }
+
+fun withinDropdown(): SemanticsMatcher {
+    return hasAnyAncestor(hasRole(Role.DropdownList))
+}

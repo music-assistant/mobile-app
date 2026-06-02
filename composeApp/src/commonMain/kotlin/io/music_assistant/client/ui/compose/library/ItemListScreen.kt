@@ -57,7 +57,6 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -68,6 +67,7 @@ import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
@@ -322,7 +322,7 @@ private fun ItemList(
     onNavigateClick: (AppMediaItem) -> Unit,
     onGlobalSearch: (query: String) -> Unit,
     searchQuery: String,
-    onPlayClick: (AppMediaItem, QueueOption, Boolean) -> Unit,
+    onPlayClick: PlayHandler<AppMediaItem>,
     onCreatePlaylistClick: () -> Unit,
     onLoadMore: () -> Unit,
     onDismissCreatePlaylistDialog: () -> Unit,
