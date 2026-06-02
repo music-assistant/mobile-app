@@ -25,7 +25,7 @@ data class ServerMediaItem(
     @SerialName("sort_name") val sortName: String? = null,
     @SerialName("uri") val uri: String? = null,
     @SerialName("image") val image: ServerMediaItemImage? = null,
-    // @SerialName("is_playable") val isPlayable: Boolean? = null,
+    @SerialName("is_playable") val isPlayable: Boolean? = null,
     // @SerialName("timestamp_added") val timestampAdded: Long? = null,
     // @SerialName("timestamp_modified") val timestampModified: Long? = null,
     // various subtypes

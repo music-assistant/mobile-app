@@ -19,6 +19,7 @@ data class Audiobook(
     override val uri: String?,
     override val images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
+    override val isPlayable: Boolean,
     val authors: List<String>?,
     val narrators: List<String>?,
     val chapters: List<Chapter>?,

@@ -66,6 +66,7 @@ object AppMediaItemFixtures {
             uri = null,
             images = emptyMap(),
             duration = 210.0,
+            isPlayable =  true,
             artists = artists,
             album = album,
             discNumber = null,
@@ -133,6 +134,7 @@ object AppMediaItemFixtures {
                 fullyPlayed = null,
                 resumePositionMs = null,
                 version = null,
+                isPlayable = true,
             )
         }
     }
@@ -151,6 +153,7 @@ object AppMediaItemFixtures {
             uri = null,
             images = emptyMap(),
             duration = null,
+            isPlayable = true,
             authors = null,
             narrators = null,
             chapters = chapters(chapters),

@@ -18,6 +18,7 @@ data class RadioStation(
     override val uri: String?,
     override val images: Map<ImageType, ImageInfo>,
     override val version: String?,
+    override val isPlayable: Boolean,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.RADIO
     override val duration: Double? = null

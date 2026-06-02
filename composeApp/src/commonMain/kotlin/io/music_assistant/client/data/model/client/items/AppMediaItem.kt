@@ -26,6 +26,8 @@ interface PlayableItem {
         get() = itemId.hashCode().toLong()
     val canStartRadio: Boolean
 
+    val isPlayable: Boolean
+
     /** Returns a copy of this item with its [favorite] flag set to [favorite]. */
     fun withFavorite(favorite: Boolean?): PlayableItem
 }
@@ -42,6 +44,8 @@ sealed class AppMediaItem {
     abstract val uri: String?
     abstract val images: Map<ImageType, ImageInfo>
     open val canStartRadio: Boolean get() = false
+
+    open val isPlayable: Boolean get() = true
 
     open val displayName: String get() = name
     open val subtitle: String? get() = null

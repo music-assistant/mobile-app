@@ -73,6 +73,7 @@ class MediaItemFactory(
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 duration = duration,
+                isPlayable = isPlayable == true,
                 artists = artists?.mapNotNull { create(it) as? Artist } ?: emptyList(),
                 album = album?.let { create(it) as? Album },
                 discNumber = discNumber,
@@ -127,6 +128,7 @@ class MediaItemFactory(
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 duration = duration,
+                isPlayable = isPlayable == true,
                 podcast = podcast?.let { create(it) as? Podcast },
                 fullyPlayed = fullyPlayed,
                 resumePositionMs = resumePositionMs,
@@ -145,6 +147,7 @@ class MediaItemFactory(
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 version = version,
+                isPlayable = isPlayable == true,
             )
 
             MediaType.AUDIOBOOK -> Audiobook(
@@ -158,6 +161,7 @@ class MediaItemFactory(
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 duration = duration,
+                isPlayable = isPlayable == true,
                 authors = authors,
                 narrators = narrators,
                 chapters = metadata?.chapters?.map(::createChapter),

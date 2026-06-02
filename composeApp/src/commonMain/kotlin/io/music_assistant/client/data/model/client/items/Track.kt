@@ -18,6 +18,7 @@ data class Track(
     override val uri: String?,
     override val images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
+    override val isPlayable: Boolean,
     val artists: List<Artist>,
     val album: Album?,
     val discNumber: Int?,

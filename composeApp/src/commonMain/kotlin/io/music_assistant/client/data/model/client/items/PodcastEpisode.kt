@@ -20,6 +20,7 @@ data class PodcastEpisode(
     override val uri: String?,
     override val images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
+    override val isPlayable: Boolean,
     val podcast: Podcast?,
     val fullyPlayed: Boolean?,
     val resumePositionMs: Long?,
