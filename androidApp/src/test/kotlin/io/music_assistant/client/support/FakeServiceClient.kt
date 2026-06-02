@@ -276,15 +276,25 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
             APICommands.PLAYER_QUEUES_PLAY_MEDIA -> {
                 val mediaUri = ((request.args!!["media"] as JsonArray)[0] as JsonPrimitive).content
+                val startItemId = request.getArgOrNull("start_item")
                 val mediaTracks = items.find { it.uri == mediaUri }?.let { item ->
                     when (MediaType.fromServer(item.mediaType)) {
-                        MediaType.ALBUM -> tracks.filter { it.album == item }
+                        MediaType.ALBUM -> {
+                            val albumTracks = tracks.filter { it.album == item }
+                            val startIndex = if (startItemId != null) {
+                                tracks.indexOfFirst { it.itemId == startItemId }
+                            } else {
+                                0
+                            }
+
+                            albumTracks.drop(startIndex)
+                        }
                         MediaType.TRACK -> listOf(item)
                         else -> TODO()
                     }
                 } ?: emptyList()
 
-                val queueId = (request.args!!["queue_id"] as JsonPrimitive).content
+                val queueId = request.getArg("queue_id")
                 updateQueue(
                     queueId,
                     mediaTracks.map { ServerQueueItem(uniqueIdGenerator.nextInt().toString(), it) },
@@ -599,5 +609,9 @@ private inline fun <reified T> answer(request: Request, result: T): Answer {
 }
 
 private fun Request.getArg(arg: String): String {
-    return (args!![arg] as JsonPrimitive).content
+    return getArgOrNull(arg)!!
+}
+
+private fun Request.getArgOrNull(arg: String): String? {
+    return (args!![arg] as JsonPrimitive?)?.content
 }
