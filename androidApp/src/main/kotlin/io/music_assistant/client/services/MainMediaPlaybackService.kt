@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -13,81 +14,33 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
-import android.support.v4.media.session.MediaSessionCompat
 import android.widget.Toast
 import androidx.media.MediaBrowserServiceCompat
 import co.touchlab.kermit.Logger
-import coil3.ImageLoader
-import coil3.SingletonImageLoader
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
-import kotlin.math.max
 
-@OptIn(FlowPreview::class)
 class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val logger = Logger.withTag("MainMediaPlaybackService")
 
     private lateinit var mediaNotificationManager: MediaNotificationManager
-    private val imageLoader: ImageLoader by lazy { SingletonImageLoader.get(this) }
     private lateinit var audioManager: AudioManager
     private var wifiLock: WifiManager.WifiLock? = null
     private var fullyInitialized = false
 
     private val dataSource: MainDataSource by inject()
     private val sharedSession: SharedMediaSessionManager by inject()
-
-    // Note: Sendspin is managed by MainDataSource (singleton, shared across app)
-    private val players = dataSource.playersData
-        .mapNotNull { (it as? DataState.Data)?.data }
-        .map { list -> list.filter { it.player.canPlay && it.queueInfo?.currentItem != null } }
-        .stateIn(scope, SharingStarted.Eagerly, emptyList())
-    private val activePlayerIndex = MutableStateFlow(-1)
-    private val currentPlayerData =
-        combine(players, activePlayerIndex) { players, index ->
-            // if some player is playing, and we still have no valid index, show playing player
-            if (index < 0 && players.isNotEmpty()) {
-                activePlayerIndex.update { max(0, players.indexOfFirst { it.player.isPlaying }) }
-            }
-            players.getOrNull(index) ?: players.getOrNull(0)
-        }.stateIn(scope, SharingStarted.Eagerly, null)
-    private val mediaNotificationData = combine(
-        currentPlayerData.filterNotNull(),
-        players.map { it.size > 1 },
-    ) { player, moreThanOnePlayer ->
-        MediaNotificationData.from(
-            playerData = player,
-            multiplePlayers = moreThanOnePlayer,
-            effectiveElapsedSec = player.queueInfo?.id?.let { id ->
-                dataSource.positionTracker.effectiveSec(id)
-            },
-        )
-    }
-        .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }
-        .stateIn(scope, SharingStarted.WhileSubscribed(), null)
-        .filterNotNull()
 
     // Debounce job to prevent double-pause when multiple BT devices are removed simultaneously
     // (e.g., wireless Android Auto disconnects both TYPE_BLUETOOTH_A2DP and TYPE_BLUETOOTH_SCO)
@@ -121,7 +74,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
                 audioRoutingPauseJob?.cancel()
                 audioRoutingPauseJob = scope.launch {
                     delay(300)
-                    players.value.firstOrNull { it.isLocal }
+                    dataSource.localPlayer.value
                         ?.takeIf { it.player.isPlaying }
                         ?.let { localPlayer ->
                             dataSource.playerAction(localPlayer, PlayerAction.Pause)
@@ -137,10 +90,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-        val token = sharedSession.acquire(
-            callback = createCallback(),
-            isAutoService = false,
-        )
+        val token = sharedSession.acquire()
         sessionToken = token
         mediaNotificationManager = MediaNotificationManager(this, token)
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
@@ -158,26 +108,17 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
         logger.i { "Registered audio device callback for routing change detection" }
 
+        // Title/artist/position are read live from the session via MediaStyle; only the
+        // largeIcon (artwork) requires a notification repost, so we just track the
+        // manager's artwork flow. The first (null) emission re-posts the initial icon.
         scope.launch {
-            // 200ms debounce coalesces rapid notification updates without delaying perceptibly.
-            // Bitmap loading runs async via [withAsyncBitmap] so a slow artwork fetch never
-            // blocks the state write or notification refresh.
-            mediaNotificationData
-                .withAsyncBitmap(scope) { loadCoilBitmap(this@MainMediaPlaybackService, imageLoader, it) }
-                .debounce(timeoutMillis = 200)
-                .collect { (data, bitmap) -> updatePlaybackState(data, bitmap) }
+            sharedSession.artwork.collect { bitmap -> postNotification(bitmap) }
         }
         scope.launch {
             // Block until everything is stopped, then bail
             dataSource.doesAnythingHavePlayableItem.filter { !it }.first()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
-        }
-        scope.launch {
-            // Update notification with currently selected player, if it's in the list.
-            dataSource.selectedPlayerIndex.mapNotNull { dataSource.selectedPlayer }
-                .mapNotNull { p -> players.value.indexOf(p).takeIf { it >= 0 } }
-                .collect { newIndex -> activePlayerIndex.update { newIndex } }
         }
         acquireWifiLock()
         dataSource.apiClient.onPlaybackActive()
@@ -206,17 +147,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     private val notificationDismissReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            players.value
-                .indexOfFirst { it.player.isPlaying }
-                .takeIf { it >= 0 }
-                ?.let { playingPosition ->
-                    activePlayerIndex.update { playingPosition }
-                    Toast.makeText(
-                        this@MainMediaPlaybackService,
-                        "You have playing players",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                } ?: run {
+            if (dataSource.focusPlayingSessionPlayer()) {
+                Toast.makeText(
+                    this@MainMediaPlaybackService,
+                    "You have playing players",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } else {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -233,71 +170,6 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
-    private fun createCallback(): MediaSessionCompat.Callback =
-        object : MediaSessionCompat.Callback() {
-            override fun onPlay() {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.Play)
-                }
-            }
-
-            override fun onPlayFromSearch(query: String?, extras: Bundle?) {
-                // Voice playback routing lives exclusively on AndroidAutoPlaybackService —
-                // both the in-car AA framework and the phone-side VoicePlayDispatchActivity
-                // bind that service to invoke playFromSearch. This callback only owns the
-                // session when AA is *not* bound, and no current code path reaches here.
-                // Kept as a defensive log so an unexpected external invocation is visible.
-                Logger.withTag("MainMediaPlayback").w {
-                    "Unexpected onPlayFromSearch on notification session (no handler): query=\"$query\""
-                }
-            }
-
-            override fun onPause() {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.Pause)
-                }
-            }
-
-            override fun onSkipToNext() {
-                currentPlayerData.value?.let { dataSource.playerAction(it, PlayerAction.Next) }
-            }
-
-            override fun onSkipToPrevious() {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.Previous)
-                }
-            }
-
-            override fun onSeekTo(pos: Long) {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.SeekTo(pos / 1000))
-                }
-            }
-
-            override fun onCustomAction(action: String, extras: Bundle?) {
-                when (action) {
-                    "ACTION_SWITCH_PLAYER" -> switchPlayer()
-                    "ACTION_TOGGLE_SHUFFLE" -> currentPlayerData.value?.let { playerData ->
-                        playerData.queueInfo?.let {
-                            dataSource.playerAction(
-                                playerData,
-                                PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
-                            )
-                        }
-                    }
-
-                    "ACTION_TOGGLE_REPEAT" -> currentPlayerData.value?.let { playerData ->
-                        playerData.queueInfo?.repeatMode?.let { repeatMode ->
-                            dataSource.playerAction(
-                                playerData,
-                                PlayerAction.ToggleRepeatMode(current = repeatMode),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
     override fun onGetRoot(p0: String, p1: Int, p2: Bundle?): BrowserRoot? = null
 
     override fun onLoadChildren(
@@ -305,11 +177,17 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) = Unit
 
-    private fun switchPlayer() {
-        val list = players.value
-        if (list.size <= 1) return
-        val newIndex = (activePlayerIndex.value + 1) % list.size
-        dataSource.selectPlayer(list[newIndex].player)
+    private fun postNotification(bitmap: Bitmap?) {
+        val notification = mediaNotificationManager.createNotification(bitmap)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                MediaNotificationManager.NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+            )
+        } else {
+            startForeground(MediaNotificationManager.NOTIFICATION_ID, notification)
+        }
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -332,28 +210,9 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             logger.i { "Unregistered audio device callback" }
             dataSource.apiClient.onPlaybackInactive()
         }
-        sharedSession.release(isAutoService = false)
+        sharedSession.release()
         scope.cancel()
         super.onDestroy()
-    }
-
-    private fun updatePlaybackState(data: MediaNotificationData, bitmap: android.graphics.Bitmap?) {
-        // Only write to the shared session when AA is NOT active.
-        // When AA is active, it is the sole writer (with its own data flow).
-        // The notification still picks up metadata from the shared session via MediaStyle.
-        if (!sharedSession.isAutoServiceActive()) {
-            sharedSession.updatePlaybackState(data, bitmap, multiPlayer = true)
-        }
-        val notification = mediaNotificationManager.createNotification(bitmap)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                MediaNotificationManager.NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
-            )
-        } else {
-            startForeground(MediaNotificationManager.NOTIFICATION_ID, notification)
-        }
     }
 
     companion object {

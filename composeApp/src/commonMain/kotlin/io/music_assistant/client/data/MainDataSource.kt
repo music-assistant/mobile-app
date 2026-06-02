@@ -240,6 +240,48 @@ private data class PlayerBuildInputs(
             (_playersData.value as? DataState.Data)?.data?.getOrNull(selectedIndex)
         }
 
+    // --- Canonical media-session "now playing" source ---
+    // Single source of truth for what the MediaSession / notification presents,
+    // consumed by the Android SharedMediaSessionManager (the sole session writer)
+    // and its transport callback. Players eligible for the session are those that
+    // can play and have a current queue item.
+    private val sessionPlayers: StateFlow<List<PlayerData>> =
+        playersData
+            .mapNotNull { (it as? DataState.Data)?.data }
+            .map { list -> list.filter { it.player.canPlay && it.queueInfo?.currentItem != null } }
+            .stateIn(this, SharingStarted.Eagerly, emptyList())
+
+    val sessionMultiplePlayers: StateFlow<Boolean> =
+        sessionPlayers.map { it.size > 1 }.stateIn(this, SharingStarted.Eagerly, false)
+
+    /**
+     * The player the media session currently presents: the user-selected one when
+     * it is session-eligible, else the first playing player, else the first eligible.
+     * Unifies notification + in-app selection on [selectedPlayer] — no separate index.
+     */
+    val nowPlayingPlayer: StateFlow<PlayerData?> =
+        combine(sessionPlayers, _selectedPlayerId) { session, selectedId ->
+            session.firstOrNull { it.playerId == selectedId }
+                ?: session.firstOrNull { it.player.isPlaying }
+                ?: session.firstOrNull()
+        }.stateIn(this, SharingStarted.Eagerly, null)
+
+    /** Cycle the session to the next eligible player (notification "switch player" action). */
+    fun switchSessionPlayer() {
+        val list = sessionPlayers.value
+        if (list.size <= 1) return
+        val currentId = nowPlayingPlayer.value?.playerId
+        val idx = list.indexOfFirst { it.playerId == currentId }.takeIf { it >= 0 } ?: 0
+        selectPlayer(list[(idx + 1) % list.size].player)
+    }
+
+    /** Point the session at the first playing eligible player. Returns false if none plays. */
+    fun focusPlayingSessionPlayer(): Boolean {
+        val playing = sessionPlayers.value.firstOrNull { it.player.isPlaying } ?: return false
+        selectPlayer(playing.player)
+        return true
+    }
+
     fun providerIcon(provider: String): ProviderIconModel? =
         _providersIcons.value[provider.substringBefore("--")]
 

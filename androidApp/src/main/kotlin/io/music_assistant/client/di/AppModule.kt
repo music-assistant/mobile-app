@@ -7,5 +7,5 @@ import org.koin.dsl.module
 
 fun appModule() = module {
     single { AutoLibrary(androidContext(), get(), get(), get(), get()) }
-    single { SharedMediaSessionManager(androidContext()) }
+    single { SharedMediaSessionManager(androidContext(), get()) }
 }

@@ -10,130 +10,50 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.MediaSessionCompat.QueueItem
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
-import coil3.ImageLoader
-import coil3.SingletonImageLoader
 import io.music_assistant.client.R
 import io.music_assistant.client.auto.AutoLibrary
 import io.music_assistant.client.auto.MediaIds
 import io.music_assistant.client.auto.androidAutoLog
-import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.android.ext.android.inject
 
-@OptIn(FlowPreview::class)
 class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val imageLoader: ImageLoader by lazy { SingletonImageLoader.get(this) }
     private lateinit var defaultIconUri: Uri
 
     private val dataSource: MainDataSource by inject()
     private val library: AutoLibrary by inject()
     private val sharedSession: SharedMediaSessionManager by inject()
     private val settingsRepository: io.music_assistant.client.settings.SettingsRepository by inject()
-    private val currentPlayerData = dataSource.localPlayer
-    private val mediaNotificationData = currentPlayerData.filterNotNull()
-        .map {
-            MediaNotificationData.from(
-                playerData = it,
-                multiplePlayers = false,
-                effectiveElapsedSec = it.queueInfo?.id?.let { id ->
-                    dataSource.positionTracker.effectiveSec(id)
-                },
-            )
-        }
-        .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }
-        .stateIn(scope, SharingStarted.WhileSubscribed(), null)
-        .filterNotNull()
+    private val localPlayer = dataSource.localPlayer
+
+    // Promoted only once a real media host (not SystemUI's notification rendering) binds.
+    // Until then this service is a passive browse/lifetime holder of the shared session.
+    private var promotedToHost = false
 
     override fun onCreate() {
         super.onCreate()
-        androidAutoLog.i { "onCreate — acquiring session as AA callback owner" }
-        val token = sharedSession.acquire(
-            callback = createCallback(),
-            isAutoService = true,
-        )
-        sessionToken = token
+        androidAutoLog.i { "onCreate — acquiring shared session" }
+        sessionToken = sharedSession.acquire()
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
-
-        // Playback data collector — the primary writer for playback state.
-        // SharedMediaSessionManager coordinates with error state: if an error is set,
-        // updatePlaybackState will still cache the data but show the error to the user.
-        // When clearErrorState is called, it restores the cached data automatically.
-        //
-        // The session is updated whenever EITHER the data OR the bitmap changes
-        // (see [withAsyncBitmap]); bitmap loading never blocks state writes.
-        scope.launch {
-            mediaNotificationData
-                .withAsyncBitmap(scope) { loadCoilBitmap(this@AndroidAutoPlaybackService, imageLoader, it) }
-                .debounce(200)
-                .collect { (data, bitmap) ->
-                    sharedSession.updatePlaybackState(data, bitmap, multiPlayer = false)
-                }
-        }
-
-        // Queue updates (separate MediaSession property — no conflict with playback state).
-        // Project to a stable id list and dedup: setQueue is an expensive IPC write that AA
-        // hosts react to (re-rendering, which can re-subscribe browse parents). Without
-        // dedup, every `_localPlayerData` emission — volume changes, optimistic bumps,
-        // anything — churns the AA UI even when the queue itself is unchanged.
-        scope.launch {
-            currentPlayerData
-                .map { playerData ->
-                    val items = (playerData?.queue as? DataState.Data)
-                        ?.data?.items?.let { it as? DataState.Data }?.data
-                        .orEmpty()
-                    items
-                }
-                .distinctUntilChanged { old, new ->
-                    old.size == new.size &&
-                        old.zip(new).all { (a, b) -> a.track.longId == b.track.longId }
-                }
-                .collect { items ->
-                    sharedSession.updateQueue(
-                        items.map { queueTrack ->
-                            QueueItem(
-                                (queueTrack.track as AppMediaItem)
-                                    .toMediaDescription(defaultIconUri),
-                                queueTrack.track.longId,
-                            )
-                        },
-                    )
-                }
-        }
-
-        dataSource.apiClient.onExternalConsumerActive()
-        observeSessionState()
-        observeLocalPlayer()
         observeLibraryTabsConfig()
         ensureNotificationService()
     }
@@ -148,122 +68,62 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
-    private fun createCallback(): MediaSessionCompat.Callback =
-        object : MediaSessionCompat.Callback() {
-            override fun onPlay() {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.Play)
-                }
-            }
+    /**
+     * SystemUI binds this MediaBrowserService just to render the notification's media
+     * controls — it is NOT a real media host. Treating it as one (seizing the session,
+     * probing/reconnecting the transport) is what zombified the notification on remote
+     * players (issue #519). Promote to a real AA host — register the browse/voice play
+     * handler and signal an external consumer — only for non-SystemUI binders.
+     */
+    private fun promoteIfRealHost(packageName: String) {
+        if (promotedToHost || packageName == SYSTEMUI_PACKAGE) return
+        promotedToHost = true
+        androidAutoLog.i { "Real media host '$packageName' — promoting to AA owner" }
+        sharedSession.bindAutoHost(autoPlayHandler)
+        dataSource.apiClient.onExternalConsumerActive()
+        observeSessionState()
+        observeLocalPlayer()
+    }
 
-            override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
-                // No readiness wait (unlike onPlayFromSearch): browse tap can only fire
-                // after the user navigated to a media item, so the local player is up.
-                mediaId?.let { library.play(it, extras) }
-            }
+    private val autoPlayHandler = object : SharedMediaSessionManager.AutoPlayHandler {
+        override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+            // No readiness wait (unlike onPlayFromSearch): browse tap can only fire
+            // after the user navigated to a media item, so the local player is up.
+            mediaId?.let { library.play(it, extras) }
+        }
 
-            override fun onPlayFromSearch(query: String?, extras: Bundle?) {
-                @Suppress("DEPRECATION") // Bundle.get(key) is the only untyped log-dump accessor.
-                val extrasDump = extras?.keySet()?.joinToString { k -> "$k=${extras.get(k)}" }
-                androidAutoLog.i { "onPlayFromSearch query=\"$query\" extras={$extrasDump}" }
-                if (query.isNullOrBlank() && extras == null) {
-                    androidAutoLog.w { "Blank query AND null extras — nothing to act on, no-op." }
-                    return
+        override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+            @Suppress("DEPRECATION") // Bundle.get(key) is the only untyped log-dump accessor.
+            val extrasDump = extras?.keySet()?.joinToString { k -> "$k=${extras.get(k)}" }
+            androidAutoLog.i { "onPlayFromSearch query=\"$query\" extras={$extrasDump}" }
+            if (query.isNullOrBlank() && extras == null) {
+                androidAutoLog.w { "Blank query AND null extras — nothing to act on, no-op." }
+                return
+            }
+            // Cold-start case (phone-side voice dispatch via MediaBrowser bind):
+            // the service was just created, so the local player may still be null
+            // while auth + local-player initialization complete. Wait up to 10s.
+            // For the in-car AA path the player is already up, so the await is immediate.
+            scope.launch {
+                val playerData = withTimeoutOrNull(LOCAL_PLAYER_READY_TIMEOUT_MS) {
+                    localPlayer.filterNotNull().first()
                 }
-                // Cold-start case (phone-side voice dispatch via MediaBrowser bind):
-                // the service was just created, so currentPlayerData may still be null
-                // while auth + local-player initialization complete. Wait up to 10s.
-                // For the in-car AA path the player is already up, so the await is
-                // immediate.
-                scope.launch {
-                    val playerData = withTimeoutOrNull(LOCAL_PLAYER_READY_TIMEOUT_MS) {
-                        currentPlayerData.filterNotNull().first()
+                if (playerData == null) {
+                    androidAutoLog.w {
+                        "Local player did not initialize within 10s — dropping " +
+                            "(query=\"$query\"). Open the app once to bootstrap it."
                     }
-                    if (playerData == null) {
-                        androidAutoLog.w {
-                            "Local player did not initialize within 10s — dropping " +
-                                "(query=\"$query\"). Open the app once to bootstrap it."
-                        }
-                        return@launch
-                    }
-                    androidAutoLog.i { "Dispatching to AutoLibrary (local player ready)" }
-                    library.searchAndPlay(query = query.orEmpty(), extras = extras)
+                    return@launch
                 }
-            }
-
-            override fun onPause() {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.Pause)
-                }
-            }
-
-            override fun onSkipToNext() {
-                currentPlayerData.value?.let { dataSource.playerAction(it, PlayerAction.Next) }
-            }
-
-            override fun onSkipToPrevious() {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.Previous)
-                }
-            }
-
-            override fun onSkipToQueueItem(id: Long) {
-                currentPlayerData.value?.let { playerData ->
-                    when (val queueData = playerData.queue) {
-                        is DataState.Data -> {
-                            when (val queueItems = queueData.data.items) {
-                                is DataState.Data -> {
-                                    queueItems.data.find { it.track.longId == id }?.id?.let { queueItemId ->
-                                        dataSource.queueAction(
-                                            QueueAction.PlayQueueItem(
-                                                playerData.queueInfo?.id
-                                                    ?: playerData.player.id,
-                                                queueItemId,
-                                            ),
-                                        )
-                                    }
-                                }
-
-                                else -> {}
-                            }
-                        }
-
-                        else -> {}
-                    }
-                }
-            }
-
-            override fun onSeekTo(pos: Long) {
-                currentPlayerData.value?.let {
-                    dataSource.playerAction(it, PlayerAction.SeekTo(pos / 1000))
-                }
-            }
-
-            override fun onCustomAction(action: String, extras: Bundle?) {
-                when (action) {
-                    "ACTION_TOGGLE_SHUFFLE" -> currentPlayerData.value?.let { playerData ->
-                        playerData.queueInfo?.let {
-                            dataSource.playerAction(
-                                playerData,
-                                PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
-                            )
-                        }
-                    }
-
-                    "ACTION_TOGGLE_REPEAT" -> currentPlayerData.value?.let { playerData ->
-                        playerData.queueInfo?.repeatMode?.let { repeatMode ->
-                            dataSource.playerAction(
-                                playerData,
-                                PlayerAction.ToggleRepeatMode(current = repeatMode),
-                            )
-                        }
-                    }
-                }
+                androidAutoLog.i { "Dispatching to AutoLibrary (local player ready)" }
+                library.searchAndPlay(query = query.orEmpty(), extras = extras)
             }
         }
+    }
 
     override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
         androidAutoLog.i { "onGetRoot from package=$packageName uid=$uID" }
+        promoteIfRealHost(packageName)
         val extras = Bundle().apply {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
             putInt(
@@ -290,8 +150,8 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     ) = library.search(query, result)
 
     /**
-     * Observe session state for errors (reconnecting, disconnected).
-     * Uses SharedMediaSessionManager's error/clear mechanism which properly
+     * Observe session state for errors (reconnecting, disconnected). Only active while a
+     * real AA host is bound. Uses SharedMediaSessionManager's error/clear mechanism, which
      * coordinates with playback data (clearErrorState restores cached data).
      */
     private fun observeSessionState() {
@@ -348,7 +208,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         scope.launch {
             combine(
                 dataSource.apiClient.sessionState,
-                currentPlayerData,
+                localPlayer,
             ) { sessionState, playerData ->
                 val isAuthenticated = (sessionState as? SessionState.Connected)
                     ?.dataConnectionState is DataConnectionState.Authenticated
@@ -357,7 +217,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 if (isAuthenticated && playerData == null) {
                     delay(2000)
                     // Re-check after debounce
-                    if (currentPlayerData.value == null) {
+                    if (localPlayer.value == null) {
                         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
                             ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
                         val pendingIntent = launchIntent?.let {
@@ -412,13 +272,22 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onDestroy() {
-        dataSource.apiClient.onExternalConsumerInactive()
-        sharedSession.release(isAutoService = true)
+        if (promotedToHost) {
+            dataSource.apiClient.onExternalConsumerInactive()
+            // Returns the session to the all-players view and clears any host-set error,
+            // so a transient "Reconnecting..." doesn't outlive the host.
+            sharedSession.unbindAutoHost()
+        }
+        sharedSession.release()
         scope.cancel()
         super.onDestroy()
     }
 
     private companion object {
+        // SystemUI renders the media-control notification by binding this browser service;
+        // it must not be mistaken for a real Android Auto / media host.
+        const val SYSTEMUI_PACKAGE = "com.android.systemui"
+
         // Cold-start window: voice intent may arrive before auth + local player
         // bootstrap finish. After this many ms we give up and log a warning.
         const val LOCAL_PLAYER_READY_TIMEOUT_MS = 10_000L
