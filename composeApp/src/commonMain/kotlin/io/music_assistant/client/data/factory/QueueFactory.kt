@@ -46,7 +46,7 @@ class QueueFactory(
                 return QueueTrack(
                     id = queueItemId,
                     track = appMediaItem,
-                    isPlayable = true,
+                    isPlayable = appMediaItem.isPlayable,
                     format = streamDetails?.audioFormat,
                     dsp = streamDetails?.dsp,
                     provider = streamDetails?.provider,

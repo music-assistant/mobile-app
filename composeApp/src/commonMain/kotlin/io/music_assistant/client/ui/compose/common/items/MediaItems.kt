@@ -80,6 +80,9 @@ import musicassistantclient.composeapp.generated.resources.cd_in_progress
 import musicassistantclient.composeapp.generated.resources.cd_vinyl_record
 import org.jetbrains.compose.resources.stringResource
 
+/** Opacity applied to media items that can't be played (server `is_playable == false`). */
+internal const val DisabledItemAlpha = 0.3f
+
 /**
  * Artist media item with circular image.
  *

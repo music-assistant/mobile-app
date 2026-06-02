@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -282,8 +283,11 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     )
 
     Box(modifier = modifier) {
+        // Browsable items stay navigable even when non-playable; dim + drop playback actions.
+        val contentModifier = Modifier.align(Alignment.Center)
+            .then(if (item.isPlayable) Modifier else Modifier.alpha(DisabledItemAlpha))
         itemComposable(
-            Modifier.align(Alignment.Center),
+            contentModifier,
             onNavigateClick,
         ) { expandedItemId = item.itemId }
 

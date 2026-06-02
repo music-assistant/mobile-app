@@ -70,6 +70,7 @@ import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
+import io.music_assistant.client.ui.compose.common.items.DisabledItemAlpha
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
@@ -308,7 +309,7 @@ fun Queue(
                                             .padding(vertical = 1.dp)
                                             .alpha(
                                                 when {
-                                                    !isPlayable -> 0.3f  // Gray out unplayable items
+                                                    !isPlayable -> DisabledItemAlpha  // Gray out unplayable items
                                                     isPlayed -> 0.5f
                                                     else -> 1f
                                                 },

@@ -24,11 +24,13 @@ fun resolveLongClickActions(
     canRemoveFromPlaylist: Boolean,
     progressSupported: Boolean,
 ): List<ItemAction> = buildList {
-    add(ItemAction.Play(QueueOption.REPLACE))
-    add(ItemAction.Play(QueueOption.PLAY))
-    add(ItemAction.Play(QueueOption.NEXT))
-    add(ItemAction.Play(QueueOption.ADD))
-    if (item.canStartRadio) add(ItemAction.StartRadio)
+    if (item.isPlayable) {
+        add(ItemAction.Play(QueueOption.REPLACE))
+        add(ItemAction.Play(QueueOption.PLAY))
+        add(ItemAction.Play(QueueOption.NEXT))
+        add(ItemAction.Play(QueueOption.ADD))
+        if (item.canStartRadio) add(ItemAction.StartRadio)
+    }
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
         if (item.isInLibrary) {
@@ -49,6 +51,7 @@ fun resolveLongClickActions(
  * (the leading button handles that), plus Start Radio.
  */
 fun resolvePlayButtonActions(item: AppMediaItem): List<ItemAction> = buildList {
+    if (!item.isPlayable) return@buildList
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))

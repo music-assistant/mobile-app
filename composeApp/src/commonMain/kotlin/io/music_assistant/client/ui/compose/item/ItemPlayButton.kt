@@ -36,6 +36,7 @@ fun ItemPlayButton(
     onPlayClick: (QueueOption, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (!item.isPlayable) return
     SplitButtonLayout(
         modifier = modifier,
         leadingButton = {

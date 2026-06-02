@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
@@ -176,10 +177,14 @@ private fun <T> PlayableItemWithMenu(
         progressSupported = progressActions != null && item is PodcastEpisode,
     )
 
+    // Non-playable items keep the long-press menu (favorite, library, …) but can't be played:
+    // dim them and route a tap to the menu instead of starting playback.
+    val playable = item.isPlayable
     Box(modifier = modifier) {
         itemComposable(
-            Modifier.align(Alignment.Center),
-            { onPlayOption(item, QueueOption.REPLACE, false) },
+            Modifier.align(Alignment.Center)
+                .then(if (playable) Modifier else Modifier.alpha(DisabledItemAlpha)),
+            { if (playable) onPlayOption(item, QueueOption.REPLACE, false) else expandedItemId = item.itemId },
             { expandedItemId = item.itemId },
         )
         DropdownMenu(
