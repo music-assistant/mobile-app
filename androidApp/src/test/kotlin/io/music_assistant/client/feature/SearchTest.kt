@@ -8,7 +8,7 @@ import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
-import io.music_assistant.client.support.pages.MediaItemPage
+import io.music_assistant.client.support.pages.ItemPage
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -68,14 +68,14 @@ class SearchTest {
             .search(album2.name.substring(3))
             .clickOnMedia(album2)
             .clickHome(
-                MediaItemPage(
+                ItemPage(
                 album1,
                 navigationItem = Res.string.nav_home.get(),
                 composeTestRule = composeTestRule,
             ),
             )
             .clickSearch(
-                MediaItemPage(
+                ItemPage(
                 album2,
                 navigationItem = Res.string.nav_search.get(),
                 composeTestRule = composeTestRule,

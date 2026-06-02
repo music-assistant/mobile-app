@@ -27,7 +27,7 @@ import musicassistantclient.composeapp.generated.resources.players_nothing
 fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
     navigationItem: String,
-): MediaItemPage {
+): ItemPage {
     return clickOnMedia(
         serverMediaItem.name,
         MediaType.fromServer(serverMediaItem.mediaType) ?: MediaType.UNKNOWN,
@@ -35,12 +35,12 @@ fun ComposePage.clickOnMedia(
     )
 }
 
-fun ComposePage.clickOnMedia(name: String, type: MediaType, navigationItem: String): MediaItemPage {
+fun ComposePage.clickOnMedia(name: String, type: MediaType, navigationItem: String): ItemPage {
     composeTestRule.onNodeWithText(name)
         .assertIsDisplayed()
         .performClick()
 
-    return MediaItemPage(name, type, navigationItem, composeTestRule).assertOnPage()
+    return ItemPage(name, type, navigationItem, composeTestRule).assertOnPage()
 }
 
 fun ComposePage.assertNavBar(items: List<String>, selected: String) {

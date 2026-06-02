@@ -27,7 +27,7 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
         )
     }
 
-    fun clickOnMedia(item: ServerMediaItem): MediaItemPage {
+    fun clickOnMedia(item: ServerMediaItem): ItemPage {
         return clickOnMedia(item, Res.string.nav_home.get())
     }
 

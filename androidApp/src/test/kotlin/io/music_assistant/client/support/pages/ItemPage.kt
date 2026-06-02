@@ -22,7 +22,7 @@ import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 
-class MediaItemPage(
+class ItemPage(
     private val name: String,
     private val type: MediaType,
     private val navigationItem: String,
@@ -77,10 +77,10 @@ class MediaItemPage(
         }
     }
 
-    fun clickGoToArtist(artist: String): MediaItemPage {
+    fun clickGoToArtist(artist: String): ItemPage {
         composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
         composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
-        return MediaItemPage(
+        return ItemPage(
             artist,
             MediaType.ARTIST,
             navigationItem,
@@ -88,7 +88,7 @@ class MediaItemPage(
         ).assertOnPage()
     }
 
-    fun clickPlay(): MediaItemPage {
+    fun clickPlay(): ItemPage {
         composeTestRule.onNodeWithText(Res.string.action_play_now.get()).performClick()
         return this
     }

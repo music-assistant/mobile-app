@@ -37,10 +37,10 @@ class ExpandedPlayerPage(
         )
     }
 
-    fun goToArtist(artist: String, navigationItem: String): MediaItemPage {
+    fun goToArtist(artist: String, navigationItem: String): ItemPage {
         clickMore()
         composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
-        return MediaItemPage(
+        return ItemPage(
             artist,
             MediaType.ARTIST,
             navigationItem,
@@ -48,10 +48,10 @@ class ExpandedPlayerPage(
         ).assertOnPage()
     }
 
-    fun goToAlbum(album: String, navigationItem: String): MediaItemPage {
+    fun goToAlbum(album: String, navigationItem: String): ItemPage {
         clickMore()
         composeTestRule.onNodeWithText(Res.string.action_go_to_album.get()).performClick()
-        return MediaItemPage(
+        return ItemPage(
             album,
             MediaType.ALBUM,
             navigationItem,

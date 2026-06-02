@@ -33,7 +33,7 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
         )
     }
 
-    fun clickOnMedia(item: ServerMediaItem): MediaItemPage {
+    fun clickOnMedia(item: ServerMediaItem): ItemPage {
         return clickOnMedia(item, Res.string.nav_library.get())
     }
 

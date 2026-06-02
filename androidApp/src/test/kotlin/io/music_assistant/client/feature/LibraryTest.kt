@@ -8,8 +8,8 @@ import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.ItemPage
 import io.music_assistant.client.support.pages.LibraryPage
-import io.music_assistant.client.support.pages.MediaItemPage
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.pages.clickHome
@@ -166,14 +166,14 @@ class LibraryTest {
             .clickAlbums()
             .clickOnMedia(album2)
             .clickHome(
-                MediaItemPage(
+                ItemPage(
                     album1,
                     navigationItem = Res.string.nav_home.get(),
                     composeTestRule = composeTestRule,
                 ),
             )
             .clickLibrary(
-                MediaItemPage(
+                ItemPage(
                     album2,
                     navigationItem = Res.string.nav_library.get(),
                     composeTestRule = composeTestRule,

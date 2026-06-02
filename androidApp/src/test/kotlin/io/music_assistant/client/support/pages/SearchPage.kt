@@ -53,7 +53,7 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
         return this
     }
 
-    fun clickOnMedia(item: ServerMediaItem): MediaItemPage {
+    fun clickOnMedia(item: ServerMediaItem): ItemPage {
         return clickOnMedia(item, Res.string.nav_search.get())
     }
 
