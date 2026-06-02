@@ -85,14 +85,13 @@ class AutoLibrary(
                         request = Request.Library.search(
                             query = query,
                             mediaTypes = listOf(
+                                MediaType.TRACK,
                                 MediaType.ARTIST,
                                 MediaType.ALBUM,
-                                MediaType.TRACK,
                                 MediaType.PLAYLIST,
-                                MediaType.AUDIOBOOK,
-                                MediaType.PODCAST,
                                 MediaType.RADIO,
                             ),
+                            limit = 5,
                             libraryOnly = false,
                         ),
                     )
@@ -883,11 +882,9 @@ private fun SearchResult.toAutoMediaItems(
 ): List<MediaItem> = buildList {
     mapOf(
         tracks to "Tracks",
-        albums to "Albums",
         artists to "Artists",
+        albums to "Albums",
         playlists to "Playlists",
-        audiobooks to "Audiobooks",
-        podcasts to "Podcasts",
         radio to "Radio stations",
     ).forEach { (items, category) ->
         addAll(items.mapNotNull { it.toAutoMediaItem(factory, true, defaultIconUri, category) })
