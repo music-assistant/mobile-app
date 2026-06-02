@@ -1,6 +1,6 @@
 # Home
 
-The Home tab is populated with data from the **Discover** view in Music Assistant. By default, it loads all sections that appear in Discover, excluding the MA frontend Player Bar section.
+The Home tab is populated with data from the **Discover** view in Music Assistant. By default, it loads all sections that appear in Discover, excluding the MA frontend Player Bar section and folder sections.
 
 The Music Assistant App provides its own [Player Pager](player-pager.md) for interacting with your Music Assistant players.
 
