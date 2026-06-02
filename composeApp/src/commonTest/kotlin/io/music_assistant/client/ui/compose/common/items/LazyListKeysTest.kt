@@ -100,6 +100,7 @@ class LazyListKeysTest {
         uri = null,
         images = emptyMap(),
         duration = null,
+        isPlayable = true,
         artists = emptyList(),
         album = null,
         discNumber = null,
