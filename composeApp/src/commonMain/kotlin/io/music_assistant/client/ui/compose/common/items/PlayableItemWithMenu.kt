@@ -183,7 +183,7 @@ private fun <T> PlayableItemWithMenu(
     Box(modifier = modifier) {
         itemComposable(
             Modifier.align(Alignment.Center)
-                .then(if (playable) Modifier else Modifier.alpha(DisabledItemAlpha)),
+                .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA)),
             { if (playable) onPlayOption(item, QueueOption.REPLACE, false) else expandedItemId = item.itemId },
             { expandedItemId = item.itemId },
         )

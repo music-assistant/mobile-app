@@ -285,7 +285,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     Box(modifier = modifier) {
         // Browsable items stay navigable even when non-playable; dim + drop playback actions.
         val contentModifier = Modifier.align(Alignment.Center)
-            .then(if (item.isPlayable) Modifier else Modifier.alpha(DisabledItemAlpha))
+            .then(if (item.isPlayable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))
         itemComposable(
             contentModifier,
             onNavigateClick,
