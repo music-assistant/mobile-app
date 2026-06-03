@@ -315,30 +315,27 @@ private fun PlaylistImage(
                 .background(primaryContainer),
         )
 
-        // Draw binding ellipses in the cut area
-        val ellipseRadius = 4.dp
+        // Draw binding dots, sized and positioned relative to the cut strip
         val ellipseCount = 7
         Canvas(
             modifier = Modifier.fillMaxSize(),
         ) {
-            val ellipseRadiusPx = ellipseRadius.toPx()
-            val topPadding = ellipseRadiusPx * 2
-            val bottomPadding = ellipseRadiusPx * 2
-            val availableHeight = size.height - topPadding - bottomPadding
+            val bindingWidth = size.width * NotebookCutShape.STRIP_FRACTION
+            val dotRadius = bindingWidth * 0.4f
+            val centerX = bindingWidth / 2f
+            val padding = dotRadius * 2
+            val availableHeight = size.height - padding * 2
             val spacing = if (ellipseCount > 1) {
                 availableHeight / (ellipseCount - 1)
             } else {
                 0f
             }
-            val bindingWidth = 10.dp
 
-            // Draw ellipses in the binding strip area
             for (i in 0 until ellipseCount) {
-                val y = topPadding + (i * spacing)
                 drawCircle(
                     color = primary,
-                    radius = ellipseRadiusPx,
-                    center = Offset(x = bindingWidth.toPx() / 2f, y = y),
+                    radius = dotRadius,
+                    center = Offset(x = centerX, y = padding + i * spacing),
                 )
             }
         }

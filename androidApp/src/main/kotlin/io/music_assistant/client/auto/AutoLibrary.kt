@@ -266,7 +266,7 @@ class AutoLibrary(
         favoritesOnly: Boolean,
     ): List<MediaItem>? {
         val orderBy = sort.toServerString()
-        val favorite = if (favoritesOnly) true else null
+        val favorite = favoritesOnly.takeIf { it }
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.listLibrary(orderBy = orderBy, favorite = favorite)
             MediaType.ALBUM -> Request.Album.listLibrary(orderBy = orderBy, favorite = favorite)

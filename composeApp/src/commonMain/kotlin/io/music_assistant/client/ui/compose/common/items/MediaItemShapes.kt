@@ -51,7 +51,7 @@ class NotebookCutShape : Shape {
     ): Outline {
         return Outline.Generic(
             Path().apply {
-            val stripPx = size.width * 0.1f
+            val stripPx = size.width * STRIP_FRACTION
 
             // Defines the content area, excluding the leftmost strip
             moveTo(stripPx, 0f)
@@ -61,6 +61,11 @@ class NotebookCutShape : Shape {
             close()
         },
         )
+    }
+
+    companion object {
+        /** Fraction of the width reserved for the binding strip on the left. */
+        const val STRIP_FRACTION = 0.1f
     }
 }
 

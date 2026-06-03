@@ -65,14 +65,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.style.TextAlign
@@ -378,28 +378,14 @@ private fun ExpandedPlayerPage(
 ) {
     val isLargeScreen = WindowClass.isAtLeastLarge()
     val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
-    val queueCollapseNestedScroll = remember(onExpandQueue, dismissThresholdPx, isQueueExpanded) {
+    // Minimum gesture speed (px/s) to count as a fling rather than a slow drag.
+    val minFlingVelocityPx = with(LocalDensity.current) { 1000.dp.toPx() }
+    val queueCollapseNestedScroll = remember(onExpandQueue, minFlingVelocityPx) {
         object : NestedScrollConnection {
-            var totalDrag = 0f
-            var fired = false
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (source == NestedScrollSource.UserInput && available.y > 0f) {
-                    totalDrag += available.y
-                    if (!fired && totalDrag > dismissThresholdPx) {
-                        fired = true
-                        onExpandQueue(false)
-                    }
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                totalDrag = 0f
-                fired = false
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                // available.y is the leftover downward fling velocity once the queue list
+                // can no longer scroll (i.e. it's at the top) — a genuine downward fling.
+                if (available.y > minFlingVelocityPx) onExpandQueue(false)
                 return Velocity.Zero
             }
         }
@@ -509,35 +495,38 @@ private fun ExpandedPlayerPage(
                                     onExpandQueue,
                                     isLargeScreen,
                                     dismissThresholdPx,
+                                    minFlingVelocityPx,
                                 ) {
                                     var totalDrag = 0f
-                                    var fired = false
+                                    val velocityTracker = VelocityTracker()
                                     detectVerticalDragGestures(
                                         onDragStart = {
                                             totalDrag = 0f
-                                            fired = false
-                                        },
-                                        onDragEnd = {
-                                            totalDrag = 0f
-                                            fired = false
+                                            velocityTracker.resetTracking()
                                         },
                                         onDragCancel = {
                                             totalDrag = 0f
-                                            fired = false
+                                            velocityTracker.resetTracking()
                                         },
-                                        onVerticalDrag = { _, dragAmount ->
+                                        onVerticalDrag = { change, dragAmount ->
                                             totalDrag += dragAmount
-                                            if (!fired) {
-                                                if (totalDrag > dismissThresholdPx) {
-                                                    fired = true
-                                                    onClose()
-                                                } else if (!isLargeScreen &&
-                                                    totalDrag < -dismissThresholdPx
-                                                ) {
-                                                    fired = true
-                                                    onExpandQueue(true)
-                                                }
+                                            velocityTracker.addPointerInputChange(change)
+                                        },
+                                        onDragEnd = {
+                                            // Fire only on a true fling: far enough AND fast enough,
+                                            // so a slow crawl past the threshold no longer triggers.
+                                            val velocity = velocityTracker.calculateVelocity().y
+                                            if (totalDrag > dismissThresholdPx &&
+                                                velocity > minFlingVelocityPx
+                                            ) {
+                                                onClose()
+                                            } else if (!isLargeScreen &&
+                                                totalDrag < -dismissThresholdPx &&
+                                                velocity < -minFlingVelocityPx
+                                            ) {
+                                                onExpandQueue(true)
                                             }
+                                            totalDrag = 0f
                                         },
                                     )
                                 },

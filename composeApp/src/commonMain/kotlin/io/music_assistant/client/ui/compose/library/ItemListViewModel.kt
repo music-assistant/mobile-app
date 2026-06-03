@@ -164,13 +164,14 @@ class ItemListViewModel(
         searchQuery: String?,
         onlyFavorites: Boolean,
     ): Request {
+        val favorites = onlyFavorites.takeIf { it }
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.listLibrary(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.ALBUM -> Request.Album.listLibrary(
@@ -178,7 +179,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.TRACK -> Request.Track.list(
@@ -186,7 +187,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.PLAYLIST -> Request.Playlist.listLibrary(
@@ -194,7 +195,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
@@ -202,7 +203,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.PODCAST -> Request.Podcast.listLibrary(
@@ -210,7 +211,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.RADIO -> Request.RadioStation.listLibrary(
@@ -218,7 +219,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             MediaType.GENRE -> Request.Genre.listLibrary(
@@ -226,7 +227,7 @@ class ItemListViewModel(
                 offset = offset,
                 search = searchQuery,
                 orderBy = orderBy,
-                favorite = onlyFavorites,
+                favorite = favorites,
             )
 
             else -> throw IllegalArgumentException("Invalid MediaType for ItemListViewModel!")
