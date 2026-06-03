@@ -74,9 +74,10 @@ class ExtTest {
 
     @Test
     fun testToMinSec() {
-        assertEquals("1:05", 65.seconds.formatDuration())
-        assertEquals("0:00", 0.seconds.formatDuration())
+        assertEquals("01:05", 65.seconds.formatDuration())
+        assertEquals("00:00", 0.seconds.formatDuration())
         assertEquals("--:--", (null as Duration?).formatDuration())
         assertEquals("10:00", Duration.parse("600s").formatDuration())
+        assertEquals("6:10:00", Duration.parse("22200s").formatDuration())
     }
 }

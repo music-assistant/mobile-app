@@ -16,11 +16,15 @@ fun Double?.formatDuration(unit: DurationUnit): String =
     this?.toDuration(unit).formatDuration()
 
 fun Duration?.formatDuration() =
-    this?.let {
-        it.inWholeMinutes.toString() +
-                ":" +
-                (it.inWholeSeconds % 60).toString()
-                    .padStart(2, '0')
+    this?.let { duration ->
+        val hours = duration.inWholeHours.takeIf { it > 0 }
+        val minutes = (duration.inWholeMinutes % 60).toString().padStart(2, '0')
+        val seconds = (duration.inWholeSeconds % 60).toString().padStart(2, '0')
+        if (hours != null) {
+            "$hours:$minutes:$seconds"
+        } else {
+            "$minutes:$seconds"
+        }
     } ?: "--:--"
 
 fun String.isValidHost(): Boolean {
