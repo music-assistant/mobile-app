@@ -19,6 +19,7 @@ object ServerMediaItemFixtures {
             mediaType = MediaType.ALBUM.serverValue,
             artists = listOf(artist),
             uri = "http://example.com/album/$itemId",
+            isPlayable = true,
         )
     }
 
@@ -48,6 +49,7 @@ object ServerMediaItemFixtures {
             artists = artists,
             album = album,
             uri = "http://example.com/track/$itemId",
+            isPlayable = true,
         )
     }
 
@@ -60,6 +62,7 @@ object ServerMediaItemFixtures {
             provider = "blah",
             name = name,
             mediaType = MediaType.PLAYLIST.serverValue,
+            isPlayable = true,
         )
     }
 
@@ -72,6 +75,7 @@ object ServerMediaItemFixtures {
             provider = "blah",
             name = name,
             mediaType = MediaType.AUDIOBOOK.serverValue,
+            isPlayable = true,
         )
     }
 
@@ -84,6 +88,7 @@ object ServerMediaItemFixtures {
             provider = "blah",
             name = name,
             mediaType = MediaType.PODCAST.serverValue,
+            isPlayable = true,
         )
     }
 
@@ -96,6 +101,7 @@ object ServerMediaItemFixtures {
             provider = "blah",
             name = name,
             mediaType = MediaType.RADIO.serverValue,
+            isPlayable = true,
         )
     }
 
