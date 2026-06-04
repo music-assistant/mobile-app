@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
@@ -70,6 +71,7 @@ import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
+import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -138,6 +140,7 @@ fun ItemListScreen(
         },
     ) {
         var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
+        ProvideClickActions(ClickContext.LIBRARY) {
         ItemList(
             showCreatePlaylistDialog = showCreatePlaylistDialog,
             toastState = toastState,
@@ -159,6 +162,7 @@ fun ItemListScreen(
             hasMore = state.hasMore,
             viewMode = state.viewMode,
         )
+        }
     }
 }
 

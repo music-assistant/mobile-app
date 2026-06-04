@@ -23,14 +23,9 @@ fun resolveLongClickActions(
     canAddToPlaylist: Boolean,
     canRemoveFromPlaylist: Boolean,
     progressSupported: Boolean,
+    defaultAction: ItemAction? = null,
 ): List<ItemAction> = buildList {
-    if (item.isPlayable) {
-        add(ItemAction.Play(QueueOption.REPLACE))
-        add(ItemAction.Play(QueueOption.PLAY))
-        add(ItemAction.Play(QueueOption.NEXT))
-        add(ItemAction.Play(QueueOption.ADD))
-        if (item.canStartRadio) add(ItemAction.StartRadio)
-    }
+    if (item.isPlayable) addPlaybackActions(item)
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
         if (item.isInLibrary) {
@@ -44,14 +39,26 @@ fun resolveLongClickActions(
     } else if (progressSupported) {
         add(ItemAction.MarkPlayed)
     }
+    // The action a click performs is hoisted to the top (and labeled "Default" by the menu).
+}.let { actions ->
+    if (defaultAction == null) {
+        actions
+    } else {
+        listOf(defaultAction) + actions.filterNot { it == defaultAction }
+    }
 }
 
 /**
- * Item detail screen play-button split-button overflow — queue actions excluding REPLACE
- * (the leading button handles that), plus Start Radio.
+ * Item detail screen play-button split-button overflow — every applicable play action
+ * except [default] (which the leading button performs).
  */
-fun resolvePlayButtonActions(item: AppMediaItem): List<ItemAction> = buildList {
-    if (!item.isPlayable) return@buildList
+fun resolvePlayButtonActions(item: AppMediaItem, default: ItemAction?): List<ItemAction> = buildList {
+    if (item.isPlayable) addPlaybackActions(item)
+}.filterNot { it == default }
+
+/** The playback block: Play Now / Insert Next & Play / Insert Next / Add to Bottom / Start Radio. */
+private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem) {
+    add(ItemAction.Play(QueueOption.REPLACE))
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))

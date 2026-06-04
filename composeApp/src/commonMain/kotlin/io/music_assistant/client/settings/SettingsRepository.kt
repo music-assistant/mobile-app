@@ -2,6 +2,8 @@ package io.music_assistant.client.settings
 
 import com.russhwolf.settings.Settings
 import io.music_assistant.client.api.ConnectionInfo
+import io.music_assistant.client.data.model.client.ClickContext
+import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
@@ -163,6 +165,37 @@ class SettingsRepository(
         val encoded = config.joinToString(",") { "${it.name}:${if (it.enabled) "1" else "0"}" }
         settings.putString("library_tabs_config", encoded)
         _libraryCategoryConfig.update { config }
+    }
+
+    // Default click action keyed by item kind then context. JSON map of
+    // ItemKind.name -> (ClickContext.name -> DefaultClickAction.name). Absent keys
+    // resolve to PLAY_NOW at the call site (= the historic hard-coded behavior), so there's
+    // nothing to migrate.
+    private val _defaultClickActions = MutableStateFlow(loadDefaultClickActions())
+    val defaultClickActions = _defaultClickActions.asStateFlow()
+
+    private fun loadDefaultClickActions(): Map<ItemKind, Map<ClickContext, DefaultClickAction>> {
+        val raw = settings.getStringOrNull("default_click_actions") ?: return emptyMap()
+        return runCatching {
+            myJson.decodeFromString<Map<String, Map<String, String>>>(raw).mapNotNull { (k, perContext) ->
+                val kind = runCatching { ItemKind.valueOf(k) }.getOrNull() ?: return@mapNotNull null
+                kind to perContext.mapNotNull { (c, v) ->
+                    val ctx = runCatching { ClickContext.valueOf(c) }.getOrNull() ?: return@mapNotNull null
+                    val action = runCatching { DefaultClickAction.valueOf(v) }.getOrNull() ?: return@mapNotNull null
+                    ctx to action
+                }.toMap()
+            }.toMap()
+        }.getOrDefault(emptyMap())
+    }
+
+    /** Replaces the per-context table for a single [kind]; other kinds are preserved. */
+    fun setDefaultClickActions(kind: ItemKind, perContext: Map<ClickContext, DefaultClickAction>) {
+        val updated = _defaultClickActions.value.toMutableMap().apply { put(kind, perContext) }
+        val encoded = myJson.encodeToString(
+            updated.entries.associate { (k, m) -> k.name to m.entries.associate { it.key.name to it.value.name } },
+        )
+        settings.putString("default_click_actions", encoded)
+        _defaultClickActions.update { updated }
     }
 
     // Sendspin settings

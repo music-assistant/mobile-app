@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -168,6 +169,11 @@ private fun <T> PlayableItemWithMenu(
 ) where T : PlayableItem, T : AppMediaItem {
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var showCustomizeDialog by rememberSaveable { mutableStateOf(false) }
+
+    // The tap action for this item's (kind, context) pair (PLAY_NOW outside customizable
+    // screens). Null when the item isn't playable — then a tap opens the menu instead.
+    val effectiveDefault = LocalClickActionConfig.current.effectiveActionFor(item)
 
     val actions = resolveLongClickActions(
         item = item,
@@ -175,7 +181,16 @@ private fun <T> PlayableItemWithMenu(
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is PodcastEpisode,
-    )
+        defaultAction = effectiveDefault,
+    ) + ItemAction.Customize
+
+    val runPlayAction: (ItemAction) -> Unit = { action ->
+        when (action) {
+            is ItemAction.Play -> onPlayOption(item, action.queueOption, false)
+            ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true)
+            else -> Unit
+        }
+    }
 
     // Non-playable items keep the long-press menu (favorite, library, …) but can't be played:
     // dim them and route a tap to the menu instead of starting playback.
@@ -184,18 +199,19 @@ private fun <T> PlayableItemWithMenu(
         itemComposable(
             Modifier.align(Alignment.Center)
                 .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA)),
-            { if (playable) onPlayOption(item, QueueOption.REPLACE, false) else expandedItemId = item.itemId },
+            { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
             { expandedItemId = item.itemId },
         )
         DropdownMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
-            itemActionMenuItems(actions) { action ->
+            itemActionMenuItems(actions, defaultAction = effectiveDefault) { action ->
                 expandedItemId = null
                 when (action) {
-                    is ItemAction.Play -> onPlayOption(item, action.queueOption, false)
-                    ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true)
+                    is ItemAction.Play,
+                    ItemAction.StartRadio,
+                    -> runPlayAction(action)
                     ItemAction.AddToLibrary,
                     ItemAction.RemoveFromLibrary,
                     -> libraryActions.onLibraryClick(item)
@@ -206,6 +222,7 @@ private fun <T> PlayableItemWithMenu(
                     ItemAction.RemoveFromPlaylist -> onRemoveFromPlaylist?.invoke()
                     ItemAction.MarkPlayed -> progressActions?.onMarkPlayed(item)
                     ItemAction.MarkUnplayed -> progressActions?.onMarkUnplayed(item)
+                    ItemAction.Customize -> showCustomizeDialog = true
                 }
             }
         }
@@ -216,6 +233,12 @@ private fun <T> PlayableItemWithMenu(
                 playlistActions = playlistActions,
                 onDismiss = { showPlaylistDialog = false },
             )
+        }
+
+        if (showCustomizeDialog) {
+            item.itemKind()?.let { kind ->
+                DefaultClickActionsDialog(itemKind = kind, onDismiss = { showCustomizeDialog = false })
+            }
         }
     }
 }

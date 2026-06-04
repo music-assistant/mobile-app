@@ -11,21 +11,27 @@ import androidx.compose.material3.SplitButtonDefaults.TrailingButton
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
-import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+import io.music_assistant.client.ui.compose.common.items.DefaultClickActionsDialog
 import io.music_assistant.client.ui.compose.common.items.ItemAction
+import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
+import io.music_assistant.client.ui.compose.common.items.icon
 import io.music_assistant.client.ui.compose.common.items.resolvePlayButtonActions
+import io.music_assistant.client.ui.compose.common.items.title
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_play
-import musicassistantclient.composeapp.generated.resources.cd_play_now
 import musicassistantclient.composeapp.generated.resources.cd_play_options
 import org.jetbrains.compose.resources.stringResource
 
@@ -37,31 +43,46 @@ fun ItemPlayButton(
     modifier: Modifier = Modifier,
 ) {
     if (!item.isPlayable) return
+
+    // The detail header is wrapped in ProvideClickActions(DETAIL), so the config resolves
+    // this item's DETAIL default. effectiveActionFor is non-null here (item is playable).
+    val effective = LocalClickActionConfig.current.effectiveActionFor(item)
+        ?: ItemAction.Play(QueueOption.REPLACE)
+    val kind = item.itemKind()
+
+    var showCustomizeDialog by remember { mutableStateOf(false) }
+
+    val runPlayAction: (ItemAction) -> Unit = { action ->
+        when (action) {
+            is ItemAction.Play -> onPlayClick(action.queueOption, false)
+            ItemAction.StartRadio -> onPlayClick(QueueOption.REPLACE, true)
+            else -> Unit
+        }
+    }
+
     SplitButtonLayout(
         modifier = modifier,
         leadingButton = {
-            val playNowText = stringResource(Res.string.cd_play_now)
+            val label = stringResource(effective.title())
             LeadingButton(
-                modifier = Modifier.semantics { contentDescription = playNowText },
-                onClick = { onPlayClick(QueueOption.REPLACE, false) },
+                modifier = Modifier.semantics { contentDescription = label },
+                onClick = { runPlayAction(effective) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = PlayIcon,
-                        contentDescription = null,
-                    )
-                    Text(modifier = Modifier.padding(start = 8.dp), text = stringResource(Res.string.action_play))
+                    Icon(imageVector = effective.icon(), contentDescription = null)
+                    Text(modifier = Modifier.padding(start = 8.dp), text = label)
                 }
             }
         },
         trailingButton = {
             PlayOverflow(
                 item = item,
-                onPlayClick = onPlayClick,
+                default = effective,
+                // Customize opens the per-kind table — meaningless for kindless items (e.g. Genre).
+                onCustomize = if (kind != null) ({ showCustomizeDialog = true }) else null,
+                onPlayAction = runPlayAction,
             ) { onClick ->
-                TrailingButton(
-                    onClick = onClick,
-                ) {
+                TrailingButton(onClick = onClick) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,
                         contentDescription = stringResource(Res.string.cd_play_options),
@@ -70,21 +91,25 @@ fun ItemPlayButton(
             }
         },
     )
+
+    if (showCustomizeDialog && kind != null) {
+        DefaultClickActionsDialog(itemKind = kind, onDismiss = { showCustomizeDialog = false })
+    }
 }
 
 @Composable
 private fun PlayOverflow(
     item: AppMediaItem,
-    onPlayClick: (QueueOption, Boolean) -> Unit,
+    default: ItemAction,
+    onCustomize: (() -> Unit)?,
+    onPlayAction: (ItemAction) -> Unit,
     button: @Composable (() -> Unit) -> Unit,
 ) {
-    val options = resolvePlayButtonActions(item).map { action ->
+    val actions = resolvePlayButtonActions(item, default) +
+        (onCustomize?.let { listOf(ItemAction.Customize) } ?: emptyList())
+    val options = actions.map { action ->
         action.toOverflowOption {
-            when (it) {
-                is ItemAction.Play -> onPlayClick(it.queueOption, false)
-                ItemAction.StartRadio -> onPlayClick(QueueOption.REPLACE, true)
-                else -> Unit
-            }
+            if (it == ItemAction.Customize) onCustomize?.invoke() else onPlayAction(it)
         }
     }
     OverflowMenuButton(

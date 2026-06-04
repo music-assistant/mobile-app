@@ -11,6 +11,7 @@
   <string name="action_mark_played">Mark as played</string>
   <string name="action_mark_unplayed">Mark as unplayed</string>
   <string name="action_pause">Pause</string>
+  <string name="action_customize">Customize…</string>
   <string name="action_play">Play</string>
   <string name="action_play_next">Play next</string>
   <string name="action_play_now">Play now</string>
@@ -18,6 +19,15 @@
   <string name="action_remove_from_playlist">Remove from playlist</string>
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
+  <string name="clickctx_album">Album</string>
+  <string name="clickctx_artist">Artist</string>
+  <string name="clickctx_detail">Play button</string>
+  <string name="clickctx_home">Home</string>
+  <string name="clickctx_library">Library</string>
+  <string name="clickctx_playlist">Playlist</string>
+  <string name="clickctx_search">Search</string>
+  <string name="default_click_dialog_save">Save</string>
+  <string name="default_click_dialog_title">Default click action</string>
   <string name="all_albums">All albums</string>
   <string name="all_artists">All artists</string>
   <string name="all_audiobooks">All audiobooks</string>
@@ -91,6 +101,14 @@
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_unknown">Unknown</string>
+  <string name="kind_album">Albums</string>
+  <string name="kind_artist">Artists</string>
+  <string name="kind_audiobook">Audiobooks</string>
+  <string name="kind_playlist">Playlists</string>
+  <string name="kind_podcast">Podcasts</string>
+  <string name="kind_podcast_episode">Podcast episodes</string>
+  <string name="kind_radio">Radio stations</string>
+  <string name="kind_track">Tracks</string>
   <string name="library_customize">Customize</string>
   <string name="library_empty">No items found</string>
   <string name="library_error">Error loading data</string>
@@ -106,6 +124,7 @@
   <string name="media_type_podcasts">Podcasts</string>
   <string name="media_type_radio">Radio</string>
   <string name="media_type_tracks">Tracks</string>
+  <string name="menu_default_label">Default</string>
   <string name="nav_home">Home</string>
   <string name="nav_library">Library</string>
   <string name="nav_search">Search</string>

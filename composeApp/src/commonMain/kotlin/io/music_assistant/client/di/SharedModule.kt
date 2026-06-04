@@ -26,6 +26,7 @@ import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
+import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.NetworkMonitor
@@ -65,6 +66,7 @@ fun sharedModule(
         viewModelOf(::ThemeViewModel)
         factory { ActionsViewModel(get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }
+        factory { DefaultClickActionsViewModel(get()) }
         factory {
             AuthenticationViewModel(
                 auth = get(),

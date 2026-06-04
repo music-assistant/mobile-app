@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlaylistAddCircle
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 import compose.icons.TablerIcons
 import compose.icons.tablericons.FolderMinus
@@ -21,6 +22,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_library
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
 import musicassistantclient.composeapp.generated.resources.action_add_to_queue
+import musicassistantclient.composeapp.generated.resources.action_customize
 import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.action_insert_next
 import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
@@ -49,6 +51,8 @@ sealed class ItemAction(val kind: Kind) {
 
     data object MarkPlayed : ItemAction(Kind.OTHER)
     data object MarkUnplayed : ItemAction(Kind.OTHER)
+
+    data object Customize : ItemAction(Kind.OTHER)
 }
 
 fun ItemAction.title(): StringResource = when (this) {
@@ -67,6 +71,7 @@ fun ItemAction.title(): StringResource = when (this) {
     ItemAction.RemoveFromPlaylist -> Res.string.action_remove_from_playlist
     ItemAction.MarkPlayed -> Res.string.action_mark_played
     ItemAction.MarkUnplayed -> Res.string.action_mark_unplayed
+    ItemAction.Customize -> Res.string.action_customize
 }
 
 fun ItemAction.icon(): ImageVector = when (this) {
@@ -85,4 +90,5 @@ fun ItemAction.icon(): ImageVector = when (this) {
     ItemAction.RemoveFromPlaylist -> Icons.Default.Delete
     ItemAction.MarkPlayed -> Icons.Default.Check
     ItemAction.MarkUnplayed -> Icons.Default.Replay
+    ItemAction.Customize -> Icons.Default.Tune
 }

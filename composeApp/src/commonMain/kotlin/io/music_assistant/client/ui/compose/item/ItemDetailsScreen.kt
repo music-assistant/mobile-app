@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Chapter
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
@@ -62,6 +63,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.stringResource
+import io.music_assistant.client.data.model.client.toClickContext
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SortChip
@@ -73,6 +75,7 @@ import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
+import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -358,11 +361,13 @@ private fun ItemContent(
     val safeIndex = selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))
 
     val heroSlot: @Composable () -> Unit = {
-        ItemHeader(
-            item = item,
-            providerIconFetcher = providerIconFetcher,
-            onPlayClick = onPlayItemClick,
-        )
+        ProvideClickActions(ClickContext.DETAIL) {
+            ItemHeader(
+                item = item,
+                providerIconFetcher = providerIconFetcher,
+                onPlayClick = onPlayItemClick,
+            )
+        }
     }
 
     Screen(
@@ -396,7 +401,9 @@ private fun ItemContent(
                     )
                 }
                 val gridState = rememberLazyGridState()
+                val tabContext = currentTab.sortContext?.toClickContext()
                 Box(modifier = Modifier.weight(1f)) {
+                    ProvideClickActions(tabContext) {
                     TabContent(
                         tab = currentTab,
                         item = item,
@@ -415,6 +422,7 @@ private fun ItemContent(
                         tabsSlot = tabsSlot,
                         gridState = gridState,
                     )
+                    }
                 }
             }
         }

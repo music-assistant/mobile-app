@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
@@ -60,6 +61,7 @@ import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
+import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListKey
@@ -116,6 +118,7 @@ fun SearchScreen(
             )
         },
     ) {
+        ProvideClickActions(ClickContext.SEARCH) {
         SearchContent(
             state = state,
             toastState = toastState,
@@ -143,6 +146,7 @@ fun SearchScreen(
             },
             contentPadding = contentPadding,
         )
+        }
     }
 }
 

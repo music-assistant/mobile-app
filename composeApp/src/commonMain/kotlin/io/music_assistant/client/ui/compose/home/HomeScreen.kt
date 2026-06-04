@@ -44,6 +44,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
@@ -69,6 +70,7 @@ import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
+import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListKey
@@ -184,6 +186,7 @@ fun HomeScreen(
                 providerIconFetcher = providerIconFetcher,
             )
         }
+        ProvideClickActions(ClickContext.HOME) {
         LazyColumn(
             state = listState,
             contentPadding = contentPadding,
@@ -256,6 +259,7 @@ fun HomeScreen(
                     }
                 }
             }
+        }
         }
     }
 }

@@ -310,6 +310,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     ItemAction.MarkPlayed -> progressActions?.onMarkPlayed(item)
                     ItemAction.MarkUnplayed -> progressActions?.onMarkUnplayed(item)
                     ItemAction.RemoveFromPlaylist -> Unit
+                    // Browsable items never surface Customize (playable-only menu entry).
+                    ItemAction.Customize -> Unit
                 }
             }
         }
