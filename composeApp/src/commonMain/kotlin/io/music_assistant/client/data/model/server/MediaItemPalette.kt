@@ -20,7 +20,9 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable
 data class MediaItemPalette(
     @SerialName("background_dark") @Serializable(with = RgbColorSerializer::class) val backgroundDark: RgbColor? = null,
-    @SerialName("background_light") @Serializable(with = RgbColorSerializer::class) val backgroundLight: RgbColor? = null,
+    @SerialName(
+        "background_light",
+    ) @Serializable(with = RgbColorSerializer::class) val backgroundLight: RgbColor? = null,
     @SerialName("primary") @Serializable(with = RgbColorSerializer::class) val primary: RgbColor? = null,
     @SerialName("accent") @Serializable(with = RgbColorSerializer::class) val accent: RgbColor? = null,
     @SerialName("on_dark") @Serializable(with = RgbColorSerializer::class) val onDark: RgbColor? = null,
@@ -39,6 +41,8 @@ internal object RgbColorSerializer : KSerializer<RgbColor?> {
 
     override fun deserialize(decoder: Decoder): RgbColor? =
         decoder.decodeSerializableValue(delegate)
-            ?.takeIf { it.size == 3 }
+            ?.takeIf { it.size == BASE_COLORS_COUNT }
             ?.let { RgbColor(it[0], it[1], it[2]) }
+
+    private const val BASE_COLORS_COUNT = 3
 }
