@@ -35,15 +35,31 @@ data class ClickActionConfig(
 
 val LocalClickActionConfig = compositionLocalOf { ClickActionConfig(null, emptyMap()) }
 
+/** The saved preference table, loaded once from Koin near the app root (empty in tests/previews). */
+val LocalClickActionPrefs =
+    compositionLocalOf<Map<ItemKind, Map<ClickContext, DefaultClickAction>>> { emptyMap() }
+
 /**
- * Collects the saved tables once and provides them scoped to [context] (the surface the
- * wrapped subtree renders in; null = non-customizable → PLAY_NOW). Single entry point for
- * every customizable screen and the detail-page play button.
+ * Reads the saved tables once from Koin and exposes them via [LocalClickActionPrefs].
+ * Provide near the app root so context scoping below stays Koin-free (and previewable/testable).
+ */
+@Composable
+fun ProvideClickActionPrefs(content: @Composable () -> Unit) {
+    val prefs by koinViewModel<DefaultClickActionsViewModel>().actions.collectAsStateWithLifecycle()
+    CompositionLocalProvider(LocalClickActionPrefs provides prefs, content)
+}
+
+/**
+ * Scopes the click config to [context] (the surface the wrapped subtree renders in; null =
+ * non-customizable → PLAY_NOW) using the already-loaded prefs. Single, Koin-free entry point
+ * for every customizable screen and the detail-page play button.
  */
 @Composable
 fun ProvideClickActions(context: ClickContext?, content: @Composable () -> Unit) {
-    val prefs by koinViewModel<DefaultClickActionsViewModel>().actions.collectAsStateWithLifecycle()
-    CompositionLocalProvider(LocalClickActionConfig provides ClickActionConfig(context, prefs), content)
+    CompositionLocalProvider(
+        LocalClickActionConfig provides ClickActionConfig(context, LocalClickActionPrefs.current),
+        content,
+    )
 }
 
 /** Matrix-row display mapping (no concrete item — reuses ItemAction.title()/icon()). */

@@ -13,7 +13,7 @@ import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
-import musicassistantclient.composeapp.generated.resources.action_play
+import musicassistantclient.composeapp.generated.resources.action_play_now
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
@@ -41,7 +41,7 @@ class MediaItemPage(
 
     override fun assert() {
         composeTestRule.onNodeWithText(name).assertIsDisplayed()
-        composeTestRule.onNodeWithText(Res.string.action_play.get()).assertIsDisplayed().assertHasClickAction()
+        composeTestRule.onNodeWithText(Res.string.action_play_now.get()).assertIsDisplayed().assertHasClickAction()
         assertNavBar(
             items = listOf(
                 Res.string.nav_home.get(),
@@ -89,7 +89,7 @@ class MediaItemPage(
     }
 
     fun clickPlay(): MediaItemPage {
-        composeTestRule.onNodeWithText(Res.string.action_play.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_play_now.get()).performClick()
         return this
     }
 }
