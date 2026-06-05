@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "5J5R9QK64D.io.music-assistant.client",
+        "paths": ["/app/*"]
+      }
+    ]
+  }
+}

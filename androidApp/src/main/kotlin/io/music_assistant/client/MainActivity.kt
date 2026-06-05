@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.asLiveData
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
@@ -20,6 +21,7 @@ import org.koin.android.ext.android.inject
 class MainActivity : ComponentActivity() {
     private val dataSource: MainDataSource by inject()
     private val authManager: AuthenticationManager by inject()
+    private val deepLinkBus: DeepLinkBus by inject()
     private val oauthHandler: OAuthHandler by lazy {
         OAuthHandler(this)
     }
@@ -36,8 +38,8 @@ class MainActivity : ComponentActivity() {
         // Provide OAuthHandler to AuthenticationManager
         authManager.oauthHandler = oauthHandler
 
-        // Handle OAuth callback if launched from deep link
-        handleOAuthCallback(intent)
+        // Handle OAuth callback / page deep link if launched from one
+        handleIncomingUri(intent)
 
         dataSource.isAnythingPlaying.asLiveData()
             .observe(this) {
@@ -65,25 +67,35 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleOAuthCallback(intent)
+        // singleTask reuses this instance, so this path is now live (it was dead
+        // under the default standard launchMode). Keep getIntent() in sync.
+        setIntent(intent)
+        handleIncomingUri(intent)
     }
 
-    private fun handleOAuthCallback(intent: Intent?) {
+    /**
+     * Single dispatch point for incoming deep-link URIs. The OAuth callback is
+     * peeled off explicitly; everything else (musicassistant://app/<page> and
+     * the https App Link https://music-assistant.io/app/<page>) is forwarded to
+     * [DeepLinkBus], which self-filters and ignores anything it doesn't
+     * recognize. Only URIs matching a manifest intent-filter ever reach here.
+     */
+    private fun handleIncomingUri(intent: Intent?) {
         val data = intent?.data ?: return
         Logger.withTag("MainActivity").d("Deep link received: $data")
 
-        // Handle musicassistant://auth/callback?code=...
+        // musicassistant://auth/callback?code=...
         if (data.scheme == "musicassistant" && data.host == "auth" && data.path == "/callback") {
             val token = data.getQueryParameter("code")
-            Logger.withTag("MainActivity").d("Custom scheme callback - token: ${token != null}")
-
+            Logger.withTag("MainActivity").d("OAuth callback - token: ${token != null}")
             if (token != null) {
-                // Deliver token directly to AuthenticationManager
                 authManager.handleOAuthCallback(token)
             } else {
                 Logger.withTag("MainActivity").e("No token in OAuth callback")
             }
+            return
         }
+        deepLinkBus.handle(data.toString())
     }
 
     companion object {

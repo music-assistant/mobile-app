@@ -28,27 +28,31 @@ enum KmpState {
     static let readyNotification = Notification.Name("KMPReadyNotification")
 }
 
-/// Buffers an OAuth callback URL when it arrives before Koin is initialized
-/// (cold-launch-from-deep-link). Replayed by ContentView.onAppear once
-/// KmpState.isReady == true. Accessed only from the main thread.
-enum PendingOAuthCallback {
+/// Buffers an incoming musicassistant:// URL when it arrives before Koin is
+/// initialized (cold-launch-from-deep-link). Replayed by ContentView.onAppear
+/// once KmpState.isReady == true. Accessed only from the main thread.
+enum PendingURL {
     static var url: URL?
 }
 
-/// Parses a musicassistant://auth/callback?code=... URL and hands the token
-/// to AuthenticationManager. Matches the shape Android's MainActivity parses
-/// in handleOAuthCallback (MainActivity.kt:64-80). Silently returns for URLs
-/// that don't match — we can't assume this app is the only handler of the
-/// scheme.
-func handleOAuthCallback(_ url: URL) {
-    guard url.scheme == "musicassistant",
-          url.host == "auth",
-          url.path == "/callback",
-          let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-          let code = components.queryItems?.first(where: { $0.name == "code" })?.value
-    else { return }
-
-    KmpHelper.shared.authManager.handleOAuthCallback(token: code)
+/// Single dispatch point for incoming deep links — mirrors Android's
+/// MainActivity.handleIncomingUri. Two entry forms reach here:
+///   - custom scheme  musicassistant://auth/callback   → OAuth (peeled off)
+///   - custom scheme  musicassistant://app/<page>       → DeepLinkBus
+///   - Universal Link https://…music-assistant.io/app/<page> → DeepLinkBus
+/// The OAuth callback is handled explicitly; everything else is forwarded to
+/// the shared DeepLinkBus, which self-filters and ignores anything it doesn't
+/// recognize.
+func handleIncomingURL(_ url: URL) {
+    if url.scheme == "musicassistant", url.host == "auth" {
+        guard url.path == "/callback",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let code = components.queryItems?.first(where: { $0.name == "code" })?.value
+        else { return }
+        KmpHelper.shared.authManager.handleOAuthCallback(token: code)
+        return
+    }
+    KmpHelper.shared.handleDeepLink(urlString: url.absoluteString)
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -146,16 +150,27 @@ struct iOSApp: App {
                     // requires a live scene, so can't move to `init()`.
                     KmpHelper.shared.authManager.oauthHandler = OAuthHandler()
 
-                    if let pending = PendingOAuthCallback.url {
-                        PendingOAuthCallback.url = nil
-                        handleOAuthCallback(pending)
+                    if let pending = PendingURL.url {
+                        PendingURL.url = nil
+                        handleIncomingURL(pending)
                     }
                 }
                 .onOpenURL { url in
+                    // Custom-scheme links (musicassistant://…).
                     if KmpState.isReady {
-                        handleOAuthCallback(url)
+                        handleIncomingURL(url)
                     } else {
-                        PendingOAuthCallback.url = url
+                        PendingURL.url = url
+                    }
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    // Universal Links (https://…music-assistant.io/app/…) arrive
+                    // as a web-browsing NSUserActivity, not via onOpenURL.
+                    guard let url = activity.webpageURL else { return }
+                    if KmpState.isReady {
+                        handleIncomingURL(url)
+                    } else {
+                        PendingURL.url = url
                     }
                 }
         }

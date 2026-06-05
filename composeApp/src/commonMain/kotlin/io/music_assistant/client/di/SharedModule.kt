@@ -1,5 +1,6 @@
 package io.music_assistant.client.di
 
+import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.api.KtorServiceClient
 import io.music_assistant.client.api.ServiceClient
@@ -42,6 +43,7 @@ fun sharedModule(
         singleOf(::SettingsRepository)
         singleOf(::NetworkMonitor)
         singleOf(::ErrorMessageBus)
+        singleOf(::DeepLinkBus)
         singleOf(::ImageCacheInvalidator)
         singleOf(serviceClientConstructor) { bind<ServiceClient>() }
         singleOf(::LogSharer)

@@ -37,6 +37,8 @@ import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.savedstate.serialization.SavedStateConfiguration
+import io.music_assistant.client.api.DeepLinkBus
+import io.music_assistant.client.api.DeepLinkDestination
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.items.Album
@@ -70,6 +72,7 @@ import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.ui.compose.search.SearchViewModel
+import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
@@ -98,6 +101,7 @@ fun MainNavigationRoot(
     val uriHandler = LocalUriHandler.current
     val toastState = rememberToastState()
     val errorBus: ErrorMessageBus = koinInject()
+    val deepLinkBus: DeepLinkBus = koinInject()
 
     LaunchedEffect(Unit) {
         homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
@@ -152,6 +156,46 @@ fun MainNavigationRoot(
         rememberMainNavBackStack(MainNav.Search),
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }
+
+    // Apply a pending navigation deep link (musicassistant://app/<page> or the
+    // https App/Universal Link). The destination is retained upstream, and we
+    // gate on Authenticated + re-key on connectionState so that the transient
+    // pre-auth MainNavigationRoot instance — torn down during the cold-launch
+    // Main→Settings→Main churn — never consumes it; only the authenticated
+    // instance that stays on screen applies and clears it.
+    val pendingDeepLink by deepLinkBus.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingDeepLink, connectionState) {
+        val dest = pendingDeepLink ?: return@LaunchedEffect
+        val authenticated = (connectionState as? SessionState.Connected)
+            ?.dataConnectionState == DataConnectionState.Authenticated
+        if (!authenticated) return@LaunchedEffect
+        when (dest) {
+            DeepLinkDestination.Home -> {
+                multiBackStack.currentBackStack = 0
+                multiBackStack.resetCurrentBackStack()
+            }
+
+            is DeepLinkDestination.Library -> {
+                multiBackStack.currentBackStack = 1
+                multiBackStack.resetCurrentBackStack()
+                // /library/<category> → push the category list onto the Library tab.
+                dest.mediaType?.let { multiBackStack.add(MainNav.ItemList(it)) }
+            }
+
+            DeepLinkDestination.Search -> {
+                multiBackStack.currentBackStack = 2
+                multiBackStack.resetCurrentBackStack()
+            }
+
+            DeepLinkDestination.Players -> {
+                // Expand the now-playing layout over the current tab (the
+                // FloatingBar is global, so no tab switch needed). The pager
+                // renders its own empty state if no player is present.
+                playerExpanded = true
+            }
+        }
+        deepLinkBus.consume(dest)
+    }
 
     val navigationItems = listOf(
         multiBackStack.createNavigationItem(

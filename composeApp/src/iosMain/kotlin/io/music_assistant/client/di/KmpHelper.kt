@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.Url
+import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
@@ -57,6 +58,7 @@ object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
+    private val deepLinkBus: DeepLinkBus by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
     private val artworkHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
@@ -78,6 +80,13 @@ object KmpHelper : KoinComponent {
             ?.serverInfo
             ?.serverId
     }
+
+    /**
+     * Route a `musicassistant://app/<page>` URL into the navigation deep-link
+     * bus. Parsing/validation lives in [DeepLinkBus]; non-matching URLs are
+     * silently ignored.
+     */
+    fun handleDeepLink(urlString: String) = deepLinkBus.handle(urlString)
 
     // MARK: - External Consumer Lifecycle (CarPlay)
 

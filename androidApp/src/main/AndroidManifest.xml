@@ -28,12 +28,13 @@
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:launchMode="singleTask"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Custom scheme callback -->
+            <!-- OAuth callback: musicassistant://auth/callback?code=... -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -42,6 +43,39 @@
                     android:scheme="musicassistant"
                     android:host="auth"
                     android:path="/callback" />
+            </intent-filter>
+            <!-- In-app page deep links: musicassistant://app/home|library|search -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="musicassistant"
+                    android:host="app" />
+            </intent-filter>
+            <!--
+                App Links: https://(www.)music-assistant.io/app/<page>. autoVerify
+                attempts Digital Asset Links verification against
+                /.well-known/assetlinks.json on the host. If that file can't be
+                hosted (domain not under our control) verification fails silently
+                and the link is NOT auto-claimed — the user opts in manually via
+                Settings → Apps → Music Assistant → Open by default → Add link.
+
+                Scoped to exactly "/app" and the "/app/" subtree so the site's
+                homepage and any other page (incl. lookalikes like /apps, /apple)
+                stay with the browser. assetlinks.json can't express paths — it is
+                a host-level grant — so this manifest scoping is what keeps the app
+                from shadowing the rest of the site.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="www.music-assistant.io" />
+                <data android:host="music-assistant.io" />
+                <data android:path="/app" />
+                <data android:pathPrefix="/app/" />
             </intent-filter>
             <!-- App Actions capability map (actions.intent.PLAY_MEDIA, etc.) -->
             <meta-data

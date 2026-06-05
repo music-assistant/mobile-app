@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.music_assistant.client",
+      "sha256_cert_fingerprints": [
+        "79:A9:D6:11:30:20:3E:3D:7A:D5:69:BF:F8:D6:43:4B:B0:35:10:C3:80:C5:9D:A8:FF:F4:9D:7F:C4:EF:88:01"
+      ]
+    }
+  }
+]
