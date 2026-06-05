@@ -2,6 +2,7 @@ package io.music_assistant.client.data.model.client
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Podcasts
+import io.music_assistant.client.data.model.server.MediaItemPalette
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -16,6 +17,7 @@ data class PlayerMedia(
     val queueItemId: String?,
     val mediaType: MediaType?,
     val uri: String?,
+    val palette: MediaItemPalette?,
 ) {
     val subtitle = listOfNotNull(artist, album)
         .takeIf { it.isNotEmpty() }?.joinToString(" • ")

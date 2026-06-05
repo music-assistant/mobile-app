@@ -50,7 +50,8 @@ class DominantColorViewModel : ViewModel() {
         val color = palette.getBestColor()
         return if (color != null) {
             ExtractedColors(
-                dominant = color,
+                backgroundOnDark = color,
+                backgroundOnLight = color,
                 tintOnDark = color.ensureReadable(onDarkSurface = true),
                 tintOnLight = color.ensureReadable(onDarkSurface = false),
             )

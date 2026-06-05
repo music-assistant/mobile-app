@@ -183,9 +183,10 @@ fun PlayersPager(
             )
         }
         val playerColors = playerDataList.associateWith {
-            val imageUrl = it.player.currentMedia?.imageUrl
+            val media = it.player.currentMedia
             rememberAnimatedPlayerColors(
-                imageUrl = imageUrl,
+                imageUrl = media?.imageUrl,
+                palette = media?.palette,
                 fallback = MaterialTheme.colorScheme.primaryContainer,
                 fetchColors = fetchColors,
             )

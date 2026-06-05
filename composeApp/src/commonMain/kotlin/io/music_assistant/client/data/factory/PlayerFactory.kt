@@ -62,6 +62,7 @@ class PlayerFactory(
             queueItemId = queueItemId,
             mediaType = clientMediaType,
             uri = uri,
+            palette = palette,
         )
     }
 
