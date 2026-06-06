@@ -2,7 +2,7 @@
 
 The Home tab is populated with data from the **Discover** view in Music Assistant. By default, it loads all sections that appear in Discover, excluding the MA frontend Player Bar section and folder sections.
 
-The Music Assistant App provides its own [Player Pager](player-pager.md) for interacting with your Music Assistant players.
+The Music Assistant App provides its own [Players Pager](players-pager.md) for interacting with your Music Assistant players.
 
 ## Refreshing Home
 
@@ -23,11 +23,20 @@ Changes apply immediately and are saved per device.
 
 ## Interacting with Items
 
-Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
+Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, the default tap action is **Play Now**, which replaces the current queue and starts playing immediately.
 
-Long-pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
+Long-pressing an item opens a menu with additional actions. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
 
-![Context Menu](screenshots/home/context-menu.jpeg)
+![Menu](screenshots/home/context-menu.jpeg)
+
+### Customizing default actions for single item clicks
+
+The default action for single-item clicks can be customized per item type, so tracks, radio stations, and other items can each have their own default behavior.
+
+To configure this, long-press any single item and tap **Customize...** at the bottom of the menu. This opens the **Default click action** settings, where you can set a different default action per context (Home, Library, Album, Playlist, Artist, and Search).
+
+![Long-Press Menu](screenshots/home/long-press-customize.jpeg)
+![Default Click Action Customize](screenshots/home/default-click-action-customize.jpeg)
 
 ## Section Links
 

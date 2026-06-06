@@ -52,8 +52,17 @@ Toggle between grid and list view. This preference is saved per content type.
 
 ## Interacting with Items
 
-Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, tapping directly plays that item, replacing the current queue.
+Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, the default tap action is **Play Now**, which replaces the current queue and starts playing immediately.
 
-Long-pressing an item opens a context menu with additional actions such as **Play Now** and various queue options. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
+Long-pressing an item opens a menu with additional actions. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
 
-![Context Menu](screenshots/library/context-menu.jpeg)
+![Menu](screenshots/library/context-menu.jpeg)
+
+### Customizing default actions for single item clicks
+
+The default action for single-item clicks can be customized per item type, so tracks, radio stations, and other items can each have their own default behavior.
+
+To configure this, long-press any single item and tap **Customize...** at the bottom of the menu. This opens the **Default click action** settings, where you can set a different default action per context (Home, Library, Album, Playlist, Artist, and Search).
+
+![Long Press Menu](screenshots/library/long-press-customize.jpeg)
+![Default Click Action Customize](screenshots/library/default-click-action-customize.jpeg)

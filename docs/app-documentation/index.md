@@ -14,7 +14,7 @@
 - [The Home Tab](home.md)
 - [The Library Tab](library.md)
 - [The Global Search Tab](global-search.md)
-- [The Player Pager](player-pager.md)
+- [The Players Pager](players-pager.md)
 
 ## 🔗 Quick Links
 
