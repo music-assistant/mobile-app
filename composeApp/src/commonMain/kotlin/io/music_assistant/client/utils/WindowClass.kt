@@ -31,7 +31,7 @@ fun gridItemMinSize() = when {
 
 @Composable
 fun rowImageSize() = when {
-    WindowClass.isAtLeastMedium() -> 96.dp
+    WindowClass.isAtLeastMedium() -> 48.dp
     else -> 48.dp
 }
 

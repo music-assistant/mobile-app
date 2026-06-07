@@ -25,6 +25,7 @@ import io.music_assistant.client.settings.ViewMode
 fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
+    isAlbumView: Boolean = false,
     onPlayOption: ((Track, QueueOption, Boolean) -> Unit),
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -46,6 +47,7 @@ fun TrackWithMenu(
                 ViewMode.LIST -> TrackRowItem(
                     modifier = mod,
                     item = item,
+                    isAlbumRow = isAlbumView,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,

@@ -738,6 +738,7 @@ private fun PlayablesTabContent(
                             is Track -> TrackWithMenu(
                                 item = track,
                                 viewMode = viewMode,
+                                isAlbumView = parentItem is Album,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = playlistActions,
                                 onRemoveFromPlaylist = if (parentItem is Playlist && parentItem.isEditable) {
