@@ -98,13 +98,13 @@ class MainDataSource(
 ) : CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
-/** Combined inputs for a [MainDataSource] player-data rebuild. */
-private data class PlayerBuildInputs(
-    val players: DataState<List<Player>>,
-    val queues: List<QueueInfo>,
-    val localData: PlayerData?,
-    val favoriteOverrides: Map<String, Boolean>,
-)
+    /** Combined inputs for a [MainDataSource] player-data rebuild. */
+    private data class PlayerBuildInputs(
+        val players: DataState<List<Player>>,
+        val queues: List<QueueInfo>,
+        val localData: PlayerData?,
+        val favoriteOverrides: Map<String, Boolean>,
+    )
 
     private var sendspinClient: SendspinClient? = null
     private var sendspinMonitorJobs = mutableListOf<Job>()
@@ -867,11 +867,12 @@ private data class PlayerBuildInputs(
             }
 
         // Inject synthetic local player if not in server list
-        val withLocal = if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
-            listOf(localData) + playerDataList
-        } else {
-            playerDataList
-        }
+        val withLocal =
+            if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
+                listOf(localData) + playerDataList
+            } else {
+                playerDataList
+            }
         // Re-apply favorite overrides last so the stale queue payload can't win.
         return if (favoriteOverrides.isEmpty()) {
             withLocal
@@ -1489,26 +1490,27 @@ private data class PlayerBuildInputs(
                 .collect { event ->
                     when (event) {
                         is PlayerAddedEvent -> {
-                            val newPlayer = playerFactory.create(event.data)
-                            if (newPlayer.shouldBeShown) {
-                                _serverPlayers.update { oldState ->
-                                    when (oldState) {
-                                        is DataState.Data -> {
-                                            val players = oldState.data
-                                            DataState.Data(
-                                                if (players.none { it.id == newPlayer.id }) {
-                                                    players + newPlayer
-                                                } else {
-                                                    // Player already exists, just update it
-                                                    players.map { if (it.id == newPlayer.id) newPlayer else it }
-                                                },
-                                            )
-                                        }
+                            playerFactory.create(event.data)
+                                .takeIf { it.shouldBeShown }
+                                ?.let { newPlayer ->
+                                    _serverPlayers.update { oldState ->
+                                        when (oldState) {
+                                            is DataState.Data -> {
+                                                val players = oldState.data
+                                                DataState.Data(
+                                                    if (players.none { it.id == newPlayer.id }) {
+                                                        players + newPlayer
+                                                    } else {
+                                                        // Player already exists, just update it
+                                                        players.map { if (it.id == newPlayer.id) newPlayer else it }
+                                                    },
+                                                )
+                                            }
 
-                                        else -> oldState
+                                            else -> oldState
+                                        }
                                     }
                                 }
-                            }
                         }
 
                         is PlayerRemovedEvent -> {
@@ -1560,7 +1562,8 @@ private data class PlayerBuildInputs(
                         is QueueAddedEvent -> {
                             // Server announces a queue (typically when a new
                             // player connects and MA registers its queue).
-                            val data = queueFactory.create(event.data).takeIfNotStale("QueueAdded") ?: return@collect
+                            val data = queueFactory.create(event.data).takeIfNotStale("QueueAdded")
+                                ?: return@collect
 
                             val localPlayerId = settings.sendspinClientId.value
                             if (data.id == localPlayerId ||
@@ -1592,7 +1595,8 @@ private data class PlayerBuildInputs(
 
                         is QueueUpdatedEvent -> {
                             val data =
-                                queueFactory.create(event.data).takeIfNotStale("QueueUpdated") ?: return@collect
+                                queueFactory.create(event.data).takeIfNotStale("QueueUpdated")
+                                    ?: return@collect
 
                             // Forward to local player repository if this is the local player's queue
                             val localPlayerId = settings.sendspinClientId.value
@@ -1622,7 +1626,8 @@ private data class PlayerBuildInputs(
 
                         is QueueItemsUpdatedEvent -> {
                             val data =
-                                queueFactory.create(event.data).takeIfNotStale("QueueItemsUpdated") ?: return@collect
+                                queueFactory.create(event.data).takeIfNotStale("QueueItemsUpdated")
+                                    ?: return@collect
 
                             _queueInfos.update { value ->
                                 value.map {

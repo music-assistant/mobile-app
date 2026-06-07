@@ -27,7 +27,7 @@ class PlayerFactory(
             // for a group. If the server adds a genuinely new group-like type we
             // can surface it explicitly once the mobile app learns about it.
             type = PlayerType.fromServer(type) ?: PlayerType.PLAYER,
-            shouldBeShown = available && enabled && (hidden != true),
+            shouldBeShown = available && enabled && (hidden != true) && (hideInUi != true),
             canSetVolume = supportedFeatures.contains(PlayerFeature.VOLUME_SET),
             volumeLevel = volumeLevel,
             volumeControl = volumeControl,
