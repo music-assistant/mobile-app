@@ -164,7 +164,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     }
 
     Screen(
-        topBar = { scrollBehavior ->
+        topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_settings)) },
                 actions = {
@@ -182,7 +182,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) {

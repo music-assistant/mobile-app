@@ -31,7 +31,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -153,9 +152,8 @@ fun HomeScreen(
     BackHandler(enabled = editMode) { editMode = false }
 
     Screen(
-        topBar = { scrollBehavior ->
+        topBar = {
             LandingPageTopBar(
-                scrollBehavior = scrollBehavior,
                 editMode = editMode,
                 onRefresh = { homeScreenViewModel.loadRecommendations() },
                 onToggleEditMode = {
@@ -266,14 +264,12 @@ fun HomeScreen(
 
 @Composable
 private fun LandingPageTopBar(
-    scrollBehavior: TopAppBarScrollBehavior,
     editMode: Boolean,
     onRefresh: () -> Unit,
     onToggleEditMode: () -> Unit,
 ) {
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
-        scrollBehavior = scrollBehavior,
         actions = {
             if (!editMode) {
                 IconButton(onClick = onRefresh) {

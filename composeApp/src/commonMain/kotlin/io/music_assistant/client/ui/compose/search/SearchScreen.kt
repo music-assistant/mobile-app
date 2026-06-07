@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -107,10 +106,9 @@ fun SearchScreen(
     }
 
     Screen(
-        topBar = { scrollBehaviour ->
+        topBar = {
             SearchTopBar(
                 state.searchState,
-                scrollBehavior = scrollBehaviour,
                 onQueryChanged = searchViewModel::onQueryChanged,
                 onSearchTriggered = searchViewModel::onSearchTriggered,
                 onMediaTypeToggled = searchViewModel::onMediaTypeToggled,
@@ -153,7 +151,6 @@ fun SearchScreen(
 @Composable
 private fun SearchTopBar(
     searchState: SearchViewModel.SearchState,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
     onQueryChanged: (String) -> Unit,
     onSearchTriggered: () -> Unit,
     onMediaTypeToggled: (MediaType, Boolean) -> Unit,
@@ -186,10 +183,6 @@ private fun SearchTopBar(
                 )
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-        scrollBehavior = scrollBehavior,
     )
 }
 

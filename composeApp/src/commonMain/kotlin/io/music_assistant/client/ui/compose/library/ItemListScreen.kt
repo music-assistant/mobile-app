@@ -37,7 +37,6 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -121,9 +120,8 @@ fun ItemListScreen(
     val state by itemListViewModel.state.collectAsStateWithLifecycle()
 
     Screen(
-        topBar = { scrollBehavior ->
+        topBar = {
             ItemListTopBar(
-                scrollBehavior = scrollBehavior,
                 onBack = onBack,
                 onToggleViewMode = itemListViewModel::toggleViewMode,
                 viewMode = state.viewMode,
@@ -169,7 +167,6 @@ fun ItemListScreen(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ItemListTopBar(
-    scrollBehavior: TopAppBarScrollBehavior? = null,
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
     viewMode: ViewMode,
@@ -252,7 +249,6 @@ private fun ItemListTopBar(
                     Text(title)
                 }
             },
-            scrollBehavior = scrollBehavior,
             navigationIcon = {
                 if (!showSearch) {
                     IconButton(onClick = onBack) {

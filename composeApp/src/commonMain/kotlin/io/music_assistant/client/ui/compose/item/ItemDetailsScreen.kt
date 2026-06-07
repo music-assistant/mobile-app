@@ -371,14 +371,13 @@ private fun ItemContent(
     }
 
     Screen(
-        topBar = { scrollBehaviour ->
+        topBar = {
             ItemTopBar(
                 item = item,
                 onBack = onBack,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item.supportsAddToPlaylist },
                 navigateToItem = onNavigateClick,
-                scrollBehavior = scrollBehaviour,
             )
         },
     ) {

@@ -65,7 +65,7 @@ fun LibraryScreen(
     val gridState = rememberLazyGridState()
 
     Screen(
-        topBar = { scrollBehavior ->
+        topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_library)) },
                 actions = {
@@ -76,7 +76,6 @@ fun LibraryScreen(
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) {
