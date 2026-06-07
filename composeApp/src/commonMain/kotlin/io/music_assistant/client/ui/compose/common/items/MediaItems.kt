@@ -936,7 +936,6 @@ internal fun TrackRowItem(
                     )
                 }
             }
-
         } else {
             {
                 TrackImage(item)
