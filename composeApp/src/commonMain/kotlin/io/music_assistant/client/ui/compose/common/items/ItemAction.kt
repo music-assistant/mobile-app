@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.common.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -83,11 +84,17 @@ fun ItemAction.title(): StringResource = when (this) {
 }
 
 fun ItemAction.icon(): ImageVector = when (this) {
-    is ItemAction.Play -> when (queueOption) {
-        QueueOption.REPLACE -> PlayIcon
-        QueueOption.PLAY -> Icons.Default.PlaylistAddCircle
-        QueueOption.NEXT -> Icons.Default.QueuePlayNext
-        QueueOption.ADD -> Icons.Default.AddToQueue
+    is ItemAction.Play -> {
+        if (fromHereInAlbum) {
+            Icons.Default.Album
+        } else {
+            when (queueOption) {
+                QueueOption.REPLACE -> PlayIcon
+                QueueOption.PLAY -> Icons.Default.PlaylistAddCircle
+                QueueOption.NEXT -> Icons.Default.QueuePlayNext
+                QueueOption.ADD -> Icons.Default.AddToQueue
+            }
+        }
     }
     ItemAction.StartRadio -> Icons.Default.CellTower
     ItemAction.AddToLibrary -> TablerIcons.FolderPlus
