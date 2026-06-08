@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
+import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -24,13 +25,13 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 
-typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean) -> Unit
+typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean, parent: AppMediaItem?) -> Unit
 
 @Composable
 fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
-    isAlbumView: Boolean = false,
+    parent: AppMediaItem? = null,
     onPlayOption: PlayHandler<Track>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -43,6 +44,7 @@ fun TrackWithMenu(
             ViewMode.LIST -> Modifier.fillMaxWidth()
         },
         item = item,
+        parent = parent,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
@@ -52,7 +54,7 @@ fun TrackWithMenu(
                 ViewMode.LIST -> TrackRowItem(
                     modifier = mod,
                     item = item,
-                    isAlbumRow = isAlbumView,
+                    isAlbumRow = parent is Album,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
@@ -163,6 +165,7 @@ fun RadioWithMenu(
 private fun <T> PlayableItemWithMenu(
     modifier: Modifier = Modifier,
     item: T,
+    parent: AppMediaItem? = null,
     onPlayOption: PlayHandler<T>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -193,8 +196,12 @@ private fun <T> PlayableItemWithMenu(
 
     val runPlayAction: (ItemAction) -> Unit = { action ->
         when (action) {
-            is ItemAction.Play -> onPlayOption(item, action.queueOption, false)
-            ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true)
+            is ItemAction.Play -> if (action.fromHereInAlbum) {
+                onPlayOption(item, action.queueOption, false, parent)
+            } else {
+                onPlayOption(item, action.queueOption, false, null)
+            }
+            ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, null)
             else -> Unit
         }
     }

@@ -62,6 +62,7 @@ private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem) {
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))
+    add(ItemAction.Play(QueueOption.REPLACE, fromHereInAlbum = true))
     if (item.canStartRadio) add(ItemAction.StartRadio)
 }
 

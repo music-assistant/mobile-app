@@ -298,8 +298,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
             itemActionMenuItems(actions) { action ->
                 expandedItemId = null
                 when (action) {
-                    is ItemAction.Play -> onPlayOption(item, action.queueOption, false)
-                    ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true)
+                    is ItemAction.Play -> onPlayOption(item, action.queueOption, false, null)
+                    ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, null)
                     ItemAction.AddToLibrary,
                     ItemAction.RemoveFromLibrary,
                     -> libraryActions.onLibraryClick(item)

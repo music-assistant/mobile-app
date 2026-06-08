@@ -145,7 +145,9 @@ fun ItemListScreen(
             onNavigateClick = onNavigateClick,
             onGlobalSearch = onGlobalSearch,
             searchQuery = state.searchQuery,
-            onPlayClick = itemListViewModel::onPlayClick,
+            onPlayClick = { item, option, radio, _ ->
+                itemListViewModel.onPlayClick(item, option, radio)
+            },
             onCreatePlaylistClick = { showCreatePlaylistDialog = true },
             onLoadMore = { itemListViewModel.loadMore() },
             onDismissCreatePlaylistDialog = { showCreatePlaylistDialog = false },

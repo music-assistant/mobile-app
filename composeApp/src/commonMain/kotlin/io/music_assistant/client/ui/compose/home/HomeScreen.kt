@@ -175,7 +175,9 @@ fun HomeScreen(
                 title = row.displayName,
                 rowItemType = row.rowItemType,
                 onNavigateClick = onNavigateClick,
-                onPlayClick = homeScreenViewModel::onPlayClick,
+                onPlayClick = { item, option, radio, _ ->
+                    homeScreenViewModel.onPlayClick(item, option, radio)
+                },
                 onAllClick = { row.rowItemType?.let { onLibraryItemClick(it) } },
                 mediaItems = row.items.orEmpty(),
                 playlistActions = actionsViewModel,

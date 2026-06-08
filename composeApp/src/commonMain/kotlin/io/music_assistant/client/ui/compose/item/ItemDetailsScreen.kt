@@ -161,7 +161,7 @@ fun ItemDetails(
     providerIconFetcher: @Composable (Modifier, String) -> Unit = { _, _ -> },
     onPlayClick: (QueueOption, Boolean, AppMediaItem?) -> Unit = { _, _, _ -> },
     onChapterClick: (Int) -> Unit = {},
-    onChildPlayClick: PlayHandler<AppMediaItem> = { _, _, _ -> },
+    onChildPlayClick: PlayHandler<AppMediaItem> = { _, _, _, _ -> },
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
 ) {
@@ -740,7 +740,7 @@ private fun PlayablesTabContent(
                             is Track -> TrackWithMenu(
                                 item = track,
                                 viewMode = viewMode,
-                                isAlbumView = parentItem is Album,
+                                parent = parentItem,
                                 onPlayOption = onPlayChildClick,
                                 playlistActions = playlistActions,
                                 onRemoveFromPlaylist = if (parentItem is Playlist && parentItem.isEditable) {
