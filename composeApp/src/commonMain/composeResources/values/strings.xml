@@ -5,6 +5,7 @@
   <string name="action_add_to_playlist">Add to playlist</string>
   <string name="action_add_to_queue">Add to queue</string>
   <string name="action_browse">Browse</string>
+  <string name="action_customize">Customize…</string>
   <string name="action_favorite">Favorite</string>
   <string name="action_go_to_album">Go to album</string>
   <string name="action_go_to_artist">Go to artist</string>
@@ -14,7 +15,6 @@
   <string name="action_mark_unplayed">Mark as unplayed</string>
   <string name="action_ok">OK</string>
   <string name="action_pause">Pause</string>
-  <string name="action_customize">Customize…</string>
   <string name="action_play">Play</string>
   <string name="action_play_all">Play all</string>
   <string name="action_play_next">Play next</string>
@@ -24,15 +24,6 @@
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
   <string name="albums_by_artist">Albums by %1$s</string>
-  <string name="clickctx_album">Album</string>
-  <string name="clickctx_artist">Artist</string>
-  <string name="clickctx_detail">Play button</string>
-  <string name="clickctx_home">Home</string>
-  <string name="clickctx_library">Library</string>
-  <string name="clickctx_playlist">Playlist</string>
-  <string name="clickctx_search">Search</string>
-  <string name="default_click_dialog_save">Save</string>
-  <string name="default_click_dialog_title">Default click action</string>
   <string name="all_albums">All albums</string>
   <string name="all_artists">All artists</string>
   <string name="all_audiobooks">All audiobooks</string>
@@ -84,6 +75,13 @@
   <string name="cd_toggle_view_mode">Toggle view mode</string>
   <string name="cd_unmute">Unmute</string>
   <string name="cd_vinyl_record">Vinyl Record</string>
+  <string name="clickctx_album">Album</string>
+  <string name="clickctx_artist">Artist</string>
+  <string name="clickctx_detail">Play button</string>
+  <string name="clickctx_home">Home</string>
+  <string name="clickctx_library">Library</string>
+  <string name="clickctx_playlist">Playlist</string>
+  <string name="clickctx_search">Search</string>
   <string name="codec_flac">FLAC (lossless, medium bandwidth)</string>
   <string name="codec_opus">Opus (compressed, lowest bandwidth)</string>
   <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
@@ -94,6 +92,8 @@
   <string name="common_delete">Delete</string>
   <string name="common_done">Done</string>
   <string name="connection_lost">Disconnected — reconnecting…</string>
+  <string name="default_click_dialog_save">Save</string>
+  <string name="default_click_dialog_title">Default click action</string>
   <string name="dsp_enable">Enable DSP</string>
   <string name="dsp_error">Failed to load DSP configuration</string>
   <string name="dsp_presets">Presets</string>
