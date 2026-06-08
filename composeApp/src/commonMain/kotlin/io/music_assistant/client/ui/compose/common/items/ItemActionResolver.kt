@@ -24,8 +24,9 @@ fun resolveLongClickActions(
     canRemoveFromPlaylist: Boolean,
     progressSupported: Boolean,
     defaultAction: ItemAction? = null,
+    hasParent: Boolean = false,
 ): List<ItemAction> = buildList {
-    if (item.isPlayable) addPlaybackActions(item)
+    if (item.isPlayable) addPlaybackActions(item, hasParent)
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
         if (item.isInLibrary) {
@@ -57,12 +58,16 @@ fun resolvePlayButtonActions(item: AppMediaItem, default: ItemAction?): List<Ite
 }.filterNot { it == default }
 
 /** The playback block: Play Now / Insert Next & Play / Insert Next / Add to Bottom / Start Radio. */
-private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem) {
+private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem, hasParent: Boolean = false) {
     add(ItemAction.Play(QueueOption.REPLACE))
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))
-    add(ItemAction.Play(QueueOption.REPLACE, fromHereInAlbum = true))
+
+    if (hasParent) {
+        add(ItemAction.Play(QueueOption.REPLACE, fromHereInAlbum = true))
+    }
+
     if (item.canStartRadio) add(ItemAction.StartRadio)
 }
 

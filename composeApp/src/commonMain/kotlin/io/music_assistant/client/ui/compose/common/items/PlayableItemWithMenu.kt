@@ -192,6 +192,7 @@ private fun <T> PlayableItemWithMenu(
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is PodcastEpisode,
         defaultAction = effectiveDefault,
+        hasParent = parent != null,
     ) + ItemAction.Customize
 
     val runPlayAction: (ItemAction) -> Unit = { action ->
