@@ -197,12 +197,9 @@ private fun <T> PlayableItemWithMenu(
 
     val runPlayAction: (ItemAction) -> Unit = { action ->
         when (action) {
-            is ItemAction.Play -> if (action.fromHereInAlbum) {
-                onPlayOption(item, action.queueOption, false, parent)
-            } else {
-                onPlayOption(item, action.queueOption, false, null)
-            }
+            is ItemAction.Play -> onPlayOption(item, action.queueOption, false, null)
             ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, null)
+            ItemAction.PlayFromHere -> onPlayOption(item, QueueOption.REPLACE, false, parent)
             else -> Unit
         }
     }
@@ -229,6 +226,7 @@ private fun <T> PlayableItemWithMenu(
                 when (action) {
                     is ItemAction.Play,
                     ItemAction.StartRadio,
+                    ItemAction.PlayFromHere,
                     -> runPlayAction(action)
                     ItemAction.AddToLibrary,
                     ItemAction.RemoveFromLibrary,

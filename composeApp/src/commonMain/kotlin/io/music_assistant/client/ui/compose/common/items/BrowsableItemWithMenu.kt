@@ -312,6 +312,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     ItemAction.RemoveFromPlaylist -> Unit
                     // Browsable items never surface Customize (playable-only menu entry).
                     ItemAction.Customize -> Unit
+                    else -> Unit
                 }
             }
         }
