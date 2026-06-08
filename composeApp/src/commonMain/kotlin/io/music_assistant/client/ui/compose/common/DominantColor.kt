@@ -16,7 +16,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import co.touchlab.kermit.Logger
 import coil3.compose.LocalPlatformContext
 import com.kmpalette.palette.graphics.Palette
 import io.music_assistant.client.data.model.server.MediaItemPalette
@@ -25,13 +24,11 @@ import org.koin.compose.koinInject
 
 /**
  * Theme-independent extraction result kept in [DominantColorViewModel]'s cache.
- * Background and tint variants are pre-computed per surface luminance so consumers
- * select cheaply. Local extraction yields the same background for both themes; a
- * server palette splits them ([MediaItemPalette.toExtractedColors]).
+ * A single vivid [background] serves both themes; the readable tint is pre-computed
+ * per surface luminance so consumers select cheaply.
  */
 data class ExtractedColors(
-    val backgroundOnDark: Color,
-    val backgroundOnLight: Color,
+    val background: Color,
     val tintOnDark: Color,
     val tintOnLight: Color,
 )
@@ -39,20 +36,18 @@ data class ExtractedColors(
 private fun RgbColor.toColor() = Color(r, g, b) // Compose Color(Int, Int, Int) expects 0..255
 
 /**
- * Build extraction colors from a server-provided palette, mapping background_dark/light →
- * background and on_dark/light → tint. Returns null if any required slot is missing, so the
- * caller falls back to local artwork extraction (all-or-nothing).
+ * Build extraction colors from a server-provided palette. Uses the vivid `primary` (falling
+ * back to `accent`) as the single background for both themes and derives the readable control
+ * tint via [ensureReadable] — mirroring local artwork extraction so the server path looks
+ * equally punchy. The muted `background_*`/`on_*` slots are intentionally unused. Returns null
+ * when neither vivid slot is present, so the caller falls back to local extraction.
  */
 fun MediaItemPalette.toExtractedColors(): ExtractedColors? {
-    val bgDark = backgroundDark ?: return null
-    val bgLight = backgroundLight ?: return null
-    val tintDark = onDark ?: return null
-    val tintLight = onLight ?: return null
+    val base = (primary ?: accent)?.toColor() ?: return null
     return ExtractedColors(
-        backgroundOnDark = bgDark.toColor(),
-        backgroundOnLight = bgLight.toColor(),
-        tintOnDark = tintDark.toColor(),
-        tintOnLight = tintLight.toColor(),
+        background = base,
+        tintOnDark = base.ensureReadable(onDarkSurface = true),
+        tintOnLight = base.ensureReadable(onDarkSurface = false),
     )
 }
 
@@ -91,7 +86,6 @@ fun rememberAnimatedPlayerColors(
     fallback: Color,
     fetchColors: ExtractedColorsFetcher,
 ): State<PlayerColors> {
-    Logger.withTag("PALETTE").e { "$palette" }
     val onDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     val serverColors = remember(palette) { palette?.toExtractedColors() }
@@ -104,8 +98,7 @@ fun rememberAnimatedPlayerColors(
     }
     val extracted = serverColors ?: localColors
 
-    val targetDominant = extracted
-        ?.let { if (onDark) it.backgroundOnDark else it.backgroundOnLight } ?: fallback
+    val targetDominant = extracted?.background ?: fallback
     val targetTint = extracted
         ?.let { if (onDark) it.tintOnDark else it.tintOnLight }
         ?: fallback.ensureReadable(onDarkSurface = onDark)
