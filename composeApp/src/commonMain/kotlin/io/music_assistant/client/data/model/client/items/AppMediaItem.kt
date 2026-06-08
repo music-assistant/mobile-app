@@ -102,7 +102,7 @@ sealed class AppMediaItem {
 }
 
 fun PlayableItem.image(type: ImageType): ImageInfo? =
-    images[type] ?: images[ImageType.MAIN]
+    images[type] ?: images[ImageType.MAIN] ?: images.firstNotNullOfOrNull { it.value }
 
 val AudioFormat.description: String
     get() = listOfNotNull(

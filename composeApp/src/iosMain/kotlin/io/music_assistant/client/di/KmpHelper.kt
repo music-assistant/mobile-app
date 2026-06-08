@@ -22,8 +22,15 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.settings.CarPlatform
+import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.carBulkActions
+import io.music_assistant.client.settings.carTapAction
+import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.cinterop.BetaInteropApi
@@ -61,6 +68,7 @@ object KmpHelper : KoinComponent {
     val authManager: AuthenticationManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
+    private val settingsRepository: SettingsRepository by inject()
     private val artworkHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
     // Provide a scope for Swift to launch coroutines if needed
@@ -370,16 +378,20 @@ object KmpHelper : KoinComponent {
      * Returns false on no-local-player or no-URI; callers use this to skip
      * Siri donation and respond with `.failure`.
      */
-    fun playOnLocalPlayer(item: AppMediaItem, option: QueueOption): Boolean {
+    fun playOnLocalPlayer(item: AppMediaItem, option: QueueOption): Boolean =
+        dispatchLocal(item, option, radioMode = false)
+
+    private fun dispatchLocal(item: AppMediaItem, option: QueueOption, radioMode: Boolean): Boolean {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
             localPlayerId = player?.id,
             localPlayerSyncedTo = player?.syncedTo,
             mediaUris = listOfNotNull(item.mediaUri),
             option = option,
+            radioMode = radioMode,
         ) ?: return false
         plan.detachFrom?.let { syncedToId ->
-            log.i { "playOnLocalPlayer($option): detaching ${plan.playerId} from $syncedToId" }
+            log.i { "dispatchLocal($option, radio=$radioMode): detaching ${plan.playerId} from $syncedToId" }
         }
         mainScope.launch {
             executeLocalPlayerDispatch(serviceClient, plan) { label, error ->
@@ -387,6 +399,40 @@ object KmpHelper : KoinComponent {
             }
         }
         return true
+    }
+
+    // MARK: - Configurable Car actions (shared with Android Auto via SettingsRepository)
+
+    /**
+     * The ordered, CarPlay-supported bulk-action names (DefaultClickAction.name) configured for
+     * [item]'s browsable kind. Empty when the item isn't a browsable container. Swift maps each
+     * name to a localized title (CarPlayStrings.bulkActionTitle) and dispatches via [playCarAction].
+     */
+    fun carBulkActionNames(item: AppMediaItem): List<String> {
+        val kind = item.mediaType.toItemKind() ?: return emptyList()
+        return settingsRepository.carBrowsableBulkActions.value
+            .carBulkActions(kind, CarPlatform.CARPLAY)
+            .map { it.name }
+    }
+
+    /** Dispatch a named [DefaultClickAction] (a bulk button) onto [item]. False if invalid/no-op. */
+    fun playCarAction(item: AppMediaItem, actionName: String): Boolean {
+        val action = runCatching { DefaultClickAction.valueOf(actionName) }.getOrNull() ?: return false
+        val dispatch = action.toCarDispatch()
+        return dispatchLocal(item, dispatch.option, dispatch.radioMode)
+    }
+
+    /**
+     * Dispatch the per-kind tap action configured for [item] (a plain item tap). Returns the
+     * dispatched DefaultClickAction.name so Swift can decide whether to push Now Playing, or null
+     * on failure / no playable URI.
+     */
+    fun playCarDefaultTap(item: AppMediaItem): String? {
+        val action = item.mediaType.toItemKind()
+            ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
+            ?: DefaultClickAction.PLAY_NOW
+        val dispatch = action.toCarDispatch()
+        return if (dispatchLocal(item, dispatch.option, dispatch.radioMode)) action.name else null
     }
 
     // MARK: - Library Actions (Siri)

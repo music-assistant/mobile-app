@@ -16,6 +16,7 @@ data class LocalPlayerDispatchPlan(
     val mediaUris: List<String>,
     val detachFrom: String?,
     val option: QueueOption,
+    val radioMode: Boolean = false,
 )
 
 /** Returns null when prerequisites (a local player, at least one URI) are missing. */
@@ -24,6 +25,7 @@ fun planLocalPlayerDispatch(
     localPlayerSyncedTo: String?,
     mediaUris: List<String>,
     option: QueueOption,
+    radioMode: Boolean = false,
 ): LocalPlayerDispatchPlan? {
     if (localPlayerId == null || mediaUris.isEmpty()) return null
     return LocalPlayerDispatchPlan(
@@ -31,6 +33,7 @@ fun planLocalPlayerDispatch(
         mediaUris = mediaUris,
         detachFrom = localPlayerSyncedTo,
         option = option,
+        radioMode = radioMode,
     )
 }
 
@@ -59,7 +62,7 @@ suspend fun executeLocalPlayerDispatch(
             media = plan.mediaUris,
             queueOrPlayerId = plan.playerId,
             option = plan.option,
-            radioMode = false,
+            radioMode = plan.radioMode,
         ),
     ).onFailure { onRpcFailure("play(${plan.option})", it) }
 }

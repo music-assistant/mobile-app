@@ -1,10 +1,14 @@
 package io.music_assistant.client.carplay
 
+import io.music_assistant.client.settings.DefaultClickAction
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_all_to_queue
 import musicassistantclient.composeapp.generated.resources.action_browse
+import musicassistantclient.composeapp.generated.resources.action_insert_next
+import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
 import musicassistantclient.composeapp.generated.resources.action_ok
 import musicassistantclient.composeapp.generated.resources.action_play_all
+import musicassistantclient.composeapp.generated.resources.action_start_radio
 import musicassistantclient.composeapp.generated.resources.albums_by_artist
 import musicassistantclient.composeapp.generated.resources.browse_subtitle
 import musicassistantclient.composeapp.generated.resources.connection_lost
@@ -48,10 +52,14 @@ class CarPlayStrings internal constructor(
     val podcasts: String,
     val radio: String,
     private val albumsByArtistTemplate: String,
+    private val bulkActionTitlesByName: Map<String, String>,
 ) {
     /** Localized "Albums by <artist>" drilldown title. */
     fun albumsByArtist(name: String): String =
         albumsByArtistTemplate.replace("%1\$s", name)
+
+    /** Localized title for a bulk-action name (DefaultClickAction.name); falls back to "Play all". */
+    fun bulkActionTitle(name: String): String = bulkActionTitlesByName[name] ?: playAll
 
     companion object {
         suspend fun load(): CarPlayStrings = CarPlayStrings(
@@ -73,6 +81,13 @@ class CarPlayStrings internal constructor(
             podcasts = getString(Res.string.media_type_podcasts),
             radio = getString(Res.string.media_type_radio),
             albumsByArtistTemplate = getString(Res.string.albums_by_artist),
+            bulkActionTitlesByName = mapOf(
+                DefaultClickAction.PLAY_NOW.name to getString(Res.string.action_play_all),
+                DefaultClickAction.INSERT_NEXT_AND_PLAY.name to getString(Res.string.action_insert_next_and_play),
+                DefaultClickAction.INSERT_NEXT.name to getString(Res.string.action_insert_next),
+                DefaultClickAction.ADD_TO_QUEUE.name to getString(Res.string.action_add_all_to_queue),
+                DefaultClickAction.START_RADIO.name to getString(Res.string.action_start_radio),
+            ),
         )
     }
 }

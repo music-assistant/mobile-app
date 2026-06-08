@@ -151,6 +151,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val connectionHistory by viewModel.connectionHistory.collectAsStateWithLifecycle()
     val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
     val isAuthenticated = dataConnection == DataConnectionState.Authenticated
+    val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
 
@@ -319,6 +320,12 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 SendspinSection(
                                     viewModel = viewModel,
                                 )
+
+                                // Car options route to the local player — only meaningful when
+                                // it's reachable (authenticated) and enabled.
+                                if (sendspinEnabled) {
+                                    CarSection()
+                                }
                             }
 
                             else -> Unit
@@ -394,7 +401,7 @@ private fun MiscSection(
 }
 
 @Composable
-private fun SectionCard(
+internal fun SectionCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -414,7 +421,7 @@ private fun SectionCard(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium,

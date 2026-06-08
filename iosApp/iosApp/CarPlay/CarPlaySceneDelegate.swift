@@ -441,10 +441,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         } else if let playlist = mediaItem as? Playlist {
             pushTracksForPlaylist(playlist)
         } else {
-            // Track / RadioStation / Podcast / Audiobook / PodcastEpisode —
-            // leaf-level items play immediately.
-            CarPlayContentManager.shared.playItem(mediaItem)
-            playAndShowNowPlaying()
+            // Track / RadioStation / Podcast / Audiobook / PodcastEpisode — leaf items run the
+            // per-kind configured tap action. Only push Now Playing when it actually starts
+            // playback (a configured "add to queue" tap is non-disruptive).
+            let dispatched = CarPlayContentManager.shared.playWithDefault(mediaItem)
+            if let name = dispatched, Self.actionStartsPlayback(name) {
+                playAndShowNowPlaying()
+            }
         }
     }
 
@@ -528,41 +531,47 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func bulkActionRows(for parent: AppMediaItem) -> [CPListItem] {
         guard let strings = strings else { return [] }
-        let playAll = CPListItem(
-            text: strings.playAll,
-            detailText: nil,
-            image: UIImage(systemName: "play.fill")
-        )
-        playAll.handler = { [weak self] _, completion in
-            self?.handleBulkAction(parent: parent, mode: .playAll)
-            completion()
+        // Rows are user-configured per browsable kind (Settings → Car), shared with Android Auto.
+        return CarPlayContentManager.shared.bulkActionNames(for: parent).map { name in
+            let row = CPListItem(
+                text: strings.bulkActionTitle(name: name),
+                detailText: nil,
+                image: UIImage(systemName: Self.bulkActionSymbol(name))
+            )
+            row.handler = { [weak self] _, completion in
+                self?.handleBulkAction(parent: parent, actionName: name)
+                completion()
+            }
+            return row
         }
-
-        let addAll = CPListItem(
-            text: strings.addAllToQueue,
-            detailText: nil,
-            image: UIImage(systemName: "text.badge.plus")
-        )
-        addAll.handler = { [weak self] _, completion in
-            self?.handleBulkAction(parent: parent, mode: .enqueueAll)
-            completion()
-        }
-
-        return [playAll, addAll]
     }
 
-    private enum BulkAction { case playAll, enqueueAll }
-
-    private func handleBulkAction(parent: AppMediaItem, mode: BulkAction) {
+    private func handleBulkAction(parent: AppMediaItem, actionName: String) {
         guard isReady else { showOfflineAlert(); return }
-        switch mode {
-        case .playAll:
-            CarPlayContentManager.shared.playAll(parent)
+        let dispatched = CarPlayContentManager.shared.playBulkAction(parent, actionName: actionName)
+        // Push Now Playing only for actions that start playback; queue-additive actions are
+        // non-disruptive so the user stays on the drilldown to keep stacking adds.
+        if dispatched && Self.actionStartsPlayback(actionName) {
             playAndShowNowPlaying()
-        case .enqueueAll:
-            // Intentionally no Now Playing push: enqueue is non-disruptive,
-            // user stays on the drilldown to keep stacking adds.
-            CarPlayContentManager.shared.enqueueAll(parent)
+        }
+    }
+
+    // DefaultClickAction.name values mirrored from the shared Kotlin enum. Presentation only —
+    // dispatch and gating live in Kotlin (KmpHelper / CarActionPrefs).
+    private static func actionStartsPlayback(_ name: String) -> Bool {
+        switch name {
+        case "ADD_TO_QUEUE", "INSERT_NEXT": return false
+        default: return true // PLAY_NOW, INSERT_NEXT_AND_PLAY, START_RADIO
+        }
+    }
+
+    private static func bulkActionSymbol(_ name: String) -> String {
+        switch name {
+        case "ADD_TO_QUEUE": return "text.badge.plus"
+        case "INSERT_NEXT": return "text.insert"
+        case "INSERT_NEXT_AND_PLAY": return "play.circle"
+        case "START_RADIO": return "dot.radiowaves.left.and.right"
+        default: return "play.fill" // PLAY_NOW
         }
     }
 

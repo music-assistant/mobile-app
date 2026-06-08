@@ -1,35 +1,20 @@
 package io.music_assistant.client.ui.compose.common.items
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,14 +34,6 @@ import musicassistantclient.composeapp.generated.resources.clickctx_search
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.default_click_dialog_save
 import musicassistantclient.composeapp.generated.resources.default_click_dialog_title
-import musicassistantclient.composeapp.generated.resources.kind_album
-import musicassistantclient.composeapp.generated.resources.kind_artist
-import musicassistantclient.composeapp.generated.resources.kind_audiobook
-import musicassistantclient.composeapp.generated.resources.kind_playlist
-import musicassistantclient.composeapp.generated.resources.kind_podcast
-import musicassistantclient.composeapp.generated.resources.kind_podcast_episode
-import musicassistantclient.composeapp.generated.resources.kind_radio
-import musicassistantclient.composeapp.generated.resources.kind_track
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -71,17 +48,6 @@ private fun ClickContext.label(): StringResource = when (this) {
     ClickContext.ARTIST -> Res.string.clickctx_artist
     ClickContext.SEARCH -> Res.string.clickctx_search
     ClickContext.DETAIL -> Res.string.clickctx_detail
-}
-
-private fun ItemKind.label(): StringResource = when (this) {
-    ItemKind.TRACK -> Res.string.kind_track
-    ItemKind.RADIO -> Res.string.kind_radio
-    ItemKind.PODCAST_EPISODE -> Res.string.kind_podcast_episode
-    ItemKind.ALBUM -> Res.string.kind_album
-    ItemKind.ARTIST -> Res.string.kind_artist
-    ItemKind.PLAYLIST -> Res.string.kind_playlist
-    ItemKind.PODCAST -> Res.string.kind_podcast
-    ItemKind.AUDIOBOOK -> Res.string.kind_audiobook
 }
 
 /**
@@ -109,7 +75,7 @@ fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
         title = {
             Text(
                 stringResource(Res.string.default_click_dialog_title) +
-                    " — " + stringResource(itemKind.label()),
+                    " — " + stringResource(itemKind.labelRes()),
             )
         },
         text = {
@@ -148,70 +114,4 @@ fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.common_cancel)) }
         },
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ActionDropdown(
-    options: List<DefaultClickAction>,
-    selected: DefaultClickAction,
-    onSelect: (DefaultClickAction) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedAction = selected.toItemAction()
-    val shape = RoundedCornerShape(4.dp)
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier,
-    ) {
-        // Custom anchor (not OutlinedTextField): a read-only text field scrolls instead of
-        // ellipsizing, so we build the outlined row ourselves to get true single-line ellipsis.
-        Row(
-            modifier = Modifier
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                .fillMaxWidth()
-                .clip(shape)
-                .border(1.dp, MaterialTheme.colorScheme.outline, shape)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(selectedAction.icon(), contentDescription = null, modifier = Modifier.size(20.dp))
-            Text(
-                text = stringResource(selectedAction.title()),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            ExposedDropdownMenuDefaults.TrailingIcon(expanded)
-        }
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { action ->
-                val itemAction = action.toItemAction()
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(itemAction.title()),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            itemAction.icon(),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    },
-                    onClick = {
-                        onSelect(action)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
 }

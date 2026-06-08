@@ -30,6 +30,19 @@ fun AppMediaItem.itemKind(): ItemKind? = when (this) {
     else -> null // Genre etc. — not customizable
 }
 
+/** Maps a server media type onto its customizable kind, or null for non-customizable types. */
+fun MediaType.toItemKind(): ItemKind? = when (this) {
+    MediaType.TRACK -> ItemKind.TRACK
+    MediaType.RADIO -> ItemKind.RADIO
+    MediaType.PODCAST_EPISODE -> ItemKind.PODCAST_EPISODE
+    MediaType.ALBUM -> ItemKind.ALBUM
+    MediaType.ARTIST -> ItemKind.ARTIST
+    MediaType.PLAYLIST -> ItemKind.PLAYLIST
+    MediaType.PODCAST -> ItemKind.PODCAST
+    MediaType.AUDIOBOOK -> ItemKind.AUDIOBOOK
+    else -> null
+}
+
 /** Which context columns this kind shows in the customize dialog. */
 fun ItemKind.appearsIn(context: ClickContext): Boolean = when (this) {
     ItemKind.TRACK -> context != ClickContext.DETAIL

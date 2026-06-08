@@ -19,6 +19,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.executeLocalPlayerDispatch
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortField
@@ -26,10 +27,16 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.planLocalPlayerDispatch
+import io.music_assistant.client.settings.CarPlatform
+import io.music_assistant.client.settings.DefaultClickAction
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.carBulkActions
+import io.music_assistant.client.settings.carTapAction
+import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.library.LibraryCategory
 import io.music_assistant.client.utils.DataConnectionState
@@ -119,8 +126,8 @@ class AutoLibrary(
         itemCache.clear()
     }
 
-    // Default order/visibility when the user hasn't customized library tabs in
-    // the phone UI. Tracks/Genres are intentionally not exposed in AA.
+    // Default order/visibility when the user hasn't customized the Auto tabs
+    // (Settings → Car → Tabs). Tracks/Genres are intentionally not exposed in AA.
     private val defaultAutoTabs: List<Pair<MediaType, String>> = listOf(
         MediaType.ARTIST to "Artists",
         MediaType.ALBUM to "Albums",
@@ -133,7 +140,7 @@ class AutoLibrary(
     private fun rootChildren(): List<MediaItem> {
         val titles = defaultAutoTabs.toMap()
         val supportedTypes = titles.keys
-        val stored = settingsRepository.libraryCategoryConfig.value
+        val stored = settingsRepository.carTabsConfig.value
         val ordered: List<MediaType> = stored?.mapNotNull { pref ->
             if (!pref.enabled) return@mapNotNull null
             val libraryCategory = runCatching { LibraryCategory.valueOf(pref.name) }.getOrNull()
@@ -256,7 +263,8 @@ class AutoLibrary(
                 result.sendResult(null)
                 return@launch
             }
-            result.sendResult(actionsForItem(id) + items)
+            val actions = parent.type.toItemKind()?.let { actionsForItem(id, it) }.orEmpty()
+            result.sendResult(actions + items)
         }
     }
 
@@ -342,45 +350,38 @@ class AutoLibrary(
                 .first()
         } != null
 
-    private fun actionsForItem(itemId: String): List<MediaItem> {
-        return buildList {
-            add(
+    private fun actionsForItem(itemId: String, kind: ItemKind): List<MediaItem> =
+        settingsRepository.carBrowsableBulkActions.value
+            .carBulkActions(kind, CarPlatform.ANDROID_AUTO)
+            .map { action ->
                 MediaItem(
                     MediaDescriptionCompat.Builder()
-                        .setTitle("Play all")
+                        .setTitle(action.bulkTitle())
                         .setMediaId(itemId)
-                        .setIconUri(android.R.drawable.ic_media_play.toUri(context))
-                        .setExtras(
-                            Bundle().apply {
-                                putString(
-                                    MediaIds.QUEUE_OPTION_KEY,
-                                    QueueOption.REPLACE.name,
-                                )
-                            },
-                        )
+                        .setIconUri(action.bulkIcon().toUri(context))
+                        .setExtras(Bundle().apply { putString(MediaIds.ACTION_KEY, action.name) })
                         .build(),
                     MediaItem.FLAG_PLAYABLE,
-                ),
-            )
-            add(
-                MediaItem(
-                    MediaDescriptionCompat.Builder()
-                        .setTitle("Add all to queue")
-                        .setMediaId(itemId)
-                        .setIconUri(android.R.drawable.ic_menu_add.toUri(context))
-                        .setExtras(
-                            Bundle().apply {
-                                putString(
-                                    MediaIds.QUEUE_OPTION_KEY,
-                                    QueueOption.ADD.name,
-                                )
-                            },
-                        )
-                        .build(),
-                    MediaItem.FLAG_PLAYABLE,
-                ),
-            )
-        }
+                )
+            }
+
+    // Bulk-button labels/icons. AA titles are hard-coded English to match the rest of this
+    // library (tab names, sub-lists). "All" framing because the action applies to the container.
+    private fun DefaultClickAction.bulkTitle(): String = when (this) {
+        DefaultClickAction.PLAY_NOW -> "Play all"
+        DefaultClickAction.INSERT_NEXT_AND_PLAY -> "Play all next"
+        DefaultClickAction.INSERT_NEXT -> "Add all next"
+        DefaultClickAction.ADD_TO_QUEUE -> "Add all to queue"
+        DefaultClickAction.START_RADIO -> "Start radio"
+    }
+
+    @DrawableRes
+    private fun DefaultClickAction.bulkIcon(): Int = when (this) {
+        DefaultClickAction.PLAY_NOW, DefaultClickAction.INSERT_NEXT_AND_PLAY ->
+            android.R.drawable.ic_media_play
+        DefaultClickAction.INSERT_NEXT, DefaultClickAction.ADD_TO_QUEUE ->
+            android.R.drawable.ic_menu_add
+        DefaultClickAction.START_RADIO -> android.R.drawable.ic_menu_compass
     }
 
     fun search(
@@ -706,13 +707,18 @@ class AutoLibrary(
      * from any sync group. AA users want audio out of the head unit they're sitting
      * in, never mirrored to a house player.
      */
-    private suspend fun dispatchToLocalPlayer(uris: List<String>, option: QueueOption) {
+    private suspend fun dispatchToLocalPlayer(
+        uris: List<String>,
+        option: QueueOption,
+        radioMode: Boolean = false,
+    ) {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
             localPlayerId = player?.id,
             localPlayerSyncedTo = player?.syncedTo,
             mediaUris = uris,
             option = option,
+            radioMode = radioMode,
         )
         if (plan == null) {
             androidAutoLog.w {
@@ -748,14 +754,20 @@ class AutoLibrary(
         )
 
     fun play(id: String, extras: Bundle?) {
-        val uri = id.split("__").getOrNull(1) ?: return
-        // valueOf throws on unknown names — a stale media item or a malformed
-        // extras bundle would crash the service. Fall back to REPLACE silently.
-        val option = extras
-            ?.getString(MediaIds.QUEUE_OPTION_KEY, QueueOption.REPLACE.name)
-            ?.let { runCatching { QueueOption.valueOf(it) }.getOrNull() }
-            ?: QueueOption.REPLACE
-        scope.launch { dispatchToLocalPlayer(listOf(uri), option) }
+        val parts = id.split("__")
+        val uri = parts.getOrNull(1) ?: return
+        // A bulk button carries its action in extras; a plain item tap resolves the per-kind
+        // car default (encoded MediaType -> ItemKind). valueOf throws on unknown names — a stale
+        // item or malformed bundle would crash the service — so every decode falls back silently.
+        val explicit = extras?.getString(MediaIds.ACTION_KEY)
+            ?.let { runCatching { DefaultClickAction.valueOf(it) }.getOrNull() }
+        val action = explicit ?: parts.getOrNull(2)
+            ?.let { runCatching { MediaType.valueOf(it) }.getOrNull() }
+            ?.toItemKind()
+            ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
+            ?: DefaultClickAction.PLAY_NOW
+        val dispatch = action.toCarDispatch()
+        scope.launch { dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.radioMode) }
     }
 
     private fun rootTabItem(tabName: String, tabId: String): MediaItem =
@@ -811,7 +823,10 @@ internal object MediaIds {
     const val TAB_PODCASTS = "auto_lib_podcasts"
     const val TAB_RADIO = "auto_lib_radio"
     const val TAB_AUDIOBOOKS = "auto_lib_audiobooks"
-    const val QUEUE_OPTION_KEY = "auto_queue_option"
+
+    // Bulk-button extras carry the chosen DefaultClickAction.name so play() dispatches the
+    // exact action the user configured (queue option or start-radio) rather than guessing.
+    const val ACTION_KEY = "auto_click_action"
 
     // `_` is taken by tab IDs and `__` by ParentRef; `|` keeps sub-list IDs
     // unambiguous against both (and against keys like BY_NAME that contain `_`).

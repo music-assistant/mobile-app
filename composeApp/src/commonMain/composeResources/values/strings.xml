@@ -197,6 +197,11 @@
   <string name="settings_history_direct">Direct</string>
   <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
   <string name="settings_host">Host</string>
+  <string name="settings_car">Car (Android Auto / CarPlay)</string>
+  <string name="settings_car_bulk_for">%1$s actions</string>
+  <string name="settings_car_enqueue_action">Enqueue action</string>
+  <string name="settings_car_item_actions">Item actions</string>
+  <string name="settings_car_tabs">Tabs</string>
   <string name="settings_local_player_disabled">Local player (Sendspin protocol)</string>
   <string name="settings_local_player_enabled">Local player enabled</string>
   <string name="settings_misc">Misc</string>
