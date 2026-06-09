@@ -193,7 +193,8 @@ private fun <T> PlayableItemWithMenu(
         progressSupported = progressActions != null && item is PodcastEpisode,
         defaultAction = effectiveDefault,
         hasParent = parent != null,
-    ) + ItemAction.Customize
+        customizationAllowed = true,
+    )
 
     val runPlayAction: (ItemAction) -> Unit = { action ->
         when (action) {
@@ -221,7 +222,7 @@ private fun <T> PlayableItemWithMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
-            itemActionMenuItems(actions, defaultAction = effectiveDefault) { action ->
+            ItemActionMenuItems(actions, defaultAction = effectiveDefault) { action ->
                 expandedItemId = null
                 when (action) {
                     is ItemAction.Play,

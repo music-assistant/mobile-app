@@ -25,8 +25,10 @@ fun resolveLongClickActions(
     progressSupported: Boolean,
     defaultAction: ItemAction? = null,
     hasParent: Boolean = false,
+    customizationAllowed: Boolean = false,
 ): List<ItemAction> = buildList {
     if (item.isPlayable) addPlaybackActions(item, hasParent)
+    if (customizationAllowed) add(ItemAction.Customize)
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
         if (item.isInLibrary) {
@@ -53,12 +55,21 @@ fun resolveLongClickActions(
  * Item detail screen play-button split-button overflow — every applicable play action
  * except [default] (which the leading button performs).
  */
-fun resolvePlayButtonActions(item: AppMediaItem, default: ItemAction?): List<ItemAction> = buildList {
-    if (item.isPlayable) addPlaybackActions(item)
-}.filterNot { it == default }
+fun resolvePlayButtonActions(
+    item: AppMediaItem,
+    default: ItemAction?,
+    customizationAllowed: Boolean = false,
+): List<ItemAction> =
+    buildList {
+        if (item.isPlayable) addPlaybackActions(item)
+        if (customizationAllowed) add(ItemAction.Customize)
+    }.filterNot { it == default }
 
 /** The playback block: Play Now / Insert Next & Play / Insert Next / Add to Bottom / Start Radio. */
-private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem, hasParent: Boolean = false) {
+private fun MutableList<ItemAction>.addPlaybackActions(
+    item: AppMediaItem,
+    hasParent: Boolean = false,
+) {
     add(ItemAction.Play(QueueOption.REPLACE))
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))

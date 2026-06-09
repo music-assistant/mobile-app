@@ -55,7 +55,7 @@ sealed class ItemAction(val kind: Kind) {
     data object MarkPlayed : ItemAction(Kind.OTHER)
     data object MarkUnplayed : ItemAction(Kind.OTHER)
 
-    data object Customize : ItemAction(Kind.OTHER)
+    data object Customize : ItemAction(Kind.PLAYBACK)
 }
 
 fun ItemAction.title(): StringResource = when (this) {

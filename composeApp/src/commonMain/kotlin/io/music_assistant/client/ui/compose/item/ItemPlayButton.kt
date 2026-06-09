@@ -105,8 +105,7 @@ private fun PlayOverflow(
     onPlayAction: (ItemAction) -> Unit,
     button: @Composable (() -> Unit) -> Unit,
 ) {
-    val actions = resolvePlayButtonActions(item, default) +
-        (onCustomize?.let { listOf(ItemAction.Customize) } ?: emptyList())
+    val actions = resolvePlayButtonActions(item, default, onCustomize != null)
     val options = actions.map { action ->
         action.toOverflowOption {
             if (it == ItemAction.Customize) onCustomize?.invoke() else onPlayAction(it)

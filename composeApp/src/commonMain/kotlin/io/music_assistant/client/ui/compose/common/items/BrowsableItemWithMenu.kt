@@ -280,6 +280,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = false,
         progressSupported = progressActions != null && item is Audiobook,
+        customizationAllowed = false,
     )
 
     Box(modifier = modifier) {
@@ -295,7 +296,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
-            itemActionMenuItems(actions) { action ->
+            ItemActionMenuItems(actions) { action ->
                 expandedItemId = null
                 when (action) {
                     is ItemAction.Play -> onPlayOption(item, action.queueOption, false, null)
