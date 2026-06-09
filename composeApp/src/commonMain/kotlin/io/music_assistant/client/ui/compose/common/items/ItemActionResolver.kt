@@ -74,7 +74,7 @@ private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem, paren
     add(ItemAction.Play(QueueOption.ADD))
 
     if (parent is Album || parent is Playlist) {
-        add(ItemAction.PlayFromHere(playlist = parent is Playlist))
+        add(ItemAction.PlayFromHere(isPlaylist = parent is Playlist))
     }
 
     if (item.canStartRadio) add(ItemAction.StartRadio)
