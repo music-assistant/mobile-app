@@ -28,13 +28,15 @@ fun Modifier.fadingEdges(edgeWidth: Dp = 24.dp): Modifier = this
         val w = edgeWidth.toPx().coerceAtMost(size.width / 2f)
         drawRect(
             brush = Brush.horizontalGradient(
-                0f to Color.Transparent, (w / size.width) to Color.Black,
+                0f to Color.Transparent,
+                (w / size.width) to Color.Black,
             ),
             blendMode = BlendMode.DstIn,
         )
         drawRect(
             brush = Brush.horizontalGradient(
-                ((size.width - w) / size.width) to Color.Black, 1f to Color.Transparent,
+                ((size.width - w) / size.width) to Color.Black,
+                1f to Color.Transparent,
             ),
             blendMode = BlendMode.DstIn,
         )
