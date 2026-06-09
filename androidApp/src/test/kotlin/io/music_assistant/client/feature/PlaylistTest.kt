@@ -7,10 +7,14 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.clickItemOption
 import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_play_playlist_from_here
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Rule
@@ -49,5 +53,26 @@ class PlaylistTest {
             .playMedia(track2)
 
         assertThat(serviceClient.getQueueForPlayer(player), equalTo(listOf(track2)))
+    }
+
+    @Test
+    fun `long pressing a track and clicking 'Play album from here' queues the rest of the album`() {
+        val playlist = ServerMediaItemFixtures.playlist()
+        val track1 = ServerMediaItemFixtures.track()
+        val track2 = ServerMediaItemFixtures.track()
+        val track3 = ServerMediaItemFixtures.track()
+        serviceClient.addToLibrary(playlist, track1, track2, track3)
+        serviceClient.setPlaylist(playlist, track1, track2, track3)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickPlaylists()
+            .clickOnMedia(playlist)
+            .clickItemOption(track2, Res.string.action_play_playlist_from_here.get())
+
+        assertThat(serviceClient.getQueueForPlayer(player), equalTo(listOf(track2, track3)))
     }
 }
