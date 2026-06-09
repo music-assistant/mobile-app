@@ -4,6 +4,7 @@ import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
@@ -24,10 +25,10 @@ fun resolveLongClickActions(
     canRemoveFromPlaylist: Boolean,
     progressSupported: Boolean,
     defaultAction: ItemAction? = null,
-    hasParent: Boolean = false,
+    parent: AppMediaItem? = null,
     customizationAllowed: Boolean = false,
 ): List<ItemAction> = buildList {
-    if (item.isPlayable) addPlaybackActions(item, hasParent)
+    if (item.isPlayable) addPlaybackActions(item, parent)
     if (customizationAllowed) add(ItemAction.Customize)
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
@@ -66,17 +67,14 @@ fun resolvePlayButtonActions(
     }.filterNot { it == default }
 
 /** The playback block: Play Now / Insert Next & Play / Insert Next / Add to Bottom / Start Radio. */
-private fun MutableList<ItemAction>.addPlaybackActions(
-    item: AppMediaItem,
-    hasParent: Boolean = false,
-) {
+private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem, parent: AppMediaItem? = null) {
     add(ItemAction.Play(QueueOption.REPLACE))
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))
 
-    if (hasParent) {
-        add(ItemAction.PlayFromHere)
+    if (parent is Album || parent is Playlist) {
+        add(ItemAction.PlayFromHere(playlist = parent is Playlist))
     }
 
     if (item.canStartRadio) add(ItemAction.StartRadio)

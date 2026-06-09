@@ -192,7 +192,7 @@ private fun <T> PlayableItemWithMenu(
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is PodcastEpisode,
         defaultAction = effectiveDefault,
-        hasParent = parent != null,
+        parent = parent,
         customizationAllowed = true,
     )
 
@@ -200,7 +200,7 @@ private fun <T> PlayableItemWithMenu(
         when (action) {
             is ItemAction.Play -> onPlayOption(item, action.queueOption, false, null)
             ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, null)
-            ItemAction.PlayFromHere -> onPlayOption(item, QueueOption.REPLACE, false, parent)
+            is ItemAction.PlayFromHere -> onPlayOption(item, QueueOption.REPLACE, false, parent)
             else -> Unit
         }
     }
@@ -227,7 +227,7 @@ private fun <T> PlayableItemWithMenu(
                 when (action) {
                     is ItemAction.Play,
                     ItemAction.StartRadio,
-                    ItemAction.PlayFromHere,
+                    is ItemAction.PlayFromHere,
                     -> runPlayAction(action)
                     ItemAction.AddToLibrary,
                     ItemAction.RemoveFromLibrary,

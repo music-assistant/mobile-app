@@ -31,6 +31,7 @@ import musicassistantclient.composeapp.generated.resources.action_mark_played
 import musicassistantclient.composeapp.generated.resources.action_mark_unplayed
 import musicassistantclient.composeapp.generated.resources.action_play_album_from_here
 import musicassistantclient.composeapp.generated.resources.action_play_now
+import musicassistantclient.composeapp.generated.resources.action_play_playlist_from_here
 import musicassistantclient.composeapp.generated.resources.action_remove_from_library
 import musicassistantclient.composeapp.generated.resources.action_remove_from_playlist
 import musicassistantclient.composeapp.generated.resources.action_start_radio
@@ -41,7 +42,7 @@ sealed class ItemAction(val kind: Kind) {
     enum class Kind { PLAYBACK, OTHER }
 
     data class Play(val queueOption: QueueOption) : ItemAction(Kind.PLAYBACK)
-    data object PlayFromHere : ItemAction(Kind.PLAYBACK)
+    data class PlayFromHere(val playlist: Boolean) : ItemAction(Kind.PLAYBACK)
     data object StartRadio : ItemAction(Kind.PLAYBACK)
 
     data object AddToLibrary : ItemAction(Kind.OTHER)
@@ -66,7 +67,11 @@ fun ItemAction.title(): StringResource = when (this) {
         QueueOption.ADD -> Res.string.action_add_to_queue
     }
 
-    ItemAction.PlayFromHere -> Res.string.action_play_album_from_here
+    is ItemAction.PlayFromHere -> if (playlist) {
+        Res.string.action_play_playlist_from_here
+    } else {
+        Res.string.action_play_album_from_here
+    }
     ItemAction.StartRadio -> Res.string.action_start_radio
     ItemAction.AddToLibrary -> Res.string.action_add_to_library
     ItemAction.RemoveFromLibrary -> Res.string.action_remove_from_library
@@ -87,7 +92,7 @@ fun ItemAction.icon(): ImageVector = when (this) {
         QueueOption.ADD -> Icons.Default.AddToQueue
     }
 
-    ItemAction.PlayFromHere -> Icons.Default.Album
+    is ItemAction.PlayFromHere -> Icons.Default.Album
     ItemAction.StartRadio -> Icons.Default.CellTower
     ItemAction.AddToLibrary -> TablerIcons.FolderPlus
     ItemAction.RemoveFromLibrary -> TablerIcons.FolderMinus
