@@ -154,6 +154,7 @@
   <string name="quality_dialog_input">Input</string>
   <string name="quality_dialog_output">Output</string>
   <string name="quality_dialog_title">Audio chain</string>
+  <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="queue_browse_library">BROWSE LIBRARY</string>
   <string name="queue_cannot_play">Cannot play this item</string>
   <string name="queue_clear">Clear queue</string>

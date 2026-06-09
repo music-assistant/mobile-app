@@ -23,6 +23,7 @@ object APICommands {
     const val PLAYER_QUEUES_SHUFFLE = "player_queues/shuffle"
     const val PLAYER_QUEUES_PLAY_MEDIA = "player_queues/play_media"
     const val PLAYER_QUEUES_DONT_STOP_THE_MUSIC = "player_queues/dont_stop_the_music"
+    const val PLAYER_QUEUES_SET_PLAYBACK_SPEED = "player_queues/set_playback_speed"
 
     // Playlist commands
     const val MUSIC_PLAYLISTS_LIBRARY_ITEMS = "music/playlists/library_items"

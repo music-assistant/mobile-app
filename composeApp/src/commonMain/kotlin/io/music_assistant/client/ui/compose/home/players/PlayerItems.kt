@@ -51,6 +51,7 @@ import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.QualityTier
 import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.player.sendspin.SendspinState
@@ -406,12 +407,28 @@ fun FullPlayerItem(
             val tier = currentQueueItem?.qualityTier
             val isLq = tier == QualityTier.LQ
             var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
+            var showSpeedDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
+
+            // Variable speed: server-supported only for audiobooks/podcasts, and only
+            // when the queue payload carries `playback_speed` (feature-detect gate).
+            val playbackSpeed = item.queueInfo?.playbackSpeed
+            val isSpokenContent = currentQueueItem?.track is Audiobook ||
+                currentQueueItem?.track is PodcastEpisode
+            val showSpeed = isSpokenContent && playbackSpeed != null
 
             if (showChainDialog && currentQueueItem != null) {
                 AudioChainDialog(
                     queueTrack = currentQueueItem,
                     player = item,
                     onDismissRequest = { showChainDialog = false },
+                )
+            }
+
+            if (showSpeedDialog && playbackSpeed != null) {
+                PlaybackSpeedDialog(
+                    currentSpeed = playbackSpeed,
+                    onConfirm = { playerAction(item, PlayerAction.SetPlaybackSpeed(it)) },
+                    onDismissRequest = { showSpeedDialog = false },
                 )
             }
 
@@ -427,30 +444,55 @@ fun FullPlayerItem(
                     )
                 },
                 center = {
-                    Box(
-                        modifier = Modifier
-                            .alpha(if (tier != null) 1f else 0f)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(
-                                if (isLq) {
-                                    MaterialTheme.colorScheme.surfaceVariant
+                    if (showSpeed) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(colors.controlTint)
+                                .clickable { showSpeedDialog = true }
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = "${formatSpeed(playbackSpeed)}x",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (colors.controlTint.luminance() > 0.5f) {
+                                    Color.Black
                                 } else {
-                                    colors.controlTint
+                                    Color.White
                                 },
                             )
-                            .clickable(enabled = tier != null) { showChainDialog = true }
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                    ) {
-                        Text(
-                            text = (tier ?: QualityTier.LQ).name,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isLq) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                if (colors.controlTint.luminance() > 0.5f) Color.Black else Color.White
-                            },
-                        )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .alpha(if (tier != null) 1f else 0f)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (isLq) {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    } else {
+                                        colors.controlTint
+                                    },
+                                )
+                                .clickable(enabled = tier != null) { showChainDialog = true }
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = (tier ?: QualityTier.LQ).name,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isLq) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    if (colors.controlTint.luminance() > 0.5f) {
+                                        Color.Black
+                                    } else {
+                                        Color.White
+                                    }
+                                },
+                            )
+                        }
                     }
                 },
                 end = {

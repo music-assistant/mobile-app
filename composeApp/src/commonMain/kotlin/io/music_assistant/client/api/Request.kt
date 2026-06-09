@@ -217,6 +217,19 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("dont_stop_the_music_enabled", JsonPrimitive(enabled))
             },
         )
+
+        fun setPlaybackSpeed(
+            queueId: String,
+            speed: Double,
+            queueItemId: String? = null,
+        ) = Request(
+            command = APICommands.PLAYER_QUEUES_SET_PLAYBACK_SPEED,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+                put("speed", JsonPrimitive(speed))
+                queueItemId?.let { put("queue_item_id", JsonPrimitive(it)) }
+            },
+        )
     }
 
     data object Playlist {

@@ -304,6 +304,7 @@ class MainDataSource(
                         queueId = queueInfo.id,
                         elapsedSec = it,
                         durationSec = queueInfo.currentItem?.track?.duration,
+                        speed = queueInfo.playbackSpeed,
                     )
                 }
             }
@@ -1395,6 +1396,11 @@ class MainDataSource(
                 Request.Queue.setDontStopTheMusic(queueId = queueId, enabled = !action.current)
             }
 
+            is PlayerAction.SetPlaybackSpeed -> {
+                val queueId = data.queueInfo?.id ?: return null
+                Request.Queue.setPlaybackSpeed(queueId = queueId, speed = action.speed)
+            }
+
             PlayerAction.VolumeDown ->
                 Request.Player.simpleCommand(playerId = data.playerId, command = "volume_down")
 
@@ -1596,6 +1602,7 @@ class MainDataSource(
                                     elapsedSec = elapsed,
                                     isPlaying = player?.isPlaying,
                                     durationSec = data.currentItem?.track?.duration,
+                                    speed = data.playbackSpeed,
                                 )
                             }
                         }
@@ -1627,6 +1634,7 @@ class MainDataSource(
                                     elapsedSec = elapsed,
                                     isPlaying = player?.isPlaying,
                                     durationSec = data.currentItem?.track?.duration,
+                                    speed = data.playbackSpeed,
                                 )
                             }
                         }
@@ -1649,6 +1657,7 @@ class MainDataSource(
                                     elapsedSec = elapsed,
                                     isPlaying = player?.isPlaying,
                                     durationSec = data.currentItem?.track?.duration,
+                                    speed = data.playbackSpeed,
                                 )
                             }
                             (playersData.value as? DataState.Data)?.data?.firstOrNull {
@@ -1824,6 +1833,7 @@ class MainDataSource(
                                 elapsedSec = elapsed,
                                 isPlaying = player?.isPlaying,
                                 durationSec = queueInfo.currentItem?.track?.duration,
+                                speed = queueInfo.playbackSpeed,
                             )
                         }
                     }

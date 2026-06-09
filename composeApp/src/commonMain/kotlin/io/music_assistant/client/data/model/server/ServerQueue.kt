@@ -28,6 +28,12 @@ data class ServerQueue(
      * drop subsequent legitimate events.
      */
     @SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double? = null,
+    /**
+     * Current playback speed (1.0 = normal). Nullable on purpose: it doubles as a
+     * feature-detect gate — servers without variable-speed support omit the field,
+     * so `null` means "speed control unavailable" and the UI hides the speed button.
+     */
+    @SerialName("playback_speed") val playbackSpeed: Double? = null,
     // @SerialName("state") val state: PlayerState,
     @SerialName("current_item") val currentItem: ServerQueueItem? = null,
     // @SerialName("next_item") val nextItem: QueueItem? = null,

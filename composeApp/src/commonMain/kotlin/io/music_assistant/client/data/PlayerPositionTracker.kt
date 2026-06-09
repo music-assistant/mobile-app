@@ -35,11 +35,18 @@ class PlayerPositionTracker {
         val wallMs: Long,
         val isPlaying: Boolean,
         val durationSec: Double?,
+        /**
+         * Media-seconds advanced per wall-second (1.0 = normal). Variable speed
+         * (audiobooks/podcasts) makes media-time run faster/slower than the wall
+         * clock; the server reports elapsed in media-time, so we must scale the
+         * interpolated delta to match, or the slider drifts then snaps each anchor.
+         */
+        val speed: Double = 1.0,
     ) {
-        /** Position right now: anchor + wall-time elapsed since anchor (capped at duration). */
+        /** Position right now: anchor + speed-scaled wall-time since anchor (capped at duration). */
         fun effectiveNow(): Double {
             if (!isPlaying) return elapsedSec
-            val advanced = elapsedSec + (currentTimeMillis() - wallMs) / 1000.0
+            val advanced = elapsedSec + (currentTimeMillis() - wallMs) / 1000.0 * speed
             return durationSec?.let { advanced.coerceAtMost(it) } ?: advanced
         }
     }
@@ -56,6 +63,7 @@ class PlayerPositionTracker {
         elapsedSec: Double,
         isPlaying: Boolean? = null,
         durationSec: Double? = null,
+        speed: Double? = null,
     ) {
         anchors.update { existing ->
             val current = existing[queueId]
@@ -65,6 +73,7 @@ class PlayerPositionTracker {
                     wallMs = currentTimeMillis(),
                     isPlaying = isPlaying ?: current?.isPlaying ?: false,
                     durationSec = durationSec ?: current?.durationSec,
+                    speed = speed ?: current?.speed ?: 1.0,
                 )
             )
         }

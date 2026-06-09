@@ -19,6 +19,7 @@ data class QueueInfo(
     val elapsedTimeLastUpdated: Double?,
     val currentItem: QueueTrack?,
     val radioSource: List<AppMediaItem>,
+    val playbackSpeed: Double? = null,
 ) {
     val isRadioOn: Boolean = radioSource.isNotEmpty()
     val isDynamicPlaylist = radioSource.size == 1 &&
