@@ -69,7 +69,10 @@ class ItemPage(
             }
 
             MediaType.TRACK -> TODO()
-            MediaType.PLAYLIST -> TODO()
+            MediaType.PLAYLIST -> {
+                composeTestRule.onNode(isTab(Res.string.media_type_tracks.get()))
+                    .assertIsDisplayed()
+            }
             MediaType.RADIO -> TODO()
             MediaType.AUDIOBOOK -> TODO()
             MediaType.PODCAST -> TODO()

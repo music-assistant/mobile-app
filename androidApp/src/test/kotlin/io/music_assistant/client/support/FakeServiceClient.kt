@@ -89,6 +89,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             return items.filter { it.mediaType == MediaType.GENRE.serverValue }
         }
 
+    private val playlistItems = mutableMapOf<String, List<String>>()
+
     val username = "user"
     val password = "password"
 
@@ -216,6 +218,26 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     answer(
                         request = request,
                         result = searchItems(request, "search", playlists),
+                    ),
+                )
+            }
+
+            APICommands.musicGet(APICommands.KIND_PLAYLISTS) -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = findItem(request, playlists),
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_PLAYLISTS_PLAYLIST_TRACKS -> {
+                val playlistId = request.getArg("item_id")
+
+                Result.success(
+                    answer(
+                        request = request,
+                        result = tracks.filter { playlistItems[playlistId]!!.contains(it.itemId) },
                     ),
                 )
             }
@@ -592,6 +614,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     fun getQueueForPlayer(player: ServerPlayer): List<ServerMediaItem> {
         return queueItems[player.activeSource]!!.map { it.mediaItem!! }
+    }
+
+    fun setPlaylist(playlist: ServerMediaItem, vararg tracks: ServerMediaItem) {
+        playlistItems[playlist.itemId] = tracks.map { it.itemId }
     }
 }
 
