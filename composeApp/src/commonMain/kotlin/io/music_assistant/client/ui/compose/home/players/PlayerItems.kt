@@ -55,6 +55,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.QualityTier
+import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
@@ -502,17 +503,20 @@ fun FullPlayerItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val isFavorite = currentTrack?.favorite == true
-            IconButton(
-                modifier = Modifier.size(favoriteSlot),
-                onClick = { currentTrack?.let(onFavoriteClick) },
-                enabled = currentTrack != null,
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = stringResource(Res.string.cd_favorite),
-                    tint = if (isFavorite) favoriteTint else colors.controlTint,
-                )
+            if (currentTrack?.canBeFavorited == true) {
+                val isFavorite = currentTrack.favorite == true
+                IconButton(
+                    modifier = Modifier.size(favoriteSlot),
+                    onClick = { onFavoriteClick(currentTrack) },
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = stringResource(Res.string.cd_favorite),
+                        tint = if (isFavorite) favoriteTint else colors.controlTint,
+                    )
+                }
+            } else {
+                Spacer(Modifier.size(favoriteSlot)) // keep controls centered when heart is hidden
             }
             PlayerControls(
                 playerData = item,

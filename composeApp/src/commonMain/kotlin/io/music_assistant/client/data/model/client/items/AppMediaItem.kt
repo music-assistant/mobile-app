@@ -101,6 +101,9 @@ sealed class AppMediaItem {
                 ")"
 }
 
+/** A quick favorite toggle is possible only when the add path has a [uri] to send. */
+val AppMediaItem.canBeFavorited: Boolean get() = uri != null
+
 fun PlayableItem.image(type: ImageType): ImageInfo? =
     images[type] ?: images[ImageType.MAIN] ?: images.firstNotNullOfOrNull { it.value }
 
