@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -274,10 +275,12 @@ fun FullPlayerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                modifier = Modifier.fadingEdges().basicMarquee().alphaOn(currentMedia?.title != null),
+                modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee()
+                    .alphaOn(currentMedia?.title != null),
                 text = trackName,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -291,10 +294,12 @@ fun FullPlayerItem(
                 )
             } else {
                 Text(
-                    modifier = Modifier.fadingEdges().basicMarquee().alphaOn(currentMedia?.title != null),
+                    modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee()
+                        .alphaOn(currentMedia?.title != null),
                     text = currentMedia?.subtitle ?: "", // TODO take from currentItem?
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
