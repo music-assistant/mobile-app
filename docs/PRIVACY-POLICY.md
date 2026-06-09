@@ -128,7 +128,7 @@ device's browser opens a Music Assistant web page (`music-assistant.io` /
 | `INTERNET` | To connect to your Music Assistant server |
 | `WAKE_LOCK` | To keep audio playing reliably while the screen is off |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | To play audio in the background with a media notification |
-| `CAMERA` *(declared but **not used**)* | Required only because an included framework (WebRTC) references camera APIs. The app does not access your camera. |
+| `CAMERA` | Optional — to scan a QR code when you set up a remote (WebRTC) connection (you can also enter the details manually). The camera is active only while the scanner is open; nothing is recorded, stored, or transmitted. |
 
 ### iOS
 
@@ -137,7 +137,8 @@ device's browser opens a Music Assistant web page (`music-assistant.io` /
 | Local Network | To find and connect to your Music Assistant server on your local network |
 | Background audio | To keep playing music when the app is in the background |
 | Siri | Optional — to search, play, and like/dislike tracks hands-free, including from CarPlay |
-| Camera / Microphone usage strings *(present but **not used**)* | Required only because an included framework (WebRTC) references these APIs. The app does **not** access your camera or microphone. |
+| Camera | Optional — to scan a QR code when you set up a remote (WebRTC) connection (you can also enter the details manually). The camera is active only while the scanner is open; nothing is recorded, stored, or transmitted. |
+| Microphone usage string *(present but **not used**)* | Required only because an included framework (WebRTC) references microphone APIs. The app does **not** access your microphone. |
 
 ---
 
