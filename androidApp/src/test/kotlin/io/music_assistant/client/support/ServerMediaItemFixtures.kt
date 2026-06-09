@@ -63,6 +63,7 @@ object ServerMediaItemFixtures {
             name = name,
             mediaType = MediaType.PLAYLIST.serverValue,
             isPlayable = true,
+            uri = "http://example.com/playlist/$itemId",
         )
     }
 
