@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +36,7 @@ import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
+import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_current_player
 import org.jetbrains.compose.resources.stringResource
@@ -52,7 +52,7 @@ fun PlayerSelectionButton(
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
-    val onTint = if (controlTint.luminance() > 0.5f) Color.Black else Color.White
+    val onTint = controlTint.contentColorByLuminance()
     val hasGroupChildren = player.childrenBinds.isNotEmpty()
     val hasBoundChildren = player.childrenBinds.any { it.isBound }
 

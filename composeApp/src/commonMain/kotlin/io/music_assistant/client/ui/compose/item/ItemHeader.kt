@@ -4,6 +4,7 @@
 
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,7 +52,9 @@ import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.ui.INACTIVE_ALPHA
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
+import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.Badges
@@ -59,6 +66,8 @@ import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowActions
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
+import io.music_assistant.client.ui.contentColorByLuminance
+import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.WindowClass
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
@@ -69,10 +78,24 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ItemHeader(
     item: AppMediaItem,
+    colors: PlayerColors = PlayerColors(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.primary,
+    ),
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // Art color on top, fading down to the surface the Screen actually paints, so the
+    // wash dissolves seamlessly where the tabs begin. Mirrors the player gradient (inverted).
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(colors.dominant.inactive(), MaterialTheme.colorScheme.surface),
+                ),
+            ),
+    ) {
         val image = @Composable {
             Image(
                 item = item,
@@ -85,6 +108,7 @@ fun ItemHeader(
             ItemPlayButton(
                 item,
                 onPlayClick = onPlayClick,
+                tint = colors.controlTint,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -114,27 +138,53 @@ fun ItemHeader(
 @Composable
 internal fun ItemTopBar(
     item: AppMediaItem,
+    colors: PlayerColors = PlayerColors(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.primary,
+    ),
     onBack: () -> Unit,
     libraryActions: LibraryActions?,
     playlistActions: PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
 ) {
-    TopAppBar(
-        title = {},
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
-            }
-        },
-        actions = {
-            ItemOverflow(
-                item = item,
-                libraryActions = libraryActions,
-                playlistActions = playlistActions,
-                navigateToItem = navigateToItem,
-            )
-        },
-    )
+    // Flat fill equal to the header gradient's top color, so the bar reads as one
+    // continuous wash with the header below it. Back/overflow icons are NOT control-tinted
+    // — just black or white per the composited bar luminance, keeping them legible.
+    val barBg = colors.dominant.inactive()
+    val onBar = lerp(MaterialTheme.colorScheme.surface, colors.dominant, INACTIVE_ALPHA)
+        .contentColorByLuminance()
+    // Paint barBg directly on the wrapping Box rather than via TopAppBar's containerColor:
+    // TopAppBar runs its own animateColorAsState on the container, which would stack a second
+    // tween on top of our color animation and visibly lag the header. Transparent container =
+    // single-pass color change, in lockstep with the header gradient.
+    Box(modifier = Modifier.background(barBg)) {
+        TopAppBar(
+            title = {},
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent,
+                navigationIconContentColor = onBar,
+                actionIconContentColor = onBar,
+                titleContentColor = onBar,
+            ),
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        stringResource(Res.string.common_back),
+                    )
+                }
+            },
+            actions = {
+                ItemOverflow(
+                    item = item,
+                    libraryActions = libraryActions,
+                    playlistActions = playlistActions,
+                    navigateToItem = navigateToItem,
+                )
+            },
+        )
+    }
 }
 
 @Composable

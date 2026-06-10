@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Chapter
 import io.music_assistant.client.data.model.client.ClickContext
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
@@ -66,6 +71,7 @@ import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -80,9 +86,12 @@ import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
+import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.utils.gridItemMinSize
 import musicassistantclient.composeapp.generated.resources.Res
@@ -363,10 +372,26 @@ private fun ItemContent(
     var selectedIndex by rememberSaveable(item.mediaType) { mutableStateOf(0) }
     val safeIndex = selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))
 
+    // Artwork-driven header colors. Library items carry no server palette, so colors are
+    // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
+    // as the player. The fetcher is Koin-backed, so skip it under @Preview (no Koin graph).
+    val fetchColors: ExtractedColorsFetcher = if (LocalInspectionMode.current) {
+        { null }
+    } else {
+        rememberExtractedColorsFetcher()
+    }
+    val colors by rememberAnimatedPlayerColors(
+        imageUrl = item.image(ImageType.THUMB)?.url,
+        palette = null,
+        fallback = MaterialTheme.colorScheme.primaryContainer,
+        fetchColors = fetchColors,
+    )
+
     val heroSlot: @Composable () -> Unit = {
         ProvideClickActions(ClickContext.DETAIL) {
             ItemHeader(
                 item = item,
+                colors = colors,
                 providerIconFetcher = providerIconFetcher,
                 onPlayClick = onPlayItemClick,
             )
@@ -377,6 +402,7 @@ private fun ItemContent(
         topBar = {
             ItemTopBar(
                 item = item,
+                colors = colors,
                 onBack = onBack,
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item.supportsAddToPlaylist },
@@ -393,6 +419,7 @@ private fun ItemContent(
                     TabsBar(
                         tabs = tabs,
                         selectedIndex = safeIndex,
+                        controlTint = colors.controlTint,
                         onTabSelected = { selectedIndex = it },
                         albumsSortOption = state.albumsSortOption,
                         playableItemsSortOption = state.playableItemsSortOption,
@@ -435,6 +462,7 @@ private fun ItemContent(
 private fun TabsBar(
     tabs: List<ItemDetailsTab>,
     selectedIndex: Int,
+    controlTint: Color,
     onTabSelected: (Int) -> Unit,
     albumsSortOption: SortOption?,
     playableItemsSortOption: SortOption?,
@@ -465,14 +493,31 @@ private fun TabsBar(
         PrimaryScrollableTabRow(
             selectedTabIndex = selectedIndex,
             containerColor = Color.Transparent,
+            contentColor = controlTint,
             edgePadding = 0.dp,
+            // Underline under the active tab only, tinted to the control accent (the default
+            // PrimaryIndicator is colorScheme.primary). No full-width bottom divider.
+            indicator = {
+                TabRowDefaults.PrimaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(selectedIndex),
+                    color = controlTint,
+                )
+            },
+            divider = {},
             modifier = Modifier.weight(1f),
         ) {
             tabs.forEachIndexed { i, tab ->
+                val selected = i == selectedIndex
                 Tab(
-                    selected = i == selectedIndex,
+                    selected = selected,
                     onClick = { onTabSelected(i) },
-                    text = { Text(stringResource(tab.stringResource())) },
+                    text = {
+                        Text(
+                            text = stringResource(tab.stringResource()),
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = controlTint,
+                        )
+                    },
                 )
             }
         }
@@ -584,6 +629,22 @@ private fun TabContent(
     }
 }
 
+/**
+ * Emits the two full-span header rows shared by every tab grid: the hero (bled out of the grid's
+ * [gridPadding] so its gradient reaches the real edges) and the tabs bar. [gridPadding] must be the
+ * same value passed to the grid's `contentPadding`, so the bleed exactly cancels the inset.
+ */
+private fun LazyGridScope.detailHeaderItems(
+    gridPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+) {
+    item(span = { GridItemSpan(maxLineSpan) }) {
+        Box(modifier = Modifier.fullBleed(gridPadding)) { heroSlot() }
+    }
+    item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+}
+
 @Composable
 private fun AlbumsTabContent(
     albumsState: DataState<List<Album>>,
@@ -599,16 +660,16 @@ private fun AlbumsTabContent(
     gridState: LazyGridState,
 ) {
     val viewMode = viewModeProvider(MediaType.ALBUM)
+    val gridPadding = contentPadding + PaddingValues(4.dp)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
         columns = GridCells.Adaptive(minSize = gridItemMinSize()),
-        contentPadding = contentPadding + PaddingValues(4.dp),
+        contentPadding = gridPadding,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
-        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+        detailHeaderItems(gridPadding, heroSlot, tabsSlot)
 
         when (albumsState) {
             is DataState.Data -> items(
@@ -655,16 +716,16 @@ private fun ArtistsTabContent(
     gridState: LazyGridState,
 ) {
     val viewMode = viewModeProvider(MediaType.ARTIST)
+    val gridPadding = contentPadding + PaddingValues(4.dp)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
         columns = GridCells.Adaptive(minSize = gridItemMinSize()),
-        contentPadding = contentPadding + PaddingValues(4.dp),
+        contentPadding = gridPadding,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
-        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+        detailHeaderItems(gridPadding, heroSlot, tabsSlot)
 
         when (artistsState) {
             is DataState.Data -> items(
@@ -713,16 +774,16 @@ private fun PlayablesTabContent(
     gridState: LazyGridState,
 ) {
     val viewMode = viewModeProvider(MediaType.TRACK)
+    val gridPadding = contentPadding + PaddingValues(4.dp)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
         columns = GridCells.Adaptive(minSize = gridItemMinSize()),
-        contentPadding = contentPadding + PaddingValues(4.dp),
+        contentPadding = gridPadding,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
-        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+        detailHeaderItems(gridPadding, heroSlot, tabsSlot)
 
         when (playableItemsState) {
             is DataState.Data -> {
@@ -788,16 +849,16 @@ private fun ChaptersTabContent(
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
 ) {
+    val gridPadding = contentPadding + PaddingValues(4.dp)
     LazyVerticalGrid(
         state = gridState,
         modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
         columns = GridCells.Adaptive(minSize = gridItemMinSize()),
-        contentPadding = contentPadding + PaddingValues(4.dp),
+        contentPadding = gridPadding,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) { heroSlot() }
-        item(span = { GridItemSpan(maxLineSpan) }) { tabsSlot() }
+        detailHeaderItems(gridPadding, heroSlot, tabsSlot)
 
         chapters.forEach { chapter ->
             item(span = { GridItemSpan(maxLineSpan) }) {

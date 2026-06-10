@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SplitButtonDefaults.LeadingButton
 import androidx.compose.material3.SplitButtonDefaults.TrailingButton
 import androidx.compose.material3.SplitButtonLayout
@@ -17,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -31,6 +34,7 @@ import io.music_assistant.client.ui.compose.common.items.icon
 import io.music_assistant.client.ui.compose.common.items.resolvePlayButtonActions
 import io.music_assistant.client.ui.compose.common.items.title
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
+import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_play_options
 import org.jetbrains.compose.resources.stringResource
@@ -40,9 +44,17 @@ import org.jetbrains.compose.resources.stringResource
 fun ItemPlayButton(
     item: AppMediaItem,
     onPlayClick: (QueueOption, Boolean) -> Unit,
+    tint: Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier,
 ) {
     if (!item.isPlayable) return
+
+    // Art-derived control tint as the button fill; black/white content per its luminance.
+    val onTint = tint.contentColorByLuminance()
+    val buttonColors = ButtonDefaults.buttonColors(
+        containerColor = tint,
+        contentColor = onTint,
+    )
 
     // The detail header is wrapped in ProvideClickActions(DETAIL), so the config resolves
     // this item's DETAIL default. effectiveActionFor is non-null here (item is playable).
@@ -67,6 +79,7 @@ fun ItemPlayButton(
             LeadingButton(
                 modifier = Modifier.semantics { contentDescription = label },
                 onClick = { runPlayAction(effective) },
+                colors = buttonColors,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = effective.icon(), contentDescription = null)
@@ -82,7 +95,7 @@ fun ItemPlayButton(
                 onCustomize = if (kind != null) ({ showCustomizeDialog = true }) else null,
                 onPlayAction = runPlayAction,
             ) { onClick ->
-                TrailingButton(onClick = onClick) {
+                TrailingButton(onClick = onClick, colors = buttonColors) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,
                         contentDescription = stringResource(Res.string.cd_play_options),

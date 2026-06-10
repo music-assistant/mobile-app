@@ -51,7 +51,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +75,7 @@ import io.music_assistant.client.ui.compose.common.items.DISABLED_ITEM_ALPHA
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
+import io.music_assistant.client.ui.contentColorByLuminance
 import io.music_assistant.client.utils.conditional
 import io.music_assistant.client.utils.formatDuration
 import kotlinx.coroutines.flow.Flow
@@ -133,7 +133,7 @@ fun CollapsibleQueue(
             currentPos?.let { stringResource(Res.string.queue_label_with_position, it, list.size) }
         } ?: defaultLabel
 
-        val queueButtonContentColor = if (tint.luminance() > 0.5f) Color.Black else Color.White
+        val queueButtonContentColor = tint.contentColorByLuminance()
         Button(
             modifier = Modifier
                 .let {
