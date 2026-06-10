@@ -161,6 +161,7 @@ fun ItemDetails(
     toastState: ToastState = rememberToastState(),
     onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
     geEditablePlaylists: suspend () -> List<Playlist> = suspend { emptyList() },
+    fetchColors: ExtractedColorsFetcher? = null,
     addToPlaylist: (String?, Playlist) -> Unit = { _, _ -> },
     onLibraryClick: (AppMediaItem) -> Unit = {},
     onFavoriteClick: (AppMediaItem) -> Unit = {},
@@ -234,6 +235,7 @@ fun ItemDetails(
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
         providerIconFetcher = providerIconFetcher,
+        fetchColors = fetchColors,
         onBack = onBack,
         onToggleViewMode = onToggleViewMode,
         onAlbumsSortChanged = onAlbumsSortChanged,
@@ -291,6 +293,7 @@ private fun ItemChildren(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    fetchColors: ExtractedColorsFetcher?,
     onBack: () -> Unit,
     onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
@@ -328,6 +331,7 @@ private fun ItemChildren(
                     onRemoveFromPlaylist = onRemoveFromPlaylist,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    fetchColors = fetchColors,
                     onBack = onBack,
                     onToggleViewMode = onToggleViewMode,
                     onAlbumsSortChanged = onAlbumsSortChanged,
@@ -361,6 +365,7 @@ private fun ItemContent(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    fetchColors: ExtractedColorsFetcher?,
     onBack: () -> Unit,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
@@ -374,17 +379,19 @@ private fun ItemContent(
 
     // Artwork-driven header colors. Library items carry no server palette, so colors are
     // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
-    // as the player. The fetcher is Koin-backed, so skip it under @Preview (no Koin graph).
-    val fetchColors: ExtractedColorsFetcher = if (LocalInspectionMode.current) {
-        { null }
-    } else {
-        rememberExtractedColorsFetcher()
-    }
+    // as the player. The fetcher is Koin-backed, so fall back to a no-op when one isn't
+    // supplied and there's no Koin graph (under @Preview or in tests).
+    val resolvedFetchColors: ExtractedColorsFetcher = fetchColors
+        ?: if (LocalInspectionMode.current) {
+            { null }
+        } else {
+            rememberExtractedColorsFetcher()
+        }
     val colors by rememberAnimatedPlayerColors(
         imageUrl = item.image(ImageType.THUMB)?.url,
         palette = null,
         fallback = MaterialTheme.colorScheme.primaryContainer,
-        fetchColors = fetchColors,
+        fetchColors = resolvedFetchColors,
     )
 
     val heroSlot: @Composable () -> Unit = {
