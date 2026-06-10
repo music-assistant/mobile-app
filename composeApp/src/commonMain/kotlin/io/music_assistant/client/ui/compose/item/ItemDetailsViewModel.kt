@@ -49,7 +49,26 @@ class ItemDetailsViewModel(
         val artistsState: DataState<List<Artist>> = DataState.Loading(),
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
-    )
+        /** The user's manual tab choice; null means "follow the auto-selected default". */
+        val userSelectedTab: ItemDetailsTab? = null,
+    ) {
+        /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
+        val tabs: List<ItemDetailsTab> get() = itemOrNull()?.let { tabsFor(it) } ?: emptyList()
+
+        /** While any visible tab's backing list is still loading, defer the tabs bar entirely. */
+        val subItemsLoading: Boolean get() = tabs.any { it.subState(this) is DataState.Loading }
+
+        /**
+         * The tab to display: none while loading; the user's pick if still valid; otherwise the
+         * first tab that actually has data (so an artist with no albums but tracks opens on
+         * Tracks), falling back to the first tab when everything is empty.
+         */
+        val selectedTab: ItemDetailsTab? get() = when {
+            subItemsLoading -> null
+            userSelectedTab in tabs -> userSelectedTab
+            else -> tabs.firstOrNull { it.subState(this).hasItems() } ?: tabs.firstOrNull()
+        }
+    }
 
     private var rawAlbums: List<Album> = emptyList()
     private var rawPlayableItems: List<PlayableItem> = emptyList()
@@ -62,6 +81,10 @@ class ItemDetailsViewModel(
     fun toggleViewMode(mediaType: MediaType) {
         val current = settingsRepository.viewMode(mediaType).value
         settingsRepository.setViewMode(mediaType, current.toggled())
+    }
+
+    fun onTabSelected(tab: ItemDetailsTab) {
+        _state.update { it.copy(userSelectedTab = tab) }
     }
 
     private val _state = MutableStateFlow(
@@ -486,4 +509,32 @@ class ItemDetailsViewModel(
             else -> Unit
         }
     }
+}
+
+private fun ItemDetailsViewModel.State.itemOrNull(): AppMediaItem? = when (itemState) {
+    is DataState.Data -> itemState.data
+    is DataState.Stale -> itemState.data
+    else -> null
+}
+
+/** The single [DataState] backing this tab's list. Chapters are carried by the item itself. */
+private fun ItemDetailsTab.subState(
+    state: ItemDetailsViewModel.State,
+): DataState<out List<Any>> = when (this) {
+    ItemDetailsTab.ARTIST_ALBUMS, ItemDetailsTab.GENRE_ALBUMS -> state.albumsState
+    ItemDetailsTab.ARTIST_TRACKS,
+    ItemDetailsTab.ALBUM_TRACKS,
+    ItemDetailsTab.PLAYLIST_TRACKS,
+    ItemDetailsTab.PODCAST_EPISODES,
+        -> state.playableItemsState
+
+    ItemDetailsTab.GENRE_ARTISTS -> state.artistsState
+    ItemDetailsTab.AUDIOBOOK_CHAPTERS ->
+        DataState.Data((state.itemOrNull() as? Audiobook)?.chapters.orEmpty())
+}
+
+private fun DataState<out List<*>>.hasItems(): Boolean = when (this) {
+    is DataState.Data -> data.isNotEmpty()
+    is DataState.Stale -> data.isNotEmpty()
+    else -> false
 }
