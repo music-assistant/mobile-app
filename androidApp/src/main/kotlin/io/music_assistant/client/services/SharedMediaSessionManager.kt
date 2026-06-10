@@ -272,6 +272,8 @@ class SharedMediaSessionManager(
 
             override fun onCustomAction(action: String, extras: Bundle?) {
                 when (action) {
+                    "ACTION_SEEK_BACK" -> act(PlayerAction.SeekBy(-10))
+                    "ACTION_SEEK_FORWARD" -> act(PlayerAction.SeekBy(30))
                     "ACTION_SWITCH_PLAYER" -> dataSource.switchSessionPlayer()
                     "ACTION_TOGGLE_SHUFFLE" -> currentPlayer()?.let { pd ->
                         pd.queueInfo?.let {
@@ -372,32 +374,59 @@ class SharedMediaSessionManager(
                 data.longItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong(),
             )
             .also { builder ->
-                data.shuffleEnabled?.let { shuffle ->
+                if (data.isLongFormContent) {
+                    // Audiobooks / podcasts: seek controls in place of shuffle & repeat.
                     builder.addCustomAction(
                         PlaybackStateCompat.CustomAction.Builder(
-                            "ACTION_TOGGLE_SHUFFLE",
-                            "Shuffle",
-                            getShuffleModeIcon(shuffle),
+                            "ACTION_SEEK_BACK",
+                            "Rewind 10s",
+                            R.drawable.baseline_replay_10_24,
                         ).build(),
                     )
-                }
-                if (data.multiplePlayers) {
                     builder.addCustomAction(
                         PlaybackStateCompat.CustomAction.Builder(
-                            "ACTION_SWITCH_PLAYER",
-                            "Next player",
-                            R.drawable.ic_speaker,
+                            "ACTION_SEEK_FORWARD",
+                            "Forward 30s",
+                            R.drawable.baseline_forward_30_24,
                         ).build(),
                     )
-                } else {
-                    data.repeatMode?.let { repeatMode ->
+                    if (data.multiplePlayers) {
                         builder.addCustomAction(
                             PlaybackStateCompat.CustomAction.Builder(
-                                "ACTION_TOGGLE_REPEAT",
-                                "Repeat",
-                                getRepeatModeIcon(repeatMode),
+                                "ACTION_SWITCH_PLAYER",
+                                "Next player",
+                                R.drawable.ic_speaker,
                             ).build(),
                         )
+                    }
+                } else {
+                    data.shuffleEnabled?.let { shuffle ->
+                        builder.addCustomAction(
+                            PlaybackStateCompat.CustomAction.Builder(
+                                "ACTION_TOGGLE_SHUFFLE",
+                                "Shuffle",
+                                getShuffleModeIcon(shuffle),
+                            ).build(),
+                        )
+                    }
+                    if (data.multiplePlayers) {
+                        builder.addCustomAction(
+                            PlaybackStateCompat.CustomAction.Builder(
+                                "ACTION_SWITCH_PLAYER",
+                                "Next player",
+                                R.drawable.ic_speaker,
+                            ).build(),
+                        )
+                    } else {
+                        data.repeatMode?.let { repeatMode ->
+                            builder.addCustomAction(
+                                PlaybackStateCompat.CustomAction.Builder(
+                                    "ACTION_TOGGLE_REPEAT",
+                                    "Repeat",
+                                    getRepeatModeIcon(repeatMode),
+                                ).build(),
+                            )
+                        }
                     }
                 }
             }

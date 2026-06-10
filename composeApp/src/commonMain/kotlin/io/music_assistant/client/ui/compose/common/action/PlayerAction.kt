@@ -25,5 +25,6 @@ sealed interface PlayerAction {
 
     data class ToggleDontStopTheMusic(val current: Boolean) : PlayerAction
     data class SeekTo(val position: Long) : PlayerAction
+    data class SeekBy(val offsetSeconds: Long) : PlayerAction
     data class SetPlaybackSpeed(val speed: Double) : PlayerAction
 }

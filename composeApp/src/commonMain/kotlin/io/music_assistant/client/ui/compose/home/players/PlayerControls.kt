@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Forward30
+import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,6 +26,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.PauseIcon
@@ -54,6 +58,8 @@ fun PlayerControls(
     val queue = playerData.queueInfo
     val playerEnabled = player.canPlay && !player.isAnnouncing
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
+    // Audiobooks / podcast episodes swap shuffle & repeat for skip-back / skip-forward seek.
+    val isLongForm = queue?.currentItem?.track.isLongFormSpokenContent
     val itemsCount = playerData.queueItems?.size ?: 0
     val skipForwardEnabled = when {
         queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
@@ -69,20 +75,29 @@ fun PlayerControls(
     ) {
         if (showAdditionalButtons) {
             queue?.let {
-                ActionButton(
-                    icon = if (it.shuffleEnabled) {
-                        ShuffleOnIcon
-                    } else {
-                        ShuffleOffIcon
-                    },
-                    tint = tint,
-                    size = smallButtonSize,
-                    enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
-                ) {
-                    playerAction(
-                        playerData,
-                        PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
-                    )
+                if (isLongForm) {
+                    ActionButton(
+                        icon = Icons.Rounded.Replay10,
+                        tint = tint,
+                        size = smallButtonSize,
+                        enabled = playerEnabled && buttonsEnabled,
+                    ) { playerAction(playerData, PlayerAction.SeekBy(-10)) }
+                } else {
+                    ActionButton(
+                        icon = if (it.shuffleEnabled) {
+                            ShuffleOnIcon
+                        } else {
+                            ShuffleOffIcon
+                        },
+                        tint = tint,
+                        size = smallButtonSize,
+                        enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
+                    ) {
+                        playerAction(
+                            playerData,
+                            PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
+                        )
+                    }
                 }
             }
         }
@@ -136,24 +151,33 @@ fun PlayerControls(
 
         if (showAdditionalButtons) {
             queue?.let {
-                val repeatMode = it.repeatMode
-                ActionButton(
-                    icon = when (repeatMode) {
-                        RepeatMode.ONE -> RepeatOneIcon
-                        RepeatMode.ALL -> RepeatOnIcon
-                        RepeatMode.OFF,
-                        null,
-                            -> RepeatOffIcon
-                    },
-                    tint = tint,
-                    size = smallButtonSize,
-                    enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist,
-                ) {
-                    repeatMode?.let {
-                        playerAction(
-                            playerData,
-                            PlayerAction.ToggleRepeatMode(current = repeatMode),
-                        )
+                if (isLongForm) {
+                    ActionButton(
+                        icon = Icons.Rounded.Forward30,
+                        tint = tint,
+                        size = smallButtonSize,
+                        enabled = playerEnabled && buttonsEnabled,
+                    ) { playerAction(playerData, PlayerAction.SeekBy(30)) }
+                } else {
+                    val repeatMode = it.repeatMode
+                    ActionButton(
+                        icon = when (repeatMode) {
+                            RepeatMode.ONE -> RepeatOneIcon
+                            RepeatMode.ALL -> RepeatOnIcon
+                            RepeatMode.OFF,
+                            null,
+                                -> RepeatOffIcon
+                        },
+                        tint = tint,
+                        size = smallButtonSize,
+                        enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist,
+                    ) {
+                        repeatMode?.let {
+                            playerAction(
+                                playerData,
+                                PlayerAction.ToggleRepeatMode(current = repeatMode),
+                            )
+                        }
                     }
                 }
             }

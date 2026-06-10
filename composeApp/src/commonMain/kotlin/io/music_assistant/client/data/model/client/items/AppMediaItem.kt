@@ -32,6 +32,9 @@ interface PlayableItem {
     fun withFavorite(favorite: Boolean?): PlayableItem
 }
 
+val PlayableItem?.isLongFormSpokenContent: Boolean
+    get() = this is Audiobook || this is PodcastEpisode
+
 sealed class AppMediaItem {
     abstract val itemId: String
     abstract val provider: String

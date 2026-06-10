@@ -1320,14 +1320,18 @@ class MainDataSource(
     }
 
     fun playerAction(data: PlayerData, action: PlayerAction) {
+        // SeekBy is a relative offset; the UI/notification that emit it don't hold
+        // live position. Resolve to an absolute SeekTo here (the only place with
+        // positionTracker), then let the existing seek plumbing handle the rest.
+        val resolved = (action as? PlayerAction.SeekBy)?.toSeekTo(data) ?: action
         // Apply optimistic update for local player (immediate, before async command)
         if (data.isLocal) {
-            localPlayerRepository.applyOptimisticUpdate(data, action)
+            localPlayerRepository.applyOptimisticUpdate(data, resolved)
         }
         launch {
-            val request = buildPlayerRequest(data, action) ?: return@launch
+            val request = buildPlayerRequest(data, resolved) ?: return@launch
             if (data.isLocal) {
-                localPlayerRepository.sendOrQueue(action, request)
+                localPlayerRepository.sendOrQueue(resolved, request)
             } else {
                 val result = apiClient.sendRequest(request)
                 if (result.isFailure) {
@@ -1337,6 +1341,22 @@ class MainDataSource(
                 }
             }
         }
+    }
+
+    /** Live interpolated position (seconds), falling back to the last server anchor. */
+    private fun PlayerData.effectivePositionSec(): Double =
+        queueInfo?.id?.let(positionTracker::effectiveSec)
+            ?: queueInfo?.elapsedTime ?: 0.0
+
+    /**
+     * Resolves a relative [PlayerAction.SeekBy] into an absolute [PlayerAction.SeekTo],
+     * clamped to `[0, duration]`. Lives here because [positionTracker] is the position
+     * source of truth and only this layer holds it.
+     */
+    private fun PlayerAction.SeekBy.toSeekTo(data: PlayerData): PlayerAction.SeekTo {
+        val target = (data.effectivePositionSec() + offsetSeconds).coerceAtLeast(0.0)
+            .let { t -> data.player.currentMedia?.duration?.let(t::coerceAtMost) ?: t }
+        return PlayerAction.SeekTo(target.toLong())
     }
 
     private fun buildPlayerRequest(data: PlayerData, action: PlayerAction): Request? {
@@ -1351,9 +1371,7 @@ class MainDataSource(
                 Request.Player.simpleCommand(playerId = data.playerId, command = "pause")
 
             PlayerAction.Next -> {
-                val currentPos = data.queueInfo?.id
-                    ?.let(positionTracker::effectiveSec)
-                    ?: data.queueInfo?.elapsedTime ?: 0.0
+                val currentPos = data.effectivePositionSec()
                 (data.queueInfo?.currentItem?.track as? Audiobook)
                     ?.chapters?.firstOrNull { it.start > currentPos }?.start
                     ?.let { Request.Player.seek(queueId = data.playerId, position = it.toLong()) }
@@ -1361,9 +1379,7 @@ class MainDataSource(
             }
 
             PlayerAction.Previous -> {
-                val currentPos = data.queueInfo?.id
-                    ?.let(positionTracker::effectiveSec)
-                    ?: data.queueInfo?.elapsedTime ?: 0.0
+                val currentPos = data.effectivePositionSec()
                 (data.queueInfo?.currentItem?.track as? Audiobook)
                     ?.chapters?.takeIf { it.isNotEmpty() }
                     ?.let { chapters ->
@@ -1384,6 +1400,9 @@ class MainDataSource(
             is PlayerAction.SeekTo -> {
                 Request.Player.seek(queueId = data.playerId, position = action.position)
             }
+
+            // Resolved to SeekTo in playerAction(); never reaches here.
+            is PlayerAction.SeekBy -> null
 
             is PlayerAction.ToggleRepeatMode -> {
                 val queueId = data.queueInfo?.id ?: return null

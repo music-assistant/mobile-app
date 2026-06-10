@@ -3,6 +3,7 @@ package io.music_assistant.client.services
 import android.os.SystemClock
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 
 // Elapsed time can drift up to 1s before we treat it as a real position change.
 // Lower tolerance keeps OEM surfaces that don't extrapolate (OneUI/MIUI/etc.)
@@ -17,6 +18,8 @@ data class MediaNotificationData(
     val album: String?,
     val repeatMode: RepeatMode?,
     val shuffleEnabled: Boolean?,
+    // Audiobook / podcast episode: notification swaps shuffle & repeat for seek controls.
+    val isLongFormContent: Boolean,
     val isPlaying: Boolean,
     val imageUrl: String?,
     val elapsedTime: Long?,
@@ -52,6 +55,7 @@ data class MediaNotificationData(
                 ?.takeIf { playerData.queueInfo?.isDynamicPlaylist != true },
             shuffleEnabled = playerData.queueInfo?.shuffleEnabled
                 ?.takeIf { playerData.queueInfo?.isDynamicPlaylist != true },
+            isLongFormContent = playerData.queueInfo?.currentItem?.track.isLongFormSpokenContent,
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
             elapsedTime = effectiveElapsedSec?.toLong()?.let { it * 1000 },
