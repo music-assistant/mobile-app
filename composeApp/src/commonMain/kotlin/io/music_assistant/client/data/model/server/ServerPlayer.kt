@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
  * missing-or-renamed field doesn't take down deserialization of the whole
  * `ServerPlayer` (and by extension, whatever event or RPC carries it). Combined
  * with `coerceInputValues = true` in [myJson], unknown enum variants degrade to
- * `null` rather than aborting the decode.
+ * `null` rather than aborting the decoding.
  *
  * `playerId` is the one field kept required — without it there's no identity
  * and nothing useful we can do with the payload.

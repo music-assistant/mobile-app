@@ -108,11 +108,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
         logger.i { "Registered audio device callback for routing change detection" }
 
-        // Title/artist/position are read live from the session via MediaStyle; only the
-        // largeIcon (artwork) requires a notification repost, so we just track the
-        // manager's artwork flow. The first (null) emission re-posts the initial icon.
+        // Repost the notification on every now-playing change. A repost is what refreshes
+        // the visible title/artist (MediaStyle does not re-read them live on all surfaces),
+        // and it also swaps the largeIcon. The flow is keyed by track + bitmap, so it fires
+        // on track changes even when consecutive tracks share artwork. The first (null)
+        // emission re-posts the initial icon.
         scope.launch {
-            sharedSession.artwork.collect { bitmap -> postNotification(bitmap) }
+            sharedSession.notificationArt.collect { postNotification(it?.bitmap) }
         }
         scope.launch {
             // Block until everything is stopped, then bail

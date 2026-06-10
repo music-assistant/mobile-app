@@ -42,7 +42,9 @@ internal suspend fun loadCoilBitmap(
  * new one. Slow or failing artwork never blocks downstream emissions — the
  * upstream data lands immediately paired with the last-known bitmap (or
  * `null` until the first one resolves), and a second emission replaces it
- * once the new bitmap arrives.
+ * once the new bitmap arrives. Crucially the fetch is cancelled *only* on a
+ * URL change, so frequent non-artwork updates (position ticks, play/pause)
+ * never restart or starve a slow load.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun Flow<MediaNotificationData>.withAsyncBitmap(
