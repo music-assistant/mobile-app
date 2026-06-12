@@ -1,10 +1,10 @@
 package io.music_assistant.client.ui.compose.common.items
 
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
-import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
@@ -20,15 +20,15 @@ val AppMediaItem.supportsAddToPlaylist: Boolean
  */
 fun resolveLongClickActions(
     item: AppMediaItem,
+    clickContext: ClickContext?,
     librarySupported: Boolean,
     canAddToPlaylist: Boolean,
     canRemoveFromPlaylist: Boolean,
     progressSupported: Boolean,
     defaultAction: ItemAction? = null,
-    parent: AppMediaItem? = null,
     customizationAllowed: Boolean = false,
 ): List<ItemAction> = buildList {
-    if (item.isPlayable) addPlaybackActions(item, parent)
+    if (item.isPlayable) addPlaybackActions(item, clickContext)
     if (customizationAllowed) add(ItemAction.Customize)
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
@@ -67,14 +67,17 @@ fun resolvePlayButtonActions(
     }.filterNot { it == default }
 
 /** The playback block: Play Now / Insert Next & Play / Insert Next / Add to Bottom / Start Radio. */
-private fun MutableList<ItemAction>.addPlaybackActions(item: AppMediaItem, parent: AppMediaItem? = null) {
+private fun MutableList<ItemAction>.addPlaybackActions(
+    item: AppMediaItem,
+    context: ClickContext? = null,
+) {
     add(ItemAction.Play(QueueOption.REPLACE))
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))
 
-    if (parent is Album || parent is Playlist) {
-        add(ItemAction.PlayFromHere(isPlaylist = parent is Playlist))
+    if (context == ClickContext.ALBUM || context == ClickContext.PLAYLIST) {
+        add(ItemAction.PlayFromHere)
     }
 
     if (item.canStartRadio) add(ItemAction.StartRadio)

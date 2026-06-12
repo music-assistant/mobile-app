@@ -16,6 +16,7 @@ import compose.icons.tablericons.FolderMinus
 import compose.icons.tablericons.FolderPlus
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
@@ -43,7 +44,7 @@ sealed class ItemAction(val kind: Kind) {
     enum class Kind { PLAYBACK, OTHER }
 
     data class Play(val queueOption: QueueOption) : ItemAction(Kind.PLAYBACK)
-    data class PlayFromHere(val isPlaylist: Boolean) : ItemAction(Kind.PLAYBACK)
+    data object PlayFromHere : ItemAction(Kind.PLAYBACK)
     data object StartRadio : ItemAction(Kind.PLAYBACK)
 
     data object AddToLibrary : ItemAction(Kind.OTHER)
@@ -60,7 +61,7 @@ sealed class ItemAction(val kind: Kind) {
     data object Customize : ItemAction(Kind.PLAYBACK)
 }
 
-fun ItemAction.title(): StringResource = when (this) {
+fun ItemAction.title(context: ClickContext? = null): StringResource = when (this) {
     is ItemAction.Play -> when (queueOption) {
         QueueOption.REPLACE -> Res.string.action_play_now
         QueueOption.PLAY -> Res.string.action_insert_next_and_play
@@ -68,11 +69,12 @@ fun ItemAction.title(): StringResource = when (this) {
         QueueOption.ADD -> Res.string.action_add_to_queue
     }
 
-    is ItemAction.PlayFromHere -> if (isPlaylist) {
-        Res.string.action_play_playlist_from_here
-    } else {
-        Res.string.action_play_album_from_here
+    is ItemAction.PlayFromHere -> when (context) {
+        ClickContext.ALBUM -> Res.string.action_play_album_from_here
+        ClickContext.PLAYLIST -> Res.string.action_play_playlist_from_here
+        else -> throw IllegalArgumentException()
     }
+
     ItemAction.StartRadio -> Res.string.action_start_radio
     ItemAction.AddToLibrary -> Res.string.action_add_to_library
     ItemAction.RemoveFromLibrary -> Res.string.action_remove_from_library
@@ -85,7 +87,7 @@ fun ItemAction.title(): StringResource = when (this) {
     ItemAction.Customize -> Res.string.action_customize
 }
 
-fun ItemAction.icon(): ImageVector = when (this) {
+fun ItemAction.icon(context: ClickContext?): ImageVector = when (this) {
     is ItemAction.Play -> when (queueOption) {
         QueueOption.REPLACE -> PlayIcon
         QueueOption.PLAY -> Icons.Default.PlaylistAddCircle
@@ -93,11 +95,12 @@ fun ItemAction.icon(): ImageVector = when (this) {
         QueueOption.ADD -> Icons.Default.AddToQueue
     }
 
-    is ItemAction.PlayFromHere -> if (isPlaylist) {
-        PlaylistIcon
-    } else {
-        AlbumIcon
+    is ItemAction.PlayFromHere -> when (context) {
+        ClickContext.ALBUM -> AlbumIcon
+        ClickContext.PLAYLIST -> PlaylistIcon
+        else -> throw IllegalArgumentException()
     }
+
     ItemAction.StartRadio -> Icons.Default.CellTower
     ItemAction.AddToLibrary -> TablerIcons.FolderPlus
     ItemAction.RemoveFromLibrary -> TablerIcons.FolderMinus

@@ -70,7 +70,7 @@ fun DefaultClickOption.toItemAction(): ItemAction = when (this) {
     DefaultClickOption.INSERT_NEXT -> ItemAction.Play(QueueOption.NEXT)
     DefaultClickOption.ADD_TO_QUEUE -> ItemAction.Play(QueueOption.ADD)
     DefaultClickOption.START_RADIO -> ItemAction.StartRadio
-    DefaultClickOption.PLAY_FROM_HERE -> ItemAction.PlayFromHere(isPlaylist = false)
+    DefaultClickOption.PLAY_FROM_HERE -> ItemAction.PlayFromHere
 }
 
 /**
@@ -84,7 +84,7 @@ fun DefaultClickOption.effectiveFor(item: AppMediaItem): ItemAction? {
         DefaultClickOption.START_RADIO ->
             if (item.canStartRadio) ItemAction.StartRadio else ItemAction.Play(QueueOption.REPLACE)
         DefaultClickOption.PLAY_FROM_HERE ->
-            if (item is Track) ItemAction.PlayFromHere(isPlaylist = false) else ItemAction.Play(QueueOption.REPLACE)
+            if (item is Track) ItemAction.PlayFromHere else ItemAction.Play(QueueOption.REPLACE)
         else -> toItemAction()
     }
 }

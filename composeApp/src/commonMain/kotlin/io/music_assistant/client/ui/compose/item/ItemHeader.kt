@@ -61,6 +61,7 @@ import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.items.ItemAction
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
@@ -202,7 +203,7 @@ private fun ItemOverflow(
         librarySupported = libraryActions != null && item !is Genre,
         canAddToPlaylist = playlistActions != null,
     ).map { action ->
-        action.toOverflowOption {
+        action.toOverflowOption(LocalClickActionConfig.current.context) {
             when (it) {
                 ItemAction.AddToLibrary,
                 ItemAction.RemoveFromLibrary,

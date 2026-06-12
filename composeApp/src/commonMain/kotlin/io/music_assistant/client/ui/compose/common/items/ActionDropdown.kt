@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.settings.DefaultClickOption
 import org.jetbrains.compose.resources.stringResource
 
@@ -35,6 +36,7 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActionDropdown(
+    context: ClickContext?,
     options: List<DefaultClickOption>,
     selected: DefaultClickOption,
     onSelect: (DefaultClickOption) -> Unit,
@@ -60,9 +62,9 @@ fun ActionDropdown(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(selectedAction.icon(), contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(selectedAction.icon(context), contentDescription = null, modifier = Modifier.size(20.dp))
             Text(
-                text = stringResource(selectedAction.title()),
+                text = stringResource(selectedAction.title(context)),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyLarge,
@@ -76,14 +78,14 @@ fun ActionDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            stringResource(itemAction.title()),
+                            stringResource(itemAction.title(context)),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
                     leadingIcon = {
                         Icon(
-                            itemAction.icon(),
+                            itemAction.icon(context),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )

@@ -7,6 +7,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.menu_default_label
@@ -21,6 +22,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun ItemActionMenuItems(
+    clickContext: ClickContext?,
     actions: List<ItemAction>,
     defaultAction: ItemAction? = null,
     onAction: (ItemAction) -> Unit,
@@ -30,7 +32,7 @@ fun ItemActionMenuItems(
     val dividerAfter = if (lastPlayback in 0 until firstOther) lastPlayback else -1
 
     actions.forEachIndexed { index, action ->
-        val title = stringResource(action.title())
+        val title = stringResource(action.title(clickContext))
         DropdownMenuItem(
             text = {
                 when (action) {
@@ -52,7 +54,7 @@ fun ItemActionMenuItems(
             },
             onClick = { onAction(action) },
             leadingIcon = {
-                Icon(imageVector = action.icon(), contentDescription = title)
+                Icon(imageVector = action.icon(clickContext), contentDescription = title)
             },
         )
         if (index == dividerAfter) HorizontalDivider()
@@ -60,11 +62,11 @@ fun ItemActionMenuItems(
 }
 
 @Composable
-fun ItemAction.toOverflowOption(onAction: (ItemAction) -> Unit): OverflowMenuOption {
+fun ItemAction.toOverflowOption(clickContext: ClickContext?, onAction: (ItemAction) -> Unit): OverflowMenuOption {
     val action = this
     return OverflowMenuOption(
-        title = stringResource(title()),
-        icon = icon(),
+        title = stringResource(title(clickContext)),
+        icon = icon(clickContext),
         onClick = { onAction(action) },
     )
 }

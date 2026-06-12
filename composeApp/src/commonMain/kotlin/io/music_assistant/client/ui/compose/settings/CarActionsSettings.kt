@@ -43,6 +43,7 @@ import io.music_assistant.client.settings.defaultCarBulkActions
 import io.music_assistant.client.settings.isCarSupported
 import io.music_assistant.client.ui.compose.common.ReorderableEnabledList
 import io.music_assistant.client.ui.compose.common.items.ActionDropdown
+import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
 import io.music_assistant.client.ui.compose.common.items.labelRes
 import io.music_assistant.client.ui.compose.common.items.title
 import io.music_assistant.client.ui.compose.common.items.toItemAction
@@ -178,6 +179,7 @@ private fun CarEnqueueActionDialog(viewModel: CarActionsViewModel, onDismiss: ()
                             overflow = TextOverflow.Ellipsis,
                         )
                         ActionDropdown(
+                            context = LocalClickActionConfig.current.context,
                             options = options,
                             selected = selection[kind] ?: DefaultClickOption.PLAY_NOW,
                             onSelect = { selection[kind] = it },

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -58,7 +59,8 @@ fun ItemPlayButton(
 
     // The detail header is wrapped in ProvideClickActions(DETAIL), so the config resolves
     // this item's DETAIL default. effectiveActionFor is non-null here (item is playable).
-    val effective = LocalClickActionConfig.current.effectiveActionFor(item)
+    val clickActionConfig = LocalClickActionConfig.current
+    val effective = clickActionConfig.effectiveActionFor(item)
         ?: ItemAction.Play(QueueOption.REPLACE)
     val kind = item.itemKind()
 
@@ -82,7 +84,7 @@ fun ItemPlayButton(
                 colors = buttonColors,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = effective.icon(), contentDescription = null)
+                    Icon(imageVector = effective.icon(clickActionConfig.context), contentDescription = null)
                     Text(modifier = Modifier.padding(start = 8.dp), text = label)
                 }
             }
@@ -94,6 +96,7 @@ fun ItemPlayButton(
                 // Customize opens the per-kind table — meaningless for kindless items (e.g. Genre).
                 onCustomize = if (kind != null) ({ showCustomizeDialog = true }) else null,
                 onPlayAction = runPlayAction,
+                context = clickActionConfig.context,
             ) { onClick ->
                 TrailingButton(onClick = onClick, colors = buttonColors) {
                     Icon(
@@ -106,7 +109,11 @@ fun ItemPlayButton(
     )
 
     if (showCustomizeDialog && kind != null) {
-        DefaultClickActionsDialog(itemKind = kind, onDismiss = { showCustomizeDialog = false })
+        DefaultClickActionsDialog(
+            clickActionConfig.context,
+            itemKind = kind,
+            onDismiss = { showCustomizeDialog = false },
+        )
     }
 }
 
@@ -116,11 +123,12 @@ private fun PlayOverflow(
     default: ItemAction,
     onCustomize: (() -> Unit)?,
     onPlayAction: (ItemAction) -> Unit,
+    context: ClickContext?,
     button: @Composable (() -> Unit) -> Unit,
 ) {
     val actions = resolvePlayButtonActions(item, default, onCustomize != null)
     val options = actions.map { action ->
-        action.toOverflowOption {
+        action.toOverflowOption(context) {
             if (it == ItemAction.Customize) onCustomize?.invoke() else onPlayAction(it)
         }
     }

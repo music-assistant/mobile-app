@@ -183,16 +183,17 @@ private fun <T> PlayableItemWithMenu(
 
     // The tap action for this item's (kind, context) pair (PLAY_NOW outside customizable
     // screens). Null when the item isn't playable — then a tap opens the menu instead.
-    val effectiveDefault = LocalClickActionConfig.current.effectiveActionFor(item)
+    val clickActionConfig = LocalClickActionConfig.current
+    val effectiveDefault = clickActionConfig.effectiveActionFor(item)
 
     val actions = resolveLongClickActions(
         item = item,
+        clickContext = clickActionConfig.context,
         librarySupported = true,
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is PodcastEpisode,
         defaultAction = effectiveDefault,
-        parent = parent,
         customizationAllowed = true,
     )
 
@@ -222,7 +223,7 @@ private fun <T> PlayableItemWithMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
-            ItemActionMenuItems(actions, defaultAction = effectiveDefault) { action ->
+            ItemActionMenuItems(clickActionConfig.context, actions, defaultAction = effectiveDefault) { action ->
                 expandedItemId = null
                 when (action) {
                     is ItemAction.Play,
@@ -256,7 +257,11 @@ private fun <T> PlayableItemWithMenu(
 
         if (showCustomizeDialog) {
             item.itemKind()?.let { kind ->
-                DefaultClickActionsDialog(itemKind = kind, onDismiss = { showCustomizeDialog = false })
+                DefaultClickActionsDialog(
+                    clickActionConfig.context,
+                    itemKind = kind,
+                    onDismiss = { showCustomizeDialog = false },
+                )
             }
         }
     }
