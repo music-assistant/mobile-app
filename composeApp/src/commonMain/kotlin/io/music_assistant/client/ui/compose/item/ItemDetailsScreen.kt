@@ -100,6 +100,7 @@ import musicassistantclient.composeapp.generated.resources.item_no_data
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.media_type_chapters
+import musicassistantclient.composeapp.generated.resources.media_type_episodes
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -251,6 +252,7 @@ fun ItemDetails(
 /** Tab label. Chapters have a dedicated string; every other tab borrows its media-type label. */
 private fun ItemDetailsTab.stringResource(): StringResource = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
+    ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
     else -> {
         require(viewMediaType != null) { "No string resource for ItemDetailsTab: $name" }
         viewMediaType.stringResource()
