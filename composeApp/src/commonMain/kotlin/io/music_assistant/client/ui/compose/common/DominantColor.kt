@@ -6,6 +6,7 @@
 package io.music_assistant.client.ui.compose.common
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -14,6 +15,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import coil3.compose.LocalPlatformContext
@@ -96,11 +99,11 @@ fun rememberAnimatedPlayerColors(
         ?.let { if (onDark) it.tintOnDark else it.tintOnLight }
         ?: fallback.ensureReadable(onDarkSurface = onDark)
 
-    val animatedDominant by animateColorAsState(
+    val animatedDominant by rememberAnimatedColorAsState(
         targetValue = targetDominant,
         animationSpec = tween(durationMillis = 500),
     )
-    val animatedTint by animateColorAsState(
+    val animatedTint by rememberAnimatedColorAsState(
         targetValue = targetTint,
         animationSpec = tween(durationMillis = 500),
     )
@@ -179,5 +182,19 @@ private fun hueToRgb(p: Float, q: Float, t: Float): Float {
         tt < 1f / 2f -> q
         tt < 2f / 3f -> p + (q - p) * (2f / 3f - tt) * 6f
         else -> p
+    }
+}
+
+@Composable
+private fun rememberAnimatedColorAsState(
+    targetValue: Color,
+    animationSpec: AnimationSpec<Color>,
+): State<Color> {
+    var animated by rememberSaveable(targetValue) { mutableStateOf(false) }
+
+    return if (!animated) {
+        animateColorAsState(targetValue, animationSpec) { animated = true }
+    } else {
+        mutableStateOf(targetValue)
     }
 }
