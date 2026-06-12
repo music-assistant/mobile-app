@@ -2,6 +2,7 @@
 
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -663,16 +665,20 @@ private fun DetailGrid(
     body: LazyGridScope.() -> Unit,
 ) {
     val gridPadding = contentPadding + PaddingValues(4.dp)
-    LazyVerticalGrid(
-        state = gridState,
-        modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
-        columns = GridCells.Adaptive(minSize = gridItemMinSize()),
-        contentPadding = gridPadding,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        detailHeaderItems(gridPadding, heroSlot, tabsSlot)
-        body()
+    // Drop the grid's overscroll: the iOS Cupertino rubber-band drags the full-bleed header
+    // gradient with it, making the background misbehave. Same fix as CollapsibleQueue.
+    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+        LazyVerticalGrid(
+            state = gridState,
+            modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
+            columns = GridCells.Adaptive(minSize = gridItemMinSize()),
+            contentPadding = gridPadding,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            detailHeaderItems(gridPadding, heroSlot, tabsSlot)
+            body()
+        }
     }
 }
 

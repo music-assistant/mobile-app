@@ -67,7 +67,15 @@ fun Modifier.fullBleed(padding: PaddingValues): Modifier = layout { measurable, 
             maxWidth = constraints.maxWidth + left + right,
         ),
     )
-    layout(placeable.width, (placeable.height - top).coerceAtLeast(0)) {
+    // Report the ORIGINAL (un-expanded) width — not the widened placeable's. Reporting the wider
+    // size makes a LazyGrid full-span item overflow its slot on the trailing edge, which the grid
+    // then clips (leaving an un-bled stripe on the right); the leading edge survives only because
+    // the negative placement leaks into the left padding. Keeping the reported width at the slot
+    // size lets the wider placeable draw past BOTH horizontal edges symmetrically.
+    layout(
+        (placeable.width - left - right).coerceAtLeast(0),
+        (placeable.height - top).coerceAtLeast(0),
+    ) {
         placeable.place(-left, -top)
     }
 }
