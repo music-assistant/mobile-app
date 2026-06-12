@@ -194,7 +194,6 @@ fun PlayersPager(
             val media = it.player.currentMedia
             rememberAnimatedPlayerColors(
                 imageUrl = media?.imageUrl,
-                palette = media?.palette,
                 fallback = MaterialTheme.colorScheme.primaryContainer,
                 fetchColors = fetchColors,
             )

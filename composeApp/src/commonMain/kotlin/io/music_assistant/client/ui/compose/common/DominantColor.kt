@@ -82,24 +82,17 @@ data class PlayerColors(
 @Composable
 fun rememberAnimatedPlayerColors(
     imageUrl: String?,
-    palette: MediaItemPalette?,
     fallback: Color,
     fetchColors: ExtractedColorsFetcher,
 ): State<PlayerColors> {
     val onDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
-    val serverColors = remember(palette) { palette?.toExtractedColors() }
-    val localColors by produceState<ExtractedColors?>(
-        initialValue = null,
-        key1 = imageUrl,
-        key2 = serverColors,
-    ) {
-        value = if (serverColors != null) null else imageUrl?.let { fetchColors(it) }
+    val extractedColors by produceState<ExtractedColors?>(initialValue = null, key1 = imageUrl) {
+        value = imageUrl?.let { fetchColors(it) }
     }
-    val extracted = serverColors ?: localColors
 
-    val targetDominant = extracted?.background ?: fallback
-    val targetTint = extracted
+    val targetDominant = extractedColors?.background ?: fallback
+    val targetTint = extractedColors
         ?.let { if (onDark) it.tintOnDark else it.tintOnLight }
         ?: fallback.ensureReadable(onDarkSurface = onDark)
 
