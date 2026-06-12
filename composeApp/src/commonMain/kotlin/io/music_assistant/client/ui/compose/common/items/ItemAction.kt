@@ -72,7 +72,7 @@ fun ItemAction.title(context: ClickContext? = null): StringResource = when (this
     is ItemAction.PlayFromHere -> when (context) {
         ClickContext.ALBUM -> Res.string.action_play_album_from_here
         ClickContext.PLAYLIST -> Res.string.action_play_playlist_from_here
-        else -> throw IllegalArgumentException()
+        else -> throw IllegalArgumentException("No string for this action!")
     }
 
     ItemAction.StartRadio -> Res.string.action_start_radio
@@ -98,7 +98,7 @@ fun ItemAction.icon(context: ClickContext?): ImageVector = when (this) {
     is ItemAction.PlayFromHere -> when (context) {
         ClickContext.ALBUM -> AlbumIcon
         ClickContext.PLAYLIST -> PlaylistIcon
-        else -> throw IllegalArgumentException()
+        else -> throw IllegalArgumentException("No icon for this action!")
     }
 
     ItemAction.StartRadio -> Icons.Default.CellTower
