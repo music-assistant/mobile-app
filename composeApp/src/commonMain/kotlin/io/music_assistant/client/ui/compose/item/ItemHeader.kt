@@ -170,11 +170,9 @@ internal fun ItemTopBar(
     // tween on top of our color animation and visibly lag the header. Transparent container =
     // single-pass color change, in lockstep with the header gradient.
     Box(
-        modifier = Modifier.let {
-            if (colors != null) {
-                it.background(colors.dominant.inactive())
-            } else {
-                it
+        modifier = Modifier.apply {
+            colors?.dominant?.inactive()?.let {
+                background(Brush.verticalGradient(listOf(it, MaterialTheme.colorScheme.surface)))
             }
         },
     ) {
