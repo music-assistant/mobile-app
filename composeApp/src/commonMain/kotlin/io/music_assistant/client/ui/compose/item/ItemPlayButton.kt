@@ -7,7 +7,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SplitButtonDefaults.LeadingButton
 import androidx.compose.material3.SplitButtonDefaults.TrailingButton
 import androidx.compose.material3.SplitButtonLayout
@@ -44,17 +43,21 @@ import org.jetbrains.compose.resources.stringResource
 fun ItemPlayButton(
     item: AppMediaItem,
     onPlayClick: (QueueOption, Boolean) -> Unit,
-    tint: Color = MaterialTheme.colorScheme.primary,
+    tint: Color? = null,
     modifier: Modifier = Modifier,
 ) {
     if (!item.isPlayable) return
 
-    // Art-derived control tint as the button fill; black/white content per its luminance.
-    val onTint = tint.contentColorByLuminance()
-    val buttonColors = ButtonDefaults.buttonColors(
-        containerColor = tint,
-        contentColor = onTint,
-    )
+    val buttonColors = if (tint != null)  {
+        // Art-derived control tint as the button fill; black/white content per its luminance.
+        val onTint = tint.contentColorByLuminance()
+        ButtonDefaults.buttonColors(
+            containerColor = tint,
+            contentColor = onTint,
+        )
+    } else {
+        ButtonDefaults.buttonColors()
+    }
 
     // The detail header is wrapped in ProvideClickActions(DETAIL), so the config resolves
     // this item's DETAIL default. effectiveActionFor is non-null here (item is playable).

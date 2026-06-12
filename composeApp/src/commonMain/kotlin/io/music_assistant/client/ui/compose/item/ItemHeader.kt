@@ -78,10 +78,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ItemHeader(
     item: AppMediaItem,
-    colors: PlayerColors = PlayerColors(
-        MaterialTheme.colorScheme.primaryContainer,
-        MaterialTheme.colorScheme.primary,
-    ),
+    colors: PlayerColors? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
 ) {
@@ -90,11 +87,17 @@ fun ItemHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(colors.dominant.inactive(), MaterialTheme.colorScheme.surface),
-                ),
-            ),
+            .let {
+                if (colors != null) {
+                    it.background(
+                        Brush.verticalGradient(
+                            listOf(colors.dominant.inactive(), MaterialTheme.colorScheme.surface),
+                        ),
+                    )
+                } else {
+                    it
+                }
+            },
     ) {
         val image = @Composable {
             Image(
@@ -108,7 +111,7 @@ fun ItemHeader(
             ItemPlayButton(
                 item,
                 onPlayClick = onPlayClick,
-                tint = colors.controlTint,
+                tint = colors?.controlTint,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -138,10 +141,7 @@ fun ItemHeader(
 @Composable
 internal fun ItemTopBar(
     item: AppMediaItem,
-    colors: PlayerColors = PlayerColors(
-        MaterialTheme.colorScheme.primaryContainer,
-        MaterialTheme.colorScheme.primary,
-    ),
+    colors: PlayerColors? = null,
     onBack: () -> Unit,
     libraryActions: LibraryActions?,
     playlistActions: PlaylistActions?,
@@ -150,23 +150,37 @@ internal fun ItemTopBar(
     // Flat fill equal to the header gradient's top color, so the bar reads as one
     // continuous wash with the header below it. Back/overflow icons are NOT control-tinted
     // — just black or white per the composited bar luminance, keeping them legible.
-    val barBg = colors.dominant.inactive()
-    val onBar = lerp(MaterialTheme.colorScheme.surface, colors.dominant, INACTIVE_ALPHA)
-        .contentColorByLuminance()
+    val topAppBarColors = if (colors != null) {
+        val onBar = lerp(MaterialTheme.colorScheme.surface, colors.dominant, INACTIVE_ALPHA)
+            .contentColorByLuminance()
+
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+            navigationIconContentColor = onBar,
+            actionIconContentColor = onBar,
+            titleContentColor = onBar,
+        )
+    } else {
+        TopAppBarDefaults.topAppBarColors()
+    }
+
     // Paint barBg directly on the wrapping Box rather than via TopAppBar's containerColor:
     // TopAppBar runs its own animateColorAsState on the container, which would stack a second
     // tween on top of our color animation and visibly lag the header. Transparent container =
     // single-pass color change, in lockstep with the header gradient.
-    Box(modifier = Modifier.background(barBg)) {
+    Box(
+        modifier = Modifier.let {
+            if (colors != null) {
+                it.background(colors.dominant.inactive())
+            } else {
+                it
+            }
+        },
+    ) {
         TopAppBar(
             title = {},
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent,
-                navigationIconContentColor = onBar,
-                actionIconContentColor = onBar,
-                titleContentColor = onBar,
-            ),
+            colors = topAppBarColors,
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
