@@ -52,7 +52,9 @@ class DominantColorViewModel : ViewModel() {
         val candidates = palette.swatches
             .sortedByDescending { it.population } // approximates MMCQ's dominant-first order
             .map { it.rgb.toRgbColor() }
-        return derivePalette(candidates).toExtractedColors()
+        // Exclude black/white backgrounds so a small colored figure drives the palette, but keep
+        // them when the cover is wholly achromatic so we still emit a palette (never null).
+        return derivePalette(meaningfulCandidates(candidates)).toExtractedColors()
     }
 
     // Swatch.rgb is a packed ARGB ColorInt; drop alpha and split channels.

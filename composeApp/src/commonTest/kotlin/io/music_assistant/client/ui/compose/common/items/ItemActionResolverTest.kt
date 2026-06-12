@@ -19,7 +19,7 @@ class ItemActionResolverTest {
     )
 
     @Test
-    fun `no default keeps natural order (play now first)`() {
+    fun `no default keeps natural order with play now first`() {
         assertEquals(ItemAction.Play(QueueOption.REPLACE), longClick(defaultAction = null).first())
     }
 

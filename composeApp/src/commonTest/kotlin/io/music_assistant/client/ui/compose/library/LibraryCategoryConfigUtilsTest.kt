@@ -36,7 +36,7 @@ class LibraryCategoryConfigUtilsTest {
     }
 
     @Test
-    fun `enabling a tab that's already last enabled is a no-op - boundary reinsert`() {
+    fun `enabling an already-last-enabled tab is a no-op boundary reinsert`() {
         val items = listOf("A" to true, "B" to true)
         val result = moveToEnabledBoundary(items, "B", newEnabled = true)
         assertEquals(items, result)
@@ -59,7 +59,7 @@ class LibraryCategoryConfigUtilsTest {
     }
 
     @Test
-    fun `enabling a tab from deep in disabled section does not disturb other disabled tabs' relative order`() {
+    fun `enabling a tab from deep in disabled section does not disturb other disabled tabs relative order`() {
         val items = listOf(
             "A" to true,
             "B" to false,

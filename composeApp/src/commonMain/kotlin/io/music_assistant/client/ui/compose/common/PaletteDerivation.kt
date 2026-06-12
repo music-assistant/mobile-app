@@ -32,6 +32,29 @@ internal const val QUANTIZE_COLORS = 5
 private val BLACK = RgbColor(0, 0, 0)
 private val WHITE = RgbColor(255, 255, 255)
 
+// A swatch is treated as black/white only when it is BOTH near-greyscale (low chroma) AND a
+// lightness extreme. The chroma guard keeps saturated colors that happen to be very dark or very
+// bright (deep blue, bright yellow) from being mistaken for black/white.
+internal const val ACHROMATIC_CHROMA_MAX = 20 // max-min RGB spread below which a swatch reads grey
+internal const val NEAR_BLACK_MAX = 48        // max channel at/below which a grey reads as black
+internal const val NEAR_WHITE_MIN = 208       // min channel at/above which a grey reads as white
+
+/** True for near-black / near-white greys; saturated darks and brights are excluded by chroma. */
+internal fun RgbColor.isBlackOrWhite(): Boolean {
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    return (max - min) <= ACHROMATIC_CHROMA_MAX && (max <= NEAR_BLACK_MAX || min >= NEAR_WHITE_MIN)
+}
+
+/**
+ * Drop near-black/near-white swatches so a small colored figure on a black/white/grey field wins
+ * the [derivePalette] primary slot instead of the background dominating. Falls back to the full
+ * list when every candidate is achromatic, so a genuinely monochrome cover still yields a palette
+ * rather than an empty one (which would degrade to a flat fallback color).
+ */
+fun meaningfulCandidates(candidates: List<RgbColor>): List<RgbColor> =
+    candidates.filterNot { it.isBlackOrWhite() }.ifEmpty { candidates }
+
 /** WCAG relative luminance for an sRGB color. */
 internal fun relativeLuminance(rgb: RgbColor): Double {
     fun channel(c: Int): Double {

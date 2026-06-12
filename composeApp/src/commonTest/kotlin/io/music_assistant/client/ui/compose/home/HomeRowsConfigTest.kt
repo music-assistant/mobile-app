@@ -19,7 +19,7 @@ class HomeRowsConfigTest {
             .map { it.first.itemId to it.second }
 
     @Test
-    fun `empty config keeps server order, all visible`() {
+    fun `empty config keeps server order with all rows visible`() {
         assertEquals(
             listOf("a" to true, "b" to true, "c" to true),
             reconcile(listOf("a", "b", "c"), emptyList()),
@@ -40,7 +40,7 @@ class HomeRowsConfigTest {
     }
 
     @Test
-    fun `disabled rows sink to the bottom, after enabled`() {
+    fun `disabled rows sink to the bottom after enabled ones`() {
         val config = listOf(
             HomeRowPref("a", false),
             HomeRowPref("b", true),

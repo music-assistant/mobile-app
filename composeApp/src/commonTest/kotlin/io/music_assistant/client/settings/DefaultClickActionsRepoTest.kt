@@ -14,7 +14,7 @@ class DefaultClickActionsRepoTest {
     }
 
     @Test
-    fun `set then read back a kind's per-context table`() {
+    fun `set then read back the per-context table for a kind`() {
         val repo = SettingsRepository(MapSettings())
         repo.setDefaultClickActions(
             ItemKind.TRACK,

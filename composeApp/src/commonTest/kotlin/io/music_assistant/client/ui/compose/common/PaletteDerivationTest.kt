@@ -101,6 +101,25 @@ class PaletteDerivationTest {
     }
 
     @Test
+    fun `meaningfulCandidates drops black-white backgrounds but keeps saturated extremes`() {
+        val red = RgbColor(220, 30, 40)
+        val deepBlue = RgbColor(0, 0, 90)        // very dark yet saturated → kept
+        val brightYellow = RgbColor(255, 255, 0) // very bright yet saturated → kept
+        val midGrey = RgbColor(128, 128, 128)    // neither black nor white → kept
+        // Black is the most populous (background); the colored figure must still win primary.
+        val candidates = listOf(black, red, deepBlue, brightYellow, midGrey, white)
+        val filtered = meaningfulCandidates(candidates)
+        assertEquals(listOf(red, deepBlue, brightYellow, midGrey), filtered)
+        assertEquals(red, derivePalette(filtered).primary)
+    }
+
+    @Test
+    fun `meaningfulCandidates falls back to full list when all are achromatic`() {
+        val mono = listOf(black, white, RgbColor(20, 20, 20))
+        assertEquals(mono, meaningfulCandidates(mono)) // never empty ⇒ never a null palette
+    }
+
+    @Test
     fun `accent picks a hue-distant candidate and is null when all are similar`() {
         val primary = RgbColor(40, 70, 80)
         val distant = RgbColor(240, 160, 100)
