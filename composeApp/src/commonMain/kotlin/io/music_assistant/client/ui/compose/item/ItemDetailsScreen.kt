@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,6 +147,7 @@ fun ItemDetailsScreen(
         onAlbumsSortChanged = itemDetailsViewModel::onAlbumsSortChanged,
         onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
         onTabSelected = itemDetailsViewModel::onTabSelected,
+        fetchColors = rememberExtractedColorsFetcher(),
     )
 }
 
@@ -161,7 +161,7 @@ fun ItemDetails(
     toastState: ToastState = rememberToastState(),
     onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
     geEditablePlaylists: suspend () -> List<Playlist> = suspend { emptyList() },
-    fetchColors: ExtractedColorsFetcher? = null,
+    fetchColors: ExtractedColorsFetcher = { null },
     addToPlaylist: (String?, Playlist) -> Unit = { _, _ -> },
     onLibraryClick: (AppMediaItem) -> Unit = {},
     onFavoriteClick: (AppMediaItem) -> Unit = {},
@@ -269,7 +269,7 @@ private fun ItemChildren(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    fetchColors: ExtractedColorsFetcher?,
+    fetchColors: ExtractedColorsFetcher,
     onBack: () -> Unit,
     onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
@@ -343,7 +343,7 @@ private fun ItemContent(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
-    fetchColors: ExtractedColorsFetcher?,
+    fetchColors: ExtractedColorsFetcher,
     onBack: () -> Unit,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
@@ -355,21 +355,10 @@ private fun ItemContent(
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
     val tabs = state.tabs
 
-    // Artwork-driven header colors. Library items carry no server palette, so colors are
-    // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
-    // as the player. The fetcher is Koin-backed, so fall back to a no-op when one isn't
-    // supplied and there's no Koin graph (under @Preview or in tests).
-    val resolvedFetchColors: ExtractedColorsFetcher = fetchColors
-        ?: if (LocalInspectionMode.current) {
-            { null }
-        } else {
-            rememberExtractedColorsFetcher()
-        }
-
     val colors by rememberAnimatedPlayerColors(
         imageUrl = item.image(ImageType.THUMB)?.url,
         fallback = MaterialTheme.colorScheme.primaryContainer,
-        fetchColors = resolvedFetchColors,
+        fetchColors = fetchColors,
     )
 
     val heroSlot: @Composable () -> Unit = {
