@@ -400,9 +400,9 @@ class ItemDetailsViewModel(
         }
     }
 
-    fun onPlayClick(option: QueueOption, radio: Boolean, startItem: AppMediaItem? = null) {
+    fun onPlayClick(option: QueueOption, radio: Boolean) {
         (_state.value.itemState as? DataState.Data)?.data?.let {
-            onPlayClick(it, option, radio, startItem)
+            onPlayClick(it, option, radio, false)
         }
     }
 
@@ -410,9 +410,10 @@ class ItemDetailsViewModel(
         item: AppMediaItem,
         option: QueueOption,
         radio: Boolean,
-        parent: AppMediaItem? = null,
+        formHereInParent: Boolean,
     ) {
-        val (itemToPlay, startItem) = if (parent != null) {
+        val parent = (_state.value.itemState as? DataState.Data)?.data
+        val (itemToPlay, startItem) = if (formHereInParent && parent != null) {
             Pair(parent, item)
         } else {
             Pair(item, null)

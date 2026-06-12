@@ -172,7 +172,7 @@ fun ItemDetails(
     onMarkUnplayed: (AppMediaItem) -> Unit = {},
     onRemoveFromPlaylist: (String, Int) -> Unit = { _, _ -> },
     providerIconFetcher: @Composable (Modifier, String) -> Unit = { _, _ -> },
-    onPlayClick: (QueueOption, Boolean, AppMediaItem?) -> Unit = { _, _, _ -> },
+    onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
     onChapterClick: (Int) -> Unit = {},
     onChildPlayClick: PlayHandler<AppMediaItem> = { _, _, _, _ -> },
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
@@ -265,7 +265,7 @@ private fun ItemChildren(
     toastState: ToastState,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onPlayItemClick: (QueueOption, Boolean, AppMediaItem?) -> Unit,
+    onPlayItemClick: (QueueOption, Boolean) -> Unit,
     onPlayChildClick: PlayHandler<AppMediaItem>,
     onChapterClick: (Int) -> Unit,
     playlistActions: PlaylistActions,
@@ -302,9 +302,7 @@ private fun ItemChildren(
                     state = state,
                     viewModeProvider = viewModeProvider,
                     onNavigateClick = onNavigateClick,
-                    onPlayItemClick = { queueOption, radio ->
-                        onPlayItemClick(queueOption, radio, null)
-                    },
+                    onPlayItemClick = onPlayItemClick,
                     onPlayChildClick = onPlayChildClick,
                     onChapterClick = onChapterClick,
                     playlistActions = playlistActions,
@@ -830,11 +828,7 @@ private fun PlayablesTabContent(
                         is Track -> TrackWithMenu(
                             item = track,
                             viewMode = viewMode,
-                            parent = if (parentItem is Album || parentItem is Playlist) {
-                                parentItem
-                            } else {
-                                null
-                            },
+                            showTrackNumber = parentItem is Album,
                             onPlayOption = onPlayChildClick,
                             playlistActions = playlistActions,
                             onRemoveFromPlaylist = if (parentItem is Playlist && parentItem.isEditable) {

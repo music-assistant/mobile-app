@@ -13,12 +13,11 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.QueueOption
-import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.support.inScrollable
 import io.music_assistant.client.utils.support.MockFunction0
-import io.music_assistant.client.utils.support.MockFunction3
+import io.music_assistant.client.utils.support.MockFunction2
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
@@ -210,7 +209,7 @@ class ItemDetailsTest {
             ),
         )
 
-        val onPlayClick = MockFunction3<QueueOption, Boolean, AppMediaItem?>()
+        val onPlayClick = MockFunction2<QueueOption, Boolean>()
 
         composeTestRule.setContent {
             ItemDetails(

@@ -916,7 +916,7 @@ fun BoxScope.ProgressBadge(
 internal fun TrackRowItem(
     modifier: Modifier = Modifier,
     item: Track,
-    isAlbumRow: Boolean,
+    showTrackNumber: Boolean,
     onClick: (Track) -> Unit,
     onLongClick: (Track) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
@@ -925,7 +925,7 @@ internal fun TrackRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
-        prefixContent = if (isAlbumRow) {
+        prefixContent = if (showTrackNumber) {
             item.trackNumber?.toString()?.let { trackNumber ->
                 {
                     Text(
