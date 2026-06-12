@@ -48,7 +48,6 @@ class ItemDetailsTest {
                     DataState.NoData(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
@@ -73,7 +72,6 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(tracks),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
@@ -98,7 +96,6 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(emptyList()),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
@@ -117,7 +114,6 @@ class ItemDetailsTest {
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.Data(emptyList()),
                 ),
-                fetchColors = { null },
             )
         }
 
@@ -138,7 +134,6 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(tracks),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
@@ -165,7 +160,6 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(episodes),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
@@ -188,7 +182,6 @@ class ItemDetailsTest {
                     playableItemsState = DataState.NoData(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
@@ -216,7 +209,6 @@ class ItemDetailsTest {
             ItemDetails(
                 state = state.value,
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
                 onPlayClick = onPlayClick,
             )
         }
@@ -258,7 +250,6 @@ class ItemDetailsTest {
                 state = state.value,
                 onBack = onBack,
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
             )
         }
 
