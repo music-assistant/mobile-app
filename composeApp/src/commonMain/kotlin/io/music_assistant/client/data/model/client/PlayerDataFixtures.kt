@@ -62,6 +62,7 @@ object PlayerDataFixtures {
     ): Player {
         return Player(
             id = id,
+            icon = "mdi-speaker",
             name = name,
             provider = "provider",
             type = playerType,
