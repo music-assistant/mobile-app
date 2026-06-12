@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -88,9 +89,9 @@ fun rememberAnimatedPlayerColors(
         animationSpec = tween(durationMillis = 500),
     )
 
-    val state = remember { mutableStateOf(PlayerColors(targetDominant, targetTint)) }
-    state.value = PlayerColors(animatedDominant, animatedTint)
-    return state
+    return derivedStateOf {
+        PlayerColors(animatedDominant, animatedTint)
+    }
 }
 
 /**
