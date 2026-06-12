@@ -8,7 +8,7 @@ import io.music_assistant.client.data.model.client.ItemKind
  * (ItemKind, ClickContext). Pure preference value (no UI deps) — UI mapping lives in
  * DefaultClickActionUi.kt.
  */
-enum class DefaultClickAction {
+enum class DefaultClickOption {
     PLAY_NOW,
     INSERT_NEXT_AND_PLAY,
     INSERT_NEXT,

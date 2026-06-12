@@ -27,19 +27,19 @@ val carBrowsableKinds: List<ItemKind> = listOf(
 )
 
 /** Today's hard-coded pair — the default bulk actions for a browsable kind with no stored config. */
-val defaultCarBulkActions: List<DefaultClickAction> = listOf(
-    DefaultClickAction.PLAY_NOW,
-    DefaultClickAction.ADD_TO_QUEUE,
+val defaultCarBulkActions: List<DefaultClickOption> = listOf(
+    DefaultClickOption.PLAY_NOW,
+    DefaultClickOption.ADD_TO_QUEUE,
 )
 
 /**
  * Whether this action can be offered/honored on [platform] for [kind]. Intersects the kind
- * applicability ([DefaultClickAction.appliesTo]) with per-platform capability. Both the Settings
+ * applicability ([DefaultClickOption.appliesTo]) with per-platform capability. Both the Settings
  * UI (offered options) and the car-side dispatch consult this, so an unsupported stored action is
  * silently skipped rather than mis-dispatched. The platform arms are identical today; the seam
  * exists so a future CarPlay/AA limitation lands in one place.
  */
-fun DefaultClickAction.isCarSupported(platform: CarPlatform, kind: ItemKind): Boolean {
+fun DefaultClickOption.isCarSupported(platform: CarPlatform, kind: ItemKind): Boolean {
     if (!appliesTo(kind)) return false
     return when (platform) {
         CarPlatform.ANDROID_AUTO -> true
@@ -48,29 +48,29 @@ fun DefaultClickAction.isCarSupported(platform: CarPlatform, kind: ItemKind): Bo
 }
 
 /** The action a plain tap performs for [kind] in the car, falling back to today's PLAY_NOW. */
-fun Map<ItemKind, DefaultClickAction>.carTapAction(kind: ItemKind): DefaultClickAction =
-    this[kind] ?: DefaultClickAction.PLAY_NOW
+fun Map<ItemKind, DefaultClickOption>.carTapAction(kind: ItemKind): DefaultClickOption =
+    this[kind] ?: DefaultClickOption.PLAY_NOW
 
 /**
  * The ordered, platform-supported bulk buttons shown for browsable [kind] in [platform], defaulting
  * to [defaultCarBulkActions] when unconfigured. Always filtered through [isCarSupported].
  */
-fun Map<ItemKind, List<DefaultClickAction>>.carBulkActions(
+fun Map<ItemKind, List<DefaultClickOption>>.carBulkActions(
     kind: ItemKind,
     platform: CarPlatform,
-): List<DefaultClickAction> =
+): List<DefaultClickOption> =
     (this[kind] ?: defaultCarBulkActions).filter { it.isCarSupported(platform, kind) }
 
-/** How a [DefaultClickAction] is dispatched to a player: queue option + radio-mode flag. */
+/** How a [DefaultClickOption] is dispatched to a player: queue option + radio-mode flag. */
 data class CarDispatch(val option: QueueOption, val radioMode: Boolean)
 
 /** The single source for turning a chosen action into a play_media dispatch (AA and CarPlay share it). */
-fun DefaultClickAction.toCarDispatch(): CarDispatch = when (this) {
-    DefaultClickAction.PLAY_NOW -> CarDispatch(QueueOption.REPLACE, radioMode = false)
-    DefaultClickAction.INSERT_NEXT_AND_PLAY -> CarDispatch(QueueOption.PLAY, radioMode = false)
-    DefaultClickAction.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, radioMode = false)
-    DefaultClickAction.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, radioMode = false)
-    DefaultClickAction.START_RADIO -> CarDispatch(QueueOption.REPLACE, radioMode = true)
+fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
+    DefaultClickOption.PLAY_NOW -> CarDispatch(QueueOption.REPLACE, radioMode = false)
+    DefaultClickOption.INSERT_NEXT_AND_PLAY -> CarDispatch(QueueOption.PLAY, radioMode = false)
+    DefaultClickOption.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, radioMode = false)
+    DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, radioMode = false)
+    DefaultClickOption.START_RADIO -> CarDispatch(QueueOption.REPLACE, radioMode = true)
 }
 
 /** The car surface the current platform exposes. */

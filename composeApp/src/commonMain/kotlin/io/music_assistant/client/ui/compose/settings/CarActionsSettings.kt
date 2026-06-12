@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ItemKind
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.carBrowsableKinds
 import io.music_assistant.client.settings.carPlayableKinds
 import io.music_assistant.client.settings.carTapAction
@@ -154,7 +154,7 @@ private fun CarEnqueueActionDialog(viewModel: CarActionsViewModel, onDismiss: ()
     val stored by viewModel.playableClickActions.collectAsStateWithLifecycle()
     val platform = remember { currentCarPlatform() }
     val selection = remember {
-        mutableStateMapOf<ItemKind, DefaultClickAction>().apply {
+        mutableStateMapOf<ItemKind, DefaultClickOption>().apply {
             carPlayableKinds.forEach { put(it, stored.carTapAction(it)) }
         }
     }
@@ -168,7 +168,7 @@ private fun CarEnqueueActionDialog(viewModel: CarActionsViewModel, onDismiss: ()
             ) {
                 carPlayableKinds.forEach { kind ->
                     val options = remember(kind) {
-                        DefaultClickAction.entries.filter { it.isCarSupported(platform, kind) }
+                        DefaultClickOption.entries.filter { it.isCarSupported(platform, kind) }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -179,7 +179,7 @@ private fun CarEnqueueActionDialog(viewModel: CarActionsViewModel, onDismiss: ()
                         )
                         ActionDropdown(
                             options = options,
-                            selected = selection[kind] ?: DefaultClickAction.PLAY_NOW,
+                            selected = selection[kind] ?: DefaultClickOption.PLAY_NOW,
                             onSelect = { selection[kind] = it },
                             modifier = Modifier.weight(1f),
                         )
@@ -212,7 +212,7 @@ private fun CarBulkActionsDialog(
     val platform = remember { currentCarPlatform() }
     // Enabled+ordered actions first, then the remaining applicable ones (disabled) so they can be added.
     val initial = remember(kind, stored) {
-        val universe = DefaultClickAction.entries.filter { it.isCarSupported(platform, kind) }
+        val universe = DefaultClickOption.entries.filter { it.isCarSupported(platform, kind) }
         val enabled = (stored[kind] ?: defaultCarBulkActions).filter { it in universe }
         val disabled = universe.filter { it !in enabled }
         enabled.map { it to true } + disabled.map { it to false }

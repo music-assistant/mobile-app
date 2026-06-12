@@ -32,7 +32,7 @@ import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.settings.CarPlatform
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.carBulkActions
 import io.music_assistant.client.settings.carTapAction
@@ -367,21 +367,21 @@ class AutoLibrary(
 
     // Bulk-button labels/icons. AA titles are hard-coded English to match the rest of this
     // library (tab names, sub-lists). "All" framing because the action applies to the container.
-    private fun DefaultClickAction.bulkTitle(): String = when (this) {
-        DefaultClickAction.PLAY_NOW -> "Play all"
-        DefaultClickAction.INSERT_NEXT_AND_PLAY -> "Play all next"
-        DefaultClickAction.INSERT_NEXT -> "Add all next"
-        DefaultClickAction.ADD_TO_QUEUE -> "Add all to queue"
-        DefaultClickAction.START_RADIO -> "Start radio"
+    private fun DefaultClickOption.bulkTitle(): String = when (this) {
+        DefaultClickOption.PLAY_NOW -> "Play all"
+        DefaultClickOption.INSERT_NEXT_AND_PLAY -> "Play all next"
+        DefaultClickOption.INSERT_NEXT -> "Add all next"
+        DefaultClickOption.ADD_TO_QUEUE -> "Add all to queue"
+        DefaultClickOption.START_RADIO -> "Start radio"
     }
 
     @DrawableRes
-    private fun DefaultClickAction.bulkIcon(): Int = when (this) {
-        DefaultClickAction.PLAY_NOW, DefaultClickAction.INSERT_NEXT_AND_PLAY ->
+    private fun DefaultClickOption.bulkIcon(): Int = when (this) {
+        DefaultClickOption.PLAY_NOW, DefaultClickOption.INSERT_NEXT_AND_PLAY ->
             android.R.drawable.ic_media_play
-        DefaultClickAction.INSERT_NEXT, DefaultClickAction.ADD_TO_QUEUE ->
+        DefaultClickOption.INSERT_NEXT, DefaultClickOption.ADD_TO_QUEUE ->
             android.R.drawable.ic_menu_add
-        DefaultClickAction.START_RADIO -> android.R.drawable.ic_menu_compass
+        DefaultClickOption.START_RADIO -> android.R.drawable.ic_menu_compass
     }
 
     fun search(
@@ -760,12 +760,12 @@ class AutoLibrary(
         // car default (encoded MediaType -> ItemKind). valueOf throws on unknown names — a stale
         // item or malformed bundle would crash the service — so every decode falls back silently.
         val explicit = extras?.getString(MediaIds.ACTION_KEY)
-            ?.let { runCatching { DefaultClickAction.valueOf(it) }.getOrNull() }
+            ?.let { runCatching { DefaultClickOption.valueOf(it) }.getOrNull() }
         val action = explicit ?: parts.getOrNull(2)
             ?.let { runCatching { MediaType.valueOf(it) }.getOrNull() }
             ?.toItemKind()
             ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
-            ?: DefaultClickAction.PLAY_NOW
+            ?: DefaultClickOption.PLAY_NOW
         val dispatch = action.toCarDispatch()
         scope.launch { dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.radioMode) }
     }

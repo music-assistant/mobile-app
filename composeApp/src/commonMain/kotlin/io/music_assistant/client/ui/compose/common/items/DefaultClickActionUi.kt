@@ -10,7 +10,7 @@ import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -21,12 +21,12 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 data class ClickActionConfig(
     val context: ClickContext?,
-    val prefs: Map<ItemKind, Map<ClickContext, DefaultClickAction>>,
+    val prefs: Map<ItemKind, Map<ClickContext, DefaultClickOption>>,
 ) {
-    fun actionFor(item: AppMediaItem): DefaultClickAction {
-        val ctx = context ?: return DefaultClickAction.PLAY_NOW
-        val kind = item.itemKind() ?: return DefaultClickAction.PLAY_NOW
-        return prefs[kind]?.get(ctx) ?: DefaultClickAction.PLAY_NOW
+    fun actionFor(item: AppMediaItem): DefaultClickOption {
+        val ctx = context ?: return DefaultClickOption.PLAY_NOW
+        val kind = item.itemKind() ?: return DefaultClickOption.PLAY_NOW
+        return prefs[kind]?.get(ctx) ?: DefaultClickOption.PLAY_NOW
     }
 
     /** The concrete action a tap performs for [item], or null when it isn't playable. */
@@ -37,7 +37,7 @@ val LocalClickActionConfig = compositionLocalOf { ClickActionConfig(null, emptyM
 
 /** The saved preference table, loaded once from Koin near the app root (empty in tests/previews). */
 val LocalClickActionPrefs =
-    compositionLocalOf<Map<ItemKind, Map<ClickContext, DefaultClickAction>>> { emptyMap() }
+    compositionLocalOf<Map<ItemKind, Map<ClickContext, DefaultClickOption>>> { emptyMap() }
 
 /**
  * Reads the saved tables once from Koin and exposes them via [LocalClickActionPrefs].
@@ -63,12 +63,12 @@ fun ProvideClickActions(context: ClickContext?, content: @Composable () -> Unit)
 }
 
 /** Matrix-row display mapping (no concrete item — reuses ItemAction.title()/icon()). */
-fun DefaultClickAction.toItemAction(): ItemAction = when (this) {
-    DefaultClickAction.PLAY_NOW -> ItemAction.Play(QueueOption.REPLACE)
-    DefaultClickAction.INSERT_NEXT_AND_PLAY -> ItemAction.Play(QueueOption.PLAY)
-    DefaultClickAction.INSERT_NEXT -> ItemAction.Play(QueueOption.NEXT)
-    DefaultClickAction.ADD_TO_QUEUE -> ItemAction.Play(QueueOption.ADD)
-    DefaultClickAction.START_RADIO -> ItemAction.StartRadio
+fun DefaultClickOption.toItemAction(): ItemAction = when (this) {
+    DefaultClickOption.PLAY_NOW -> ItemAction.Play(QueueOption.REPLACE)
+    DefaultClickOption.INSERT_NEXT_AND_PLAY -> ItemAction.Play(QueueOption.PLAY)
+    DefaultClickOption.INSERT_NEXT -> ItemAction.Play(QueueOption.NEXT)
+    DefaultClickOption.ADD_TO_QUEUE -> ItemAction.Play(QueueOption.ADD)
+    DefaultClickOption.START_RADIO -> ItemAction.StartRadio
 }
 
 /**
@@ -76,10 +76,10 @@ fun DefaultClickAction.toItemAction(): ItemAction = when (this) {
  * isn't playable (click should open the menu instead). START_RADIO falls back to
  * Play Now when the item can't start a radio.
  */
-fun DefaultClickAction.effectiveFor(item: AppMediaItem): ItemAction? {
+fun DefaultClickOption.effectiveFor(item: AppMediaItem): ItemAction? {
     if (!item.isPlayable) return null
     return when (this) {
-        DefaultClickAction.START_RADIO ->
+        DefaultClickOption.START_RADIO ->
             if (item.canStartRadio) ItemAction.StartRadio else ItemAction.Play(QueueOption.REPLACE)
         else -> toItemAction()
     }

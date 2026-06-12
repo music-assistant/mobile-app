@@ -21,7 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.appearsIn
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.clickctx_album
@@ -64,9 +64,9 @@ fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
 
     // Local working copy; missing keys default to PLAY_NOW (the historic behavior).
     val selection = remember(itemKind) {
-        mutableStateMapOf<ClickContext, DefaultClickAction>().apply {
+        mutableStateMapOf<ClickContext, DefaultClickOption>().apply {
             val saved = stored[itemKind].orEmpty()
-            contexts.forEach { put(it, saved[it] ?: DefaultClickAction.PLAY_NOW) }
+            contexts.forEach { put(it, saved[it] ?: DefaultClickOption.PLAY_NOW) }
         }
     }
 
@@ -85,7 +85,7 @@ fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
             ) {
                 contexts.forEach { ctx ->
                     val options = remember(itemKind, ctx) {
-                        DefaultClickAction.entries.filter { it.isAvailableIn(ctx, itemKind) }
+                        DefaultClickOption.entries.filter { it.isAvailableIn(ctx, itemKind) }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -96,7 +96,7 @@ fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
                         )
                         ActionDropdown(
                             options = options,
-                            selected = selection[ctx] ?: DefaultClickAction.PLAY_NOW,
+                            selected = selection[ctx] ?: DefaultClickOption.PLAY_NOW,
                             onSelect = { selection[ctx] = it },
                             modifier = Modifier.weight(1f),
                         )

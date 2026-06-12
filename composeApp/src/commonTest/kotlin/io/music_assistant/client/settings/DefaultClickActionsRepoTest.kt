@@ -18,10 +18,10 @@ class DefaultClickActionsRepoTest {
         val repo = SettingsRepository(MapSettings())
         repo.setDefaultClickActions(
             ItemKind.TRACK,
-            mapOf(ClickContext.SEARCH to DefaultClickAction.ADD_TO_QUEUE),
+            mapOf(ClickContext.SEARCH to DefaultClickOption.ADD_TO_QUEUE),
         )
         assertEquals(
-            DefaultClickAction.ADD_TO_QUEUE,
+            DefaultClickOption.ADD_TO_QUEUE,
             repo.defaultClickActions.value[ItemKind.TRACK]?.get(ClickContext.SEARCH),
         )
     }
@@ -29,15 +29,15 @@ class DefaultClickActionsRepoTest {
     @Test
     fun `saving one kind preserves the others`() {
         val repo = SettingsRepository(MapSettings())
-        repo.setDefaultClickActions(ItemKind.TRACK, mapOf(ClickContext.SEARCH to DefaultClickAction.INSERT_NEXT))
-        repo.setDefaultClickActions(ItemKind.ALBUM, mapOf(ClickContext.DETAIL to DefaultClickAction.ADD_TO_QUEUE))
+        repo.setDefaultClickActions(ItemKind.TRACK, mapOf(ClickContext.SEARCH to DefaultClickOption.INSERT_NEXT))
+        repo.setDefaultClickActions(ItemKind.ALBUM, mapOf(ClickContext.DETAIL to DefaultClickOption.ADD_TO_QUEUE))
 
         assertEquals(
-            DefaultClickAction.INSERT_NEXT,
+            DefaultClickOption.INSERT_NEXT,
             repo.defaultClickActions.value[ItemKind.TRACK]?.get(ClickContext.SEARCH),
         )
         assertEquals(
-            DefaultClickAction.ADD_TO_QUEUE,
+            DefaultClickOption.ADD_TO_QUEUE,
             repo.defaultClickActions.value[ItemKind.ALBUM]?.get(ClickContext.DETAIL),
         )
     }
@@ -47,11 +47,11 @@ class DefaultClickActionsRepoTest {
         val settings = MapSettings()
         SettingsRepository(settings).setDefaultClickActions(
             ItemKind.RADIO,
-            mapOf(ClickContext.HOME to DefaultClickAction.INSERT_NEXT_AND_PLAY),
+            mapOf(ClickContext.HOME to DefaultClickOption.INSERT_NEXT_AND_PLAY),
         )
         val reopened = SettingsRepository(settings)
         assertEquals(
-            DefaultClickAction.INSERT_NEXT_AND_PLAY,
+            DefaultClickOption.INSERT_NEXT_AND_PLAY,
             reopened.defaultClickActions.value[ItemKind.RADIO]?.get(ClickContext.HOME),
         )
     }

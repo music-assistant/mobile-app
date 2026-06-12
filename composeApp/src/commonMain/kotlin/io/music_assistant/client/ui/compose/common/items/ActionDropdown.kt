@@ -25,19 +25,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Single-line, ellipsizing dropdown over [DefaultClickAction]s. Shared by the per-context
+ * Single-line, ellipsizing dropdown over [DefaultClickOption]s. Shared by the per-context
  * customize dialog and the car tap-behaviour dialog so the look stays identical.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActionDropdown(
-    options: List<DefaultClickAction>,
-    selected: DefaultClickAction,
-    onSelect: (DefaultClickAction) -> Unit,
+    options: List<DefaultClickOption>,
+    selected: DefaultClickOption,
+    onSelect: (DefaultClickOption) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }

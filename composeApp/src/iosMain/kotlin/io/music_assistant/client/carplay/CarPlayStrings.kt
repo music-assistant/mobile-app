@@ -1,6 +1,6 @@
 package io.music_assistant.client.carplay
 
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_all_to_queue
 import musicassistantclient.composeapp.generated.resources.action_browse
@@ -82,11 +82,11 @@ class CarPlayStrings internal constructor(
             radio = getString(Res.string.media_type_radio),
             albumsByArtistTemplate = getString(Res.string.albums_by_artist),
             bulkActionTitlesByName = mapOf(
-                DefaultClickAction.PLAY_NOW.name to getString(Res.string.action_play_all),
-                DefaultClickAction.INSERT_NEXT_AND_PLAY.name to getString(Res.string.action_insert_next_and_play),
-                DefaultClickAction.INSERT_NEXT.name to getString(Res.string.action_insert_next),
-                DefaultClickAction.ADD_TO_QUEUE.name to getString(Res.string.action_add_all_to_queue),
-                DefaultClickAction.START_RADIO.name to getString(Res.string.action_start_radio),
+                DefaultClickOption.PLAY_NOW.name to getString(Res.string.action_play_all),
+                DefaultClickOption.INSERT_NEXT_AND_PLAY.name to getString(Res.string.action_insert_next_and_play),
+                DefaultClickOption.INSERT_NEXT.name to getString(Res.string.action_insert_next),
+                DefaultClickOption.ADD_TO_QUEUE.name to getString(Res.string.action_add_all_to_queue),
+                DefaultClickOption.START_RADIO.name to getString(Res.string.action_start_radio),
             ),
         )
     }

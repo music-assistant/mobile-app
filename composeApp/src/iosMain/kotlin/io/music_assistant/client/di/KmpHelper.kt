@@ -26,7 +26,7 @@ import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.CarPlatform
-import io.music_assistant.client.settings.DefaultClickAction
+import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.carBulkActions
 import io.music_assistant.client.settings.carTapAction
@@ -415,9 +415,9 @@ object KmpHelper : KoinComponent {
             .map { it.name }
     }
 
-    /** Dispatch a named [DefaultClickAction] (a bulk button) onto [item]. False if invalid/no-op. */
+    /** Dispatch a named [DefaultClickOption] (a bulk button) onto [item]. False if invalid/no-op. */
     fun playCarAction(item: AppMediaItem, actionName: String): Boolean {
-        val action = runCatching { DefaultClickAction.valueOf(actionName) }.getOrNull() ?: return false
+        val action = runCatching { DefaultClickOption.valueOf(actionName) }.getOrNull() ?: return false
         val dispatch = action.toCarDispatch()
         return dispatchLocal(item, dispatch.option, dispatch.radioMode)
     }
@@ -430,7 +430,7 @@ object KmpHelper : KoinComponent {
     fun playCarDefaultTap(item: AppMediaItem): String? {
         val action = item.mediaType.toItemKind()
             ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
-            ?: DefaultClickAction.PLAY_NOW
+            ?: DefaultClickOption.PLAY_NOW
         val dispatch = action.toCarDispatch()
         return if (dispatchLocal(item, dispatch.option, dispatch.radioMode)) action.name else null
     }

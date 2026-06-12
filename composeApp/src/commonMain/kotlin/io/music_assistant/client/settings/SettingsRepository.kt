@@ -197,14 +197,14 @@ class SettingsRepository(
     private val _defaultClickActions = MutableStateFlow(loadDefaultClickActions())
     val defaultClickActions = _defaultClickActions.asStateFlow()
 
-    private fun loadDefaultClickActions(): Map<ItemKind, Map<ClickContext, DefaultClickAction>> {
+    private fun loadDefaultClickActions(): Map<ItemKind, Map<ClickContext, DefaultClickOption>> {
         val raw = settings.getStringOrNull("default_click_actions") ?: return emptyMap()
         return runCatching {
             myJson.decodeFromString<Map<String, Map<String, String>>>(raw).mapNotNull { (k, perContext) ->
                 val kind = runCatching { ItemKind.valueOf(k) }.getOrNull() ?: return@mapNotNull null
                 kind to perContext.mapNotNull { (c, v) ->
                     val ctx = runCatching { ClickContext.valueOf(c) }.getOrNull() ?: return@mapNotNull null
-                    val action = runCatching { DefaultClickAction.valueOf(v) }.getOrNull() ?: return@mapNotNull null
+                    val action = runCatching { DefaultClickOption.valueOf(v) }.getOrNull() ?: return@mapNotNull null
                     ctx to action
                 }.toMap()
             }.toMap()
@@ -212,7 +212,7 @@ class SettingsRepository(
     }
 
     /** Replaces the per-context table for a single [kind]; other kinds are preserved. */
-    fun setDefaultClickActions(kind: ItemKind, perContext: Map<ClickContext, DefaultClickAction>) {
+    fun setDefaultClickActions(kind: ItemKind, perContext: Map<ClickContext, DefaultClickOption>) {
         val updated = _defaultClickActions.value.toMutableMap().apply { put(kind, perContext) }
         val encoded = myJson.encodeToString(
             updated.entries.associate { (k, m) -> k.name to m.entries.associate { it.key.name to it.value.name } },
@@ -227,18 +227,18 @@ class SettingsRepository(
     private val _carPlayableClickActions = MutableStateFlow(loadCarPlayableClickActions())
     val carPlayableClickActions = _carPlayableClickActions.asStateFlow()
 
-    private fun loadCarPlayableClickActions(): Map<ItemKind, DefaultClickAction> {
+    private fun loadCarPlayableClickActions(): Map<ItemKind, DefaultClickOption> {
         val raw = settings.getStringOrNull("car_playable_click_actions") ?: return emptyMap()
         return runCatching {
             myJson.decodeFromString<Map<String, String>>(raw).mapNotNull { (k, v) ->
                 val kind = runCatching { ItemKind.valueOf(k) }.getOrNull() ?: return@mapNotNull null
-                val action = runCatching { DefaultClickAction.valueOf(v) }.getOrNull() ?: return@mapNotNull null
+                val action = runCatching { DefaultClickOption.valueOf(v) }.getOrNull() ?: return@mapNotNull null
                 kind to action
             }.toMap()
         }.getOrDefault(emptyMap())
     }
 
-    fun setCarPlayableClickAction(kind: ItemKind, action: DefaultClickAction) {
+    fun setCarPlayableClickAction(kind: ItemKind, action: DefaultClickOption) {
         val updated = _carPlayableClickActions.value.toMutableMap().apply { put(kind, action) }
         settings.putString(
             "car_playable_click_actions",
@@ -253,18 +253,18 @@ class SettingsRepository(
     private val _carBrowsableBulkActions = MutableStateFlow(loadCarBrowsableBulkActions())
     val carBrowsableBulkActions = _carBrowsableBulkActions.asStateFlow()
 
-    private fun loadCarBrowsableBulkActions(): Map<ItemKind, List<DefaultClickAction>> {
+    private fun loadCarBrowsableBulkActions(): Map<ItemKind, List<DefaultClickOption>> {
         val raw = settings.getStringOrNull("car_browsable_bulk_actions") ?: return emptyMap()
         return runCatching {
             myJson.decodeFromString<Map<String, List<String>>>(raw).mapNotNull { (k, list) ->
                 val kind = runCatching { ItemKind.valueOf(k) }.getOrNull() ?: return@mapNotNull null
-                kind to list.mapNotNull { v -> runCatching { DefaultClickAction.valueOf(v) }.getOrNull() }
+                kind to list.mapNotNull { v -> runCatching { DefaultClickOption.valueOf(v) }.getOrNull() }
             }.toMap()
         }.getOrDefault(emptyMap())
     }
 
     /** Replaces the bulk-action list for a single [kind]; other kinds are preserved. */
-    fun setCarBrowsableBulkActions(kind: ItemKind, actions: List<DefaultClickAction>) {
+    fun setCarBrowsableBulkActions(kind: ItemKind, actions: List<DefaultClickOption>) {
         val updated = _carBrowsableBulkActions.value.toMutableMap().apply { put(kind, actions) }
         settings.putString(
             "car_browsable_bulk_actions",
