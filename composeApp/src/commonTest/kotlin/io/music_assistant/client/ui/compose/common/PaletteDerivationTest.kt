@@ -89,6 +89,18 @@ class PaletteDerivationTest {
     }
 
     @Test
+    fun `black-heavy art still yields a usable non-null palette`() {
+        // Regression: kmpalette's DEFAULT_FILTER strips near-black pixels, which previously left
+        // black covers with zero candidates → null palette → fallback. With filters cleared the
+        // quantizer keeps black, so primary is present and the on-colors are synthesized.
+        val palette = derivePalette(listOf(black))
+        assertEquals(black, palette.primary) // primary present ⇒ toExtractedColors() is non-null
+        val onDark = assertNotNull(palette.onDark)
+        assertTrue(contrastRatio(onDark, black) >= MIN_CONTRAST, "synthesized on_dark vs black")
+        assertNotNull(palette.toExtractedColors())
+    }
+
+    @Test
     fun `accent picks a hue-distant candidate and is null when all are similar`() {
         val primary = RgbColor(40, 70, 80)
         val distant = RgbColor(240, 160, 100)

@@ -42,7 +42,13 @@ class DominantColorViewModel : ViewModel() {
         val result = SingletonImageLoader.get(context).execute(request) as? SuccessResult
             ?: return null
         val bitmap = result.image.toImageBitmap() ?: return null
-        val palette = bitmap.generatePalette { maximumColorCount(QUANTIZE_COLORS) }
+        val palette = bitmap.generatePalette {
+            maximumColorCount(QUANTIZE_COLORS)
+            // Match the server's modern_colorthief MMCQ, which does NO filtering. kmpalette's
+            // DEFAULT_FILTER rejects near-black/near-white/near-red pixels, so black-heavy
+            // artwork yields zero swatches → empty candidates → null palette → fallback color.
+            clearFilters()
+        }
         val candidates = palette.swatches
             .sortedByDescending { it.population } // approximates MMCQ's dominant-first order
             .map { it.rgb.toRgbColor() }
