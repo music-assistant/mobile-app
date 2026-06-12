@@ -594,7 +594,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         fun markPlayed(
             itemUri: String,
         ) = Request(
-            command = APICommands.MUSIC_MARK_ITEM_PLAYED,
+            command = APICommands.MUSIC_MARK_PLAYED,
             args = buildJsonObject {
                 put("media_item", JsonPrimitive(itemUri))
             },
@@ -603,7 +603,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         fun markUnplayed(
             itemUri: String,
         ) = Request(
-            command = APICommands.MUSIC_MARK_ITEM_UNPLAYED,
+            command = APICommands.MUSIC_MARK_UNPLAYED,
             args = buildJsonObject {
                 put("media_item", JsonPrimitive(itemUri))
             },

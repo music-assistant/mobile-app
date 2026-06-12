@@ -68,8 +68,8 @@ object APICommands {
     const val MUSIC_FAVORITES_REMOVE_ITEM = "music/favorites/remove_item"
 
     // Mark commands
-    const val MUSIC_MARK_ITEM_PLAYED = "music/mark_item_played"
-    const val MUSIC_MARK_ITEM_UNPLAYED = "music/mark_item_unplayed"
+    const val MUSIC_MARK_PLAYED = "music/mark_played"
+    const val MUSIC_MARK_UNPLAYED = "music/mark_unplayed"
 
     // Search and recommendations
     const val MUSIC_SEARCH = "music/search"
