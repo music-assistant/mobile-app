@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -69,6 +70,7 @@ fun DefaultClickOption.toItemAction(): ItemAction = when (this) {
     DefaultClickOption.INSERT_NEXT -> ItemAction.Play(QueueOption.NEXT)
     DefaultClickOption.ADD_TO_QUEUE -> ItemAction.Play(QueueOption.ADD)
     DefaultClickOption.START_RADIO -> ItemAction.StartRadio
+    DefaultClickOption.PLAY_FROM_HERE -> ItemAction.PlayFromHere(isPlaylist = false)
 }
 
 /**
@@ -81,6 +83,8 @@ fun DefaultClickOption.effectiveFor(item: AppMediaItem): ItemAction? {
     return when (this) {
         DefaultClickOption.START_RADIO ->
             if (item.canStartRadio) ItemAction.StartRadio else ItemAction.Play(QueueOption.REPLACE)
+        DefaultClickOption.PLAY_FROM_HERE ->
+            if (item is Track) ItemAction.PlayFromHere(isPlaylist = false) else ItemAction.Play(QueueOption.REPLACE)
         else -> toItemAction()
     }
 }

@@ -71,6 +71,7 @@ fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
     DefaultClickOption.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, radioMode = false)
     DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, radioMode = false)
     DefaultClickOption.START_RADIO -> CarDispatch(QueueOption.REPLACE, radioMode = true)
+    else -> throw IllegalStateException()
 }
 
 /** The car surface the current platform exposes. */
