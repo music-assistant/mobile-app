@@ -57,6 +57,7 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.QualityTier
 import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.qualityTier
+import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
@@ -121,7 +122,7 @@ fun CompactPlayerItem(
                     AsyncImage(
                         placeholder = placeholder,
                         fallback = placeholder,
-                        model = currentMedia.imageUrl,
+                        model = rememberArtworkRequest(currentMedia.imageUrl),
                         contentDescription = currentMedia.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
@@ -254,7 +255,7 @@ fun FullPlayerItem(
                 AsyncImage(
                     placeholder = placeholder,
                     fallback = placeholder,
-                    model = it,
+                    model = rememberArtworkRequest(it),
                     contentDescription = currentMedia.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

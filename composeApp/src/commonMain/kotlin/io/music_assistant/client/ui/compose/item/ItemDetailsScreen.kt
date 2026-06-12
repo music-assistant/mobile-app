@@ -369,7 +369,6 @@ private fun ItemContent(
         }
     val colors by rememberAnimatedPlayerColors(
         imageUrl = item.image(ImageType.THUMB)?.url,
-        palette = null,
         fallback = MaterialTheme.colorScheme.primaryContainer,
         fetchColors = resolvedFetchColors,
     )

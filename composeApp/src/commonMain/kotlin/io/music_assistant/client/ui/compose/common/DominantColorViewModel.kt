@@ -4,12 +4,11 @@ import androidx.collection.LruCache
 import androidx.lifecycle.ViewModel
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import com.kmpalette.generatePalette
+import io.music_assistant.client.data.model.server.RgbColor
+import io.music_assistant.client.imageloader.artworkImageRequest
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel.Companion.MAX_CACHE_SIZE
-import io.music_assistant.client.utils.disableHardwareBitmaps
 import io.music_assistant.client.utils.toImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,27 +36,22 @@ class DominantColorViewModel : ViewModel() {
     }
 
     private suspend fun extract(context: PlatformContext, url: String): ExtractedColors? {
-        val request = ImageRequest.Builder(context)
-            .data(url)
-            .disableHardwareBitmaps()
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .memoryCacheKey(url)
-            .build()
+        // Shared request: same fixed size + cache key as artwork display, so Coil serves the
+        // already-decoded bitmap instead of decoding a second time (see artworkImageRequest).
+        val request = artworkImageRequest(context, url)
         val result = SingletonImageLoader.get(context).execute(request) as? SuccessResult
             ?: return null
         val bitmap = result.image.toImageBitmap() ?: return null
-        val palette = bitmap.generatePalette()
-        val color = palette.getBestColor()
-        return if (color != null) {
-            ExtractedColors(
-                background = color,
-                tintOnDark = color.ensureReadable(onDarkSurface = true),
-                tintOnLight = color.ensureReadable(onDarkSurface = false),
-            )
-        } else {
-            null
-        }
+        val palette = bitmap.generatePalette { maximumColorCount(QUANTIZE_COLORS) }
+        val candidates = palette.swatches
+            .sortedByDescending { it.population } // approximates MMCQ's dominant-first order
+            .map { it.rgb.toRgbColor() }
+        return derivePalette(candidates).toExtractedColors()
     }
+
+    // Swatch.rgb is a packed ARGB ColorInt; drop alpha and split channels.
+    @Suppress("MagicNumber")
+    private fun Int.toRgbColor() = RgbColor((this shr 16) and 0xFF, (this shr 8) and 0xFF, this and 0xFF)
 
     private companion object {
         const val MAX_CACHE_SIZE = 200

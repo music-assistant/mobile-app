@@ -52,6 +52,7 @@ import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.PlayerColors
@@ -303,7 +304,7 @@ private fun Image(
             RoundedCornerShape(16.dp)
         }
         AsyncImage(
-            model = item.image(ImageType.THUMB)?.url,
+            model = rememberArtworkRequest(item.image(ImageType.THUMB)?.url),
             placeholder = placeholder,
             fallback = placeholder,
             contentDescription = null,

@@ -6,18 +6,21 @@
 package io.music_assistant.client.ui.compose.common
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import coil3.compose.LocalPlatformContext
-import com.kmpalette.palette.graphics.Palette
 import io.music_assistant.client.data.model.server.MediaItemPalette
 import io.music_assistant.client.data.model.server.RgbColor
 import org.koin.compose.koinInject
@@ -36,18 +39,19 @@ data class ExtractedColors(
 private fun RgbColor.toColor() = Color(r, g, b) // Compose Color(Int, Int, Int) expects 0..255
 
 /**
- * Build extraction colors from a server-provided palette. Uses the vivid `primary` (falling
- * back to `accent`) as the single background for both themes and derives the readable control
- * tint via [ensureReadable] — mirroring local artwork extraction so the server path looks
- * equally punchy. The muted `background_*`/`on_*` slots are intentionally unused. Returns null
+ * Build extraction colors from a palette — server-provided or locally derived (see
+ * [derivePalette]). Uses the vivid `primary` (falling back to `accent`) as the single background
+ * for both themes, and the spec's WCAG-clean `on_dark`/`on_light` as the readable control tint
+ * per surface, falling back to [ensureReadable] only when a slot is absent. The muted
+ * `background_*` slots are intentionally unused (the wash keeps the vivid `primary`). Returns null
  * when neither vivid slot is present, so the caller falls back to local extraction.
  */
 fun MediaItemPalette.toExtractedColors(): ExtractedColors? {
     val base = (primary ?: accent)?.toColor() ?: return null
     return ExtractedColors(
         background = base,
-        tintOnDark = base.ensureReadable(onDarkSurface = true),
-        tintOnLight = base.ensureReadable(onDarkSurface = false),
+        tintOnDark = onDark?.toColor() ?: base.ensureReadable(onDarkSurface = true),
+        tintOnLight = onLight?.toColor() ?: base.ensureReadable(onDarkSurface = false),
     )
 }
 
@@ -82,58 +86,35 @@ data class PlayerColors(
 @Composable
 fun rememberAnimatedPlayerColors(
     imageUrl: String?,
-    palette: MediaItemPalette?,
     fallback: Color,
     fetchColors: ExtractedColorsFetcher,
 ): State<PlayerColors> {
     val onDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
-    val serverColors = remember(palette) { palette?.toExtractedColors() }
-    val localColors by produceState<ExtractedColors?>(
+    val extracted by produceState<ExtractedColors?>(
         initialValue = null,
         key1 = imageUrl,
-        key2 = serverColors,
     ) {
-        value = if (serverColors != null) null else imageUrl?.let { fetchColors(it) }
+        value = imageUrl?.let { fetchColors(it) }
     }
-    val extracted = serverColors ?: localColors
 
     val targetDominant = extracted?.background ?: fallback
     val targetTint = extracted
         ?.let { if (onDark) it.tintOnDark else it.tintOnLight }
         ?: fallback.ensureReadable(onDarkSurface = onDark)
 
-    val animatedDominant by animateColorAsState(
+    val animatedDominant by rememberAnimatedColorAsState(
         targetValue = targetDominant,
         animationSpec = tween(durationMillis = 500),
     )
-    val animatedTint by animateColorAsState(
+    val animatedTint by rememberAnimatedColorAsState(
         targetValue = targetTint,
         animationSpec = tween(durationMillis = 500),
     )
 
-    val state = remember { mutableStateOf(PlayerColors(targetDominant, targetTint)) }
-    state.value = PlayerColors(animatedDominant, animatedTint)
-    return state
-}
-
-/**
- * This tries to identify the "best" color: if the "dominant" color is very close to black or
- * white (which will cause control color problems), fallback to the "vibrant" color. For
- * completely black/white images (see Weezer, Spinal Tap, The Beatles or Metallica for
- * examples), a vibrant color might not exist and in that case we still use the dominant one.
- */
-fun Palette.getBestColor(): Color? {
-    val dominantColor = this.dominantSwatch?.let { Color(it.rgb) }
-    val vibrantColor = this.vibrantSwatch?.let { Color(it.rgb) }
-    val color =
-        if (dominantColor != null && (dominantColor.luminance() in 0.01..0.99 || vibrantColor == null)) {
-            dominantColor
-        } else {
-            vibrantColor
-        }
-
-    return color
+    return derivedStateOf {
+        PlayerColors(animatedDominant, animatedTint)
+    }
 }
 
 /**
@@ -186,5 +167,19 @@ private fun hueToRgb(p: Float, q: Float, t: Float): Float {
         tt < 1f / 2f -> q
         tt < 2f / 3f -> p + (q - p) * (2f / 3f - tt) * 6f
         else -> p
+    }
+}
+
+@Composable
+private fun rememberAnimatedColorAsState(
+    targetValue: Color,
+    animationSpec: AnimationSpec<Color>,
+): State<Color> {
+    var animated by rememberSaveable(targetValue) { mutableStateOf(false) }
+
+    return if (!animated) {
+        animateColorAsState(targetValue, animationSpec) { animated = true }
+    } else {
+        mutableStateOf(targetValue)
     }
 }
