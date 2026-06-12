@@ -60,18 +60,19 @@ fun codePointToString(codePoint: Int): String =
  * table and draws the glyph as a font character sized to the layout constraints, so it
  * honors a caller-supplied size [modifier] like a regular `Icon`.
  *
- * Shows [fallback] until the table has loaded or when the name is unknown (default: draws
- * nothing). Callers wanting a guaranteed glyph pass a fallback to render in that window.
+ * Shows [fallback] when [name] is null/unknown or until the table has loaded (default:
+ * draws nothing). Callers wanting a guaranteed glyph pass a fallback to render in that
+ * window. Accepting a nullable [name] keeps absent-icon handling out of every call site.
  */
 @Composable
 fun MdiIcon(
-    name: String,
+    name: String?,
     modifier: Modifier = Modifier,
     tint: Color = Color.White,
     fallback: @Composable () -> Unit = {},
 ) {
     val table by koinInject<MdiCodepoints>().table.collectAsStateWithLifecycle()
-    val codePoint = table[normalizeMdiName(name)]
+    val codePoint = name?.let { table[normalizeMdiName(it)] }
     if (codePoint == null) {
         fallback()
         return

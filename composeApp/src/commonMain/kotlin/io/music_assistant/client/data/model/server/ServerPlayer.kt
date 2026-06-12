@@ -46,9 +46,9 @@ data class ServerPlayer(
     @SerialName("display_name") val displayName: String = "",
     @SerialName("hidden") val hidden: Boolean? = null,
     @SerialName("hide_in_ui") val hideInUi: Boolean? = null,
-    // Defaulted: a player JSON missing "icon" must not fail deserialization of the
-    // whole player (older servers / non-standard providers may omit it).
-    @SerialName("icon") val icon: String = "",
+    // Nullable: distinguishes "server didn't send one" from a real value, and tolerates a
+    // missing key or explicit null without failing the whole player's deserialization.
+    @SerialName("icon") val icon: String? = null,
     // @SerialName("power_control") val powerControl: String,
     @SerialName("volume_control") val volumeControl: String = "",
     @SerialName("mute_control") val muteControl: String? = null,
