@@ -32,6 +32,14 @@ fun ProviderIcon(
             )
         }
 
+        is ProviderIconModel.MdiGlyph -> {
+            MdiIcon(
+                name = providerIconModel.name,
+                modifier = modifier,
+                tint = providerIconModel.tint,
+            )
+        }
+
         is ProviderIconModel.Png -> {
             AsyncImage(
                 model = ImageRequest.Builder(LocalPlatformContext.current)

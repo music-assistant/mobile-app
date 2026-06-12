@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -35,7 +33,6 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.player.sendspin.SendspinState
-import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_current_player
@@ -145,13 +142,9 @@ private fun PlayerButtonContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Icon(
-            imageVector = when {
-                isLocalPlayer -> Icons.Default.Smartphone
-                player.player.isGroup -> SpeakerMultipleIcon
-                else -> Icons.Default.Speaker
-            },
-            contentDescription = null,
+        PlayerIcon(
+            player = player.player,
+            isLocal = isLocalPlayer,
             modifier = Modifier.size(16.dp),
             tint = controlTint,
         )

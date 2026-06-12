@@ -147,3 +147,59 @@ kotlin {
 dependencies {
     androidRuntimeClasspath(libs.compose.ui.tooling)
 }
+
+// --- Material Design Icons (community pack) webfont + codepoint table ---------
+//
+// The server sends icon identifiers from the MDI community pack (e.g. "mdi-speaker").
+// We render them as font glyphs (see MdiIcon.kt) instead of hand-mapping each name to a
+// look-alike from another pack. This task fetches the official webfont and projects the
+// pack's meta.json down to a slim { name -> codepoint } table.
+//
+// It is NETWORK-BOUND and intentionally lazy: it only runs when an output is missing or
+// the pinned version changes (tracked via a build-dir marker). The generated assets live
+// under composeResources/ and are committed, so ordinary/offline builds never re-download.
+val mdiVersion = "7.4.47"
+val mdiFontOut = layout.projectDirectory.file("src/commonMain/composeResources/font/mdi_webfont.ttf")
+val mdiCodepointsOut = layout.projectDirectory.file("src/commonMain/composeResources/files/mdi_codepoints.json")
+val mdiVersionMarker = layout.buildDirectory.file("mdi/version.marker")
+
+val generateMdiResources by tasks.registering {
+    description = "Fetches the MDI webfont and generates a slim name->codepoint table."
+    group = "build setup"
+    inputs.property("mdiVersion", mdiVersion)
+    outputs.file(mdiFontOut)
+    outputs.file(mdiCodepointsOut)
+    outputs.file(mdiVersionMarker)
+    onlyIf {
+        !mdiFontOut.asFile.exists() ||
+            !mdiCodepointsOut.asFile.exists() ||
+            mdiVersionMarker.get().asFile.takeIf { it.exists() }?.readText() != mdiVersion
+    }
+    doLast {
+        val fontUrl = "https://cdn.jsdelivr.net/npm/@mdi/font@$mdiVersion/fonts/materialdesignicons-webfont.ttf"
+        val metaUrl = "https://cdn.jsdelivr.net/npm/@mdi/svg@$mdiVersion/meta.json"
+
+        mdiFontOut.asFile.parentFile.mkdirs()
+        uri(fontUrl).toURL().openStream().use { input ->
+            mdiFontOut.asFile.outputStream().use { input.copyTo(it) }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val entries = groovy.json.JsonSlurper()
+            .parseText(uri(metaUrl).toURL().readText()) as List<Map<String, Any?>>
+        val table = entries.joinToString(",", "{", "}") { e ->
+            "\"${e["name"]}\":\"${e["codepoint"]}\""
+        }
+        mdiCodepointsOut.asFile.parentFile.mkdirs()
+        mdiCodepointsOut.asFile.writeText(table)
+
+        mdiVersionMarker.get().asFile.apply { parentFile.mkdirs(); writeText(mdiVersion) }
+        logger.lifecycle("generateMdiResources: wrote ${entries.size} MDI codepoints + webfont (v$mdiVersion).")
+    }
+}
+
+// Ensure the assets exist before Compose generates resource accessors (so Res.font.* and
+// the files/ table are present for both the IDE sync and clean CI builds).
+tasks.matching {
+    it.name.contains("ComposeResources") || it.name.contains("ResourceAccessors")
+}.configureEach { dependsOn(generateMdiResources) }

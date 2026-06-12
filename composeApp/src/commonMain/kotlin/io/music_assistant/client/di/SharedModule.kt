@@ -20,6 +20,7 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.compose.auth.AuthenticationViewModel
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel
+import io.music_assistant.client.ui.compose.common.providers.MdiCodepoints
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
@@ -66,6 +67,7 @@ fun sharedModule(
         singleOf(::MediaItemRepository)     // Server DTO/event → client model boundary for UI
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         singleOf(::DominantColorViewModel)  // Singleton - app-wide art-color cache
+        singleOf(::MdiCodepoints)           // Singleton - MDI name->codepoint table (one-time load)
         viewModelOf(::ThemeViewModel)
         factory { ActionsViewModel(get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }

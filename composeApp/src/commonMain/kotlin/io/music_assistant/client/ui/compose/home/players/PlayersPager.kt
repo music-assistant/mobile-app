@@ -44,8 +44,6 @@ import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -98,7 +96,6 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
-import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
@@ -831,10 +828,12 @@ private fun PlayerOverflowMenu(
                 options = allPlayers.filter { p -> p.player.id != queueId }.map { playerData ->
                     OverflowMenuOption(
                         title = playerData.player.nameAndSuffix,
-                        icon = when {
-                            playerData.isLocal -> Icons.Default.Smartphone
-                            playerData.player.isGroup -> SpeakerMultipleIcon
-                            else -> Icons.Default.Speaker
+                        leadingContent = {
+                            PlayerIcon(
+                                player = playerData.player,
+                                isLocal = playerData.isLocal,
+                                modifier = Modifier.size(24.dp),
+                            )
                         },
                         onClick = {
                             queueAction(

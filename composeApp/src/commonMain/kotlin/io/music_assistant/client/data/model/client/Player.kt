@@ -5,6 +5,8 @@ data class Player(
     val name: String,
     val provider: String,
     val type: PlayerType,
+    /** Server-provided Material Design Icons name (e.g. "speaker"); empty when absent. */
+    val icon: String = "",
     val shouldBeShown: Boolean,
     val canSetVolume: Boolean,
     val volumeLevel: Float?,

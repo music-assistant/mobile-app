@@ -19,9 +19,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -50,7 +47,6 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
-import io.music_assistant.client.ui.compose.common.icons.SpeakerMultipleIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.stringResource
@@ -172,14 +168,9 @@ private fun PlayerSelection(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val playerIcon = when {
-                        item.isLocal -> Icons.Default.Smartphone
-                        item.player.isGroup -> SpeakerMultipleIcon
-                        else -> Icons.Default.Speaker
-                    }
-                    Icon(
-                        imageVector = playerIcon,
-                        contentDescription = null,
+                    PlayerIcon(
+                        player = item.player,
+                        isLocal = item.isLocal,
                         modifier = Modifier.size(20.dp),
                     )
                     Text(

@@ -1,14 +1,8 @@
 package io.music_assistant.client.ui.compose.common.providers
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Hardware
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import co.touchlab.kermit.Logger
-import compose.icons.TablerIcons
-import compose.icons.tablericons.Microphone
 import kotlin.io.encoding.Base64
 
 /**
@@ -16,9 +10,15 @@ import kotlin.io.encoding.Base64
  */
 sealed class ProviderIconModel {
     /**
-     * MDI (Material Design Icon) type - uses TablerIcons
+     * Pre-built [ImageVector] type - for app-local icons (e.g. the "library" bookshelf).
      */
     data class Mdi(val icon: ImageVector, val tint: Color = Color.White) : ProviderIconModel()
+
+    /**
+     * Material Design Icons community-pack glyph, referenced by its server-provided name
+     * (e.g. "mdi-speaker"). Resolved to a font glyph at render time by [MdiIcon].
+     */
+    data class MdiGlyph(val name: String, val tint: Color = Color.White) : ProviderIconModel()
 
     /**
      * PNG type - contains decoded PNG bytes ready for Coil
@@ -54,32 +54,17 @@ sealed class ProviderIconModel {
 
     companion object Companion {
         /**
-         * Factory method to create ProviderIconType from ProviderManifest
+         * Factory method to create ProviderIconModel from a manifest's icon fields.
          *
-         * Rules:
-         * 1. If icon is not null, use corresponding MDI Icon
-         * 2. Else if iconSvg contains "base64", extract and decode base64 PNG
-         * 3. Otherwise, encode iconSvg as SVG bytes
-         * 4. If both are null, return null
+         * Rules (highest fidelity first):
+         * 1. If iconSvg is present, decode it (base64 PNG, else raw SVG bytes).
+         * 2. Else if a MDI icon name is present, defer to a font glyph ([MdiGlyph]),
+         *    resolved against the full MDI codepoint table at render time.
+         * 3. If both are null, return null.
          */
         fun from(mdiIcon: String?, iconSvg: String?): ProviderIconModel? {
-            // Rule 1: If icon is not null, use MDI icon
-            if (mdiIcon != null) {
-                val icon = when (mdiIcon) {
-                    "harddisk" -> Icons.Default.Hardware
-                    "network" -> Icons.Default.NetworkWifi
-                    "podcast" -> TablerIcons.Microphone
-                    "mdi:radio",
-                    "radio",
-                    -> Icons.Default.Mic
-                    else -> {
-                        Logger.e("Cannot find MDI icon for $mdiIcon.")
-                        return null
-                    }
-                }
-                return Mdi(icon)
-            }
-            return iconSvg?.let { svgString ->
+            iconSvg ?: return mdiIcon?.let { MdiGlyph(it) }
+            return iconSvg.let { svgString ->
                 val b64i = svgString.indexOf("base64,")
                 if (b64i > 0) {
                     val base64Data = iconSvg.substring(b64i + 7) // Skip "base64,"

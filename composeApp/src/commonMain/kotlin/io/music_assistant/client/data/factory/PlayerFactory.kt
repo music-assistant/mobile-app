@@ -22,6 +22,7 @@ class PlayerFactory(
             id = playerId,
             name = displayName,
             provider = provider,
+            icon = icon,
             // Unknown/new server-side player types (coerced to null by myJson) are
             // treated as regular players so they still show up and aren't mistaken
             // for a group. If the server adds a genuinely new group-like type we

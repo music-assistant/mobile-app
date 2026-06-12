@@ -50,6 +50,9 @@ data class OverflowMenuOption(
     val title: String,
     val icon: ImageVector? = null,
     val trailingIcon: ImageVector? = null,
+    // Optional composable leading icon; takes precedence over [icon] for non-vector
+    // glyphs (e.g. an MDI font icon via PlayerIcon/MdiIcon).
+    val leadingContent: (@Composable () -> Unit)? = null,
     val onClick: () -> Unit,
 )
 
@@ -60,7 +63,7 @@ private fun OverflowMenuOption.DropdownMenuItem(onClose: () -> Unit) {
             onClick()
             onClose()
         },
-        leadingIcon = icon?.let {
+        leadingIcon = leadingContent ?: icon?.let {
             {
                 Icon(
                     imageVector = it,
