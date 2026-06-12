@@ -82,7 +82,7 @@ data class ServerPlayerMedia(
     @SerialName("duration") val duration: Double? = null,
     @SerialName("queue_id") val queueId: String? = null,
     @SerialName("queue_item_id") val queueItemId: String? = null,
-    @SerialName("palette") val palette: MediaItemPalette? = null,
+    // @SerialName("palette") val palette: MediaItemPalette? = null,
 //    @SerialName("custom_data") val customData: JsonObject? = null,
 )
 

@@ -135,7 +135,6 @@ object PlayerDataFixtures {
             queueItemId = queueItemId,
             mediaType = (this as? AppMediaItem)?.mediaType,
             uri = null,
-            palette = null,
         )
     }
 
