@@ -170,11 +170,9 @@ internal fun ItemTopBar(
     // tween on top of our color animation and visibly lag the header. Transparent container =
     // single-pass color change, in lockstep with the header gradient.
     Box(
-        modifier = Modifier.apply {
-            colors?.dominant?.inactive()?.let {
-                background(Brush.verticalGradient(listOf(it, MaterialTheme.colorScheme.surface)))
-            }
-        },
+        modifier = Modifier.background(
+            colors?.dominant?.inactive() ?: MaterialTheme.colorScheme.primaryContainer.inactive(),
+        ),
     ) {
         TopAppBar(
             title = {},
@@ -217,10 +215,12 @@ private fun ItemOverflow(
             when (it) {
                 ItemAction.AddToLibrary,
                 ItemAction.RemoveFromLibrary,
-                -> libraryActions?.onLibraryClick(item)
+                    -> libraryActions?.onLibraryClick(item)
+
                 ItemAction.Favorite,
                 ItemAction.Unfavorite,
-                -> libraryActions?.onFavoriteClick(item)
+                    -> libraryActions?.onFavoriteClick(item)
+
                 ItemAction.AddToPlaylist -> showPlaylistDialog = true
                 else -> Unit
             }

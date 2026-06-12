@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Chapter
 import io.music_assistant.client.data.model.client.ClickContext
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
@@ -66,6 +68,7 @@ import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -80,6 +83,8 @@ import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
+import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.Screen
@@ -156,6 +161,7 @@ fun ItemDetails(
     toastState: ToastState = rememberToastState(),
     onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
     geEditablePlaylists: suspend () -> List<Playlist> = suspend { emptyList() },
+    fetchColors: ExtractedColorsFetcher? = null,
     addToPlaylist: (String?, Playlist) -> Unit = { _, _ -> },
     onLibraryClick: (AppMediaItem) -> Unit = {},
     onFavoriteClick: (AppMediaItem) -> Unit = {},
@@ -236,6 +242,7 @@ fun ItemDetails(
         onPlayableItemsSortChanged = onPlayableItemsSortChanged,
         onTabSelected = onTabSelected,
         contentPadding = contentPadding,
+        fetchColors = fetchColors,
     )
 }
 
@@ -262,6 +269,7 @@ private fun ItemChildren(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    fetchColors: ExtractedColorsFetcher?,
     onBack: () -> Unit,
     onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
@@ -306,6 +314,7 @@ private fun ItemChildren(
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
                     contentPadding = contentPadding,
                     onTabSelected = onTabSelected,
+                    fetchColors = fetchColors,
                 )
             }
 
@@ -334,6 +343,7 @@ private fun ItemContent(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    fetchColors: ExtractedColorsFetcher?,
     onBack: () -> Unit,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
@@ -345,12 +355,30 @@ private fun ItemContent(
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
     val tabs = state.tabs
 
+    // Artwork-driven header colors. Library items carry no server palette, so colors are
+    // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
+    // as the player. The fetcher is Koin-backed, so fall back to a no-op when one isn't
+    // supplied and there's no Koin graph (under @Preview or in tests).
+    val resolvedFetchColors: ExtractedColorsFetcher = fetchColors
+        ?: if (LocalInspectionMode.current) {
+            { null }
+        } else {
+            rememberExtractedColorsFetcher()
+        }
+
+    val colors by rememberAnimatedPlayerColors(
+        imageUrl = item.image(ImageType.THUMB)?.url,
+        fallback = MaterialTheme.colorScheme.primaryContainer,
+        fetchColors = resolvedFetchColors,
+    )
+
     val heroSlot: @Composable () -> Unit = {
         ProvideClickActions(ClickContext.DETAIL) {
             ItemHeader(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
                 onPlayClick = onPlayItemClick,
+                colors = colors,
             )
         }
     }
@@ -363,6 +391,7 @@ private fun ItemContent(
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item.supportsAddToPlaylist },
                 navigateToItem = onNavigateClick,
+                colors = colors,
             )
         },
     ) {
@@ -391,6 +420,7 @@ private fun ItemContent(
                         TabsBar(
                             tabs = tabs,
                             selectedIndex = safeIndex,
+                            controlTint = colors.controlTint,
                             onTabSelected = { onTabSelected(tabs[it]) },
                             albumsSortOption = state.albumsSortOption,
                             playableItemsSortOption = state.playableItemsSortOption,
