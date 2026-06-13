@@ -6,6 +6,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 
 data class Audiobook(
@@ -26,11 +27,19 @@ data class Audiobook(
     val fullyPlayed: Boolean?,
     val resumePositionMs: Long?,
     override val version: String?,
-) : AppMediaItem(), PlayableItem {
+    // Synthetic default for previews/tests; the factory always supplies the real DTO.
+    override val source: ServerMediaItem = ServerMediaItem(
+        itemId = itemId,
+        provider = provider,
+        name = name,
+        mediaType = MediaType.AUDIOBOOK.serverValue,
+    ),
+) : AppMediaItem(), PlayableItem, MarkableItem {
     override val mediaType: MediaType = MediaType.AUDIOBOOK
     override val subtitle =
         authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Audiobook"
     override val parentName: String? = authors?.firstOrNull()
     override val defaultIcon = BookAudioIcon
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
+    override fun withPlayed(fullyPlayed: Boolean) = copy(fullyPlayed = fullyPlayed, resumePositionMs = 0)
 }

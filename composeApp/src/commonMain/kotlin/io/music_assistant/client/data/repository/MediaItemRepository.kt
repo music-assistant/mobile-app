@@ -12,9 +12,11 @@ import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 
 /**
@@ -64,14 +66,26 @@ class MediaItemRepository(
                 ?: error("Missing or undecodable search payload")
         }
 
+    // Client-originated changes for mutations the server doesn't echo back as an
+    // event (e.g. mark played/unplayed only writes the playlog server-side). Merged
+    // into [itemChanges] so the same subscribers reconcile them like server events.
+    private val localChanges = MutableSharedFlow<MediaItemChange>(extraBufferCapacity = 16)
+
+    /** Publish an optimistic, client-originated [change] to [itemChanges] subscribers. */
+    fun publishLocalChange(change: MediaItemChange) {
+        localChanges.tryEmit(change)
+    }
+
     /**
      * Hot stream of library lifecycle changes mapped from the corresponding
-     * server events. ViewModels collect this instead of filtering
-     * `apiClient.events` and re-running `mediaItemFactory.create(...)`
-     * themselves. Replay is zero — late subscribers only see future changes.
+     * server events (plus client-originated [localChanges]). ViewModels collect
+     * this instead of filtering `apiClient.events` and re-running
+     * `mediaItemFactory.create(...)` themselves. Replay is zero — late
+     * subscribers only see future changes.
      */
-    val itemChanges: SharedFlow<MediaItemChange> = apiClient.events
-        .mapNotNull { event ->
+    val itemChanges: SharedFlow<MediaItemChange> = merge(
+        localChanges,
+        apiClient.events.mapNotNull { event ->
             when (event) {
                 is MediaItemAddedEvent ->
                     factory.create(event.data)?.let(MediaItemChange::Added)
@@ -85,8 +99,8 @@ class MediaItemRepository(
 
                 else -> null
             }
-        }
-        .shareIn(scope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), replay = 0)
+        },
+    ).shareIn(scope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), replay = 0)
 
     // When the server announces the deletion of a library record, the
     // *underlying* provider item still exists. Re-key the DTO to its first

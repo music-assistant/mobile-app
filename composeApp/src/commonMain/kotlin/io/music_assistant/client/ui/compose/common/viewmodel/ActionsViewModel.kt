@@ -6,7 +6,9 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
@@ -130,12 +132,18 @@ class ActionsViewModel(
      * Mark an audiobook or podcast episode as fully played.
      */
     override fun onMarkPlayed(item: AppMediaItem) {
+        val markable = item as? MarkableItem ?: return
         viewModelScope.launch {
-            item.uri?.let { uri ->
-                apiClient.sendRequest(Request.Library.markPlayed(uri))
-                    .onSuccess { _toasts.emit(getString(Res.string.toast_marked_played)) }
-                    .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_played)) }
-            }
+            apiClient.sendRequest(Request.Library.markPlayed(markable))
+                .onSuccess {
+                    // Server only writes the playlog and emits no update event, so
+                    // optimistically patch lists; reverts on next refetch if wrong.
+                    mediaItemRepository.publishLocalChange(
+                        MediaItemChange.Updated(markable.withPlayed(true)),
+                    )
+                    _toasts.emit(getString(Res.string.toast_marked_played))
+                }
+                .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_played)) }
         }
     }
 
@@ -143,12 +151,16 @@ class ActionsViewModel(
      * Mark an audiobook or podcast episode as unplayed (resets progress).
      */
     override fun onMarkUnplayed(item: AppMediaItem) {
+        val markable = item as? MarkableItem ?: return
         viewModelScope.launch {
-            item.uri?.let { uri ->
-                apiClient.sendRequest(Request.Library.markUnplayed(uri))
-                    .onSuccess { _toasts.emit(getString(Res.string.toast_marked_unplayed)) }
-                    .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_unplayed)) }
-            }
+            apiClient.sendRequest(Request.Library.markUnplayed(markable))
+                .onSuccess {
+                    mediaItemRepository.publishLocalChange(
+                        MediaItemChange.Updated(markable.withPlayed(false)),
+                    )
+                    _toasts.emit(getString(Res.string.toast_marked_unplayed))
+                }
+                .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_unplayed)) }
         }
     }
 

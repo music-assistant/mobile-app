@@ -7,6 +7,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.utils.formatIsoDate
 
 data class PodcastEpisode(
@@ -26,10 +27,18 @@ data class PodcastEpisode(
     val resumePositionMs: Long?,
     val releaseDate: String? = null,
     override val version: String?,
-) : AppMediaItem(), PlayableItem {
+    // Synthetic default for previews/tests; the factory always supplies the real DTO.
+    override val source: ServerMediaItem = ServerMediaItem(
+        itemId = itemId,
+        provider = provider,
+        name = name,
+        mediaType = MediaType.PODCAST_EPISODE.serverValue,
+    ),
+) : AppMediaItem(), PlayableItem, MarkableItem {
     override val mediaType: MediaType = MediaType.PODCAST_EPISODE
     override val subtitle = releaseDate?.let(::formatIsoDate)
     override val parentName: String? = podcast?.displayName
     override val defaultIcon = Icons.Default.Podcasts
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
+    override fun withPlayed(fullyPlayed: Boolean) = copy(fullyPlayed = fullyPlayed, resumePositionMs = 0)
 }

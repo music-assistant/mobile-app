@@ -134,6 +134,7 @@ class MediaItemFactory(
                 resumePositionMs = resumePositionMs,
                 releaseDate = metadata?.releaseDate,
                 version = version,
+                source = server,
             )
 
             MediaType.RADIO -> RadioStation(
@@ -168,6 +169,7 @@ class MediaItemFactory(
                 fullyPlayed = fullyPlayed,
                 resumePositionMs = resumePositionMs,
                 version = version,
+                source = server,
             )
 
             MediaType.GENRE -> Genre(

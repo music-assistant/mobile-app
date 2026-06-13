@@ -96,7 +96,9 @@ data class ServerMediaItemImage(
 @Serializable
 data class ProviderMapping(
     @SerialName("item_id") val itemId: String,
-//    @SerialName("provider_domain") val providerDomain: String,
+    // Required by the server when a media_item is sent back (e.g. music/mark_played),
+    // so it must be retained on parse to round-trip in provider_mappings.
+    @SerialName("provider_domain") val providerDomain: String? = null,
     @SerialName("provider_instance") val providerInstance: String,
 //    @SerialName("available") val available: Boolean,
 //    @SerialName("audio_format") val audioFormat: AudioFormat? = null,
