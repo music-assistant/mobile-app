@@ -1,8 +1,10 @@
 package io.music_assistant.client.api
 
+import io.music_assistant.client.data.factory.toMarkMediaItem
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerialName
@@ -592,20 +594,20 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
 
         fun markPlayed(
-            itemUri: String,
+            item: MarkableItem,
         ) = Request(
             command = APICommands.MUSIC_MARK_PLAYED,
             args = buildJsonObject {
-                put("media_item", JsonPrimitive(itemUri))
+                put("media_item", item.toMarkMediaItem())
             },
         )
 
         fun markUnplayed(
-            itemUri: String,
+            item: MarkableItem,
         ) = Request(
             command = APICommands.MUSIC_MARK_UNPLAYED,
             args = buildJsonObject {
-                put("media_item", JsonPrimitive(itemUri))
+                put("media_item", item.toMarkMediaItem())
             },
         )
 
