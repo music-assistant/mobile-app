@@ -20,7 +20,7 @@ val AppMediaItem.supportsAddToPlaylist: Boolean
  */
 fun resolveLongClickActions(
     item: AppMediaItem,
-    clickContext: ClickContext?,
+    clickContext: ClickContext? = null,
     librarySupported: Boolean,
     canAddToPlaylist: Boolean,
     canRemoveFromPlaylist: Boolean,
