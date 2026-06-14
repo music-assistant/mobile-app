@@ -41,9 +41,14 @@ val defaultCarBulkActions: List<DefaultClickOption> = listOf(
  */
 fun DefaultClickOption.isCarSupported(platform: CarPlatform, kind: ItemKind): Boolean {
     if (!appliesTo(kind)) return false
-    return when (platform) {
-        CarPlatform.ANDROID_AUTO -> true
-        CarPlatform.CARPLAY -> true
+
+    return if (this == DefaultClickOption.PLAY_FROM_HERE) {
+        false
+    } else {
+        when (platform) {
+            CarPlatform.ANDROID_AUTO -> true
+            CarPlatform.CARPLAY -> true
+        }
     }
 }
 
