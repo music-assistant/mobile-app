@@ -373,7 +373,7 @@ class AutoLibrary(
         DefaultClickOption.INSERT_NEXT -> "Add all next"
         DefaultClickOption.ADD_TO_QUEUE -> "Add all to queue"
         DefaultClickOption.START_RADIO -> "Start radio"
-        else -> throw IllegalStateException()
+        else -> throw IllegalArgumentException("$name not supported by Android Auto!")
     }
 
     @DrawableRes
@@ -383,7 +383,7 @@ class AutoLibrary(
         DefaultClickOption.INSERT_NEXT, DefaultClickOption.ADD_TO_QUEUE ->
             android.R.drawable.ic_menu_add
         DefaultClickOption.START_RADIO -> android.R.drawable.ic_menu_compass
-        else -> throw IllegalStateException()
+        else -> throw IllegalArgumentException("$name not supported by Android Auto!")
     }
 
     fun search(
