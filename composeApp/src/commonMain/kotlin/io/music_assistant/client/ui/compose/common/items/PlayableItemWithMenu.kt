@@ -24,7 +24,7 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 
-typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean, formHereInParent: Boolean) -> Unit
+typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean, fromHereInParent: Boolean) -> Unit
 
 @Composable
 fun TrackWithMenu(

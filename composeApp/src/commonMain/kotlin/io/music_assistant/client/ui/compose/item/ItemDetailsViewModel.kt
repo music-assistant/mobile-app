@@ -410,10 +410,10 @@ class ItemDetailsViewModel(
         item: AppMediaItem,
         option: QueueOption,
         radio: Boolean,
-        formHereInParent: Boolean,
+        fromHereInParent: Boolean,
     ) {
         val parent = (_state.value.itemState as? DataState.Data)?.data
-        val (itemToPlay, startItem) = if (formHereInParent && parent != null) {
+        val (itemToPlay, startItem) = if (fromHereInParent && parent != null) {
             Pair(parent, item)
         } else {
             Pair(item, null)
