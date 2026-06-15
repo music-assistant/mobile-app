@@ -163,7 +163,12 @@ class KtorServiceClient(
         val opaque = proxyId?.takeIf { supportsOpaqueProxy() }
         return when (val state = _sessionState.value) {
             is SessionState.Connected.Direct -> resolveHttpImageUrl(state.connectionInfo.webUrl, path, provider, opaque)
-            is SessionState.Reconnecting.Direct -> resolveHttpImageUrl(state.connectionInfo.webUrl, path, provider, opaque)
+            is SessionState.Reconnecting.Direct -> resolveHttpImageUrl(
+                state.connectionInfo.webUrl,
+                path,
+                provider,
+                opaque,
+            )
             is SessionState.Connected.WebRTC,
             is SessionState.Reconnecting.WebRTC,
                 -> resolveWebRTCImageUrl(path, provider, opaque)
