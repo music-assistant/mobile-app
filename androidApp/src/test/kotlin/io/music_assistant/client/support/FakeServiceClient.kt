@@ -504,7 +504,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     private val _serverBaseUrl = MutableStateFlow<String?>(null)
     override val serverBaseUrl: StateFlow<String?> = _serverBaseUrl
 
-    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean): String? = null
+    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean, proxyId: String?): String? = null
 
     override fun rebaseServerImageUrl(rawUrl: String): String? = null
 
