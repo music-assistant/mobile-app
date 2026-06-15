@@ -16,10 +16,10 @@
   <string name="action_ok">OK</string>
   <string name="action_pause">Pause</string>
   <string name="action_play">Play</string>
+  <string name="action_play_album_from_here">Play album from here</string>
   <string name="action_play_all">Play all</string>
   <string name="action_play_next">Play next</string>
   <string name="action_play_now">Play now</string>
-  <string name="action_play_album_from_here">Play album from here</string>
   <string name="action_play_playlist_from_here">Play playlist from here</string>
   <string name="action_remove_from_library">Remove from library</string>
   <string name="action_remove_from_playlist">Remove from playlist</string>
@@ -140,6 +140,7 @@
   <string name="nav_search">Search</string>
   <string name="nav_settings">Settings</string>
   <string name="not_connected_retry">Not connected — try again when reconnected</string>
+  <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
@@ -155,7 +156,6 @@
   <string name="quality_dialog_input">Input</string>
   <string name="quality_dialog_output">Output</string>
   <string name="quality_dialog_title">Audio chain</string>
-  <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="queue_browse_library">BROWSE LIBRARY</string>
   <string name="queue_cannot_play">Cannot play this item</string>
   <string name="queue_clear">Clear queue</string>
@@ -179,6 +179,11 @@
   <string name="search_title">Global search</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
+  <string name="settings_car">Car (Android Auto / CarPlay)</string>
+  <string name="settings_car_bulk_for">%1$s actions</string>
+  <string name="settings_car_enqueue_action">Enqueue action</string>
+  <string name="settings_car_item_actions">Item actions</string>
+  <string name="settings_car_tabs">Tabs</string>
   <string name="settings_codec_preference">Codec preference</string>
   <string name="settings_connect">Connect</string>
   <string name="settings_connect_saved">Connect with saved credentials</string>
@@ -200,11 +205,6 @@
   <string name="settings_history_direct">Direct</string>
   <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
   <string name="settings_host">Host</string>
-  <string name="settings_car">Car (Android Auto / CarPlay)</string>
-  <string name="settings_car_bulk_for">%1$s actions</string>
-  <string name="settings_car_enqueue_action">Enqueue action</string>
-  <string name="settings_car_item_actions">Item actions</string>
-  <string name="settings_car_tabs">Tabs</string>
   <string name="settings_local_player_disabled">Local player (Sendspin protocol)</string>
   <string name="settings_local_player_enabled">Local player enabled</string>
   <string name="settings_misc">Misc</string>

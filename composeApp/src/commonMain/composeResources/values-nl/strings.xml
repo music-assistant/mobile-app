@@ -16,9 +16,11 @@
   <string name="action_ok">OK</string>
   <string name="action_pause">Pauzeren</string>
   <string name="action_play">Afspelen</string>
+  <string name="action_play_album_from_here">Speel album vanaf hier</string>
   <string name="action_play_all">Alles afspelen</string>
   <string name="action_play_next">Speel als volgende af</string>
   <string name="action_play_now">Nu afspelen</string>
+  <string name="action_play_playlist_from_here">Afspeellijst vanaf hier afspelen</string>
   <string name="action_remove_from_library">Verwijder uit bibliotheek</string>
   <string name="action_remove_from_playlist">Uit afspeellijst verwijderen</string>
   <string name="action_start_radio">Start radio</string>
@@ -138,6 +140,7 @@
   <string name="nav_search">Zoeken</string>
   <string name="nav_settings">Instellingen</string>
   <string name="not_connected_retry">Niet verbonden — probeer opnieuw wanneer de verbinding hersteld is</string>
+  <string name="playback_speed_dialog_title">Afspeelsnelheid</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
@@ -176,6 +179,11 @@
   <string name="search_title">Globaal zoeken</string>
   <string name="settings_about_description">Music Assistant is een gratis, open-source, zelfgehoste muziekserver. Maak hieronder verbinding met jouw server om door je bibliotheek te bladeren en de weergave in je hele huis te bedienen.</string>
   <string name="settings_about_learn_more">Meer informatie op music-assistant.io →</string>
+  <string name="settings_car">Auto (Android Auto / CarPlay)</string>
+  <string name="settings_car_bulk_for">%1$s acties</string>
+  <string name="settings_car_enqueue_action">Wachtrij actie</string>
+  <string name="settings_car_item_actions">Itemacties</string>
+  <string name="settings_car_tabs">Tabbladen</string>
   <string name="settings_codec_preference">Codec-voorkeur</string>
   <string name="settings_connect">Verbinden</string>
   <string name="settings_connect_saved">Verbinden met opgeslagen inloggegevens</string>
