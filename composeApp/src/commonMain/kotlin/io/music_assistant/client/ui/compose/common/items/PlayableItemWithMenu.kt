@@ -255,7 +255,6 @@ private fun <T> PlayableItemWithMenu(
         if (showCustomizeDialog) {
             item.itemKind()?.let { kind ->
                 DefaultClickActionsDialog(
-                    clickActionConfig.context,
                     itemKind = kind,
                     onDismiss = { showCustomizeDialog = false },
                 )

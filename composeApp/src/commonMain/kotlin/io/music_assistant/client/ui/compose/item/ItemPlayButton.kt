@@ -110,7 +110,6 @@ fun ItemPlayButton(
 
     if (showCustomizeDialog && kind != null) {
         DefaultClickActionsDialog(
-            clickActionConfig.context,
             itemKind = kind,
             onDismiss = { showCustomizeDialog = false },
         )

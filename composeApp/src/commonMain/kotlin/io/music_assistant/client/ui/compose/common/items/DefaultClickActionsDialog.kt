@@ -56,7 +56,7 @@ private fun ClickContext.label(): StringResource = when (this) {
  * Save (other kinds untouched).
  */
 @Composable
-fun DefaultClickActionsDialog(clickContext: ClickContext?, itemKind: ItemKind, onDismiss: () -> Unit) {
+fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
     val viewModel = koinViewModel<DefaultClickActionsViewModel>()
     val stored by viewModel.actions.collectAsStateWithLifecycle()
 
@@ -95,7 +95,7 @@ fun DefaultClickActionsDialog(clickContext: ClickContext?, itemKind: ItemKind, o
                             overflow = TextOverflow.Ellipsis,
                         )
                         ActionDropdown(
-                            context = clickContext,
+                            context = ctx,
                             options = options,
                             selected = selection[ctx] ?: DefaultClickOption.PLAY_NOW,
                             onSelect = { selection[ctx] = it },
