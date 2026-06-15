@@ -17,7 +17,12 @@ interface ServiceClient {
     fun logout()
     val isReadyForCommands: StateFlow<Boolean>
     val serverBaseUrl: StateFlow<String?>
-    fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean): String?
+    fun resolveImageUrl(
+        path: String,
+        provider: String,
+        isRemotelyAccessible: Boolean,
+        proxyId: String?,
+    ): String?
     fun rebaseServerImageUrl(rawUrl: String): String?
     val webRTCHttpProxy: WebRTCHttpProxy?
     fun forceWebRTCReconnect()

@@ -229,7 +229,7 @@ class MediaItemFactory(
             path = server.path,
             isRemotelyAccessible = server.remotelyAccessible,
             provider = server.provider,
-            url = apiClient.resolveImageUrl(server.path, server.provider, server.remotelyAccessible),
+            url = apiClient.resolveImageUrl(server.path, server.provider, server.remotelyAccessible, server.proxyId),
         )
 
     private fun resolveImageInfo(

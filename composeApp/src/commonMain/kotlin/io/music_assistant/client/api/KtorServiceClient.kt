@@ -7,12 +7,14 @@ import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.http.appendPathSegments
+import io.ktor.http.encodeURLPathPart
 import io.ktor.http.encodeURLQueryComponent
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
@@ -153,24 +155,39 @@ class KtorServiceClient(
         path: String,
         provider: String,
         isRemotelyAccessible: Boolean,
+        proxyId: String?,
     ): String? {
         if (isRemotelyAccessible && path.startsWith("https")) return path
+        // Prefer the opaque proxy_id endpoint on schema-31+ servers; fall back to the
+        // legacy path/provider query form otherwise (older servers, or missing proxy_id).
+        val opaque = proxyId?.takeIf { supportsOpaqueProxy() }
         return when (val state = _sessionState.value) {
-            is SessionState.Connected.Direct -> buildHttpImageProxyUrl(state.connectionInfo.webUrl, path, provider)
-            is SessionState.Reconnecting.Direct -> buildHttpImageProxyUrl(state.connectionInfo.webUrl, path, provider)
+            is SessionState.Connected.Direct -> resolveHttpImageUrl(state.connectionInfo.webUrl, path, provider, opaque)
+            is SessionState.Reconnecting.Direct -> resolveHttpImageUrl(state.connectionInfo.webUrl, path, provider, opaque)
             is SessionState.Connected.WebRTC,
             is SessionState.Reconnecting.WebRTC,
-                -> resolveWebRTCImageUrl(path, provider)
+                -> resolveWebRTCImageUrl(path, provider, opaque)
             else -> null
         }
     }
+
+    private fun supportsOpaqueProxy(): Boolean =
+        (_sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
+            ?.let { it >= IMAGEPROXY_OPAQUE_SCHEMA } == true
+
+    private fun resolveHttpImageUrl(base: String, path: String, provider: String, proxyId: String?): String =
+        proxyId?.let { buildHttpOpaqueProxyUrl(base, it) } ?: buildHttpImageProxyUrl(base, path, provider)
 
     // In WebRTC mode the client has internet access while the server only sees us through
     // signaling/SCTP. Any public `https://` artwork should be fetched directly by Coil instead
     // of relayed through the (slow, single-channel) data-channel proxy. The proxy is reserved
     // for paths the client cannot reach (LAN URLs, server-local file paths, etc.).
-    private fun resolveWebRTCImageUrl(path: String, provider: String): String =
-        if (path.startsWith("https://")) path else buildWebRTCImageProxyUrl(path, provider)
+    private fun resolveWebRTCImageUrl(path: String, provider: String, proxyId: String?): String =
+        when {
+            proxyId != null -> buildWebRTCOpaqueProxyUrl(proxyId)
+            path.startsWith("https://") -> path
+            else -> buildWebRTCImageProxyUrl(path, provider)
+        }
 
     private fun buildHttpImageProxyUrl(base: String, path: String, provider: String): String =
         URLBuilder(base).apply {
@@ -182,12 +199,26 @@ class KtorServiceClient(
             }
         }.buildString()
 
+    private fun buildHttpOpaqueProxyUrl(base: String, proxyId: String): String =
+        URLBuilder(base).apply {
+            appendPathSegments("imageproxy", proxyId)
+            parameters.apply {
+                append("size", IMAGEPROXY_SIZE.toString())
+                append("checksum", "")
+            }
+        }.buildString()
+
     // Synthetic URL consumed by WebRTCImageFetcher. Scheme is matched by the Coil fetcher
     // factory; path+query are reconstructed verbatim into the http-proxy-request `path` field.
     private fun buildWebRTCImageProxyUrl(path: String, provider: String): String =
         "$WEBRTC_PROXY_BASE/imageproxy" +
             "?path=${path.encodeURLQueryComponent()}" +
             "&provider=${provider.encodeURLQueryComponent()}" +
+            "&checksum="
+
+    private fun buildWebRTCOpaqueProxyUrl(proxyId: String): String =
+        "$WEBRTC_PROXY_BASE/imageproxy/${proxyId.encodeURLPathPart()}" +
+            "?size=$IMAGEPROXY_SIZE" +
             "&checksum="
 
     // Rebases a server-issued image URL (which embeds the server's self-view of its origin,
@@ -1121,5 +1152,12 @@ class KtorServiceClient(
         // Backoff between silent re-auth retries, so a fast-failing attempt can't spin.
         private const val SILENT_REAUTH_RETRY_DELAY_MS = 1_000L
         private const val WEBRTC_PROXY_BASE = "mawebrtc://proxy"
+
+        // Server schema that introduced the opaque /imageproxy/{proxy_id} endpoint.
+        private const val IMAGEPROXY_OPAQUE_SCHEMA = 31
+
+        // Bucketed proxy size we request; matches our fixed decode size so the server
+        // can downscale before sending without any visual change. 512 is an allowed bucket.
+        private const val IMAGEPROXY_SIZE = ARTWORK_DECODE_SIZE
     }
 }

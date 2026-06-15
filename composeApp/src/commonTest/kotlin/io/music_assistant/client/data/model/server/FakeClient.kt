@@ -33,7 +33,7 @@ class FakeClient : ServiceClient {
     override val serverBaseUrl: StateFlow<String?>
         get() = TODO("Not yet implemented")
 
-    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean): String? = null
+    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean, proxyId: String?): String? = null
 
     override fun rebaseServerImageUrl(rawUrl: String): String? = null
 

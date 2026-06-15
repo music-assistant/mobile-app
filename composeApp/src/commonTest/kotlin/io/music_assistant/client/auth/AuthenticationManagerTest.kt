@@ -146,7 +146,7 @@ private class FakeServiceClient : ServiceClient {
     override suspend fun login(username: String, password: String): Unit = awaitCancellation()
     override suspend fun authorize(token: String, isAutoLogin: Boolean) = Unit
     override fun logout() = Unit
-    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean): String? = null
+    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean, proxyId: String?): String? = null
     override fun rebaseServerImageUrl(rawUrl: String): String? = null
     override fun forceWebRTCReconnect() = Unit
     override fun onAppForeground() = Unit
