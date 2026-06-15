@@ -35,7 +35,7 @@ enum class DefaultClickOption {
      * only in Album/Playlist); currently everything applicable is available everywhere.
      */
     fun isAvailableIn(context: ClickContext, kind: ItemKind): Boolean = when (this) {
-        PLAY_FROM_HERE -> context == ClickContext.ALBUM
+        PLAY_FROM_HERE -> context == ClickContext.ALBUM || context == ClickContext.PLAYLIST
         else -> when (context) {
             ClickContext.ARTIST,
             ClickContext.PLAYLIST,

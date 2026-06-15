@@ -13,6 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DefaultClickOptionTest {
     @Test
@@ -54,9 +55,22 @@ class DefaultClickOptionTest {
     }
 
     @Test
+    fun `isAvailableIn is true for PLAY_FROM_HERE with ALBUM and PLAYLIST`() {
+        assertTrue(
+            DefaultClickOption.PLAY_FROM_HERE.isAvailableIn(ClickContext.ALBUM, ItemKind.TRACK),
+            "PLAY_FROM_HERE.isAvailableIn(ALBUM, TRACK) should be false",
+        )
+
+        assertTrue(
+            DefaultClickOption.PLAY_FROM_HERE.isAvailableIn(ClickContext.PLAYLIST, ItemKind.TRACK),
+            "PLAY_FROM_HERE.isAvailableIn(ALBUM, TRACK) should be false",
+        )
+    }
+
+    @Test
     fun `isAvailableIn is false for PLAY_FROM_HERE outside ALBUM`() {
         val otherContexts =
-            ClickContext.entries.filter { it != ClickContext.ALBUM }
+            ClickContext.entries.filter { it != ClickContext.ALBUM && it != ClickContext.PLAYLIST }
 
         otherContexts.forEach {
             assertFalse(
