@@ -100,12 +100,16 @@ enum class SubItemContext {
     PODCAST_EPISODES,
 }
 
-fun <T> List<T>.clientSorted(option: SortOption): List<T> {
+fun <T> List<T>.clientSorted(option: SortOption, context: SubItemContext? = null): List<T> {
     val comparator: Comparator<T> = when (option.field) {
-        SortField.ORIGINAL -> compareBy<T, Int?>(nullsLast()) {
-            (it as? Track)?.discNumber
-        }.thenBy(nullsLast()) {
-            (it as? Track)?.trackNumber
+        SortField.ORIGINAL -> if (context == SubItemContext.PLAYLIST_TRACKS) {
+            compareBy<T, Int?>(nullsLast()) { (it as? Track)?.position }
+        } else {
+            compareBy<T, Int?>(nullsLast()) {
+                (it as? Track)?.discNumber
+            }.thenBy(nullsLast()) {
+                (it as? Track)?.trackNumber
+            }
         }
         SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) {
             (it as? AppMediaItem)?.sortName ?: (it as? AppMediaItem)?.displayName

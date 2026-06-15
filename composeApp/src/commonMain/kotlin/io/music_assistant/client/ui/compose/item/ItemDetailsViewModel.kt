@@ -301,7 +301,9 @@ class ItemDetailsViewModel(
 
                 rawPlayableItems = tracks
                 val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.ALBUM_TRACKS)
-                _state.update { it.copy(playableItemsState = DataState.Data(tracks.clientSorted(sort))) }
+                _state.update {
+                    it.copy(playableItemsState = DataState.Data(tracks.clientSorted(sort, SubItemContext.ALBUM_TRACKS)))
+                }
             } catch (e: Exception) {
                 Logger.e("Failed to load album tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -326,7 +328,11 @@ class ItemDetailsViewModel(
 
                 rawPlayableItems = tracks
                 val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.PLAYLIST_TRACKS)
-                _state.update { it.copy(playableItemsState = DataState.Data(tracks.clientSorted(sort))) }
+                _state.update {
+                    it.copy(
+                        playableItemsState = DataState.Data(tracks.clientSorted(sort, SubItemContext.PLAYLIST_TRACKS)),
+                    )
+                }
             } catch (e: Exception) {
                 Logger.e("Failed to load playlist tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -470,7 +476,7 @@ class ItemDetailsViewModel(
         _state.update {
             it.copy(
                 playableItemsSortOption = sortOption,
-                playableItemsState = DataState.Data(rawPlayableItems.clientSorted(sortOption)),
+                playableItemsState = DataState.Data(rawPlayableItems.clientSorted(sortOption, context)),
             )
         }
     }

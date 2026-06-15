@@ -36,20 +36,16 @@ fun SortChip(
             selected = true,
             onClick = { expanded = true },
             label = { Text(currentSort.field.localizedName()) },
-            trailingIcon = if (currentSort.field != SortField.ORIGINAL) {
-                {
-                    Icon(
-                        if (currentSort.descending) {
-                            Icons.Default.ArrowDownward
-                        } else {
-                            Icons.Default.ArrowUpward
-                        },
-                        contentDescription = stringResource(Res.string.cd_sort_direction),
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            } else {
-                null
+            trailingIcon = {
+                Icon(
+                    if (currentSort.descending) {
+                        Icons.Default.ArrowDownward
+                    } else {
+                        Icons.Default.ArrowUpward
+                    },
+                    contentDescription = stringResource(Res.string.cd_sort_direction),
+                    modifier = Modifier.size(16.dp),
+                )
             },
         )
 
@@ -78,15 +74,15 @@ fun SortDropdownMenu(
                 onClick = {
                     onDismissRequest()
 
-                    if (field == SortField.ORIGINAL) {
-                        onSortChanged(SortOption(field))
-                    } else if (field == currentSort.field) {
-                        onSortChanged(SortOption(field, !currentSort.descending))
-                    } else {
-                        onSortChanged(SortOption(field))
-                    }
+                    onSortChanged(
+                        if (field == currentSort.field) {
+                            SortOption(field, !currentSort.descending)
+                        } else {
+                            SortOption(field)
+                        },
+                    )
                 },
-                trailingIcon = if (field == currentSort.field && field != SortField.ORIGINAL) {
+                trailingIcon = if (field == currentSort.field) {
                     {
                         Icon(
                             if (currentSort.descending) {
