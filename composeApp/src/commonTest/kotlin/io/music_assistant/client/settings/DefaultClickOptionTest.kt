@@ -61,7 +61,7 @@ class DefaultClickOptionTest {
         otherContexts.forEach {
             assertFalse(
                 DefaultClickOption.PLAY_FROM_HERE.isAvailableIn(it, ItemKind.TRACK),
-                "PLAY_FROM_HERE.isAvailableIn($it, TRACK) should be false"
+                "PLAY_FROM_HERE.isAvailableIn($it, TRACK) should be false",
             )
         }
     }
@@ -70,19 +70,19 @@ class DefaultClickOptionTest {
     fun `toItemAction maps to the matching ItemAction`() {
         assertEquals(
             ItemAction.Play(QueueOption.REPLACE),
-            DefaultClickOption.PLAY_NOW.toItemAction()
+            DefaultClickOption.PLAY_NOW.toItemAction(),
         )
         assertEquals(
             ItemAction.Play(QueueOption.PLAY),
-            DefaultClickOption.INSERT_NEXT_AND_PLAY.toItemAction()
+            DefaultClickOption.INSERT_NEXT_AND_PLAY.toItemAction(),
         )
         assertEquals(
             ItemAction.Play(QueueOption.NEXT),
-            DefaultClickOption.INSERT_NEXT.toItemAction()
+            DefaultClickOption.INSERT_NEXT.toItemAction(),
         )
         assertEquals(
             ItemAction.Play(QueueOption.ADD),
-            DefaultClickOption.ADD_TO_QUEUE.toItemAction()
+            DefaultClickOption.ADD_TO_QUEUE.toItemAction(),
         )
         assertEquals(ItemAction.StartRadio, DefaultClickOption.START_RADIO.toItemAction())
     }
@@ -96,7 +96,7 @@ class DefaultClickOptionTest {
     fun `effectiveFor keeps start radio when the item can start one`() {
         assertEquals(
             ItemAction.StartRadio,
-            DefaultClickOption.START_RADIO.effectiveFor(testTrack())
+            DefaultClickOption.START_RADIO.effectiveFor(testTrack()),
         )
     }
 
@@ -105,7 +105,7 @@ class DefaultClickOptionTest {
         val playNow = ItemAction.Play(QueueOption.REPLACE)
         assertEquals(
             playNow,
-            DefaultClickOption.START_RADIO.effectiveFor(testPlaylist(isDynamic = true))
+            DefaultClickOption.START_RADIO.effectiveFor(testPlaylist(isDynamic = true)),
         )
         assertEquals(playNow, DefaultClickOption.START_RADIO.effectiveFor(testPodcastEpisode()))
     }
