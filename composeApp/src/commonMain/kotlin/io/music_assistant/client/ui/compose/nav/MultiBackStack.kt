@@ -23,10 +23,14 @@ class MultiBackStack<T : NavKey>(private val backStacks: List<MutableList<T>>) {
     /**
      * Clear the current back stack and reset it back to its original state
      */
-    fun resetCurrentBackStack() {
+    fun resetCurrentBackStack(onReset: (() -> Unit)? = null) {
         backStacks[currentBackStack].apply {
-            clear()
-            add(roots[currentBackStack])
+            if (size == 1) {
+                onReset?.invoke()
+            } else {
+                clear()
+                add(roots[currentBackStack])
+            }
         }
     }
 

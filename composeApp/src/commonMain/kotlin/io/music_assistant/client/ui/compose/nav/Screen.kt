@@ -25,9 +25,12 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Screen(topBar: @Composable () -> Unit, content: @Composable () -> Unit) {
+fun Screen(
+    topBar: @Composable () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(),
+    content: @Composable () -> Unit,
+) {
     Surface {
-        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
         Column(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         ) {

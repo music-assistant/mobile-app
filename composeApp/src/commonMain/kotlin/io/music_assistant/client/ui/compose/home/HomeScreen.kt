@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -31,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -107,6 +109,8 @@ fun HomeScreen(
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     actionsViewModel: ActionsViewModel,
+    scrollState: LazyListState,
+    scrollBehaviour: TopAppBarScrollBehavior,
 ) {
     var editMode by remember { mutableStateOf(false) }
 
@@ -140,10 +144,10 @@ fun HomeScreen(
     val enabledCount = items.count { it.second }
     val enabledByKey = remember(items) { items.associate { it.first.lazyListKey() to it.second } }
 
-    val displayedData = if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
+    val displayedData =
+        if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
 
-    val listState = rememberLazyListState()
-    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+    val reorderableState = rememberReorderableLazyListState(scrollState) { from, to ->
         // Constrain reorder to the contiguous enabled section.
         if (from.index >= enabledCount || to.index >= enabledCount) return@rememberReorderableLazyListState
         items = items.toMutableList().apply { add(to.index, removeAt(from.index)) }
@@ -159,7 +163,12 @@ fun HomeScreen(
                 onToggleEditMode = {
                     if (editMode) {
                         homeScreenViewModel.saveHomeRows(
-                            items.map { SettingsRepository.HomeRowPref(it.first.itemId, it.second) },
+                            items.map {
+                                SettingsRepository.HomeRowPref(
+                                    it.first.itemId,
+                                    it.second,
+                                )
+                            },
                         )
                         editMode = false
                     } else {
@@ -169,6 +178,7 @@ fun HomeScreen(
                 },
             )
         },
+        scrollBehavior = scrollBehaviour,
     ) {
         val rowContent: @Composable (RecommendationFolder) -> Unit = { row ->
             CategoryRow(
@@ -187,79 +197,80 @@ fun HomeScreen(
             )
         }
         ProvideClickActions(ClickContext.HOME) {
-        LazyColumn(
-            state = listState,
-            contentPadding = contentPadding,
-        ) {
-            if (connectionState !is SessionState.Connected || dataState !is DataState.Data) {
-                item {
-                    Box(
-                        modifier = modifier.fillMaxWidth().height(200.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
+            LazyColumn(
+                state = scrollState,
+                contentPadding = contentPadding,
+            ) {
+                if (connectionState !is SessionState.Connected || dataState !is DataState.Data) {
+                    item {
+                        Box(
+                            modifier = modifier.fillMaxWidth().height(200.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
-                }
-            } else {
-                items(
-                    items = displayedData,
-                    key = { it.lazyListKey() },
-                ) { row ->
-                    if (editMode) {
-                        val enabled = enabledByKey[row.lazyListKey()] ?: true
-                        ReorderableItem(reorderableState, key = row.lazyListKey()) {
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                rowContent(row)
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .background(
-                                            MaterialTheme.colorScheme.background.copy(
-                                                alpha = if (enabled) 0.60f else 0.80f,
-                                            ),
-                                        )
-                                        .pointerInput(Unit) {
-                                            // Swallow taps & long-presses on the row;
-                                            // vertical drags pass through so the
-                                            // LazyColumn can still scroll.
-                                            detectTapGestures(onTap = {}, onLongPress = {})
-                                        },
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .align(Alignment.CenterEnd)
-                                        .padding(end = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    // Keep at least one row visible: block disabling the last enabled one.
-                                    Switch(
-                                        checked = enabled,
-                                        enabled = !enabled || enabledCount > 1,
-                                        onCheckedChange = { newEnabled ->
-                                            items = moveToEnabledBoundary(items, row, newEnabled)
-                                        },
-                                    )
-                                    Icon(
+                } else {
+                    items(
+                        items = displayedData,
+                        key = { it.lazyListKey() },
+                    ) { row ->
+                        if (editMode) {
+                            val enabled = enabledByKey[row.lazyListKey()] ?: true
+                            ReorderableItem(reorderableState, key = row.lazyListKey()) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    rowContent(row)
+                                    Box(
                                         modifier = Modifier
-                                            .padding(start = 12.dp)
-                                            .then(
-                                                if (enabled) Modifier.draggableHandle() else Modifier,
+                                            .matchParentSize()
+                                            .background(
+                                                MaterialTheme.colorScheme.background.copy(
+                                                    alpha = if (enabled) 0.60f else 0.80f,
+                                                ),
                                             )
-                                            .alpha(if (enabled) 1f else 0.3f)
-                                            .size(24.dp),
-                                        imageVector = TablerIcons.GripVertical,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
+                                            .pointerInput(Unit) {
+                                                // Swallow taps & long-presses on the row;
+                                                // vertical drags pass through so the
+                                                // LazyColumn can still scroll.
+                                                detectTapGestures(onTap = {}, onLongPress = {})
+                                            },
                                     )
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .padding(end = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        // Keep at least one row visible: block disabling the last enabled one.
+                                        Switch(
+                                            checked = enabled,
+                                            enabled = !enabled || enabledCount > 1,
+                                            onCheckedChange = { newEnabled ->
+                                                items =
+                                                    moveToEnabledBoundary(items, row, newEnabled)
+                                            },
+                                        )
+                                        Icon(
+                                            modifier = Modifier
+                                                .padding(start = 12.dp)
+                                                .then(
+                                                    if (enabled) Modifier.draggableHandle() else Modifier,
+                                                )
+                                                .alpha(if (enabled) 1f else 0.3f)
+                                                .size(24.dp),
+                                            imageVector = TablerIcons.GripVertical,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                        )
+                                    }
                                 }
                             }
+                        } else {
+                            rowContent(row)
                         }
-                    } else {
-                        rowContent(row)
                     }
                 }
             }
-        }
         }
     }
 }
