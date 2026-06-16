@@ -22,6 +22,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
@@ -259,7 +260,7 @@ class AutoLibrary(
         }
         result.detach()
         scope.launch {
-            val items = loadSubItems(context, parent, defaultSortFor(context)) ?: run {
+            val items = loadSubItems(context, parent, SortConfig.defaultFor(context)) ?: run {
                 result.sendResult(null)
                 return@launch
             }
@@ -308,7 +309,9 @@ class AutoLibrary(
         parent: ParentRef,
         sort: SortOption,
     ): List<MediaItem>? {
-        // Server-side sort only works for playlist tracks; the rest must be sorted client-side.
+        // Fetch in natural order and sort client-side, matching ItemDetailsViewModel. The
+        // context-aware clientSorted is what makes SortField.ORIGINAL mean track/disc number
+        // (albums) or playlist position rather than server name order.
         val request = when (context) {
             SubItemContext.ARTIST_ALBUMS ->
                 Request.Artist.getAlbums(parent.itemId, parent.provider)
@@ -317,11 +320,7 @@ class AutoLibrary(
                 Request.Album.getTracks(parent.itemId, parent.provider)
 
             SubItemContext.PLAYLIST_TRACKS ->
-                Request.Playlist.getTracks(
-                    itemId = parent.itemId,
-                    providerInstanceIdOrDomain = parent.provider,
-                    orderBy = sort.toServerString(),
-                )
+                Request.Playlist.getTracks(parent.itemId, parent.provider)
 
             SubItemContext.PODCAST_EPISODES ->
                 Request.Podcast.getEpisodes(parent.itemId, parent.provider)
@@ -332,14 +331,14 @@ class AutoLibrary(
             .resultAs<List<ServerMediaItem>>()
             ?.let { mediaItemFactory.createList(it) }
             ?: return null
-        val sorted =
-            if (context == SubItemContext.PLAYLIST_TRACKS) items else items.clientSorted(sort)
-        return sorted.filter { it.isPlayable }.map { it.toAutoMediaItem(true, defaultIconUri) }
-    }
-
-    private fun defaultSortFor(context: SubItemContext): SortOption = when (context) {
-        SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
-        else -> SortOption(SortField.NAME, descending = false)
+        val sorted = items.clientSorted(sort, context)
+        // Tracks inside an album/playlist carry the container URI so a PLAY_FROM_HERE tap can
+        // play the whole container starting from the tapped track.
+        val parentUri = parent.uri.takeIf {
+            context == SubItemContext.ALBUM_TRACKS || context == SubItemContext.PLAYLIST_TRACKS
+        }
+        return sorted.filter { it.isPlayable }
+            .map { it.toAutoMediaItem(true, defaultIconUri, parentUri = parentUri) }
     }
 
     private suspend fun waitForCorrectState(): Boolean =
@@ -713,6 +712,7 @@ class AutoLibrary(
         uris: List<String>,
         option: QueueOption,
         radioMode: Boolean = false,
+        startItem: String? = null,
     ) {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
@@ -721,6 +721,7 @@ class AutoLibrary(
             mediaUris = uris,
             option = option,
             radioMode = radioMode,
+            startItem = startItem,
         )
         if (plan == null) {
             androidAutoLog.w {
@@ -768,6 +769,23 @@ class AutoLibrary(
             ?.toItemKind()
             ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
             ?: DefaultClickOption.PLAY_NOW
+
+        // PLAY_FROM_HERE plays the parent container starting at this track (start_item). It's the
+        // one action toCarDispatch can't express; resolve it here. Without a parent (flat lists:
+        // search, For You, voice) it falls back to PLAY_NOW on the track itself.
+        if (action == DefaultClickOption.PLAY_FROM_HERE) {
+            val parentUri = extras?.getString(MediaIds.PARENT_URI_KEY)
+            val itemId = parts.getOrNull(0)
+            if (parentUri != null && itemId != null) {
+                scope.launch {
+                    dispatchToLocalPlayer(listOf(parentUri), QueueOption.REPLACE, startItem = itemId)
+                }
+            } else {
+                scope.launch { dispatchToLocalPlayer(listOf(uri), QueueOption.REPLACE) }
+            }
+            return
+        }
+
         val dispatch = action.toCarDispatch()
         scope.launch { dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.radioMode) }
     }
@@ -829,6 +847,10 @@ internal object MediaIds {
     // Bulk-button extras carry the chosen DefaultClickAction.name so play() dispatches the
     // exact action the user configured (queue option or start-radio) rather than guessing.
     const val ACTION_KEY = "auto_click_action"
+
+    // Carries the parent album/playlist URI on each track inside that drilldown, so a
+    // PLAY_FROM_HERE tap can play the container starting from the tapped track (start_item).
+    const val PARENT_URI_KEY = "auto_parent_uri"
 
     // `_` is taken by tab IDs and `__` by ParentRef; `|` keeps sub-list IDs
     // unambiguous against both (and against keys like BY_NAME that contain `_`).
@@ -921,9 +943,10 @@ private fun AppMediaItem.toAutoMediaItem(
     allowBrowse: Boolean,
     defaultIconUri: Uri,
     category: String? = null,
+    parentUri: String? = null,
 ): MediaItem {
     return MediaItem(
-        toMediaDescription(defaultIconUri, category),
+        toMediaDescription(defaultIconUri, category, parentUri),
         if (allowBrowse && mediaType.isBrowsableInAuto()) {
             MediaItem.FLAG_BROWSABLE
         } else {
@@ -946,6 +969,7 @@ fun @receiver:DrawableRes Int.toUri(context: Context): Uri = Uri.parse(
 fun AppMediaItem.toMediaDescription(
     defaultIconUri: Uri,
     category: String? = null,
+    parentUri: String? = null,
 ): MediaDescriptionCompat {
     return MediaDescriptionCompat.Builder()
         .setMediaId("${itemId}__${uri}__${mediaType}__$provider")
@@ -962,6 +986,7 @@ fun AppMediaItem.toMediaDescription(
                     MediaConstants.DESCRIPTION_EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
                     category,
                 )
+                parentUri?.let { putString(MediaIds.PARENT_URI_KEY, it) }
             },
         )
         .build()

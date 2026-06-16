@@ -18,6 +18,7 @@
   <string name="action_play">Play</string>
   <string name="action_play_album_from_here">Play album from here</string>
   <string name="action_play_all">Play all</string>
+  <string name="action_play_from_here">Play from here</string>
   <string name="action_play_next">Play next</string>
   <string name="action_play_now">Play now</string>
   <string name="action_play_playlist_from_here">Play playlist from here</string>

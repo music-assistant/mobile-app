@@ -43,7 +43,10 @@ fun DefaultClickOption.isCarSupported(platform: CarPlatform, kind: ItemKind): Bo
     if (!appliesTo(kind)) return false
 
     return if (this == DefaultClickOption.PLAY_FROM_HERE) {
-        false
+        // Needs a parent container + start track, only resolvable for a TRACK tap inside an
+        // album/playlist drilldown — and only AA threads that context through (see AutoLibrary).
+        // Tap-only: TRACK is never a browsable bulk kind, so this also keeps it out of bulk lists.
+        platform == CarPlatform.ANDROID_AUTO && kind == ItemKind.TRACK
     } else {
         when (platform) {
             CarPlatform.ANDROID_AUTO -> true
@@ -76,7 +79,10 @@ fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
     DefaultClickOption.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, radioMode = false)
     DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, radioMode = false)
     DefaultClickOption.START_RADIO -> CarDispatch(QueueOption.REPLACE, radioMode = true)
-    else -> throw IllegalArgumentException("$name not supported by Android Auto!")
+    // PLAY_FROM_HERE isn't a plain queue-option dispatch — it needs a parent URI + start item,
+    // so it's resolved at the AA call site (AutoLibrary.play), never here.
+    DefaultClickOption.PLAY_FROM_HERE ->
+        throw IllegalArgumentException("$name must be handled at the call site, not toCarDispatch")
 }
 
 /** The car surface the current platform exposes. */

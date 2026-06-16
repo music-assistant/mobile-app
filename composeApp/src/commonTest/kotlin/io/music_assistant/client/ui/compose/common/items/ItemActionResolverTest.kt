@@ -1,8 +1,13 @@
 package io.music_assistant.client.ui.compose.common.items
 
+import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.testPodcastEpisode
 import io.music_assistant.client.data.model.client.testTrack
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_play_album_from_here
+import musicassistantclient.composeapp.generated.resources.action_play_from_here
+import musicassistantclient.composeapp.generated.resources.action_play_playlist_from_here
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,6 +22,29 @@ class ItemActionResolverTest {
         progressSupported = false,
         defaultAction = defaultAction,
     )
+
+    // Regression: surfacing PLAY_FROM_HERE in the car per-kind tap dropdown renders the action
+    // with a null context. title()/icon() must fall back rather than throw (they used to).
+    @Test
+    fun `play from here title falls back to generic for context-less surfaces`() {
+        assertEquals(Res.string.action_play_from_here, ItemAction.PlayFromHere.title(null))
+        assertEquals(
+            Res.string.action_play_album_from_here,
+            ItemAction.PlayFromHere.title(ClickContext.ALBUM),
+        )
+        assertEquals(
+            Res.string.action_play_playlist_from_here,
+            ItemAction.PlayFromHere.title(ClickContext.PLAYLIST),
+        )
+    }
+
+    @Test
+    fun `play from here icon resolves for context-less surfaces without throwing`() {
+        // Just must not throw; album/playlist keep their specific icons (covered by the title test's
+        // parity). A non-album/playlist context returns the generic list-play icon.
+        ItemAction.PlayFromHere.icon(null)
+        ItemAction.PlayFromHere.icon(ClickContext.ARTIST)
+    }
 
     @Test
     fun `no default keeps natural order with play now first`() {

@@ -86,6 +86,29 @@ class LocalPlayerDispatchTest {
     }
 
     @Test
+    fun planCarriesStartItemThrough() {
+        val plan = planLocalPlayerDispatch(
+            localPlayerId = "sendspin-local",
+            localPlayerSyncedTo = null,
+            mediaUris = listOf("library://album/42"),
+            option = QueueOption.REPLACE,
+            startItem = "track-7",
+        )
+        assertEquals("track-7", plan?.startItem)
+    }
+
+    @Test
+    fun planDefaultsStartItemToNull() {
+        val plan = planLocalPlayerDispatch(
+            localPlayerId = "sendspin-local",
+            localPlayerSyncedTo = null,
+            mediaUris = listOf("library://album/42"),
+            option = QueueOption.REPLACE,
+        )
+        assertNull(plan?.startItem)
+    }
+
+    @Test
     fun planPreservesEveryQueueOption() {
         // Pins the option through verbatim — guards against a future
         // refactor introducing per-option dispatch branches in the planner.
@@ -187,6 +210,41 @@ class LocalPlayerDispatchTest {
             val media = playArgs["media"]?.jsonArray?.map { it.jsonPrimitive.content }
             assertContentEquals(listOf("library://album/42"), media)
         }
+    }
+
+    @Test
+    fun executePutsStartItemInPlayPayloadWhenSet() = runBlocking {
+        val client = RecordingClient()
+        executeLocalPlayerDispatch(
+            client,
+            LocalPlayerDispatchPlan(
+                playerId = "sendspin-local",
+                mediaUris = listOf("library://album/42"),
+                detachFrom = null,
+                option = QueueOption.REPLACE,
+                startItem = "track-7",
+            ),
+        )
+        val playArgs = client.sent.single().args
+        assertNotNull(playArgs)
+        assertEquals("track-7", playArgs["start_item"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun executeOmitsStartItemFromPlayPayloadWhenNull() = runBlocking {
+        val client = RecordingClient()
+        executeLocalPlayerDispatch(
+            client,
+            LocalPlayerDispatchPlan(
+                playerId = "sendspin-local",
+                mediaUris = listOf("library://album/42"),
+                detachFrom = null,
+                option = QueueOption.REPLACE,
+            ),
+        )
+        val playArgs = client.sent.single().args
+        assertNotNull(playArgs)
+        assertNull(playArgs["start_item"])
     }
 
     @Test

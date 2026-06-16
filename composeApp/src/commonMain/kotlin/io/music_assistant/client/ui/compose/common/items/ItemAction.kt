@@ -2,6 +2,7 @@ package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.Check
@@ -32,6 +33,7 @@ import musicassistantclient.composeapp.generated.resources.action_insert_next_an
 import musicassistantclient.composeapp.generated.resources.action_mark_played
 import musicassistantclient.composeapp.generated.resources.action_mark_unplayed
 import musicassistantclient.composeapp.generated.resources.action_play_album_from_here
+import musicassistantclient.composeapp.generated.resources.action_play_from_here
 import musicassistantclient.composeapp.generated.resources.action_play_now
 import musicassistantclient.composeapp.generated.resources.action_play_playlist_from_here
 import musicassistantclient.composeapp.generated.resources.action_remove_from_library
@@ -72,7 +74,9 @@ fun ItemAction.title(context: ClickContext? = null): StringResource = when (this
     is ItemAction.PlayFromHere -> when (context) {
         ClickContext.ALBUM -> Res.string.action_play_album_from_here
         ClickContext.PLAYLIST -> Res.string.action_play_playlist_from_here
-        else -> throw IllegalArgumentException("No string for this action!")
+        // Context-less surfaces (e.g. the per-kind car tap-action dropdown) apply to both
+        // containers, so they get the generic label rather than an album/playlist-specific one.
+        else -> Res.string.action_play_from_here
     }
 
     ItemAction.StartRadio -> Res.string.action_start_radio
@@ -98,7 +102,7 @@ fun ItemAction.icon(context: ClickContext?): ImageVector = when (this) {
     is ItemAction.PlayFromHere -> when (context) {
         ClickContext.ALBUM -> AlbumIcon
         ClickContext.PLAYLIST -> PlaylistIcon
-        else -> throw IllegalArgumentException("No icon for this action!")
+        else -> Icons.AutoMirrored.Filled.PlaylistPlay
     }
 
     ItemAction.StartRadio -> Icons.Default.CellTower
