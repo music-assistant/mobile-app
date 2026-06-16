@@ -32,8 +32,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -182,7 +182,7 @@ fun HomeScreen(
                 },
             )
         },
-        scrollBehavior = state.topAppBarScrollBehavior,
+        topAppBarState = state.topAppBarState,
     ) {
         val rowContent: @Composable (RecommendationFolder) -> Unit = { row ->
             CategoryRow(
@@ -470,13 +470,13 @@ fun allItemsTitle(type: MediaType) = when (type) {
 }
 
 class HomeScreenState(
-    val topAppBarScrollBehavior: TopAppBarScrollBehavior,
+    val topAppBarState: TopAppBarState,
     val lazyListState: LazyListState,
     val coroutineScope: CoroutineScope,
 ) : ScreenState {
     override fun reset() {
         coroutineScope.launch {
-            topAppBarScrollBehavior.state.heightOffset = 0f
+            topAppBarState.heightOffset = 0f
             lazyListState.animateScrollToItem(0)
         }
     }
@@ -485,7 +485,7 @@ class HomeScreenState(
         @Composable
         fun create(): HomeScreenState {
             return HomeScreenState(
-                TopAppBarDefaults.enterAlwaysScrollBehavior(),
+                rememberTopAppBarState(),
                 rememberLazyListState(),
                 rememberCoroutineScope(),
             )
