@@ -32,11 +32,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +81,10 @@ import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.utils.SessionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.all_albums
 import musicassistantclient.composeapp.generated.resources.all_artists
@@ -109,8 +114,7 @@ fun HomeScreen(
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     actionsViewModel: ActionsViewModel,
-    scrollState: LazyListState,
-    scrollBehaviour: TopAppBarScrollBehavior,
+    state: HomeScreenState,
 ) {
     var editMode by remember { mutableStateOf(false) }
 
@@ -147,7 +151,7 @@ fun HomeScreen(
     val displayedData =
         if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
 
-    val reorderableState = rememberReorderableLazyListState(scrollState) { from, to ->
+    val reorderableState = rememberReorderableLazyListState(state.lazyListState) { from, to ->
         // Constrain reorder to the contiguous enabled section.
         if (from.index >= enabledCount || to.index >= enabledCount) return@rememberReorderableLazyListState
         items = items.toMutableList().apply { add(to.index, removeAt(from.index)) }
@@ -178,7 +182,7 @@ fun HomeScreen(
                 },
             )
         },
-        scrollBehavior = scrollBehaviour,
+        scrollBehavior = state.topAppBarScrollBehavior,
     ) {
         val rowContent: @Composable (RecommendationFolder) -> Unit = { row ->
             CategoryRow(
@@ -198,7 +202,7 @@ fun HomeScreen(
         }
         ProvideClickActions(ClickContext.HOME) {
             LazyColumn(
-                state = scrollState,
+                state = state.lazyListState,
                 contentPadding = contentPadding,
             ) {
                 if (connectionState !is SessionState.Connected || dataState !is DataState.Data) {
@@ -463,4 +467,28 @@ fun allItemsTitle(type: MediaType) = when (type) {
     MediaType.RADIO -> stringResource(Res.string.all_radio)
     MediaType.GENRE -> stringResource(Res.string.all_genres)
     else -> null
+}
+
+class HomeScreenState(
+    val topAppBarScrollBehavior: TopAppBarScrollBehavior,
+    val lazyListState: LazyListState,
+    val coroutineScope: CoroutineScope,
+) : ScreenState {
+    override fun reset() {
+        coroutineScope.launch {
+            topAppBarScrollBehavior.state.heightOffset = 0f
+            lazyListState.animateScrollToItem(0)
+        }
+    }
+
+    companion object {
+        @Composable
+        fun create(): HomeScreenState {
+            return HomeScreenState(
+                TopAppBarDefaults.enterAlwaysScrollBehavior(),
+                rememberLazyListState(),
+                rememberCoroutineScope(),
+            )
+        }
+    }
 }

@@ -10,8 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -21,14 +19,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -80,7 +75,6 @@ import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -204,21 +198,14 @@ fun MainNavigationRoot(
         deepLinkBus.consume(dest)
     }
 
-    val scope = rememberCoroutineScope()
-    val homeScreenScrollState = rememberLazyListState()
-    val homeScreenTopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val homeScreenState = HomeScreenState.create()
 
     val navigationItems = listOf(
         multiBackStack.createNavigationItem(
             backStack = 0,
             icon = Icons.Default.Home,
             label = stringResource(Res.string.nav_home),
-            onReset = {
-                scope.launch {
-                    homeScreenTopAppBarScrollBehavior.state.heightOffset = 0f
-                    homeScreenScrollState.animateScrollToItem(0)
-                }
-            },
+            screenState = homeScreenState,
         ),
         multiBackStack.createNavigationItem(
             backStack = 1,
@@ -298,8 +285,7 @@ fun MainNavigationRoot(
                                     multiBackStack,
                                     homeScreenViewModel,
                                     actionsViewModel,
-                                    homeScreenScrollState,
-                                    homeScreenTopAppBarScrollBehavior,
+                                    homeScreenState,
                                 ),
                             ),
                         ),
@@ -331,8 +317,7 @@ private fun mainNavEntryProvider(
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
-    homeScreenScrollState: LazyListState,
-    homeScreenScrollBehavior: TopAppBarScrollBehavior,
+    homeScreenState: HomeScreenState,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -374,8 +359,7 @@ private fun mainNavEntryProvider(
                 },
                 homeRowsConfig = homeRowsConfig,
                 actionsViewModel = actionsViewModel,
-                scrollState = homeScreenScrollState,
-                scrollBehaviour = homeScreenScrollBehavior,
+                state = homeScreenState,
             )
         }
 
