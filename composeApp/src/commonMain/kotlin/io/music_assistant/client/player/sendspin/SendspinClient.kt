@@ -301,6 +301,7 @@ class SendspinClient(
                 // Update playback state based on sync quality
                 if (clockSynchronizer.currentQuality == SyncQuality.GOOD) {
                     if (_state.value is SendspinState.Buffering) {
+                        logger.i { "Playback synchronized (sync quality good)" }
                         _state.update { SendspinState.Synchronized }
                         stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
                     }

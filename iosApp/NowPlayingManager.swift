@@ -25,8 +25,14 @@ class NowPlayingManager {
     private var currentArtist: String?
     private var currentAlbum: String?
 
+    // MARK: - Logging
+    private static let logTag = "NowPlayingManager"
+    private func logInfo(_ message: String) { NativeLog.shared.info(tag: Self.logTag, message: message) }
+    private func logError(_ message: String) { NativeLog.shared.error(tag: Self.logTag, message: message) }
+    private func logDebug(_ message: String) { NativeLog.shared.debug(tag: Self.logTag, message: message) }
+
     init() {
-        print("🎵 NowPlayingManager: Initializing...")
+        logDebug("Initializing")
         configureAudioSession()
         setupRemoteCommands() // Setup commands once
         printDebugState("After init")
@@ -39,9 +45,9 @@ class NowPlayingManager {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [])
-            print("🎵 NowPlayingManager: Audio session category configured")
+            logDebug("Audio session category configured")
         } catch {
-            print("🎵 NowPlayingManager: ❌ Failed to configure audio session: \(error)")
+            logError("Failed to configure audio session: \(error)")
         }
     }
 
@@ -51,7 +57,7 @@ class NowPlayingManager {
             let session = AVAudioSession.sharedInstance()
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            print("🎵 NowPlayingManager: ❌ Failed to activate playback: \(error)")
+            logError("Failed to activate playback: \(error)")
         }
     }
 
@@ -59,7 +65,7 @@ class NowPlayingManager {
     /// We now support dynamic handler updates without re-registering commands
     func setCommandHandler(_ handler: @escaping CommandHandler) {
         self.commandHandler = handler
-        print("🎵 NowPlayingManager: Command handler updated")
+        logDebug("Command handler updated")
     }
 
     // Track pending update to handle race conditions
@@ -137,7 +143,7 @@ class NowPlayingManager {
         // If it's a new track, we want to PREVENT FLICKER.
         // Strategy: Keep showing OLD metadata until NEW artwork is ready.
 
-        print("🎵 NowPlayingManager: Detected new track. Waiting for artwork to prevent flicker...")
+        logDebug("Detected new track — waiting for artwork to prevent flicker")
 
         // Mark this as the pending update
         self.pendingIdentifier = newIdentifier
@@ -183,7 +189,7 @@ class NowPlayingManager {
 
             // Check if this result is still relevant
             if self.pendingIdentifier != newIdentifier {
-                print("🎵 NowPlayingManager: Ignoring stale artwork load for \(newIdentifier)")
+                logDebug("Ignoring stale artwork load for \(newIdentifier)")
                 return
             }
 
@@ -199,7 +205,7 @@ class NowPlayingManager {
                     contentId: newIdentifier,
                     isNewTrack: true
                 )
-                print("🎵 NowPlayingManager: Artwork loaded. Metadata updated.")
+                self.logDebug("Artwork loaded, metadata updated")
             }
         }
     }
@@ -277,7 +283,7 @@ class NowPlayingManager {
 
     /// Clears the Now Playing info
     func clearNowPlayingInfo() {
-        print("🎵 NowPlayingManager: Clearing Now Playing info")
+        logInfo("Clearing Now Playing info")
         DispatchQueue.main.async { [weak self] in
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             self?.cachedArtwork = nil
@@ -294,13 +300,13 @@ class NowPlayingManager {
 
     private func setupRemoteCommands() {
         let commandCenter = MPRemoteCommandCenter.shared()
-        print("🎵 NowPlayingManager: Setting up remote commands (Once)")
+        logDebug("Setting up remote commands (once)")
 
         // Helper to attach targets
         func addTarget(_ command: MPRemoteCommand, cmd: String) {
             command.isEnabled = true
             command.addTarget { [weak self] _ in
-                print("🎵 NowPlayingManager: Remote command received: \(cmd)")
+                self?.logDebug("Remote command received: \(cmd)")
                 self?.commandHandler?(cmd)
                 return .success
             }

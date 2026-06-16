@@ -106,7 +106,7 @@ class DirectTransport(
                 }
             } catch (@Suppress("SwallowedException") e: ClosedReceiveChannelException) {
                 // Expected on graceful close — the channel-closed exception type IS the signal.
-                logger.d { "WebSocket connection closed" }
+                logger.i { "WebSocket connection closed" }
             } finally {
                 session = null
             }

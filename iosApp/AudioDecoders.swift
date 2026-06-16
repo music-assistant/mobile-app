@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import AudioToolbox
+import ComposeApp
 
 // Import external decoder libraries
 // NOTE: These must be added via Xcode SPM:
@@ -124,7 +125,7 @@ class OpusLibDecoder: NativeAudioDecoder {
 
         do {
             self.decoder = try Opus.Decoder(format: format)
-            print("🎵 OpusLibDecoder: ✅ Created decoder for \(sampleRate)Hz, \(channels)ch")
+            NativeLog.shared.info(tag: "OpusLibDecoder", message: "Created decoder for \(sampleRate)Hz, \(channels)ch")
         } catch {
             throw AudioDecoderError.decodingFailed("Opus decoder: \(error.localizedDescription)")
         }
@@ -170,7 +171,13 @@ class FLACLibDecoder: NativeAudioDecoder {
     // Buffer for decoded samples (Int32 to preserve native bit depth)
     private var decodedSamples: [Int32] = []
     private var lastError: FLAC__StreamDecoderErrorStatus?
-    
+
+    // MARK: - Logging
+    private static let logTag = "FLACLibDecoder"
+    private func logInfo(_ message: String) { NativeLog.shared.info(tag: Self.logTag, message: message) }
+    private func logWarn(_ message: String) { NativeLog.shared.warn(tag: Self.logTag, message: message) }
+    private func logDebug(_ message: String) { NativeLog.shared.debug(tag: Self.logTag, message: message) }
+
     init(sampleRate: Int, channels: Int, bitDepth: Int, header: Data?) throws {
         self.sampleRate = sampleRate
         self.channels = channels
@@ -213,7 +220,7 @@ class FLACLibDecoder: NativeAudioDecoder {
                 guard let clientData = clientData else { return }
                 let selfRef = Unmanaged<FLACLibDecoder>.fromOpaque(clientData).takeUnretainedValue()
                 selfRef.lastError = status
-                print("🎵 FLACLibDecoder: Error callback - status \(status.rawValue)")
+                selfRef.logDebug("Error callback — status \(status.rawValue)")
             },
             clientData
         )
@@ -223,12 +230,12 @@ class FLACLibDecoder: NativeAudioDecoder {
             throw AudioDecoderError.decodingFailed("FLAC decoder init failed: \(initStatus.rawValue)")
         }
         
-        print("🎵 FLACLibDecoder: ✅ Created decoder for \(sampleRate)Hz, \(channels)ch, \(bitDepth)bit")
+        logInfo("Created decoder for \(sampleRate)Hz, \(channels)ch, \(bitDepth)bit")
         
         // If we have a codec header, add it to pending data
         if let header = header {
             pendingData.append(header)
-            print("🎵 FLACLibDecoder: Added \(header.count) bytes codec header")
+            logDebug("Added \(header.count) bytes codec header")
         }
     }
     
@@ -241,7 +248,7 @@ class FLACLibDecoder: NativeAudioDecoder {
         pendingData.append(data)
 
         if pendingData.count > maxPendingSize {
-            print("🎵 FLACLibDecoder: ⚠️ Pending buffer exceeded \(maxPendingSize) bytes (\(pendingData.count)), resetting")
+            logWarn("Pending buffer exceeded \(maxPendingSize) bytes (\(pendingData.count)), resetting")
             pendingData.removeAll(keepingCapacity: true)
             readOffset = 0
         }
@@ -262,7 +269,7 @@ class FLACLibDecoder: NativeAudioDecoder {
             let state = FLAC__stream_decoder_get_state(decoder)
             
             guard success != 0 else {
-                print("🎵 FLACLibDecoder: process_single returned false, state=\(state.rawValue)")
+                logDebug("process_single returned false, state=\(state.rawValue)")
                 break
             }
             

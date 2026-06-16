@@ -257,7 +257,7 @@ class MessageDispatcher(
     }
 
     suspend fun sendCommand(command: String, value: CommandValue?) {
-        logger.d { "Sending client/command: $command" }
+        logger.i { "Sending client/command: $command" }
         val message = ClientCommandMessage(
             payload = CommandPayload(command = command, value = value),
         )
@@ -361,7 +361,7 @@ class MessageDispatcher(
     }
 
     private suspend fun handleServerCommand(message: ServerCommandMessage) {
-        logger.d { "Received server/command: ${message.payload.player.command}" }
+        logger.i { "Received server/command: ${message.payload.player.command}" }
         _serverCommandEvent.emit(message)
     }
 
@@ -393,7 +393,7 @@ class MessageDispatcher(
                             album = album,
                             artworkUrl = artworkUrl,
                         )
-                        logger.d { "Updated stream metadata from server/state: $title by $artist" }
+                        logger.i { "Updated stream metadata from server/state: $title by $artist" }
                     }
                 }
             } catch (e: Exception) {

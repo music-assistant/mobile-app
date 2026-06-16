@@ -503,7 +503,7 @@ class MainDataSource(
 
                             is DataState.Loading, is DataState.NoData, is DataState.Error -> {
                                 // No data to preserve - stay in current state
-                                log.d { "Reconnecting with no data to preserve (state: ${currentState::class.simpleName})" }
+                                log.i { "Reconnecting with no data to preserve (state: ${currentState::class.simpleName})" }
                             }
                         }
 
@@ -609,7 +609,7 @@ class MainDataSource(
                                     }
 
                                     else -> {
-                                        log.d { "Backgrounded with no data to preserve" }
+                                        log.i { "Backgrounded with no data to preserve" }
                                     }
                                 }
 

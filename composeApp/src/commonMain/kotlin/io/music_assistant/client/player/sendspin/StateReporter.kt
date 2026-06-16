@@ -82,7 +82,7 @@ class StateReporter(
      * Used for volume/mute changes or initial sync.
      */
     suspend fun reportNow(state: PlayerStateValue) {
-        logger.i { "Reporting state: state=$state" }
+        logger.d { "Reporting state: state=$state" }
         messageDispatcher.sendState(PlayerStateObject(state = state))
     }
 

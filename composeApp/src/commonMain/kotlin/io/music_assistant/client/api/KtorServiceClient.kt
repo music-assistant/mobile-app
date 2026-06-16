@@ -57,6 +57,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -941,7 +942,7 @@ class KtorServiceClient(
                 }
             }
             settings.setTokenForServer(serverIdentifier, null)
-            logger.d { "Cleared token for server due to auth failure" }
+            logger.i { "Cleared token for server due to auth failure" }
         }
     }
 
@@ -1072,14 +1073,25 @@ class KtorServiceClient(
     }
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
+        val controlLog = request.playerControlLogLabel()
         // Auth-handshake commands bypass the gate — they're the mechanism by which
         // `ensureReadyForCommands` is *resolved*, so gating them would deadlock.
         if (request.command in authHandshakeCommands) return sendRequestRaw(request)
         if (!ensureReadyForCommands()) {
             logger.i { "sendRequest gated — not ready (state=${stateLabel(_sessionState.value)})" }
+            controlLog?.let { logger.i { "$it command failed: transport not ready" } }
             return Result.failure(IllegalStateException("Not ready for commands"))
         }
-        return sendRequestRaw(request)
+        controlLog?.let { logger.i { "$it command sent" } }
+        val result = sendRequestRaw(request)
+        controlLog?.let {
+            if (result.isSuccess) {
+                logger.i { "$it command acked" }
+            } else {
+                logger.i(result.exceptionOrNull()) { "$it command failed" }
+            }
+        }
+        return result
     }
 
     /**
@@ -1140,6 +1152,19 @@ class KtorServiceClient(
         supervisorJob.cancel()
         client.close()
     }
+
+    private fun Request.playerControlLogLabel(): String? {
+        if (!command.startsWith("players/cmd/") && !command.startsWith("player_queues/")) return null
+        val targetId = args?.stringArg("player_id")
+            ?: args?.stringArg("queue_id")
+            ?: args?.stringArg("queue_item_id")
+        return buildString {
+            append(command)
+            targetId?.let { append(" target=").append(it) }
+        }
+    }
+
+    private fun JsonObject.stringArg(name: String): String? = (this[name] as? JsonPrimitive)?.content
 
     companion object {
         private const val STALE_CONNECTION_THRESHOLD_MS = 30_000L

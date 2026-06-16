@@ -68,9 +68,12 @@ data class Event(
             EventType.CONNECTED,
             EventType.DISCONNECTED,
             EventType.ALL,
-            null,
             -> {
-                logger.w { "Unparsed event: $json" }
+                logger.d { "Ignoring unmodeled event: $type" }
+                null
+            }
+            null -> {
+                logger.w { "Unparsed event of unknown type: ${json.toString().take(200)}" }
                 null
             }
         }

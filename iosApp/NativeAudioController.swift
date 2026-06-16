@@ -42,9 +42,17 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     // have running before the interruption.
     private var pausedByInterruption = false
 
+    // MARK: - Logging
+    // Routes through Kermit (NativeLog) so these reach the shareable in-memory buffer
+    // and os.Logger
+    private static let logTag = "NativeAudioController"
+    private func logInfo(_ message: String) { NativeLog.shared.info(tag: Self.logTag, message: message) }
+    private func logError(_ message: String) { NativeLog.shared.error(tag: Self.logTag, message: message) }
+    private func logDebug(_ message: String) { NativeLog.shared.debug(tag: Self.logTag, message: message) }
+
     override init() {
         super.init()
-        print("🎵 NativeAudioController: Initialized")
+        logDebug("Initialized")
 
         // Handle audio session interruptions (phone calls, Siri, alarms)
         NotificationCenter.default.addObserver(
@@ -76,10 +84,10 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             // System auto-pauses AudioQueue. Tell the server to pause too so playback
             // resumes from the same position afterwards instead of skipping ahead while
             // the call held the audio session.
-            print("🎵 NativeAudioController: Audio session interrupted")
+            logInfo("Audio session interrupted")
             if isPlaying {
                 pausedByInterruption = true
-                print("🎵 NativeAudioController: Pausing server playback due to interruption")
+                logInfo("Pausing server playback due to interruption")
                 remoteCommandHandler?.onCommand(command: "pause", source: "interruption")
             }
         case .ended:
@@ -91,10 +99,10 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             // and once control is handed back, if another app is now using the
             // audio device exclusively.
             if !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint {
-                print("🎵 NativeAudioController: Resuming server playback after interruption")
+                logInfo("Resuming server playback after interruption")
                 remoteCommandHandler?.onCommand(command: "play", source: "interruption")
             } else {
-                print("🎵 NativeAudioController: Another app holds audio — staying paused")
+                logInfo("Another app holds audio — staying paused")
             }
         @unknown default:
             break
@@ -107,7 +115,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
 
         if reason == .oldDeviceUnavailable {
-            print("🎵 NativeAudioController: Audio output device disconnected")
+            logInfo("Audio output device disconnected")
             let previousRoute = userInfo[AVAudioSessionRouteChangePreviousRouteKey]
                 as? AVAudioSessionRouteDescription
             handleOldDeviceUnavailable(previousRoute: previousRoute)
@@ -126,7 +134,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     private func handleOldDeviceUnavailable(previousRoute: AVAudioSessionRouteDescription?) {
         guard streamStarted else { return }
         let prev = previousRoute?.outputs.first?.portType.rawValue ?? "unknown"
-        print("🎵 NativeAudioController: \(prev) disappeared — pausing playback")
+        logInfo("\(prev) disappeared — pausing playback")
         shouldPlay = false
         streamStarted = false
         stopAudioQueue()
@@ -139,7 +147,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     // MARK: - PlatformAudioPlayer Protocol
 
     func prepareStream(codec: String, sampleRate: Int32, channels: Int32, bitDepth: Int32, codecHeader: String?, listener: MediaPlayerListener) {
-        print("🎵 NativeAudioController: prepareStream - codec=\(codec), rate=\(sampleRate), ch=\(channels), bit=\(bitDepth)")
+        logInfo("prepareStream - codec=\(codec), rate=\(sampleRate), ch=\(channels), bit=\(bitDepth)")
 
         self.listener = listener
         self.currentCodec = codec.lowercased()
@@ -152,7 +160,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         // Decode codec header if present
         if let headerBase64 = codecHeader, let headerData = Data(base64Encoded: headerBase64) {
             self.codecHeader = headerData
-            print("🎵 NativeAudioController: Decoded codec header: \(headerData.count) bytes")
+            logDebug("Decoded codec header: \(headerData.count) bytes")
         } else {
             self.codecHeader = nil
         }
@@ -174,9 +182,9 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
                 bitDepth: Int(bitDepth),
                 codecHeader: self.codecHeader
             )
-            print("🎵 NativeAudioController: Created decoder for \(codec)")
+            logInfo("Created decoder for \(codec)")
         } catch {
-            print("🎵 NativeAudioController: ❌ Failed to create decoder: \(error)")
+            logError("Failed to create decoder: \(error)")
             listener.onError(error: KotlinThrowable(message: error.localizedDescription))
             return
         }
@@ -209,13 +217,13 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         // Start audio queue on first data
         if !streamStarted {
             streamStarted = true
-            print("🎵 NativeAudioController: First data received (\(swiftData.count) bytes)")
+            logDebug("First data received (\(swiftData.count) bytes)")
             NowPlayingManager.shared.activatePlayback()
             startAudioQueue()
         }
 
         guard let decoder = decoder else {
-            print("🎵 NativeAudioController: ❌ No decoder available")
+            logDebug("No decoder available — dropping packet")
             return
         }
 
@@ -225,12 +233,12 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             pcmBuffer.append(pcmData)
             bufferLock.unlock()
         } catch {
-            print("🎵 NativeAudioController: ❌ Decode error: \(error)")
+            logDebug("Decode error: \(error)")
         }
     }
 
     func stopRawPcmStream() {
-        print("🎵 NativeAudioController: Stopping stream")
+        logInfo("Stopping stream")
         shouldPlay = false
         streamStarted = false
         stopAudioQueue()
@@ -245,7 +253,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     /// in-flight audio so the consumer can't immediately rebuild the queue;
     /// resume then rebuilds clean on the next packet, like a cold start.
     func pauseSink() {
-        print("🎵 NativeAudioController: pauseSink")
+        logInfo("pauseSink")
         shouldPlay = false
         streamStarted = false
         tearDownQueue()
@@ -255,7 +263,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     /// `shouldPlay = true` re-opens the write gate; the queue rebuilds on the next
     /// audio packet, or is started here if one still exists (gapless restart).
     func resumeSink() {
-        print("🎵 NativeAudioController: resumeSink")
+        logInfo("resumeSink")
         shouldPlay = true
         NowPlayingManager.shared.activatePlayback()
         isPlaying = true
@@ -313,7 +321,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         audioFormat.mBytesPerFrame = UInt32(currentChannels) * UInt32(bytesPerSample)
         audioFormat.mBytesPerPacket = audioFormat.mBytesPerFrame
 
-        print("🎵 NativeAudioController: Audio format - \(currentSampleRate)Hz, \(currentChannels)ch, \(effectiveBitDepth)bit")
+        logDebug("Audio format - \(currentSampleRate)Hz, \(currentChannels)ch, \(effectiveBitDepth)bit")
 
         // Create AudioQueue
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
@@ -330,7 +338,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         )
 
         guard status == noErr, let queue = queue else {
-            print("🎵 NativeAudioController: ❌ Failed to create AudioQueue: \(status)")
+            logError("Failed to create AudioQueue: \(status)")
             return
         }
 
@@ -350,9 +358,9 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         let startStatus = AudioQueueStart(queue, nil)
         if startStatus == noErr {
             isPlaying = true
-            print("🎵 NativeAudioController: ✅ AudioQueue started")
+            logInfo("AudioQueue started")
         } else {
-            print("🎵 NativeAudioController: ❌ Failed to start AudioQueue: \(startStatus)")
+            logError("Failed to start AudioQueue: \(startStatus)")
         }
     }
 
@@ -372,7 +380,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
         audioQueue = nil
         isPlaying = false
-        print("🎵 NativeAudioController: AudioQueue stopped")
+        logInfo("AudioQueue stopped")
     }
 
     fileprivate func fillBuffer(queue: AudioQueueRef, buffer: AudioQueueBufferRef) {
@@ -436,7 +444,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         self.remoteCommandHandler = handler
 
         NowPlayingManager.shared.setCommandHandler { [weak self] command in
-            print("🎵 NativeAudioController: Remote command: \(command)")
+            self?.logInfo("Remote command: \(command)")
             self?.remoteCommandHandler?.onCommand(command: command, source: "remote")
         }
     }
