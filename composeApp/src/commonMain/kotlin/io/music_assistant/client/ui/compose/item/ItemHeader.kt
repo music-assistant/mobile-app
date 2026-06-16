@@ -54,7 +54,6 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
-import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -70,6 +69,7 @@ import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowAc
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.contentColorByLuminance
+import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.WindowClass
 import musicassistantclient.composeapp.generated.resources.Res
