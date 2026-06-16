@@ -1670,29 +1670,38 @@ class MainDataSource(
                         }
 
                         is QueueItemsUpdatedEvent -> {
-                            val data =
-                                queueFactory.create(event.data).takeIfNotStale("QueueItemsUpdated")
-                                    ?: return@collect
+                            val data = queueFactory.create(event.data)
 
-                            _queueInfos.update { value ->
-                                value.map {
-                                    if (it.id == data.id) data else it
+                            // The items list changed — always refetch it. The
+                            // staleness gate guards the playhead anchor only;
+                            // shuffle/reorder don't advance elapsed time (and the
+                            // optimistic bump raises the bar further), so gating
+                            // the refetch on it silently drops legitimate reorders
+                            // like shuffle. The refetch pulls authoritative items
+                            // from the server, so it can't snap the list backward
+                            // even on a replayed event.
+                            val fresh = data.takeIfNotStale("QueueItemsUpdated")
+                            fresh?.let { freshData ->
+                                _queueInfos.update { value ->
+                                    value.map {
+                                        if (it.id == freshData.id) freshData else it
+                                    }
                                 }
-                            }
-                            data.elapsedTime?.let { elapsed ->
-                                val player = (_serverPlayers.value as? DataState.Data)
-                                    ?.data?.find { it.queueId == data.id }
-                                positionTracker.setAnchor(
-                                    queueId = data.id,
-                                    elapsedSec = elapsed,
-                                    isPlaying = player?.isPlaying,
-                                    durationSec = data.currentItem?.track?.duration,
-                                    speed = data.playbackSpeed,
-                                )
+                                freshData.elapsedTime?.let { elapsed ->
+                                    val player = (_serverPlayers.value as? DataState.Data)
+                                        ?.data?.find { it.queueId == freshData.id }
+                                    positionTracker.setAnchor(
+                                        queueId = freshData.id,
+                                        elapsedSec = elapsed,
+                                        isPlaying = player?.isPlaying,
+                                        durationSec = freshData.currentItem?.track?.duration,
+                                        speed = freshData.playbackSpeed,
+                                    )
+                                }
                             }
                             (playersData.value as? DataState.Data)?.data?.firstOrNull {
                                 it.queueId == data.id
-                            }?.let { refreshPlayerQueueItems(it, data) }
+                            }?.let { refreshPlayerQueueItems(it, fresh) }
                         }
 
                         is QueueTimeUpdatedEvent -> {
@@ -1968,11 +1977,17 @@ class MainDataSource(
                         is DataState.Data -> DataState.Data(
                             currentState.data.map { playerData ->
                                 if (playerData.player.id == fullData.player.id) {
-                                    PlayerData(
-                                        player = playerData.player,
+                                    // `info` is owned by the combine() over
+                                    // `_queueInfos`/`localData`; only swap in the
+                                    // freshly loaded items here. Writing `info`
+                                    // from this async snapshot would race the
+                                    // combine and revert optimistic state (e.g.
+                                    // the shuffle toggle). Fall back to the loaded
+                                    // `queueInfo` only when no info exists yet.
+                                    playerData.copy(
                                         queue = DataState.Data(
                                             Queue(
-                                                info = queueInfo,
+                                                info = playerData.queueInfo ?: queueInfo,
                                                 items = queueTracks?.let { list ->
                                                     DataState.Data(
                                                         list,
@@ -1981,9 +1996,6 @@ class MainDataSource(
                                                     ?: DataState.Error(),
                                             ),
                                         ),
-                                        parentBind = playerData.parentBind,
-                                        childrenBinds = playerData.childrenBinds,
-                                        isLocal = playerData.player.id == settings.sendspinClientId.value,
                                     )
                                 } else {
                                     playerData

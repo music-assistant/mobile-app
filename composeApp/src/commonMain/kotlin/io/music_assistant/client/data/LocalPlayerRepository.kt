@@ -183,9 +183,16 @@ class LocalPlayerRepository(
 
     fun onQueueItemsLoaded(queueInfo: QueueInfo, items: List<QueueTrack>) {
         _localPlayerData.update { current ->
-            current?.copy(
-                queue = DataState.Data(Queue(info = queueInfo, items = DataState.Data(items))),
-            )
+            current?.let {
+                // Preserve the authoritative `info` (shuffle/repeat/elapsed are
+                // owned by the optimistic + server-queue-update path); an item
+                // load must not write a stale snapshot back over it. Fall back to
+                // the loaded `queueInfo` only when no info exists yet.
+                val info = (it.queue as? DataState.Data)?.data?.info ?: queueInfo
+                it.copy(
+                    queue = DataState.Data(Queue(info = info, items = DataState.Data(items))),
+                )
+            }
         }
     }
 
