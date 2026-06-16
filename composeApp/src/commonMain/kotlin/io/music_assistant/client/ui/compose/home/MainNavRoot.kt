@@ -72,6 +72,7 @@ import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
+import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
@@ -201,6 +202,7 @@ fun MainNavigationRoot(
 
     val homeScreenState = HomeScreenState.create()
     val libraryScreenState = LibraryScreenState.create()
+    val searchScreenState = SearchScreenState.create()
 
     val navigationItems = listOf(
         multiBackStack.createNavigationItem(
@@ -219,6 +221,7 @@ fun MainNavigationRoot(
             backStack = 2,
             icon = Icons.Default.Search,
             label = stringResource(Res.string.nav_search),
+            screenState = searchScreenState,
         ),
         NavigationItem(
             selected = false,
@@ -290,6 +293,7 @@ fun MainNavigationRoot(
                                     actionsViewModel,
                                     homeScreenState,
                                     libraryScreenState,
+                                    searchScreenState,
                                 ),
                             ),
                         ),
@@ -323,6 +327,7 @@ private fun mainNavEntryProvider(
     actionsViewModel: ActionsViewModel,
     homeScreenState: HomeScreenState,
     libraryScreenState: LibraryScreenState,
+    searchScreenState: SearchScreenState,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -458,6 +463,7 @@ private fun mainNavEntryProvider(
                 },
                 contentPadding = contentPadding,
                 actionsViewModel = actionsViewModel,
+                state = searchScreenState,
                 pendingSearch = pendingSearch,
                 onSearchConsumed = { pendingSearch = null },
             )

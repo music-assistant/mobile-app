@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -23,10 +25,13 @@ import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -68,6 +73,9 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CategoryRow
 import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.ScreenState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.search_error
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
@@ -82,10 +90,11 @@ fun SearchScreen(
     onNavigateToItem: (String, MediaType, String) -> Unit,
     actionsViewModel: ActionsViewModel,
     contentPadding: PaddingValues,
+    state: SearchScreenState,
     pendingSearch: GlobalSearchRequest? = null,
     onSearchConsumed: () -> Unit = {},
 ) {
-    val state by searchViewModel.state.collectAsStateWithLifecycle()
+    val searchState by searchViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
@@ -106,17 +115,18 @@ fun SearchScreen(
     Screen(
         topBar = {
             SearchTopBar(
-                state.searchState,
+                searchState.searchState,
                 onQueryChanged = searchViewModel::onQueryChanged,
                 onSearchTriggered = searchViewModel::onSearchTriggered,
                 onMediaTypeToggled = searchViewModel::onMediaTypeToggled,
                 onLibraryOnlyToggled = searchViewModel::onLibraryOnlyToggled,
             )
         },
+        topAppBarState = state.topAppBarState,
     ) {
         ProvideClickActions(ClickContext.SEARCH) {
         SearchContent(
-            state = state,
+            state = searchState,
             toastState = toastState,
             onItemClick = { item ->
                 when (item) {
@@ -143,6 +153,7 @@ fun SearchScreen(
                     ?.let { ProviderIcon(modifier, it) }
             },
             contentPadding = contentPadding,
+            lazyListState = state.lazyListState,
         )
         }
     }
@@ -197,6 +208,7 @@ private fun SearchContent(
     progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     contentPadding: PaddingValues,
+    lazyListState: LazyListState,
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -244,6 +256,7 @@ private fun SearchContent(
                                 .fillMaxSize()
                                 .padding(16.dp)
                                 .clearFocusOnScroll(),
+                            state = lazyListState,
                             contentPadding = contentPadding,
                         ) {
                             val (title, items) = results.nonEmptyLists.first()
@@ -345,6 +358,7 @@ private fun SearchContent(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clearFocusOnScroll(),
+                                state = lazyListState,
                                 contentPadding = contentPadding,
                             ) {
                                 preparedItems.forEach { (stringTitle, items) ->
@@ -434,6 +448,30 @@ private fun SearchFilters(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 },
+            )
+        }
+    }
+}
+
+class SearchScreenState(
+    val topAppBarState: TopAppBarState,
+    val lazyListState: LazyListState,
+    val coroutineScope: CoroutineScope,
+) : ScreenState {
+    override fun reset() {
+        topAppBarState.heightOffset = 0f
+        coroutineScope.launch {
+            lazyListState.animateScrollToItem(0)
+        }
+    }
+
+    companion object {
+        @Composable
+        fun create(): SearchScreenState {
+            return SearchScreenState(
+                rememberTopAppBarState(),
+                rememberLazyListState(),
+                rememberCoroutineScope(),
             )
         }
     }
