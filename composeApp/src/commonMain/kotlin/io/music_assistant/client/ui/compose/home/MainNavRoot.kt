@@ -63,6 +63,7 @@ import io.music_assistant.client.ui.compose.library.ItemListScreen
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryScreen
+import io.music_assistant.client.ui.compose.library.LibraryScreenState
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
@@ -199,6 +200,7 @@ fun MainNavigationRoot(
     }
 
     val homeScreenState = HomeScreenState.create()
+    val libraryScreenState = LibraryScreenState.create()
 
     val navigationItems = listOf(
         multiBackStack.createNavigationItem(
@@ -211,6 +213,7 @@ fun MainNavigationRoot(
             backStack = 1,
             icon = Icons.Default.LibraryMusic,
             label = stringResource(Res.string.nav_library),
+            screenState = libraryScreenState,
         ),
         multiBackStack.createNavigationItem(
             backStack = 2,
@@ -286,6 +289,7 @@ fun MainNavigationRoot(
                                     homeScreenViewModel,
                                     actionsViewModel,
                                     homeScreenState,
+                                    libraryScreenState,
                                 ),
                             ),
                         ),
@@ -318,6 +322,7 @@ private fun mainNavEntryProvider(
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
     homeScreenState: HomeScreenState,
+    libraryScreenState: LibraryScreenState,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -369,6 +374,7 @@ private fun mainNavEntryProvider(
             LibraryScreen(
                 libraryCategoriesViewModel,
                 contentPadding = contentPadding,
+                state = libraryScreenState,
                 onTypeClick = {
                     multiBackStack.add(MainNav.ItemList(it))
                 },

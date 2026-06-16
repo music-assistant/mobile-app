@@ -24,10 +24,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +41,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.utils.libraryItemMinWidth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_customize_tabs
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -49,20 +55,19 @@ import org.jetbrains.compose.resources.stringResource
 fun LibraryScreen(
     libraryCategoriesViewModel: LibraryCategoriesViewModel,
     contentPadding: PaddingValues,
+    state: LibraryScreenState,
     onTypeClick: (MediaType) -> Unit,
 ) {
-    val state by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
+    val categoriesState by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
 
     var showCustomizeDialog by remember { mutableStateOf(false) }
     if (showCustomizeDialog) {
         CustomizeLibraryCategoriesDialog(
-            initialConfig = state.categories.map { it.libraryCategory to it.enabled },
+            initialConfig = categoriesState.categories.map { it.libraryCategory to it.enabled },
             onDismissRequest = { showCustomizeDialog = false },
             onConfirm = libraryCategoriesViewModel::onTabsConfigChanged,
         )
     }
-
-    val gridState = rememberLazyGridState()
 
     Screen(
         topBar = {
@@ -78,13 +83,14 @@ fun LibraryScreen(
                 },
             )
         },
+        topAppBarState = state.topAppBarState,
     ) {
-        val libraryCategories = remember(state.categories) {
-            state.categories.filter { it.enabled }.map { it.libraryCategory }
+        val libraryCategories = remember(categoriesState.categories) {
+            categoriesState.categories.filter { it.enabled }.map { it.libraryCategory }
         }
 
         LibraryGrid(
-            gridState = gridState,
+            gridState = state.lazyGridState,
             paddingValues = contentPadding,
             libraryCategories = libraryCategories,
             onTypeClick = onTypeClick,
@@ -138,6 +144,30 @@ private fun LibraryGrid(
                     )
                 }
             }
+        }
+    }
+}
+
+class LibraryScreenState(
+    val topAppBarState: TopAppBarState,
+    val lazyGridState: LazyGridState,
+    val coroutineScope: CoroutineScope,
+) : ScreenState {
+    override fun reset() {
+        topAppBarState.heightOffset = 0f
+        coroutineScope.launch {
+            lazyGridState.animateScrollToItem(0)
+        }
+    }
+
+    companion object {
+        @Composable
+        fun create(): LibraryScreenState {
+            return LibraryScreenState(
+                rememberTopAppBarState(),
+                rememberLazyGridState(),
+                rememberCoroutineScope(),
+            )
         }
     }
 }
