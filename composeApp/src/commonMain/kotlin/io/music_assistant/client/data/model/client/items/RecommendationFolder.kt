@@ -25,7 +25,7 @@ data class RecommendationFolder(
         "recently_added_albums", "random_albums" -> MediaType.ALBUM
         "random_artists" -> MediaType.ARTIST
         "favorite_playlists" -> MediaType.PLAYLIST
-        else -> null
+        else -> items?.map { item -> item.mediaType }?.toSet()?.takeIf { it.size == 1 }?.first()
     }
 
     override fun equals(other: Any?): Boolean {

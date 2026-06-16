@@ -54,6 +54,7 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
+import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -254,7 +255,7 @@ private fun ItemText(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            modifier = Modifier.basicMarquee(),
+            modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee(),
             text = item.name,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
@@ -263,7 +264,7 @@ private fun ItemText(
         (item as? Album)?.version?.let {
             if (it.isNotBlank()) {
                 Text(
-                    modifier = Modifier.basicMarquee(),
+                    modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee(),
                     text = it,
                     textAlign = textAlign,
                     style = MaterialTheme.typography.titleSmall,
@@ -273,7 +274,7 @@ private fun ItemText(
 
         item.localizedSubtitle()?.let {
             Text(
-                modifier = Modifier.basicMarquee(),
+                modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee(),
                 text = it,
                 textAlign = textAlign,
                 style = MaterialTheme.typography.titleMedium,

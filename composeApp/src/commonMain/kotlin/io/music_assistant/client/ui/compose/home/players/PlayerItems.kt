@@ -139,15 +139,23 @@ fun CompactPlayerItem(
 
             // Track info
             val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
+            // Leading inset == fade width: at rest the left gradient covers only this empty pad
+            // (first glyph crisp); the marquee scrolls the [pad][text] unit so text dissolves
+            // toward the artwork when it overflows.
+            val marqueeFade = 16.dp
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp)
                     .clearAndSetSemantics {
                         contentDescription = trackContentDescription
                     },
             ) {
                 Text(
-                    modifier = Modifier.basicMarquee().alphaOn(currentMedia?.title != null),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fadingEdges(marqueeFade)
+                        .basicMarquee()
+                        .padding(start = marqueeFade)
+                        .alphaOn(currentMedia?.title != null),
                     text = trackName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
@@ -157,7 +165,11 @@ fun CompactPlayerItem(
                 )
                 currentMedia?.subtitle?.let {
                     Text(
-                        modifier = Modifier.basicMarquee(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fadingEdges(marqueeFade)
+                            .basicMarquee()
+                            .padding(start = marqueeFade),
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -167,6 +179,7 @@ fun CompactPlayerItem(
                 } ?: run {
                     if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
                         Text(
+                            modifier = Modifier.padding(horizontal = marqueeFade),
                             text = stringResource(Res.string.queue_cannot_play),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
