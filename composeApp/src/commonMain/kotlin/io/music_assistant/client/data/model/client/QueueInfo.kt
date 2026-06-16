@@ -14,7 +14,7 @@ data class QueueInfo(
     /**
      * Unix epoch seconds (UTC) when [elapsedTime] was last recomputed
      * server-side. Drives [isBefore]. Optimistic writes bump this above
-     * the last known server stamp; see `LocalPlayerRepository`.
+     * the last known server stamp; see `LocalPlayerController`.
      */
     val elapsedTimeLastUpdated: Double?,
     val currentItem: QueueTrack?,

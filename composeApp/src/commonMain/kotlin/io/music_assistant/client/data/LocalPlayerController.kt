@@ -15,19 +15,33 @@ import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.player.MediaPlayerController
+import io.music_assistant.client.player.sendspin.SendspinClient
+import io.music_assistant.client.player.sendspin.SendspinClientFactory
+import io.music_assistant.client.player.sendspin.SendspinError
+import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.player.sendspin.WebRTCSendspinChannelExhausted
+import io.music_assistant.client.player.sendspin.model.GoodbyeReason
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -38,12 +52,31 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.CoroutineContext
 
-class LocalPlayerRepository(
+/**
+ * Single owner of the local (Sendspin) player: its lifecycle (transport client
+ * start/stop/monitor), its half-synthetic [PlayerData] state, optimistic UI
+ * updates, the offline command queue, and reconciliation of the server events
+ * the MA API still forwards for it.
+ *
+ * [MainDataSource] depends on this one-way: it merges [localPlayerData] into the
+ * unified player list, mirrors [optimisticQueueChanges], collects
+ * [needsServerRefresh], routes the local player's commands here, and forwards
+ * matched server events to the `onServer*` reconcilers. This controller never
+ * calls back into [MainDataSource]; the only "please refresh the server list"
+ * signal goes out via [needsServerRefresh].
+ *
+ * The control plane stays on the MA server REST API: Sendspin is an audio
+ * rendering endpoint (player@v1 role only), not a controller, so commands are
+ * not migrated onto it.
+ */
+class LocalPlayerController(
     private val settings: SettingsRepository,
     private val apiClient: ServiceClient,
     private val mediaPlayerController: MediaPlayerController,
+    private val sendspinClientFactory: SendspinClientFactory,
+    private val playerRequestFactory: PlayerRequestFactory,
 ) : CoroutineScope {
-    private val log = Logger.withTag("LocalPlayerRepo")
+    private val log = Logger.withTag("LocalPlayerCtrl")
 
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
@@ -62,14 +95,66 @@ class LocalPlayerRepository(
     private val _optimisticQueueChanges = Channel<QueueInfo>(Channel.BUFFERED)
     val optimisticQueueChanges: Flow<QueueInfo> = _optimisticQueueChanges.receiveAsFlow()
 
+    // --- Sendspin transport lifecycle ---
+
+    private var sendspinClient: SendspinClient? = null
+    private var sendspinMonitorJobs = mutableListOf<Job>()
+    private var sendspinRetryCount = 0
+    private val sendspinMutex = Mutex()
+
+    private val _sendspinState = MutableStateFlow<SendspinState?>(null)
+    val sendspinState: StateFlow<SendspinState?> = _sendspinState.asStateFlow()
+
+    /**
+     * Fires after Sendspin registers (state → Ready) so [MainDataSource] re-fetches
+     * the server players/queues — replaces the former direct `updatePlayersAndQueues()`
+     * callback and keeps the dependency one-way.
+     */
+    private val _needsServerRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val needsServerRefresh: SharedFlow<Unit> = _needsServerRefresh.asSharedFlow()
+
     private val commandQueueMutex = Mutex()
     private val commandQueue = mutableListOf<QueuedEntry>()
 
     private data class QueuedEntry(val action: PlayerAction, val request: Request)
 
-    // --- Optimistic UI updates (called by MainDataSource before sending command) ---
+    init {
+        // Reset clock sync on foreground unless playback held CPU awake through
+        // the background — otherwise doze-paused CLOCK_MONOTONIC strands the offset.
+        launch {
+            apiClient.foregroundEvents.collect {
+                val streaming = sendspinClient?.state?.value.let {
+                    it is SendspinState.Synchronized || it is SendspinState.Buffering
+                }
+                if (streaming) return@collect
+                sendspinClientFactory.currentClockSynchronizer()?.let {
+                    log.i { "Foreground from idle — resetting clock sync" }
+                    it.reset()
+                }
+            }
+        }
+    }
 
-    fun applyOptimisticUpdate(data: PlayerData, action: PlayerAction) {
+    // --- Command entry (canonical local-player command surface) ---
+
+    /**
+     * The one entry point for every local-player command surface (in-app controls,
+     * Control Center / lock screen / Android Auto transport, playback-error auto-pause).
+     * Applies the optimistic UI update immediately, then sends — or offline-queues — the
+     * request. Routes uniformly through the MA REST API (no transport split).
+     */
+    fun handleLocalCommand(data: PlayerData, action: PlayerAction) {
+        val resolved = playerRequestFactory.resolve(data, action)
+        applyOptimisticUpdate(data, resolved)
+        launch {
+            val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
+            sendOrQueue(resolved, request)
+        }
+    }
+
+    // --- Optimistic UI updates ---
+
+    private fun applyOptimisticUpdate(data: PlayerData, action: PlayerAction) {
         when (action) {
             PlayerAction.TogglePlayPause -> {
                 val wasPlaying = data.player.isPlaying
@@ -132,7 +217,7 @@ class LocalPlayerRepository(
 
     // --- Command queue (online: send immediately, offline: queue with dedup) ---
 
-    suspend fun sendOrQueue(action: PlayerAction, request: Request) {
+    private suspend fun sendOrQueue(action: PlayerAction, request: Request) {
         // Fast-path queue when known-offline avoids burning the gate's 10s timeout
         // on actions the user already perceives as "do this when we're back."
         // The Result.isFailure fallback closes the TOCTOU window where the state
@@ -254,11 +339,227 @@ class LocalPlayerRepository(
 
     // --- Lifecycle ---
 
+    /**
+     * Initialize the Sendspin client if enabled in settings.
+     * Safe for background: this controller is a singleton held by the foreground service.
+     */
+    suspend fun start() = sendspinMutex.withLock {
+        // Get prerequisites
+        val authToken = when (val state = apiClient.sessionState.value) {
+            is SessionState.Connected.Direct ->
+                settings.getTokenForServer(
+                    settings.getDirectServerIdentifier(
+                        state.connectionInfo.host,
+                        state.connectionInfo.port,
+                        state.connectionInfo.isTls,
+                    ),
+                )
+
+            is SessionState.Connected.WebRTC ->
+                settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
+
+            else -> null
+        }
+
+        // Stop existing client if any (but preserve if it's actively connected, connecting, or reconnecting)
+        sendspinClient?.let { existing ->
+            when (val state = existing.state.value) {
+                is SendspinState.Ready,
+                is SendspinState.Buffering,
+                is SendspinState.Synchronized,
+                is SendspinState.Connecting,
+                is SendspinState.Authenticating,
+                is SendspinState.Handshaking,
+                    -> {
+                    return@withLock
+                }
+
+                is SendspinState.Reconnecting -> {
+                    return@withLock
+                }
+
+                is SendspinState.Error -> {
+                    val errorMsg = when (val err = state.error) {
+                        is SendspinError.Permanent -> err.userAction
+                        is SendspinError.Transient -> err.cause.message
+                        is SendspinError.Degraded -> err.reason
+                    }
+                    log.w { "Sendspin: REINIT — Error: $errorMsg" }
+                }
+
+                is SendspinState.Idle -> Unit
+            }
+            existing.stop(GoodbyeReason.Restart)
+            existing.close()
+        }
+
+        // Create client using factory
+        val createResult = sendspinClientFactory.createIfEnabled(
+            mainConnection = settings.connectionInfo.value,
+            authToken = authToken,
+        )
+
+        createResult.onFailure { error ->
+            if (error is WebRTCSendspinChannelExhausted) {
+                log.i { "WebRTC sendspin channel exhausted — forcing reconnect for fresh channels" }
+                apiClient.forceWebRTCReconnect()
+                // After reconnection, start() will be called again
+                // from the session state handler with a fresh channel.
+                return@withLock
+            }
+            log.w { "Cannot create Sendspin client: ${error.message}" }
+            return@withLock
+        }
+
+        val client = createResult.getOrNull() ?: return@withLock
+
+        // Set up remote command handler for Control Center/Lock Screen commands.
+        // Routed through the canonical local-command entry.
+        mediaPlayerController.onRemoteCommand = { command ->
+            localPlayerData.value?.let { playerData ->
+                log.i { "Remote command: $command" }
+                when (command) {
+                    "play" -> handleLocalCommand(playerData, PlayerAction.Play)
+                    "pause" -> handleLocalCommand(playerData, PlayerAction.Pause)
+                    "toggle_play_pause" -> handleLocalCommand(
+                        playerData,
+                        PlayerAction.TogglePlayPause,
+                    )
+
+                    "next" -> handleLocalCommand(playerData, PlayerAction.Next)
+                    "previous" -> handleLocalCommand(playerData, PlayerAction.Previous)
+                    else -> {
+                        if (command.startsWith("seek:")) {
+                            command.removePrefix("seek:").toDoubleOrNull()?.let { position ->
+                                handleLocalCommand(playerData, PlayerAction.SeekTo(position.toLong()))
+                            }
+                        } else {
+                            log.w { "Unknown remote command: $command" }
+                        }
+                    }
+                }
+            } ?: log.w { "No local player available for remote command: $command" }
+        }
+
+        // Monitor client lifecycle
+        sendspinClient = client
+        monitorSendspinClient(client)
+
+        // Client is already started by factory (detects WebRTC vs WebSocket automatically)
+        log.i { "Sendspin client initialized and started" }
+    }
+
+    /**
+     * Monitor Sendspin client for errors and state changes.
+     */
+    private fun monitorSendspinClient(client: SendspinClient) {
+        // Cancel any previous monitoring jobs to prevent old clients from
+        // leaking state transitions into _sendspinState or triggering pipeline disconnects
+        cancelSendspinMonitorJobs()
+
+        sendspinMonitorJobs += launch {
+            // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
+            // and pause the MA server player when they occur
+            client.playbackStoppedDueToError.filterNotNull().collect { _ ->
+                // Pause the local sendspin player on the MA server
+                localPlayerData.value?.let { playerData ->
+                    if (playerData.player.isPlaying) {
+                        handleLocalCommand(playerData, PlayerAction.Pause)
+                    }
+                }
+            }
+        }
+
+        sendspinMonitorJobs += launch {
+            client.state.collect { state ->
+                _sendspinState.value = state
+                when (state) {
+                    is SendspinState.Ready -> {
+                        sendspinRetryCount = 0
+                        delay(1000) // Give server a moment to register the player
+                        _needsServerRefresh.emit(Unit)
+                    }
+
+                    is SendspinState.Error -> {
+                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+
+                        // Retry if error is not being auto-retried and main API is connected
+                        val shouldRetry = when (state.error) {
+                            is SendspinError.Permanent -> true
+                            is SendspinError.Transient -> !state.error.willRetry
+                            is SendspinError.Degraded -> false
+                        }
+
+                        if (shouldRetry && sendspinRetryCount < MAX_SENDSPIN_RETRIES) {
+                            if (apiClient.isReadyForCommands.value && settings.sendspinEnabled.value) {
+                                sendspinRetryCount++
+                                val backoffMs = 5000L * sendspinRetryCount
+                                delay(backoffMs)
+                                // Re-check after delay (conditions may have changed)
+                                val stillValid =
+                                    apiClient.isReadyForCommands.value && settings.sendspinEnabled.value
+                                if (stillValid) {
+                                    try {
+                                        start()
+                                    } catch (_: Exception) {
+                                        coroutineContext.ensureActive()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    is SendspinState.Idle -> {
+                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
+                    }
+
+                    is SendspinState.Reconnecting -> Unit
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun cancelSendspinMonitorJobs() {
+        if (sendspinMonitorJobs.isNotEmpty()) {
+            sendspinMonitorJobs.forEach { it.cancel() }
+            sendspinMonitorJobs.clear()
+        }
+    }
+
+    /**
+     * Stop the Sendspin client if running.
+     * Destroys the shared audio pipeline so the AudioTrack is fully released.
+     */
+    suspend fun stop(reason: GoodbyeReason) = sendspinMutex.withLock {
+        // Cancel monitor jobs FIRST to prevent old state transitions from leaking
+        cancelSendspinMonitorJobs()
+        sendspinRetryCount = 0
+        sendspinClient?.let { client ->
+            try {
+                client.stop(reason)
+                client.close()
+            } catch (e: Exception) {
+                log.e(e) { "Error stopping Sendspin client" }
+            }
+            sendspinClient = null
+        }
+        _sendspinState.value = null
+        // Deliberately preserve local-player state and the offline command queue:
+        // most callers (background, reconnect, persistent error) are transient and
+        // rely on drainCommandQueue() replaying queued intent — e.g. a post-
+        // interruption resume — once the transport returns. Genuine resets clear
+        // them explicitly (clearAllData / Sendspin-disabled).
+        // Fully release the shared audio pipeline (AudioTrack, decoder, etc.)
+        // A fresh pipeline will be created on the next start()
+        sendspinClientFactory.destroyPipeline()
+    }
+
     /** Full local-player reset: drop the optimistic UI state and any pending offline
      *  commands. Called only on a genuine session reset (logout, terminal auth failure,
-     *  Sendspin disabled). NOT called on transient teardown — [MainDataSource.stopSendspin]
-     *  deliberately preserves both so [drainCommandQueue] can replay a queued resume once
-     *  the transport returns. */
+     *  Sendspin disabled). NOT called on transient teardown — [stop] deliberately
+     *  preserves both so [drainCommandQueue] can replay a queued resume once the
+     *  transport returns. */
     fun clearState() {
         _localPlayerData.update { null }
         launch { commandQueueMutex.withLock { commandQueue.clear() } }
@@ -345,7 +646,7 @@ class LocalPlayerRepository(
                 }
 
                 is PlayerAction.SeekTo -> {
-                    log.i { "SeekTo: ${action.position}" }
+                    Logger.e("SeekTo: ${action.position}")
                     commandQueue.removeAll { it.action is PlayerAction.SeekTo }
                     commandQueue.add(entry)
                 }
@@ -356,6 +657,8 @@ class LocalPlayerRepository(
     }
 
     private companion object {
+        private const val MAX_SENDSPIN_RETRIES = 5
+
         /** Optimistic-bump offset; safely below any realistic server-confirmation RTT. */
         const val OPTIMISTIC_BUMP_EPSILON_S = 0.0001
     }

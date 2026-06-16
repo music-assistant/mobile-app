@@ -6,8 +6,10 @@ import io.music_assistant.client.api.KtorServiceClient
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthenticationManager
-import io.music_assistant.client.data.LocalPlayerRepository
+import io.music_assistant.client.data.LocalPlayerController
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.PlayerPositionTracker
+import io.music_assistant.client.data.PlayerRequestFactory
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
@@ -58,9 +60,11 @@ fun sharedModule(
         }  // Eager - needs to start monitoring immediately
         // Expose the AuthCoordinator surface for viewmodels; same singleton instance.
         single<AuthCoordinator> { get<AuthenticationManager>() }
-        singleOf(::MediaPlayerController)  // Used by MainDataSource for Sendspin
+        singleOf(::MediaPlayerController)  // Used by the local (Sendspin) player sink
         singleOf(::SendspinClientFactory)   // Factory for creating Sendspin clients
-        singleOf(::LocalPlayerRepository)   // Optimistic local player state
+        single { PlayerPositionTracker() }  // Shared live-position source of truth
+        singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
+        singleOf(::LocalPlayerController)    // Local player: lifecycle + state + commands
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)

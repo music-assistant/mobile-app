@@ -108,7 +108,7 @@ class QueueInfoStalenessTest {
     fun staleServerEventIsBeforeOptimisticBump() {
         // Optimistic UI writes (e.g. ToggleShuffle) bump elapsedTimeLastUpdated
         // to a value strictly above the last known server stamp (existing +
-        // tiny epsilon, see LocalPlayerRepository) so a server replay whose
+        // tiny epsilon, see LocalPlayerController) so a server replay whose
         // timestamp predates the user action is rejected. This documents the
         // contract.
         val lastServerEvent = queueInfoOf("q1", 1000.0)
