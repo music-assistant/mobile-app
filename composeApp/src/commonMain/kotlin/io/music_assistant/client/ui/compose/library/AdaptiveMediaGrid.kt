@@ -30,11 +30,13 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
+import io.music_assistant.client.ui.compose.common.items.FolderCell
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
@@ -186,9 +188,11 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                else -> {
-                    // Unsupported item type - skip
-                }
+                is RecommendationFolder -> FolderCell(
+                    item = item,
+                    viewMode = viewMode,
+                    onNavigateClick = onNavigateClick,
+                )
             }
         }
 

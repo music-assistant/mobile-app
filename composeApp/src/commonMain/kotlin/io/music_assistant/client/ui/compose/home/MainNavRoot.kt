@@ -59,9 +59,12 @@ import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
+import io.music_assistant.client.ui.compose.library.BrowseScreen
+import io.music_assistant.client.ui.compose.library.BrowseViewModel
 import io.music_assistant.client.ui.compose.library.ItemListScreen
 import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
+import io.music_assistant.client.ui.compose.library.LibraryCategory
 import io.music_assistant.client.ui.compose.library.LibraryScreen
 import io.music_assistant.client.ui.compose.library.LibraryScreenState
 import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationScaffold
@@ -380,8 +383,12 @@ private fun mainNavEntryProvider(
                 libraryCategoriesViewModel,
                 contentPadding = contentPadding,
                 state = libraryScreenState,
-                onTypeClick = {
-                    multiBackStack.add(MainNav.ItemList(it))
+                onCategoryClick = { category ->
+                    if (category == LibraryCategory.BROWSE) {
+                        multiBackStack.add(MainNav.Browse(path = null, title = null))
+                    } else {
+                        category.mediaType?.let { multiBackStack.add(MainNav.ItemList(it)) }
+                    }
                 },
             )
         }
@@ -418,6 +425,50 @@ private fun mainNavEntryProvider(
                                 ),
                             )
                         }
+
+                        else -> Unit
+                    }
+                },
+            )
+        }
+
+        entry<MainNav.Browse> { browse ->
+            val browseViewModel = koinViewModel<BrowseViewModel> {
+                parametersOf(browse.path)
+            }
+
+            BrowseScreen(
+                browseViewModel = browseViewModel,
+                title = browse.title,
+                contentPadding = contentPadding,
+                actionsViewModel = actionsViewModel,
+                onBack = { multiBackStack.removeLastOrNull() },
+                onNavigateClick = { item ->
+                    when (item) {
+                        is RecommendationFolder ->
+                            if (item.isParentLink) {
+                                // The server's ".." entry maps to our own back navigation.
+                                multiBackStack.removeLastOrNull()
+                            } else {
+                                // BrowseFolder carries an explicit `path`; `uri` is only a fallback.
+                                multiBackStack.add(
+                                    MainNav.Browse(path = item.path ?: item.uri, title = item.displayName),
+                                )
+                            }
+
+                        is Artist,
+                        is Album,
+                        is Playlist,
+                        is Podcast,
+                        is Audiobook,
+                        is Genre,
+                        -> multiBackStack.add(
+                            MainNav.ItemDetails(
+                                itemId = item.itemId,
+                                mediaType = item.mediaType,
+                                providerId = item.provider,
+                            ),
+                        )
 
                         else -> Unit
                     }
@@ -482,6 +533,18 @@ private sealed interface MainNav : NavKey {
     data class ItemList(val mediaType: MediaType) : MainNav
 
     /**
+     * One level of the folder-style Browse tree. [path] is the server browse path (null = root);
+     * [stackingId] keeps stacked levels distinct in the back stack (mirrors [ItemDetails]).
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    @Serializable
+    data class Browse(
+        val path: String?,
+        val title: String?,
+        val stackingId: String = Uuid.generateV4().toString(),
+    ) : MainNav
+
+    /**
      * Multiple instances of the same item can appear in a back stack - [stackingId] ensures they
      * are treated as different entries.
      */
@@ -508,6 +571,7 @@ private fun rememberMainNavBackStack(bottom: MainNav) = rememberNavBackStack(
                     subclass(MainNav.Landing::class, MainNav.Landing.serializer())
                     subclass(MainNav.Library::class, MainNav.Library.serializer())
                     subclass(MainNav.ItemList::class, MainNav.ItemList.serializer())
+                    subclass(MainNav.Browse::class, MainNav.Browse.serializer())
                     subclass(
                         MainNav.ItemDetails::class,
                         MainNav.ItemDetails.serializer(),

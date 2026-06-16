@@ -37,10 +37,8 @@ class LibraryCategoriesViewModel(
         return getCategoryStates(stored)
     }
 
-    private fun getCategoryStates(setting: List<SettingsRepository.LibraryCategoryPref>?): List<CategoryState> {
-        return setting?.map { CategoryState(LibraryCategory.valueOf(it.name), it.enabled) }
-            ?: LibraryCategory.entries.map { CategoryState(it, true) }
-    }
+    private fun getCategoryStates(setting: List<SettingsRepository.LibraryCategoryPref>?): List<CategoryState> =
+        reconcileLibraryCategories(setting).map { (category, enabled) -> CategoryState(category, enabled) }
 
     data class State(
         val categories: List<CategoryState>,

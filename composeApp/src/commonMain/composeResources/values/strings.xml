@@ -136,6 +136,7 @@
   <string name="media_type_radio">Radio</string>
   <string name="media_type_tracks">Tracks</string>
   <string name="menu_default_label">Default</string>
+  <string name="nav_browse">Browse</string>
   <string name="nav_home">Home</string>
   <string name="nav_library">Library</string>
   <string name="nav_search">Search</string>

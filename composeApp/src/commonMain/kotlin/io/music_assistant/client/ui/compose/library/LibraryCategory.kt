@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.library
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.ui.graphics.vector.ImageVector
 import io.music_assistant.client.data.model.client.MediaType
@@ -12,12 +13,15 @@ import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
 import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.nav_browse
 import org.jetbrains.compose.resources.StringResource
 
 enum class LibraryCategory {
-    ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES;
+    ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES, BROWSE;
 
-    val mediaType: MediaType
+    /** Path-based [BROWSE] is not a media type, hence nullable. */
+    val mediaType: MediaType?
         get() = when (this) {
             ARTISTS -> MediaType.ARTIST
             ALBUMS -> MediaType.ALBUM
@@ -27,6 +31,7 @@ enum class LibraryCategory {
             PODCASTS -> MediaType.PODCAST
             RADIOS -> MediaType.RADIO
             GENRES -> MediaType.GENRE
+            BROWSE -> null
         }
 }
 
@@ -40,7 +45,8 @@ val carTabCategories: List<LibraryCategory> = listOf(
     LibraryCategory.AUDIOBOOKS,
 )
 
-fun LibraryCategory.stringResource(): StringResource = mediaType.stringResource()
+fun LibraryCategory.stringResource(): StringResource =
+    mediaType?.stringResource() ?: Res.string.nav_browse // TODO revise if more added
 
 fun LibraryCategory.icon(): ImageVector = when (this) {
     LibraryCategory.ARTISTS -> ArtistIcon
@@ -51,4 +57,5 @@ fun LibraryCategory.icon(): ImageVector = when (this) {
     LibraryCategory.PODCASTS -> Icons.Default.Podcasts
     LibraryCategory.RADIOS -> RadioIcon
     LibraryCategory.GENRES -> GenreIcon
+    LibraryCategory.BROWSE -> Icons.Default.Folder
 }

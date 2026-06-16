@@ -103,6 +103,7 @@ class MediaItemFactory(
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 items = items?.let { createList(it) },
+                path = path,
             )
 
             MediaType.PODCAST -> Podcast(

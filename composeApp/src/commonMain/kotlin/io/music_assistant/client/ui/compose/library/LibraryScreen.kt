@@ -39,7 +39,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.utils.libraryItemMinWidth
@@ -56,7 +55,7 @@ fun LibraryScreen(
     libraryCategoriesViewModel: LibraryCategoriesViewModel,
     contentPadding: PaddingValues,
     state: LibraryScreenState,
-    onTypeClick: (MediaType) -> Unit,
+    onCategoryClick: (LibraryCategory) -> Unit,
 ) {
     val categoriesState by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
 
@@ -93,7 +92,7 @@ fun LibraryScreen(
             gridState = state.lazyGridState,
             paddingValues = contentPadding,
             libraryCategories = libraryCategories,
-            onTypeClick = onTypeClick,
+            onCategoryClick = onCategoryClick,
         )
     }
 }
@@ -103,7 +102,7 @@ private fun LibraryGrid(
     gridState: LazyGridState = rememberLazyGridState(),
     paddingValues: PaddingValues,
     libraryCategories: List<LibraryCategory>,
-    onTypeClick: (MediaType) -> Unit,
+    onCategoryClick: (LibraryCategory) -> Unit,
 ) {
     val width = libraryItemMinWidth()
     LazyVerticalGrid(
@@ -118,7 +117,7 @@ private fun LibraryGrid(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = { onTypeClick(it.mediaType) })
+                    .clickable(onClick = { onCategoryClick(it) })
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
                     .padding(16.dp),

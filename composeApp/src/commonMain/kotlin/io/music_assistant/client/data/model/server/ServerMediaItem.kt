@@ -61,6 +61,8 @@ data class ServerMediaItem(
     @SerialName("resume_position_ms") val resumePositionMs: Long? = null,
     // Folder only
     @SerialName("items") val items: List<ServerMediaItem>? = null,
+    // BrowseFolder only: the server browse path to descend into (distinct from `uri`).
+    @SerialName("path") val path: String? = null,
 )
 
 @Serializable

@@ -523,6 +523,15 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
     }
 
+    data object Browse {
+        fun atPath(path: String?) = Request(
+            command = APICommands.MUSIC_BROWSE,
+            args = buildJsonObject {
+                path?.let { put("path", JsonPrimitive(it)) }
+            },
+        )
+    }
+
     data object Library {
         internal fun get(
             kind: String,
