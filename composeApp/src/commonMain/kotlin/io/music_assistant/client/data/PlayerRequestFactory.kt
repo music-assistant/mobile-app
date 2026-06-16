@@ -16,7 +16,6 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 class PlayerRequestFactory(
     private val positionTracker: PlayerPositionTracker,
 ) {
-
     /**
      * Resolves a relative [PlayerAction.SeekBy] into an absolute [PlayerAction.SeekTo]
      * (the only callers that emit `SeekBy` — UI/notification — don't hold live position).
