@@ -288,14 +288,6 @@ private fun LandingPageTopBar(
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
         actions = {
-            if (!editMode) {
-                IconButton(onClick = onRefresh) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = stringResource(Res.string.refresh),
-                    )
-                }
-            }
             IconButton(onClick = onToggleEditMode) {
                 Icon(
                     imageVector = if (editMode) Icons.Default.Done else Icons.Default.Edit,
@@ -303,6 +295,15 @@ private fun LandingPageTopBar(
                         if (editMode) Res.string.home_save_rows else Res.string.home_edit_rows,
                     ),
                 )
+            }
+
+            if (!editMode) {
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(Res.string.refresh),
+                    )
+                }
             }
         },
     )
