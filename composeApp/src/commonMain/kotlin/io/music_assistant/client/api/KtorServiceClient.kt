@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,6 +96,12 @@ class KtorServiceClient(
     // --- Transport ---
     private var transport: Transport? = null
     private var transportObserverJob: Job? = null
+
+    // Safety valve for a connect that neither completes nor fails (e.g. a half-open
+    // socket / hung WebRTC signaling with no transport-level connect timeout). Without
+    // it the session pins on `Connecting` forever: `connect()` self-guards, `kickRecovery`
+    // treats `Connecting` as in-progress, and only a manual disconnect breaks out.
+    private var connectWatchdogJob: Job? = null
 
     // --- Lifecycle / background state ---
     private var isInBackground = false
@@ -507,6 +514,7 @@ class KtorServiceClient(
                 transport.state.drop(1).collect { transportState ->
                     when (transportState) {
                         TransportState.Connected -> {
+                            connectWatchdogJob?.cancel()
                             val preserved =
                                 (_sessionState.value as? HasConnectionData)?.connectionData
                                     ?: ConnectionData()
@@ -615,6 +623,33 @@ class KtorServiceClient(
     }
 
     /**
+     * Arms a one-shot timeout that forces a wedged `Connecting` session into
+     * [SessionState.Disconnected.Error], from which request-driven recovery
+     * ([kickRecovery]) can reconnect. Re-armed on every connect attempt and cancelled
+     * once the transport leaves `Connecting`. No-op if the session has already
+     * progressed by the time it fires.
+     */
+    private fun startConnectWatchdog() {
+        connectWatchdogJob?.cancel()
+        connectWatchdogJob = launch {
+            delay(CONNECT_TIMEOUT_MS)
+            if (_sessionState.value is SessionState.Connecting) {
+                logger.w { "Connect watchdog: stuck in Connecting after ${CONNECT_TIMEOUT_MS}ms — failing out" }
+                // Error first, then tear down: the observer's `Disconnected` handler only
+                // writes `ByUser` when the state isn't already `Disconnected`, so seeding
+                // `Error` keeps the transport's teardown from masking it as user intent
+                // (which `kickRecovery` would refuse to recover from).
+                _sessionState.update {
+                    SessionState.Disconnected.Error(
+                        Exception("Connect timed out after ${CONNECT_TIMEOUT_MS}ms"),
+                    )
+                }
+                transport?.disconnect()
+            }
+        }
+    }
+
+    /**
      * Bypass of [connect]'s Connecting/Connected guard for callers that
      * intentionally tear down a live transport before rebuilding (e.g. JIT
      * reconnect from a stuck `AwaitingAuth(Failed)` session). Public callers
@@ -630,6 +665,7 @@ class KtorServiceClient(
         transport?.disconnect()
         transport?.close()
         _sessionState.update { SessionState.Connecting }
+        startConnectWatchdog()
 
         val directTransport = DirectTransport(
             client = client,
@@ -685,6 +721,7 @@ class KtorServiceClient(
         transport?.disconnect()
         transport?.close()
         _sessionState.update { SessionState.Connecting }
+        startConnectWatchdog()
 
         val webrtcTransport = WebRTCTransport(
             httpClient = webrtcHttpClient,
@@ -1144,6 +1181,11 @@ class KtorServiceClient(
     companion object {
         private const val STALE_CONNECTION_THRESHOLD_MS = 30_000L
         private const val ENSURE_READY_TIMEOUT_MS = 10_000L
+
+        // Upper bound on a single connect attempt before it's declared stuck. Generous
+        // enough to cover a healthy cold-start handshake (incl. WebRTC signaling + ICE)
+        // so it never trips a merely-slow connect, but bounded so `Connecting` can't wedge.
+        private const val CONNECT_TIMEOUT_MS = 20_000L
 
         // Silent reconnect re-auth failures tolerated before surfacing login — rides
         // through a flaky handoff without trapping the user if re-auth never recovers.

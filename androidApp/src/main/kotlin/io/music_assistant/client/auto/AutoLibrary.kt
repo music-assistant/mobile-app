@@ -40,8 +40,6 @@ import io.music_assistant.client.settings.carTapAction
 import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.library.LibraryCategory
-import io.music_assistant.client.utils.DataConnectionState
-import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,11 +48,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
 // Unified tag for all Android Auto logs (browse / voice / playback). Filter
@@ -175,7 +171,6 @@ class AutoLibrary(
         result.detach()
         scope.launch {
             val items = cachedOrFetch(tabId) {
-                if (!waitForCorrectState()) return@cachedOrFetch null
                 val sorted = loadTabItems(
                     MediaType.RADIO,
                     SortOption(SortField.LAST_PLAYED, descending = true),
@@ -202,7 +197,6 @@ class AutoLibrary(
         result.detach()
         scope.launch {
             val items = cachedOrFetch(id) {
-                if (!waitForCorrectState()) return@cachedOrFetch null
                 loadTabItems(mediaType, spec.sort, spec.favoritesOnly)
             }
             result.sendResult(items)
@@ -341,14 +335,6 @@ class AutoLibrary(
             .map { it.toAutoMediaItem(true, defaultIconUri, parentUri = parentUri) }
     }
 
-    private suspend fun waitForCorrectState(): Boolean =
-        withTimeoutOrNull(WAIT_FOR_AUTHENTICATED_TIMEOUT_MS) {
-            apiClient.sessionState
-                .mapNotNull { it as? SessionState.Connected }
-                .mapNotNull { it.dataConnectionState as? DataConnectionState.Authenticated }
-                .first()
-        } != null
-
     private fun actionsForItem(itemId: String, kind: ItemKind): List<MediaItem> =
         settingsRepository.carBrowsableBulkActions.value
             .carBulkActions(kind, CarPlatform.ANDROID_AUTO)
@@ -396,14 +382,9 @@ class AutoLibrary(
 
     fun searchAndPlay(query: String, extras: Bundle?) {
         scope.launch {
-            val ready = waitForCorrectState()
-            if (!ready) {
-                androidAutoLog.w {
-                    "Server not authenticated within ${WAIT_FOR_AUTHENTICATED_TIMEOUT_MS}ms — " +
-                            "aborting voice playback (query=\"$query\")."
-                }
-                return@launch
-            }
+            // Readiness/recovery is driven at the request choke point: every play* path
+            // below issues `apiClient.sendRequest`, which gates on `ensureReadyForCommands`
+            // (kicking reconnect from a stale/errored session). No passive pre-wait here.
             // MediaStore.Audio.{Artists,Albums,Media,Playlists,Genres}.ENTRY_CONTENT_TYPE
             // are deprecated in MediaStore itself but remain the canonical EXTRA_MEDIA_FOCUS
             // values Google Assistant emits, with no documented replacement. Suppress here
@@ -821,8 +802,6 @@ class AutoLibrary(
     }
 
     private companion object {
-        const val WAIT_FOR_AUTHENTICATED_TIMEOUT_MS = 30_000L
-
         // Random-favorites pool size. 200 keeps the shuffle interesting without
         // overloading the play_media RPC payload for users with large libraries.
         const val RANDOM_POOL_SIZE = 200

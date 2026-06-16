@@ -3,13 +3,17 @@ package io.music_assistant.client.data
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerMedia
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -22,9 +26,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
@@ -43,7 +49,14 @@ class LocalPlayerRepository(
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
     private val _localPlayerData = MutableStateFlow<PlayerData?>(null)
-    val localPlayerData: StateFlow<PlayerData?> = _localPlayerData.asStateFlow()
+
+    // Exposed view applies [withNowPlayingFallback] so the now-playing surfaces (AA /
+    // notification / phone card, all of which read `player.currentMedia`) show the queued
+    // track instead of "Unknown" before the first Play. Internal mutations stay on the raw
+    // [_localPlayerData].
+    val localPlayerData: StateFlow<PlayerData?> = _localPlayerData
+        .map { it?.withNowPlayingFallback() }
+        .stateIn(this, SharingStarted.Eagerly, null)
 
     /** Optimistic local-queue mutations; mirrored into `_queueInfos` by `MainDataSource`. */
     private val _optimisticQueueChanges = Channel<QueueInfo>(Channel.BUFFERED)
@@ -252,6 +265,34 @@ class LocalPlayerRepository(
     }
 
     // --- Private helpers ---
+
+    /**
+     * The MA server leaves a stopped player's `current_media` null until playback loads
+     * media into it, yet the queue's `currentItem` is known immediately. Synthesize a
+     * display media from that queue item so the now-playing surfaces render the track
+     * rather than "Unknown" before the first Play. Real `currentMedia` (once the server
+     * sends it) always wins via the not-blank guard.
+     */
+    private fun PlayerData.withNowPlayingFallback(): PlayerData {
+        if (player.currentMedia?.title?.isNotBlank() == true) return this
+        val item = queueInfo?.currentItem ?: return this
+        val track = item.track
+        return copy(
+            player = player.copy(
+                currentMedia = PlayerMedia(
+                    title = track.displayName,
+                    artist = track.subtitle,
+                    album = null,
+                    imageUrl = track.image(ImageType.THUMB)?.url,
+                    duration = track.duration,
+                    queueId = queueInfo.id,
+                    queueItemId = item.id,
+                    mediaType = (track as? AppMediaItem)?.mediaType,
+                    uri = track.uri,
+                ),
+            ),
+        )
+    }
 
     private fun updateOptimisticQueueInfo(transform: (QueueInfo) -> QueueInfo) {
         // Bump elapsedTimeLastUpdated above the last known server stamp so
