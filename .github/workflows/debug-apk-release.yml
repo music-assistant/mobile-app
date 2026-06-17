@@ -38,16 +38,6 @@ jobs:
           mkdir -p ~/.android
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
 
-      - name: Restore release keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/upload-keystore.jks
-          cat > androidApp/keystore.properties <<EOF
-          storeFile=upload-keystore.jks
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          EOF
-
       - name: Build self-signed release APK
         run: ./gradlew :androidApp:assembleSelfSignedRelease
 
