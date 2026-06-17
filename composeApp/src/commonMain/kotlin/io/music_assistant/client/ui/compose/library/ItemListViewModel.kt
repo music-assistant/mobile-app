@@ -19,13 +19,18 @@ import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.toast_error_create_playlist
+import org.jetbrains.compose.resources.getString
 
 @OptIn(FlowPreview::class)
 class ItemListViewModel(
@@ -43,6 +48,9 @@ class ItemListViewModel(
     )
     val state = _state.asStateFlow()
 
+    private val _toasts = MutableSharedFlow<String>()
+    val toasts = _toasts.asSharedFlow()
+
     init {
         viewModelScope.launch {
             _state.map { Triple(it.searchQuery, it.sortOption, it.onlyFavorites) }
@@ -57,13 +65,32 @@ class ItemListViewModel(
             }
         }
 
-        // Reflect server-confirmed favorite changes on an already-open list, so
-        // a toggle from any surface (player, context menu, another client)
-        // updates the matching row without a refetch.
+        // Reflect server-confirmed library lifecycle changes on an already-open
+        // list, so a mutation from any surface (this screen, context menu, another
+        // client) keeps the list in sync without a manual refresh.
         viewModelScope.launch {
             mediaItemRepository.itemChanges.collect { change ->
-                if (change is MediaItemChange.Updated) patchFavorite(change.item)
+                when (change) {
+                    // In-place row patch, no refetch.
+                    is MediaItemChange.Updated -> patchFavorite(change.item)
+                    // Refetch first page so the new row lands in its sorted/filtered
+                    // position (matches the "page refresh" semantics for creation).
+                    is MediaItemChange.Added ->
+                        if (change.item.mediaType == mediaType) loadFirstPage()
+                    // Cheap in-place removal; ordering of the rest is unaffected.
+                    is MediaItemChange.Deleted -> removeItem(change.item)
+                }
             }
+        }
+    }
+
+    private fun removeItem(deleted: AppMediaItem) {
+        if (deleted.mediaType != mediaType) return
+        _state.update { st ->
+            val data = st.dataState as? DataState.Data ?: return@update st
+            val remaining = data.data.filterNot { it.matchesIdentityOf(deleted) }
+            if (remaining.size == data.data.size) return@update st
+            st.copy(dataState = DataState.Data(remaining))
         }
     }
 
@@ -236,9 +263,15 @@ class ItemListViewModel(
         return request
     }
 
+    // The list refresh is driven by the resulting MediaItemAddedEvent (see the
+    // itemChanges collector), so success needs no explicit refetch here.
     fun createPlaylist(name: String) {
         viewModelScope.launch {
             apiClient.sendRequest(Request.Playlist.create(name))
+                .onFailure {
+                    Logger.e("Failed to create playlist", it)
+                    _toasts.emit(getString(Res.string.toast_error_create_playlist))
+                }
         }
     }
 

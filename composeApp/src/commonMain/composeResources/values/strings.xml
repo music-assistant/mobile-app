@@ -242,6 +242,7 @@
   <string name="sort_year">Year</string>
   <string name="toast_added_to_playlist">Added to %1$s</string>
   <string name="toast_error_add_playlist">Error adding to playlist</string>
+  <string name="toast_error_create_playlist">Error creating playlist</string>
   <string name="toast_error_mark_played">Error marking as played</string>
   <string name="toast_error_mark_unplayed">Error marking as unplayed</string>
   <string name="toast_marked_played">Marked as played</string>

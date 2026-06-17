@@ -116,6 +116,11 @@ fun ItemListScreen(
             toastState.showToast(toast)
         }
     }
+    LaunchedEffect(Unit) {
+        itemListViewModel.toasts.collect { toast ->
+            toastState.showToast(toast)
+        }
+    }
 
     val state by itemListViewModel.state.collectAsStateWithLifecycle()
 
@@ -151,7 +156,10 @@ fun ItemListScreen(
             onCreatePlaylistClick = { showCreatePlaylistDialog = true },
             onLoadMore = { itemListViewModel.loadMore() },
             onDismissCreatePlaylistDialog = { showCreatePlaylistDialog = false },
-            onCreatePlaylist = itemListViewModel::createPlaylist,
+            onCreatePlaylist = { name ->
+                itemListViewModel.createPlaylist(name)
+                showCreatePlaylistDialog = false
+            },
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,
