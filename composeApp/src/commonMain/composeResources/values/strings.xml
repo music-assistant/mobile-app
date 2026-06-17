@@ -109,6 +109,7 @@
   <string name="item_no_data">No data available</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Playlist</string>
+  <string name="item_subtitle_playlist_dynamic">Dynamic playlist</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_unknown">Unknown</string>

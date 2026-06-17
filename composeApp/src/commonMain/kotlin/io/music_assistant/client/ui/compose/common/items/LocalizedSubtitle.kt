@@ -9,6 +9,7 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.item_subtitle_genre
 import musicassistantclient.composeapp.generated.resources.item_subtitle_playlist
+import musicassistantclient.composeapp.generated.resources.item_subtitle_playlist_dynamic
 import musicassistantclient.composeapp.generated.resources.item_subtitle_podcast
 import musicassistantclient.composeapp.generated.resources.item_subtitle_radio
 import org.jetbrains.compose.resources.stringResource
@@ -19,7 +20,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun AppMediaItem.localizedSubtitle(): String? = subtitle ?: when (this) {
-    is Playlist -> stringResource(Res.string.item_subtitle_playlist)
+    is Playlist -> stringResource(if (this.isDynamic) Res.string.item_subtitle_playlist_dynamic else Res.string.item_subtitle_playlist)
     is Genre -> stringResource(Res.string.item_subtitle_genre)
     is Podcast -> stringResource(Res.string.item_subtitle_podcast)
     is RadioStation -> stringResource(Res.string.item_subtitle_radio)
