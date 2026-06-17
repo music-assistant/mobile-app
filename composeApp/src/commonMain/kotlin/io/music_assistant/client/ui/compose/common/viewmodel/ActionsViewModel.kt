@@ -84,7 +84,8 @@ class ActionsViewModel(
         mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
             .getOrNull()
             ?.filterIsInstance<Playlist>()
-            ?.filter { it.isEditable }
+            // Smart/dynamic playlists are rule-generated; tracks can't be added manually.
+            ?.filter { it.isEditable && !it.isDynamic }
             ?: emptyList()
 
     override fun addToPlaylist(

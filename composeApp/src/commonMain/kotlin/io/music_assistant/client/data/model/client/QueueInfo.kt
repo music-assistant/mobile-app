@@ -1,7 +1,6 @@
 package io.music_assistant.client.data.model.client
 
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.data.model.client.items.Playlist
 
 data class QueueInfo(
     val id: String,
@@ -19,11 +18,11 @@ data class QueueInfo(
     val elapsedTimeLastUpdated: Double?,
     val currentItem: QueueTrack?,
     val radioSource: List<AppMediaItem>,
+    /** Server-derived: the active source is a dynamic/smart playlist (rule-generated). */
+    val isDynamicPlaylist: Boolean = false,
     val playbackSpeed: Double? = null,
 ) {
     val isRadioOn: Boolean = radioSource.isNotEmpty()
-    val isDynamicPlaylist = radioSource.size == 1 &&
-            (radioSource[0] as? Playlist)?.isDynamic == true
 }
 
 /** Strict-older-than on [QueueInfo.elapsedTimeLastUpdated]. Callers match ids first. */

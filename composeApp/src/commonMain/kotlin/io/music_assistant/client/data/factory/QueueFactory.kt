@@ -32,6 +32,7 @@ class QueueFactory(
             elapsedTimeLastUpdated = elapsedTimeLastUpdated,
             currentItem = currentItem?.let(::createTrack),
             radioSource = radioSource?.let { mediaItemFactory.createList(it) } ?: emptyList(),
+            isDynamicPlaylist = isDynamic,
             playbackSpeed = playbackSpeed,
         )
     }
