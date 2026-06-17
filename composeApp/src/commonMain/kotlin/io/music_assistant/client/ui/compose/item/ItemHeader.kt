@@ -9,6 +9,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -87,6 +88,7 @@ fun ItemHeader(
     ),
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     // Art color on top, fading down to the surface the Screen actually paints, so the
     // wash dissolves seamlessly where the tabs begin. Mirrors the player gradient (inverted).
@@ -97,7 +99,7 @@ fun ItemHeader(
                 Brush.verticalGradient(
                     listOf(colors.dominant.inactive(), MaterialTheme.colorScheme.surface),
                 ),
-            ),
+            ).padding(contentPadding),
     ) {
         val image = @Composable {
             Image(
@@ -150,44 +152,34 @@ internal fun ItemTopBar(
     playlistActions: PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
 ) {
-    // Flat fill equal to the header gradient's top color, so the bar reads as one
-    // continuous wash with the header below it. Back/overflow icons are NOT control-tinted
-    // — just black or white per the composited bar luminance, keeping them legible.
-    val barBg = colors.dominant.inactive()
     val onBar = lerp(MaterialTheme.colorScheme.surface, colors.dominant, INACTIVE_ALPHA)
         .contentColorByLuminance()
-    // Paint barBg directly on the wrapping Box rather than via TopAppBar's containerColor:
-    // TopAppBar runs its own animateColorAsState on the container, which would stack a second
-    // tween on top of our color animation and visibly lag the header. Transparent container =
-    // single-pass color change, in lockstep with the header gradient.
-    Box(modifier = Modifier.background(barBg)) {
-        TopAppBar(
-            title = {},
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent,
-                navigationIconContentColor = onBar,
-                actionIconContentColor = onBar,
-                titleContentColor = onBar,
-            ),
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        stringResource(Res.string.common_back),
-                    )
-                }
-            },
-            actions = {
-                ItemOverflow(
-                    item = item,
-                    libraryActions = libraryActions,
-                    playlistActions = playlistActions,
-                    navigateToItem = navigateToItem,
+    TopAppBar(
+        title = {},
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+            navigationIconContentColor = onBar,
+            actionIconContentColor = onBar,
+            titleContentColor = onBar,
+        ),
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    stringResource(Res.string.common_back),
                 )
-            },
-        )
-    }
+            }
+        },
+        actions = {
+            ItemOverflow(
+                item = item,
+                libraryActions = libraryActions,
+                playlistActions = playlistActions,
+                navigateToItem = navigateToItem,
+            )
+        },
+    )
 }
 
 @Composable

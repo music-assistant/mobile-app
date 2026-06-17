@@ -110,7 +110,7 @@ fun ItemDetailsScreen(
     actionsViewModel: ActionsViewModel,
     onBack: () -> Unit,
     onNavigateToItem: (String, MediaType, String) -> Unit,
-    contentPadding: PaddingValues,
+    screenPadding: PaddingValues,
 ) {
     val state by itemDetailsViewModel.state.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
@@ -123,7 +123,7 @@ fun ItemDetailsScreen(
     }
 
     ItemDetails(
-        contentPadding = contentPadding,
+        screenPadding = screenPadding,
         state = state,
         onBack = onBack,
         viewModeProvider = { type ->
@@ -156,7 +156,7 @@ fun ItemDetailsScreen(
 
 @Composable
 fun ItemDetails(
-    contentPadding: PaddingValues = PaddingValues(),
+    screenPadding: PaddingValues = PaddingValues(),
     state: ItemDetailsViewModel.State,
     onBack: () -> Unit = {},
     viewModeProvider: @Composable (MediaType) -> ViewMode = { ViewMode.LIST },
@@ -245,7 +245,7 @@ fun ItemDetails(
         onAlbumsSortChanged = onAlbumsSortChanged,
         onPlayableItemsSortChanged = onPlayableItemsSortChanged,
         onTabSelected = onTabSelected,
-        contentPadding = contentPadding,
+        screenPadding = screenPadding,
     )
 }
 
@@ -279,7 +279,7 @@ private fun ItemChildren(
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     onTabSelected: (ItemDetailsTab) -> Unit,
-    contentPadding: PaddingValues,
+    screenPadding: PaddingValues,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (val itemState = state.itemState) {
@@ -315,7 +315,7 @@ private fun ItemChildren(
                     onToggleViewMode = onToggleViewMode,
                     onAlbumsSortChanged = onAlbumsSortChanged,
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
-                    contentPadding = contentPadding,
+                    screenPadding = screenPadding,
                     onTabSelected = onTabSelected,
                 )
             }
@@ -351,7 +351,7 @@ private fun ItemContent(
     onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
-    contentPadding: PaddingValues,
+    screenPadding: PaddingValues,
     onTabSelected: (ItemDetailsTab) -> Unit,
 ) {
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
@@ -373,13 +373,14 @@ private fun ItemContent(
         fetchColors = resolvedFetchColors,
     )
 
-    val heroSlot: @Composable () -> Unit = {
+    val heroSlot: @Composable (PaddingValues) -> Unit = { contentPadding ->
         ProvideClickActions(ClickContext.DETAIL) {
             ItemHeader(
                 item = item,
                 colors = colors,
                 providerIconFetcher = providerIconFetcher,
                 onPlayClick = onPlayItemClick,
+                contentPadding = contentPadding,
             )
         }
     }
@@ -395,20 +396,21 @@ private fun ItemContent(
                 navigateToItem = onNavigateClick,
             )
         },
-    ) {
+        contentUnderTopBar = true,
+    ) { contentPadding ->
         Column(modifier = Modifier.fillMaxSize()) {
             // selectedTab is null exactly while sub-lists load (for an item that has tabs), so it
             // doubles as the loading gate: show the hero + a single spinner, tabs hidden.
             val currentTab = state.selectedTab
             if (tabs.isEmpty()) {
-                heroSlot()
+                heroSlot(contentPadding)
             } else {
                 val gridState = rememberLazyGridState()
                 if (currentTab == null) {
                     Box(modifier = Modifier.weight(1f)) {
                         DetailGrid(
-                            contentPadding = contentPadding,
-                            heroSlot = heroSlot,
+                            contentPadding = screenPadding,
+                            heroSlot = { heroSlot(contentPadding) },
                             tabsSlot = null,
                             gridState = gridState,
                         ) {
@@ -447,8 +449,8 @@ private fun ItemContent(
                                 onRemoveFromPlaylist = onRemoveFromPlaylist,
                                 libraryActions = libraryActions,
                                 providerIconFetcher = providerIconFetcher,
-                                contentPadding = contentPadding,
-                                heroSlot = heroSlot,
+                                contentPadding = screenPadding,
+                                heroSlot = { heroSlot(contentPadding) },
                                 tabsSlot = tabsSlot,
                                 gridState = gridState,
                             )

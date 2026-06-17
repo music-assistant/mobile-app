@@ -494,7 +494,7 @@ private fun mainNavEntryProvider(
                         ),
                     )
                 },
-                contentPadding = contentPadding,
+                screenPadding = contentPadding,
             )
         }
 

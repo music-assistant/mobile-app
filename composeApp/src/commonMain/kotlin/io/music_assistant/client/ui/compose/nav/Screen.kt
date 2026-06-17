@@ -2,8 +2,9 @@ package io.music_assistant.client.ui.compose.nav
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TopAppBarState
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.layout
 import kotlin.math.roundToInt
 
@@ -30,18 +32,49 @@ import kotlin.math.roundToInt
 fun Screen(
     topBar: @Composable () -> Unit,
     topAppBarState: TopAppBarState = rememberTopAppBarState(),
-    content: @Composable () -> Unit,
+    contentUnderTopBar: Boolean = false,
+    content: @Composable (contentPadding: PaddingValues) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(state = topAppBarState)
+    SubcomposeLayout(modifier = Modifier.fillMaxSize()) { constraints ->
+        val looseConstraints = constraints.copy(minWidth = 0, minHeight = 0)
 
-    Surface {
-        Column(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) {
-            Box(modifier = Modifier.collapsingTopBar(scrollBehavior)) {
-                topBar()
+        val topBarPlaceable =
+            subcompose("topBar") {
+                Box(modifier = Modifier.collapsingTopBar(scrollBehavior)) {
+                    topBar()
+                }
             }
-            content()
+                .first()
+                .measure(looseConstraints)
+
+        val contentPlaceable = subcompose("content") {
+            Column(
+                modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            ) {
+                val contentPadding = if (contentUnderTopBar) {
+                    PaddingValues(top = topBarPlaceable.height.toDp())
+                } else {
+                    PaddingValues()
+                }
+
+                content(contentPadding)
+            }
+        }
+            .first()
+            .measure(looseConstraints)
+
+        val layoutWidth = constraints.maxWidth
+        val layoutHeight = constraints.maxHeight
+        layout(layoutWidth, layoutHeight) {
+            val contentYPosition = if (contentUnderTopBar) {
+                0
+            } else {
+                topBarPlaceable.height
+            }
+
+            contentPlaceable.place(0, contentYPosition)
+            topBarPlaceable.place(0, 0)
         }
     }
 }
