@@ -71,7 +71,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.nav.BackHandler
-import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
@@ -164,7 +164,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
         }
     }
 
-    Screen(
+    TopBarLayout(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_settings)) },

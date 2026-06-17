@@ -72,8 +72,8 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CategoryRow
-import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.compose.nav.ScreenState
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -112,7 +112,7 @@ fun SearchScreen(
         }
     }
 
-    Screen(
+    TopBarLayout(
         topBar = {
             SearchTopBar(
                 searchState.searchState,

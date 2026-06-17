@@ -80,8 +80,8 @@ import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
-import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.compose.nav.ScreenState
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -159,7 +159,7 @@ fun HomeScreen(
 
     BackHandler(enabled = editMode) { editMode = false }
 
-    Screen(
+    TopBarLayout(
         topBar = {
             LandingPageTopBar(
                 editMode = editMode,

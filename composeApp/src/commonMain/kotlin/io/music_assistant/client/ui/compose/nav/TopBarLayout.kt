@@ -16,18 +16,18 @@ import androidx.compose.ui.layout.layout
 import kotlin.math.roundToInt
 
 /**
- * Simplified version of [androidx.compose.material3.Scaffold] that just supports a top bar. Can be
- * nested in a [androidx.compose.material3.Scaffold] with a bottom bar without introducing the
- * extra recomposition of a nesting set [androidx.compose.material3.Scaffold] composables.
+ * Layout for content with collapsing [topBar] (which doesn't need to be a
+ * [androidx.compose.material3.TopAppBar]).
  *
  * The top bar collapses as one unit: the whole [topBar] slot translates up at the same speed as the
  * scrolling content (a 1:1 slide-off) and the content below rises to fill. This is centralized here
- * — bars passed to [topBar] must NOT take a [TopAppBarScrollBehavior] themselves, otherwise they'd
- * collapse a second time on top of this.
+ * — a [androidx.compose.material3.TopAppBar] passed to [topBar] must NOT take a
+ * [TopAppBarScrollBehavior] themselves, otherwise they'd collapse a second time on top of this.
+ *
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Screen(
+fun TopBarLayout(
     topBar: @Composable () -> Unit,
     topAppBarState: TopAppBarState = rememberTopAppBarState(),
     content: @Composable () -> Unit,

@@ -89,7 +89,7 @@ import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
-import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.utils.gridItemMinSize
@@ -384,7 +384,7 @@ private fun ItemContent(
         }
     }
 
-    Screen(
+    TopBarLayout(
         topBar = {
             ItemTopBar(
                 item = item,

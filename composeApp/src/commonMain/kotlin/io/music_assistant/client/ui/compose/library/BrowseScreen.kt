@@ -28,7 +28,7 @@ import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
-import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_empty
@@ -58,7 +58,7 @@ fun BrowseScreen(
 
     val dataState by browseViewModel.state.collectAsStateWithLifecycle()
 
-    Screen(
+    TopBarLayout(
         topBar = {
             TopAppBar(
                 title = { Text(title ?: stringResource(Res.string.nav_browse)) },
