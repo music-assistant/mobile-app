@@ -35,6 +35,10 @@ jobs:
               "export_sort": "a_z"
             }
           post_process_command: |
+            # Compose Multiplatform resources can't express a BCP-47 script subtag
+            # (e.g. Serbian-Latin -> values-sr-rLatn), and the qualifier parser rejects
+            # the build. Drop any script-qualified locale dir until CMP supports it.
+            rm -rf composeApp/src/commonMain/composeResources/values-sr-rLatn
             find composeApp/src/commonMain/composeResources -name 'strings.xml' -print0 | xargs -0 sed -i "s/\\\\'/'/g; s/\\\\\"/\"/g"
           post_process_strict: true
           pr_title: "chore: update translations from Lokalise"

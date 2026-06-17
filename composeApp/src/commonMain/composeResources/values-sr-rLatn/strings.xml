@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<resources>
-  <string name="action_play_from_here">Pusti odavde</string>
-  <string name="action_play_playlist_from_here">Pusti plejlistu odavde</string>
-  <string name="playback_speed_dialog_title">Brzina reprodukcije</string>
-  <string name="settings_car_tabs">Kartice</string>
-</resources>
