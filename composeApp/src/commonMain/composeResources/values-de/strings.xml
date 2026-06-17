@@ -18,6 +18,7 @@
   <string name="action_play">Abspielen</string>
   <string name="action_play_album_from_here">Album von hier abspielen</string>
   <string name="action_play_all">Alles abspielen</string>
+  <string name="action_play_from_here">Ab hier wiedergeben</string>
   <string name="action_play_next">Als Nächstes abspielen</string>
   <string name="action_play_now">Jetzt abspielen</string>
   <string name="action_play_playlist_from_here">Wiedergabeliste von hier abspielen</string>
@@ -135,6 +136,7 @@
   <string name="media_type_radio">Radio</string>
   <string name="media_type_tracks">Titel</string>
   <string name="menu_default_label">Standard</string>
+  <string name="nav_browse">Durchsuchen</string>
   <string name="nav_home">Home</string>
   <string name="nav_library">Bibliothek</string>
   <string name="nav_search">Suchen</string>

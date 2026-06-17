@@ -4,7 +4,7 @@
   <string name="action_add_to_library">Toevoegen aan bibliotheek</string>
   <string name="action_add_to_playlist">Aan afspeellijst toevoegen</string>
   <string name="action_add_to_queue">Aan wachtrij toevoegen</string>
-  <string name="action_browse">Blader</string>
+  <string name="action_browse">Bladeren</string>
   <string name="action_customize">Aanpassen…</string>
   <string name="action_favorite">Favoriet</string>
   <string name="action_go_to_album">Naar album</string>
@@ -18,6 +18,7 @@
   <string name="action_play">Afspelen</string>
   <string name="action_play_album_from_here">Speel album vanaf hier</string>
   <string name="action_play_all">Alles afspelen</string>
+  <string name="action_play_from_here">Vanaf hier afspelen</string>
   <string name="action_play_next">Speel als volgende af</string>
   <string name="action_play_now">Nu afspelen</string>
   <string name="action_play_playlist_from_here">Afspeellijst vanaf hier afspelen</string>
@@ -135,6 +136,7 @@
   <string name="media_type_radio">Radio</string>
   <string name="media_type_tracks">Nummers</string>
   <string name="menu_default_label">Standaard</string>
+  <string name="nav_browse">Bladeren</string>
   <string name="nav_home">Home</string>
   <string name="nav_library">Bibliotheek</string>
   <string name="nav_search">Zoeken</string>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="action_play_from_here">Пусти одавде</string>
+  <string name="action_play_playlist_from_here">Пусти плејлисту одавде</string>
+  <string name="playback_speed_dialog_title">Брзина репродукције</string>
+  <string name="settings_car_tabs">Картице</string>
+</resources>
