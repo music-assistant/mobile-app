@@ -33,15 +33,20 @@ class ItemKindTest {
     @Test
     fun `radio appears only where radio stations are listed`() {
         assertEquals(
-            setOf(ClickContext.HOME, ClickContext.LIBRARY, ClickContext.SEARCH),
+            setOf(
+                ClickContext.HOME,
+                ClickContext.LIBRARY,
+                ClickContext.BROWSE,
+                ClickContext.SEARCH,
+            ),
             ClickContext.entries.filter { ItemKind.RADIO.appearsIn(it) }.toSet(),
         )
     }
 
     @Test
-    fun `podcast episode appears only in home and search`() {
+    fun `podcast episode appears only in home, browse and search`() {
         assertEquals(
-            setOf(ClickContext.HOME, ClickContext.SEARCH),
+            setOf(ClickContext.HOME, ClickContext.BROWSE, ClickContext.SEARCH),
             ClickContext.entries.filter { ItemKind.PODCAST_EPISODE.appearsIn(it) }.toSet(),
         )
     }
