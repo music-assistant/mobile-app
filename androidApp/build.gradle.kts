@@ -53,12 +53,6 @@ android {
             )
         }
 
-        create("selfSignedDebug") {
-            isDebuggable = true
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("selfSigned")
-        }
-
         create("selfSignedRelease") {
             isDebuggable = false
             isMinifyEnabled = true
