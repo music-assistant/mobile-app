@@ -48,7 +48,7 @@ jobs:
           keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Build self-signed release APKs (per-ABI + universal)
+      - name: Build self-signed release APK
         run: ./gradlew :androidApp:assembleSelfSignedRelease
 
       - name: Get vars
@@ -80,17 +80,9 @@ jobs:
 
             ${{ github.event.pull_request.body }}
 
-            ### Installation
-            Pick the APK that matches your device:
-            - **`*-arm64-v8a-*.apk`** — recommended for all modern Android devices (2017+).
-            - **`*-armeabi-v7a-*.apk`** — older 32-bit ARM devices only.
-            - **`*-universal-*.apk`** — fallback containing all ABIs (larger).
-
             Signed with the consistent debug keystore, so installing over a previous build does not require uninstall.
           files: |
-            androidApp/build/outputs/apk/selfSignedRelease/androidApp-arm64-v8a-selfSignedRelease.apk
-            androidApp/build/outputs/apk/selfSignedRelease/androidApp-armeabi-v7a-selfSignedRelease.apk
-            androidApp/build/outputs/apk/selfSignedRelease/androidApp-universal-selfSignedRelease.apk
+            androidApp/build/outputs/apk/selfSignedRelease/androidApp-selfSignedRelease.apk
           generate_release_notes: true
           draft: false
           prerelease: true
