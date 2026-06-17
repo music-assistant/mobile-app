@@ -80,6 +80,7 @@
   <string name="cd_vinyl_record">Vinyl Record</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artist</string>
+  <string name="clickctx_browse">Browse</string>
   <string name="clickctx_detail">Play button</string>
   <string name="clickctx_home">Home</string>
   <string name="clickctx_library">Library</string>

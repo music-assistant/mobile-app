@@ -74,7 +74,7 @@ fun BrowseScreen(
         },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            ProvideClickActions(ClickContext.LIBRARY) {
+            ProvideClickActions(ClickContext.BROWSE) {
                 when (val state = dataState) {
                     is DataState.Loading -> CenteredContent { CircularProgressIndicator() }
 

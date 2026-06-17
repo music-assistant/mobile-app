@@ -26,6 +26,7 @@ import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewMode
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.clickctx_album
 import musicassistantclient.composeapp.generated.resources.clickctx_artist
+import musicassistantclient.composeapp.generated.resources.clickctx_browse
 import musicassistantclient.composeapp.generated.resources.clickctx_detail
 import musicassistantclient.composeapp.generated.resources.clickctx_home
 import musicassistantclient.composeapp.generated.resources.clickctx_library
@@ -43,6 +44,7 @@ private val CTX_LABEL_WIDTH = 64.dp
 private fun ClickContext.label(): StringResource = when (this) {
     ClickContext.HOME -> Res.string.clickctx_home
     ClickContext.LIBRARY -> Res.string.clickctx_library
+    ClickContext.BROWSE -> Res.string.clickctx_browse
     ClickContext.ALBUM -> Res.string.clickctx_album
     ClickContext.PLAYLIST -> Res.string.clickctx_playlist
     ClickContext.ARTIST -> Res.string.clickctx_artist
