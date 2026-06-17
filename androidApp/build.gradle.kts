@@ -65,6 +65,18 @@ android {
         }
     }
 
+    // ABI splits for the GitHub-distributed APK only. The Play AAB path
+    // (bundleRelease) handles per-device delivery natively, so leave it alone.
+    splits {
+        abi {
+            isEnable = gradle.startParameter.taskNames.any {
+                it.contains("SelfSignedRelease", ignoreCase = true)
+            }
+            reset()
+            include("arm64-v8a")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -72,7 +72,7 @@ jobs:
 
             Signed with the consistent debug keystore, so installing over a previous build does not require uninstall.
           files: |
-            androidApp/build/outputs/apk/selfSignedRelease/androidApp-selfSignedRelease.apk
+            androidApp/build/outputs/apk/selfSignedRelease/androidApp-arm64-v8a-selfSignedRelease.apk
           generate_release_notes: true
           draft: false
           prerelease: true
