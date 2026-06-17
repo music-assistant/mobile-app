@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
  * [TopAppBar] with row below the navigation icon, title and actions. Not an official component
  * within Material Design 3.
  *
- * Collapsing is owned by the surrounding [Screen]; this composable is a plain two-row stack and
+ * Collapsing is owned by the surrounding [TopBarLayout]; this composable is a plain two-row stack and
  * does not deal with scroll behavior itself.
  */
 @Composable

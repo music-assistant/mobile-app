@@ -39,8 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.music_assistant.client.ui.compose.nav.Screen
 import io.music_assistant.client.ui.compose.nav.ScreenState
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.utils.libraryItemMinWidth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -68,7 +68,7 @@ fun LibraryScreen(
         )
     }
 
-    Screen(
+    TopBarLayout(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_library)) },

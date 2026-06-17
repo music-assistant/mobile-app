@@ -73,7 +73,7 @@ import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
-import io.music_assistant.client.ui.compose.nav.Screen
+import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
@@ -124,7 +124,7 @@ fun ItemListScreen(
 
     val state by itemListViewModel.state.collectAsStateWithLifecycle()
 
-    Screen(
+    TopBarLayout(
         topBar = {
             ItemListTopBar(
                 onBack = onBack,
