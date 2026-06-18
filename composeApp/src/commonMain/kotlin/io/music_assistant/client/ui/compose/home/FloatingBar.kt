@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -23,8 +24,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
@@ -90,10 +94,19 @@ fun FloatingBarLayout(
                 .first()
                 .measure(looseConstraints)
 
-        val contentPadding = PaddingValues(bottom = floatingBarPlaceable.height.toDp())
-        val contentPlaceable = subcompose("content") { Box { content(contentPadding) } }
-            .first()
-            .measure(looseConstraints)
+        val contentSubcompose = subcompose("content") {
+            Box(modifier = Modifier.fillMaxSize()) {
+                val floatingBarHeightDp = floatingBarPlaceable.height.toDp()
+                content(PaddingValues(bottom = floatingBarHeightDp))
+
+                FloatingBarShadow(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .height(floatingBarHeightDp),
+                )
+            }
+        }
+        val contentPlaceable = contentSubcompose.first().measure(looseConstraints)
 
         val layoutWidth = constraints.maxWidth
         val layoutHeight = constraints.maxHeight
@@ -102,6 +115,22 @@ fun FloatingBarLayout(
             floatingBarPlaceable.place(0, layoutHeight - floatingBarPlaceable.height)
         }
     }
+}
+
+@Composable
+private fun FloatingBarShadow(modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.6f),
+                    ),
+                ),
+            ),
+    )
 }
 
 object FloatingBarSemantics {
