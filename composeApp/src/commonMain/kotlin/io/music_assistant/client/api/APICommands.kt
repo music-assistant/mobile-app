@@ -84,6 +84,7 @@ object APICommands {
     const val AUTH_AUTHORIZATION_URL = "auth/authorization_url"
     const val AUTH_LOGIN = "auth/login"
     const val AUTH_LOGOUT = "auth/logout"
+    const val AUTH_ME = "auth/me"
     const val AUTH = "auth"
 
     // DSP commands

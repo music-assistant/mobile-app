@@ -1,12 +1,15 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
+import io.music_assistant.client.support.withinTag
+import io.music_assistant.client.ui.compose.home.HomeScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -34,5 +37,11 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     fun refresh(): HomePage {
         composeTestRule.onNodeWithContentDescription("Refresh").performClick()
         return this
+    }
+
+    fun assertShortcutDisplayed(item: ServerMediaItem) {
+        composeTestRule
+            .onNode(withinTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG).and(hasText(item.name)))
+            .assertIsDisplayed()
     }
 }

@@ -17,6 +17,8 @@ import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.ServerUser
+import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
@@ -90,6 +92,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         }
 
     private val playlistItems = mutableMapOf<String, List<String>>()
+    private val shortcuts = mutableListOf<String>()
 
     val username = "user"
     val password = "password"
@@ -108,6 +111,15 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                     answer(
                         request = request,
                         result = emptyList<ProviderManifest>(),
+                    ),
+                )
+            }
+
+            APICommands.AUTH_ME -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = ServerUser(preferences = ServerUserPreferences(shortcuts)),
                     ),
                 )
             }
@@ -311,9 +323,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
                             albumTracks.drop(startIndex)
                         }
+
                         MediaType.TRACK -> listOf(item)
                         MediaType.PLAYLIST -> {
-                            val playlistTracks = tracks.filter { playlistItems[item.itemId]!!.contains(it.itemId) }
+                            val playlistTracks =
+                                tracks.filter { playlistItems[item.itemId]!!.contains(it.itemId) }
                             val startIndex = if (startItemId != null) {
                                 playlistTracks.indexOfFirst { it.itemId == startItemId }
                             } else {
@@ -322,6 +336,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
                             playlistTracks.drop(startIndex)
                         }
+
                         else -> TODO()
                     }
                 } ?: emptyList()
@@ -504,7 +519,12 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     private val _serverBaseUrl = MutableStateFlow<String?>(null)
     override val serverBaseUrl: StateFlow<String?> = _serverBaseUrl
 
-    override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean, proxyId: String?): String? = null
+    override fun resolveImageUrl(
+        path: String,
+        provider: String,
+        isRemotelyAccessible: Boolean,
+        proxyId: String?,
+    ): String? = null
 
     override fun rebaseServerImageUrl(rawUrl: String): String? = null
 
@@ -584,6 +604,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         }
 
         this.players.addAll(players)
+    }
+
+    fun addShortcut(item: ServerMediaItem) {
+        shortcuts.add(item.uri!!)
     }
 
     fun getState(playerId: String): PlayerState? {

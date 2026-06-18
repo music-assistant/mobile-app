@@ -493,3 +493,7 @@ class HomeScreenState(
         }
     }
 }
+
+object HomeScreenSemantics {
+    const val SHORTCUTS_ROW_TAG = "ShortcutsRow"
+}
