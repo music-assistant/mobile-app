@@ -79,6 +79,9 @@ object APICommands {
     const val MUSIC_RECOMMENDATIONS = "music/recommendations"
     const val PROVIDERS_MANIFESTS = "providers/manifests"
 
+    // Items
+    const val MUSIC_ITEM_BY_URI = "music/item_by_uri"
+
     // Auth commands
     const val AUTH_PROVIDERS = "auth/providers"
     const val AUTH_AUTHORIZATION_URL = "auth/authorization_url"

@@ -139,6 +139,11 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
             }
 
+            APICommands.MUSIC_ITEM_BY_URI -> {
+                val item = items.find { it.uri == request.getArg("uri") }!!
+                Result.success(answer(request = request, result = item))
+            }
+
             APICommands.MUSIC_RECOMMENDATIONS -> {
                 Result.success(
                     answer(
