@@ -9,6 +9,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
@@ -65,6 +66,7 @@ class HomeScreenViewModel(
 
     private val _recommendationsState = MutableStateFlow(
         RecommendationsState(
+            shortcuts = DataState.Loading(),
             recommendations = DataState.Loading(),
             homeRowsConfig = settings.homeRowsConfig.value,
         ),
@@ -343,6 +345,7 @@ class HomeScreenViewModel(
     }
 
     data class RecommendationsState(
+        val shortcuts: DataState<List<Shortcut>>,
         val recommendations: DataState<List<RecommendationFolder>>,
         val homeRowsConfig: List<SettingsRepository.HomeRowPref> = emptyList(),
     )

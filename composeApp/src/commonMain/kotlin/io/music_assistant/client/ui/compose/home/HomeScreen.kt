@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
@@ -117,6 +118,7 @@ fun HomeScreen(
     val homeScreenState by homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
     val recommendationsState = homeScreenState.recommendations
     val homeRowsConfig = homeScreenState.homeRowsConfig
+    val shortcutsState = homeScreenState.shortcuts
     var editMode by remember { mutableStateOf(false) }
 
     val baseList = remember(recommendationsState) {
@@ -216,6 +218,16 @@ fun HomeScreen(
                         }
                     }
                 } else {
+                    if (shortcutsState is DataState.Data) {
+                        item {
+                            LazyRow(modifier = Modifier.testTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG)) {
+                                items(shortcutsState.data) {
+                                    Text(it.item.displayName)
+                                }
+                            }
+                        }
+                    }
+
                     items(
                         items = displayedData,
                         key = { it.lazyListKey() },
