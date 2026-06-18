@@ -155,13 +155,13 @@ fun MainNavigationRoot(
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }
 
-    val connectionState = homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle().value.connectionState
     // Apply a pending navigation deep link (musicassistant://app/<page> or the
     // https App/Universal Link). The destination is retained upstream, and we
     // gate on Authenticated + re-key on connectionState so that the transient
     // pre-auth MainNavigationRoot instance — torn down during the cold-launch
     // Main→Settings→Main churn — never consumes it; only the authenticated
     // instance that stays on screen applies and clears it.
+    val connectionState by homeScreenViewModel.connectionState.collectAsStateWithLifecycle()
     val pendingDeepLink by deepLinkBus.pending.collectAsStateWithLifecycle()
     LaunchedEffect(pendingDeepLink, connectionState) {
         val dest = pendingDeepLink ?: return@LaunchedEffect
@@ -281,7 +281,7 @@ fun MainNavigationRoot(
                             entries = multiBackStack.toEntries(
                                 mainNavEntryProvider(
                                     floatingBarContentPadding,
-                                    connectionState,
+                                    connectionState is SessionState.Connected,
                                     multiBackStack,
                                     homeScreenViewModel,
                                     actionsViewModel,
@@ -313,7 +313,7 @@ fun MainNavigationRoot(
 @Composable
 private fun mainNavEntryProvider(
     contentPadding: PaddingValues,
-    connectionState: SessionState,
+    isConnected: Boolean,
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
@@ -329,7 +329,7 @@ private fun mainNavEntryProvider(
             HomeScreen(
                 homeScreenViewModel,
                 contentPadding = contentPadding,
-                connectionState = connectionState,
+                isConnected = isConnected,
                 onNavigateClick = { item ->
                     when (item) {
                         is Artist,

@@ -83,7 +83,6 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
-import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -108,16 +107,16 @@ fun HomeScreen(
     homeScreenViewModel: HomeScreenViewModel,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
-    connectionState: SessionState,
+    isConnected: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
     onLibraryItemClick: (MediaType) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
 ) {
-    val homeScreenState = homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
-    val recommendationsState = homeScreenState.value.recommendations
-    val homeRowsConfig = homeScreenState.value.homeRowsConfig
+    val homeScreenState by homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
+    val recommendationsState = homeScreenState.recommendations
+    val homeRowsConfig = homeScreenState.homeRowsConfig
     var editMode by remember { mutableStateOf(false) }
 
     val baseList = remember(recommendationsState) {
@@ -207,7 +206,7 @@ fun HomeScreen(
                 state = state.lazyListState,
                 contentPadding = contentPadding,
             ) {
-                if (connectionState !is SessionState.Connected || recommendationsState !is DataState.Data) {
+                if (!isConnected || recommendationsState !is DataState.Data) {
                     item {
                         Box(
                             modifier = modifier.fillMaxWidth().height(200.dp),

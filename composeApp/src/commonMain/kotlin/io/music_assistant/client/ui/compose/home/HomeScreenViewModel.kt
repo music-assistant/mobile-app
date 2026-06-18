@@ -60,9 +60,11 @@ class HomeScreenViewModel(
     /** Live elapsed-time flow for the slider. Ticks at 500 ms only while playing + subscribed. */
     fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
 
+    private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
+    val connectionState = _connectionState.asStateFlow()
+
     private val _recommendationsState = MutableStateFlow(
         RecommendationsState(
-            connectionState = SessionState.Disconnected.Initial,
             recommendations = DataState.Loading(),
             homeRowsConfig = settings.homeRowsConfig.value,
         ),
@@ -76,7 +78,7 @@ class HomeScreenViewModel(
     init {
         viewModelScope.launch {
             apiClient.sessionState.collect { connection ->
-                _recommendationsState.update { state -> state.copy(connectionState = connection) }
+                _connectionState.value = connection
                 when (connection) {
                     is SessionState.Reconnecting -> {
                         // Preserve UI state during reconnection - don't stop jobs or reload data
@@ -341,7 +343,6 @@ class HomeScreenViewModel(
     }
 
     data class RecommendationsState(
-        val connectionState: SessionState,
         val recommendations: DataState<List<RecommendationFolder>>,
         val homeRowsConfig: List<SettingsRepository.HomeRowPref> = emptyList(),
     )
