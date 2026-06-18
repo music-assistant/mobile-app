@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ClickContext
@@ -108,19 +109,20 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
     connectionState: SessionState,
-    dataState: DataState<List<RecommendationFolder>>,
     onNavigateClick: (AppMediaItem) -> Unit,
     onLibraryItemClick: (MediaType) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
 ) {
+    val homeScreenState = homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
+    val recommendationsState = homeScreenState.value.recommendations
+    val homeRowsConfig = homeScreenState.value.homeRowsConfig
     var editMode by remember { mutableStateOf(false) }
 
-    val baseList = remember(dataState) {
-        if (dataState is DataState.Data) {
-            dataState.data
+    val baseList = remember(recommendationsState) {
+        if (recommendationsState is DataState.Data) {
+            recommendationsState.data
                 .filter {
                     it.items?.any { item ->
                         item is Track ||
@@ -205,7 +207,7 @@ fun HomeScreen(
                 state = state.lazyListState,
                 contentPadding = contentPadding,
             ) {
-                if (connectionState !is SessionState.Connected || dataState !is DataState.Data) {
+                if (connectionState !is SessionState.Connected || recommendationsState !is DataState.Data) {
                     item {
                         Box(
                             modifier = modifier.fillMaxWidth().height(200.dp),

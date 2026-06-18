@@ -48,8 +48,6 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
-import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -121,8 +119,6 @@ fun MainNavigationRoot(
         }
     }
 
-    val recommendationsState =
-        homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
     val playersState by homeScreenViewModel.playersState.collectAsStateWithLifecycle()
     // Single pager state used across all views
     val data = playersState as? HomeScreenViewModel.PlayersState.Data
@@ -148,10 +144,6 @@ fun MainNavigationRoot(
         }
     }
 
-    val connectionState = recommendationsState.value.connectionState
-    val dataState = recommendationsState.value.recommendations
-    val homeRowsConfig = recommendationsState.value.homeRowsConfig
-
     var playerExpanded by remember { mutableStateOf(false) }
 
     val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
@@ -163,6 +155,7 @@ fun MainNavigationRoot(
     )
     val multiBackStack = remember { MultiBackStack(backStacks) }
 
+    val connectionState = homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle().value.connectionState
     // Apply a pending navigation deep link (musicassistant://app/<page> or the
     // https App/Universal Link). The destination is retained upstream, and we
     // gate on Authenticated + re-key on connectionState so that the transient
@@ -289,8 +282,6 @@ fun MainNavigationRoot(
                                 mainNavEntryProvider(
                                     floatingBarContentPadding,
                                     connectionState,
-                                    dataState,
-                                    homeRowsConfig,
                                     multiBackStack,
                                     homeScreenViewModel,
                                     actionsViewModel,
@@ -323,8 +314,6 @@ fun MainNavigationRoot(
 private fun mainNavEntryProvider(
     contentPadding: PaddingValues,
     connectionState: SessionState,
-    dataState: DataState<List<RecommendationFolder>>,
-    homeRowsConfig: List<SettingsRepository.HomeRowPref>,
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
@@ -341,7 +330,6 @@ private fun mainNavEntryProvider(
                 homeScreenViewModel,
                 contentPadding = contentPadding,
                 connectionState = connectionState,
-                dataState = dataState,
                 onNavigateClick = { item ->
                     when (item) {
                         is Artist,
@@ -370,7 +358,6 @@ private fun mainNavEntryProvider(
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
                 },
-                homeRowsConfig = homeRowsConfig,
                 actionsViewModel = actionsViewModel,
                 state = homeScreenState,
             )
