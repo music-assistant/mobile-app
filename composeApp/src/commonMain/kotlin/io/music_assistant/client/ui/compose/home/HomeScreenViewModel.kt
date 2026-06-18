@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
@@ -35,6 +36,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 @OptIn(FlowPreview::class)
 class HomeScreenViewModel(
@@ -102,6 +108,33 @@ class HomeScreenViewModel(
                                 stopJobs()
                                 jobs.add(watchPlayersData())
                                 jobs.add(watchSelectedPlayerData())
+
+                                viewModelScope.launch {
+                                    val shortcutUris =
+                                        apiClient.sendRequest(Request(APICommands.AUTH_ME))
+                                            .getOrNull()?.result
+                                            ?.jsonObject?.get("preferences")
+                                            ?.jsonObject?.get("sidebar.shortcuts")
+                                            ?.jsonArray?.map { it.jsonPrimitive.content }
+
+                                    if (shortcutUris != null) {
+                                        val results = shortcutUris.mapNotNull {
+                                            mediaItemRepository.fetchMediaItem(
+                                                Request(
+                                                    command = APICommands.MUSIC_ITEM_BY_URI,
+                                                    args = buildJsonObject {
+                                                        put("uri", JsonPrimitive(it))
+                                                    },
+                                                ),
+                                            ).getOrNull()
+                                        }
+
+                                        val shortcuts = results.map { Shortcut(it) }
+                                        _recommendationsState.update {
+                                            it.copy(shortcuts = DataState.Data(shortcuts))
+                                        }
+                                    }
+                                }
                             }
 
                             is DataConnectionState.AwaitingAuth -> {
