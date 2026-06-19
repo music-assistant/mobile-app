@@ -27,7 +27,7 @@ class HomeTest {
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
-    fun `can refresh home`() {
+    fun `can refresh home recommendations`() {
         val album1 = ServerMediaItemFixtures.album()
         serviceClient.addToLibrary(album1)
 
@@ -39,5 +39,18 @@ class HomeTest {
 
         homePage.refresh()
             .assertMediaDisplayed(album2.name)
+    }
+
+    @Test
+    fun `can refresh home shortcuts`() {
+        val album = ServerMediaItemFixtures.album()
+        serviceClient.addToLibrary(album)
+
+        val homePage = launchLoggedInApp(composeTestRule, serviceClient)
+
+        serviceClient.addShortcut(album)
+
+        homePage.refresh()
+            .assertShortcutDisplayed(album)
     }
 }

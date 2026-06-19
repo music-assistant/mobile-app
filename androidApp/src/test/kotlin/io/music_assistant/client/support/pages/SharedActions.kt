@@ -102,8 +102,14 @@ fun <T : Page> ComposePage.clickLibrary(destination: T): T {
     return destination.assertOnPage()
 }
 
-fun <T : ComposePage> T.assertMediaDisplayed(name: String): T {
-    composeTestRule.onNodeWithText(name).assertIsDisplayed()
+fun <T : ComposePage> T.assertMediaDisplayed(name: String, withinTag: String? = null): T {
+    val matcher = if (withinTag != null) {
+        withinTag(withinTag).and(hasText(name))
+    } else {
+        hasText(name)
+    }
+
+    composeTestRule.onNode(matcher).assertIsDisplayed()
     return this
 }
 

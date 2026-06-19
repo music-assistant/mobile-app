@@ -166,7 +166,7 @@ fun HomeScreen(
         topBar = {
             LandingPageTopBar(
                 editMode = editMode,
-                onRefresh = { homeScreenViewModel.loadRecommendations() },
+                onRefresh = { homeScreenViewModel.loadData() },
                 onToggleEditMode = {
                     if (editMode) {
                         homeScreenViewModel.saveHomeRows(

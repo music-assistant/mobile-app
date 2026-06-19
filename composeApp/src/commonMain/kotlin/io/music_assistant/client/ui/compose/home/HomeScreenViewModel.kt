@@ -98,7 +98,7 @@ class HomeScreenViewModel(
                             DataConnectionState.Authenticated -> {
                                 if (_recommendationsState.value.recommendations !is DataState.Data) {
                                     recommendationsJob?.cancel()
-                                    recommendationsJob = loadRecommendations()
+                                    recommendationsJob = loadData()
                                 }
                                 // Only show loading if we don't have cached data (e.g. fresh connect).
                                 // During reconnection the existing player list stays visible.
@@ -108,33 +108,6 @@ class HomeScreenViewModel(
                                 stopJobs()
                                 jobs.add(watchPlayersData())
                                 jobs.add(watchSelectedPlayerData())
-
-                                viewModelScope.launch {
-                                    val shortcutUris =
-                                        apiClient.sendRequest(Request(APICommands.AUTH_ME))
-                                            .getOrNull()?.result
-                                            ?.jsonObject?.get("preferences")
-                                            ?.jsonObject?.get("sidebar.shortcuts")
-                                            ?.jsonArray?.map { it.jsonPrimitive.content }
-
-                                    if (shortcutUris != null) {
-                                        val results = shortcutUris.mapNotNull {
-                                            mediaItemRepository.fetchMediaItem(
-                                                Request(
-                                                    command = APICommands.MUSIC_ITEM_BY_URI,
-                                                    args = buildJsonObject {
-                                                        put("uri", JsonPrimitive(it))
-                                                    },
-                                                ),
-                                            ).getOrNull()
-                                        }
-
-                                        val shortcuts = results.map { Shortcut(it) }
-                                        _recommendationsState.update {
-                                            it.copy(shortcuts = DataState.Data(shortcuts))
-                                        }
-                                    }
-                                }
                             }
 
                             is DataConnectionState.AwaitingAuth -> {
@@ -214,18 +187,42 @@ class HomeScreenViewModel(
         }
     }
 
-    fun loadRecommendations(): Job = viewModelScope.launch {
+    fun loadData(): Job = viewModelScope.launch {
         _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
         repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
             if (attempt > 0) delay(Timings.RETRY_DEBOUNCE)
-            getList<io.music_assistant.client.data.model.client.items.RecommendationFolder>(
-                Request.Library.recommendations(),
-            )
-                ?.let { items ->
-                    _recommendationsState.update { it.copy(recommendations = DataState.Data(items)) }
-                    return@launch
+            val recommendationsResult =
+                getList<RecommendationFolder>(Request.Library.recommendations())
+
+            val shortcutUris =
+                apiClient.sendRequest(Request(APICommands.AUTH_ME))
+                    .getOrNull()?.result
+                    ?.jsonObject?.get("preferences")
+                    ?.jsonObject?.get("sidebar.shortcuts")
+                    ?.jsonArray?.map { it.jsonPrimitive.content }
+
+            val shortcuts = shortcutUris?.mapNotNull {
+                mediaItemRepository.fetchMediaItem(
+                    Request(
+                        command = APICommands.MUSIC_ITEM_BY_URI,
+                        args = buildJsonObject {
+                            put("uri", JsonPrimitive(it))
+                        },
+                    ),
+                ).getOrNull()
+            }?.map { Shortcut(it) }
+
+            recommendationsResult?.let { items ->
+                _recommendationsState.update {
+                    it.copy(
+                        recommendations = DataState.Data(items),
+                        shortcuts = if (shortcuts != null) DataState.Data(shortcuts) else DataState.NoData(),
+                    )
                 }
+                return@launch
+            }
         }
+
         _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
     }
 
