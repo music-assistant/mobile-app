@@ -308,10 +308,23 @@ fun FullPlayerItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
+                // Always render the subtitle line so every player item keeps the same height,
+                // even when blank. But attach `basicMarquee()` ONLY when there's real text:
+                // marquee on a blank string builds a degenerate layer tree that overflows the
+                // RenderThread's native stack (SIGSEGV in HWUI prepareTree) — no-subtitle radios
+                // hit this. The empty Text still reserves one line; it just doesn't scroll.
+                val subtitle = currentMedia?.subtitle
                 Text(
-                    modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee()
+                    modifier = Modifier.fillMaxWidth()
+                        .then(
+                            if (subtitle.isNullOrBlank()) {
+                                Modifier
+                            } else {
+                                Modifier.fadingEdges().basicMarquee()
+                            },
+                        )
                         .alphaOn(currentMedia?.title != null),
-                    text = currentMedia?.subtitle ?: "", // TODO take from currentItem?
+                    text = subtitle ?: "", // TODO take from currentItem?
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
