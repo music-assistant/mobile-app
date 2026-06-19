@@ -13,9 +13,14 @@ class HomeRowsConfigTest {
         lazyListKey = id,
     )
 
-    private fun reconcile(serverIds: List<String>, config: List<HomeRowPref>) =
-        reconcileHomeRows(serverIds.map { itemCategory(it) }, config)
+    private fun reconcile(
+        serverIds: List<String>,
+        config: List<HomeRowPref>,
+        onTop: String? = null,
+    ): List<Pair<String, Boolean>> {
+        return reconcileHomeRows(serverIds.map { itemCategory(it) }, config, onTop)
             .map { it.first.id to it.second }
+    }
 
     @Test
     fun `empty config keeps server order with all rows visible`() {
@@ -77,15 +82,29 @@ class HomeRowsConfigTest {
     }
 
     @Test
-    fun `shortcuts is sorted to the top if it's not in config`() {
+    fun `onTop is sorted to the top if it's not in config`() {
         val config = listOf(
             HomeRowPref("c", true),
             HomeRowPref("a", true),
             HomeRowPref("b", true),
         )
         assertEquals(
-            listOf("shortcuts" to true, "c" to true, "a" to true, "b" to true),
-            reconcile(listOf("a", "b", "c", "shortcuts"), config),
+            listOf("blah" to true, "c" to true, "a" to true, "b" to true),
+            reconcile(listOf("a", "b", "c", "blah"), config, onTop = "blah"),
+        )
+    }
+
+    @Test
+    fun `onTop is not sorted to the top if it is in config`() {
+        val config = listOf(
+            HomeRowPref("c", true),
+            HomeRowPref("a", true),
+            HomeRowPref("blah", true),
+            HomeRowPref("b", true),
+        )
+        assertEquals(
+            listOf("c" to true, "a" to true, "blah" to true, "b" to true),
+            reconcile(listOf("a", "b", "c", "blah"), config, onTop = "blah"),
         )
     }
 }

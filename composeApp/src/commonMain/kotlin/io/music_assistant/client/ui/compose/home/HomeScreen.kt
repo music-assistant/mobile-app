@@ -143,7 +143,9 @@ fun HomeScreen(
     }
 
     // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
-    val working = remember(baseList, homeRowsConfig) { reconcileHomeRows(baseList, homeRowsConfig) }
+    val working = remember(baseList, homeRowsConfig) {
+        reconcileHomeRows(baseList, homeRowsConfig, onTop = "shortcuts")
+    }
 
     // Edit-mode working copy — isolated from external (real-time) updates while editing;
     // snapshotted fresh on entering edit mode.
