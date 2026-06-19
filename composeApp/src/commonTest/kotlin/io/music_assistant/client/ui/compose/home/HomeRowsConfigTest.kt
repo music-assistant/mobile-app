@@ -1,22 +1,21 @@
 package io.music_assistant.client.ui.compose.home
 
-import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.settings.SettingsRepository.HomeRowPref
+import io.music_assistant.client.ui.compose.common.items.ItemCategory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HomeRowsConfigTest {
-    private fun folder(id: String) = RecommendationFolder(
-        itemId = id,
-        provider = "test",
-        name = id,
-        uri = null,
-        images = emptyMap(),
+    private fun itemCategory(id: String) = ItemCategory(
+        id = id,
+        title = id,
+        items = emptyList(),
+        lazyListKey = id,
     )
 
     private fun reconcile(serverIds: List<String>, config: List<HomeRowPref>) =
-        reconcileHomeRows(serverIds.map { folder(it) }, config)
-            .map { it.first.itemId to it.second }
+        reconcileHomeRows(serverIds.map { itemCategory(it) }, config)
+            .map { it.first.id to it.second }
 
     @Test
     fun `empty config keeps server order with all rows visible`() {
@@ -74,6 +73,19 @@ class HomeRowsConfigTest {
         assertEquals(
             listOf("a" to true, "b" to true),
             reconcile(listOf("a", "b"), config),
+        )
+    }
+
+    @Test
+    fun `shortcuts is sorted to the top if it's not in config`() {
+        val config = listOf(
+            HomeRowPref("c", true),
+            HomeRowPref("a", true),
+            HomeRowPref("b", true),
+        )
+        assertEquals(
+            listOf("shortcuts" to true, "c" to true, "a" to true, "b" to true),
+            reconcile(listOf("a", "b", "c", "shortcuts"), config),
         )
     }
 }

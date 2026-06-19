@@ -1,7 +1,7 @@
 package io.music_assistant.client.ui.compose.home
 
-import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.settings.SettingsRepository.HomeRowPref
+import io.music_assistant.client.ui.compose.common.items.ItemCategory
 
 /**
  * Reconciles the live server rows against the stored [config] into an
@@ -18,15 +18,22 @@ import io.music_assistant.client.settings.SettingsRepository.HomeRowPref
  * - Stored ids no longer present on the server are ignored.
  */
 internal fun reconcileHomeRows(
-    serverRows: List<RecommendationFolder>,
+    categories: List<ItemCategory>,
     config: List<HomeRowPref>,
-): List<Pair<RecommendationFolder, Boolean>> {
+): List<Pair<ItemCategory, Boolean>> {
     val enabledById = config.associate { it.id to it.enabled }
     val orderById = config.withIndex().associate { (index, pref) -> pref.id to index }
-    return serverRows
-        .map { row -> row to (enabledById[row.itemId] ?: true) }
+    val sortedCategories = categories
+        .map { category -> category to (enabledById[category.id] ?: true) }
         .sortedWith(
-            compareByDescending<Pair<RecommendationFolder, Boolean>> { it.second }
-                .thenBy { orderById[it.first.itemId] ?: Int.MAX_VALUE },
+            compareByDescending<Pair<ItemCategory, Boolean>> { it.second }
+                .thenBy { orderById[it.first.id] ?: Int.MAX_VALUE },
         )
+
+    return if (config.any { it.id == "shortcuts" }) {
+        sortedCategories
+    } else {
+        sortedCategories.filter { it.first.id == "shortcuts" } +
+                sortedCategories.filter { it.first.id != "shortcuts" }
+    }
 }
