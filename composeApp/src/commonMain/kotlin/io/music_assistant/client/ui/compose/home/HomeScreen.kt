@@ -51,6 +51,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -64,6 +65,7 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.GridButton
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
@@ -220,11 +222,7 @@ fun HomeScreen(
                 } else {
                     if (shortcutsState is DataState.Data) {
                         item {
-                            LazyRow(modifier = Modifier.testTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG)) {
-                                items(shortcutsState.data) {
-                                    Text(it.item.displayName)
-                                }
-                            }
+                            ShortcutsRow(shortcutsState.data)
                         }
                     }
 
@@ -293,6 +291,24 @@ fun HomeScreen(
 }
 
 @Composable
+private fun ShortcutsRow(shortcuts: List<Shortcut>) {
+    Column {
+        RowTitle(title = "Shortcuts")
+
+        LazyRow(
+            modifier = Modifier
+                .testTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(shortcuts) {
+                GridButton(text = it.item.displayName)
+            }
+        }
+    }
+}
+
+@Composable
 private fun LandingPageTopBar(
     editMode: Boolean,
     onRefresh: () -> Unit,
@@ -340,29 +356,23 @@ fun CategoryRow(
     val rowListState = rememberLazyListState()
 
     Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            rowItemType?.let { type ->
-                val allTitle = allItemsTitle(type)
-                allTitle?.let {
-                    TextButton(
-                        onClick = onAllClick,
-                        contentPadding = PaddingValues(start = 4.dp, end = 4.dp),
-                    ) {
-                        Text(allTitle, style = MaterialTheme.typography.labelLarge)
+        RowTitle(
+            title = title,
+            link = {
+                rowItemType?.let { type ->
+                    val allTitle = allItemsTitle(type)
+                    allTitle?.let {
+                        TextButton(
+                            onClick = onAllClick,
+                            contentPadding = PaddingValues(start = 4.dp, end = 4.dp),
+                        ) {
+                            Text(allTitle, style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
-            }
-        }
+            },
+        )
+
         LazyRow(
             state = rowListState,
             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -467,6 +477,27 @@ fun CategoryRow(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RowTitle(
+    title: String,
+    link: @Composable () -> Unit = {},
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+        )
+
+        link()
     }
 }
 

@@ -22,10 +22,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun GridButton(
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     text: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
+    icon: ImageVector? = null,
+    onClick: () -> Unit = {},
 ) {
     Row(
         modifier = modifier
@@ -39,12 +39,14 @@ fun GridButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Icon(
-            modifier = Modifier.size(30.dp),
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
+        if (icon != null) {
+            Icon(
+                modifier = Modifier.size(30.dp),
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
 
         Text(
             text = text,
