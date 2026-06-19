@@ -44,4 +44,9 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
             withinTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
         )
     }
+
+    fun playShortcut(item: ServerMediaItem): HomePage {
+        playMedia(item, withinTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG)
+        return this
+    }
 }

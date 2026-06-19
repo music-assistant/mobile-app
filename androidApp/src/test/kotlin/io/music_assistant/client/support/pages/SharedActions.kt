@@ -112,8 +112,14 @@ fun <T : ComposePage> T.assertMediaNotDisplayed(name: String): T {
     return this
 }
 
-fun <T : ComposePage> T.playMedia(item: ServerMediaItem): T {
-    composeTestRule.onNodeWithText(item.name).performClick()
+fun <T : ComposePage> T.playMedia(item: ServerMediaItem, withinTag: String? = null): T {
+    val matcher = if (withinTag != null) {
+        withinTag(withinTag).and(hasText(item.name))
+    } else {
+        hasText(item.name)
+    }
+
+    composeTestRule.onNode(matcher).performClick()
     return this
 }
 

@@ -51,7 +51,6 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -65,7 +64,6 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.GridButton
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
@@ -222,7 +220,19 @@ fun HomeScreen(
                 } else {
                     if (shortcutsState is DataState.Data) {
                         item {
-                            ShortcutsRow(shortcutsState.data) { onNavigateClick(it.item) }
+                            CategoryRow(
+                                title = "Shortcuts",
+                                onNavigateClick = onNavigateClick,
+                                onPlayClick = { item, option, radio, _ ->
+                                    homeScreenViewModel.onPlayClick(item, option, radio)
+                                },
+                                mediaItems = shortcutsState.data.map { it.item },
+                                playlistActions = actionsViewModel,
+                                libraryActions = actionsViewModel,
+                                progressActions = actionsViewModel,
+                                providerIconFetcher = providerIconFetcher,
+                                rowTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
+                            )
                         }
                     }
 
@@ -291,24 +301,6 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ShortcutsRow(shortcuts: List<Shortcut>, onClick: (Shortcut) -> Unit) {
-    Column {
-        RowTitle(title = "Shortcuts")
-
-        LazyRow(
-            modifier = Modifier
-                .testTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(shortcuts) { shortcut ->
-                GridButton(text = shortcut.item.displayName) { onClick(shortcut) }
-            }
-        }
-    }
-}
-
-@Composable
 private fun LandingPageTopBar(
     editMode: Boolean,
     onRefresh: () -> Unit,
@@ -343,15 +335,16 @@ private fun LandingPageTopBar(
 @Composable
 fun CategoryRow(
     title: String,
-    rowItemType: MediaType?,
+    rowItemType: MediaType? = null,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: PlayHandler<AppMediaItem>,
-    onAllClick: () -> Unit,
+    onAllClick: () -> Unit = { },
     mediaItems: List<AppMediaItem>,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    rowTag: String? = null,
 ) {
     val rowListState = rememberLazyListState()
 
@@ -373,7 +366,14 @@ fun CategoryRow(
             },
         )
 
+        val modifier = if (rowTag != null) {
+            Modifier.testTag(rowTag)
+        } else {
+            Modifier
+        }
+
         LazyRow(
+            modifier = modifier,
             state = rowListState,
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),

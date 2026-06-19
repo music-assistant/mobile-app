@@ -6,7 +6,9 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
+import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.assertPlayer
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -34,5 +36,19 @@ class ShortcutsTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnShortcut(album)
+    }
+
+    @Test
+    fun `can play shortcut items`() {
+        val track = ServerMediaItemFixtures.track()
+        serviceClient.addToLibrary(track)
+        serviceClient.addShortcut(track)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .playShortcut(track)
+            .assertPlayer(player.displayName, playing = true, item = track.name)
     }
 }
