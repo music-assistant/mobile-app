@@ -91,12 +91,10 @@ fun HomeScreen(
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
 ) {
-    val homeScreenState by homeScreenViewModel.recommendationsState.collectAsStateWithLifecycle()
-    val recommendationsState = homeScreenState.recommendations
-    val homeRowsConfig = homeScreenState.homeRowsConfig
-    val shortcutsState = homeScreenState.shortcuts
-    var editMode by remember { mutableStateOf(false) }
+    val homeScreenState by homeScreenViewModel.state.collectAsStateWithLifecycle()
 
+    val recommendationsState = homeScreenState.recommendations
+    val shortcutsState = homeScreenState.shortcuts
     val baseList = remember(recommendationsState, shortcutsState) {
         if (recommendationsState is DataState.Data) {
             val recommendations = recommendationsState.data
@@ -143,6 +141,7 @@ fun HomeScreen(
     }
 
     // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
+    val homeRowsConfig = homeScreenState.homeRowsConfig
     val working = remember(baseList, homeRowsConfig) {
         reconcileHomeRows(baseList, homeRowsConfig, onTop = "shortcuts")
     }
@@ -153,6 +152,7 @@ fun HomeScreen(
     val enabledCount = items.count { it.second }
     val enabledByKey = remember(items) { items.associate { it.first.lazyListKey to it.second } }
 
+    var editMode by remember { mutableStateOf(false) }
     val displayedData =
         if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
 

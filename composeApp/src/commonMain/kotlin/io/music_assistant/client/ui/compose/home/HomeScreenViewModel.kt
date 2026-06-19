@@ -50,7 +50,7 @@ class HomeScreenViewModel(
     private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
-    private var recommendationsJob: Job? = null
+    private var loadDataJob: Job? = null
 
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
@@ -70,14 +70,14 @@ class HomeScreenViewModel(
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     val connectionState = _connectionState.asStateFlow()
 
-    private val _recommendationsState = MutableStateFlow(
-        RecommendationsState(
+    private val _state = MutableStateFlow(
+        State(
             shortcuts = DataState.Loading(),
             recommendations = DataState.Loading(),
             homeRowsConfig = settings.homeRowsConfig.value,
         ),
     )
-    val recommendationsState = _recommendationsState.asStateFlow()
+    val state = _state.asStateFlow()
 
     private val _playersState =
         MutableStateFlow<PlayersState>(PlayersState.Loading)
@@ -96,9 +96,9 @@ class HomeScreenViewModel(
                     is SessionState.Connected -> {
                         when (val connState = connection.dataConnectionState) {
                             DataConnectionState.Authenticated -> {
-                                if (_recommendationsState.value.recommendations !is DataState.Data) {
-                                    recommendationsJob?.cancel()
-                                    recommendationsJob = loadData()
+                                if (_state.value.recommendations !is DataState.Data) {
+                                    loadDataJob?.cancel()
+                                    loadDataJob = loadData()
                                 }
                                 // Only show loading if we don't have cached data (e.g. fresh connect).
                                 // During reconnection the existing player list stays visible.
@@ -143,12 +143,12 @@ class HomeScreenViewModel(
                         if (_playersState.value !is PlayersState.Data) {
                             _playersState.update { PlayersState.Loading }
                         }
-                        recommendationsJob?.cancel()
+                        loadDataJob?.cancel()
                         stopJobs()
                     }
 
                     is SessionState.Disconnected -> {
-                        recommendationsJob?.cancel()
+                        loadDataJob?.cancel()
                         when (connection) {
                             is SessionState.Disconnected.Error,
                             SessionState.Disconnected.Initial,
@@ -174,7 +174,7 @@ class HomeScreenViewModel(
 
         viewModelScope.launch {
             settings.homeRowsConfig.collect { config ->
-                _recommendationsState.update { it.copy(homeRowsConfig = config) }
+                _state.update { it.copy(homeRowsConfig = config) }
             }
         }
 
@@ -188,7 +188,7 @@ class HomeScreenViewModel(
     }
 
     fun loadData(): Job = viewModelScope.launch {
-        _recommendationsState.update { it.copy(recommendations = DataState.Loading()) }
+        _state.update { it.copy(recommendations = DataState.Loading(), shortcuts = DataState.Loading()) }
         repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
             if (attempt > 0) delay(Timings.RETRY_DEBOUNCE)
             val recommendationsResult =
@@ -213,7 +213,7 @@ class HomeScreenViewModel(
             }?.map { Shortcut(it) }
 
             recommendationsResult?.let { items ->
-                _recommendationsState.update {
+                _state.update {
                     it.copy(
                         recommendations = DataState.Data(items),
                         shortcuts = if (shortcuts != null) DataState.Data(shortcuts) else DataState.NoData(),
@@ -223,7 +223,7 @@ class HomeScreenViewModel(
             }
         }
 
-        _recommendationsState.update { it.copy(recommendations = DataState.Error()) }
+        _state.update { it.copy(recommendations = DataState.Error()) }
     }
 
     fun onPlayClick(
@@ -249,7 +249,7 @@ class HomeScreenViewModel(
 
     private fun updateRecommendationsIfNeeded(changed: Track) {
         val recommendationsData =
-            (_recommendationsState.value.recommendations as? DataState.Data)?.data
+            (_state.value.recommendations as? DataState.Data)?.data
                 ?: return
         val updated = recommendationsData.map { row ->
             row.items?.let { itemsList ->
@@ -266,7 +266,7 @@ class HomeScreenViewModel(
                 )
             } ?: row
         }
-        _recommendationsState.update {
+        _state.update {
             it.copy(recommendations = DataState.Data(updated))
         }
     }
@@ -374,7 +374,7 @@ class HomeScreenViewModel(
         settings.setHomeRowsConfig(working + carriedOver)
     }
 
-    data class RecommendationsState(
+    data class State(
         val shortcuts: DataState<List<Shortcut>>,
         val recommendations: DataState<List<RecommendationFolder>>,
         val homeRowsConfig: List<SettingsRepository.HomeRowPref> = emptyList(),
