@@ -39,9 +39,11 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
         return this
     }
 
-    fun assertShortcutDisplayed(item: ServerMediaItem) {
+    fun clickOnShortcut(item: ServerMediaItem): ItemPage {
         composeTestRule
             .onNode(withinTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG).and(hasText(item.name)))
-            .assertIsDisplayed()
+            .performClick()
+
+        return ItemPage(item, Res.string.nav_home.get(), composeTestRule)
     }
 }

@@ -27,12 +27,12 @@ class ShortcutsTest {
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
-    fun `can view shortcuts`() {
+    fun `can navigate to shortcut items`() {
         val album = ServerMediaItemFixtures.album()
         serviceClient.addToLibrary(album)
         serviceClient.addShortcut(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .assertShortcutDisplayed(album)
+            .clickOnShortcut(album)
     }
 }

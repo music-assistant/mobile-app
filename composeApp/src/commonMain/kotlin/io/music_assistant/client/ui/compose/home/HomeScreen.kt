@@ -222,7 +222,7 @@ fun HomeScreen(
                 } else {
                     if (shortcutsState is DataState.Data) {
                         item {
-                            ShortcutsRow(shortcutsState.data)
+                            ShortcutsRow(shortcutsState.data) { onNavigateClick(it.item) }
                         }
                     }
 
@@ -291,7 +291,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ShortcutsRow(shortcuts: List<Shortcut>) {
+private fun ShortcutsRow(shortcuts: List<Shortcut>, onClick: (Shortcut) -> Unit) {
     Column {
         RowTitle(title = "Shortcuts")
 
@@ -301,8 +301,8 @@ private fun ShortcutsRow(shortcuts: List<Shortcut>) {
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(shortcuts) {
-                GridButton(text = it.item.displayName)
+            items(shortcuts) { shortcut ->
+                GridButton(text = shortcut.item.displayName) { onClick(shortcut) }
             }
         }
     }
