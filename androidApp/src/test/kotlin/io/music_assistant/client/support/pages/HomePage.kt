@@ -1,14 +1,12 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
-import io.music_assistant.client.support.withinTag
 import io.music_assistant.client.ui.compose.home.HomeScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_home
@@ -40,10 +38,10 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     }
 
     fun clickOnShortcut(item: ServerMediaItem): ItemPage {
-        composeTestRule
-            .onNode(withinTag(HomeScreenSemantics.SHORTCUTS_ROW_TAG).and(hasText(item.name)))
-            .performClick()
-
-        return ItemPage(item, Res.string.nav_home.get(), composeTestRule)
+        return clickOnMedia(
+            item,
+            Res.string.nav_home.get(),
+            withinTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
+        )
     }
 }

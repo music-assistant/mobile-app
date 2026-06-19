@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -15,6 +16,7 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
+import io.music_assistant.client.support.withinTag
 import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
@@ -29,19 +31,29 @@ import musicassistantclient.composeapp.generated.resources.players_nothing
 fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
     navigationItem: String,
+    withinTag: String? = null,
 ): ItemPage {
     return clickOnMedia(
         serverMediaItem.name,
         MediaType.fromServer(serverMediaItem.mediaType) ?: MediaType.UNKNOWN,
         navigationItem,
+        withinTag,
     )
 }
 
-fun ComposePage.clickOnMedia(name: String, type: MediaType, navigationItem: String): ItemPage {
-    composeTestRule.onNodeWithText(name)
-        .assertIsDisplayed()
-        .performClick()
+fun ComposePage.clickOnMedia(
+    name: String,
+    type: MediaType,
+    navigationItem: String,
+    withinTag: String? = null,
+): ItemPage {
+    val matcher = if (withinTag != null) {
+        withinTag(withinTag).and(hasText(name))
+    } else {
+        hasText(name)
+    }
 
+    composeTestRule.onNode(matcher).assertIsDisplayed().performClick()
     return ItemPage(name, type, navigationItem, composeTestRule).assertOnPage()
 }
 
