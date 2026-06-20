@@ -45,6 +45,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -54,6 +55,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.CenteredProgress
@@ -95,58 +97,12 @@ fun HomeScreen(
 ) {
     val homeScreenState by homeScreenViewModel.state.collectAsStateWithLifecycle()
 
+    // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
     val recommendationsState = homeScreenState.recommendations
     val shortcutsState = homeScreenState.shortcuts
-    val baseList = remember(recommendationsState, shortcutsState) {
-        if (recommendationsState is DataState.Data) {
-            val recommendations = recommendationsState.data
-                .filter {
-                    it.items?.any { item ->
-                        item is Track ||
-                                item is Artist ||
-                                item is Album ||
-                                item is Playlist ||
-                                item is Audiobook ||
-                                item is Podcast ||
-                                item is PodcastEpisode ||
-                                item is RadioStation ||
-                                item is Genre
-                    } == true
-                }
-                .distinctBy { it.lazyListKey() }
-                .map {
-                    ItemCategory(
-                        id = it.itemId,
-                        title = it.displayName.toDisplayString(),
-                        items = it.items.orEmpty(),
-                        lazyListKey = it.lazyListKey(),
-                        itemType = it.rowItemType,
-                    )
-                }
-
-            if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
-                val shortcuts = shortcutsState.data
-                val shortcutsCategory = ItemCategory(
-                    id = SHORTCUTS_CATEGORY_ID,
-                    title = Res.string.home_shortcuts.toDisplayString(),
-                    items = shortcuts.map { it.item },
-                    lazyListKey = SHORTCUTS_CATEGORY_ID,
-                    tag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
-                )
-
-                recommendations + shortcutsCategory
-            } else {
-                recommendations
-            }
-        } else {
-            emptyList()
-        }
-    }
-
-    // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
     val homeRowsConfig = homeScreenState.homeRowsConfig
-    val working = remember(baseList, homeRowsConfig) {
-        reconcileHomeRows(baseList, homeRowsConfig, onTop = SHORTCUTS_CATEGORY_ID)
+    val working = remember(recommendationsState, shortcutsState, homeRowsConfig) {
+        getCategories(recommendationsState, shortcutsState, homeRowsConfig)
     }
 
     // Edit-mode working copy — isolated from external (real-time) updates while editing;
@@ -291,6 +247,60 @@ fun HomeScreen(
     }
 }
 
+private fun getCategories(
+    recommendationsState: DataState<List<RecommendationFolder>>,
+    shortcutsState: DataState<List<Shortcut>>,
+    homeRowsConfig: List<SettingsRepository.HomeRowPref>,
+): List<Pair<ItemCategory, Boolean>> {
+    val baseList = if (recommendationsState is DataState.Data) {
+        val recommendations = recommendationsState.data
+            .filter {
+                it.items?.any { item ->
+                    item is Track ||
+                            item is Artist ||
+                            item is Album ||
+                            item is Playlist ||
+                            item is Audiobook ||
+                            item is Podcast ||
+                            item is PodcastEpisode ||
+                            item is RadioStation ||
+                            item is Genre
+                } == true
+            }
+            .distinctBy { it.lazyListKey() }
+            .map {
+                ItemCategory(
+                    id = it.itemId,
+                    title = it.displayName.toDisplayString(),
+                    items = it.items.orEmpty(),
+                    lazyListKey = it.lazyListKey(),
+                    itemType = it.rowItemType,
+                )
+            }
+
+        if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
+            val shortcuts = shortcutsState.data
+            val shortcutsCategory = ItemCategory(
+                id = SHORTCUTS_CATEGORY_ID,
+                title = Res.string.home_shortcuts.toDisplayString(),
+                items = shortcuts.map { it.item },
+                lazyListKey = SHORTCUTS_CATEGORY_ID,
+                tag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
+            )
+
+            recommendations + shortcutsCategory
+        } else {
+            recommendations
+        }
+    } else {
+        emptyList()
+    }
+
+    return reconcileHomeRows(baseList, homeRowsConfig, onTop = SHORTCUTS_CATEGORY_ID)
+}
+
+private const val SHORTCUTS_CATEGORY_ID = "shortcuts"
+
 @Composable
 private fun LandingPageTopBar(
     editMode: Boolean,
@@ -349,5 +359,3 @@ object HomeScreenSemantics {
     const val SHORTCUTS_ROW_TAG = "ShortcutsRow"
     const val LIST_TAG = "List"
 }
-
-private const val SHORTCUTS_CATEGORY_ID = "shortcuts"
