@@ -45,6 +45,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
+    private var requestErrors: Boolean = false
+
     private val uniqueIdGenerator = UniqueIdGenerator()
 
     private val players = mutableListOf<ServerPlayer>()
@@ -105,6 +107,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     override val isReadyForCommands: StateFlow<Boolean> = _isReadyForCommands
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
+        if (requestErrors) {
+            return Result.failure(Exception())
+        }
+
         return when (request.command) {
             APICommands.PROVIDERS_MANIFESTS -> {
                 Result.success(
@@ -657,6 +663,10 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     fun setPlaylist(playlist: ServerMediaItem, vararg tracks: ServerMediaItem) {
         playlistItems[playlist.itemId] = tracks.map { it.itemId }
+    }
+
+    fun setRequestErrors(reachable: Boolean) {
+        this.requestErrors = reachable
     }
 }
 

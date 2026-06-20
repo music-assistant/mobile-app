@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +56,8 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.compose.common.CenteredProgress
+import io.music_assistant.client.ui.compose.common.CenteredText
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.items.CategoryRow
 import io.music_assistant.client.ui.compose.common.items.ItemCategory
@@ -73,6 +73,7 @@ import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.home_edit_rows
 import musicassistantclient.composeapp.generated.resources.home_save_rows
+import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
@@ -82,7 +83,6 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun HomeScreen(
     homeScreenViewModel: HomeScreenViewModel,
-    modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
     isConnected: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
@@ -189,37 +189,37 @@ fun HomeScreen(
         },
         topAppBarState = state.topAppBarState,
     ) {
-        val rowContent: @Composable (ItemCategory) -> Unit = {
-            CategoryRow(
-                itemCategory = it,
-                onNavigateClick = onNavigateClick,
-                onPlayClick = { item, option, radio, _ ->
-                    homeScreenViewModel.onPlayClick(item, option, radio)
-                },
-                onAllClick = { it.itemType?.let { onLibraryItemClick(it) } },
-                playlistActions = actionsViewModel,
-                libraryActions = actionsViewModel,
-                progressActions = actionsViewModel,
-                providerIconFetcher = providerIconFetcher,
-            )
-        }
+        if (!isConnected || recommendationsState !is DataState.Data) {
+            if (recommendationsState is DataState.Loading) {
+                CenteredProgress()
+            } else {
+                CenteredText(
+                    text = stringResource(Res.string.library_error),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        } else {
+            val rowContent: @Composable (ItemCategory) -> Unit = {
+                CategoryRow(
+                    itemCategory = it,
+                    onNavigateClick = onNavigateClick,
+                    onPlayClick = { item, option, radio, _ ->
+                        homeScreenViewModel.onPlayClick(item, option, radio)
+                    },
+                    onAllClick = { it.itemType?.let { onLibraryItemClick(it) } },
+                    playlistActions = actionsViewModel,
+                    libraryActions = actionsViewModel,
+                    progressActions = actionsViewModel,
+                    providerIconFetcher = providerIconFetcher,
+                )
+            }
 
-        ProvideClickActions(ClickContext.HOME) {
-            LazyColumn(
-                modifier = Modifier.testTag(HomeScreenSemantics.LIST_TAG),
-                state = state.lazyListState,
-                contentPadding = contentPadding,
-            ) {
-                if (!isConnected || recommendationsState !is DataState.Data) {
-                    item {
-                        Box(
-                            modifier = modifier.fillMaxWidth().height(200.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                } else {
+            ProvideClickActions(ClickContext.HOME) {
+                LazyColumn(
+                    modifier = Modifier.testTag(HomeScreenSemantics.LIST_TAG),
+                    state = state.lazyListState,
+                    contentPadding = contentPadding,
+                ) {
                     items(
                         items = displayedData,
                         key = { it.lazyListKey },

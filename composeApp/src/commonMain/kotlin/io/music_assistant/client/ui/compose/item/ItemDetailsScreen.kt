@@ -69,6 +69,8 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.compose.common.CenteredProgress
+import io.music_assistant.client.ui.compose.common.CenteredText
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
 import io.music_assistant.client.ui.compose.common.SortChip
@@ -882,32 +884,12 @@ private fun ChaptersTabContent(
 }
 
 @Composable
-private fun CenteredProgress() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
 private fun InlineProgress() {
     Box(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator()
-    }
-}
-
-@Composable
-private fun CenteredText(text: String, color: Color = Color.Unspecified) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = text, color = color)
     }
 }
 

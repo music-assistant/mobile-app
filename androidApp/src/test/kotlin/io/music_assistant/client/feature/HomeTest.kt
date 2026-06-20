@@ -8,6 +8,7 @@ import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertMediaDisplayed
+import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -52,5 +53,21 @@ class HomeTest {
 
         homePage.refresh()
             .assertShortcutDisplayed(album)
+    }
+
+    @Test
+    fun `shows error if data can't be loaded and can recover with refresh`() {
+        val album = ServerMediaItemFixtures.album()
+        serviceClient.addToLibrary(album)
+        val homePage = launchLoggedInApp(composeTestRule, serviceClient)
+
+        serviceClient.setRequestErrors(true)
+        homePage.refresh()
+            .assertErrorLoadingData()
+            .assertMediaNotDisplayed(album.name)
+
+        serviceClient.setRequestErrors(false)
+        homePage.refresh()
+            .assertMediaDisplayed(album.name)
     }
 }
