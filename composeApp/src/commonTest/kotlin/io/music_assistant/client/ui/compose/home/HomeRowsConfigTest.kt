@@ -2,13 +2,14 @@ package io.music_assistant.client.ui.compose.home
 
 import io.music_assistant.client.settings.SettingsRepository.HomeRowPref
 import io.music_assistant.client.ui.compose.common.items.ItemCategory
+import io.music_assistant.client.ui.compose.common.toDisplayString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HomeRowsConfigTest {
     private fun itemCategory(id: String) = ItemCategory(
         id = id,
-        title = id,
+        title = id.toDisplayString(),
         items = emptyList(),
         lazyListKey = id,
     )
