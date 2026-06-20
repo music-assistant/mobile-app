@@ -15,6 +15,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
@@ -24,6 +25,7 @@ import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,9 +38,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 @OptIn(FlowPreview::class)
 class HomeScreenViewModel(
@@ -203,12 +202,8 @@ class HomeScreenViewModel(
             }
 
             val recommendations = getList<RecommendationFolder>(Request.Library.recommendations())
-            val shortcutUris =
-                apiClient.sendRequest(Request(APICommands.AUTH_ME))
-                    .getOrNull()?.result
-                    ?.jsonObject?.get("preferences")
-                    ?.jsonObject?.get("sidebar.shortcuts")
-                    ?.jsonArray?.map { it.jsonPrimitive.content }
+            val shortcutUris = apiClient.sendRequest(Request(APICommands.AUTH_ME))
+                .resultAs<ServerUser>()?.preferences?.shortcuts
 
             if (recommendations != null) {
                 val shortcuts = shortcutUris?.mapNotNull {
