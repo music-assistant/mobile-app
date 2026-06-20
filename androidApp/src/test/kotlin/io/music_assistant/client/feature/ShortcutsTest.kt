@@ -1,6 +1,8 @@
 package io.music_assistant.client.feature
 
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
@@ -8,10 +10,13 @@ import io.music_assistant.client.support.FakeServiceClient.LegacyVersion
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertPlayer
 import io.music_assistant.client.support.rules.createTestRuleChain
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.home_shortcuts
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,5 +67,11 @@ class ShortcutsTest {
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .assertMediaDisplayed(album.name)
+    }
+
+    @Test
+    fun `does not show shortcuts if there aren't any`() {
+        launchLoggedInApp(composeTestRule, serviceClient)
+        composeTestRule.onNodeWithText(Res.string.home_shortcuts.get()).assertIsNotDisplayed()
     }
 }

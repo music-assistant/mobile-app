@@ -105,6 +105,7 @@
   <string name="filter_favorites">Favorites</string>
   <string name="home_edit_rows">Edit rows</string>
   <string name="home_save_rows">Save rows</string>
+  <string name="home_shortcuts">Shortcuts</string>
   <string name="item_error">Error loading item</string>
   <string name="item_no_data">No data available</string>
   <string name="item_subtitle_genre">Genre</string>

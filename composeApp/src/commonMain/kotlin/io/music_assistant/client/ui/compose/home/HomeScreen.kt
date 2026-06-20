@@ -122,7 +122,7 @@ fun HomeScreen(
                     )
                 }
 
-            if (shortcutsState is DataState.Data) {
+            if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
                 val shortcuts = shortcutsState.data
                 val shortcutsCategory = ItemCategory(
                     id = "shortcuts",
@@ -131,6 +131,7 @@ fun HomeScreen(
                     lazyListKey = "shortcuts",
                     tag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
                 )
+
                 recommendations + shortcutsCategory
             } else {
                 recommendations
