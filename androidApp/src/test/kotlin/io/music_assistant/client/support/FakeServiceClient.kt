@@ -45,6 +45,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 
 class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
+    private var legacyVersion: LegacyVersion? = null
     private var requestErrors: Boolean = false
 
     private val uniqueIdGenerator = UniqueIdGenerator()
@@ -122,12 +123,21 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             }
 
             APICommands.AUTH_ME -> {
-                Result.success(
-                    answer(
-                        request = request,
-                        result = ServerUser(preferences = ServerUserPreferences(shortcuts)),
-                    ),
-                )
+                if (legacyVersion == LegacyVersion.V2_8) {
+                    Result.success(
+                        answer(
+                            request = request,
+                            result = emptyMap<String, String>(),
+                        ),
+                    )
+                } else {
+                    Result.success(
+                        answer(
+                            request = request,
+                            result = ServerUser(preferences = ServerUserPreferences(shortcuts)),
+                        ),
+                    )
+                }
             }
 
             APICommands.AUTH_PROVIDERS -> {
@@ -667,6 +677,14 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     fun setRequestErrors(reachable: Boolean) {
         this.requestErrors = reachable
+    }
+
+    fun setLegacyVersion(version: LegacyVersion) {
+        this.legacyVersion = version
+    }
+
+    enum class LegacyVersion {
+        V2_8,
     }
 }
 

@@ -210,8 +210,8 @@ class HomeScreenViewModel(
                     ?.jsonObject?.get("sidebar.shortcuts")
                     ?.jsonArray?.map { it.jsonPrimitive.content }
 
-            if (recommendations != null && shortcutUris != null) {
-                val shortcuts = shortcutUris.mapNotNull {
+            if (recommendations != null) {
+                val shortcuts = shortcutUris?.mapNotNull {
                     mediaItemRepository.fetchMediaItem(
                         Request(
                             command = APICommands.MUSIC_ITEM_BY_URI,
@@ -220,12 +220,12 @@ class HomeScreenViewModel(
                             },
                         ),
                     ).getOrNull()
-                }.map { Shortcut(it) }
+                }?.map { Shortcut(it) }
 
                 _state.update {
                     it.copy(
                         recommendations = DataState.Data(recommendations),
-                        shortcuts = DataState.Data(shortcuts),
+                        shortcuts = if (shortcuts != null) DataState.Data(shortcuts) else DataState.NoData(),
                     )
                 }
             } else {
