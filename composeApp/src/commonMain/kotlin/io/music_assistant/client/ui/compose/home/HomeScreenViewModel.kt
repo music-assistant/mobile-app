@@ -18,7 +18,6 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -27,7 +26,6 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -97,8 +95,7 @@ class HomeScreenViewModel(
                         when (val connState = connection.dataConnectionState) {
                             DataConnectionState.Authenticated -> {
                                 if (_state.value.recommendations !is DataState.Data) {
-                                    loadDataJob?.cancel()
-                                    loadDataJob = loadData()
+                                    loadData()
                                 }
                                 // Only show loading if we don't have cached data (e.g. fresh connect).
                                 // During reconnection the existing player list stays visible.
@@ -114,7 +111,7 @@ class HomeScreenViewModel(
                                 when (connState.authProcessState) {
                                     AuthProcessState.NotStarted,
                                     AuthProcessState.InProgress,
-                                    -> {
+                                        -> {
                                         if (_playersState.value !is PlayersState.Data) {
                                             _playersState.update { PlayersState.Loading }
                                         }
@@ -123,7 +120,7 @@ class HomeScreenViewModel(
 
                                     AuthProcessState.LoggedOut,
                                     is AuthProcessState.Failed,
-                                    -> {
+                                        -> {
                                         _playersState.update { PlayersState.NoAuth }
                                         stopJobs()
                                     }
@@ -153,7 +150,7 @@ class HomeScreenViewModel(
                             is SessionState.Disconnected.Error,
                             SessionState.Disconnected.Initial,
                             SessionState.Disconnected.ByUser,
-                            -> {
+                                -> {
                                 _playersState.update { PlayersState.Disconnected }
                                 stopJobs()
                             }
@@ -187,13 +184,25 @@ class HomeScreenViewModel(
         }
     }
 
-    fun loadData(): Job = viewModelScope.launch {
-        _state.update { it.copy(recommendations = DataState.Loading(), shortcuts = DataState.Loading()) }
-        repeat(MAX_RECOMMENDATION_ATTEMPTS) { attempt ->
-            if (attempt > 0) delay(Timings.RETRY_DEBOUNCE)
-            val recommendationsResult =
-                getList<RecommendationFolder>(Request.Library.recommendations())
+    fun loadData() {
+        loadDataJob?.cancel()
 
+        _state.update {
+            it.copy(
+                recommendations = DataState.Loading(),
+                shortcuts = DataState.Loading(),
+            )
+        }
+
+        loadDataJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    recommendations = DataState.Loading(),
+                    shortcuts = DataState.Loading(),
+                )
+            }
+
+            val recommendations = getList<RecommendationFolder>(Request.Library.recommendations())
             val shortcutUris =
                 apiClient.sendRequest(Request(APICommands.AUTH_ME))
                     .getOrNull()?.result
@@ -201,29 +210,28 @@ class HomeScreenViewModel(
                     ?.jsonObject?.get("sidebar.shortcuts")
                     ?.jsonArray?.map { it.jsonPrimitive.content }
 
-            val shortcuts = shortcutUris?.mapNotNull {
-                mediaItemRepository.fetchMediaItem(
-                    Request(
-                        command = APICommands.MUSIC_ITEM_BY_URI,
-                        args = buildJsonObject {
-                            put("uri", JsonPrimitive(it))
-                        },
-                    ),
-                ).getOrNull()
-            }?.map { Shortcut(it) }
+            if (recommendations != null && shortcutUris != null) {
+                val shortcuts = shortcutUris.mapNotNull {
+                    mediaItemRepository.fetchMediaItem(
+                        Request(
+                            command = APICommands.MUSIC_ITEM_BY_URI,
+                            args = buildJsonObject {
+                                put("uri", JsonPrimitive(it))
+                            },
+                        ),
+                    ).getOrNull()
+                }.map { Shortcut(it) }
 
-            recommendationsResult?.let { items ->
                 _state.update {
                     it.copy(
-                        recommendations = DataState.Data(items),
-                        shortcuts = if (shortcuts != null) DataState.Data(shortcuts) else DataState.NoData(),
+                        recommendations = DataState.Data(recommendations),
+                        shortcuts = DataState.Data(shortcuts),
                     )
                 }
-                return@launch
+            } else {
+                _state.update { it.copy(recommendations = DataState.Error()) }
             }
         }
-
-        _state.update { it.copy(recommendations = DataState.Error()) }
     }
 
     fun onPlayClick(
@@ -346,8 +354,10 @@ class HomeScreenViewModel(
                     state.connectionInfo.isTls,
                 ),
             )
+
         is SessionState.Connected.WebRTC ->
             settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
+
         else -> null
     }
 
