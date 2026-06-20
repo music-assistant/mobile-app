@@ -64,6 +64,7 @@ import io.music_assistant.client.ui.compose.common.items.ItemCategory
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
+import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.ScreenState
@@ -73,6 +74,7 @@ import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.home_edit_rows
 import musicassistantclient.composeapp.generated.resources.home_save_rows
+import musicassistantclient.composeapp.generated.resources.home_shortcuts
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.refresh
@@ -115,7 +117,7 @@ fun HomeScreen(
                 .map {
                     ItemCategory(
                         id = it.itemId,
-                        title = it.displayName,
+                        title = it.displayName.toDisplayString(),
                         items = it.items.orEmpty(),
                         lazyListKey = it.lazyListKey(),
                         itemType = it.rowItemType,
@@ -125,10 +127,10 @@ fun HomeScreen(
             if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
                 val shortcuts = shortcutsState.data
                 val shortcutsCategory = ItemCategory(
-                    id = "shortcuts",
-                    title = "Shortcuts",
+                    id = SHORTCUTS_CATEGORY_ID,
+                    title = Res.string.home_shortcuts.toDisplayString(),
                     items = shortcuts.map { it.item },
-                    lazyListKey = "shortcuts",
+                    lazyListKey = SHORTCUTS_CATEGORY_ID,
                     tag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
                 )
 
@@ -144,7 +146,7 @@ fun HomeScreen(
     // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
     val homeRowsConfig = homeScreenState.homeRowsConfig
     val working = remember(baseList, homeRowsConfig) {
-        reconcileHomeRows(baseList, homeRowsConfig, onTop = "shortcuts")
+        reconcileHomeRows(baseList, homeRowsConfig, onTop = SHORTCUTS_CATEGORY_ID)
     }
 
     // Edit-mode working copy — isolated from external (real-time) updates while editing;
@@ -347,3 +349,5 @@ object HomeScreenSemantics {
     const val SHORTCUTS_ROW_TAG = "ShortcutsRow"
     const val LIST_TAG = "List"
 }
+
+private const val SHORTCUTS_CATEGORY_ID = "shortcuts"

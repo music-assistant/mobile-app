@@ -28,6 +28,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.ui.compose.common.DisplayString
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.all_albums
 import musicassistantclient.composeapp.generated.resources.all_artists
@@ -41,7 +42,7 @@ import org.jetbrains.compose.resources.stringResource
 
 data class ItemCategory(
     val id: String,
-    val title: String,
+    val title: DisplayString,
     val items: List<AppMediaItem>,
     val lazyListKey: Any,
     val itemType: MediaType? = null,
@@ -60,7 +61,7 @@ fun CategoryRow(
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
 ) {
     CategoryRow(
-        title = itemCategory.title,
+        title = itemCategory.title.string(),
         rowItemType = itemCategory.itemType,
         onNavigateClick = onNavigateClick,
         onPlayClick = onPlayClick,
