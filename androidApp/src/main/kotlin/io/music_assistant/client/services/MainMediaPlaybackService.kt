@@ -28,6 +28,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.media_toast_playing_players
+import org.jetbrains.compose.resources.getString
 import org.koin.android.ext.android.inject
 
 class MainMediaPlaybackService : MediaBrowserServiceCompat() {
@@ -150,11 +154,16 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private val notificationDismissReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (dataSource.focusPlayingSessionPlayer()) {
-                Toast.makeText(
-                    this@MainMediaPlaybackService,
-                    "You have playing players",
-                    Toast.LENGTH_SHORT,
-                ).show()
+                scope.launch {
+                    val msg = getString(Res.string.media_toast_playing_players)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@MainMediaPlaybackService,
+                            msg,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
             } else {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()

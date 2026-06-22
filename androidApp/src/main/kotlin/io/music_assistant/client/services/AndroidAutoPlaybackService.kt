@@ -32,6 +32,11 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.media_error_connection_lost
+import musicassistantclient.composeapp.generated.resources.media_error_local_player_off
+import musicassistantclient.composeapp.generated.resources.media_error_reconnecting
+import org.jetbrains.compose.resources.getString
 import org.koin.android.ext.android.inject
 
 class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
@@ -182,7 +187,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         wasAuthenticated = false
                         sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                            "Reconnecting...",
+                            getString(Res.string.media_error_reconnecting),
                         )
                     }
 
@@ -190,7 +195,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         wasAuthenticated = false
                         sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                            "Connection lost",
+                            getString(Res.string.media_error_connection_lost),
                         )
                     }
 
@@ -230,7 +235,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                         }
                         sharedSession.setErrorState(
                             PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                            "Local player is not enabled",
+                            getString(Res.string.media_error_local_player_off),
                             pendingIntent,
                         )
                     }

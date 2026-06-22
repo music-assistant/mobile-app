@@ -105,6 +105,7 @@ android {
 
 dependencies {
     implementation(projects.composeApp)
+    implementation(libs.compose.components.resources)
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
