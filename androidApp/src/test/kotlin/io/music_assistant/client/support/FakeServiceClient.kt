@@ -683,6 +683,37 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         this.legacyVersion = version
     }
 
+    fun setConnected(connected: Boolean) {
+        if (connected) {
+            _sessionState.update {
+                when (it) {
+                    is SessionState.Reconnecting.Direct -> {
+                        SessionState.Connected.Direct(
+                            connectionInfo = it.connectionInfo,
+                            connectionData = it.connectionData,
+                        )
+                    }
+
+                    else -> error("Unhandled SessionState: $it")
+                }
+            }
+        } else {
+            _sessionState.update {
+                when (it) {
+                    is SessionState.Connected.Direct -> {
+                        SessionState.Reconnecting.Direct(
+                            attempt = 1,
+                            connectionInfo = it.connectionInfo,
+                            connectionData = it.connectionData,
+                        )
+                    }
+
+                    else -> error("Unhandled SessionState: $it")
+                }
+            }
+        }
+    }
+
     enum class LegacyVersion {
         V2_8,
     }

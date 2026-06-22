@@ -148,15 +148,13 @@ fun HomeScreen(
         },
         topAppBarState = state.topAppBarState,
     ) {
-        if (!isConnected || recommendationsState !is DataState.Data) {
-            if (recommendationsState is DataState.Loading) {
-                CenteredProgress()
-            } else {
-                CenteredText(
-                    text = stringResource(Res.string.library_error),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+        if (!isConnected || recommendationsState is DataState.Loading) {
+            CenteredProgress()
+        } else if (recommendationsState !is DataState.Data) {
+            CenteredText(
+                text = stringResource(Res.string.library_error),
+                color = MaterialTheme.colorScheme.error,
+            )
         } else {
             val rowContent: @Composable (ItemCategory) -> Unit = {
                 CategoryRow(
