@@ -10,11 +10,11 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -76,20 +76,26 @@ fun MediaItemPalette.toExtractedColors(): ExtractedColors? {
 }
 
 /**
- * Suspending fetcher used by [rememberAnimatedPlayerColors] — supplied by the screen
- * so the composable doesn't depend on Koin and is trivially testable with a fake.
+ * Color source used by [rememberAnimatedPlayerColors] — supplied by the screen so the
+ * composable doesn't depend on Koin and is trivially testable with a fake.
+ *
+ * [peek] is a synchronous cache hit (or null) so an already-known color can be applied on
+ * first composition without animating; [fetch] is the suspending extract-or-cache path.
  */
-typealias ExtractedColorsFetcher = suspend (imageUrl: String) -> ExtractedColors?
+interface ExtractedColorsSource {
+    fun peek(imageUrl: String): ExtractedColors?
+    suspend fun fetch(imageUrl: String): ExtractedColors?
+}
 
 @Composable
-fun rememberExtractedColorsFetcher(): ExtractedColorsFetcher {
+fun rememberExtractedColorsSource(): ExtractedColorsSource {
     val viewModel: DominantColorViewModel = koinInject()
     val platformContext = LocalPlatformContext.current
     return remember(viewModel, platformContext) {
-        {
-            url ->
-                viewModel.getColors(platformContext, url)
-            }
+        object : ExtractedColorsSource {
+            override fun peek(imageUrl: String) = viewModel.peekColors(imageUrl)
+            override suspend fun fetch(imageUrl: String) = viewModel.getColors(platformContext, imageUrl)
+        }
     }
 }
 
@@ -107,15 +113,19 @@ data class PlayerColors(
 fun rememberAnimatedPlayerColors(
     imageUrl: String?,
     fallback: Color,
-    fetchColors: ExtractedColorsFetcher,
+    source: ExtractedColorsSource,
 ): State<PlayerColors> {
     val onDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
-    val extracted by produceState<ExtractedColors?>(
-        initialValue = null,
-        key1 = imageUrl,
-    ) {
-        value = imageUrl?.let { fetchColors(it) }
+    // Synchronous cache hit (consecutive launch): seed the value so the first target is already
+    // final and animateColorAsState renders it without a tween. A miss seeds null → fallback and
+    // animates once fetch() resolves. remember(imageUrl) is required over produceState here:
+    // produceState doesn't re-apply initialValue when its key changes, so a cached value would
+    // never replace the previous image's colors.
+    val cached = remember(imageUrl) { imageUrl?.let { source.peek(it) } }
+    var extracted by remember(imageUrl) { mutableStateOf(cached) }
+    LaunchedEffect(imageUrl) {
+        if (cached == null) extracted = imageUrl?.let { source.fetch(it) }
     }
 
     val targetDominant = extracted
@@ -125,12 +135,17 @@ fun rememberAnimatedPlayerColors(
         ?.let { if (onDark) it.tintOnDark else it.tintOnLight }
         ?: fallback.ensureReadable(onDarkSurface = onDark)
 
+    // Animate the fallback → extracted transition on a cache miss; snap instantly on a hit, where
+    // the final color is already known on the first frame and a tween would just be flicker.
+    val animate = cached == null
     val animatedDominant by rememberAnimatedColorAsState(
         targetValue = targetDominant,
+        animate = animate,
         animationSpec = tween(durationMillis = 500),
     )
     val animatedTint by rememberAnimatedColorAsState(
         targetValue = targetTint,
+        animate = animate,
         animationSpec = tween(durationMillis = 500),
     )
 
@@ -195,8 +210,11 @@ private fun hueToRgb(p: Float, q: Float, t: Float): Float {
 @Composable
 private fun rememberAnimatedColorAsState(
     targetValue: Color,
+    animate: Boolean,
     animationSpec: AnimationSpec<Color>,
 ): State<Color> {
+    if (!animate) return remember(targetValue) { mutableStateOf(targetValue) }
+
     var animated by rememberSaveable(targetValue) { mutableStateOf(false) }
 
     return if (!animated) {

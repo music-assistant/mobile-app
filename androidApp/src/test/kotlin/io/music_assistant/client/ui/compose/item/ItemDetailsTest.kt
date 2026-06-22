@@ -15,6 +15,8 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.ExtractedColors
+import io.music_assistant.client.ui.compose.common.ExtractedColorsSource
 import io.music_assistant.client.ui.compose.support.inScrollable
 import io.music_assistant.client.utils.support.MockFunction0
 import io.music_assistant.client.utils.support.MockFunction2
@@ -25,6 +27,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
+
+private val NoColors = object : ExtractedColorsSource {
+    override fun peek(imageUrl: String): ExtractedColors? = null
+    override suspend fun fetch(imageUrl: String): ExtractedColors? = null
+}
 
 @RunWith(AndroidJUnit4::class)
 class ItemDetailsTest {
@@ -47,7 +54,7 @@ class ItemDetailsTest {
                     DataState.NoData(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -72,7 +79,7 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(tracks),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -97,7 +104,7 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(emptyList()),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -116,7 +123,7 @@ class ItemDetailsTest {
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.Data(emptyList()),
                 ),
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -137,7 +144,7 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(tracks),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -164,7 +171,7 @@ class ItemDetailsTest {
                     playableItemsState = DataState.Data(episodes),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -187,7 +194,7 @@ class ItemDetailsTest {
                     playableItemsState = DataState.NoData(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 
@@ -215,7 +222,7 @@ class ItemDetailsTest {
             ItemDetails(
                 state = state.value,
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
                 onPlayClick = onPlayClick,
             )
         }
@@ -257,7 +264,7 @@ class ItemDetailsTest {
                 state = state.value,
                 onBack = onBack,
                 geEditablePlaylists = suspend { emptyList() },
-                fetchColors = { null },
+                fetchColors = NoColors,
             )
         }
 

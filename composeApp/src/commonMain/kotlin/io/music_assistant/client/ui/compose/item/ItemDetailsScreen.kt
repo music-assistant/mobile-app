@@ -72,7 +72,8 @@ import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.CenteredProgress
 import io.music_assistant.client.ui.compose.common.CenteredText
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.ExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.ExtractedColors
+import io.music_assistant.client.ui.compose.common.ExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -88,7 +89,7 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
-import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
@@ -166,7 +167,7 @@ fun ItemDetails(
     toastState: ToastState = rememberToastState(),
     onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
     geEditablePlaylists: suspend () -> List<Playlist> = suspend { emptyList() },
-    fetchColors: ExtractedColorsFetcher? = null,
+    fetchColors: ExtractedColorsSource? = null,
     addToPlaylist: (String?, Playlist) -> Unit = { _, _ -> },
     onLibraryClick: (AppMediaItem) -> Unit = {},
     onFavoriteClick: (AppMediaItem) -> Unit = {},
@@ -275,7 +276,7 @@ private fun ItemChildren(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
-    fetchColors: ExtractedColorsFetcher?,
+    fetchColors: ExtractedColorsSource?,
     onBack: () -> Unit,
     onToggleViewMode: (MediaType) -> Unit,
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
@@ -347,7 +348,7 @@ private fun ItemContent(
     onRemoveFromPlaylist: (String, Int) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
-    fetchColors: ExtractedColorsFetcher?,
+    fetchColors: ExtractedColorsSource?,
     onBack: () -> Unit,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
@@ -363,16 +364,19 @@ private fun ItemContent(
     // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
     // as the player. The fetcher is Koin-backed, so fall back to a no-op when one isn't
     // supplied and there's no Koin graph (under @Preview or in tests).
-    val resolvedFetchColors: ExtractedColorsFetcher = fetchColors
+    val resolvedColorsSource: ExtractedColorsSource = fetchColors
         ?: if (LocalInspectionMode.current) {
-            { null }
+            object : ExtractedColorsSource {
+                override fun peek(imageUrl: String): ExtractedColors? = null
+                override suspend fun fetch(imageUrl: String): ExtractedColors? = null
+            }
         } else {
-            rememberExtractedColorsFetcher()
+            rememberExtractedColorsSource()
         }
     val colors by rememberAnimatedPlayerColors(
         imageUrl = item.image(ImageType.THUMB)?.url,
         fallback = MaterialTheme.colorScheme.primaryContainer,
-        fetchColors = resolvedFetchColors,
+        source = resolvedColorsSource,
     )
 
     val heroSlot: @Composable () -> Unit = {

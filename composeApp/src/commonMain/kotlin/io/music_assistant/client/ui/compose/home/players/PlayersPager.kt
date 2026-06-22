@@ -97,7 +97,7 @@ import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
-import io.music_assistant.client.ui.compose.common.rememberExtractedColorsFetcher
+import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
@@ -154,7 +154,7 @@ fun PlayersPager(
                 ?.let { homeScreenViewModel.selectPlayer(it.player) }
         }
 
-        val fetchColors = rememberExtractedColorsFetcher()
+        val colorsSource = rememberExtractedColorsSource()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -186,7 +186,7 @@ fun PlayersPager(
             rememberAnimatedPlayerColors(
                 imageUrl = media?.imageUrl,
                 fallback = MaterialTheme.colorScheme.primaryContainer,
-                fetchColors = fetchColors,
+                source = colorsSource,
             )
         }
         val isExpandedScreen = WindowClass.isAtLeastExpanded()

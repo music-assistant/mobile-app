@@ -28,6 +28,9 @@ import kotlinx.coroutines.withContext
 class DominantColorViewModel : ViewModel() {
     private val cache = LruCache<String, ExtractedColors>(MAX_CACHE_SIZE)
 
+    /** Synchronous cache hit, or null on miss. Lets callers apply a known color without animating. */
+    fun peekColors(imageUrl: String): ExtractedColors? = cache[imageUrl]
+
     suspend fun getColors(context: PlatformContext, imageUrl: String): ExtractedColors? {
         cache[imageUrl]?.let { return it }
         val extracted = withContext(Dispatchers.Default) {
