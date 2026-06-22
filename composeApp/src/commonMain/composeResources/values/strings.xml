@@ -104,12 +104,12 @@
   <string name="dsp_presets">Presets</string>
   <string name="dsp_title">DSP settings</string>
   <string name="filter_favorites">Favorites</string>
-  <string name="genre_filter_show">Show genres</string>
+  <string name="genre_filter_empty_all">All</string>
   <string name="genre_filter_empty_default">Default</string>
   <string name="genre_filter_empty_non_empty">Non-empty only</string>
-  <string name="genre_filter_empty_all">All</string>
   <string name="genre_filter_media_type">Media type</string>
   <string name="genre_filter_media_type_all">All</string>
+  <string name="genre_filter_show">Show genres</string>
   <string name="home_edit_rows">Edit rows</string>
   <string name="home_save_rows">Save rows</string>
   <string name="home_shortcuts">Shortcuts</string>

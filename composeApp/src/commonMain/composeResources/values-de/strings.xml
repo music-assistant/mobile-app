@@ -80,6 +80,7 @@
   <string name="cd_vinyl_record">Schallplatte</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Künstler</string>
+  <string name="clickctx_browse">Durchsuchen</string>
   <string name="clickctx_detail">Wiedergabe Schaltfläche</string>
   <string name="clickctx_home">Home</string>
   <string name="clickctx_library">Bibliothek</string>
@@ -108,6 +109,7 @@
   <string name="item_no_data">Keine Daten vorhanden</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Wiedergabeliste</string>
+  <string name="item_subtitle_playlist_dynamic">Dynamische Wiedergabeliste</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_unknown">Unbekannt</string>
@@ -133,7 +135,7 @@
   <string name="media_type_genres">Genres</string>
   <string name="media_type_playlists">Wiedergabelisten</string>
   <string name="media_type_podcasts">Podcasts</string>
-  <string name="media_type_radio">Radio</string>
+  <string name="media_type_radio">Radios</string>
   <string name="media_type_tracks">Titel</string>
   <string name="menu_default_label">Standard</string>
   <string name="nav_browse">Durchsuchen</string>
@@ -181,8 +183,8 @@
   <string name="search_title">Globale Suche</string>
   <string name="settings_about_description">Music Assistant ist ein kostenloser und selbst gehosteter open-source Musik Server. Verbinde Dich mit Deinem Server, um Deine Bibliothek zu durchsuchen und die Wiedergabe aller Player im Haus zu steuern.</string>
   <string name="settings_about_learn_more">Mehr Informationen auf music-assistant.io →</string>
-  <string name="settings_car">Fahrzeug (Android Auto / CarPlay)</string>
-  <string name="settings_car_bulk_for">%1$s Aktionen</string>
+  <string name="settings_car">Android Auto / Apple CarPlay</string>
+  <string name="settings_car_bulk_for">Aktionen für %1$s</string>
   <string name="settings_car_enqueue_action">Aktion zum Einreihen in die Warteschlange</string>
   <string name="settings_car_item_actions">Aktionen</string>
   <string name="settings_car_tabs">Tabs</string>
@@ -242,6 +244,7 @@
   <string name="sort_year">Jahr</string>
   <string name="toast_added_to_playlist">Zu %1$s hinzugefügt</string>
   <string name="toast_error_add_playlist">Fehler beim Hinzufügen zur Wiedergabeliste</string>
+  <string name="toast_error_create_playlist">Fehler beim Erstellen der Wiedergabeliste</string>
   <string name="toast_error_mark_played">Fehler beim markieren als gespielt</string>
   <string name="toast_error_mark_unplayed">Fehler beim markieren als ungespielt</string>
   <string name="toast_marked_played">Als gespielt markieren</string>
