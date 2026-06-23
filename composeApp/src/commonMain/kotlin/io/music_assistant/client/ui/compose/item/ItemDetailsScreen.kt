@@ -136,6 +136,7 @@ fun ItemDetailsScreen(
         toastState = toastState,
         onNavigateToItem = onNavigateToItem,
         geEditablePlaylists = actionsViewModel::getEditablePlaylists,
+        createPlaylist = actionsViewModel::createPlaylist,
         addToPlaylist = actionsViewModel::addToPlaylist,
         onLibraryClick = actionsViewModel::onLibraryClick,
         onFavoriteClick = actionsViewModel::onFavoriteClick,
@@ -168,6 +169,7 @@ fun ItemDetails(
     onNavigateToItem: (String, MediaType, String) -> Unit = { _, _, _ -> },
     geEditablePlaylists: suspend () -> List<Playlist> = suspend { emptyList() },
     fetchColors: ExtractedColorsSource? = null,
+    createPlaylist: suspend (String) -> Playlist? = { null },
     addToPlaylist: (String?, Playlist) -> Unit = { _, _ -> },
     onLibraryClick: (AppMediaItem) -> Unit = {},
     onFavoriteClick: (AppMediaItem) -> Unit = {},
@@ -193,6 +195,9 @@ fun ItemDetails(
         ) {
             addToPlaylist(itemUri, playlist)
         }
+
+        override suspend fun createPlaylist(name: String): Playlist? =
+            createPlaylist(name)
     }
 
     val libraryActions = object : LibraryActions {

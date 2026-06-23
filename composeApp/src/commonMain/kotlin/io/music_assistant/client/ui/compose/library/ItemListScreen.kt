@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,7 +22,6 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -34,11 +31,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,8 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
@@ -69,6 +62,7 @@ import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
+import io.music_assistant.client.ui.compose.common.items.CreatePlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
@@ -83,9 +77,7 @@ import musicassistantclient.composeapp.generated.resources.cd_add_playlist
 import musicassistantclient.composeapp.generated.resources.cd_genre_filter
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
-import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_clear
-import musicassistantclient.composeapp.generated.resources.common_create
 import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
@@ -100,8 +92,6 @@ import musicassistantclient.composeapp.generated.resources.media_type_podcasts
 import musicassistantclient.composeapp.generated.resources.media_type_radio
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.playlist_add_new
-import musicassistantclient.composeapp.generated.resources.playlist_create_title
-import musicassistantclient.composeapp.generated.resources.playlist_name_label
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -459,59 +449,6 @@ private fun ItemList(
             )
         }
     }
-}
-
-@Composable
-private fun CreatePlaylistDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String) -> Unit,
-) {
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    var playlistName by remember { mutableStateOf("") }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.playlist_create_title)) },
-        text = {
-            OutlinedTextField(
-                modifier = Modifier.focusRequester(focusRequester),
-                value = playlistName,
-                onValueChange = { playlistName = it },
-                label = { Text(stringResource(Res.string.playlist_name_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        val trimmed = playlistName.trim()
-                        if (trimmed.isNotEmpty()) onCreate(trimmed)
-                    },
-                ),
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (playlistName.trim().isNotEmpty()) {
-                        onCreate(playlistName.trim())
-                    }
-                },
-                enabled = playlistName.trim().isNotEmpty(),
-            ) {
-                Text(stringResource(Res.string.common_create))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.common_cancel))
-            }
-        },
-    )
 }
 
 @Composable

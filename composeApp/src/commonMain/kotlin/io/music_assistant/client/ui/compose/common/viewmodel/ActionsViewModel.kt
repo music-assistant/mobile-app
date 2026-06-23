@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.toast_added_to_playlist
 import musicassistantclient.composeapp.generated.resources.toast_error_add_playlist
+import musicassistantclient.composeapp.generated.resources.toast_error_create_playlist
 import musicassistantclient.composeapp.generated.resources.toast_error_mark_played
 import musicassistantclient.composeapp.generated.resources.toast_error_mark_unplayed
 import musicassistantclient.composeapp.generated.resources.toast_marked_played
@@ -87,6 +88,15 @@ class ActionsViewModel(
             // Smart/dynamic playlists are rule-generated; tracks can't be added manually.
             ?.filter { it.isEditable && !it.isDynamic }
             ?: emptyList()
+
+    override suspend fun createPlaylist(name: String): Playlist? =
+        createPlaylistAwaitingConfirmation(
+            name = name,
+            itemChanges = mediaItemRepository.itemChanges,
+            timeoutMs = CREATE_CONFIRM_TIMEOUT_MS,
+            sendCreate = { apiClient.sendRequest(Request.Playlist.create(name)) },
+            onError = { _toasts.emit(getString(Res.string.toast_error_create_playlist)) },
+        )
 
     override fun addToPlaylist(
         itemUri: String?,
@@ -166,4 +176,9 @@ class ActionsViewModel(
     }
 
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
+
+    private companion object {
+        // Upper bound for awaiting the server's "playlist added" confirmation.
+        private const val CREATE_CONFIRM_TIMEOUT_MS = 5000L
+    }
 }

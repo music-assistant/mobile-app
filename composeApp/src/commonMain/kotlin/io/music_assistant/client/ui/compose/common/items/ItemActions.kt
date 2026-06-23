@@ -9,6 +9,13 @@ interface PlaylistActions {
         itemUri: String?,
         playlist: Playlist,
     )
+
+    /**
+     * Creates a playlist and suspends until the server confirms it via the library
+     * change stream (bounded by a timeout). Returns the created [Playlist], or null
+     * on request failure or if the confirmation didn't arrive in time.
+     */
+    suspend fun createPlaylist(name: String): Playlist?
 }
 
 interface LibraryActions {
