@@ -122,8 +122,6 @@ import musicassistantclient.composeapp.generated.resources.players_none_availabl
 import musicassistantclient.composeapp.generated.resources.queue_autoplay_disable
 import musicassistantclient.composeapp.generated.resources.queue_autoplay_enable
 import musicassistantclient.composeapp.generated.resources.queue_clear
-import musicassistantclient.composeapp.generated.resources.queue_dsm_disable
-import musicassistantclient.composeapp.generated.resources.queue_dsm_enable
 import musicassistantclient.composeapp.generated.resources.queue_no_other_players
 import musicassistantclient.composeapp.generated.resources.queue_transfer
 import org.jetbrains.compose.resources.stringResource
