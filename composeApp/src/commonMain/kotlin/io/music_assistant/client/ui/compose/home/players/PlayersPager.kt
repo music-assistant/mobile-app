@@ -119,6 +119,8 @@ import musicassistantclient.composeapp.generated.resources.cd_unmute
 import musicassistantclient.composeapp.generated.resources.players_dsp_settings
 import musicassistantclient.composeapp.generated.resources.players_loading
 import musicassistantclient.composeapp.generated.resources.players_none_available
+import musicassistantclient.composeapp.generated.resources.queue_autoplay_disable
+import musicassistantclient.composeapp.generated.resources.queue_autoplay_enable
 import musicassistantclient.composeapp.generated.resources.queue_clear
 import musicassistantclient.composeapp.generated.resources.queue_dsm_disable
 import musicassistantclient.composeapp.generated.resources.queue_dsm_enable
@@ -749,21 +751,21 @@ private fun PlayerOverflowMenu(
                     onClick = { queueAction(QueueAction.ClearQueue(queueId)) },
                 ),
             )
-            if (queueData.data.info.let { it.dontStopTheMusicEnabled != null && !it.isDynamicPlaylist }) {
+            if (queueData.data.info.let { it.autoPlayEnabled != null && !it.isDynamicPlaylist }) {
                 add(
                     OverflowMenuOption(
                         title = stringResource(
-                            if (queueData.data.info.dontStopTheMusicEnabled == true) {
-                                Res.string.queue_dsm_disable
+                            if (queueData.data.info.autoPlayEnabled == true) {
+                                Res.string.queue_autoplay_disable
                             } else {
-                                Res.string.queue_dsm_enable
+                                Res.string.queue_autoplay_enable
                             },
                         ),
                         icon = Icons.Default.AllInclusive,
                         onClick = {
                             playerAction(
                                 PlayerAction.ToggleDontStopTheMusic(
-                                    queueData.data.info.dontStopTheMusicEnabled == true,
+                                    queueData.data.info.autoPlayEnabled == true,
                                 ),
                             )
                         },

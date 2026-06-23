@@ -238,7 +238,7 @@ class LocalPlayerController(
             }
 
             is PlayerAction.ToggleDontStopTheMusic -> {
-                updateOptimisticQueueInfo { it.copy(dontStopTheMusicEnabled = !action.current) }
+                updateOptimisticQueueInfo { it.copy(autoPlayEnabled = !action.current) }
             }
 
             is PlayerAction.SeekTo -> {

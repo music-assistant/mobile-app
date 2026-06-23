@@ -8,7 +8,7 @@ data class QueueInfo(
     val currentIndex: Int?,
     val shuffleEnabled: Boolean,
     val repeatMode: RepeatMode?,
-    val dontStopTheMusicEnabled: Boolean?,
+    val autoPlayEnabled: Boolean?,
     val elapsedTime: Double?,
     /**
      * Unix epoch seconds (UTC) when [elapsedTime] was last recomputed

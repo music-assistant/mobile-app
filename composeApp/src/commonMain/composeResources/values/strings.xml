@@ -182,6 +182,8 @@
   <string name="quality_dialog_input">Input</string>
   <string name="quality_dialog_output">Output</string>
   <string name="quality_dialog_title">Audio chain</string>
+  <string name="queue_autoplay_disable">Disable Autoplay</string>
+  <string name="queue_autoplay_enable">Enable Autoplay</string>
   <string name="queue_browse_library">BROWSE LIBRARY</string>
   <string name="queue_cannot_play">Cannot play this item</string>
   <string name="queue_clear">Clear queue</string>
