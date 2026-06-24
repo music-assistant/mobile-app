@@ -3,7 +3,7 @@ name: Push strings to Lokalise
 on:
   workflow_dispatch:
   push:
-    branches: [dev]
+    branches: [main]
     paths:
       - 'composeApp/src/commonMain/composeResources/values/strings.xml'
 
