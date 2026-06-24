@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.library
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.ui.graphics.vector.ImageVector
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.stringResource
@@ -57,5 +58,5 @@ fun LibraryCategory.icon(): ImageVector = when (this) {
     LibraryCategory.PODCASTS -> Icons.Default.Podcasts
     LibraryCategory.RADIOS -> RadioIcon
     LibraryCategory.GENRES -> GenreIcon
-    LibraryCategory.BROWSE -> Icons.Default.Folder
+    LibraryCategory.BROWSE -> Icons.Outlined.Folder
 }
