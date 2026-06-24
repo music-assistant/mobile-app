@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     types: [closed]
-    branches: [dev]
+    branches: [main]
 
 permissions:
   contents: write
@@ -20,10 +20,10 @@ jobs:
        contains(github.event.pull_request.labels.*.name, 'android_playstore_release'))
 
     steps:
-      - name: Checkout dev
+      - name: Checkout main
         uses: actions/checkout@v6
         with:
-          ref: dev
+          ref: main
           fetch-depth: 0
 
       - name: Configure git identity
@@ -135,8 +135,8 @@ jobs:
 
       - name: Push version bump branch
         run: |
-          git fetch origin dev
-          git checkout -b "${{ steps.next.outputs.branch }}" origin/dev
+          git fetch origin main
+          git checkout -b "${{ steps.next.outputs.branch }}" origin/main
 
           sed -i "s/versionCode = ${{ steps.version.outputs.code }}/versionCode = ${{ steps.next.outputs.code }}/" androidApp/build.gradle.kts
           sed -i "s/versionName = \"${{ steps.version.outputs.name }}\"/versionName = \"${{ steps.next.outputs.version }}\"/" androidApp/build.gradle.kts

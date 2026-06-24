@@ -6,9 +6,9 @@ name: Check PR (Lint)
 
 on:
   pull_request:
-    branches: [ dev ]
+    branches: [ main ]
   push:
-    branches: [ dev ]
+    branches: [ main ]
 
 jobs:
   detekt:
