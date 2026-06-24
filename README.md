@@ -1,31 +1,10 @@
 # Music Assistant Mobile app
 
+*Please note: that this project is still under (heavy) development and not yet in a production state or published to any of the app stores. Development work is in progress to allow this project to become the official mobile app for the Music Assistant project.*
+
 The (official) Music Assistant Mobile app is a cross-platform client application designed for Android and iOS. Developed using Kotlin Multiplatform (KMP) and Compose Multiplatform frameworks, this project aims to provide a unified codebase for seamless music management across mobile platforms.
 
-Please note that this project is still under (heavy) development and not yet in a production state or published to any of the app stores. Development work is in progress to allow this project to become the official mobile app for the Music Assistant project.
-
-This client interfaces with the [Music Assistant Server](https://github.com/music-assistant/server), an open-source media library manager that integrates with various streaming services and connected speakers. The server acts as the core component, running on devices like Raspberry Pi, NAS, or Intel NUC, and facilitates centralized music management.
-
-By leveraging the capabilities of KMP and Compose Multiplatform, Music Assistant Kmp Client offers a consistent and efficient user experience across different platforms, simplifying the development process and ensuring feature parity.
-
-## Design goals
-
-The goal of this app is to provide an iOS and Android native feeling experience for playing and controlling audio via Music Assistant on both Android/iOS phones and tablets. This means that as well as making it easy to navigate the MA library and providers, this shouldn't come at the expense of being able to quickly control players. Specifically, these actions should be available as quickly as possible when opening the app in pretty much any state:
-
-- See what's playing on the app's current player
-- Change the current player
-- Play/pause current player
-- Transfer playback to another player
-- Group current player with another player
-- Navigate to "global" (across all providers) search
-- Return to home screen
-- Skip to next track
-- Start browsing library
-- Open settings
-
-Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you can enjoy your music easily and safely through your car’s infotainment system. These in-car experiences are dedicated exclusively to the local player; managing external players is out of scope.
-
-## Current set of features:
+## Features
 
 *Disclaimer: This app is not intended to provide offline playback*
 
@@ -45,6 +24,27 @@ Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you 
   - background audio playback with automatic resume after phone call or Siri interruptions;
   - WebRTC data channel transport for low-latency Sendspin streaming;
   - Apple CarPlay support for built-in player (very early state, a lot of bugs are expected).
+
+### Server compatibility
+
+Releases of the Music Assistant Mobile App are intended to support the latest (at the time of release) and  one previous  [Music Assistant Server](https://github.com/music-assistant/server) stable versions.
+
+### Design goals
+
+The goal of this app is to provide an iOS and Android native feeling experience for playing and controlling audio via Music Assistant on both Android/iOS phones and tablets. This means that as well as making it easy to navigate the MA library and providers, this shouldn't come at the expense of being able to quickly control players. Specifically, these actions should be available as quickly as possible when opening the app in pretty much any state:
+
+- See what's playing on the app's current player
+- Change the current player
+- Play/pause current player
+- Transfer playback to another player
+- Group current player with another player
+- Navigate to "global" (across all providers) search
+- Return to home screen
+- Skip to next track
+- Start browsing library
+- Open settings
+
+Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you can enjoy your music easily and safely through your car’s infotainment system. These in-car experiences are dedicated exclusively to the local player; managing external players is out of scope.
 
 ## Want to try it?
 
