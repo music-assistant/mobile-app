@@ -15,7 +15,7 @@ class SortOptionTest {
 
     @Test
     fun `default for playlist tracks is original ascending`() {
-        assertEquals(SortOption(SortField.ORIGINAL), SortConfig.defaultFor(SubItemContext.PLAYLIST_TRACKS))
+        assertEquals(SortOption(SortField.ORIGINAL), SortConfig.defaultFor(SubItemContext.PLAYLIST_ITEMS))
     }
 
     @Test
@@ -33,7 +33,7 @@ class SortOptionTest {
         val t = { pos: Int, id: String -> testTrack().copy(itemId = id, position = pos) }
         // Same disc/track numbers across the playlist — only position must drive the order.
         val shuffled = listOf(t(3, "p3"), t(1, "p1"), t(2, "p2"))
-        val sorted = shuffled.clientSorted(SortOption(SortField.ORIGINAL), SubItemContext.PLAYLIST_TRACKS)
+        val sorted = shuffled.clientSorted(SortOption(SortField.ORIGINAL), SubItemContext.PLAYLIST_ITEMS)
         assertEquals(listOf("p1", "p2", "p3"), sorted.map { it.itemId })
     }
 }

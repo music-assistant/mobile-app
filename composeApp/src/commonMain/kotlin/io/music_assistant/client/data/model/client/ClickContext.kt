@@ -10,7 +10,7 @@ enum class ClickContext { HOME, LIBRARY, BROWSE, ALBUM, PLAYLIST, ARTIST, SEARCH
 /** Detail-screen tabs already carry a SubItemContext; map it to a customizable context. */
 fun SubItemContext.toClickContext(): ClickContext? = when (this) {
     SubItemContext.ALBUM_TRACKS -> ClickContext.ALBUM
-    SubItemContext.PLAYLIST_TRACKS -> ClickContext.PLAYLIST
+    SubItemContext.PLAYLIST_ITEMS -> ClickContext.PLAYLIST
     SubItemContext.ARTIST_TRACKS -> ClickContext.ARTIST
     SubItemContext.ARTIST_ALBUMS, SubItemContext.PODCAST_EPISODES -> null
 }

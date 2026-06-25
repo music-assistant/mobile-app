@@ -48,7 +48,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -313,7 +312,7 @@ class AutoLibrary(
             SubItemContext.ALBUM_TRACKS ->
                 Request.Album.getTracks(parent.itemId, parent.provider)
 
-            SubItemContext.PLAYLIST_TRACKS ->
+            SubItemContext.PLAYLIST_ITEMS ->
                 Request.Playlist.getTracks(parent.itemId, parent.provider)
 
             SubItemContext.PODCAST_EPISODES ->
@@ -329,7 +328,7 @@ class AutoLibrary(
         // Tracks inside an album/playlist carry the container URI so a PLAY_FROM_HERE tap can
         // play the whole container starting from the tapped track.
         val parentUri = parent.uri.takeIf {
-            context == SubItemContext.ALBUM_TRACKS || context == SubItemContext.PLAYLIST_TRACKS
+            context == SubItemContext.ALBUM_TRACKS || context == SubItemContext.PLAYLIST_ITEMS
         }
         return sorted.filter { it.isPlayable }
             .map { it.toAutoMediaItem(true, defaultIconUri, parentUri = parentUri) }
@@ -875,7 +874,7 @@ internal data class ParentRef(
     fun subItemContext(): SubItemContext? = when (type) {
         MediaType.ARTIST -> SubItemContext.ARTIST_ALBUMS
         MediaType.ALBUM -> SubItemContext.ALBUM_TRACKS
-        MediaType.PLAYLIST -> SubItemContext.PLAYLIST_TRACKS
+        MediaType.PLAYLIST -> SubItemContext.PLAYLIST_ITEMS
         MediaType.PODCAST -> SubItemContext.PODCAST_EPISODES
         else -> null
     }

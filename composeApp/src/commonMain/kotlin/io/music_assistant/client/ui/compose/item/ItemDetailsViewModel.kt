@@ -181,7 +181,7 @@ class ItemDetailsViewModel(
                     it.copy(
                         albumsState = DataState.NoData(),
                         albumsSortOption = null,
-                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PLAYLIST_TRACKS),
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PLAYLIST_ITEMS),
                     )
                 }
                 loadPlaylistTracks(item.itemId, item.provider)
@@ -323,14 +323,14 @@ class ItemDetailsViewModel(
                         forceRefresh = null,
                     ),
                 ).getOrNull()
-                    ?.filterIsInstance<Track>()
+                    ?.filterIsInstance<PlayableItem>()
                     ?: emptyList()
 
                 rawPlayableItems = tracks
-                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.PLAYLIST_TRACKS)
+                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(SubItemContext.PLAYLIST_ITEMS)
                 _state.update {
                     it.copy(
-                        playableItemsState = DataState.Data(tracks.clientSorted(sort, SubItemContext.PLAYLIST_TRACKS)),
+                        playableItemsState = DataState.Data(tracks.clientSorted(sort, SubItemContext.PLAYLIST_ITEMS)),
                     )
                 }
             } catch (e: Exception) {
@@ -531,7 +531,7 @@ private fun ItemDetailsTab.subState(
     ItemDetailsTab.ARTIST_ALBUMS, ItemDetailsTab.GENRE_ALBUMS -> state.albumsState
     ItemDetailsTab.ARTIST_TRACKS,
     ItemDetailsTab.ALBUM_TRACKS,
-    ItemDetailsTab.PLAYLIST_TRACKS,
+    ItemDetailsTab.PLAYLIST_ITEMS,
     ItemDetailsTab.PODCAST_EPISODES,
         -> state.playableItemsState
 

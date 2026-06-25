@@ -74,7 +74,7 @@ object SortConfig {
         SubItemContext.ARTIST_ALBUMS -> listOf(SortField.NAME, SortField.YEAR)
         SubItemContext.ARTIST_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
         SubItemContext.ALBUM_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
-        SubItemContext.PLAYLIST_TRACKS -> listOf(
+        SubItemContext.PLAYLIST_ITEMS -> listOf(
             SortField.ORIGINAL,
             SortField.NAME,
             SortField.ARTIST_NAME,
@@ -86,7 +86,7 @@ object SortConfig {
     fun defaultFor(context: SubItemContext): SortOption = when (context) {
         SubItemContext.ARTIST_ALBUMS -> SortOption(SortField.YEAR, descending = true)
         SubItemContext.ALBUM_TRACKS -> SortOption(SortField.ORIGINAL)
-        SubItemContext.PLAYLIST_TRACKS -> SortOption(SortField.ORIGINAL)
+        SubItemContext.PLAYLIST_ITEMS -> SortOption(SortField.ORIGINAL)
         SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
         else -> SortOption(SortField.NAME)
     }
@@ -96,13 +96,13 @@ enum class SubItemContext {
     ARTIST_ALBUMS,
     ARTIST_TRACKS,
     ALBUM_TRACKS,
-    PLAYLIST_TRACKS,
+    PLAYLIST_ITEMS,
     PODCAST_EPISODES,
 }
 
 fun <T> List<T>.clientSorted(option: SortOption, context: SubItemContext? = null): List<T> {
     val comparator: Comparator<T> = when (option.field) {
-        SortField.ORIGINAL -> if (context == SubItemContext.PLAYLIST_TRACKS) {
+        SortField.ORIGINAL -> if (context == SubItemContext.PLAYLIST_ITEMS) {
             compareBy<T, Int?>(nullsLast()) { (it as? Track)?.position }
         } else {
             compareBy<T, Int?>(nullsLast()) {

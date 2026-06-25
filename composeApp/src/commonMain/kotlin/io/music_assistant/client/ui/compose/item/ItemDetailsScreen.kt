@@ -258,13 +258,11 @@ fun ItemDetails(
 }
 
 /** Tab label. Chapters have a dedicated string; every other tab borrows its media-type label. */
-private fun ItemDetailsTab.stringResource(): StringResource = when (this) {
+private fun ItemDetailsTab.stringResource(): StringResource? = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
     ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
-    else -> {
-        require(viewMediaType != null) { "No string resource for ItemDetailsTab: $name" }
-        viewMediaType.stringResource()
-    }
+    else -> viewMediaType?.stringResource()
+
 }
 
 @Composable
@@ -490,7 +488,7 @@ private fun TabsBar(
         SubItemContext.ARTIST_ALBUMS -> albumsSortOption
         SubItemContext.ARTIST_TRACKS,
         SubItemContext.ALBUM_TRACKS,
-        SubItemContext.PLAYLIST_TRACKS,
+        SubItemContext.PLAYLIST_ITEMS,
         SubItemContext.PODCAST_EPISODES,
             -> playableItemsSortOption
 
@@ -526,7 +524,7 @@ private fun TabsBar(
                     onClick = { onTabSelected(i) },
                     text = {
                         Text(
-                            text = stringResource(tab.stringResource()),
+                            text = tab.stringResource()?.let { stringResource(it) } ?: "",
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                             color = controlTint,
                         )
@@ -600,7 +598,7 @@ private fun TabContent(
 
         ItemDetailsTab.ARTIST_TRACKS,
         ItemDetailsTab.ALBUM_TRACKS,
-        ItemDetailsTab.PLAYLIST_TRACKS,
+        ItemDetailsTab.PLAYLIST_ITEMS,
         ItemDetailsTab.PODCAST_EPISODES,
             -> PlayablesTabContent(
             playableItemsState = state.playableItemsState,
