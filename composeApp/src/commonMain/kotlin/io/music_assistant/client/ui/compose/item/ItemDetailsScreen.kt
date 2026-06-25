@@ -262,7 +262,6 @@ private fun ItemDetailsTab.stringResource(): StringResource? = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
     ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
     else -> viewMediaType?.stringResource()
-
 }
 
 @Composable
