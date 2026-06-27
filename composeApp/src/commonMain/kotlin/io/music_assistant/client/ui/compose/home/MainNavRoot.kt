@@ -2,9 +2,6 @@
 
 package io.music_assistant.client.ui.compose.home
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -295,13 +292,6 @@ fun MainNavigationRoot(
                             multiBackStack.removeLastOrNull()
                         },
                         backEnabled = !playerExpanded,
-                        // Workaround for CMP 1.10.3 iOS crash: LazyLayout measured inside
-                        // AnimatedContent + CupertinoOverscroll trips a SubcomposeLayout
-                        // precondition on first frame. Disabling transitions removes the
-                        // animating measure path.
-                        transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-                        popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-                        predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
                     )
                 }
             }
