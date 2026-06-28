@@ -47,6 +47,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.input.RemoteVolumeButtonController
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -76,8 +77,6 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -95,24 +94,6 @@ import org.koin.core.parameter.parametersOf
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-interface PlatformVolumeButtonObserver {
-    fun start()
-    fun stop()
-}
-
-object PlatformVolumeButtonObserverProvider {
-    var observer: PlatformVolumeButtonObserver? = null
-}
-
-object RemoteVolumeButtonEvents {
-    private val _events = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val events = _events.asSharedFlow()
-
-    fun emit() {
-        _events.tryEmit(Unit)
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainNavigationRoot(
@@ -125,6 +106,7 @@ fun MainNavigationRoot(
     val toastState = rememberToastState()
     val errorBus: ErrorMessageBus = koinInject()
     val deepLinkBus: DeepLinkBus = koinInject()
+    val remoteVolumeButtonController: RemoteVolumeButtonController = koinInject()
 
     LaunchedEffect(Unit) {
         homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
@@ -225,21 +207,22 @@ fun MainNavigationRoot(
         ?: data?.selectedPlayerIndex?.let { data.playerData.getOrNull(it) }
     val shouldObservePlatformVolumeButtons = viewedPlayer?.isLocal == false
 
-    DisposableEffect(shouldObservePlatformVolumeButtons) {
+    DisposableEffect(remoteVolumeButtonController, shouldObservePlatformVolumeButtons) {
         if (shouldObservePlatformVolumeButtons) {
-            PlatformVolumeButtonObserverProvider.observer?.start()
+            remoteVolumeButtonController.startObservingPlatformButtons()
         }
         onDispose {
-            PlatformVolumeButtonObserverProvider.observer?.stop()
+            remoteVolumeButtonController.stopObservingPlatformButtons()
         }
     }
 
     LaunchedEffect(
+        remoteVolumeButtonController,
         viewedPlayer?.playerId,
         viewedPlayer?.isLocal,
         remoteVolumeHint,
     ) {
-        RemoteVolumeButtonEvents.events.collect {
+        remoteVolumeButtonController.buttonPresses.collect {
             if (viewedPlayer?.isLocal == false) {
                 toastState.showToast(remoteVolumeHint, ToastDuration.LONG)
             }

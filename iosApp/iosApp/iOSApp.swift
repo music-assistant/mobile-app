@@ -49,7 +49,7 @@ private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonOb
                 let volume = change.newValue ?? audioSession.outputVolume
                 guard volume != self.lastVolume else { return }
                 self.lastVolume = volume
-                RemoteVolumeButtonEvents.shared.emit()
+                KmpHelper.shared.onPlatformVolumeButtonPressed()
             }
         } catch {
             NativeLog.shared.error(tag: "SystemVolumeButtonObserver", message: "Failed to activate audio session for volume observation: \(error)")
@@ -170,10 +170,9 @@ struct iOSApp: App {
     private let volumeButtonObserver = SystemVolumeButtonObserver()
 
     init() {
-        // Register Swift implementations with Kotlin
+        // Register the Swift audio player with Kotlin before KMP services are created.
         PlatformPlayerProvider.shared.player = player
         volumeButtonObserver.player = player
-        PlatformVolumeButtonObserverProvider.shared.observer = volumeButtonObserver
 
         #if DEBUG
         // Route Kermit logs to the unified log un-redacted during development
@@ -192,6 +191,7 @@ struct iOSApp: App {
         // `bootstrapKmp()` is idempotent, so the SwiftUI path's call from
         // `MainViewController()` is safe.
         MainViewControllerKt.bootstrapKmp()
+        KmpHelper.shared.setPlatformVolumeButtonObserver(observer: volumeButtonObserver)
         KmpState.isReady = true
         NotificationCenter.default.post(name: KmpState.readyNotification, object: nil)
 

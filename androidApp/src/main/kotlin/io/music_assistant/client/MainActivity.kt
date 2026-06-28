@@ -1,6 +1,5 @@
 package io.music_assistant.client
 
-import android.annotation.SuppressLint
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -16,15 +15,16 @@ import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.input.RemoteVolumeButtonController
 import io.music_assistant.client.services.MainMediaPlaybackService
 import io.music_assistant.client.ui.compose.App
-import io.music_assistant.client.ui.compose.home.RemoteVolumeButtonEvents
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
     private val dataSource: MainDataSource by inject()
     private val authManager: AuthenticationManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
+    private val remoteVolumeButtonController: RemoteVolumeButtonController by inject()
     private val oauthHandler: OAuthHandler by lazy {
         OAuthHandler(this)
     }
@@ -76,18 +76,11 @@ class MainActivity : ComponentActivity() {
         handleIncomingUri(intent)
     }
 
-    // ComponentActivity.dispatchKeyEvent carries a @RestrictTo(LIBRARY_GROUP_PREFIX)
-    // annotation, so calling super trips the RestrictedApi lint. Overriding it to
-    // observe hardware volume keys is a legitimate, supported use; we still forward
-    // the event to super so the system handles volume normally.
-    @SuppressLint("RestrictedApi")
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN &&
-            (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
-        ) {
-            RemoteVolumeButtonEvents.emit()
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            remoteVolumeButtonController.onPlatformVolumeButtonPressed()
         }
-        return super.dispatchKeyEvent(event)
+        return super.onKeyDown(keyCode, event)
     }
 
     /**
