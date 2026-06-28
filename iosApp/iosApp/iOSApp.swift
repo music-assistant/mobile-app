@@ -3,6 +3,7 @@ import ComposeApp
 import UIKit
 import CarPlay
 import Intents
+import AVFoundation
 import os
 import os.log
 import os.lock
@@ -11,6 +12,55 @@ private let siriLog = OSLog(
     subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.client",
     category: "Siri"
 )
+
+private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonObserver {
+    private let session = AVAudioSession.sharedInstance()
+    private var observation: NSKeyValueObservation?
+    private var lastVolume: Float = AVAudioSession.sharedInstance().outputVolume
+
+    /// Wired once at startup. Lets us check whether the local engine is actively
+    /// rendering before we touch the shared session's category.
+    weak var player: NativeAudioController?
+
+    func start() {
+        guard observation == nil else { return }
+        do {
+            // outputVolume KVO only delivers hardware-button changes while the
+            // shared session is active. But the app's .playback category is
+            // non-mixing, so activating it claims exclusive audio focus and
+            // interrupts other audio apps, wrong when we are only observing
+            // for a remote player and producing no audio of our own. So:
+            //   - If the local player is already rendering, the session is already
+            //     active and exclusive; just attach KVO and touch nothing 
+            //   - Otherwise activate with .mixWithOthers so observation coexists
+            //     with other apps instead of stealing focus. When local playback
+            //     actually starts, NowPlayingManager.activatePlayback() re-asserts
+            //     exclusive .playback and reclaims focus.
+            // We deliberately don't deactivate on stop(): nothing else in the app
+            // deactivates the session, and tearing it down here interrupted the
+            // local player when switching back to it.
+            if player?.isRenderingAudio != true {
+                try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                try session.setActive(true, options: [])
+            }
+            lastVolume = session.outputVolume
+            observation = session.observe(\.outputVolume, options: [.new]) { [weak self] audioSession, change in
+                guard let self else { return }
+                let volume = change.newValue ?? audioSession.outputVolume
+                guard volume != self.lastVolume else { return }
+                self.lastVolume = volume
+                RemoteVolumeButtonEvents.shared.emit()
+            }
+        } catch {
+            NativeLog.shared.error(tag: "SystemVolumeButtonObserver", message: "Failed to activate audio session for volume observation: \(error)")
+        }
+    }
+
+    func stop() {
+        observation?.invalidate()
+        observation = nil
+    }
+}
 
 /// Single-bit flag indicating whether `bootstrapKmp()` has run and Koin is
 /// usable. Exists because SiriKit intent handlers can be invoked before any
@@ -114,13 +164,16 @@ final class OsLogSinkImpl: NSObject, OsLogSink {
 struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    // Keep a strong reference to the player
+    // Keep strong references to native integrations
     // Using NativeAudioController with swift-opus and libFLAC for decoding
     private let player = NativeAudioController()
+    private let volumeButtonObserver = SystemVolumeButtonObserver()
 
     init() {
-        // Register the Swift implementation with Kotlin
+        // Register Swift implementations with Kotlin
         PlatformPlayerProvider.shared.player = player
+        volumeButtonObserver.player = player
+        PlatformVolumeButtonObserverProvider.shared.observer = volumeButtonObserver
 
         #if DEBUG
         // Route Kermit logs to the unified log un-redacted during development

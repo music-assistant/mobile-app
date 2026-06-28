@@ -58,6 +58,12 @@ class NowPlayingManager {
     func activatePlayback() {
         do {
             let session = AVAudioSession.sharedInstance()
+            // Re-assert exclusive (non-mixing) playback before activating. The
+            // volume-button observer may have switched the shared session to
+            // .mixWithOthers while only a remote player was being viewed; when
+            // local playback actually starts we must reclaim exclusive focus so we
+            // become the Now Playing app.
+            try session.setCategory(.playback, mode: .default, options: [])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             logError("Failed to activate playback: \(error)")

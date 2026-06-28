@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +17,7 @@ import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.services.MainMediaPlaybackService
 import io.music_assistant.client.ui.compose.App
+import io.music_assistant.client.ui.compose.home.RemoteVolumeButtonEvents
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
@@ -71,6 +73,15 @@ class MainActivity : ComponentActivity() {
         // under the default standard launchMode). Keep getIntent() in sync.
         setIntent(intent)
         handleIncomingUri(intent)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN &&
+            (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+        ) {
+            RemoteVolumeButtonEvents.emit()
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     /**

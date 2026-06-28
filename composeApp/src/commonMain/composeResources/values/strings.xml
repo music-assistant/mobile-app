@@ -167,6 +167,7 @@
   <string name="players_loading">Loading players…</string>
   <string name="players_none_available">No players available</string>
   <string name="players_nothing">Nothing playing</string>
+  <string name="players_remote_volume_hint">Volume buttons only work for the local player</string>
   <string name="players_title">Players</string>
   <string name="playlist_add_button">Add playlist</string>
   <string name="playlist_add_new">Add new</string>

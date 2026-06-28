@@ -18,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +76,8 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -84,12 +87,31 @@ import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
+import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+
+interface PlatformVolumeButtonObserver {
+    fun start()
+    fun stop()
+}
+
+object PlatformVolumeButtonObserverProvider {
+    var observer: PlatformVolumeButtonObserver? = null
+}
+
+object RemoteVolumeButtonEvents {
+    private val _events = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val events = _events.asSharedFlow()
+
+    fun emit() {
+        _events.tryEmit(Unit)
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -197,6 +219,32 @@ fun MainNavigationRoot(
     val homeScreenState = HomeScreenState.create()
     val libraryScreenState = LibraryScreenState.create()
     val searchScreenState = SearchScreenState.create()
+
+    val remoteVolumeHint = stringResource(Res.string.players_remote_volume_hint)
+    val viewedPlayer = data?.playerData?.getOrNull(playerPagerState.settledPage)
+        ?: data?.selectedPlayerIndex?.let { data.playerData.getOrNull(it) }
+    val shouldObservePlatformVolumeButtons = viewedPlayer?.isLocal == false
+
+    DisposableEffect(shouldObservePlatformVolumeButtons) {
+        if (shouldObservePlatformVolumeButtons) {
+            PlatformVolumeButtonObserverProvider.observer?.start()
+        }
+        onDispose {
+            PlatformVolumeButtonObserverProvider.observer?.stop()
+        }
+    }
+
+    LaunchedEffect(
+        viewedPlayer?.playerId,
+        viewedPlayer?.isLocal,
+        remoteVolumeHint,
+    ) {
+        RemoteVolumeButtonEvents.events.collect {
+            if (viewedPlayer?.isLocal == false) {
+                toastState.showToast(remoteVolumeHint, ToastDuration.LONG)
+            }
+        }
+    }
 
     val navigationItems = listOf(
         multiBackStack.createNavigationItem(

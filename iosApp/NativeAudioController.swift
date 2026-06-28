@@ -31,6 +31,11 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     // MARK: - State
     private var isPlaying = false
+    /// Read-only view of whether the local audio engine is actively rendering.
+    /// The volume-button observer uses this to decide whether it may switch the
+    /// shared audio-session category to .mixWithOthers without disturbing
+    /// in-progress local playback.
+    var isRenderingAudio: Bool { isPlaying }
     private var streamStarted = false
     // Play-intent gate (mirrors Android's shouldPlayAudio). While false — paused or
     // interrupted — incoming audio is dropped instead of (re)starting the queue, so
