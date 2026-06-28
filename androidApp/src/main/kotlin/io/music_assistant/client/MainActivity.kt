@@ -1,5 +1,6 @@
 package io.music_assistant.client
 
+import android.annotation.SuppressLint
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -75,6 +76,11 @@ class MainActivity : ComponentActivity() {
         handleIncomingUri(intent)
     }
 
+    // ComponentActivity.dispatchKeyEvent carries a @RestrictTo(LIBRARY_GROUP_PREFIX)
+    // annotation, so calling super trips the RestrictedApi lint. Overriding it to
+    // observe hardware volume keys is a legitimate, supported use; we still forward
+    // the event to super so the system handles volume normally.
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN &&
             (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
