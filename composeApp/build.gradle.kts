@@ -10,7 +10,7 @@ plugins {
 }
 
 composeCompiler {
-    stabilityConfigurationFile = project.layout.projectDirectory.file("compose-stability.conf")
+    stabilityConfigurationFiles.add(project.layout.projectDirectory.file("compose-stability.conf"))
 }
 
 compose.resources {
@@ -25,7 +25,7 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    androidLibrary {
+    android {
         namespace = "io.music_assistant.client.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -63,6 +63,7 @@ kotlin {
         }
 
         val copyWebRtcForTests = tasks.register<Copy>("copyWebRtcFor${iosTarget.name.replaceFirstChar { it.uppercase() }}Tests") {
+            description = "Copies the WebRTC framework slice for ${iosTarget.name} into the test build dir so the simulator can load it."
             from("${project.rootDir}/iosApp/Frameworks/WebRTC.xcframework/$webRtcSlice/WebRTC.framework")
             into(layout.buildDirectory.dir("bin/${iosTarget.name}/debugTest/Frameworks/WebRTC.framework"))
         }
