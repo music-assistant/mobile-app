@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -45,32 +44,30 @@ fun FloatingBar(
     val padding by animateDpAsState(if (expanded) 0.dp else 8.dp)
     val paddingValues = PaddingValues(padding)
 
-    Surface {
-        Box(
-            modifier = Modifier
-                .testTag(FloatingBarSemantics.TAG)
-                .padding(paddingValues)
-                .clip(RoundedCornerShape(clip))
-                .fillMaxWidth()
-                .let {
-                    if (expanded) {
-                        it.fillMaxHeight()
-                    } else {
-                        it.wrapContentHeight().clickable { onExpand(true) }
-                    }
-                }
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-        ) {
-            Column {
-                val contentPadding = if (expanded) {
-                    val windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom)
-                    windowInsets.asPaddingValues()
+    Surface(
+        modifier = Modifier
+            .testTag(FloatingBarSemantics.TAG)
+            .padding(paddingValues)
+            .fillMaxWidth()
+            .let {
+                if (expanded) {
+                    it.fillMaxHeight()
                 } else {
-                    PaddingValues()
+                    it.wrapContentHeight().clickable { onExpand(true) }
                 }
-
-                content(expanded, contentPadding)
+            },
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(clip),
+    ) {
+        Column {
+            val contentPadding = if (expanded) {
+                val windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom)
+                windowInsets.asPaddingValues()
+            } else {
+                PaddingValues()
             }
+
+            content(expanded, contentPadding)
         }
     }
 }
