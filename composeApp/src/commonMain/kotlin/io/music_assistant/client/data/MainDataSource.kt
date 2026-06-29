@@ -870,12 +870,37 @@ class MainDataSource(
             } else {
                 playerDataList
             }
-        // Re-apply favorite overrides last so the stale queue payload can't win.
-        return if (favoriteOverrides.isEmpty()) {
-            withLocal
-        } else {
-            withLocal.map { applyFavoriteOverride(it, favoriteOverrides) }
-        }
+        // Fill any null now-playing artwork from the queue track, then re-apply favorite
+        // overrides last so the stale queue payload can't win. The two patches are
+        // independent (currentMedia vs queue.currentItem.track.favorite), so order is free.
+        return withLocal
+            .map { applyNowPlayingArtwork(it) }
+            .let { list ->
+                if (favoriteOverrides.isEmpty()) {
+                    list
+                } else {
+                    list.map { applyFavoriteOverride(it, favoriteOverrides) }
+                }
+            }
+    }
+
+    /**
+     * Fill a null now-playing [PlayerMedia.imageUrl] from the queue's current-item track
+     * artwork. The server sometimes omits the image on the player media payload while the
+     * track still carries metadata images; without this the player cover, compact bar and
+     * media notification go blank even though the queue row shows art. No-op for the local
+     * player (its imageUrl is already set from the track in `LocalPlayerController`).
+     */
+    private fun applyNowPlayingArtwork(playerData: PlayerData): PlayerData {
+        val media = playerData.player.currentMedia ?: return playerData
+        if (media.imageUrl != null) return playerData
+        val currentItem = (playerData.queue as? DataState.Data)?.data?.info?.currentItem
+            ?: return playerData
+        if (currentItem.id != media.queueItemId) return playerData // guard track transitions
+        val url = currentItem.track.image(ImageType.THUMB)?.url ?: return playerData
+        return playerData.copy(
+            player = playerData.player.copy(currentMedia = media.copy(imageUrl = url)),
+        )
     }
 
     /** Stable per-track key for [_favoriteOverrides]. */
