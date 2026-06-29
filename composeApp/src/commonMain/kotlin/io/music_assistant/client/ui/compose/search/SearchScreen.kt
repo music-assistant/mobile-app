@@ -367,10 +367,8 @@ private fun SearchContent(
                                         item(key = stringTitle, contentType = "category") {
                                             CategoryRow(
                                                 title = stringTitle,
-                                                rowItemType = null,
                                                 onNavigateClick = onItemClick,
                                                 onPlayClick = onPlayClick,
-                                                onAllClick = {},
                                                 mediaItems = items,
                                                 playlistActions = playlistActions,
                                                 libraryActions = libraryActions,

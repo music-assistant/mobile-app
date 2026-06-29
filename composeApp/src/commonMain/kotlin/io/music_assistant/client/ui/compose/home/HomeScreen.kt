@@ -44,7 +44,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ClickContext
-import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -90,7 +89,6 @@ fun HomeScreen(
     contentPadding: PaddingValues,
     isConnected: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
-    onLibraryItemClick: (MediaType) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
@@ -163,7 +161,6 @@ fun HomeScreen(
                     onPlayClick = { item, option, radio, _ ->
                         homeScreenViewModel.onPlayClick(item, option, radio)
                     },
-                    onAllClick = { it.itemType?.let { onLibraryItemClick(it) } },
                     playlistActions = actionsViewModel,
                     libraryActions = actionsViewModel,
                     progressActions = actionsViewModel,
@@ -272,7 +269,6 @@ private fun getCategories(
                     title = it.displayName.toDisplayString(),
                     items = it.items.orEmpty(),
                     lazyListKey = it.lazyListKey(),
-                    itemType = it.rowItemType,
                 )
             }
 

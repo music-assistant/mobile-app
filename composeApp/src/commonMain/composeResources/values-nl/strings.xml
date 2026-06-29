@@ -27,14 +27,6 @@
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Verwijder favoriet</string>
   <string name="albums_by_artist">Albums van %1$s</string>
-  <string name="all_albums">Alle albums</string>
-  <string name="all_artists">Alle artiesten</string>
-  <string name="all_audiobooks">Alle luisterboeken</string>
-  <string name="all_genres">Alle genres</string>
-  <string name="all_playlists">Alle afspeellijsten</string>
-  <string name="all_podcasts">Alle podcasts</string>
-  <string name="all_radio">Alle radiostations</string>
-  <string name="all_tracks">Alle nummers</string>
   <string name="auth_authenticating">Authenticeren…</string>
   <string name="auth_authorize_ha">Autoriseer met Home Assistant</string>
   <string name="auth_hide_password">Wachtwoord verbergen</string>

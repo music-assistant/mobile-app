@@ -341,9 +341,6 @@ private fun mainNavEntryProvider(
                         else -> Unit
                     }
                 },
-                onLibraryItemClick = { type ->
-                    multiBackStack.add(MainNav.ItemList(type))
-                },
                 providerIconFetcher = { modifier, provider ->
                     actionsViewModel.getProviderIcon(provider)
                         ?.let { ProviderIcon(modifier, it) }
