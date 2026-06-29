@@ -63,6 +63,7 @@
   <string name="cd_delete_crash_logs">Absturzberichte löschen</string>
   <string name="cd_favorite">Favorit</string>
   <string name="cd_fully_played">Vollständig abgespielt</string>
+  <string name="cd_genre_filter">Genre Filter</string>
   <string name="cd_in_progress">Teilweise abgespielt</string>
   <string name="cd_more">Mehr</string>
   <string name="cd_mute">Stummschalten</string>
@@ -103,8 +104,15 @@
   <string name="dsp_presets">Voreinstellungen</string>
   <string name="dsp_title">DSP-Einstellungen</string>
   <string name="filter_favorites">Favoriten</string>
+  <string name="genre_filter_empty_all">Alle</string>
+  <string name="genre_filter_empty_default">Standard</string>
+  <string name="genre_filter_empty_non_empty">nur befüllte</string>
+  <string name="genre_filter_media_type">Medientyp</string>
+  <string name="genre_filter_media_type_all">Alle</string>
+  <string name="genre_filter_show">Genres anzeigen</string>
   <string name="home_edit_rows">Zeilen bearbeiten</string>
   <string name="home_save_rows">Zeilen speichern</string>
+  <string name="home_shortcuts">Verknüpfungen</string>
   <string name="item_error">Fehler beim Laden des Elements</string>
   <string name="item_no_data">Keine Daten vorhanden</string>
   <string name="item_subtitle_genre">Genre</string>
@@ -127,6 +135,17 @@
   <string name="library_quick_search">Schnellsuche</string>
   <string name="library_search_global">Überall suchen</string>
   <string name="loading">Laden...</string>
+  <string name="media_action_forward">30s vorspulen</string>
+  <string name="media_action_next_player">Nächster Player</string>
+  <string name="media_action_open_app">App öffnen</string>
+  <string name="media_action_repeat">Wiederholen</string>
+  <string name="media_action_rewind">10s zurückspulen</string>
+  <string name="media_action_shuffle">Zufallswiedergabe</string>
+  <string name="media_artist_on_player">%1$s (auf %2$s)</string>
+  <string name="media_error_connection_lost">Verbindung verloren</string>
+  <string name="media_error_local_player_off">Lokaler Player nicht aktiviert</string>
+  <string name="media_error_reconnecting">Neu verbinden...</string>
+  <string name="media_queue_now_playing">Jetzt läuft</string>
   <string name="media_type_albums">Alben</string>
   <string name="media_type_artists">Künstler</string>
   <string name="media_type_audiobooks">Hörbücher</string>
@@ -137,6 +156,8 @@
   <string name="media_type_podcasts">Podcasts</string>
   <string name="media_type_radio">Radios</string>
   <string name="media_type_tracks">Titel</string>
+  <string name="media_unknown_artist">Unbekannter Künstler</string>
+  <string name="media_unknown_track">Unbekannter Titel</string>
   <string name="menu_default_label">Standard</string>
   <string name="nav_browse">Durchsuchen</string>
   <string name="nav_home">Home</string>
@@ -152,6 +173,7 @@
   <string name="players_none_available">Keine Player verfügbar</string>
   <string name="players_nothing">Keine Wiedergabe</string>
   <string name="players_title">Player</string>
+  <string name="playlist_add_button">Wiedergabeliste hinzufügen</string>
   <string name="playlist_add_new">Neue hinzufügen</string>
   <string name="playlist_add_to_title">Zu Wiedergabeliste hinzufügen</string>
   <string name="playlist_create_title">Wiedergabeliste erstellen</string>
@@ -160,6 +182,8 @@
   <string name="quality_dialog_input">Eingang</string>
   <string name="quality_dialog_output">Ausgang</string>
   <string name="quality_dialog_title">Audiokette</string>
+  <string name="queue_autoplay_disable">Autoplay deaktivieren</string>
+  <string name="queue_autoplay_enable">Autoplay aktivieren</string>
   <string name="queue_browse_library">BIBLIOTHEK DURCHSUCHEN</string>
   <string name="queue_cannot_play">Element kann nicht abgespielt werden</string>
   <string name="queue_clear">Warteschlange leeren</string>
@@ -185,7 +209,7 @@
   <string name="settings_about_learn_more">Mehr Informationen auf music-assistant.io →</string>
   <string name="settings_car">Android Auto / Apple CarPlay</string>
   <string name="settings_car_bulk_for">Aktionen für %1$s</string>
-  <string name="settings_car_enqueue_action">Aktion zum Einreihen in die Warteschlange</string>
+  <string name="settings_car_enqueue_action">Aktionen zum Einreihen in die Warteschlange</string>
   <string name="settings_car_item_actions">Aktionen</string>
   <string name="settings_car_tabs">Tabs</string>
   <string name="settings_codec_preference">Codec Präferenz</string>

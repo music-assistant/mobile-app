@@ -145,6 +145,7 @@
   <string name="media_error_connection_lost">Verbinding verbroken</string>
   <string name="media_error_local_player_off">De lokale speler is niet ingeschakeld.</string>
   <string name="media_error_reconnecting">Opnieuw verbinden…</string>
+  <string name="media_playback_stopped_connection_lost">Het afspelen is gestopt: de verbinding met de server is verbroken</string>
   <string name="media_queue_now_playing">Speelt nu</string>
   <string name="media_toast_playing_players">Je hebt actieve spelers</string>
   <string name="media_type_albums">Albums</string>
@@ -174,6 +175,7 @@
   <string name="players_none_available">Geen spelers beschikbaar</string>
   <string name="players_nothing">Speelt niets af</string>
   <string name="players_title">Spelers</string>
+  <string name="playlist_add_button">Afspeellijst toevoegen</string>
   <string name="playlist_add_new">Nieuwe toevoegen</string>
   <string name="playlist_add_to_title">Aan afspeellijst toevoegen</string>
   <string name="playlist_create_title">Nieuwe afspeellijst</string>
@@ -182,6 +184,8 @@
   <string name="quality_dialog_input">Invoer</string>
   <string name="quality_dialog_output">Uitvoer</string>
   <string name="quality_dialog_title">Audioketen</string>
+  <string name="queue_autoplay_disable">Autoplay uitschakelen</string>
+  <string name="queue_autoplay_enable">Autoplay inschakelen</string>
   <string name="queue_browse_library">BEKIJK BIBLIOTHEEK</string>
   <string name="queue_cannot_play">Kan dit item niet afspelen</string>
   <string name="queue_clear">Wachtrij wissen</string>
