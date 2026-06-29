@@ -19,7 +19,7 @@ object SendspinCapabilities {
             ),
             playerV1Support = PlayerSupport(
                 supportedFormats = buildSupportedFormats(codecPreference),
-                bufferCapacity = config.bufferCapacityMicros,
+                bufferCapacity = SendspinConfig.bufferCapacityFor(codecPreference),
                 supportedCommands = listOf(),
             ),
         )

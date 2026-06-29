@@ -50,6 +50,10 @@ class SendspinClient(
     private val _playbackStoppedDueToError = MutableStateFlow<Throwable?>(null)
     val playbackStoppedDueToError: StateFlow<Throwable?> = _playbackStoppedDueToError.asStateFlow()
 
+    // Reactive buffer-starvation state from the pipeline. The owner composes this with transport
+    // and play state to decide on teardown — see LocalPlayerController.
+    val isStarved: StateFlow<Boolean> get() = audioPipeline.isStarved
+
     // Track current volume/mute state
     // Initialize with current system volume (not hardcoded 100)
     private var currentVolume: Int = mediaPlayerController.getCurrentSystemVolume()
@@ -198,13 +202,11 @@ class SendspinClient(
                             wsState.error.message?.contains("Failed to reconnect") == true
 
                         if (isPermanent) {
-                            val current = _state.value
-                            val wasStreaming = current is SendspinState.Reconnecting &&
-                                    current.wasStreaming
-                            if (wasStreaming) {
-                                audioPipeline.stopStream()
-                                stateReporter?.stop()
-                            }
+                            // Don't stop the pipeline: let it keep draining whatever is buffered.
+                            // If reconnect lands within the window, chunks resume into the live
+                            // queue; otherwise it goes silent on its own. Only a user stop,
+                            // server stream/end, or a genuine reset tears the audio down.
+                            stateReporter?.stop()
                             _state.update {
                                 SendspinState.Error(
                                     SendspinError.Permanent(

@@ -96,6 +96,13 @@ class AudioStreamManager(
     private val _streamError = MutableSharedFlow<Throwable>(replay = 0, extraBufferCapacity = 1)
     override val streamError: Flow<Throwable> = _streamError.asSharedFlow()
 
+    // Reactive: true while the consumer has no audio to feed the sink (queue drained to the
+    // reorder cushion), false while it is actively playing. Purely reflects the current buffer
+    // state — the owner composes it with transport + play state to decide on teardown, so this
+    // class carries no judgement about *why* the buffer is empty.
+    private val _isStarved = MutableStateFlow(false)
+    override val isStarved: StateFlow<Boolean> = _isStarved.asStateFlow()
+
     private var streamConfig: StreamStartPlayer? = null
     private var isStreaming = false
 
@@ -104,6 +111,11 @@ class AudioStreamManager(
 
     private val queue = ArrayList<RawFrame>(64)
     private val queueLock = Mutex()
+
+    // Timestamp of the most recently consumed frame. Lets the producer drop frames the
+    // server re-sends after a reconnect (already played), so overlap doesn't double-play.
+    // Long.MIN_VALUE = nothing consumed yet. Read/written under queueLock.
+    private var lastConsumedTs = Long.MIN_VALUE
 
     // Signal from producer to consumer: "new frame available". Channel(1) with DROP_OLDEST
     // coalesces multiple signals into one wakeup — consumer drains all ready frames per wakeup.
@@ -128,9 +140,6 @@ class AudioStreamManager(
     @Volatile
     var userDelayMicros: Long = 0L
 
-    // Network disconnection tracking for starvation handling
-    private var isNetworkDisconnected = false
-
     // Tracks current AudioTrack format to enable reuse across reconnections
     private data class SinkConfig(
         val outputCodec: AudioCodec,
@@ -141,19 +150,19 @@ class AudioStreamManager(
 
     private var currentSinkConfig: SinkConfig? = null
 
-    /**
-     * Signal that the network transport has dropped.
-     * Cleared automatically when startStream() is called on reconnect.
-     */
-    fun onNetworkDisconnected() {
-        logger.i { "Network disconnected" }
-        isNetworkDisconnected = true
-    }
-
     override suspend fun startStream(config: StreamStartPlayer) = streamLifecycleLock.withLock {
         logger.i { "Starting stream: ${config.codec}, ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
 
-        isNetworkDisconnected = false
+        // Resume path: a reconnect can re-issue stream/start with the same format while we're
+        // still streaming. Keep the buffered audio, decoder, and consumer alive — chunks just
+        // resume flowing into the live queue (producer de-dups overlap). Wiping here would
+        // drop the entire prebuffer and audibly cut playback mid-hiccup.
+        if (isStreaming && audioDecoder != null && config == streamConfig) {
+            logger.i { "stream/start for the in-flight stream — resuming, buffer preserved" }
+            mediaPlayerController.resumeSink()
+            return@withLock
+        }
+
         streamConfig = config
         isStreaming = true
         // Create and configure decoder atomically under lock
@@ -209,7 +218,11 @@ class AudioStreamManager(
             currentSinkConfig = newSinkConfig
         }
 
-        queueLock.withLock { queue.clear() }
+        queueLock.withLock {
+            queue.clear()
+            lastConsumedTs = Long.MIN_VALUE
+        }
+        _isStarved.value = false
         startPlaybackThread()
     }
 
@@ -240,13 +253,17 @@ class AudioStreamManager(
 
         val ts = binaryMessage.timestamp
 
-        // Sorted insert into reorder queue, then signal consumer
-        val frame = RawFrame(ts, binaryMessage.data)
-        queueLock.withLock {
-            val pos = queue.binarySearchBy(frame.timestamp) { it.timestamp }
-            queue.add(if (pos < 0) -(pos + 1) else pos, frame)
+        // Sorted insert into reorder queue, then signal consumer.
+        // De-dup so a reconnect replaying overlapping chunks doesn't double-play: skip frames
+        // already consumed (ts <= lastConsumedTs) and exact-timestamp duplicates still queued.
+        val inserted = queueLock.withLock {
+            if (ts <= lastConsumedTs) return@withLock false
+            val pos = queue.binarySearchBy(ts) { it.timestamp }
+            if (pos >= 0) return@withLock false
+            queue.add(-(pos + 1), RawFrame(ts, binaryMessage.data))
+            true
         }
-        frameSignal.trySend(Unit)
+        if (inserted) frameSignal.trySend(Unit)
     }
 
     /**
@@ -273,10 +290,15 @@ class AudioStreamManager(
                     var drained = false
                     while (isActive && isStreaming) {
                         val frame = queueLock.withLock {
-                            if (queue.size > reorderDepth) queue.removeAt(0) else null
+                            if (queue.size > reorderDepth) {
+                                queue.removeAt(0).also { lastConsumedTs = it.timestamp }
+                            } else {
+                                null
+                            }
                         } ?: break
 
                         drained = true
+                        _isStarved.value = false
 
                         val currentUserDelay = userDelayMicros
                         if (currentUserDelay != lastAppliedUserDelay) {
@@ -323,7 +345,11 @@ class AudioStreamManager(
                     }
 
                     if (!drained) {
-                        // No frames ready — suspend until producer signals
+                        // Out of audio to feed the sink. Publish it and park until inflow resumes
+                        // or we're cancelled. Whether this is an outage (tear down) or just a
+                        // transient gap (pause/resume/ramp) is the owner's call to make from
+                        // transport + play state — not ours.
+                        _isStarved.value = true
                         frameSignal.receive()
                     }
                 }
@@ -338,18 +364,25 @@ class AudioStreamManager(
 
     override suspend fun clearStream() {
         logger.i { "Clearing stream" }
-        queueLock.withLock { queue.clear() }
+        queueLock.withLock {
+            queue.clear()
+            lastConsumedTs = Long.MIN_VALUE
+        }
+        _isStarved.value = false
         _playbackPosition.update { 0L }
     }
 
     override suspend fun stopStream() = streamLifecycleLock.withLock {
         logger.i { "Stopping stream" }
         isStreaming = false
-        isNetworkDisconnected = false
+        _isStarved.value = false
         playbackJob?.cancel()
         playbackJob = null
 
-        queueLock.withLock { queue.clear() }
+        queueLock.withLock {
+            queue.clear()
+            lastConsumedTs = Long.MIN_VALUE
+        }
         decoderLock.withLock { audioDecoder?.reset() }
         // Pause+flush (don't release). Keeps HW warmed up so the next startStream
         // can reuse the AudioTrack with deterministic latency instead of paying a

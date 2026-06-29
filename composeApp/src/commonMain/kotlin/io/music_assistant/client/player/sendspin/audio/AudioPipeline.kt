@@ -58,4 +58,12 @@ interface AudioPipeline {
      * Hot shared flow — new subscribers do NOT receive past errors.
      */
     val streamError: Flow<Throwable>
+
+    /**
+     * Reactive: true while the consumer has no audio left to feed the sink, false while it is
+     * actively playing. Reflects only the current buffer state — it carries no judgement about
+     * *why* the buffer is empty (outage vs pause vs ramp-up). The owner composes this with
+     * transport and play state to decide whether to tear playback down.
+     */
+    val isStarved: StateFlow<Boolean>
 }

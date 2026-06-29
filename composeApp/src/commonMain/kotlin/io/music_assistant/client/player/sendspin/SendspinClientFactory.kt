@@ -180,7 +180,6 @@ class SendspinClientFactory(
             clientId = settings.sendspinClientId.value,
             deviceName = settings.sendspinDeviceName.value,
             codecPreference = settings.sendspinCodecPreference.value,
-            bufferCapacityMicros = SendspinConfig.DEFAULT_BUFFER_CAPACITY_MICROS,
             // WebRTC: auth inherited from ma-api channel, no server connection needed
             serverHost = "",
             serverPort = 0,
@@ -274,7 +273,6 @@ class SendspinClientFactory(
                 clientId = settings.sendspinClientId.value,
                 deviceName = settings.sendspinDeviceName.value,
                 enabled = true,
-                bufferCapacityMicros = SendspinConfig.DEFAULT_BUFFER_CAPACITY_MICROS,
                 codecPreference = settings.sendspinCodecPreference.value,
                 serverHost = settings.sendspinHost.value.takeIf { it.isNotEmpty() } ?: serverHost,
                 serverPort = settings.sendspinPort.value,
@@ -290,7 +288,6 @@ class SendspinClientFactory(
                 clientId = settings.sendspinClientId.value,
                 deviceName = settings.sendspinDeviceName.value,
                 enabled = true,
-                bufferCapacityMicros = SendspinConfig.DEFAULT_BUFFER_CAPACITY_MICROS,
                 codecPreference = settings.sendspinCodecPreference.value,
                 serverHost = serverHost,
                 serverPort = mainConnection.port,

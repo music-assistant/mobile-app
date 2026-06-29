@@ -1,6 +1,7 @@
 package io.music_assistant.client.data
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.ImageType
@@ -41,6 +42,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -76,6 +79,7 @@ class LocalPlayerController(
     private val sendspinClientFactory: SendspinClientFactory,
     private val playerRequestFactory: PlayerRequestFactory,
     private val positionTracker: PlayerPositionTracker,
+    private val errorBus: ErrorMessageBus,
 ) : CoroutineScope {
     private val log = Logger.withTag("LocalPlayerCtrl")
 
@@ -544,6 +548,26 @@ class LocalPlayerController(
         }
 
         sendspinMonitorJobs += launch {
+            // Tear playback down only when all three hold at once: we're playing, the audio buffer
+            // has run dry, and the transport is actually down. A dry buffer while the transport is
+            // up is a normal transient — pause/resume or post-(re)connect ramp-up — and must NOT
+            // stop playback. This is a pure reactive composition of current state; no heuristics
+            // about how the buffer got empty.
+            combine(client.state, client.isStarved, localPlayerData) { state, starved, data ->
+                starved &&
+                    data?.player?.isPlaying == true &&
+                    (state is SendspinState.Reconnecting || state is SendspinState.Error)
+            }.distinctUntilChanged().collect { lostDuringPlayback ->
+                if (lostDuringPlayback) {
+                    log.w { "Buffer drained while transport is down — stopping local playback" }
+                    localPlayerData.value?.let { handleLocalCommand(it, PlayerAction.Pause) }
+                    sendspinClientFactory.getOrCreatePipeline().first.stopStream()
+                    errorBus.emit("Playback stopped: lost connection to the server")
+                }
+            }
+        }
+
+        sendspinMonitorJobs += launch {
             client.state.collect { state ->
                 _sendspinState.value = state
                 when (state) {
@@ -554,8 +578,6 @@ class LocalPlayerController(
                     }
 
                     is SendspinState.Error -> {
-                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
-
                         // Retry if error is not being auto-retried and main API is connected
                         val shouldRetry = when (state.error) {
                             is SendspinError.Permanent -> true
@@ -582,9 +604,7 @@ class LocalPlayerController(
                         }
                     }
 
-                    is SendspinState.Idle -> {
-                        sendspinClientFactory.getOrCreatePipeline().first.onNetworkDisconnected()
-                    }
+                    is SendspinState.Idle -> Unit
 
                     is SendspinState.Synchronized -> {
                         localPlayerData.value?.queueInfo?.id?.let(positionTracker::confirmPlaying)
@@ -627,9 +647,14 @@ class LocalPlayerController(
         // rely on drainCommandQueue() replaying queued intent — e.g. a post-
         // interruption resume — once the transport returns. Genuine resets clear
         // them explicitly (clearAllData / Sendspin-disabled).
-        // Fully release the shared audio pipeline (AudioTrack, decoder, etc.)
-        // A fresh pipeline will be created on the next start()
-        sendspinClientFactory.destroyPipeline()
+        //
+        // The shared audio pipeline (buffer + consumer + AudioTrack) is decoupled from
+        // transport churn: only a genuine reset destroys it. On a transient Restart we keep
+        // it alive and draining so buffered audio survives the reconnect — the next start()
+        // reuses it via the factory.
+        if (reason != GoodbyeReason.Restart) {
+            sendspinClientFactory.destroyPipeline()
+        }
     }
 
     /** Full local-player reset: drop the optimistic UI state and any pending offline

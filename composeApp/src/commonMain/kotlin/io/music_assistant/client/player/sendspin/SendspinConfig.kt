@@ -8,7 +8,6 @@ data class SendspinConfig(
     val clientId: String,
     val deviceName: String,
     val enabled: Boolean = true,
-    val bufferCapacityMicros: Int = DEFAULT_BUFFER_CAPACITY_MICROS,
     val codecPreference: Codec,
 
     // Server connection settings
@@ -42,7 +41,13 @@ data class SendspinConfig(
 
     companion object {
         // Advertised to server in client/hello; controls how much audio it may pre-push.
-        // Deep prebuffer lets short network drops pass without playback hiccups.
-        const val DEFAULT_BUFFER_CAPACITY_MICROS: Int = 10_000_000 // 10s
+        // A deep prebuffer lets network drops pass without playback hiccups, but the queue
+        // holds raw frames in memory — so PCM (uncompressed) stays shallow while compressed
+        // codecs get a wide window for cheap.
+        const val BUFFER_CAPACITY_PCM_MICROS: Int = 10_000_000 // 10s
+        const val BUFFER_CAPACITY_COMPRESSED_MICROS: Int = 30_000_000 // 30s
+
+        fun bufferCapacityFor(codec: Codec): Int =
+            if (codec == Codec.PCM) BUFFER_CAPACITY_PCM_MICROS else BUFFER_CAPACITY_COMPRESSED_MICROS
     }
 }
