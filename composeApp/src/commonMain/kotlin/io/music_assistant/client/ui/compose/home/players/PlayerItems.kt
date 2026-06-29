@@ -247,13 +247,14 @@ fun FullPlayerItem(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
 
+    // Do not add padding here - title/subtitle should be full width.
     Column(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
-            modifier = Modifier
+            modifier = Modifier.padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
                 .weight(1f, fill = false)
                 .aspectRatio(1f)
                 .heightIn(max = 500.dp)
@@ -284,7 +285,7 @@ fun FullPlayerItem(
             )
         }
 
-        // Track info — full width now that the favorite moved to the controls row.
+        // Track info
         val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
         Column(
             modifier = Modifier
@@ -293,7 +294,11 @@ fun FullPlayerItem(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fadingEdges()
+                    .basicMarquee()
+                    .padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
                     .alphaOn(currentMedia?.title != null),
                 text = trackName,
                 style = MaterialTheme.typography.headlineSmall,
@@ -323,7 +328,10 @@ fun FullPlayerItem(
                             if (subtitle.isNullOrBlank()) {
                                 Modifier
                             } else {
-                                Modifier.fadingEdges().basicMarquee()
+                                Modifier
+                                    .fadingEdges()
+                                    .basicMarquee()
+                                    .padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
                             },
                         )
                         .alphaOn(currentMedia?.title != null),
@@ -367,7 +375,7 @@ fun FullPlayerItem(
             inactiveTrackColor = controlTint.inactive(),
         )
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING),
         ) {
             Slider(
                 value = sliderPosition,
@@ -440,7 +448,7 @@ fun FullPlayerItem(
             // when the queue payload carries `playback_speed` (feature-detect gate).
             val playbackSpeed = item.queueInfo?.playbackSpeed
             val isSpokenContent = currentQueueItem?.track is Audiobook ||
-                currentQueueItem?.track is PodcastEpisode
+                    currentQueueItem?.track is PodcastEpisode
             val showSpeed = isSpokenContent && playbackSpeed != null
 
             if (showChainDialog && currentQueueItem != null) {
@@ -539,7 +547,7 @@ fun FullPlayerItem(
         val currentTrack = item.queueInfo?.currentItem?.track as? AppMediaItem
         val favoriteSlot = 48.dp // Material IconButton size; mirrored by the trailing spacer.
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -568,3 +576,5 @@ fun FullPlayerItem(
         }
     }
 }
+
+private val FULL_PLAYER_HORIZONTAL_PADDING = 16.dp

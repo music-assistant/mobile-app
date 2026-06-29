@@ -127,8 +127,9 @@ fun ItemHeader(
                 }
             }
         } else {
+            // Horizontal
             Column(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 image()
@@ -208,10 +209,12 @@ private fun ItemOverflow(
             when (it) {
                 ItemAction.AddToLibrary,
                 ItemAction.RemoveFromLibrary,
-                -> libraryActions?.onLibraryClick(item)
+                    -> libraryActions?.onLibraryClick(item)
+
                 ItemAction.Favorite,
                 ItemAction.Unfavorite,
-                -> libraryActions?.onFavoriteClick(item)
+                    -> libraryActions?.onFavoriteClick(item)
+
                 ItemAction.AddToPlaylist -> showPlaylistDialog = true
                 else -> Unit
             }
@@ -255,7 +258,11 @@ private fun ItemText(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fadingEdges()
+                .basicMarquee()
+                .padding(horizontal = 16.dp),
             text = item.name,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
@@ -264,7 +271,11 @@ private fun ItemText(
         (item as? Album)?.version?.let {
             if (it.isNotBlank()) {
                 Text(
-                    modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fadingEdges()
+                        .basicMarquee()
+                        .padding(horizontal = 16.dp),
                     text = it,
                     textAlign = textAlign,
                     style = MaterialTheme.typography.titleSmall,
@@ -274,7 +285,11 @@ private fun ItemText(
 
         item.localizedSubtitle()?.let {
             Text(
-                modifier = Modifier.fillMaxWidth().fadingEdges().basicMarquee(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fadingEdges()
+                    .basicMarquee()
+                    .padding(horizontal = 16.dp),
                 text = it,
                 textAlign = textAlign,
                 style = MaterialTheme.typography.titleMedium,
