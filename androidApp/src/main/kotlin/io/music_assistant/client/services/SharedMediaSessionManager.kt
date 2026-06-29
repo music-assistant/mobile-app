@@ -103,6 +103,7 @@ class SharedMediaSessionManager(
     // local player; otherwise it presents the canonical all-players now-playing (the phone
     // notification, with its switch-player action). SystemUI binds never flip this.
     private val _autoHostActive = MutableStateFlow(false)
+
     /** True while a real Android Auto / media host is bound to the LOCAL player. */
     val autoHostActive: StateFlow<Boolean> = _autoHostActive
 
