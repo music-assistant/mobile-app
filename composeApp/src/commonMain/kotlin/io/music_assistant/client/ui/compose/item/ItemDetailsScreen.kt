@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -54,6 +55,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.items.Album
@@ -99,6 +101,7 @@ import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.utils.gridItemMinSize
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.album_disc_header
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
@@ -604,6 +607,7 @@ private fun TabContent(
             -> PlayablesTabContent(
             playableItemsState = state.playableItemsState,
             parentItem = item,
+            playableItemsSortOption = state.playableItemsSortOption,
             viewModeProvider = viewModeProvider,
             onPlayChildClick = onPlayChildClick,
             playlistActions = playlistActions,
@@ -813,6 +817,7 @@ private fun ArtistsTabContent(
 private fun PlayablesTabContent(
     playableItemsState: DataState<List<PlayableItem>>,
     parentItem: AppMediaItem,
+    playableItemsSortOption: SortOption?,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onPlayChildClick: PlayHandler<AppMediaItem>,
     playlistActions: PlaylistActions,
@@ -826,46 +831,79 @@ private fun PlayablesTabContent(
     gridState: LazyGridState,
 ) {
     val viewMode = viewModeProvider(MediaType.TRACK)
+    // Shared row body for both the flat and the disc-sectioned layouts.
+    val trackItem: @Composable (index: Int, track: PlayableItem) -> Unit = { index, track ->
+        when (track) {
+            is Track -> TrackWithMenu(
+                item = track,
+                viewMode = viewMode,
+                showTrackNumber = parentItem is Album,
+                onPlayOption = onPlayChildClick,
+                playlistActions = playlistActions,
+                onRemoveFromPlaylist = if (parentItem is Playlist && parentItem.isEditable) {
+                    { onRemoveFromPlaylist(parentItem.itemId, index) }
+                } else {
+                    null
+                },
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+            )
+
+            is PodcastEpisode -> PodcastEpisodeWithMenu(
+                item = track,
+                viewMode = viewMode,
+                onPlayOption = onPlayChildClick,
+                playlistActions = null,
+                libraryActions = libraryActions,
+                progressActions = progressActions,
+                providerIconFetcher = providerIconFetcher,
+            )
+        }
+    }
+    val listSpan: (LazyGridItemSpanScope.() -> GridItemSpan)? =
+        if (viewMode == ViewMode.LIST) ({ GridItemSpan(maxLineSpan) }) else null
     DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
         tabListBody(playableItemsState) { tracks ->
             val trackKeys = tracks.playableLazyListOccurrenceKeys()
-            itemsIndexed(
-                items = tracks,
-                key = { index, _ -> trackKeys[index] },
-                span = when (viewMode) {
-                    ViewMode.LIST -> { _, _ -> GridItemSpan(maxLineSpan) }
-                    ViewMode.GRID -> null
-                },
-            ) { index, track ->
-                when (track) {
-                    is Track -> TrackWithMenu(
-                        item = track,
-                        viewMode = viewMode,
-                        showTrackNumber = parentItem is Album,
-                        onPlayOption = onPlayChildClick,
-                        playlistActions = playlistActions,
-                        onRemoveFromPlaylist = if (parentItem is Playlist && parentItem.isEditable) {
-                            { onRemoveFromPlaylist(parentItem.itemId, index) }
-                        } else {
-                            null
-                        },
-                        libraryActions = libraryActions,
-                        providerIconFetcher = providerIconFetcher,
-                    )
-
-                    is PodcastEpisode -> PodcastEpisodeWithMenu(
-                        item = track,
-                        viewMode = viewMode,
-                        onPlayOption = onPlayChildClick,
-                        playlistActions = null,
-                        libraryActions = libraryActions,
-                        progressActions = progressActions,
-                        providerIconFetcher = providerIconFetcher,
-                    )
+            // Section a multi-disc album by disc, but only in its natural ("Original") order —
+            // any other sort intentionally mixes discs, so headers would lie. Requiring every
+            // track to carry a disc number avoids a bogus "Disc null" header on partial tags.
+            val sectionByDisc = parentItem is Album &&
+                playableItemsSortOption?.field == SortField.ORIGINAL &&
+                tracks.all { it is Track && it.discNumber != null } &&
+                tracks.mapNotNull { (it as? Track)?.discNumber }.distinct().size > 1
+            if (sectionByDisc) {
+                tracks.forEachIndexed { index, track ->
+                    // Gate guarantees a non-null disc; Original sort keeps discs contiguous.
+                    val disc = (track as Track).discNumber!!
+                    val prevDisc = (tracks.getOrNull(index - 1) as? Track)?.discNumber
+                    if (index == 0 || disc != prevDisc) {
+                        fullSpanItem("disc-header-$disc") { DiscHeader(disc) }
+                    }
+                    item(key = trackKeys[index], span = listSpan) { trackItem(index, track) }
                 }
+            } else {
+                itemsIndexed(
+                    items = tracks,
+                    key = { index, _ -> trackKeys[index] },
+                    span = when (viewMode) {
+                        ViewMode.LIST -> { _, _ -> GridItemSpan(maxLineSpan) }
+                        ViewMode.GRID -> null
+                    },
+                ) { index, track -> trackItem(index, track) }
             }
         }
     }
+}
+
+@Composable
+private fun DiscHeader(disc: Int) {
+    Text(
+        text = stringResource(Res.string.album_disc_header, disc),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
+    )
 }
 
 @Composable

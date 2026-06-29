@@ -26,6 +26,7 @@
   <string name="action_remove_from_playlist">Remove from playlist</string>
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
+  <string name="album_disc_header">Disc %1$d</string>
   <string name="albums_by_artist">Albums by %1$s</string>
   <string name="auth_authenticating">Authenticating…</string>
   <string name="auth_authorize_ha">Authorize with Home Assistant</string>
