@@ -15,30 +15,47 @@ private let siriLog = OSLog(
 
 private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonObserver {
     private let session = AVAudioSession.sharedInstance()
+    private let appActive = OSAllocatedUnfairLock(initialState: UIApplication.shared.applicationState == .active)
     private var observation: NSKeyValueObservation?
     private var lastVolume: Float = AVAudioSession.sharedInstance().outputVolume
+    private var isAppActive: Bool { appActive.withLock { $0 } }
 
     /// Wired once at startup. Lets us check whether the local engine is actively
     /// rendering before we touch the shared session's category.
     weak var player: NativeAudioController?
 
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillResignActive),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func appDidBecomeActive() {
+        appActive.withLock { $0 = true }
+    }
+
+    @objc private func appWillResignActive() {
+        appActive.withLock { $0 = false }
+    }
+
     func start() {
         guard observation == nil else { return }
         do {
-            // outputVolume KVO only delivers hardware-button changes while the
-            // shared session is active. But the app's .playback category is
-            // non-mixing, so activating it claims exclusive audio focus and
-            // interrupts other audio apps, wrong when we are only observing
-            // for a remote player and producing no audio of our own. So:
-            //   - If the local player is already rendering, the session is already
-            //     active and exclusive; just attach KVO and touch nothing 
-            //   - Otherwise activate with .mixWithOthers so observation coexists
-            //     with other apps instead of stealing focus. When local playback
-            //     actually starts, NowPlayingManager.activatePlayback() re-asserts
-            //     exclusive .playback and reclaims focus.
-            // We deliberately don't deactivate on stop(): nothing else in the app
-            // deactivates the session, and tearing it down here interrupted the
-            // local player when switching back to it.
+            // KVO needs an active session; mix so remote volume capture doesn't steal focus.
             if player?.isRenderingAudio != true {
                 try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
                 try session.setActive(true, options: [])
@@ -49,7 +66,12 @@ private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonOb
                 let volume = change.newValue ?? audioSession.outputVolume
                 guard volume != self.lastVolume else { return }
                 self.lastVolume = volume
-                KmpHelper.shared.onPlatformVolumeButtonPressed()
+                // Compose misses resign-active; filter Control Center and call screens here.
+                guard self.isAppActive else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard self?.isAppActive == true else { return }
+                    KmpHelper.shared.onPlatformVolumeButtonPressed()
+                }
             }
         } catch {
             NativeLog.shared.error(tag: "SystemVolumeButtonObserver", message: "Failed to activate audio session for volume observation: \(error)")
@@ -59,6 +81,7 @@ private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonOb
     func stop() {
         observation?.invalidate()
         observation = nil
+        // Do not deactivate; this shared session may still belong to local playback.
     }
 }
 

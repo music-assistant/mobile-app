@@ -14,26 +14,56 @@ class RemoteVolumeButtonController {
 
     private var platformObserver: PlatformVolumeButtonObserver? = null
     private var observingPlatformButtons = false
+    // Compose only reports full backgrounding; iOS filters resign-active itself.
+    private var isAppForeground = true
+    private var isPlatformObserverStarted = false
 
     fun setPlatformObserver(observer: PlatformVolumeButtonObserver?) {
-        platformObserver?.stop()
-        platformObserver = observer
-        if (observingPlatformButtons) {
-            platformObserver?.start()
+        if (platformObserver === observer) return
+        if (isPlatformObserverStarted) {
+            platformObserver?.stop()
+            isPlatformObserverStarted = false
         }
+        platformObserver = observer
+        updatePlatformObserver()
     }
 
     fun startObservingPlatformButtons() {
         observingPlatformButtons = true
-        platformObserver?.start()
+        updatePlatformObserver()
     }
 
     fun stopObservingPlatformButtons() {
         observingPlatformButtons = false
-        platformObserver?.stop()
+        updatePlatformObserver()
+    }
+
+    fun onAppForeground() {
+        isAppForeground = true
+        updatePlatformObserver()
+    }
+
+    fun onAppBackground() {
+        isAppForeground = false
+        updatePlatformObserver()
     }
 
     fun onPlatformVolumeButtonPressed() {
+        if (!isAppForeground || !observingPlatformButtons) return
         _buttonPresses.tryEmit(Unit)
+    }
+
+    private fun updatePlatformObserver() {
+        val observer = platformObserver
+        val shouldStart = observer != null && observingPlatformButtons && isAppForeground
+        if (shouldStart == isPlatformObserverStarted) return
+
+        if (shouldStart) {
+            observer.start()
+            isPlatformObserverStarted = true
+        } else {
+            observer?.stop()
+            isPlatformObserverStarted = false
+        }
     }
 }

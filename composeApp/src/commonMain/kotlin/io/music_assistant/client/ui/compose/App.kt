@@ -19,6 +19,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.input.RemoteVolumeButtonController
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.theme.AppTheme
@@ -33,12 +34,21 @@ import org.koin.core.annotation.KoinExperimentalAPI
 @Composable
 private fun AppLifecycleObserver() {
     val serviceClient: ServiceClient = koinInject()
+    val remoteVolumeButtonController: RemoteVolumeButtonController = koinInject()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> serviceClient.onAppForeground()
-                Lifecycle.Event.ON_STOP -> serviceClient.onAppBackground()
+                Lifecycle.Event.ON_START -> {
+                    remoteVolumeButtonController.onAppForeground()
+                    serviceClient.onAppForeground()
+                }
+
+                Lifecycle.Event.ON_STOP -> {
+                    remoteVolumeButtonController.onAppBackground()
+                    serviceClient.onAppBackground()
+                }
+
                 else -> {}
             }
         }

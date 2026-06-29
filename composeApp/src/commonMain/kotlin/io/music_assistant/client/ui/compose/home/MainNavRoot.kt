@@ -216,16 +216,10 @@ fun MainNavigationRoot(
         }
     }
 
-    LaunchedEffect(
-        remoteVolumeButtonController,
-        viewedPlayer?.playerId,
-        viewedPlayer?.isLocal,
-        remoteVolumeHint,
-    ) {
+    // Keep the no-replay button collector stable across player swipes.
+    LaunchedEffect(remoteVolumeButtonController, remoteVolumeHint) {
         remoteVolumeButtonController.buttonPresses.collect {
-            if (viewedPlayer?.isLocal == false) {
-                toastState.showToast(remoteVolumeHint, ToastDuration.LONG)
-            }
+            toastState.showToast(remoteVolumeHint, ToastDuration.LONG)
         }
     }
 
