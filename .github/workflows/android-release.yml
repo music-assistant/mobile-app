@@ -88,13 +88,13 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - name: Upload to Google Play (internal testing)
+      - name: Upload to Google Play (open testing)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.gcloud-auth.outputs.credentials_file_path }}
           packageName: io.music_assistant.client
           releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
-          track: internal
+          track: beta
           status: completed
           whatsNewDirectory: distribution/whatsnew
 
@@ -112,7 +112,7 @@ jobs:
             ## Android Release ${{ steps.version.outputs.name }}
 
             - **Version code**: ${{ steps.version.outputs.code }}
-            - **Track**: Internal testing (Google Play)
+            - **Track**: Open testing (Google Play)
           generate_release_notes: true
           draft: false
           prerelease: false
