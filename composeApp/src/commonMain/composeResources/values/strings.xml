@@ -145,6 +145,7 @@
   <string name="media_error_connection_lost">Connection lost</string>
   <string name="media_error_local_player_off">Local player is not enabled</string>
   <string name="media_error_reconnecting">Reconnecting…</string>
+  <string name="media_playback_stopped_connection_lost">Playback stopped: lost connection to the server</string>
   <string name="media_queue_now_playing">Now playing</string>
   <string name="media_toast_playing_players">You have playing players</string>
   <string name="media_type_albums">Albums</string>

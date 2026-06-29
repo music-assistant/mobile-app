@@ -102,7 +102,9 @@ class SharedMediaSessionManager(
     // the LOCAL player: when a host is connected the session presents/controls only the
     // local player; otherwise it presents the canonical all-players now-playing (the phone
     // notification, with its switch-player action). SystemUI binds never flip this.
-    private val autoHostActive = MutableStateFlow(false)
+    private val _autoHostActive = MutableStateFlow(false)
+    /** True while a real Android Auto / media host is bound to the LOCAL player. */
+    val autoHostActive: StateFlow<Boolean> = _autoHostActive
 
     // Cached last playback data — used to restore state after clearing errors.
     private var lastData: MediaNotificationData? = null
@@ -151,13 +153,13 @@ class SharedMediaSessionManager(
     /** A real AA host connected: isolate the session to the local player + accept browse/voice play. */
     fun bindAutoHost(handler: AutoPlayHandler) {
         autoPlayHandler = handler
-        autoHostActive.value = true
+        _autoHostActive.value = true
     }
 
     /** The AA host went away: return to the all-players notification view, drop any host error. */
     fun unbindAutoHost() {
         autoPlayHandler = null
-        autoHostActive.value = false
+        _autoHostActive.value = false
         clearErrorState()
     }
 

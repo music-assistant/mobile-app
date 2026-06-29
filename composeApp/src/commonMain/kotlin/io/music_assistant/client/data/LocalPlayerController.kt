@@ -26,6 +26,9 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.utils.SessionState
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.media_playback_stopped_connection_lost
+import org.jetbrains.compose.resources.getString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -536,15 +539,8 @@ class LocalPlayerController(
 
         sendspinMonitorJobs += launch {
             // Monitor for playback errors (e.g., Android Auto disconnect, audio output changed)
-            // and pause the MA server player when they occur
-            client.playbackStoppedDueToError.filterNotNull().collect { _ ->
-                // Pause the local sendspin player on the MA server
-                localPlayerData.value?.let { playerData ->
-                    if (playerData.player.isPlaying) {
-                        handleLocalCommand(playerData, PlayerAction.Pause)
-                    }
-                }
-            }
+            // and pause the MA server player when they occur.
+            client.playbackStoppedDueToError.filterNotNull().collect { pauseLocalIfPlaying() }
         }
 
         sendspinMonitorJobs += launch {
@@ -552,7 +548,8 @@ class LocalPlayerController(
             // has run dry, and the transport is actually down. A dry buffer while the transport is
             // up is a normal transient — pause/resume or post-(re)connect ramp-up — and must NOT
             // stop playback. This is a pure reactive composition of current state; no heuristics
-            // about how the buffer got empty.
+            // about how the buffer got empty. The pause is authoritative: the Error-retry loop
+            // below may reconnect, but it won't auto-resume a paused player, so the two don't fight.
             combine(client.state, client.isStarved, localPlayerData) { state, starved, data ->
                 starved &&
                     data?.player?.isPlaying == true &&
@@ -560,9 +557,9 @@ class LocalPlayerController(
             }.distinctUntilChanged().collect { lostDuringPlayback ->
                 if (lostDuringPlayback) {
                     log.w { "Buffer drained while transport is down — stopping local playback" }
-                    localPlayerData.value?.let { handleLocalCommand(it, PlayerAction.Pause) }
-                    sendspinClientFactory.getOrCreatePipeline().first.stopStream()
-                    errorBus.emit("Playback stopped: lost connection to the server")
+                    pauseLocalIfPlaying()
+                    client.stopStream()
+                    errorBus.emit(getString(Res.string.media_playback_stopped_connection_lost))
                 }
             }
         }
@@ -613,6 +610,15 @@ class LocalPlayerController(
                     is SendspinState.Reconnecting -> Unit
                     else -> Unit
                 }
+            }
+        }
+    }
+
+    /** Pause the local player on the MA server, but only if it's currently playing. */
+    private fun pauseLocalIfPlaying() {
+        localPlayerData.value?.let { playerData ->
+            if (playerData.player.isPlaying) {
+                handleLocalCommand(playerData, PlayerAction.Pause)
             }
         }
     }

@@ -126,7 +126,14 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
-        acquireWifiLock()
+        // Hold the Wi-Fi radio only while audio is actually playing, not for the whole service
+        // lifetime — a paused-in-background player keeps the service (for the notification) but
+        // doesn't need the radio awake.
+        scope.launch {
+            dataSource.isAnythingPlaying.collect { playing ->
+                if (playing) acquireWifiLock() else releaseWifiLock()
+            }
+        }
         dataSource.apiClient.onPlaybackActive()
         registerNotificationDismissReceiver()
         fullyInitialized = true
@@ -203,11 +210,10 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // If nothing is actively playing, stop Sendspin and this service when the
-        // user closes the app from recents. Playing state is left running so
-        // background audio continues uninterrupted.
+        // If nothing is actively playing, stop this service when the user closes the app from
+        // recents. Playing state is left running so background audio continues uninterrupted.
+        // onDestroy releases the local audio stack.
         if (!dataSource.isAnythingPlaying.value) {
-            dataSource.onAppClosed()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -220,6 +226,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
             logger.i { "Unregistered audio device callback" }
             dataSource.apiClient.onPlaybackInactive()
+            // The control surface is gone (no notification): the user is done. Release the local
+            // audio stack (AudioTrack/decoder/consumer + Sendspin client) — unless Android Auto is
+            // still hosting the local player. onAppClosed() re-checks "nothing playing" and no-ops
+            // otherwise; it launches in the app-scoped MainDataSource, surviving this service.
+            if (!sharedSession.autoHostActive.value) {
+                dataSource.onAppClosed()
+            }
         }
         sharedSession.release()
         scope.cancel()

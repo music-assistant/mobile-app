@@ -54,6 +54,9 @@ class SendspinClient(
     // and play state to decide on teardown — see LocalPlayerController.
     val isStarved: StateFlow<Boolean> get() = audioPipeline.isStarved
 
+    /** Stop the audio stream (release the sink), leaving the client/transport intact. */
+    suspend fun stopStream() = audioPipeline.stopStream()
+
     // Track current volume/mute state
     // Initialize with current system volume (not hardcoded 100)
     private var currentVolume: Int = mediaPlayerController.getCurrentSystemVolume()

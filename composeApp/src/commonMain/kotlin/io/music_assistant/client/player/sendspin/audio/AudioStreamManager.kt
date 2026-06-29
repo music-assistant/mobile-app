@@ -106,15 +106,20 @@ class AudioStreamManager(
     private var streamConfig: StreamStartPlayer? = null
     private var isStreaming = false
 
-    // Shared sorted queue between producer (processBinaryMessage) and consumer (playback thread)
+    // Shared sorted queue between producer (processBinaryMessage) and consumer (playback thread).
+    // ArrayDeque so the consumer's head removal is O(1) instead of an O(n) array shift per frame
+    // (the buffer holds up to 30s of compressed frames). Reorder inserts are still indexed, but
+    // those are rare (out-of-order delivery only); the hot path is removeFirst().
     private class RawFrame(val timestamp: Long, val data: ByteArray)
 
-    private val queue = ArrayList<RawFrame>(64)
+    private val queue = ArrayDeque<RawFrame>(64)
     private val queueLock = Mutex()
 
     // Timestamp of the most recently consumed frame. Lets the producer drop frames the
     // server re-sends after a reconnect (already played), so overlap doesn't double-play.
-    // Long.MIN_VALUE = nothing consumed yet. Read/written under queueLock.
+    // Long.MIN_VALUE = nothing consumed yet. Read/written under queueLock. Assumes a monotonic
+    // server timeline: it is reset to MIN_VALUE on every discontinuity (clearStream / fresh
+    // startStream), so a legitimate timeline restart isn't mistaken for stale replays.
     private var lastConsumedTs = Long.MIN_VALUE
 
     // Signal from producer to consumer: "new frame available". Channel(1) with DROP_OLDEST
@@ -159,6 +164,9 @@ class AudioStreamManager(
         // drop the entire prebuffer and audibly cut playback mid-hiccup.
         if (isStreaming && audioDecoder != null && config == streamConfig) {
             logger.i { "stream/start for the in-flight stream — resuming, buffer preserved" }
+            // Intentionally keep the existing decoder (no reset): the server stitches tracks into
+            // one continuous stream, so a same-format stream/start is a continuation, not a new
+            // codec context — resetting would discard valid decoder state.
             mediaPlayerController.resumeSink()
             return@withLock
         }
@@ -291,7 +299,7 @@ class AudioStreamManager(
                     while (isActive && isStreaming) {
                         val frame = queueLock.withLock {
                             if (queue.size > reorderDepth) {
-                                queue.removeAt(0).also { lastConsumedTs = it.timestamp }
+                                queue.removeFirst().also { lastConsumedTs = it.timestamp }
                             } else {
                                 null
                             }
