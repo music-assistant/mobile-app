@@ -586,7 +586,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
             _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
             settingsRepository.updateConnectionInfo(connection)
         } else {
-            _sessionState.value = SessionState.Disconnected.Error(Exception())
+            _sessionState.value = SessionState.Disconnected.Error(connectionError)
             _serverBaseUrl.value = null
         }
     }

@@ -511,6 +511,7 @@ private fun ConnectionMethodTabs(
                     onConnect = onDirectConnect,
                     enabled = directConnectEnabled,
                     onShowHistory = { showHistoryDialog = true },
+                    error = (sessionState as? SessionState.Disconnected.Error)?.reason?.message
                 )
             }
 
@@ -567,6 +568,7 @@ private fun DirectConnectionContent(
     onConnect: () -> Unit,
     enabled: Boolean,
     onShowHistory: () -> Unit,
+    error: String?
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -651,6 +653,10 @@ private fun DirectConnectionContent(
                 contentDescription = stringResource(Res.string.cd_connection_history),
             )
         }
+    }
+
+    if (error != null) {
+        Text(error)
     }
 }
 
