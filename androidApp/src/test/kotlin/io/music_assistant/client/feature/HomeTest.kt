@@ -77,10 +77,10 @@ class HomeTest {
         serviceClient.addToLibrary(album)
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
 
-        serviceClient.setConnected(false)
+        serviceClient.setReconnecting(true)
         homePage.assertProgress()
 
-        serviceClient.setConnected(true)
+        serviceClient.setReconnecting(false)
         homePage.assertMediaDisplayed(album.name)
     }
 }

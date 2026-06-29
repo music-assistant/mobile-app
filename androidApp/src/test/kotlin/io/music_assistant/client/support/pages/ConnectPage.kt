@@ -17,4 +17,13 @@ class ConnectPage(private val composeTestRule: ComposeTestRule) : Page {
 
         return AuthenticatePage(composeTestRule).assertOnPage()
     }
+
+    fun connectWithError(message: String): ConnectPage {
+        composeTestRule.onNodeWithText("Connect")
+            .assertIsDisplayed()
+            .performClick()
+
+        composeTestRule.onNodeWithText(message).assertIsDisplayed()
+        return this.assertOnPage()
+    }
 }
