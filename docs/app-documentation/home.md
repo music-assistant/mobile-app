@@ -37,7 +37,3 @@ To configure this, long-press any single item and tap **Customize...** at the bo
 
 ![Long-Press Menu](screenshots/home/long-press-customize.jpeg)
 ![Default Click Action Customize](screenshots/home/default-click-action-customize.jpeg)
-
-## Section Links
-
-Some sections include a shortcut to the corresponding child [library](library.md). For example, tapping **All Albums** navigates to **Library › Albums**.
