@@ -7,6 +7,7 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ConnectPage
+import io.music_assistant.client.support.pages.assertNoNetworkBanner
 import io.music_assistant.client.support.pages.assertOnPage
 import io.music_assistant.client.support.pages.assertReconnectingBanner
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -39,10 +40,18 @@ class ConnectionErrorTest {
     }
 
     @Test
-    fun `shows reconnecting while reconnecting`() {
+    fun `shows reconnecting banner while reconnecting`() {
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
 
         serviceClient.setReconnecting(true)
         homePage.assertReconnectingBanner()
+    }
+
+    @Test
+    fun `shows no network banner when network is unavailable`() {
+        val homePage = launchLoggedInApp(composeTestRule, serviceClient)
+
+        serviceClient.disableNetwork()
+        homePage.assertNoNetworkBanner()
     }
 }

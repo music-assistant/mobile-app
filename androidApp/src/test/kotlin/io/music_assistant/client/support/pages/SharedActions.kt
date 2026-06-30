@@ -21,6 +21,7 @@ import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
+import musicassistantclient.composeapp.generated.resources.banner_no_network
 import musicassistantclient.composeapp.generated.resources.banner_reconnecting
 import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.cd_playing
@@ -184,5 +185,10 @@ fun <T : ComposePage> T.expandPlayer(
 
 fun <T : ComposePage> T.assertReconnectingBanner(): T {
     composeTestRule.onNodeWithText(Res.string.banner_reconnecting.get(1)).assertIsDisplayed()
+    return this
+}
+
+fun <T : ComposePage> T.assertNoNetworkBanner(): T {
+    composeTestRule.onNodeWithText(Res.string.banner_no_network.get()).assertIsDisplayed()
     return this
 }
