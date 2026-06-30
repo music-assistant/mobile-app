@@ -189,7 +189,7 @@ jobs:
           PREV_TAG=$(git tag -l 'ios-v*' --sort=-v:refname | grep -v "^${{ steps.version.outputs.tag }}$" | head -1)
           if [ -n "$PREV_TAG" ]; then
             # Only commits that touched iOS-relevant paths since the last iOS tag
-            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD -- iosApp composeApp ':!.github' ':!androidApp' || true)
+            NOTES=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- iosApp composeApp ':!.github' ':!androidApp' || true)
           else
             NOTES="Initial iOS release"
           fi
