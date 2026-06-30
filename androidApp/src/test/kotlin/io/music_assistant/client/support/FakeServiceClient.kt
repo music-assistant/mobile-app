@@ -727,15 +727,20 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     fun disableNetwork() {
-       _sessionState.update {
-           when (it) {
-               is SessionState.Connected.Direct -> {
-                   SessionState.Reconnecting.Offline(it.connectionData)
-               }
+        _sessionState.update {
+            when (it) {
+                is SessionState.Connected.Direct -> {
+                    SessionState.Reconnecting.Direct(
+                        attempt = 1,
+                        connectionInfo = it.connectionInfo,
+                        connectionData = it.connectionData,
+                        isOnline = false,
+                    )
+                }
 
-               else -> error("Unhandled SessionState: $it")
-           }
-       }
+                else -> error("Unhandled SessionState: $it")
+            }
+        }
     }
 
     enum class LegacyVersion {
