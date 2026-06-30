@@ -720,25 +720,43 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         }
     }
 
-    fun setConnectionError(error: Exception) {
+    fun setConnectionError(error: Exception?) {
         this.connectionError = error
-        _sessionState.value = SessionState.Disconnected.Error(error)
-        _serverBaseUrl.value = null
+
+        if (error != null) {
+            _sessionState.value = SessionState.Disconnected.Error(error)
+            _serverBaseUrl.value = null
+        }
     }
 
-    fun disableNetwork() {
-        _sessionState.update {
-            when (it) {
-                is SessionState.Connected.Direct -> {
-                    SessionState.Reconnecting.Direct(
-                        attempt = 1,
-                        connectionInfo = it.connectionInfo,
-                        connectionData = it.connectionData,
-                        isOnline = false,
-                    )
-                }
+    fun setNetworkAvailable(available: Boolean) {
+        if (available) {
+            _sessionState.update {
+                when (it) {
+                    is SessionState.Reconnecting.Direct -> {
+                        SessionState.Connected.Direct(
+                            connectionInfo = it.connectionInfo,
+                            connectionData = it.connectionData,
+                        )
+                    }
 
-                else -> error("Unhandled SessionState: $it")
+                    else -> error("Unhandled SessionState: $it")
+                }
+            }
+        } else {
+            _sessionState.update {
+                when (it) {
+                    is SessionState.Connected.Direct -> {
+                        SessionState.Reconnecting.Direct(
+                            attempt = 1,
+                            connectionInfo = it.connectionInfo,
+                            connectionData = it.connectionData,
+                            isOnline = false,
+                        )
+                    }
+
+                    else -> error("Unhandled SessionState: $it")
+                }
             }
         }
     }

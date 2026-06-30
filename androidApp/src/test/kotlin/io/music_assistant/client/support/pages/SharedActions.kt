@@ -183,12 +183,22 @@ fun <T : ComposePage> T.expandPlayer(
     return ExpandedPlayerPage(name, playing, item, composeTestRule).assertOnPage()
 }
 
-fun <T : ComposePage> T.assertReconnectingBanner(): T {
-    composeTestRule.onNodeWithText(Res.string.banner_reconnecting.get(1)).assertIsDisplayed()
+fun <T : ComposePage> T.assertReconnectingBanner(showing: Boolean): T {
+    if (showing) {
+        composeTestRule.onNodeWithText(Res.string.banner_reconnecting.get(1)).assertIsDisplayed()
+    } else {
+        composeTestRule.onNodeWithText(Res.string.banner_reconnecting.get(1)).assertIsNotDisplayed()
+    }
+
     return this
 }
 
-fun <T : ComposePage> T.assertNoNetworkBanner(): T {
-    composeTestRule.onNodeWithText(Res.string.banner_no_network.get()).assertIsDisplayed()
+fun <T : ComposePage> T.assertNoNetworkBanner(showing: Boolean): T {
+    if (showing) {
+        composeTestRule.onNodeWithText(Res.string.banner_no_network.get()).assertIsDisplayed()
+    } else {
+        composeTestRule.onNodeWithText(Res.string.banner_no_network.get()).assertIsNotDisplayed()
+    }
+
     return this
 }

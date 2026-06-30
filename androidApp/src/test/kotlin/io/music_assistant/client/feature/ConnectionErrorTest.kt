@@ -34,9 +34,12 @@ class ConnectionErrorTest {
         launchLoggedInApp(composeTestRule, serviceClient)
 
         serviceClient.setConnectionError(Exception("OH NO!"))
-        ConnectPage(composeTestRule)
+        val connectPage = ConnectPage(composeTestRule)
             .assertOnPage()
             .connectWithError("OH NO!")
+
+        serviceClient.setConnectionError(null)
+        connectPage.connect()
     }
 
     @Test
@@ -44,14 +47,20 @@ class ConnectionErrorTest {
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
 
         serviceClient.setReconnecting(true)
-        homePage.assertReconnectingBanner()
+        homePage.assertReconnectingBanner(true)
+
+        serviceClient.setReconnecting(false)
+        homePage.assertReconnectingBanner(false)
     }
 
     @Test
     fun `shows no network banner when network is unavailable`() {
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
 
-        serviceClient.disableNetwork()
-        homePage.assertNoNetworkBanner()
+        serviceClient.setNetworkAvailable(false)
+        homePage.assertNoNetworkBanner(true)
+
+        serviceClient.setNetworkAvailable(true)
+        homePage.assertNoNetworkBanner(false)
     }
 }
