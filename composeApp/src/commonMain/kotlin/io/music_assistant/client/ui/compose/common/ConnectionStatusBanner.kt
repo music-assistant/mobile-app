@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
-import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.delay
 import musicassistantclient.composeapp.generated.resources.*
@@ -41,11 +40,11 @@ fun ConnectionStatusBanner(
     delay: Long = 3000,
 ) {
     val serviceClient: ServiceClient = koinInject()
-    val networkMonitor: NetworkMonitor = koinInject()
     val sessionState by serviceClient.sessionState.collectAsStateWithLifecycle()
-    val isOnline by networkMonitor.isAvailable.collectAsStateWithLifecycle()
+//    val networkMonitor: NetworkMonitor = koinInject()
+//    val isOnline by networkMonitor.isAvailable.collectAsStateWithLifecycle()
 
-    val bannerState = reconnectionBannerState(sessionState, isOnline)
+    val bannerState = reconnectionBannerState(sessionState, true)
 
     // Delay visibility to not spam in cases reconnecting is fast
     var isVisible by remember { mutableStateOf(false) }
