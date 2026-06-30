@@ -14,6 +14,7 @@ class RemoteVolumeButtonController {
 
     private var platformObserver: PlatformVolumeButtonObserver? = null
     private var observingPlatformButtons = false
+
     // Compose only reports full backgrounding; iOS filters resign-active itself.
     private var isAppForeground = true
     private var isPlatformObserverStarted = false
