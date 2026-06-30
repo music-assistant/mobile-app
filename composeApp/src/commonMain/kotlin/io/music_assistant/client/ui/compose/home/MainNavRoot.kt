@@ -23,11 +23,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -205,21 +209,23 @@ fun MainNavigationRoot(
     val remoteVolumeHint = stringResource(Res.string.players_remote_volume_hint)
     val viewedPlayer = data?.playerData?.getOrNull(playerPagerState.settledPage)
         ?: data?.selectedPlayerIndex?.let { data.playerData.getOrNull(it) }
-    val shouldObservePlatformVolumeButtons = viewedPlayer?.isLocal == false
+    val observingRemote = viewedPlayer?.isLocal == false
 
-    DisposableEffect(remoteVolumeButtonController, shouldObservePlatformVolumeButtons) {
-        if (shouldObservePlatformVolumeButtons) {
-            remoteVolumeButtonController.startObservingPlatformButtons()
-        }
-        onDispose {
-            remoteVolumeButtonController.stopObservingPlatformButtons()
-        }
+    DisposableEffect(remoteVolumeButtonController, observingRemote) {
+        remoteVolumeButtonController.observingRemote = observingRemote
+        onDispose { remoteVolumeButtonController.observingRemote = false }
     }
 
-    // Keep the no-replay button collector stable across player swipes.
-    LaunchedEffect(remoteVolumeButtonController, remoteVolumeHint) {
-        remoteVolumeButtonController.buttonPresses.collect {
-            toastState.showToast(remoteVolumeHint, ToastDuration.LONG)
+    // Collect only while the UI is on screen; off-screen presses land on no
+    // subscriber and are dropped (no replay on return). The hint is read through
+    // rememberUpdatedState so a locale change is reflected without restarting.
+    val currentHint by rememberUpdatedState(remoteVolumeHint)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, remoteVolumeButtonController) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            remoteVolumeButtonController.buttonPresses.collect {
+                toastState.showToast(currentHint, ToastDuration.SHORT)
+            }
         }
     }
 

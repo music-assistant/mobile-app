@@ -7,26 +7,18 @@ import kotlin.test.assertEquals
 
 class RemoteVolumeButtonControllerTest {
     @Test
-    fun buttonPressesAreEmittedOnlyWhileObservedAndForegrounded() = runTest {
+    fun buttonPressesAreEmittedOnlyWhileObservingRemote() = runTest {
         val controller = RemoteVolumeButtonController()
 
         controller.buttonPresses.test {
             controller.onPlatformVolumeButtonPressed()
             expectNoEvents()
 
-            controller.startObservingPlatformButtons()
+            controller.observingRemote = true
             controller.onPlatformVolumeButtonPressed()
             awaitItem()
 
-            controller.onAppBackground()
-            controller.onPlatformVolumeButtonPressed()
-            expectNoEvents()
-
-            controller.onAppForeground()
-            controller.onPlatformVolumeButtonPressed()
-            awaitItem()
-
-            controller.stopObservingPlatformButtons()
+            controller.observingRemote = false
             controller.onPlatformVolumeButtonPressed()
             expectNoEvents()
 
@@ -35,7 +27,7 @@ class RemoteVolumeButtonControllerTest {
     }
 
     @Test
-    fun platformObserverRunsOnlyWhileObservedAndForegrounded() {
+    fun platformObserverRunsOnlyWhileObservingRemote() {
         val observer = RecordingPlatformVolumeButtonObserver()
         val controller = RemoteVolumeButtonController()
 
@@ -43,21 +35,13 @@ class RemoteVolumeButtonControllerTest {
         assertEquals(0, observer.starts)
         assertEquals(0, observer.stops)
 
-        controller.startObservingPlatformButtons()
+        controller.observingRemote = true
         assertEquals(1, observer.starts)
         assertEquals(0, observer.stops)
 
-        controller.onAppBackground()
+        controller.observingRemote = false
         assertEquals(1, observer.starts)
         assertEquals(1, observer.stops)
-
-        controller.onAppForeground()
-        assertEquals(2, observer.starts)
-        assertEquals(1, observer.stops)
-
-        controller.stopObservingPlatformButtons()
-        assertEquals(2, observer.starts)
-        assertEquals(2, observer.stops)
     }
 
     @Test
@@ -67,7 +51,7 @@ class RemoteVolumeButtonControllerTest {
         val controller = RemoteVolumeButtonController()
 
         controller.setPlatformObserver(first)
-        controller.startObservingPlatformButtons()
+        controller.observingRemote = true
         assertEquals(1, first.starts)
         assertEquals(0, first.stops)
 
