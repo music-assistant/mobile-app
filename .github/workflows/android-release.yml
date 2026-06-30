@@ -75,7 +75,7 @@ jobs:
           mkdir -p distribution/whatsnew
           PREV_TAG=$(git tag -l 'android-v*' --sort=-v:refname | head -1)
           if [ -n "$PREV_TAG" ]; then
-            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
+            NOTES=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
           else
             NOTES="Initial release"
           fi
