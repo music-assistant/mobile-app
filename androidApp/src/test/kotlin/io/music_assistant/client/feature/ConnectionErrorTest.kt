@@ -28,10 +28,9 @@ class ConnectionErrorTest {
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
-    fun `shows error when unable to connect`() {
+    fun `shows error when connection fails`() {
         launchLoggedInApp(composeTestRule, serviceClient)
 
-        serviceClient.reset()
         serviceClient.setConnectionError(Exception("OH NO!"))
         ConnectPage(composeTestRule)
             .assertOnPage()

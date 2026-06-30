@@ -722,10 +722,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     fun setConnectionError(error: Exception) {
         this.connectionError = error
-    }
-
-    fun reset() {
-        _sessionState.value = SessionState.Disconnected.Initial
+        _sessionState.value = SessionState.Disconnected.Error(error)
         _serverBaseUrl.value = null
     }
 
