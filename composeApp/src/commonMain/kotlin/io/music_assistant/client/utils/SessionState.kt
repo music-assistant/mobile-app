@@ -35,13 +35,14 @@ sealed class SessionState {
      * Sealed class with Direct (WebSocket) and WebRTC subclasses.
      */
     sealed class Reconnecting : SessionState(), HasConnectionData {
+        abstract val attempt: Int
         abstract val isOnline: Boolean
 
         /**
          * Reconnecting via direct WebSocket connection.
          */
         data class Direct(
-            val attempt: Int,
+            override val attempt: Int,
             val connectionInfo: ConnectionInfo,
             override val connectionData: ConnectionData = ConnectionData(),
             override val isOnline: Boolean = true,
@@ -51,7 +52,7 @@ sealed class SessionState {
          * Reconnecting via WebRTC connection.
          */
         data class WebRTC(
-            val attempt: Int,
+            override val attempt: Int,
             val remoteId: RemoteId,
             override val connectionData: ConnectionData = ConnectionData(),
             override val isOnline: Boolean = true,

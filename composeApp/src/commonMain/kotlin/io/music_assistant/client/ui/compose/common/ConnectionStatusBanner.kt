@@ -88,20 +88,12 @@ internal sealed interface BannerState {
 // While reconnecting, offline means the loop is parked waiting for network, not retrying.
 internal fun reconnectionBannerState(sessionState: SessionState): BannerState? =
     when (sessionState) {
-        is SessionState.Reconnecting.Direct -> if (sessionState.isOnline) {
-            Reconnecting(
-                sessionState.attempt,
-            )
+        is SessionState.Reconnecting -> if (sessionState.isOnline) {
+            Reconnecting(sessionState.attempt)
         } else {
             NoNetwork
         }
-        is SessionState.Reconnecting.WebRTC -> if (sessionState.isOnline) {
-            Reconnecting(
-                sessionState.attempt,
-            )
-        } else {
-            NoNetwork
-        }
+
         else -> null
     }
 
