@@ -277,7 +277,6 @@ fun MainNavigationRoot(
                             entries = multiBackStack.toEntries(
                                 mainNavEntryProvider(
                                     floatingBarContentPadding,
-                                    connectionState is SessionState.Connected,
                                     multiBackStack,
                                     homeScreenViewModel,
                                     actionsViewModel,
@@ -302,7 +301,6 @@ fun MainNavigationRoot(
 @Composable
 private fun mainNavEntryProvider(
     contentPadding: PaddingValues,
-    isConnected: Boolean,
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
@@ -318,7 +316,6 @@ private fun mainNavEntryProvider(
             HomeScreen(
                 homeScreenViewModel,
                 contentPadding = contentPadding,
-                isConnected = isConnected,
                 onNavigateClick = { item ->
                     when (item) {
                         is Artist,

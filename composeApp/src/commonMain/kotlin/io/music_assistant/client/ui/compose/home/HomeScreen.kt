@@ -88,7 +88,6 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 fun HomeScreen(
     homeScreenViewModel: HomeScreenViewModel,
     contentPadding: PaddingValues,
-    isConnected: Boolean,
     onNavigateClick: (AppMediaItem) -> Unit,
     onLibraryItemClick: (MediaType) -> Unit,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
@@ -148,7 +147,7 @@ fun HomeScreen(
         },
         topAppBarState = state.topAppBarState,
     ) {
-        if (!isConnected || recommendationsState is DataState.Loading) {
+        if (recommendationsState is DataState.Loading) {
             CenteredProgress()
         } else if (recommendationsState !is DataState.Data) {
             CenteredText(

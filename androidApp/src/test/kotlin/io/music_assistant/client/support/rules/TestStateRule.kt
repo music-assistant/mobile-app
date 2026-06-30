@@ -15,6 +15,7 @@ class TestStateRule : TestRule {
                 Timings.INPUT_DEBOUNCE = 0
                 Timings.EVENT_DEBOUNCE = 0
                 Timings.RETRY_DEBOUNCE = 0
+                Timings.UI_RETRY_DEBOUNCE = 0
                 base.evaluate()
             }
         }

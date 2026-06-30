@@ -70,17 +70,4 @@ class HomeTest {
         homePage.refresh()
             .assertMediaDisplayed(album.name)
     }
-
-    @Test
-    fun `shows progress while reconnecting`() {
-        val album = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
-        val homePage = launchLoggedInApp(composeTestRule, serviceClient)
-
-        serviceClient.setReconnecting(true)
-        homePage.assertProgress()
-
-        serviceClient.setReconnecting(false)
-        homePage.assertMediaDisplayed(album.name)
-    }
 }

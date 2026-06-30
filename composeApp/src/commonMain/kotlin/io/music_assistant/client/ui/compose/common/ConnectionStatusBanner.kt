@@ -24,10 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.delay
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.banner_no_network
+import musicassistantclient.composeapp.generated.resources.banner_reconnecting
+import musicassistantclient.composeapp.generated.resources.common_cancel
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -37,7 +40,7 @@ import org.koin.compose.koinInject
 @Composable
 fun ConnectionStatusBanner(
     modifier: Modifier = Modifier,
-    delay: Long = 3000,
+    delay: Long = Timings.UI_RETRY_DEBOUNCE,
 ) {
     val serviceClient: ServiceClient = koinInject()
     val sessionState by serviceClient.sessionState.collectAsStateWithLifecycle()
