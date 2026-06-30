@@ -23,6 +23,13 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.compose.common.ConfirmationDialog
+import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_remove
+import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_message
+import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_title
+import org.jetbrains.compose.resources.stringResource
 
 typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean, fromHereInParent: Boolean) -> Unit
 
@@ -177,6 +184,8 @@ private fun <T> PlayableItemWithMenu(
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showCustomizeDialog by rememberSaveable { mutableStateOf(false) }
+    var showRemoveConfirmation by remember { mutableStateOf(false) }
+    var showRemovePlaylistConfirmation by remember { mutableStateOf(false) }
 
     // The tap action for this item's (kind, context) pair (PLAY_NOW outside customizable
     // screens). Null when the item isn't playable — then a tap opens the menu instead.
@@ -227,16 +236,15 @@ private fun <T> PlayableItemWithMenu(
                     ItemAction.StartRadio,
                     is ItemAction.PlayFromHere,
                     -> runPlayAction(action)
-                    ItemAction.AddToLibrary,
-                    ItemAction.RemoveFromLibrary,
-                        -> libraryActions.onLibraryClick(item)
+                    ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)
+                    ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
 
                     ItemAction.Favorite,
                     ItemAction.Unfavorite,
                         -> libraryActions.onFavoriteClick(item)
 
                     ItemAction.AddToPlaylist -> showPlaylistDialog = true
-                    ItemAction.RemoveFromPlaylist -> onRemoveFromPlaylist?.invoke()
+                    ItemAction.RemoveFromPlaylist -> showRemovePlaylistConfirmation = true
                     ItemAction.MarkPlayed -> progressActions?.onMarkPlayed(item)
                     ItemAction.MarkUnplayed -> progressActions?.onMarkUnplayed(item)
                     ItemAction.Customize -> showCustomizeDialog = true
@@ -259,6 +267,24 @@ private fun <T> PlayableItemWithMenu(
                     onDismiss = { showCustomizeDialog = false },
                 )
             }
+        }
+
+        if (showRemoveConfirmation) {
+            RemoveFromLibraryConfirmationDialog(
+                item = item,
+                onConfirm = { libraryActions.onLibraryClick(item) },
+                onDismiss = { showRemoveConfirmation = false },
+            )
+        }
+
+        if (showRemovePlaylistConfirmation && onRemoveFromPlaylist != null) {
+            ConfirmationDialog(
+                title = stringResource(Res.string.dialog_remove_from_playlist_title),
+                message = stringResource(Res.string.dialog_remove_from_playlist_message, item.displayName),
+                confirmLabel = stringResource(Res.string.action_remove),
+                onConfirm = { onRemoveFromPlaylist.invoke() },
+                onDismiss = { showRemovePlaylistConfirmation = false },
+            )
         }
     }
 }

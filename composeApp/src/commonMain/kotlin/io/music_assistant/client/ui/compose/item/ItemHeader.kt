@@ -31,6 +31,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,6 +57,7 @@ import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.PlayerColors
+import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.Badges
@@ -199,6 +201,7 @@ private fun ItemOverflow(
     navigateToItem: (AppMediaItem) -> Unit,
 ) {
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var showRemoveConfirmation by remember { mutableStateOf(false) }
 
     val canonical = resolveDetailOverflowActions(
         item = item,
@@ -207,9 +210,8 @@ private fun ItemOverflow(
     ).map { action ->
         action.toOverflowOption(LocalClickActionConfig.current.context) {
             when (it) {
-                ItemAction.AddToLibrary,
-                ItemAction.RemoveFromLibrary,
-                    -> libraryActions?.onLibraryClick(item)
+                ItemAction.AddToLibrary -> libraryActions?.onLibraryClick(item)
+                ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
 
                 ItemAction.Favorite,
                 ItemAction.Unfavorite,
@@ -236,6 +238,14 @@ private fun ItemOverflow(
             item = item,
             playlistActions = playlistActions,
             onDismiss = { showPlaylistDialog = false },
+        )
+    }
+
+    if (showRemoveConfirmation) {
+        RemoveFromLibraryConfirmationDialog(
+            item = item,
+            onConfirm = { libraryActions?.onLibraryClick(item) },
+            onDismiss = { showRemoveConfirmation = false },
         )
     }
 }

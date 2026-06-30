@@ -21,6 +21,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 
 @Composable
 fun AlbumWithMenu(
@@ -274,6 +275,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     val clickContext = LocalClickActionConfig.current.context
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
+    var showRemoveConfirmation by remember { mutableStateOf(false) }
 
     val actions = resolveLongClickActions(
         item = item,
@@ -303,9 +305,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 when (action) {
                     is ItemAction.Play -> onPlayOption(item, action.queueOption, false, false)
                     ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, false)
-                    ItemAction.AddToLibrary,
-                    ItemAction.RemoveFromLibrary,
-                    -> libraryActions.onLibraryClick(item)
+                    ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)
+                    ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
                     ItemAction.Favorite,
                     ItemAction.Unfavorite,
                     -> libraryActions.onFavoriteClick(item)
@@ -325,6 +326,14 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 item = item,
                 playlistActions = playlistActions,
                 onDismiss = { showPlaylistDialog = false },
+            )
+        }
+
+        if (showRemoveConfirmation) {
+            RemoveFromLibraryConfirmationDialog(
+                item = item,
+                onConfirm = { libraryActions.onLibraryClick(item) },
+                onDismiss = { showRemoveConfirmation = false },
             )
         }
     }
