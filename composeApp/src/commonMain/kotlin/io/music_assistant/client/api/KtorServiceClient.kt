@@ -403,6 +403,7 @@ class KtorServiceClient(
         SessionState.Disconnected.Backgrounded -> "Disconnected.Backgrounded"
         SessionState.Disconnected.ByUser -> "Disconnected.ByUser"
         is SessionState.Disconnected.Error -> "Disconnected.Error(${state.reason?.message})"
+        is SessionState.Reconnecting.Offline -> "Reconnecting.Offline"
         SessionState.Connecting -> "Connecting"
     }
 
@@ -682,7 +683,11 @@ class KtorServiceClient(
                 SessionState.Connected.Direct(connection, data)
             },
             createReconnecting = { attempt, data ->
-                SessionState.Reconnecting.Direct(attempt, connection, data)
+                if (networkMonitor.isAvailable.value) {
+                    SessionState.Reconnecting.Direct(attempt, connection, data)
+                } else {
+                    SessionState.Reconnecting.Offline(data)
+                }
             },
             backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
             onFreshConnect = {
@@ -736,7 +741,11 @@ class KtorServiceClient(
             transport = webrtcTransport,
             createConnected = { data -> SessionState.Connected.WebRTC(remoteId, data) },
             createReconnecting = { attempt, data ->
-                SessionState.Reconnecting.WebRTC(attempt, remoteId, data)
+                if (networkMonitor.isAvailable.value) {
+                    SessionState.Reconnecting.WebRTC(attempt, remoteId, data)
+                } else {
+                    SessionState.Reconnecting.Offline(data)
+                }
             },
             backgroundInfo = { BackgroundedConnectionInfo.WebRTC(remoteId) },
             onFreshConnect = {

@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.ui.Timings
+import io.music_assistant.client.ui.compose.common.BannerState.NoNetwork
+import io.music_assistant.client.ui.compose.common.BannerState.Reconnecting
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.delay
 import musicassistantclient.composeapp.generated.resources.Res
@@ -44,10 +46,8 @@ fun ConnectionStatusBanner(
 ) {
     val serviceClient: ServiceClient = koinInject()
     val sessionState by serviceClient.sessionState.collectAsStateWithLifecycle()
-//    val networkMonitor: NetworkMonitor = koinInject()
-//    val isOnline by networkMonitor.isAvailable.collectAsStateWithLifecycle()
 
-    val bannerState = reconnectionBannerState(sessionState, true)
+    val bannerState = reconnectionBannerState(sessionState)
 
     // Delay visibility to not spam in cases reconnecting is fast
     var isVisible by remember { mutableStateOf(false) }
@@ -86,11 +86,11 @@ internal sealed interface BannerState {
 }
 
 // While reconnecting, offline means the loop is parked waiting for network, not retrying.
-internal fun reconnectionBannerState(sessionState: SessionState, isOnline: Boolean): BannerState? =
+internal fun reconnectionBannerState(sessionState: SessionState): BannerState? =
     when (sessionState) {
-        is SessionState.Reconnecting ->
-            if (isOnline) BannerState.Reconnecting(sessionState.attempt) else BannerState.NoNetwork
-
+        is SessionState.Reconnecting.Direct -> Reconnecting(sessionState.attempt)
+        is SessionState.Reconnecting.WebRTC -> Reconnecting(sessionState.attempt)
+        is SessionState.Reconnecting.Offline -> NoNetwork
         else -> null
     }
 
