@@ -25,8 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 
 sealed class AuthState {
     data object Idle : AuthState()
@@ -112,8 +110,7 @@ class AuthenticationManager(
                                                 authorizeWithSavedToken(token)
                                             } else {
                                                 serviceClient.forceDisconnect(
-                                                    Res.string.server_id_mismatch_error
-                                                        .toDisplayString(),
+                                                    ServerIdMismatchException(),
                                                 )
                                             }
                                         }
@@ -363,3 +360,5 @@ class AuthenticationManager(
         const val CONNECT_WAIT_MS = 10_000L
     }
 }
+
+class ServerIdMismatchException : Exception()

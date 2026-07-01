@@ -19,8 +19,6 @@ import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.ui.compose.common.DisplayString
-import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.DataConnectionState
@@ -373,7 +371,7 @@ class KtorServiceClient(
         logger.i { "Playback inactive (state=${stateLabel(_sessionState.value)})" }
     }
 
-    override fun forceDisconnect(reason: DisplayString) {
+    override fun forceDisconnect(reason: Exception) {
         disconnect(SessionState.Disconnected.Error(reason))
     }
 
@@ -605,7 +603,7 @@ class KtorServiceClient(
                         }
 
                         is TransportState.Failed -> {
-                            _sessionState.update { SessionState.Disconnected.Error(transportState.error.message?.toDisplayString()) }
+                            _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
                             logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
                         }
 
@@ -653,7 +651,7 @@ class KtorServiceClient(
                 // (which `kickRecovery` would refuse to recover from).
                 _sessionState.update {
                     SessionState.Disconnected.Error(
-                        "Connect timed out after ${CONNECT_TIMEOUT_MS}ms".toDisplayString(),
+                        Exception("Connect timed out after ${CONNECT_TIMEOUT_MS}ms"),
                     )
                 }
                 transport?.disconnect()
@@ -1200,7 +1198,7 @@ class KtorServiceClient(
                     if (canStartReconnect && !reconnectStarted) {
                         disconnect(
                             SessionState.Disconnected.Error(
-                                "Error sending command: ${e.message}".toDisplayString(),
+                                Exception("Error sending command: ${e.message}"),
                             ),
                         )
                     }

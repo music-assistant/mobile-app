@@ -25,8 +25,6 @@ import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.ui.compose.common.DisplayString
-import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
@@ -611,7 +609,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
                 settingsRepository.updateConnectionInfo(connection)
             } else {
-                _sessionState.value = SessionState.Disconnected.Error(it.message?.toDisplayString())
+                _sessionState.value = SessionState.Disconnected.Error(it)
                 _serverBaseUrl.value = null
             }
         }
@@ -635,7 +633,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     override fun onPlaybackInactive() {
     }
 
-    override fun forceDisconnect(reason: DisplayString) {
+    override fun forceDisconnect(reason: Exception) {
         _sessionState.update {
             SessionState.Disconnected.Error(reason)
         }
@@ -756,7 +754,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         this.connectionError = error
 
         if (error != null) {
-            _sessionState.value = SessionState.Disconnected.Error(error.message?.toDisplayString())
+            _sessionState.value = SessionState.Disconnected.Error(error)
             _serverBaseUrl.value = null
         }
     }
