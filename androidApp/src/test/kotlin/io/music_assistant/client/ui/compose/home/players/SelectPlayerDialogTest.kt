@@ -28,18 +28,23 @@ class SelectPlayerDialogTest {
         }
 
         composeTestRule.setContent {
-            KoinApplication(configuration = koinConfiguration(declaration = {
-                modules(module {
+            KoinApplication(
+                configuration = koinConfiguration(declaration = {
+                modules(
+                    module {
                     singleOf(
-                        ::MdiCodepoints
+                        ::MdiCodepoints,
                     )
-                })
-            }), content = {
+                },
+                )
+            }),
+                content = {
                 SelectPlayerDialog(
                     selectedPlayer = players[0],
                     players,
                 )
-            })
+            },
+            )
         }
 
         composeTestRule.inScrollable("PlayersList") {
