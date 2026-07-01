@@ -374,7 +374,7 @@ class KtorServiceClient(
     }
 
     override fun forceDisconnect(reason: DisplayString) {
-        TODO()
+        disconnect(SessionState.Disconnected.Error(reason))
     }
 
     /**
