@@ -11,7 +11,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.compose.KoinApplication
+import org.koin.core.KoinApplication
 import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
 @RunWith(AndroidJUnit4::class)
@@ -26,12 +28,18 @@ class SelectPlayerDialogTest {
         }
 
         composeTestRule.setContent {
-            KoinApplication(application = { modules(module { singleOf(::MdiCodepoints) }) }) {
+            KoinApplication(configuration = koinConfiguration(declaration = {
+                modules(module {
+                    singleOf(
+                        ::MdiCodepoints
+                    )
+                })
+            }), content = {
                 SelectPlayerDialog(
                     selectedPlayer = players[0],
                     players,
                 )
-            }
+            })
         }
 
         composeTestRule.inScrollable("PlayersList") {
