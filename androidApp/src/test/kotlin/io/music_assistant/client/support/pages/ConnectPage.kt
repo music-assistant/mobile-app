@@ -9,20 +9,28 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.settings_connect
 import musicassistantclient.composeapp.generated.resources.settings_connect_saved
 
-class ConnectPage(private val composeTestRule: ComposeTestRule) : Page {
+class ConnectPage(private val composeTestRule: ComposeTestRule, private val savedCredentials: Boolean = false) : Page {
     override fun assert() {
         composeTestRule.onNodeWithText("Connection Method").assertIsDisplayed()
     }
 
     fun connect(): AuthenticatePage {
-        composeTestRule.onNodeWithText("Connect")
-            .assertIsDisplayed()
-            .performClick()
-
+        clickConnect()
         return AuthenticatePage(composeTestRule).assertOnPage()
     }
 
-    fun connectWithError(message: String, savedCredentials: Boolean = false): ConnectPage {
+    fun <T : Page> connect(destination: T): T {
+        clickConnect()
+        return destination.assertOnPage()
+    }
+
+    fun connectWithError(message: String): ConnectPage {
+        clickConnect()
+        composeTestRule.onNodeWithText(message).assertIsDisplayed()
+        return this.assertOnPage()
+    }
+
+    private fun clickConnect() {
         if (savedCredentials) {
             composeTestRule.onNodeWithText(Res.string.settings_connect_saved.get())
                 .assertIsDisplayed()
@@ -32,8 +40,5 @@ class ConnectPage(private val composeTestRule: ComposeTestRule) : Page {
                 .assertIsDisplayed()
                 .performClick()
         }
-
-        composeTestRule.onNodeWithText(message).assertIsDisplayed()
-        return this.assertOnPage()
     }
 }

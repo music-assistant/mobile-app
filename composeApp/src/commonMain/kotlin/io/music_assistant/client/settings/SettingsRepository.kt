@@ -75,6 +75,14 @@ class SettingsRepository(
         }
     }
 
+    fun getIdForServer(serverIdentifier: String): String {
+        return settings.getStringOrNull("id_$serverIdentifier")!!
+    }
+
+    fun setIdForServer(serverIdentifier: String, id: String) {
+        settings.putString("id_$serverIdentifier", id)
+    }
+
     /**
      * Get server identifier for Direct connection.
      */

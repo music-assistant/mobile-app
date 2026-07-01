@@ -1,6 +1,7 @@
 package io.music_assistant.client.api
 
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.ui.compose.common.DisplayString
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.WebRTCHttpProxy
@@ -39,6 +40,7 @@ interface ServiceClient {
     fun onPlaybackActive()
     fun onExternalConsumerInactive()
     fun onPlaybackInactive()
+    fun forceDisconnect(reason: DisplayString)
 
     /** True while an external consumer (Android Auto / CarPlay) is bound. Cross-platform car edge. */
     val externalConsumerActive: StateFlow<Boolean>

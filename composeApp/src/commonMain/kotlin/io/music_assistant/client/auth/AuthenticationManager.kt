@@ -8,6 +8,8 @@ import io.music_assistant.client.data.model.server.OauthUrl
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.compose.common.DisplayString
+import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
@@ -23,13 +25,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 
 sealed class AuthState {
     data object Idle : AuthState()
     data object Loading : AuthState()
     data class ProvidersLoaded(val providers: List<AuthProvider>) : AuthState()
     data class Authenticated(val user: User) : AuthState()
-    data class Error(val message: String) : AuthState()
+    data class Error(val message: DisplayString) : AuthState() {
+        constructor(message: String) : this(message.toDisplayString())
+    }
 }
 
 private val log = Logger.withTag("AuthMgr")
@@ -100,7 +106,16 @@ class AuthenticationManager(
                                             log.i { "AwaitingAuth(NotStarted) — no saved token for server" }
                                         } else {
                                             log.i { "AwaitingAuth(NotStarted) — auto-login with saved token" }
-                                            authorizeWithSavedToken(token)
+
+                                            val serverId = state.connectionData.serverInfo?.serverId
+                                            if (serverId == settings.getIdForServer(serverIdentifier)) {
+                                                authorizeWithSavedToken(token)
+                                            } else {
+                                                serviceClient.forceDisconnect(
+                                                    Res.string.server_id_mismatch_error
+                                                        .toDisplayString(),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -130,6 +145,24 @@ class AuthenticationManager(
                             state.user?.let { user ->
                                 log.i { "Authenticated" }
                                 _authState.value = AuthState.Authenticated(user)
+
+                                val serverIdentifier = when (state) {
+                                    is SessionState.Connected.Direct ->
+                                        settings.getDirectServerIdentifier(
+                                            state.connectionInfo.host,
+                                            state.connectionInfo.port,
+                                            state.connectionInfo.isTls,
+                                        )
+
+                                    is SessionState.Connected.WebRTC ->
+                                        settings.getWebRTCServerIdentifier(state.remoteId.rawId)
+                                }
+
+                                val serverId = state.connectionData.serverInfo!!.serverId!!
+                                settings.setIdForServer(
+                                    serverIdentifier,
+                                    serverId,
+                                )
                             }
                         }
 

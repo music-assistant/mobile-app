@@ -3,6 +3,7 @@ package io.music_assistant.client.utils
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
+import io.music_assistant.client.ui.compose.common.DisplayString
 import io.music_assistant.client.webrtc.model.RemoteId
 
 sealed class SessionState {
@@ -64,7 +65,7 @@ sealed class SessionState {
         data object ByUser : Disconnected()
         data object NoServerData : Disconnected()
         data object Backgrounded : Disconnected()
-        data class Error(val reason: Exception?) : Disconnected()
+        data class Error(val reason: DisplayString?) : Disconnected()
     }
 }
 

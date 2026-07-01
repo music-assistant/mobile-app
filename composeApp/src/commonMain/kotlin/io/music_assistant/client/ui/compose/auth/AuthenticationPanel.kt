@@ -41,6 +41,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
+import io.music_assistant.client.ui.compose.common.DisplayString
 import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
@@ -54,7 +55,7 @@ fun AuthenticationPanel(
 ) {
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val authState by viewModel.authState.collectAsStateWithLifecycle()
-    var loginError by remember { mutableStateOf<String?>(null) }
+    var loginError by remember { mutableStateOf<DisplayString?>(null) }
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Error) {
@@ -158,7 +159,7 @@ fun AuthenticationPanel(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 modifier = Modifier.fillMaxWidth(),
-                text = it,
+                text = it.string(),
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
             )

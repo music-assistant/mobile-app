@@ -247,9 +247,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             )
                         }
                         // If user changed connection info, don't auto-retry - let them manually retry
-                    } else if (sessionState is SessionState.Connected) {
-                        // Reset flag on successful connection
-                        autoReconnectAttempted = false
                     }
                 }
 
@@ -555,7 +552,7 @@ private fun ConnectionMethodTabs(
             }
         }
 
-        val error = (sessionState as? SessionState.Disconnected.Error)?.reason?.message
+        val error = (sessionState as? SessionState.Disconnected.Error)?.reason?.string()
         if (error != null) {
             Text(
                 error,

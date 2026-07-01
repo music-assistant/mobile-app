@@ -8,6 +8,7 @@ import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ConnectPage
+import io.music_assistant.client.support.pages.HomePage
 import io.music_assistant.client.support.pages.assertNoNetworkBanner
 import io.music_assistant.client.support.pages.assertOnPage
 import io.music_assistant.client.support.pages.assertReconnectingBanner
@@ -38,12 +39,12 @@ class ConnectionErrorTest {
         launchLoggedInApp(composeTestRule, serviceClient)
 
         serviceClient.setConnectionError(Exception("OH NO!"))
-        val connectPage = ConnectPage(composeTestRule)
+        val connectPage = ConnectPage(composeTestRule, savedCredentials = true)
             .assertOnPage()
             .connectWithError("OH NO!")
 
         serviceClient.setConnectionError(null)
-        connectPage.connect()
+        connectPage.connect(HomePage(composeTestRule))
     }
 
     @Test
@@ -76,9 +77,6 @@ class ConnectionErrorTest {
             .disconnect()
 
         serviceClient.serverId = "2"
-        connectPage.connectWithError(
-            Res.string.server_id_mismatch_error.get(),
-            savedCredentials = true,
-        )
+        connectPage.connectWithError(Res.string.server_id_mismatch_error.get())
     }
 }

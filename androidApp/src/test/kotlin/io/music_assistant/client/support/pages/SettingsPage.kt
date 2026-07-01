@@ -17,6 +17,6 @@ class SettingsPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRu
 
     fun disconnect(): ConnectPage {
         composeTestRule.onNodeWithText(Res.string.settings_disconnect.get()).performClick()
-        return ConnectPage(composeTestRule).assertOnPage()
+        return ConnectPage(composeTestRule, savedCredentials = true).assertOnPage()
     }
 }

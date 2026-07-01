@@ -25,6 +25,8 @@ import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.compose.common.DisplayString
+import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
@@ -595,21 +597,23 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     override fun connect(connection: ConnectionInfo) {
-        if (connectionError == null) {
-            val connectionData = ConnectionData(
-                serverInfo = ServerInfo(
-                    serverId = serverId,
-                    serverVersion = "fake",
-                    schemaVersion = -1,
-                    baseUrl = "http://homeassistant.example",
-                ),
-            )
-            _sessionState.value = SessionState.Connected.Direct(connection, connectionData)
-            _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
-            settingsRepository.updateConnectionInfo(connection)
-        } else {
-            _sessionState.value = SessionState.Disconnected.Error(connectionError)
-            _serverBaseUrl.value = null
+        connectionError.let {
+            if (it == null) {
+                val connectionData = ConnectionData(
+                    serverInfo = ServerInfo(
+                        serverId = serverId,
+                        serverVersion = "fake",
+                        schemaVersion = -1,
+                        baseUrl = "http://homeassistant.example",
+                    ),
+                )
+                _sessionState.value = SessionState.Connected.Direct(connection, connectionData)
+                _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
+                settingsRepository.updateConnectionInfo(connection)
+            } else {
+                _sessionState.value = SessionState.Disconnected.Error(it.message?.toDisplayString())
+                _serverBaseUrl.value = null
+            }
         }
     }
 
@@ -629,6 +633,12 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     override fun onPlaybackInactive() {
+    }
+
+    override fun forceDisconnect(reason: DisplayString) {
+        _sessionState.update {
+            SessionState.Disconnected.Error(reason)
+        }
     }
 
     fun addToLibrary(vararg items: ServerMediaItem) {
@@ -746,7 +756,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
         this.connectionError = error
 
         if (error != null) {
-            _sessionState.value = SessionState.Disconnected.Error(error)
+            _sessionState.value = SessionState.Disconnected.Error(error.message?.toDisplayString())
             _serverBaseUrl.value = null
         }
     }

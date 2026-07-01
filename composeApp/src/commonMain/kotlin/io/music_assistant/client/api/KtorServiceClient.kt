@@ -19,6 +19,8 @@ import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.compose.common.DisplayString
+import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.DataConnectionState
@@ -371,6 +373,10 @@ class KtorServiceClient(
         logger.i { "Playback inactive (state=${stateLabel(_sessionState.value)})" }
     }
 
+    override fun forceDisconnect(reason: DisplayString) {
+        TODO()
+    }
+
     /**
      * Called when the app returns to the foreground.
      */
@@ -407,7 +413,7 @@ class KtorServiceClient(
         SessionState.Disconnected.NoServerData -> "Disconnected.NoServerData"
         SessionState.Disconnected.Backgrounded -> "Disconnected.Backgrounded"
         SessionState.Disconnected.ByUser -> "Disconnected.ByUser"
-        is SessionState.Disconnected.Error -> "Disconnected.Error(${state.reason?.message})"
+        is SessionState.Disconnected.Error -> "Disconnected.Error(${state.reason?.toString()})"
         SessionState.Connecting -> "Connecting"
     }
 
@@ -599,7 +605,7 @@ class KtorServiceClient(
                         }
 
                         is TransportState.Failed -> {
-                            _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
+                            _sessionState.update { SessionState.Disconnected.Error(transportState.error.message?.toDisplayString()) }
                             logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
                         }
 
@@ -647,7 +653,7 @@ class KtorServiceClient(
                 // (which `kickRecovery` would refuse to recover from).
                 _sessionState.update {
                     SessionState.Disconnected.Error(
-                        Exception("Connect timed out after ${CONNECT_TIMEOUT_MS}ms"),
+                        "Connect timed out after ${CONNECT_TIMEOUT_MS}ms".toDisplayString(),
                     )
                 }
                 transport?.disconnect()
@@ -1194,7 +1200,7 @@ class KtorServiceClient(
                     if (canStartReconnect && !reconnectStarted) {
                         disconnect(
                             SessionState.Disconnected.Error(
-                                Exception("Error sending command: ${e.message}"),
+                                "Error sending command: ${e.message}".toDisplayString(),
                             ),
                         )
                     }
