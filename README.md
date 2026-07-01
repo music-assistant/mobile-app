@@ -48,9 +48,7 @@ Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you 
 
 ## Want to try it?
 
-Download and install debug APK from latest release on [releases page](https://github.com/music-assistant/kmp-client-app/releases).
-
-*Disclaimer: this is debug version of application, and isn't recommended for usage beyond testing purposes!*
+Android users can join [the Play Store testing program](https://play.google.com/apps/testing/io.music_assistant.client).
 
 iOS users can join [TestFlight](https://testflight.apple.com/join/4byCu2Nk).
 
