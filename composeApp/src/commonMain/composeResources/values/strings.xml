@@ -299,5 +299,5 @@
   <string name="toast_marked_played">Marked as played</string>
   <string name="toast_marked_unplayed">Marked as unplayed</string>
   <string name="toast_no_uri">Media item has no URI</string>
-  <string name="server_id_mismatch_error">Blah</string>
+  <string name="server_id_mismatch_error">This server's ID does not match the one provided when first logging in!</string>
 </resources>
