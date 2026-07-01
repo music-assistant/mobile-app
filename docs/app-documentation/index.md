@@ -16,6 +16,7 @@
 - [The Global Search Tab](global-search.md)
 - [The Item Details View](item-details.md)
 - [The Players Pager](players-pager.md)
+- [Managing Playlists](playlists.md)
 
 ## 🔗 Quick Links
 
