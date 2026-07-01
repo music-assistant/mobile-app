@@ -100,6 +100,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
 
     val username = "user"
     val password = "password"
+    var serverId = "serverId"
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -518,6 +519,22 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
+        val currentState = _sessionState.value
+        if (currentState is SessionState.Connected) {
+            val serverIdentifier = when (currentState) {
+                is SessionState.Connected.Direct -> settingsRepository.getDirectServerIdentifier(
+                    currentState.connectionInfo.host,
+                    currentState.connectionInfo.port,
+                    currentState.connectionInfo.isTls,
+                )
+
+                is SessionState.Connected.WebRTC ->
+                    settingsRepository.getWebRTCServerIdentifier(currentState.remoteId.rawId)
+            }
+
+            settingsRepository.setTokenForServer(serverIdentifier, token)
+        }
+
         _sessionState.update {
             when (it) {
                 is SessionState.Connected.Direct -> {
@@ -572,13 +589,16 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     override val foregroundEvents: Flow<Unit> = emptyFlow()
 
     override fun disconnectByUser() {
-        TODO("Not yet implemented")
+        _sessionState.update {
+            SessionState.Disconnected.ByUser
+        }
     }
 
     override fun connect(connection: ConnectionInfo) {
         if (connectionError == null) {
             val connectionData = ConnectionData(
                 serverInfo = ServerInfo(
+                    serverId = serverId,
                     serverVersion = "fake",
                     schemaVersion = -1,
                     baseUrl = "http://homeassistant.example",

@@ -5,12 +5,16 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ConnectPage
 import io.music_assistant.client.support.pages.assertNoNetworkBanner
 import io.music_assistant.client.support.pages.assertOnPage
 import io.music_assistant.client.support.pages.assertReconnectingBanner
+import io.music_assistant.client.support.pages.clickSettings
 import io.music_assistant.client.support.rules.createTestRuleChain
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,5 +66,19 @@ class ConnectionErrorTest {
 
         serviceClient.setNetworkAvailable(true)
         homePage.assertNoNetworkBanner(false)
+    }
+
+    @Test
+    fun `shows error when trying to connect to previously authed server with different id`() {
+        serviceClient.serverId = "1"
+        val connectPage = launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSettings()
+            .disconnect()
+
+        serviceClient.serverId = "2"
+        connectPage.connectWithError(
+            Res.string.server_id_mismatch_error.get(),
+            savedCredentials = true,
+        )
     }
 }

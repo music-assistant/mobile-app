@@ -28,6 +28,7 @@ import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_nothing
 
 fun ComposePage.clickOnMedia(
@@ -102,6 +103,11 @@ fun ComposePage.clickLibrary(): LibraryPage {
 fun <T : Page> ComposePage.clickLibrary(destination: T): T {
     clickNavBarItem(Res.string.nav_library.get())
     return destination.assertOnPage()
+}
+
+fun ComposePage.clickSettings(): SettingsPage {
+    clickNavBarItem(Res.string.nav_settings.get())
+    return SettingsPage(composeTestRule).assertOnPage()
 }
 
 fun <T : ComposePage> T.assertMediaDisplayed(name: String, withinTag: String? = null): T {
