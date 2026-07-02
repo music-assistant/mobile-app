@@ -39,6 +39,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
+val HomeScreenViewModel.PlayersState.Data.selectedPlayer: PlayerData?
+    get() = selectedPlayerIndex?.let(playerData::getOrNull)
+
 @OptIn(FlowPreview::class)
 class HomeScreenViewModel(
     private val apiClient: ServiceClient,

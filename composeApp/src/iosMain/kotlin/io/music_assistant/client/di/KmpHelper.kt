@@ -25,8 +25,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.input.PlatformVolumeButtonObserver
-import io.music_assistant.client.input.RemoteVolumeButtonController
+import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.settings.CarPlatform
 import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
@@ -73,7 +72,7 @@ object KmpHelper : KoinComponent {
     private val deepLinkBus: DeepLinkBus by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
-    private val remoteVolumeButtonController: RemoteVolumeButtonController by inject()
+    private val volumeButtonService: VolumeButtonService by inject()
     private val artworkHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
     // Provide a scope for Swift to launch coroutines if needed
@@ -102,12 +101,8 @@ object KmpHelper : KoinComponent {
      */
     fun handleDeepLink(urlString: String) = deepLinkBus.handle(urlString)
 
-    fun setPlatformVolumeButtonObserver(observer: PlatformVolumeButtonObserver?) {
-        remoteVolumeButtonController.setPlatformObserver(observer)
-    }
-
     fun onPlatformVolumeButtonPressed() {
-        remoteVolumeButtonController.onPlatformVolumeButtonPressed()
+        volumeButtonService.onPlatformVolumeButtonPressed()
     }
 
     // MARK: - External Consumer Lifecycle (CarPlay)

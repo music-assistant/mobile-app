@@ -15,7 +15,7 @@ import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.input.RemoteVolumeButtonController
+import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.services.MainMediaPlaybackService
 import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject
@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     private val dataSource: MainDataSource by inject()
     private val authManager: AuthenticationManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
-    private val remoteVolumeButtonController: RemoteVolumeButtonController by inject()
+    private val volumeButtonService: VolumeButtonService by inject()
     private val oauthHandler: OAuthHandler by lazy {
         OAuthHandler(this)
     }
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
         if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) &&
             event?.repeatCount == 0
         ) {
-            remoteVolumeButtonController.onPlatformVolumeButtonPressed()
+            volumeButtonService.onPlatformVolumeButtonPressed()
         }
         return super.onKeyDown(keyCode, event)
     }

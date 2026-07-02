@@ -18,7 +18,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +50,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
-import io.music_assistant.client.input.RemoteVolumeButtonController
+import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
@@ -110,7 +109,7 @@ fun MainNavigationRoot(
     val toastState = rememberToastState()
     val errorBus: ErrorMessageBus = koinInject()
     val deepLinkBus: DeepLinkBus = koinInject()
-    val remoteVolumeButtonController: RemoteVolumeButtonController = koinInject()
+    val volumeButtonService: VolumeButtonService = koinInject()
 
     LaunchedEffect(Unit) {
         homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
@@ -207,24 +206,15 @@ fun MainNavigationRoot(
     val searchScreenState = SearchScreenState.create()
 
     val remoteVolumeHint = stringResource(Res.string.players_remote_volume_hint)
-    val viewedPlayer = data?.playerData?.getOrNull(playerPagerState.settledPage)
-        ?: data?.selectedPlayerIndex?.let { data.playerData.getOrNull(it) }
-    val observingRemote = viewedPlayer?.isLocal == false
-
-    DisposableEffect(remoteVolumeButtonController, observingRemote) {
-        remoteVolumeButtonController.observingRemote = observingRemote
-        onDispose { remoteVolumeButtonController.observingRemote = false }
-    }
-
-    // Collect only while the UI is on screen; off-screen presses land on no
-    // subscriber and are dropped (no replay on return). The hint is read through
-    // rememberUpdatedState so a locale change is reflected without restarting.
+    val viewingRemote = data?.selectedPlayer?.isLocal == false
     val currentHint by rememberUpdatedState(remoteVolumeHint)
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, remoteVolumeButtonController) {
+    LaunchedEffect(lifecycleOwner, volumeButtonService, viewingRemote) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            remoteVolumeButtonController.buttonPresses.collect {
-                toastState.showToast(currentHint, ToastDuration.SHORT)
+            volumeButtonService.buttonPresses.collect {
+                if (viewingRemote) {
+                    toastState.showToast(currentHint, ToastDuration.SHORT)
+                }
             }
         }
     }

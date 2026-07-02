@@ -13,7 +13,7 @@ private let siriLog = OSLog(
     category: "Siri"
 )
 
-private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonObserver {
+private final class SystemVolumeButtonObserver: NSObject {
     private let session = AVAudioSession.sharedInstance()
     private let appActive = OSAllocatedUnfairLock(initialState: UIApplication.shared.applicationState == .active)
     private var observation: NSKeyValueObservation?
@@ -46,10 +46,12 @@ private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonOb
 
     @objc private func appDidBecomeActive() {
         appActive.withLock { $0 = true }
+        start()
     }
 
     @objc private func appWillResignActive() {
         appActive.withLock { $0 = false }
+        stop()
     }
 
     func start() {
@@ -66,7 +68,6 @@ private final class SystemVolumeButtonObserver: NSObject, PlatformVolumeButtonOb
                 let volume = change.newValue ?? audioSession.outputVolume
                 guard volume != self.lastVolume else { return }
                 self.lastVolume = volume
-                // Compose misses resign-active; filter Control Center and call screens here.
                 guard self.isAppActive else { return }
                 DispatchQueue.main.async { [weak self] in
                     guard self?.isAppActive == true else { return }
@@ -214,8 +215,10 @@ struct iOSApp: App {
         // `bootstrapKmp()` is idempotent, so the SwiftUI path's call from
         // `MainViewController()` is safe.
         MainViewControllerKt.bootstrapKmp()
-        KmpHelper.shared.setPlatformVolumeButtonObserver(observer: volumeButtonObserver)
         KmpState.isReady = true
+        if UIApplication.shared.applicationState == .active {
+            volumeButtonObserver.start()
+        }
         NotificationCenter.default.post(name: KmpState.readyNotification, object: nil)
 
         // Required for apps to appear in Control Center
