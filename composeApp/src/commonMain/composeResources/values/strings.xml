@@ -214,6 +214,13 @@
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s actions</string>
+  <string name="settings_car_dsp">DSP presets</string>
+  <string name="settings_car_dsp_disable">Disable DSP</string>
+  <string name="settings_car_dsp_explanation">Choose what happens to local player DSP depending on car connection. Changes take effect the next time the phone is connected or disconnected.</string>
+  <string name="settings_car_dsp_nothing">Nothing</string>
+  <string name="settings_car_dsp_on_connect">On connect</string>
+  <string name="settings_car_dsp_on_disconnect">On disconnect</string>
+  <string name="settings_car_dsp_unavailable">A previously selected preset was removed on the server and has been reset to \"Nothing\".</string>
   <string name="settings_car_enqueue_action">Enqueue action</string>
   <string name="settings_car_item_actions">Item actions</string>
   <string name="settings_car_tabs">Tabs</string>

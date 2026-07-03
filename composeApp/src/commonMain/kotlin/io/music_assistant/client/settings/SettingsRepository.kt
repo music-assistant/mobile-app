@@ -274,6 +274,35 @@ class SettingsRepository(
         _carBrowsableBulkActions.update { updated }
     }
 
+    // Car DSP: what to do to the local player's DSP on connect / disconnect from the car.
+    // Stored as the polymorphic JSON of [CarDspAction] per direction; absent -> Nothing.
+    private val _carDspConnectAction = MutableStateFlow(loadCarDspAction(CAR_DSP_CONNECT_KEY))
+    val carDspConnectAction = _carDspConnectAction.asStateFlow()
+
+    private val _carDspDisconnectAction = MutableStateFlow(loadCarDspAction(CAR_DSP_DISCONNECT_KEY))
+    val carDspDisconnectAction = _carDspDisconnectAction.asStateFlow()
+
+    private fun loadCarDspAction(key: String): CarDspAction {
+        val raw = settings.getStringOrNull(key) ?: return CarDspAction.Nothing
+        return runCatching { myJson.decodeFromString<CarDspAction>(raw) }
+            .getOrDefault(CarDspAction.Nothing)
+    }
+
+    fun setCarDspConnectAction(action: CarDspAction) =
+        persistCarDspAction(CAR_DSP_CONNECT_KEY, action, _carDspConnectAction)
+
+    fun setCarDspDisconnectAction(action: CarDspAction) =
+        persistCarDspAction(CAR_DSP_DISCONNECT_KEY, action, _carDspDisconnectAction)
+
+    private fun persistCarDspAction(
+        key: String,
+        action: CarDspAction,
+        flow: MutableStateFlow<CarDspAction>,
+    ) {
+        settings.putString(key, myJson.encodeToString<CarDspAction>(action))
+        flow.update { action }
+    }
+
     // Sendspin settings
     private val _sendspinEnabled = MutableStateFlow(
         settings.getBoolean("sendspin_enabled", false),
@@ -570,5 +599,10 @@ class SettingsRepository(
         val field = runCatching { SortField.valueOf(parts[0]) }.getOrNull() ?: return null
         val desc = parts[1].toBooleanStrictOrNull() ?: return null
         return SortOption(field, desc)
+    }
+
+    private companion object {
+        const val CAR_DSP_CONNECT_KEY = "car_dsp_action_connect"
+        const val CAR_DSP_DISCONNECT_KEY = "car_dsp_action_disconnect"
     }
 }

@@ -143,6 +143,9 @@ class KtorServiceClient(
         .map { it is SessionState.Connected && it.dataConnectionState == DataConnectionState.Authenticated }
         .stateIn(this, SharingStarted.Eagerly, false)
 
+    private val _externalConsumerActive = MutableStateFlow(false)
+    override val externalConsumerActive = _externalConsumerActive.asStateFlow()
+
     private val _eventsFlow = MutableSharedFlow<Event<out Any>>(extraBufferCapacity = 10)
     override val events: Flow<Event<out Any>> = _eventsFlow.asSharedFlow()
 
@@ -293,6 +296,7 @@ class KtorServiceClient(
      */
     override fun onExternalConsumerActive() {
         hasActiveExternalConsumer = true
+        _externalConsumerActive.value = true
         val state = _sessionState.value
         logger.i { "External consumer active (state=${stateLabel(state)})" }
 
@@ -347,6 +351,7 @@ class KtorServiceClient(
      */
     override fun onExternalConsumerInactive() {
         hasActiveExternalConsumer = false
+        _externalConsumerActive.value = false
         logger.i { "External consumer inactive (state=${stateLabel(_sessionState.value)})" }
     }
 

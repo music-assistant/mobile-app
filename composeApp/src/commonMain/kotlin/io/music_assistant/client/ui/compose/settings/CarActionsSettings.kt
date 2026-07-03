@@ -54,6 +54,7 @@ import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.default_click_dialog_save
 import musicassistantclient.composeapp.generated.resources.settings_car
 import musicassistantclient.composeapp.generated.resources.settings_car_bulk_for
+import musicassistantclient.composeapp.generated.resources.settings_car_dsp
 import musicassistantclient.composeapp.generated.resources.settings_car_enqueue_action
 import musicassistantclient.composeapp.generated.resources.settings_car_item_actions
 import musicassistantclient.composeapp.generated.resources.settings_car_tabs
@@ -74,6 +75,7 @@ fun CarSection() {
     var showEnqueue by remember { mutableStateOf(false) }
     var bulkKind by remember { mutableStateOf<ItemKind?>(null) }
     var showTabs by remember { mutableStateOf(false) }
+    var showDsp by remember { mutableStateOf(false) }
 
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_car))
@@ -86,6 +88,11 @@ fun CarSection() {
             modifier = Modifier.fillMaxWidth(),
             onClick = { showSheet = true },
         ) { Text(stringResource(Res.string.settings_car_item_actions)) }
+        Spacer(Modifier.size(8.dp))
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { showDsp = true },
+        ) { Text(stringResource(Res.string.settings_car_dsp)) }
     }
 
     // Tap a sheet row → close the sheet, then open its dialog (no stacked overlays).
@@ -106,6 +113,7 @@ fun CarSection() {
             onConfirm = viewModel::saveTabs,
         )
     }
+    if (showDsp) CarDspSettingsDialog { showDsp = false }
 }
 
 /** Bottom sheet listing the configurable action groups; each row opens its dialog. */
