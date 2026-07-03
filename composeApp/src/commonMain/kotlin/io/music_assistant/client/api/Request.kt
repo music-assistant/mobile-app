@@ -35,6 +35,17 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        fun setPower(
+            playerId: String,
+            powered: Boolean,
+        ) = Request(
+            command = APICommands.PLAYERS_CMD_POWER,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("powered", JsonPrimitive(powered))
+            },
+        )
+
         fun seek(
             queueId: String,
             position: Long,

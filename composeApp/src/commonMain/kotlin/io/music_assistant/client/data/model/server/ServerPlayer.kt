@@ -49,7 +49,8 @@ data class ServerPlayer(
     // Nullable: distinguishes "server didn't send one" from a real value, and tolerates a
     // missing key or explicit null without failing the whole player's deserialization.
     @SerialName("icon") val icon: String? = null,
-    // @SerialName("power_control") val powerControl: String,
+    @SerialName("power_control") val powerControl: String? = null,
+    @SerialName("powered") val powered: Boolean? = null,
     @SerialName("volume_control") val volumeControl: String = "",
     @SerialName("mute_control") val muteControl: String? = null,
     // @SerialName("enabled_by_default") val enabledByDefault: Boolean? = null,

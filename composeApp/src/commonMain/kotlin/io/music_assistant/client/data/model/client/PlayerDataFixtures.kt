@@ -16,9 +16,17 @@ object PlayerDataFixtures {
         name: String = "Player ${uniqueIdGenerator.nextInt()}",
         groupChildren: List<ChildBind> = emptyList(),
         playerType: PlayerType = PlayerType.PLAYER,
+        canPower: Boolean = false,
+        isPowered: Boolean = true,
     ): PlayerData {
         return PlayerData(
-            player = player(name = name, playerType = playerType, queueId = queueId),
+            player = player(
+                name = name,
+                playerType = playerType,
+                queueId = queueId,
+                canPower = canPower,
+                isPowered = isPowered,
+            ),
             queue = DataState.Data(
                 Queue(
                     info = QueueInfo(
@@ -59,6 +67,8 @@ object PlayerDataFixtures {
         playerType: PlayerType = PlayerType.PLAYER,
         queueId: String = uniqueIdGenerator.nextInt().toString(),
         currentMedia: PlayerMedia? = null,
+        canPower: Boolean = false,
+        isPowered: Boolean = true,
     ): Player {
         return Player(
             id = id,
@@ -83,6 +93,8 @@ object PlayerDataFixtures {
             activeGroup = null,
             syncedTo = null,
             currentMedia = currentMedia,
+            canPower = canPower,
+            isPowered = isPowered,
         )
     }
 

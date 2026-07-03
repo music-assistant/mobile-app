@@ -63,6 +63,9 @@ class PlayerRequestFactory(
                     ?: Request.Player.simpleCommand(playerId = data.playerId, command = "previous")
             }
 
+            is PlayerAction.SetPower ->
+                Request.Player.setPower(playerId = data.playerId, powered = action.powered)
+
             is PlayerAction.SeekTo -> {
                 Request.Player.seek(queueId = data.playerId, position = action.position)
             }

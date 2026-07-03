@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,11 +48,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -75,6 +78,8 @@ import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.player_power_on
+import musicassistantclient.composeapp.generated.resources.player_powered_off
 import musicassistantclient.composeapp.generated.resources.players_nothing
 import musicassistantclient.composeapp.generated.resources.queue_cannot_play
 import org.jetbrains.compose.resources.stringResource
@@ -141,7 +146,13 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
+            val poweredOff = item.player.isPoweredOff
+            val (trackName, trackContentDescription) = if (poweredOff) {
+                stringResource(Res.string.player_powered_off)
+                    .let { it to it }
+            } else {
+                trackNameAndContentDescription(currentMedia?.title)
+            }
             // Leading inset == fade width: at rest the left gradient covers only this empty pad
             // (first glyph crisp); the marquee scrolls the [pad][text] unit so text dissolves
             // toward the artwork when it overflows.
@@ -158,7 +169,7 @@ fun CompactPlayerItem(
                         .fadingEdges(marqueeFade)
                         .basicMarquee()
                         .padding(start = marqueeFade)
-                        .alphaOn(currentMedia?.title != null),
+                        .alphaOn(poweredOff || currentMedia?.title != null),
                     text = trackName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
@@ -166,43 +177,59 @@ fun CompactPlayerItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                currentMedia?.subtitle?.let {
-                    Text(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fadingEdges(marqueeFade)
-                            .basicMarquee()
-                            .padding(start = marqueeFade),
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                } ?: run {
-                    if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
+                // Powered off: no subtitle line.
+                if (!poweredOff) {
+                    currentMedia?.subtitle?.let {
                         Text(
-                            modifier = Modifier.padding(horizontal = marqueeFade),
-                            text = stringResource(Res.string.queue_cannot_play),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fadingEdges(marqueeFade)
+                                .basicMarquee()
+                                .padding(start = marqueeFade),
+                            text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                    } ?: run {
+                        if (item.queueInfo?.currentItem?.isPlayable == showAdditionalControls) {
+                            Text(
+                                modifier = Modifier.padding(horizontal = marqueeFade),
+                                text = stringResource(Res.string.queue_cannot_play),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
         }
 
-        PlayerControls(
-            playerData = item,
-            playerAction = playerAction,
-            showAdditionalButtons = showAdditionalControls,
-            mainButtonSize = 48.dp,
-            showSkip = true,
-            showSkipBack = onSelectPlayer != null,
-            tint = colors.controlTint,
-        )
+        if (item.player.isPoweredOff) {
+            IconButton(
+                modifier = Modifier.size(48.dp),
+                onClick = { playerAction(item, PlayerAction.SetPower(true)) },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PowerSettingsNew,
+                    contentDescription = stringResource(Res.string.player_power_on),
+                    tint = colors.controlTint,
+                )
+            }
+        } else {
+            PlayerControls(
+                playerData = item,
+                playerAction = playerAction,
+                showAdditionalButtons = showAdditionalControls,
+                mainButtonSize = 48.dp,
+                showSkip = true,
+                showSkipBack = onSelectPlayer != null,
+                tint = colors.controlTint,
+            )
+        }
 
         if (onSelectPlayer != null) {
             Row(
@@ -286,7 +313,12 @@ fun FullPlayerItem(
         }
 
         // Track info
-        val (trackName, trackContentDescription) = trackNameAndContentDescription(currentMedia?.title)
+        val poweredOff = item.player.isPoweredOff
+        val (trackName, trackContentDescription) = if (poweredOff) {
+            stringResource(Res.string.player_powered_off).let { it to it }
+        } else {
+            trackNameAndContentDescription(currentMedia?.title)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -299,7 +331,7 @@ fun FullPlayerItem(
                     .fadingEdges()
                     .basicMarquee()
                     .padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
-                    .alphaOn(currentMedia?.title != null),
+                    .alphaOn(poweredOff || currentMedia?.title != null),
                 text = trackName,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
@@ -307,45 +339,52 @@ fun FullPlayerItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (item.queueInfo?.currentItem?.isPlayable == false) {
-                Text(
-                    text = stringResource(Res.string.queue_cannot_play),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            } else {
-                // Always render the subtitle line so every player item keeps the same height,
-                // even when blank. But attach `basicMarquee()` ONLY when there's real text:
-                // marquee on a blank string builds a degenerate layer tree that overflows the
-                // RenderThread's native stack (SIGSEGV in HWUI prepareTree) — no-subtitle radios
-                // hit this. The empty Text still reserves one line; it just doesn't scroll.
-                val subtitle = currentMedia?.subtitle
-                Text(
-                    modifier = Modifier.fillMaxWidth()
-                        .then(
-                            if (subtitle.isNullOrBlank()) {
-                                Modifier
-                            } else {
-                                Modifier
-                                    .fadingEdges()
-                                    .basicMarquee()
-                                    .padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
-                            },
-                        )
-                        .alphaOn(currentMedia?.title != null),
-                    text = subtitle.orEmpty(), // TODO take from currentItem?
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            when {
+                // Powered off: no subtitle line.
+                poweredOff -> Unit
+                item.queueInfo?.currentItem?.isPlayable == false -> {
+                    Text(
+                        text = stringResource(Res.string.queue_cannot_play),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.inactive(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                else -> {
+                    // Always render the subtitle line so every player item keeps the same height,
+                    // even when blank. But attach `basicMarquee()` ONLY when there's real text:
+                    // marquee on a blank string builds a degenerate layer tree that overflows the
+                    // RenderThread's native stack (SIGSEGV in HWUI prepareTree) — no-subtitle radios
+                    // hit this. The empty Text still reserves one line; it just doesn't scroll.
+                    val subtitle = currentMedia?.subtitle
+                    Text(
+                        modifier = Modifier.fillMaxWidth()
+                            .then(
+                                if (subtitle.isNullOrBlank()) {
+                                    Modifier
+                                } else {
+                                    Modifier
+                                        .fadingEdges()
+                                        .basicMarquee()
+                                        .padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
+                                },
+                            )
+                            .alphaOn(currentMedia?.title != null),
+                        text = subtitle.orEmpty(), // TODO take from currentItem?
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
 
-        val duration = currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
+        // Powered off: present the "no media" state — disabled slider, empty time labels.
+        val duration = if (poweredOff) null else currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
 
         // Live position from PlayerPositionTracker — single source of truth shared
         // with notification + Android Auto. Recomposition scope is limited to this
@@ -367,7 +406,8 @@ fun FullPlayerItem(
             }
         }
 
-        val sliderPosition = userDragPosition ?: releasedSeekPosition ?: displayPosition
+        val sliderPosition =
+            if (poweredOff) 0f else userDragPosition ?: releasedSeekPosition ?: displayPosition
 
         val progressSliderColors = SliderDefaults.colors().copy(
             thumbColor = controlTint,
@@ -413,7 +453,7 @@ fun FullPlayerItem(
                             thumbTrackGapSize = 0.dp,
                             trackInsideCornerSize = 0.dp,
                             drawStopIndicator = null,
-                            enabled = currentMedia != null && !item.player.isAnnouncing,
+                            enabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff,
                             modifier = Modifier.height(8.dp),
                         )
                         if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
@@ -449,7 +489,7 @@ fun FullPlayerItem(
             val playbackSpeed = item.queueInfo?.playbackSpeed
             val isSpokenContent = currentQueueItem?.track is Audiobook ||
                     currentQueueItem?.track is PodcastEpisode
-            val showSpeed = isSpokenContent && playbackSpeed != null
+            val showSpeed = isSpokenContent && playbackSpeed != null && !poweredOff
 
             if (showChainDialog && currentQueueItem != null) {
                 AudioChainDialog(
@@ -501,7 +541,7 @@ fun FullPlayerItem(
                     } else {
                         Box(
                             modifier = Modifier
-                                .alpha(if (tier != null) 1f else 0f)
+                                .alpha(if (tier != null && !poweredOff) 1f else 0f)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(
                                     if (isLq) {
@@ -532,7 +572,7 @@ fun FullPlayerItem(
                 },
                 end = {
                     Text(
-                        text = currentMedia
+                        text = currentMedia.takeUnless { poweredOff }
                             ?.let { duration?.formatDuration(DurationUnit.SECONDS) ?: "\u221E" }
                             ?: "",
                         style = MaterialTheme.typography.bodySmall,
@@ -540,6 +580,23 @@ fun FullPlayerItem(
                     )
                 },
             )
+        }
+
+        // Powered off: favorite + transport controls give way to a single power-on button,
+        // sized to match the play/pause control.
+        if (poweredOff) {
+            IconButton(
+                modifier = Modifier.size(60.dp),
+                onClick = { playerAction(item, PlayerAction.SetPower(true)) },
+            ) {
+                Icon(
+                    modifier = Modifier.size(48.dp),
+                    imageVector = Icons.Default.PowerSettingsNew,
+                    contentDescription = stringResource(Res.string.player_power_on),
+                    tint = controlTint,
+                )
+            }
+            return@Column
         }
 
         // Favorite flag lives on the queue's current Track, not on the lightweight
@@ -578,3 +635,35 @@ fun FullPlayerItem(
 }
 
 private val FULL_PLAYER_HORIZONTAL_PADDING = 16.dp
+
+private val previewPoweredOffColors = PlayerColors(dominant = Color.DarkGray, controlTint = Color.White)
+
+@Preview
+@Composable
+private fun CompactPlayerItemPoweredOffPreview() {
+    MaterialTheme {
+        CompactPlayerItem(
+            modifier = Modifier,
+            item = PlayerDataFixtures.playerData(canPower = true, isPowered = false),
+            colors = previewPoweredOffColors,
+            onSelectPlayer = {},
+            sendSpinState = null,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+private fun FullPlayerItemPoweredOffPreview() {
+    MaterialTheme {
+        FullPlayerItem(
+            modifier = Modifier,
+            item = PlayerDataFixtures.playerData(canPower = true, isPowered = false),
+            colors = previewPoweredOffColors,
+            playerAction = { _, _ -> },
+            onFavoriteClick = {},
+            livePositionFlow = null,
+        )
+    }
+}

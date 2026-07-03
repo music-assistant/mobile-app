@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -116,6 +117,8 @@ import musicassistantclient.composeapp.generated.resources.bound_player_playing_
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
+import musicassistantclient.composeapp.generated.resources.player_power_off
+import musicassistantclient.composeapp.generated.resources.player_power_on
 import musicassistantclient.composeapp.generated.resources.players_dsp_settings
 import musicassistantclient.composeapp.generated.resources.players_loading
 import musicassistantclient.composeapp.generated.resources.players_none_available
@@ -813,6 +816,22 @@ private fun PlayerOverflowMenu(
         }
     }
 
+    // Power sits at the very top of the menu, ahead of queue/player/navigation options.
+    val powerOption = if (currentPlayer.player.canPower) {
+        val isPowered = currentPlayer.player.isPowered
+        listOf(
+            OverflowMenuOption(
+                title = stringResource(
+                    if (isPowered) Res.string.player_power_off else Res.string.player_power_on,
+                ),
+                icon = Icons.Default.PowerSettingsNew,
+                onClick = { playerAction(PlayerAction.SetPower(!isPowered)) },
+            ),
+        )
+    } else {
+        emptyList()
+    }
+
     val playerOptions = buildList {
         if (onOpenDsp != null) {
             add(
@@ -840,7 +859,7 @@ private fun PlayerOverflowMenu(
         )
             ?: emptyList()
 
-    val menuOptions = queueOptions + playerOptions + navigationOptions
+    val menuOptions = powerOption + queueOptions + playerOptions + navigationOptions
     if (menuOptions.isNotEmpty()) {
         OverflowMenuButton(
             modifier = Modifier,

@@ -9,6 +9,7 @@ sealed interface PlayerAction {
     data object Next : PlayerAction
     data object Previous : PlayerAction
     data object VolumeUp : PlayerAction
+    data class SetPower(val powered: Boolean) : PlayerAction
     data object VolumeDown : PlayerAction
     data class VolumeSet(val level: Double) : PlayerAction
     data class ToggleMute(val isMutedNow: Boolean) : PlayerAction

@@ -172,6 +172,9 @@
   <string name="players_loading">Loading players…</string>
   <string name="players_none_available">No players available</string>
   <string name="players_nothing">Nothing playing</string>
+  <string name="player_power_off">Power off</string>
+  <string name="player_power_on">Power on</string>
+  <string name="player_powered_off">Powered off</string>
   <string name="players_title">Players</string>
   <string name="playlist_add_button">Add playlist</string>
   <string name="playlist_add_new">Add new</string>

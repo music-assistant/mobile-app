@@ -403,6 +403,8 @@ class LocalPlayerController(
                         activeGroup = null,
                         syncedTo = null,
                         currentMedia = null,
+                        canPower = false,
+                        isPowered = true,
                     ),
                     queue = DataState.NoData(),
                     parentBind = null,
