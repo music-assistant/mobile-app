@@ -27,6 +27,14 @@
   <string name="action_start_radio">Radio starten</string>
   <string name="action_unfavorite">Aus Favoriten entfernen</string>
   <string name="albums_by_artist">Alben von %1$s</string>
+  <string name="all_albums">Alle Alben</string>
+  <string name="all_artists">Alle Künstler</string>
+  <string name="all_audiobooks">Alle Hörbücher</string>
+  <string name="all_genres">Alle Genres</string>
+  <string name="all_playlists">Alle Wiedergabelisten</string>
+  <string name="all_podcasts">Alle Podcasts</string>
+  <string name="all_radio">Alle Radiosender</string>
+  <string name="all_tracks">Alle Titel</string>
   <string name="auth_authenticating">Anmelden...</string>
   <string name="auth_authorize_ha">Mit Home Assistant anmelden</string>
   <string name="auth_hide_password">Passwort verstecken</string>

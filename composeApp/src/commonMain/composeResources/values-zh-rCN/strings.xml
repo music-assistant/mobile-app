@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="action_add_all_to_queue">全部添加到队列</string>
+  <string name="action_add_to_library">添加到媒体库</string>
+  <string name="action_add_to_playlist">添加到播放列表</string>
+  <string name="action_add_to_queue">添加到队列</string>
+  <string name="action_browse">浏览</string>
+  <string name="action_customize">自定义…</string>
+  <string name="action_favorite">添加到收藏夹</string>
+  <string name="action_unfavorite">从收藏夹中移除</string>
+  <string name="cd_lyrics">歌词</string>
+  <string name="cd_lyrics_close">关闭歌词</string>
+  <string name="filter_favorites">收藏夹</string>
+  <string name="player_power_off">关机</string>
+  <string name="player_power_on">开机</string>
+  <string name="player_powered_off">已关机</string>
+</resources>
