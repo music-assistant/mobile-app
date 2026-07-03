@@ -108,6 +108,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     private val _isReadyForCommands = MutableStateFlow(false)
     override val isReadyForCommands: StateFlow<Boolean> = _isReadyForCommands
 
+    override val externalConsumerActive: StateFlow<Boolean> = MutableStateFlow(false)
+
     override suspend fun sendRequest(request: Request): Result<Answer> {
         if (requestErrors) {
             return Result.failure(Exception())

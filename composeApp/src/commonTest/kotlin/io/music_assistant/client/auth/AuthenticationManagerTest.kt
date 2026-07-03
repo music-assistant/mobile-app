@@ -136,6 +136,7 @@ class AuthenticationManagerTest {
 private class FakeServiceClient : ServiceClient {
     override val sessionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     override val isReadyForCommands = MutableStateFlow(false)
+    override val externalConsumerActive = MutableStateFlow(false)
     override val serverBaseUrl = MutableStateFlow<String?>(null)
     override val webRTCHttpProxy: WebRTCHttpProxy? = null
     override val events: Flow<Event<out Any>> = emptyFlow()

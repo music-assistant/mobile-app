@@ -30,6 +30,8 @@ class FakeClient : ServiceClient {
 
     override val isReadyForCommands: StateFlow<Boolean>
         get() = TODO("Not yet implemented")
+    override val externalConsumerActive: StateFlow<Boolean>
+        get() = TODO("Not yet implemented")
     override val serverBaseUrl: StateFlow<String?>
         get() = TODO("Not yet implemented")
 

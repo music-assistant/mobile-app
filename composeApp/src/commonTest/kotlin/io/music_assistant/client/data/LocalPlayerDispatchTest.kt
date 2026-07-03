@@ -386,6 +386,8 @@ private class RecordingClient(
         get() = error("not used")
     override val isReadyForCommands: StateFlow<Boolean>
         get() = error("not used")
+    override val externalConsumerActive: StateFlow<Boolean>
+        get() = error("not used")
     override val serverBaseUrl: StateFlow<String?>
         get() = error("not used")
     override val events: Flow<Event<out Any>>
