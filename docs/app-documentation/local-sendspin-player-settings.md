@@ -43,4 +43,12 @@ If your Music Assistant server is not reachable via the default connection, enab
 
 ![Custom Sendspin Connection](screenshots/local-sendspin-player-settings/custom-sendspin-connection.jpeg)
 
+## Car (Android Auto / CarPlay)
+
+Once the Local Sendspin Player is enabled, the **Car Settings** section becomes available. Here you can configure how the app behaves when used in Android Auto or Apple CarPlay:
+
+- **Tabs** — Customize which tabs are shown and in what order they appear.
+- **Item actions** — Set the default action performed when tapping different item types.
+- **DSP presets** — Configure what happens to the DSP for the Local Player when the phone is connected to or disconnected from the car.
+
 After setting up the Local Player, you can [start using the app](home.md).
