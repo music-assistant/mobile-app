@@ -51,6 +51,8 @@ interface PlatformAudioPlayer {
         elapsedTime: Double?,
         playbackRate: Double,
         isLongFormContent: Boolean,
+        shuffleEnabled: Boolean,
+        repeatMode: io.music_assistant.client.data.model.client.RepeatMode?,
     )
     fun clearNowPlaying()
 

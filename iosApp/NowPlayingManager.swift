@@ -1,6 +1,7 @@
 import Foundation
 import MediaPlayer
 import AVFoundation
+import CarPlay
 import ComposeApp
 
 /// Manages iOS Now Playing info (Control Center, Lock Screen)
@@ -24,7 +25,6 @@ class NowPlayingManager {
     private var currentTitle: String?
     private var currentArtist: String?
     private var currentAlbum: String?
-    private var currentIsLongFormContent: Bool?
     private var currentLongFormSeekBackSeconds: Int64?
     private var currentLongFormSeekForwardSeconds: Int64?
     private var currentAudioSessionMode: AVAudioSession.Mode?
@@ -38,8 +38,7 @@ class NowPlayingManager {
     init() {
         logDebug("Initializing")
         configureAudioSession()
-        setupRemoteCommands() // Setup commands once
-        printDebugState("After init")
+        setupRemoteCommands()
     }
 
     /// Sets the category only — does NOT activate. Activation interrupts other
@@ -74,22 +73,16 @@ class NowPlayingManager {
         logDebug("Command handler updated")
     }
 
-    // Track pending update to handle race conditions
-    private var pendingIdentifier: String?
+    private struct RemoteCommandState: Equatable {
+        let isLongFormContent: Bool
+        let shuffleEnabled: Bool
+        let repeatMode: RepeatMode?
+    }
 
-    /// Stable string identifier derived from track metadata. Used for two purposes:
-    ///   1. `pendingIdentifier` (dedup of in-flight artwork loads when the user
-    ///      changes track twice quickly — drop the older fetch's result).
-    ///   2. `MPNowPlayingInfoPropertyExternalContentIdentifier`, telling
-    ///      `MediaRemote` "this is the *same* item across position-tick updates."
-    ///      Without it, every `setNowPlayingInfo` call gets a fresh auto-assigned
-    ///      ContentItemIdentifier, which causes `mediaremoted` to fire
-    ///      `PlaybackQueueInvalidation` on every 500 ms tick — the bar visibly
-    ///      thrashes and CarPlay treats each tick as a queue change.
-    ///
-    /// Duration is rounded to whole seconds because the value occasionally jitters
-    /// between near-equivalent doubles across queue updates (e.g. 199.99987 vs.
-    /// 200.000); we don't want that to look like a different item.
+    private var pendingIdentifier: String?
+    private var currentRemoteCommandState: RemoteCommandState?
+
+    /// Stable item identity for artwork deduping and iOS Now Playing updates.
     private func contentIdentifier(
         title: String?,
         artist: String?,
@@ -100,16 +93,7 @@ class NowPlayingManager {
         return "\(title ?? "")|\(artist ?? "")|\(album ?? "")|\(durStr)"
     }
 
-    /// Updates the Now Playing info displayed in Control Center and Lock Screen.
-    ///
-    /// `duration` and `elapsedTime` are optional: nil means "value unknown — leave
-    /// the corresponding `MPNowPlayingInfoCenter` field alone." The same-track path
-    /// merges into the existing dict rather than replacing it, so a nil value here
-    /// preserves whatever iOS last had instead of pinning a field to 0. See the
-    /// position-tracker overlay in `MainDataSource` (Kotlin) for why upstream needs
-    /// to send nils across transient gaps in server data — without this, a queue
-    /// event arriving with `elapsed_time = null` (which MA does mid-pause) would
-    /// reset the playback bar to 0.
+    /// Updates Control Center, Lock Screen, and CarPlay Now Playing metadata.
     func updateNowPlayingInfo(
         title: String?,
         artist: String?,
@@ -118,10 +102,16 @@ class NowPlayingManager {
         duration: Double?,
         elapsedTime: Double?,
         playbackRate: Double,
-        isLongFormContent: Bool
+        isLongFormContent: Bool,
+        shuffleEnabled: Bool,
+        repeatMode: RepeatMode?
     ) {
         configureAudioSession(mode: isLongFormContent ? .spokenAudio : .default)
-        updateRemoteCommandMode(isLongFormContent: isLongFormContent)
+        updateRemoteCommands(
+            isLongFormContent: isLongFormContent,
+            shuffleEnabled: shuffleEnabled,
+            repeatMode: repeatMode
+        )
 
         let newIdentifier = contentIdentifier(
             title: title, artist: artist, album: album, duration: duration
@@ -150,70 +140,39 @@ class NowPlayingManager {
             return
         }
 
-        // If it's a new track, we want to PREVENT FLICKER.
-        // Strategy: Keep showing OLD metadata until NEW artwork is ready.
-
-        logDebug("Detected new track — waiting for artwork to prevent flicker")
-
-        // Mark this as the pending update
+        // Write metadata immediately; artwork may arrive later.
         self.pendingIdentifier = newIdentifier
-
-        // IMMEDIATE PAUSE FEEDBACK:
-        // If the user paused (rate == 0), update the OLD metadata's rate immediately
-        // so the UI stops ticking/shows pause state, even while we load new art. We
-        // intentionally only touch rate (and elapsed if known) — title/artist stay
-        // on the previous track until artwork arrives.
-        if abs(playbackRate) < 0.001 {
-            var currentInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-            currentInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
-            if let elapsed = elapsedTime {
-                let dur = duration
-                    ?? (currentInfo[MPMediaItemPropertyPlaybackDuration] as? Double)
-                    ?? .greatestFiniteMagnitude
-                currentInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsed, dur))
-            }
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = currentInfo
-        }
-
-        // Cancel any previous pending load
         currentArtworkLoad?.cancel()
         currentArtworkLoad = nil
+        self.cachedArtwork = nil
+        self.updateCurrentState(title: title, artist: artist, album: album)
+        self.applyMergedUpdate(
+            title: title, artist: artist, album: album,
+            artwork: nil,
+            duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate,
+            contentId: newIdentifier,
+            isNewTrack: true
+        )
 
-        // If no artwork URL, update immediately with nil artwork
-        guard let urlString = artworkUrl, !urlString.isEmpty else {
-            self.cachedArtwork = nil
-            self.updateCurrentState(title: title, artist: artist, album: album)
-            self.applyMergedUpdate(
-                title: title, artist: artist, album: album,
-                artwork: nil,
-                duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate,
-                contentId: newIdentifier,
-                isNewTrack: true
-            )
-            return
-        }
+        guard let urlString = artworkUrl, !urlString.isEmpty else { return }
 
         // Load artwork asynchronously via KmpHelper (handles mawebrtc:// + http(s)://)
         self.currentArtworkLoad = loadArtwork(urlString: urlString) { [weak self] artwork in
             guard let self = self else { return }
 
-            // Check if this result is still relevant
             if self.pendingIdentifier != newIdentifier {
                 logDebug("Ignoring stale artwork load for \(newIdentifier)")
                 return
             }
 
-            // On main thread, apply the FULL update (Text + New Art)
             DispatchQueue.main.async {
                 self.cachedArtwork = artwork
-                self.updateCurrentState(title: title, artist: artist, album: album)
-
                 self.applyMergedUpdate(
                     title: title, artist: artist, album: album,
                     artwork: artwork,
-                    duration: duration, elapsedTime: elapsedTime, playbackRate: playbackRate,
+                    duration: nil, elapsedTime: nil, playbackRate: nil,
                     contentId: newIdentifier,
-                    isNewTrack: true
+                    isNewTrack: false
                 )
                 self.logDebug("Artwork loaded, metadata updated")
             }
@@ -226,24 +185,7 @@ class NowPlayingManager {
         self.currentAlbum = album
     }
 
-    /// Merges new fields into the existing `MPNowPlayingInfoCenter.nowPlayingInfo`
-    /// dict.
-    ///
-    /// When `isNewTrack` is `false` (same-track tick): nil-valued fields are
-    /// skipped (preserving iOS's last-known value) and non-nil fields overwrite.
-    /// This is the right semantics for position-tick / pause-rate updates where
-    /// upstream legitimately doesn't know elapsed.
-    ///
-    /// When `isNewTrack` is `true`: previous-track fields are explicitly cleared
-    /// before the merge — otherwise transitioning to a track that has, say, no
-    /// artwork URL would leave the previous track's cover pinned in the dict
-    /// because the skip-on-nil rule preserves it. The merge then writes whatever
-    /// values the caller has; missing values become absent rather than
-    /// previous-track holdovers.
-    ///
-    /// The stable `contentId` is always set so iOS doesn't auto-assign a fresh
-    /// `ContentItemIdentifier` per call (which would make `mediaremoted` fire
-    /// `PlaybackQueueInvalidation` on every position tick).
+    /// Merges Now Playing fields while preserving same-track values that are temporarily unknown.
     private func applyMergedUpdate(
         title: String?,
         artist: String?,
@@ -251,7 +193,7 @@ class NowPlayingManager {
         artwork: MPMediaItemArtwork?,
         duration: Double?,
         elapsedTime: Double?,
-        playbackRate: Double,
+        playbackRate: Double?,
         contentId: String,
         isNewTrack: Bool
     ) {
@@ -281,7 +223,9 @@ class NowPlayingManager {
                     ?? .greatestFiniteMagnitude
                 info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsed, dur))
             }
-            info[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
+            if let playbackRate = playbackRate {
+                info[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
+            }
             if let artwork = artwork {
                 info[MPMediaItemPropertyArtwork] = artwork
             }
@@ -299,14 +243,14 @@ class NowPlayingManager {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             self?.cachedArtwork = nil
             self?.updateCurrentState(title: nil, artist: nil, album: nil)
-            self?.updateRemoteCommandMode(isLongFormContent: false)
+            self?.updateRemoteCommands(
+                isLongFormContent: false,
+                shuffleEnabled: false,
+                repeatMode: nil
+            )
         }
     }
 
-    // MARK: - Debug
-    private func printDebugState(_ context: String) {
-        // ... (Keep existing debug logic if needed, or remove for brevity)
-    }
 
     // MARK: - Private
 
@@ -345,7 +289,13 @@ class NowPlayingManager {
 
         addTarget(commandCenter.skipBackwardCommand, cmd: "seek_back")
         addTarget(commandCenter.skipForwardCommand, cmd: "seek_forward")
-        updateRemoteCommandMode(isLongFormContent: false)
+        addTarget(commandCenter.changeShuffleModeCommand, cmd: "toggle_shuffle")
+        addTarget(commandCenter.changeRepeatModeCommand, cmd: "toggle_repeat")
+        updateRemoteCommands(
+            isLongFormContent: false,
+            shuffleEnabled: false,
+            repeatMode: nil
+        )
 
         commandCenter.changePlaybackPositionCommand.isEnabled = true
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
@@ -373,17 +323,85 @@ class NowPlayingManager {
         }
     }
 
-    private func updateRemoteCommandMode(isLongFormContent: Bool) {
+    private func updateRemoteCommands(
+        isLongFormContent: Bool,
+        shuffleEnabled: Bool,
+        repeatMode: RepeatMode?
+    ) {
         DispatchQueue.main.async { [weak self] in
-            guard let self = self,
-                  self.currentIsLongFormContent != isLongFormContent else { return }
-            self.currentIsLongFormContent = isLongFormContent
+            guard let self = self else { return }
+            let state = RemoteCommandState(
+                isLongFormContent: isLongFormContent,
+                shuffleEnabled: shuffleEnabled,
+                repeatMode: repeatMode
+            )
+            guard self.currentRemoteCommandState != state else { return }
+            self.currentRemoteCommandState = state
 
             let commandCenter = MPRemoteCommandCenter.shared()
-            commandCenter.previousTrackCommand.isEnabled = !isLongFormContent
-            commandCenter.nextTrackCommand.isEnabled = !isLongFormContent
-            commandCenter.skipBackwardCommand.isEnabled = isLongFormContent
-            commandCenter.skipForwardCommand.isEnabled = isLongFormContent
+
+            if isLongFormContent {
+                self.configureLongFormRemoteCommands(commandCenter)
+            } else {
+                self.configureMusicRemoteCommands(
+                    commandCenter,
+                    shuffleEnabled: shuffleEnabled,
+                    repeatMode: repeatMode
+                )
+            }
+        }
+    }
+
+    private func configureLongFormRemoteCommands(_ commandCenter: MPRemoteCommandCenter) {
+        commandCenter.previousTrackCommand.isEnabled = false
+        commandCenter.nextTrackCommand.isEnabled = false
+        commandCenter.skipBackwardCommand.isEnabled = true
+        commandCenter.skipForwardCommand.isEnabled = true
+        commandCenter.changeShuffleModeCommand.isEnabled = false
+        commandCenter.changeRepeatModeCommand.isEnabled = false
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons([])
+    }
+
+    private func configureMusicRemoteCommands(
+        _ commandCenter: MPRemoteCommandCenter,
+        shuffleEnabled: Bool,
+        repeatMode: RepeatMode?
+    ) {
+        commandCenter.previousTrackCommand.isEnabled = true
+        commandCenter.nextTrackCommand.isEnabled = true
+        commandCenter.skipBackwardCommand.isEnabled = false
+        commandCenter.skipForwardCommand.isEnabled = false
+        commandCenter.changeShuffleModeCommand.isEnabled = true
+        commandCenter.changeShuffleModeCommand.currentShuffleType = shuffleEnabled ? .items : .off
+        commandCenter.changeRepeatModeCommand.isEnabled = true
+        commandCenter.changeRepeatModeCommand.currentRepeatType = Self.remoteRepeatType(repeatMode)
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons(
+            carPlayMusicButtons(shuffleEnabled: shuffleEnabled, repeatMode: repeatMode)
+        )
+    }
+
+    private func carPlayMusicButtons(
+        shuffleEnabled: Bool,
+        repeatMode: RepeatMode?
+    ) -> [CPNowPlayingButton] {
+        let shuffleButton = CPNowPlayingShuffleButton { [weak self] _ in
+            self?.commandHandler?("toggle_shuffle")
+        }
+        shuffleButton.isSelected = shuffleEnabled
+
+        let repeatButton = CPNowPlayingRepeatButton { [weak self] _ in
+            self?.commandHandler?("toggle_repeat")
+        }
+        repeatButton.isSelected = repeatMode != nil && repeatMode != .off
+
+        return [shuffleButton, repeatButton]
+    }
+
+    private static func remoteRepeatType(_ repeatMode: RepeatMode?) -> MPRepeatType {
+        switch repeatMode {
+        case .all: return .all
+        case .one: return .one
+        default: return .off
         }
     }
 

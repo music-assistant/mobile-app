@@ -697,6 +697,8 @@ class MainDataSource(
                             isPlaying = pd.player.isPlaying,
                             isPositionFrozen = positionTracker.isFrozenUntilConfirmed(pd.queueInfo.id),
                             isLongFormContent = track.isLongFormSpokenContent,
+                            shuffleEnabled = pd.queueInfo.shuffleEnabled,
+                            repeatMode = pd.queueInfo.repeatMode,
                         )
                     }
                 }
@@ -713,6 +715,8 @@ class MainDataSource(
                             elapsedTime = snapshot.elapsedTime,
                             playbackRate = if (snapshot.isPlaying && !snapshot.isPositionFrozen) 1.0 else 0.0,
                             isLongFormContent = snapshot.isLongFormContent,
+                            shuffleEnabled = snapshot.shuffleEnabled,
+                            repeatMode = snapshot.repeatMode,
                         )
                     }
                 }
@@ -748,6 +752,8 @@ class MainDataSource(
             val isPlaying: Boolean,
             val isPositionFrozen: Boolean = false,
             val isLongFormContent: Boolean,
+            val shuffleEnabled: Boolean,
+            val repeatMode: io.music_assistant.client.data.model.client.RepeatMode?,
         ) : NowPlayingSnapshot
 
         companion object {
@@ -784,6 +790,8 @@ class MainDataSource(
                 if (a.isPlaying != b.isPlaying) return false
                 if (a.isPositionFrozen != b.isPositionFrozen) return false
                 if (a.isLongFormContent != b.isLongFormContent) return false
+                if (a.shuffleEnabled != b.shuffleEnabled) return false
+                if (a.repeatMode != b.repeatMode) return false
                 val ae = a.elapsedTime
                 val be = b.elapsedTime
                 return when {

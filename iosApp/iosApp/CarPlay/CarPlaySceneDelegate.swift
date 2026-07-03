@@ -304,8 +304,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                         completion()
                         return
                     }
-                    if index < displayItems.count {
-                        CarPlayContentManager.shared.playItem(displayItems[index])
+                    if index < displayItems.count,
+                       CarPlayContentManager.shared.playItem(displayItems[index]) {
                         self.pushNowPlayingTemplate(animated: true)
                     }
                     completion()

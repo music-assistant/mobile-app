@@ -424,7 +424,9 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         duration: KotlinDouble?,
         elapsedTime: KotlinDouble?,
         playbackRate: Double,
-        isLongFormContent: Bool
+        isLongFormContent: Bool,
+        shuffleEnabled: Bool,
+        repeatMode: RepeatMode?
     ) {
         NowPlayingManager.shared.updateNowPlayingInfo(
             title: title,
@@ -434,7 +436,9 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             duration: duration?.doubleValue,
             elapsedTime: elapsedTime?.doubleValue,
             playbackRate: playbackRate,
-            isLongFormContent: isLongFormContent
+            isLongFormContent: isLongFormContent,
+            shuffleEnabled: shuffleEnabled,
+            repeatMode: repeatMode
         )
     }
 

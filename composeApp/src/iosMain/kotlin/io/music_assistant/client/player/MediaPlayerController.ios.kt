@@ -91,6 +91,8 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         elapsedTime: Double?,
         playbackRate: Double,
         isLongFormContent: Boolean,
+        shuffleEnabled: Boolean,
+        repeatMode: io.music_assistant.client.data.model.client.RepeatMode?,
     ) {
         PlatformPlayerProvider.player?.updateNowPlaying(
             title,
@@ -101,6 +103,8 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
             elapsedTime,
             playbackRate,
             isLongFormContent,
+            shuffleEnabled,
+            repeatMode,
         )
     }
 

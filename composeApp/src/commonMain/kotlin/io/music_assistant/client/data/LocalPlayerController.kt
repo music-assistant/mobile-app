@@ -504,6 +504,12 @@ class LocalPlayerController(
 
                     "next" -> handleLocalCommand(playerData, PlayerAction.Next)
                     "previous" -> handleLocalCommand(playerData, PlayerAction.Previous)
+                    "toggle_shuffle" -> playerData.queueInfo?.let { queue ->
+                        handleLocalCommand(playerData, PlayerAction.ToggleShuffle(queue.shuffleEnabled))
+                    }
+                    "toggle_repeat" -> playerData.queueInfo?.repeatMode?.let { repeatMode ->
+                        handleLocalCommand(playerData, PlayerAction.ToggleRepeatMode(repeatMode))
+                    }
                     else -> {
                         if (command.startsWith("seek:")) {
                             command.removePrefix("seek:").toDoubleOrNull()?.let { position ->

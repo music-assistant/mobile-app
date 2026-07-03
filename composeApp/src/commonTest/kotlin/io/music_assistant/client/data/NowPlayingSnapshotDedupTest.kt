@@ -2,6 +2,7 @@ package io.music_assistant.client.data
 
 import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot
 import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot.Companion.ELAPSED_ANCHOR_EPSILON_S
+import io.music_assistant.client.data.model.client.RepeatMode
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -28,6 +29,8 @@ class NowPlayingSnapshotDedupTest {
         elapsedTime = 30.0,
         isPlaying = true,
         isLongFormContent = false,
+        shuffleEnabled = false,
+        repeatMode = null,
     )
 
     @Test
@@ -91,6 +94,22 @@ class NowPlayingSnapshotDedupTest {
         // playback rate for iOS Now Playing, so the dict must be rewritten.
         assertFalse(
             NowPlayingSnapshot.sameDictWriteWouldBe(sample, sample.copy(isPositionFrozen = true)),
+        )
+    }
+
+    @Test
+    fun shuffleStateChangeEmits() {
+        // CarPlay's standard music commands need current shuffle state even when
+        // track metadata and elapsed anchor are unchanged.
+        assertFalse(
+            NowPlayingSnapshot.sameDictWriteWouldBe(sample, sample.copy(shuffleEnabled = true)),
+        )
+    }
+
+    @Test
+    fun repeatStateChangeEmits() {
+        assertFalse(
+            NowPlayingSnapshot.sameDictWriteWouldBe(sample, sample.copy(repeatMode = RepeatMode.ALL)),
         )
     }
 

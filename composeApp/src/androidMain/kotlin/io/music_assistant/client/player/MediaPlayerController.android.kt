@@ -557,6 +557,8 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         elapsedTime: Double?,
         playbackRate: Double,
         isLongFormContent: Boolean,
+        shuffleEnabled: Boolean,
+        repeatMode: io.music_assistant.client.data.model.client.RepeatMode?,
     ) {
         // Android handles Now Playing via MediaSession, not implemented here
     }

@@ -144,16 +144,18 @@ class CarPlayContentManager {
 
     // MARK: - Action Handling
 
-    func playItem(_ item: AppMediaItem) {
+    @discardableResult
+    func playItem(_ item: AppMediaItem) -> Bool {
         play(item, option: .play)
     }
 
     // Donations train Siri's "play X in Music Assistant" model — fire on
     // any user-initiated dispatch (immediate or queued), since intent to
     // play is what matters, not whether the RPC ultimately landed.
-    private func play(_ item: AppMediaItem, option: QueueOption) {
-        guard KmpHelper.shared.playOnLocalPlayer(item: item, option: option) else { return }
+    private func play(_ item: AppMediaItem, option: QueueOption) -> Bool {
+        guard KmpHelper.shared.playOnLocalPlayer(item: item, option: option) else { return false }
         SiriIntentHandler.donatePlayed(item)
+        return true
     }
 
     // MARK: - Configurable car actions (shared with Android Auto via SettingsRepository)
