@@ -230,11 +230,12 @@ class LibraryScreenState(
     companion object {
         @Composable
         fun create(): LibraryScreenState {
-            return LibraryScreenState(
-                rememberTopAppBarState(),
-                rememberLazyGridState(),
-                rememberCoroutineScope(),
-            )
+            val topAppBarState = rememberTopAppBarState()
+            val lazyGridState = rememberLazyGridState()
+            val coroutineScope = rememberCoroutineScope()
+            return remember(topAppBarState, lazyGridState, coroutineScope) {
+                LibraryScreenState(topAppBarState, lazyGridState, coroutineScope)
+            }
         }
     }
 }

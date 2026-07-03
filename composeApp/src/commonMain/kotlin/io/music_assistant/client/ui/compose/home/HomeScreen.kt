@@ -339,11 +339,12 @@ class HomeScreenState(
     companion object {
         @Composable
         fun create(): HomeScreenState {
-            return HomeScreenState(
-                rememberTopAppBarState(),
-                rememberLazyListState(),
-                rememberCoroutineScope(),
-            )
+            val topAppBarState = rememberTopAppBarState()
+            val lazyListState = rememberLazyListState()
+            val coroutineScope = rememberCoroutineScope()
+            return remember(topAppBarState, lazyListState, coroutineScope) {
+                HomeScreenState(topAppBarState, lazyListState, coroutineScope)
+            }
         }
     }
 }

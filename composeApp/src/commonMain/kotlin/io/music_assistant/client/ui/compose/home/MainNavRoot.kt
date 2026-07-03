@@ -18,7 +18,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +70,7 @@ import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
 import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
+import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
@@ -194,28 +197,33 @@ fun MainNavigationRoot(
         deepLinkBus.consume(dest)
     }
 
-    val homeScreenState = HomeScreenState.create()
-    val libraryScreenState = LibraryScreenState.create()
-    val searchScreenState = SearchScreenState.create()
+    // Each root screen's scroll/collapsing-top-bar state is owned by its NavEntry
+    // (published here while composed) so its lifetime matches the ViewModel it
+    // mirrors. The nav bar reads these to scroll the active tab to top on re-tap;
+    // a tab switch disposes the entry, so re-entry starts fresh instead of stranding
+    // a collapsed top bar.
+    val homeScreenState = remember { mutableStateOf<HomeScreenState?>(null) }
+    val libraryScreenState = remember { mutableStateOf<LibraryScreenState?>(null) }
+    val searchScreenState = remember { mutableStateOf<SearchScreenState?>(null) }
 
     val navigationItems = listOf(
         multiBackStack.createNavigationItem(
             backStack = 0,
             icon = Icons.Default.Home,
             label = stringResource(Res.string.nav_home),
-            screenState = homeScreenState,
+            screenState = homeScreenState.value,
         ),
         multiBackStack.createNavigationItem(
             backStack = 1,
             icon = Icons.Default.LibraryMusic,
             label = stringResource(Res.string.nav_library),
-            screenState = libraryScreenState,
+            screenState = libraryScreenState.value,
         ),
         multiBackStack.createNavigationItem(
             backStack = 2,
             icon = Icons.Default.Search,
             label = stringResource(Res.string.nav_search),
-            screenState = searchScreenState,
+            screenState = searchScreenState.value,
         ),
         NavigationItem(
             selected = false,
@@ -304,15 +312,18 @@ private fun mainNavEntryProvider(
     multiBackStack: MultiBackStack<NavKey>,
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
-    homeScreenState: HomeScreenState,
-    libraryScreenState: LibraryScreenState,
-    searchScreenState: SearchScreenState,
+    homeScreenState: MutableState<HomeScreenState?>,
+    libraryScreenState: MutableState<LibraryScreenState?>,
+    searchScreenState: MutableState<SearchScreenState?>,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
     var pendingSearch by remember { mutableStateOf<GlobalSearchRequest?>(null) }
     return entryProvider {
         entry<MainNav.Landing> {
+            val screenState = rememberPublishedScreenState(homeScreenState) {
+                HomeScreenState.create()
+            }
             HomeScreen(
                 homeScreenViewModel,
                 contentPadding = contentPadding,
@@ -342,17 +353,20 @@ private fun mainNavEntryProvider(
                         ?.let { ProviderIcon(modifier, it) }
                 },
                 actionsViewModel = actionsViewModel,
-                state = homeScreenState,
+                state = screenState,
             )
         }
 
         entry<MainNav.Library> {
             val libraryCategoriesViewModel = koinViewModel<LibraryCategoriesViewModel>()
+            val screenState = rememberPublishedScreenState(libraryScreenState) {
+                LibraryScreenState.create()
+            }
 
             LibraryScreen(
                 libraryCategoriesViewModel,
                 contentPadding = contentPadding,
-                state = libraryScreenState,
+                state = screenState,
                 onCategoryClick = { category ->
                     if (category == LibraryCategory.BROWSE) {
                         multiBackStack.add(MainNav.Browse(path = null, title = null))
@@ -470,6 +484,9 @@ private fun mainNavEntryProvider(
 
         entry<MainNav.Search> {
             val searchViewModel = koinViewModel<SearchViewModel>()
+            val screenState = rememberPublishedScreenState(searchScreenState) {
+                SearchScreenState.create()
+            }
 
             SearchScreen(
                 searchViewModel = searchViewModel,
@@ -484,12 +501,30 @@ private fun mainNavEntryProvider(
                 },
                 contentPadding = contentPadding,
                 actionsViewModel = actionsViewModel,
-                state = searchScreenState,
+                state = screenState,
                 pendingSearch = pendingSearch,
                 onSearchConsumed = { pendingSearch = null },
             )
         }
     }
+}
+
+/**
+ * Creates a root screen's [ScreenState] scoped to the calling NavEntry and publishes it to a
+ * root-level [holder] while composed, so the navigation bar can drive scroll-to-top on re-tap
+ * without hoisting the state above the entry (which would desync it from the entry's ViewModel).
+ */
+@Composable
+private fun <S : ScreenState> rememberPublishedScreenState(
+    holder: MutableState<S?>,
+    create: @Composable () -> S,
+): S {
+    val screenState = create()
+    DisposableEffect(screenState) {
+        holder.value = screenState
+        onDispose { holder.value = null }
+    }
+    return screenState
 }
 
 private sealed interface MainNav : NavKey {

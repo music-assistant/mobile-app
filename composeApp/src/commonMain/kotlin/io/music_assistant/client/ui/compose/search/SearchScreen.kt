@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -467,11 +468,12 @@ class SearchScreenState(
     companion object {
         @Composable
         fun create(): SearchScreenState {
-            return SearchScreenState(
-                rememberTopAppBarState(),
-                rememberLazyListState(),
-                rememberCoroutineScope(),
-            )
+            val topAppBarState = rememberTopAppBarState()
+            val lazyListState = rememberLazyListState()
+            val coroutineScope = rememberCoroutineScope()
+            return remember(topAppBarState, lazyListState, coroutineScope) {
+                SearchScreenState(topAppBarState, lazyListState, coroutineScope)
+            }
         }
     }
 }
