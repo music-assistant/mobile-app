@@ -25,6 +25,7 @@
   <string name="action_remove">Remove</string>
   <string name="action_remove_from_library">Remove from library</string>
   <string name="action_remove_from_playlist">Remove from playlist</string>
+  <string name="action_similar_artists">Similar artists</string>
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
   <string name="album_disc_header">Disc %1$d</string>
@@ -59,6 +60,7 @@
   <string name="cd_add_playlist">Add playlist</string>
   <string name="cd_add_to_group">Add to group</string>
   <string name="cd_applied">Applied</string>
+  <string name="cd_close">Close</string>
   <string name="cd_connection_history">Connection history</string>
   <string name="cd_current_player">Current player: %1$s</string>
   <string name="cd_customize_tabs">Customize categories</string>

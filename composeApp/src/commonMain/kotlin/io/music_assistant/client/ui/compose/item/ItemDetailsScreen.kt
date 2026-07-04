@@ -38,6 +38,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -160,6 +163,7 @@ fun ItemDetailsScreen(
         onAlbumsSortChanged = itemDetailsViewModel::onAlbumsSortChanged,
         onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
         onTabSelected = itemDetailsViewModel::onTabSelected,
+        onLoadSimilarArtists = itemDetailsViewModel::loadSimilarArtists,
     )
 }
 
@@ -188,6 +192,7 @@ fun ItemDetails(
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onTabSelected: (ItemDetailsTab) -> Unit = {},
+    onLoadSimilarArtists: () -> Unit = {},
 ) {
     val playlistActions = object : PlaylistActions {
         override suspend fun getEditablePlaylists(): List<Playlist> {
@@ -258,6 +263,7 @@ fun ItemDetails(
         onAlbumsSortChanged = onAlbumsSortChanged,
         onPlayableItemsSortChanged = onPlayableItemsSortChanged,
         onTabSelected = onTabSelected,
+        onLoadSimilarArtists = onLoadSimilarArtists,
         contentPadding = contentPadding,
     )
 }
@@ -289,6 +295,7 @@ private fun ItemChildren(
     onAlbumsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     onTabSelected: (ItemDetailsTab) -> Unit,
+    onLoadSimilarArtists: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -327,6 +334,7 @@ private fun ItemChildren(
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
                     contentPadding = contentPadding,
                     onTabSelected = onTabSelected,
+                    onLoadSimilarArtists = onLoadSimilarArtists,
                 )
             }
 
@@ -363,9 +371,18 @@ private fun ItemContent(
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     contentPadding: PaddingValues,
     onTabSelected: (ItemDetailsTab) -> Unit,
+    onLoadSimilarArtists: () -> Unit,
 ) {
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
     val tabs = state.tabs
+
+    // Similar-artists sheet visibility. Saveable so it survives rotation; the load is driven by the
+    // effect below rather than the click, so after process death the reopened sheet re-fetches
+    // (VM state reset to NoData) instead of showing a blank list.
+    var showSimilarArtists by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(showSimilarArtists) {
+        if (showSimilarArtists) onLoadSimilarArtists()
+    }
 
     // Artwork-driven header colors. Library items carry no server palette, so colors are
     // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
@@ -406,6 +423,7 @@ private fun ItemContent(
                 libraryActions = libraryActions,
                 playlistActions = playlistActions.takeIf { item.supportsAddToPlaylist },
                 navigateToItem = onNavigateClick,
+                onSimilarArtistsClick = { showSimilarArtists = true },
             )
         },
     ) {
@@ -470,6 +488,18 @@ private fun ItemContent(
                 }
             }
         }
+    }
+
+    if (showSimilarArtists) {
+        SimilarArtistsSheet(
+            state = state.similarArtistsState,
+            viewMode = viewModeProvider(MediaType.ARTIST),
+            onNavigateClick = onNavigateClick,
+            onPlayClick = onPlayChildClick,
+            playlistActions = playlistActions,
+            libraryActions = libraryActions,
+            onDismiss = { showSimilarArtists = false },
+        )
     }
 }
 

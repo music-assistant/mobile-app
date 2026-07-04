@@ -338,12 +338,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         fun getEpisodes(
             itemId: String,
             providerInstanceIdOrDomain: String,
-            inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             APICommands.MUSIC_PODCASTS_PODCAST_EPISODES,
             itemId,
             providerInstanceIdOrDomain,
-            inLibraryOnly,
         )
     }
 
@@ -466,23 +464,30 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         fun getAlbums(
             itemId: String,
             providerInstanceIdOrDomain: String,
-            inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             APICommands.MUSIC_ARTISTS_ARTIST_ALBUMS,
             itemId,
             providerInstanceIdOrDomain,
-            inLibraryOnly,
         )
 
         fun getTracks(
             itemId: String,
             providerInstanceIdOrDomain: String,
-            inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             APICommands.MUSIC_ARTISTS_ARTIST_TRACKS,
             itemId,
             providerInstanceIdOrDomain,
-            inLibraryOnly,
+        )
+
+        fun getSimilarArtists(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+            limit: Int = 15,
+        ) = Library.subItems(
+            APICommands.MUSIC_ARTISTS_SIMILAR_ARTISTS,
+            itemId,
+            providerInstanceIdOrDomain,
+            limit = limit,
         )
     }
 
@@ -512,12 +517,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         fun getTracks(
             itemId: String,
             providerInstanceIdOrDomain: String,
-            inLibraryOnly: Boolean = false,
         ) = Library.subItems(
             APICommands.MUSIC_ALBUMS_ALBUM_TRACKS,
             itemId,
             providerInstanceIdOrDomain,
-            inLibraryOnly,
         )
     }
 
@@ -672,13 +675,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             command: String,
             itemId: String,
             providerInstanceIdOrDomain: String,
-            inLibraryOnly: Boolean = false,
+            limit: Int? = null,
         ) = Request(
             command = command,
             args = buildJsonObject {
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
-                put("in_library_only", JsonPrimitive(inLibraryOnly))
+                limit?.let { put("limit", JsonPrimitive(it)) }
             },
         )
     }

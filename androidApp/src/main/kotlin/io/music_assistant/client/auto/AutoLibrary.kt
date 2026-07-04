@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.milliseconds
 
 // Unified tag for all Android Auto logs (browse / voice / playback). Filter
 // logcat with `AndroidAuto:V *:S` to see the full pipeline. Shared across the
@@ -82,7 +83,7 @@ class AutoLibrary(
             searchFlow
                 .filterNotNull()
                 .filter { it.first.isNotEmpty() }
-                .debounce(Timings.INPUT_DEBOUNCE)
+                .debounce(Timings.INPUT_DEBOUNCE.milliseconds)
                 .collect { (query, result) ->
                     val answer = apiClient.sendRequest(
                         request = Request.Library.search(
@@ -667,8 +668,8 @@ class AutoLibrary(
             androidAutoLog.w { "playUris called with empty media list — no-op." }
             return
         }
-        androidAutoLog.i { "Library.play REPLACE items=${media.size} first=${media.first()}" }
-        dispatchToLocalPlayer(media, QueueOption.REPLACE)
+        androidAutoLog.i { "Library.play PLAY items=${media.size} first=${media.first()}" }
+        dispatchToLocalPlayer(media, QueueOption.PLAY)
     }
 
     private suspend fun playAndShuffle(media: List<String>, shuffle: Boolean) {

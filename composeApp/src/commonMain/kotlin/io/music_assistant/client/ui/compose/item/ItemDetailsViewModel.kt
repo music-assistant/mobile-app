@@ -47,6 +47,8 @@ class ItemDetailsViewModel(
         val albumsState: DataState<List<Album>>,
         val playableItemsState: DataState<List<PlayableItem>>,
         val artistsState: DataState<List<Artist>> = DataState.Loading(),
+        /** Lazily loaded on demand from the artist overflow menu; NoData until then. */
+        val similarArtistsState: DataState<List<Artist>> = DataState.NoData(),
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
@@ -163,6 +165,10 @@ class ItemDetailsViewModel(
                 }
                 loadArtistAlbums(item.itemId, item.provider)
                 loadArtistTracks(item.itemId, item.provider)
+                // Prefetch similar artists in the background so the sheet opens warm: the server's
+                // first per-artist lookup (lastfm + matching) is the slow part, so we pay it while
+                // the user browses albums/tracks rather than on the menu tap.
+                loadSimilarArtists()
             }
 
             is Album -> {
@@ -243,7 +249,6 @@ class ItemDetailsViewModel(
                     Request.Artist.getAlbums(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
-                        inLibraryOnly = false,
                     ),
                 ).getOrNull()
                     ?.filterIsInstance<Album>()
@@ -268,7 +273,6 @@ class ItemDetailsViewModel(
                     Request.Artist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = providerDomain,
-                        inLibraryOnly = false,
                     ),
                 ).getOrNull()
                     ?.filterIsInstance<Track>()
@@ -293,7 +297,6 @@ class ItemDetailsViewModel(
                     Request.Album.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                        inLibraryOnly = false,
                     ),
                 ).getOrNull()
                     ?.filterIsInstance<Track>()
@@ -349,7 +352,6 @@ class ItemDetailsViewModel(
                     Request.Podcast.getEpisodes(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                        inLibraryOnly = false,
                     ),
                 ).getOrNull()
                     ?.filterIsInstance<PodcastEpisode>()
@@ -402,6 +404,37 @@ class ItemDetailsViewModel(
                         albumsState = DataState.Error(),
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Fetches similar artists for the currently loaded [Artist]. Called both as a background
+     * prefetch when the artist loads and (idempotently) when the sheet opens: loaded once — a repeat
+     * call reuses the cached result, but a prior failure is retried.
+     */
+    fun loadSimilarArtists() {
+        val artist = _state.value.itemState.dataOrNull as? Artist ?: return
+        val current = _state.value.similarArtistsState
+        if (current is DataState.Data || current is DataState.Loading) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(similarArtistsState = DataState.Loading()) }
+
+            try {
+                val artists = mediaItemRepository.fetchMediaItems(
+                    Request.Artist.getSimilarArtists(
+                        itemId = artist.itemId,
+                        providerInstanceIdOrDomain = artist.provider,
+                    ),
+                ).getOrNull()
+                    ?.filterIsInstance<Artist>()
+                    ?: emptyList()
+
+                _state.update { it.copy(similarArtistsState = DataState.Data(artists)) }
+            } catch (e: Exception) {
+                Logger.e("Failed to load similar artists", e)
+                _state.update { it.copy(similarArtistsState = DataState.Error()) }
             }
         }
     }

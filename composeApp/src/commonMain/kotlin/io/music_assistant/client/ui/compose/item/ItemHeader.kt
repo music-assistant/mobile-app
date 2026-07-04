@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -56,6 +57,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
+import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -75,6 +77,7 @@ import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.WindowClass
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_similar_artists
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.common_back
 import org.jetbrains.compose.resources.stringResource
@@ -152,6 +155,7 @@ internal fun ItemTopBar(
     libraryActions: LibraryActions?,
     playlistActions: PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
+    onSimilarArtistsClick: () -> Unit,
 ) {
     // Flat fill equal to the header gradient's top color, so the bar reads as one
     // continuous wash with the header below it. Back/overflow icons are NOT control-tinted
@@ -187,6 +191,7 @@ internal fun ItemTopBar(
                     libraryActions = libraryActions,
                     playlistActions = playlistActions,
                     navigateToItem = navigateToItem,
+                    onSimilarArtistsClick = onSimilarArtistsClick,
                 )
             },
         )
@@ -199,9 +204,24 @@ private fun ItemOverflow(
     libraryActions: LibraryActions?,
     playlistActions: PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
+    onSimilarArtistsClick: () -> Unit,
 ) {
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
+
+    // Artist-only, appended last: opens the similar-artists sheet rather than acting on the item,
+    // so it stays out of the shared ItemAction/car-action vocabulary.
+    val similarArtists = if (item is Artist) {
+        listOf(
+            OverflowMenuOption(
+                title = stringResource(Res.string.action_similar_artists),
+                icon = Icons.Default.Groups,
+                onClick = onSimilarArtistsClick,
+            ),
+        )
+    } else {
+        emptyList()
+    }
 
     val canonical = resolveDetailOverflowActions(
         item = item,
@@ -223,7 +243,7 @@ private fun ItemOverflow(
         }
     }
     OverflowMenuButton(
-        options = canonical + item.navigationOptions(navigateToItem),
+        options = canonical + item.navigationOptions(navigateToItem) + similarArtists,
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(

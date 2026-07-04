@@ -330,7 +330,6 @@ object KmpHelper : KoinComponent {
                 Request.Artist.getAlbums(
                     itemId = artist.itemId,
                     providerInstanceIdOrDomain = artist.provider,
-                    inLibraryOnly = false,
                 ),
             ).getOrNull()
                 ?.filterIsInstance<Album>()
@@ -347,7 +346,6 @@ object KmpHelper : KoinComponent {
                 Request.Album.getTracks(
                     itemId = album.itemId,
                     providerInstanceIdOrDomain = album.provider,
-                    inLibraryOnly = false,
                 ),
             ).getOrNull()
                 ?.filterIsInstance<Track>()
@@ -381,7 +379,6 @@ object KmpHelper : KoinComponent {
                 Request.Podcast.getEpisodes(
                     itemId = podcast.itemId,
                     providerInstanceIdOrDomain = podcast.provider,
-                    inLibraryOnly = false,
                 ),
             ).getOrNull()
                 ?.filterIsInstance<PodcastEpisode>()
