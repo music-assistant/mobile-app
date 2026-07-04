@@ -208,11 +208,12 @@ fun MainNavigationRoot(
     val remoteVolumeHint = stringResource(Res.string.players_remote_volume_hint)
     val viewingRemote = data?.selectedPlayer?.isLocal == false
     val currentHint by rememberUpdatedState(remoteVolumeHint)
+    val observingRemote by rememberUpdatedState(viewingRemote)
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, volumeButtonService, viewingRemote) {
+    LaunchedEffect(lifecycleOwner, volumeButtonService) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             volumeButtonService.buttonPresses.collect {
-                if (viewingRemote) {
+                if (observingRemote) {
                     toastState.showToast(currentHint, ToastDuration.SHORT)
                 }
             }
