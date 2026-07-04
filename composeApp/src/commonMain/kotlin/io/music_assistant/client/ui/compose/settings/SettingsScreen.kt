@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,9 +50,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +105,7 @@ import musicassistantclient.composeapp.generated.resources.settings_connecting
 import musicassistantclient.composeapp.generated.resources.settings_connecting_remote
 import musicassistantclient.composeapp.generated.resources.settings_connecting_to
 import musicassistantclient.composeapp.generated.resources.settings_connection_direct
+import musicassistantclient.composeapp.generated.resources.settings_connection_experimental
 import musicassistantclient.composeapp.generated.resources.settings_connection_method
 import musicassistantclient.composeapp.generated.resources.settings_connection_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin
@@ -133,6 +137,7 @@ import musicassistantclient.composeapp.generated.resources.settings_use_tls
 import musicassistantclient.composeapp.generated.resources.settings_use_tls_wss
 import musicassistantclient.composeapp.generated.resources.settings_version_info
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_description
+import musicassistantclient.composeapp.generated.resources.settings_webrtc_disclaimer
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_info
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -450,6 +455,23 @@ private fun AboutSection() {
 }
 
 @Composable
+private fun ExperimentalPill() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.settings_connection_experimental),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
+    }
+}
+
+@Composable
 private fun ConnectionMethodTabs(
     viewModel: SettingsViewModel,
     ipAddress: String,
@@ -490,7 +512,13 @@ private fun ConnectionMethodTabs(
             Tab(
                 selected = selectedTab == 1,
                 onClick = { viewModel.setPreferredConnectionMethod("webrtc") },
-                text = { Text(stringResource(Res.string.settings_connection_webrtc)) },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(Res.string.settings_connection_webrtc))
+                        Spacer(modifier = Modifier.size(6.dp))
+                        ExperimentalPill()
+                    }
+                },
             )
         }
 
@@ -682,6 +710,13 @@ private fun WebRTCConnectionContent(
         text = stringResource(Res.string.settings_webrtc_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(bottom = 12.dp),
+    )
+
+    Text(
+        text = stringResource(Res.string.settings_webrtc_disclaimer),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(bottom = 12.dp),
     )
 

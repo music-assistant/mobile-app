@@ -243,6 +243,7 @@
   <string name="settings_connecting_remote">Connecting to remote server…</string>
   <string name="settings_connecting_to">Connecting to %1$s:%2$s…</string>
   <string name="settings_connection_direct">Direct</string>
+  <string name="settings_connection_experimental">Experimental</string>
   <string name="settings_connection_method">Connection Method</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Custom Sendspin connection</string>
@@ -274,6 +275,7 @@
   <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
   <string name="settings_version_info">Version %1$s, Schema %2$s</string>
   <string name="settings_webrtc_description">Connect from anywhere without port forwarding</string>
+  <string name="settings_webrtc_disclaimer">WebRTC connection can be slower and less reliable than direct or proxied connection to your server.</string>
   <string name="settings_webrtc_info">WebRTC uses cloud signalling with end-to-end encryption. Works through most firewalls and NATs.</string>
   <string name="sort_artist">Artist</string>
   <string name="sort_date_added">Date added</string>
