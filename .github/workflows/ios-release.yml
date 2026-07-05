@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   release:
@@ -212,10 +212,57 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Push build bump branch
+        id: bump
+        run: |
+          NEXT_BUILD=$(( ${{ steps.version.outputs.build }} + 1 ))
+          BRANCH="chore/bump-ios-build-${NEXT_BUILD}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT_BUILD" >> "$GITHUB_OUTPUT"
+
+          git fetch origin main
+          git checkout -b "$BRANCH" origin/main
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEXT_BUILD}" iosApp/iosApp/Info.plist
+          git add iosApp/iosApp/Info.plist
+          git commit -m "chore: bump iOS build number to ${NEXT_BUILD}"
+          git push origin "$BRANCH"
+
+      # Same mechanism as lokalise-pull.yml: actions/github-script + Octokit
+      # (github.token), create-or-update, and issues.addLabels — which
+      # auto-creates the label. Avoids the gh-CLI PR path that failed before.
+      - name: Open bump PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const branch = '${{ steps.bump.outputs.branch }}';
+            const base = 'main';
+            const { data: existing } = await github.rest.pulls.list({
+              owner, repo, state: 'open', head: `${owner}:${branch}`, base, per_page: 1,
+            });
+            let prNumber;
+            if (existing.length > 0) {
+              prNumber = existing[0].number;
+              core.info(`PR #${prNumber} already open for ${branch}`);
+            } else {
+              const { data: pr } = await github.rest.pulls.create({
+                owner, repo, base, head: branch,
+                title: 'chore: bump iOS build to ${{ steps.bump.outputs.next }}',
+                body: 'Automated post-release build bump so `main` carries the next CFBundleVersion. Merge to satisfy the duplicate-tag guard for the next iOS release.',
+                draft: true,
+                maintainer_can_modify: true,
+              });
+              prNumber = pr.number;
+              core.info(`Created PR #${prNumber}`);
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber, labels: ['automated'],
+            });
+
       - name: Summary
         if: success()
         run: |
-          NEXT_BUILD=$(( ${{ steps.version.outputs.build }} + 1 ))
           {
             echo "## iOS Release — success"
             echo ""
@@ -223,9 +270,9 @@ jobs:
             echo "- **Tag**: [\`${{ steps.version.outputs.tag }}\`](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }})"
             echo "- Build should appear in App Store Connect → TestFlight → Builds within a few minutes."
             echo ""
-            echo "### Before the next release"
+            echo "### Next build bump"
             echo ""
-            echo "Bump \`CFBundleVersion\` in \`iosApp/iosApp/Info.plist\` from \`${{ steps.version.outputs.build }}\` to \`${NEXT_BUILD}\` (or higher) in a PR and merge it into \`main\`. The duplicate-tag guard will block a re-dispatch until this is done."
+            echo "Opened branch \`${{ steps.bump.outputs.branch }}\` and a PR bumping \`CFBundleVersion\` to \`${{ steps.bump.outputs.next }}\`. Merge it into \`main\` so the next release clears the duplicate-tag guard."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clean up keychain

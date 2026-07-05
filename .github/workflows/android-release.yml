@@ -9,7 +9,7 @@ on:
 permissions:
   contents: write
   id-token: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   release:
@@ -144,3 +144,36 @@ jobs:
           git add androidApp/build.gradle.kts
           git commit -m "chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})"
           git push origin "${{ steps.next.outputs.branch }}"
+
+      # Same mechanism as lokalise-pull.yml: actions/github-script + Octokit
+      # (github.token), create-or-update, and issues.addLabels — which
+      # auto-creates the label. Avoids the gh-CLI PR path that failed before.
+      - name: Open bump PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const branch = '${{ steps.next.outputs.branch }}';
+            const base = 'main';
+            const { data: existing } = await github.rest.pulls.list({
+              owner, repo, state: 'open', head: `${owner}:${branch}`, base, per_page: 1,
+            });
+            let prNumber;
+            if (existing.length > 0) {
+              prNumber = existing[0].number;
+              core.info(`PR #${prNumber} already open for ${branch}`);
+            } else {
+              const { data: pr } = await github.rest.pulls.create({
+                owner, repo, base, head: branch,
+                title: 'chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})',
+                body: 'Automated post-release version bump so `main` carries the next versionName/versionCode.',
+                draft: true,
+                maintainer_can_modify: true,
+              });
+              prNumber = pr.number;
+              core.info(`Created PR #${prNumber}`);
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber, labels: ['automated'],
+            });
