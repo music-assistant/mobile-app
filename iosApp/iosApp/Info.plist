@@ -32,7 +32,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>42</string>
+	<string>43</string>
 	<key>INIntentsSupported</key>
 	<array>
 		<string>INPlayMediaIntent</string>
@@ -46,12 +46,6 @@
 		<string>INMediaCategoryPodcasts</string>
 		<string>INMediaCategoryRadio</string>
 	</array>
-	<key>NSUserActivityTypes</key>
-	<array>
-		<string>INPlayMediaIntent</string>
-		<string>INUpdateMediaAffinityIntent</string>
-		<string>INSearchForMediaIntent</string>
-	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
@@ -64,6 +58,12 @@
 	<string>Music Assistant does not access the microphone. This description is required because an included framework (WebRTC) references microphone APIs that this app does not use.</string>
 	<key>NSSiriUsageDescription</key>
 	<string>Music Assistant uses Siri to search your library, play music, and like or dislike songs hands-free, including from CarPlay.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>INPlayMediaIntent</string>
+		<string>INUpdateMediaAffinityIntent</string>
+		<string>INSearchForMediaIntent</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
