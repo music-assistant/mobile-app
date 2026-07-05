@@ -105,8 +105,11 @@ class AuthenticationManager(
                                         } else {
                                             log.i { "AwaitingAuth(NotStarted) — auto-login with saved token" }
 
-                                            val serverId = state.connectionData.serverInfo?.serverId
-                                            if (serverId == settings.getIdForServer(serverIdentifier)) {
+                                            val currentServerId =
+                                                state.connectionData.serverInfo?.serverId
+                                            val previousServerId =
+                                                settings.getIdForServer(serverIdentifier)
+                                            if (previousServerId == null || currentServerId == previousServerId) {
                                                 authorizeWithSavedToken(token)
                                             } else {
                                                 serviceClient.forceDisconnect(

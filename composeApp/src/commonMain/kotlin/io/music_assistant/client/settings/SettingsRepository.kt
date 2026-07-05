@@ -75,8 +75,8 @@ class SettingsRepository(
         }
     }
 
-    fun getIdForServer(serverIdentifier: String): String {
-        return settings.getStringOrNull("id_$serverIdentifier")!!
+    fun getIdForServer(serverIdentifier: String): String? {
+        return settings.getStringOrNull("id_$serverIdentifier")
     }
 
     fun setIdForServer(serverIdentifier: String, id: String) {
