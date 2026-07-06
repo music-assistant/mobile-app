@@ -22,10 +22,12 @@ import io.music_assistant.client.R
 import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
+import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import kotlinx.coroutines.CoroutineScope
@@ -316,6 +318,11 @@ class SharedMediaSessionManager(
                             )
                         }
                     }
+
+                    "ACTION_TOGGLE_FAVORITE" ->
+                        (currentPlayer()?.queueInfo?.currentItem?.track as? AppMediaItem)
+                            ?.takeIf { it.mediaType == MediaType.TRACK && it.canBeFavorited }
+                            ?.let { dataSource.toggleFavorite(it) }
                 }
             }
         }
@@ -442,6 +449,16 @@ class SharedMediaSessionManager(
                                 R.drawable.ic_speaker,
                             ).build(),
                         )
+                    } else if (data.isFavoritableTrack) {
+                        // Only 2 custom-action slots exist; on a favoritable track the
+                        // favorite toggle takes the repeat slot (see plan / issue).
+                        builder.addCustomAction(
+                            PlaybackStateCompat.CustomAction.Builder(
+                                "ACTION_TOGGLE_FAVORITE",
+                                strings?.favorite ?: "",
+                                getFavoriteIcon(data.isFavorite),
+                            ).build(),
+                        )
                     } else {
                         data.repeatMode?.let { repeatMode ->
                             builder.addCustomAction(
@@ -516,6 +533,13 @@ class SharedMediaSessionManager(
         RepeatMode.ONE -> R.drawable.baseline_repeat_one_24
         RepeatMode.OFF -> R.drawable.baseline_no_repeat_24
     }
+
+    private fun getFavoriteIcon(isFavorite: Boolean): Int =
+        if (isFavorite) {
+            R.drawable.baseline_favorite_24
+        } else {
+            R.drawable.baseline_favorite_border_24
+        }
 
     private fun getShuffleModeIcon(shuffleMode: Boolean): Int =
         if (shuffleMode) {

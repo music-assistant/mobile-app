@@ -172,7 +172,14 @@ class MainDataSource(
     private val _playersData = MutableStateFlow<DataState<List<PlayerData>>>(DataState.Loading())
     val playersData = _playersData.asStateFlow()
 
-    val localPlayer = localPlayerController.localPlayerData
+    // Overlay the optimistic favorite override onto the local player, exactly as
+    // [buildPlayerDataList] does for `_playersData`. Without this, the Android-Auto
+    // host path (which sources `localPlayer`, not `_playersData`) never sees the
+    // override and the heart only flips after a real server update.
+    val localPlayer: StateFlow<PlayerData?> =
+        combine(localPlayerController.localPlayerData, _favoriteOverrides) { data, overrides ->
+            data?.let { applyFavoriteOverride(it, overrides) }
+        }.stateIn(this, SharingStarted.Eagerly, null)
 
     val isAnythingPlaying =
         playersData
@@ -915,6 +922,30 @@ class MainDataSource(
     fun setFavoriteOverride(item: AppMediaItem, favorite: Boolean?) {
         _favoriteOverrides.update { current ->
             if (favorite == null) current - favKey(item) else current + (favKey(item) to favorite)
+        }
+    }
+
+    /**
+     * Canonical favorite toggle for [item], shared by the in-app player heart and the
+     * media-session (Android Auto) favorite action. Optimistically flips the override
+     * (the server's queue payload reports a stale `favorite`), fires the add/remove
+     * request, and rolls the override back if the server rejects it. Reconciled later
+     * by [MediaItemUpdatedEvent].
+     */
+    fun toggleFavorite(item: AppMediaItem) {
+        launch {
+            val newFavorite = item.favorite != true
+            val result = if (newFavorite) {
+                val uri = item.uri ?: return@launch
+                setFavoriteOverride(item, true)
+                apiClient.sendRequest(Request.Library.addFavorite(uri))
+            } else {
+                setFavoriteOverride(item, false)
+                apiClient.sendRequest(
+                    Request.Library.removeFavorite(item.itemId, item.mediaType),
+                )
+            }
+            result.onFailure { setFavoriteOverride(item, item.favorite) }
         }
     }
 

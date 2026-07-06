@@ -1,8 +1,11 @@
 package io.music_assistant.client.services
 
 import android.os.SystemClock
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 
 // Elapsed time can drift up to 1s before we treat it as a real position change.
@@ -20,6 +23,9 @@ data class MediaNotificationData(
     val shuffleEnabled: Boolean?,
     // Audiobook / podcast episode: notification swaps shuffle & repeat for seek controls.
     val isLongFormContent: Boolean,
+    // Current item is a favoritable track: the repeat slot shows a favorite toggle instead.
+    val isFavoritableTrack: Boolean,
+    val isFavorite: Boolean,
     val isPlaying: Boolean,
     val imageUrl: String?,
     val elapsedTime: Long?,
@@ -45,7 +51,9 @@ data class MediaNotificationData(
             playerData: PlayerData,
             multiplePlayers: Boolean,
             effectiveElapsedSec: Double?,
-        ) = MediaNotificationData(
+        ) = run {
+            val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
+            MediaNotificationData(
             multiplePlayers = multiplePlayers,
             longItemId = playerData.player.currentMedia?.hashCode()?.toLong(),
             name = playerData.player.currentMedia?.title,
@@ -56,6 +64,9 @@ data class MediaNotificationData(
             shuffleEnabled = playerData.queueInfo?.shuffleEnabled
                 ?.takeIf { playerData.queueInfo?.isDynamicPlaylist != true },
             isLongFormContent = playerData.queueInfo?.currentItem?.track.isLongFormSpokenContent,
+            isFavoritableTrack = currentTrack
+                ?.let { it.mediaType == MediaType.TRACK && it.canBeFavorited } == true,
+            isFavorite = currentTrack?.favorite == true,
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
             elapsedTime = effectiveElapsedSec?.toLong()?.let { it * 1000 },
@@ -63,7 +74,8 @@ data class MediaNotificationData(
             playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
             duration = playerData.player.currentMedia?.duration?.toLong()
                 ?.let { it * 1000 },
-        )
+            )
+        }
 
         fun areTooSimilarToUpdate(old: MediaNotificationData, new: MediaNotificationData): Boolean {
             if (old.copy(elapsedTime = null, elapsedUpdateTimeMs = null) !=
