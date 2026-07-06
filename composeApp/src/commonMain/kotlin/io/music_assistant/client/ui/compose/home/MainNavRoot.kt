@@ -174,7 +174,7 @@ fun MainNavigationRoot(
     LaunchedEffect(pendingDeepLink, connectionState) {
         val dest = pendingDeepLink ?: return@LaunchedEffect
         val authenticated = (connectionState as? SessionState.Connected)
-            ?.dataConnectionState == DataConnectionState.Authenticated
+            ?.dataConnectionState is DataConnectionState.Authenticated
         if (!authenticated) return@LaunchedEffect
         when (dest) {
             DeepLinkDestination.Home -> {

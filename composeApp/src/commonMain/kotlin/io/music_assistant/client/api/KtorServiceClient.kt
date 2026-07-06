@@ -141,7 +141,7 @@ class KtorServiceClient(
         .stateIn(this, SharingStarted.Eagerly, null)
 
     override val isReadyForCommands: StateFlow<Boolean> = _sessionState
-        .map { it is SessionState.Connected && it.dataConnectionState == DataConnectionState.Authenticated }
+        .map { it is SessionState.Connected && it.dataConnectionState is DataConnectionState.Authenticated }
         .stateIn(this, SharingStarted.Eagerly, false)
 
     private val _externalConsumerActive = MutableStateFlow(false)
@@ -422,7 +422,7 @@ class KtorServiceClient(
     private fun dcsLabel(dcs: DataConnectionState): String = when (dcs) {
         DataConnectionState.AwaitingServerInfo -> "AwaitingServerInfo"
         is DataConnectionState.AwaitingAuth -> "AwaitingAuth"
-        DataConnectionState.Authenticated -> "Authenticated"
+        is DataConnectionState.Authenticated -> "Authenticated"
     }
 
     private val rpcEngine = RpcEngine(
@@ -1058,7 +1058,7 @@ class KtorServiceClient(
                         // NotStarted/InProgress/LoggedOut handled by AuthMgr or user; no-op.
                     }
                     DataConnectionState.AwaitingServerInfo -> Unit // server/hello pending
-                    DataConnectionState.Authenticated -> Unit // ready
+                    is DataConnectionState.Authenticated -> Unit // ready
                 }
             }
         }

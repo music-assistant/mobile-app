@@ -365,7 +365,7 @@ class MainDataSource(
                         watchJob?.cancel()
                         watchJob = watchApiEvents()
 
-                        if (sessionState.dataConnectionState == DataConnectionState.Authenticated) {
+                        if (sessionState.dataConnectionState is DataConnectionState.Authenticated) {
                             when (val currentState = _serverPlayers.value) {
                                 is DataState.Stale -> {
                                     log.i { "Recovering from ${currentState.reason} stale state" }

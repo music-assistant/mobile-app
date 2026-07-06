@@ -26,7 +26,7 @@ data class ConnectionData(
         get() = when {
             serverInfo == null -> DataConnectionState.AwaitingServerInfo
             user == null || needsServerReauth -> DataConnectionState.AwaitingAuth(authProcessState)
-            else -> DataConnectionState.Authenticated
+            else -> DataConnectionState.Authenticated(serverInfo)
         }
 }
 

@@ -95,7 +95,7 @@ class HomeScreenViewModel(
 
                     is SessionState.Connected -> {
                         when (val connState = connection.dataConnectionState) {
-                            DataConnectionState.Authenticated -> {
+                            is DataConnectionState.Authenticated -> {
                                 if (_state.value.recommendations !is DataState.Data) {
                                     loadData()
                                 }

@@ -158,7 +158,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val connectionHistory by viewModel.connectionHistory.collectAsStateWithLifecycle()
     val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
-    val isAuthenticated = dataConnection == DataConnectionState.Authenticated
+    val isAuthenticated = dataConnection is DataConnectionState.Authenticated
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
@@ -318,7 +318,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         LoginSection(connectedState.user)
 
                         when (dataConnection) {
-                            DataConnectionState.Authenticated -> {
+                            is DataConnectionState.Authenticated -> {
                                 // State 4: Connected and authenticated
 
                                 // Local Player Section

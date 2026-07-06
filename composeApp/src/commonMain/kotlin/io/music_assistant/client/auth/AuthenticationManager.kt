@@ -129,14 +129,13 @@ class AuthenticationManager(
                             }
                         }
 
-                        DataConnectionState.Authenticated -> {
+                        is DataConnectionState.Authenticated -> {
                             state.user?.let { user ->
                                 log.i { "Authenticated" }
                                 _authState.value = AuthState.Authenticated(user)
 
                                 val serverIdentifier = settings.getServerIdentifier(state)
-
-                                val serverId = state.connectionData.serverInfo!!.serverId
+                                val serverId = dataConnectionState.serverInfo.serverId
                                 settings.setIdForServer(
                                     serverIdentifier,
                                     serverId,
