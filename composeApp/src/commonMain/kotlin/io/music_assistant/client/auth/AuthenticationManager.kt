@@ -94,7 +94,7 @@ class AuthenticationManager(
                                             log.i { "AwaitingAuth(NotStarted) — auto-login with saved token" }
 
                                             val currentServerId =
-                                                state.connectionData.serverInfo?.serverId
+                                                dataConnectionState.serverInfo.serverId
                                             val previousServerId =
                                                 settings.getIdForServer(serverIdentifier)
                                             if (previousServerId == null || currentServerId == previousServerId) {
