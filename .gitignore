@@ -74,3 +74,4 @@ androidApp/src/selfSignedRelease/assets/adi-registration.properties
 
 # Logs and other junk files
 tmp/
+.server
