@@ -25,6 +25,7 @@
   <string name="action_remove">Verwijderen</string>
   <string name="action_remove_from_library">Verwijder uit bibliotheek</string>
   <string name="action_remove_from_playlist">Uit afspeellijst verwijderen</string>
+  <string name="action_similar_artists">Vergelijkbare artiesten</string>
   <string name="action_start_radio">Radio starten</string>
   <string name="action_unfavorite">Verwijder favoriet</string>
   <string name="album_disc_header">Schijf %1$d</string>
@@ -59,6 +60,7 @@
   <string name="cd_add_playlist">Afspeellijst toevoegen</string>
   <string name="cd_add_to_group">Voeg toe aan groep</string>
   <string name="cd_applied">Toegepast</string>
+  <string name="cd_close">Sluiten</string>
   <string name="cd_connection_history">Verbindingsgeschiedenis</string>
   <string name="cd_current_player">Huidige speler: %1$s</string>
   <string name="cd_customize_tabs">Tabbladen aanpassen</string>
@@ -185,6 +187,7 @@
   <string name="players_loading">Spelers laden…</string>
   <string name="players_none_available">Geen spelers beschikbaar</string>
   <string name="players_nothing">Speelt niets af</string>
+  <string name="players_remote_volume_hint">De volumeknoppen werken alleen voor de lokale speler</string>
   <string name="players_title">Spelers</string>
   <string name="playlist_add_button">Afspeellijst toevoegen</string>
   <string name="playlist_add_new">Nieuwe toevoegen</string>
@@ -224,11 +227,11 @@
   <string name="settings_car_bulk_for">%1$s acties</string>
   <string name="settings_car_dsp">DSP presets</string>
   <string name="settings_car_dsp_disable">DSP uitschakelen</string>
-  <string name="settings_car_dsp_explanation">Kies wat er met de DSP van de lokae speler gebeurt, afhankelijk van de verbinding met de auto. De wijzigingen worden toegepast zodra de telefoon de volgende keer wordt aangesloten of losgekoppeld.</string>
+  <string name="settings_car_dsp_explanation">Kies wat er met de DSP van de lokale speler gebeurt, afhankelijk van de verbinding met de auto. De wijzigingen worden bij de volgende keer aansluiten of loskoppelen toegepast.</string>
   <string name="settings_car_dsp_nothing">Niets</string>
-  <string name="settings_car_dsp_on_connect">Bij het verbinden</string>
-  <string name="settings_car_dsp_on_disconnect">Bij het loskoppelen</string>
-  <string name="settings_car_dsp_unavailable">Een eerder geselecteerde preset is op de server verwijderd en is teruggezet naar 'Niets'.</string>
+  <string name="settings_car_dsp_on_connect">Bij verbinden</string>
+  <string name="settings_car_dsp_on_disconnect">Bij loskoppelen</string>
+  <string name="settings_car_dsp_unavailable">Een eerder geselecteerde preset is van de server verwijderd en is teruggezet naar 'Niets'.</string>
   <string name="settings_car_enqueue_action">Wachtrij actie</string>
   <string name="settings_car_item_actions">Itemacties</string>
   <string name="settings_car_tabs">Tabbladen</string>
@@ -243,6 +246,7 @@
   <string name="settings_connecting_remote">Verbinding maken met externe server…</string>
   <string name="settings_connecting_to">Verbinden met %1$s:%2$s…</string>
   <string name="settings_connection_direct">Direct</string>
+  <string name="settings_connection_experimental">Experimenteel</string>
   <string name="settings_connection_method">Verbindingsmethode</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Aangepaste Sendspin-verbinding</string>
@@ -274,6 +278,7 @@
   <string name="settings_use_tls_wss">Gebruik beveiligde verbinding (WSS/TLS)</string>
   <string name="settings_version_info">Versie %1$s, Schema %2$s</string>
   <string name="settings_webrtc_description">Verbind vanaf elke locatie zonder port forwarding</string>
+  <string name="settings_webrtc_disclaimer">De WebRTC-verbinding kan trager en minder betrouwbaar zijn dan een directe verbinding of een verbinding via een proxy met je server.</string>
   <string name="settings_webrtc_info">WebRTC maakt gebruik van cloudsignalering met end-to-end-encryptie. Werkt door de meeste firewalls en NAT's.</string>
   <string name="sort_artist">Artiest</string>
   <string name="sort_date_added">Datum toegevoegd</string>
