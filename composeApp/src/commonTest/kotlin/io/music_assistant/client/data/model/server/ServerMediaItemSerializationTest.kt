@@ -14,7 +14,7 @@ import kotlin.test.assertNull
  * out-of-Int-range value is dropped, never wrapped by `toInt()`.
  */
 class ServerMediaItemSerializationTest {
-    private val factory = MediaItemFactory(FakeClient())
+    private val factory = MediaItemFactory(StubsClient())
 
     private val outOfRangePosition = -1_727_938_860_000L
     private val validAlbumPosition = 3L

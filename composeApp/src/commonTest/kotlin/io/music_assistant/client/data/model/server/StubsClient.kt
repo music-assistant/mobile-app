@@ -11,7 +11,7 @@ import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
-class FakeClient : ServiceClient {
+class StubsClient : ServiceClient {
     override val sessionState: StateFlow<SessionState>
         get() = TODO("Not yet implemented")
 
@@ -76,5 +76,8 @@ class FakeClient : ServiceClient {
     }
 
     override fun onPlaybackInactive() {
+    }
+
+    override fun forceDisconnect(reason: Exception) {
     }
 }

@@ -55,7 +55,7 @@ class AuthenticationManagerTest {
 
     @Test
     fun `getProviders rethrows cancellation instead of driving authState to Error`() = runTest {
-        val client = FakeServiceClient()
+        val client = StubServiceClient()
         val manager = AuthenticationManager(client, SettingsRepository(MapSettings()))
         try {
             val job = launch { manager.getProviders() }
@@ -83,7 +83,7 @@ class AuthenticationManagerTest {
 
     @Test
     fun `loginWithCredentials rethrows cancellation instead of driving authState to Error`() = runTest {
-        val client = FakeServiceClient()
+        val client = StubServiceClient()
         val manager = AuthenticationManager(client, SettingsRepository(MapSettings()))
         try {
             val job = launch { manager.loginWithCredentials("builtin", "user", "pass") }
@@ -104,7 +104,7 @@ class AuthenticationManagerTest {
 
     @Test
     fun `getOAuthUrl rethrows cancellation instead of completing with a failure result`() = runTest {
-        val client = FakeServiceClient()
+        val client = StubServiceClient()
         val manager = AuthenticationManager(client, SettingsRepository(MapSettings()))
         try {
             // getOAuthUrl never touches authState, and job.isCancelled is true whether
@@ -133,7 +133,7 @@ class AuthenticationManagerTest {
  * [awaitCancellation] so a caller can be cancelled mid-request; the session
  * stays Disconnected so the manager's init monitor does nothing.
  */
-private class FakeServiceClient : ServiceClient {
+private class StubServiceClient : ServiceClient {
     override val sessionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     override val isReadyForCommands = MutableStateFlow(false)
     override val externalConsumerActive = MutableStateFlow(false)
@@ -164,4 +164,5 @@ private class FakeServiceClient : ServiceClient {
     override fun onPlaybackActive() = Unit
     override fun onExternalConsumerInactive() = Unit
     override fun onPlaybackInactive() = Unit
+    override fun forceDisconnect(reason: Exception) = Unit
 }

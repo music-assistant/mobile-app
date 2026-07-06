@@ -417,4 +417,5 @@ private class RecordingClient(
     override fun onPlaybackActive() = Unit
     override fun onExternalConsumerInactive() = Unit
     override fun onPlaybackInactive() = Unit
+    override fun forceDisconnect(reason: Exception) = Unit
 }
