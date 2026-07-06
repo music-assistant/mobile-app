@@ -149,6 +149,13 @@ val SessionState.Reconnecting.connectionInfo: ConnectionInfo?
 
 fun SettingsRepository.getServerIdentifier(sessionState: SessionState): String? {
     return when (sessionState) {
+        is SessionState.Connected -> getServerIdentifier(sessionState)
+        else -> null
+    }
+}
+
+fun SettingsRepository.getServerIdentifier(sessionState: SessionState.Connected): String {
+    return when (sessionState) {
         is SessionState.Connected.Direct -> this.getDirectServerIdentifier(
             sessionState.connectionInfo.host,
             sessionState.connectionInfo.port,
@@ -156,6 +163,5 @@ fun SettingsRepository.getServerIdentifier(sessionState: SessionState): String? 
         )
 
         is SessionState.Connected.WebRTC -> this.getWebRTCServerIdentifier(sessionState.remoteId.rawId)
-        else -> null
     }
 }

@@ -13,6 +13,7 @@ import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.mainDispatcher
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CancellationException
@@ -89,16 +90,7 @@ class AuthenticationManager(
                                     if (isLoggingOut) {
                                         log.i { "AwaitingAuth(NotStarted) — skipping auto-login (logging out)" }
                                     } else {
-                                        val serverIdentifier = when (state) {
-                                            is SessionState.Connected.Direct ->
-                                                settings.getDirectServerIdentifier(
-                                                    state.connectionInfo.host,
-                                                    state.connectionInfo.port,
-                                                    state.connectionInfo.isTls,
-                                                )
-                                            is SessionState.Connected.WebRTC ->
-                                                settings.getWebRTCServerIdentifier(state.remoteId.rawId)
-                                        }
+                                        val serverIdentifier = settings.getServerIdentifier(state)
                                         val token = settings.getTokenForServer(serverIdentifier)
                                         if (token == null) {
                                             log.i { "AwaitingAuth(NotStarted) — no saved token for server" }
@@ -146,17 +138,7 @@ class AuthenticationManager(
                                 log.i { "Authenticated" }
                                 _authState.value = AuthState.Authenticated(user)
 
-                                val serverIdentifier = when (state) {
-                                    is SessionState.Connected.Direct ->
-                                        settings.getDirectServerIdentifier(
-                                            state.connectionInfo.host,
-                                            state.connectionInfo.port,
-                                            state.connectionInfo.isTls,
-                                        )
-
-                                    is SessionState.Connected.WebRTC ->
-                                        settings.getWebRTCServerIdentifier(state.remoteId.rawId)
-                                }
+                                val serverIdentifier = settings.getServerIdentifier(state)
 
                                 val serverId = state.connectionData.serverInfo!!.serverId!!
                                 settings.setIdForServer(
@@ -332,19 +314,11 @@ class AuthenticationManager(
             // Set flag FIRST, before any async operations
             _isLoggingOut.value = true
             val currentState = serviceClient.sessionState.value
-            if (currentState is SessionState.Connected) {
-                val serverIdentifier = when (currentState) {
-                    is SessionState.Connected.Direct ->
-                        settings.getDirectServerIdentifier(
-                            currentState.connectionInfo.host,
-                            currentState.connectionInfo.port,
-                            currentState.connectionInfo.isTls,
-                        )
-                    is SessionState.Connected.WebRTC ->
-                        settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
-                }
+            val serverIdentifier = settings.getServerIdentifier(currentState)
+            if (serverIdentifier != null) {
                 settings.setTokenForServer(serverIdentifier, null)
             }
+
             serviceClient.logout()
             _authState.value = AuthState.Idle
             // Keep the flag set to prevent auto-login until user explicitly logs in again

@@ -28,6 +28,7 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.connectionInfo
 import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.client.utils.currentTimeMillis
+import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.update
 import io.music_assistant.client.webrtc.model.RemoteId
@@ -873,19 +874,7 @@ class KtorServiceClient(
     override fun logout() {
         val currentState = _sessionState.value
         if (currentState is SessionState.Connected) {
-            val serverIdentifier = when (currentState) {
-                is SessionState.Connected.Direct -> {
-                    settings.getDirectServerIdentifier(
-                        currentState.connectionInfo.host,
-                        currentState.connectionInfo.port,
-                        currentState.connectionInfo.isTls,
-                    )
-                }
-
-                is SessionState.Connected.WebRTC -> {
-                    settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
-                }
-            }
+            val serverIdentifier = settings.getServerIdentifier(currentState)
             settings.setTokenForServer(serverIdentifier, null)
             logger.d { "Cleared token for server" }
         }
@@ -946,16 +935,7 @@ class KtorServiceClient(
         }
         val currentState = _sessionState.value
         if (currentState is SessionState.Connected) {
-            val serverIdentifier = when (currentState) {
-                is SessionState.Connected.Direct -> settings.getDirectServerIdentifier(
-                    currentState.connectionInfo.host,
-                    currentState.connectionInfo.port,
-                    currentState.connectionInfo.isTls,
-                )
-
-                is SessionState.Connected.WebRTC ->
-                    settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
-            }
+            val serverIdentifier = settings.getServerIdentifier(currentState)
             settings.setTokenForServer(serverIdentifier, token)
             logger.d { "Saved token for server" }
         }
@@ -974,19 +954,7 @@ class KtorServiceClient(
     private fun clearCurrentServerToken() {
         val currentState = _sessionState.value
         if (currentState is SessionState.Connected) {
-            val serverIdentifier = when (currentState) {
-                is SessionState.Connected.Direct -> {
-                    settings.getDirectServerIdentifier(
-                        currentState.connectionInfo.host,
-                        currentState.connectionInfo.port,
-                        currentState.connectionInfo.isTls,
-                    )
-                }
-
-                is SessionState.Connected.WebRTC -> {
-                    settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
-                }
-            }
+            val serverIdentifier = settings.getServerIdentifier(currentState)
             settings.setTokenForServer(serverIdentifier, null)
             logger.i { "Cleared token for server due to auth failure" }
         }
