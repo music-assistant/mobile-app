@@ -29,6 +29,7 @@ import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.UniqueIdGenerator
+import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
@@ -519,19 +520,8 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
-        val currentState = _sessionState.value
-        if (currentState is SessionState.Connected) {
-            val serverIdentifier = when (currentState) {
-                is SessionState.Connected.Direct -> settingsRepository.getDirectServerIdentifier(
-                    currentState.connectionInfo.host,
-                    currentState.connectionInfo.port,
-                    currentState.connectionInfo.isTls,
-                )
-
-                is SessionState.Connected.WebRTC ->
-                    settingsRepository.getWebRTCServerIdentifier(currentState.remoteId.rawId)
-            }
-
+        val serverIdentifier = settingsRepository.getServerIdentifier(_sessionState.value)
+        if (serverIdentifier != null) {
             settingsRepository.setTokenForServer(serverIdentifier, token)
         }
 
