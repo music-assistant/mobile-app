@@ -136,7 +136,7 @@ class AuthenticationManager(
 
                                 val serverIdentifier = settings.getServerIdentifier(state)
 
-                                val serverId = state.connectionData.serverInfo!!.serverId!!
+                                val serverId = state.connectionData.serverInfo!!.serverId
                                 settings.setIdForServer(
                                     serverIdentifier,
                                     serverId,
