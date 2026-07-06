@@ -8,8 +8,6 @@ import io.music_assistant.client.data.model.server.OauthUrl
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.ui.compose.common.DisplayString
-import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
@@ -32,9 +30,7 @@ sealed class AuthState {
     data object Loading : AuthState()
     data class ProvidersLoaded(val providers: List<AuthProvider>) : AuthState()
     data class Authenticated(val user: User) : AuthState()
-    data class Error(val message: DisplayString) : AuthState() {
-        constructor(message: String) : this(message.toDisplayString())
-    }
+    data class Error(val message: String) : AuthState()
 }
 
 private val log = Logger.withTag("AuthMgr")
