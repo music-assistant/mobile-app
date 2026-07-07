@@ -293,35 +293,32 @@ fun MainNavigationRoot(
                     playerExpanded = !playerExpanded
                 }
 
-                Box(
+                ConditionalBackNavDisplay(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background),
-                ) {
-                    ConditionalBackNavDisplay(
-                        entries = rememberDecoratedNavEntries(
-                            entryDecorators = listOf(
-                                rememberSaveableStateHolderNavEntryDecorator(),
-                                rememberViewModelStoreNavEntryDecorator(),
-                            ),
-                            entries = multiBackStack.toEntries(
-                                mainNavEntryProvider(
-                                    floatingBarContentPadding,
-                                    multiBackStack,
-                                    homeScreenViewModel,
-                                    actionsViewModel,
-                                    homeScreenState,
-                                    libraryScreenState,
-                                    searchScreenState,
-                                ),
+                    entries = rememberDecoratedNavEntries(
+                        entryDecorators = listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator(),
+                        ),
+                        entries = multiBackStack.toEntries(
+                            mainNavEntryProvider(
+                                floatingBarContentPadding,
+                                multiBackStack,
+                                homeScreenViewModel,
+                                actionsViewModel,
+                                homeScreenState,
+                                libraryScreenState,
+                                searchScreenState,
                             ),
                         ),
-                        onBack = {
-                            multiBackStack.removeLastOrNull()
-                        },
-                        backEnabled = !playerExpanded,
-                    )
-                }
+                    ),
+                    onBack = {
+                        multiBackStack.removeLastOrNull()
+                    },
+                    backEnabled = !playerExpanded,
+                )
             }
         }
         ToastHost(toastState = toastState)
