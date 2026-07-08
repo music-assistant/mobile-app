@@ -28,7 +28,6 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.connectionInfo
 import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.client.utils.currentTimeMillis
-import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.update
 import io.music_assistant.client.webrtc.model.RemoteId
@@ -845,7 +844,6 @@ class KtorServiceClient(
                 AuthResolution.Aborted -> return
                 is AuthResolution.Surface -> setAuthFailed(resolution.message)
                 is AuthResolution.Reject -> {
-                    clearCurrentServerToken()
                     setAuthFailed(resolution.message)
                 }
 
@@ -856,7 +854,6 @@ class KtorServiceClient(
         } catch (e: Exception) {
             if (_sessionState.value !is SessionState.Connected) return
             setAuthFailed(e.message ?: "Exception happened: $e")
-            clearCurrentServerToken()
         }
     }
 
@@ -874,13 +871,6 @@ class KtorServiceClient(
     }
 
     override fun logout() {
-        val currentState = _sessionState.value
-        if (currentState is SessionState.Connected) {
-            val serverIdentifier = settings.getServerIdentifier(currentState)
-            settings.setTokenForServer(serverIdentifier, null)
-            logger.d { "Cleared token for server" }
-        }
-
         if (_sessionState.value !is SessionState.Connected) return
         _sessionState.update {
             (it as? SessionState.Connected)?.update(
@@ -915,7 +905,6 @@ class KtorServiceClient(
                 AuthResolution.Aborted -> return
                 is AuthResolution.Surface -> setAuthFailed(resolution.message)
                 is AuthResolution.Reject -> {
-                    clearCurrentServerToken()
                     setAuthFailed(resolution.message)
                 }
                 is AuthResolution.Authenticated ->
@@ -926,7 +915,6 @@ class KtorServiceClient(
         } catch (e: Exception) {
             if (_sessionState.value !is SessionState.Connected) return
             setAuthFailed(e.message ?: "Exception happened: $e")
-            clearCurrentServerToken()
         }
     }
 
@@ -934,12 +922,6 @@ class KtorServiceClient(
         val user = answer.resultAs<AuthorizationResponse>()?.user ?: run {
             setAuthFailed("Failed to parse user data")
             return
-        }
-        val currentState = _sessionState.value
-        if (currentState is SessionState.Connected) {
-            val serverIdentifier = settings.getServerIdentifier(currentState)
-            settings.setTokenForServer(serverIdentifier, token)
-            logger.d { "Saved token for server" }
         }
 
         silentReauth.reset()
@@ -949,16 +931,8 @@ class KtorServiceClient(
                 user = user,
                 wasAutoLogin = isAutoLogin,
                 needsServerReauth = false,
+                token = token,
             ) ?: it
-        }
-    }
-
-    private fun clearCurrentServerToken() {
-        val currentState = _sessionState.value
-        if (currentState is SessionState.Connected) {
-            val serverIdentifier = settings.getServerIdentifier(currentState)
-            settings.setTokenForServer(serverIdentifier, null)
-            logger.i { "Cleared token for server due to auth failure" }
         }
     }
 

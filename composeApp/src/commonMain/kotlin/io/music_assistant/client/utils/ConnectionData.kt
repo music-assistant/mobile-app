@@ -12,6 +12,7 @@ data class ConnectionData(
     val user: User? = null,
     val authProcessState: AuthProcessState = AuthProcessState.NotStarted,
     val wasAutoLogin: Boolean = false,
+    val token: String? = null,
     /**
      * True when the transport reconnected and the underlying server-side session
      * does NOT survive that reconnect (e.g. WebRTC: every new peer connection is a
@@ -26,7 +27,7 @@ data class ConnectionData(
         get() = when {
             serverInfo == null -> DataConnectionState.AwaitingServerInfo
             user == null || needsServerReauth -> DataConnectionState.AwaitingAuth(authProcessState, serverInfo)
-            else -> DataConnectionState.Authenticated(serverInfo)
+            else -> DataConnectionState.Authenticated(serverInfo, token!!)
         }
 }
 

@@ -29,7 +29,6 @@ import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.UniqueIdGenerator
-import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.update
 import io.music_assistant.client.webrtc.DataChannelWrapper
@@ -529,11 +528,6 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
-        val serverIdentifier = settingsRepository.getServerIdentifier(_sessionState.value)
-        if (serverIdentifier != null) {
-            settingsRepository.setTokenForServer(serverIdentifier, token)
-        }
-
         _sessionState.update {
             when (it) {
                 is SessionState.Connected.Direct -> {
@@ -543,6 +537,7 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                             authProcessState = AuthProcessState.NotStarted,
                             user = User("-1", username, username, "user"),
                             wasAutoLogin = true,
+                            token = token,
                         ),
                     )
                 }

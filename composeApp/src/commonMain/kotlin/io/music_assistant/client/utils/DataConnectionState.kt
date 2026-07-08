@@ -7,5 +7,5 @@ sealed interface DataConnectionState {
     data class AwaitingAuth(val authProcessState: AuthProcessState, val serverInfo: ServerInfo) :
         DataConnectionState
 
-    data class Authenticated(val serverInfo: ServerInfo) : DataConnectionState
+    data class Authenticated(val serverInfo: ServerInfo, val token: String) : DataConnectionState
 }

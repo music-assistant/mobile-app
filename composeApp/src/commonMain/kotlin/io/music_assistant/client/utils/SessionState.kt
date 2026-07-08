@@ -88,6 +88,7 @@ fun SessionState.Connected.update(
     user: User? = this.user,
     authProcessState: AuthProcessState = this.authProcessState,
     wasAutoLogin: Boolean = this.wasAutoLogin,
+    token: String? = this.connectionData.token,
     needsServerReauth: Boolean = this.connectionData.needsServerReauth,
 ): SessionState.Connected = update(
     connectionData = ConnectionData(
@@ -95,6 +96,7 @@ fun SessionState.Connected.update(
         user,
         authProcessState,
         wasAutoLogin,
+        token,
         needsServerReauth,
     ),
 )
@@ -127,6 +129,7 @@ fun SessionState.Reconnecting.update(
     user: User? = this.user,
     authProcessState: AuthProcessState = this.authProcessState,
     wasAutoLogin: Boolean = this.wasAutoLogin,
+    token: String? = this.connectionData.token,
     needsServerReauth: Boolean = this.connectionData.needsServerReauth,
 ): SessionState.Reconnecting = update(
     connectionData = ConnectionData(
@@ -134,6 +137,7 @@ fun SessionState.Reconnecting.update(
         user,
         authProcessState,
         wasAutoLogin,
+        token,
         needsServerReauth,
     ),
 )

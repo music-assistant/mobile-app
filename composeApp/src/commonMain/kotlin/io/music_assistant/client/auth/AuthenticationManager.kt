@@ -114,6 +114,10 @@ class AuthenticationManager(
                                 }
 
                                 is AuthProcessState.Failed -> {
+                                    val serverIdentifier = settings.getServerIdentifier(state)
+                                    settings.setTokenForServer(serverIdentifier, null)
+                                    log.i { "Cleared token for server due to auth failure" }
+
                                     log.i {
                                         "AwaitingAuth(Failed): " +
                                             dataConnectionState.authProcessState.reason
@@ -123,6 +127,10 @@ class AuthenticationManager(
                                 }
 
                                 AuthProcessState.LoggedOut -> {
+                                    val serverIdentifier = settings.getServerIdentifier(state)
+                                    settings.setTokenForServer(serverIdentifier, null)
+                                    log.d { "Cleared token for server" }
+
                                     log.i { "AwaitingAuth(LoggedOut)" }
                                     _authState.value = AuthState.Idle
                                 }
@@ -136,9 +144,10 @@ class AuthenticationManager(
 
                                 val serverIdentifier = settings.getServerIdentifier(state)
                                 val serverId = dataConnectionState.serverInfo.serverId
-                                settings.setIdForServer(
+                                settings.setIdForServer(serverIdentifier, serverId)
+                                settings.setTokenForServer(
                                     serverIdentifier,
-                                    serverId,
+                                    dataConnectionState.token,
                                 )
                             }
                         }
