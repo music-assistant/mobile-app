@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.item
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -60,6 +61,9 @@ fun SimilarArtistsSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = null,
+        // Content fills to the edge; the nav-bar/safe-area inset would otherwise show as an
+        // empty bottom band (pointless on iOS, which has no button bar). Matches BottomSheet.kt.
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(SHEET_HEIGHT_FRACTION)) {
             Header(onDismiss)

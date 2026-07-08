@@ -1,11 +1,11 @@
 package io.music_assistant.client.ui.compose.home.players
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,14 +37,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
-import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.inactive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -63,7 +61,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun LyricsSheet(
     lyrics: Lyrics,
-    colors: PlayerColors,
     livePositionFlow: Flow<Double>?,
     onDismiss: () -> Unit,
 ) {
@@ -74,21 +71,16 @@ fun LyricsSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = null,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
+        // Content fills to the edge; the nav-bar/safe-area inset would otherwise show as an
+        // empty bottom band (pointless on iOS, which has no button bar). Matches BottomSheet.kt.
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(LYRICS_BOTTOM_SHEET_HEIGHT)
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                .background(
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                            colors.dominant.inactive(),
-                        ),
-                    ),
-                ),
+                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -211,15 +203,14 @@ private fun SyncedLyrics(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 36.dp),
+        verticalArrangement = Arrangement.spacedBy(36.dp),
     ) {
         itemsIndexed(lines) { index, line ->
             val active = index == currentIndex
             Text(
                 text = line.text,
-                fontSize = if (active) 40.sp else 28.sp,
-                lineHeight = if (active) 48.sp else 36.sp,
+                fontSize = 28.sp,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                 color = if (active) {
                     MaterialTheme.colorScheme.onSurface

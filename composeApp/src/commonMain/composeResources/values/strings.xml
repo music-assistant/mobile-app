@@ -5,6 +5,7 @@
   <string name="action_add_to_playlist">Add to playlist</string>
   <string name="action_add_to_queue">Add to queue</string>
   <string name="action_browse">Browse</string>
+  <string name="action_choose_artist">Choose artist</string>
   <string name="action_customize">Customize…</string>
   <string name="action_favorite">Favorite</string>
   <string name="action_go_to_album">Go to album</string>

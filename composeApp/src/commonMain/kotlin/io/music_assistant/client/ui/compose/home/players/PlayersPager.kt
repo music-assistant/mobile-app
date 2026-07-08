@@ -325,7 +325,6 @@ fun PlayersPager(
                         sheetLyrics?.let { shown ->
                             LyricsSheet(
                                 lyrics = shown,
-                                colors = colors,
                                 livePositionFlow = livePositionFlow,
                                 onDismiss = { sheetLyrics = null },
                             )
