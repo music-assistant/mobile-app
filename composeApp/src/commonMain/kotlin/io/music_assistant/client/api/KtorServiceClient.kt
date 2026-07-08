@@ -25,7 +25,6 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.connectionInfo
 import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
@@ -128,16 +127,6 @@ class KtorServiceClient(
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
     override val sessionState = _sessionState.asStateFlow()
-
-    override val serverBaseUrl: StateFlow<String?> = _sessionState
-        .map { state ->
-            when (state) {
-                is SessionState.Connected.Direct -> state.connectionInfo.webUrl
-                is SessionState.Reconnecting.Direct -> state.connectionInfo.webUrl
-                else -> null
-            }
-        }
-        .stateIn(this, SharingStarted.Eagerly, null)
 
     override val isReadyForCommands: StateFlow<Boolean> = _sessionState
         .map { it is SessionState.Connected && it.dataConnectionState is DataConnectionState.Authenticated }

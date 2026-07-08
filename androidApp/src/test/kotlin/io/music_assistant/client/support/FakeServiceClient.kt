@@ -550,9 +550,6 @@ class FakeServiceClient : ServiceClient {
         TODO("Not yet implemented")
     }
 
-    private val _serverBaseUrl = MutableStateFlow<String?>(null)
-    override val serverBaseUrl: StateFlow<String?> = _serverBaseUrl
-
     override fun resolveImageUrl(
         path: String,
         provider: String,
@@ -599,10 +596,8 @@ class FakeServiceClient : ServiceClient {
                     ),
                 )
                 _sessionState.value = SessionState.Connected.Direct(connection, connectionData)
-                _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
             } else {
                 _sessionState.value = SessionState.Disconnected.Error(it)
-                _serverBaseUrl.value = null
             }
         }
     }
@@ -747,7 +742,6 @@ class FakeServiceClient : ServiceClient {
 
         if (error != null) {
             _sessionState.value = SessionState.Disconnected.Error(error)
-            _serverBaseUrl.value = null
         }
     }
 

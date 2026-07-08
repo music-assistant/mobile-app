@@ -12,6 +12,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.carplay.CarPlayStrings
+import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.executeLocalPlayerDispatch
 import io.music_assistant.client.data.model.client.MediaType
@@ -74,6 +75,7 @@ object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
+    val connectionManager: ConnectionManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -84,7 +86,7 @@ object KmpHelper : KoinComponent {
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     fun getServerUrl(): String? {
-        return serviceClient.serverBaseUrl.value
+        return connectionManager.serverBaseUrl.value
     }
 
     /**

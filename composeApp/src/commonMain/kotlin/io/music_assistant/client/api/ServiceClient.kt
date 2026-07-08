@@ -16,7 +16,6 @@ interface ServiceClient {
     suspend fun authorize(token: String, isAutoLogin: Boolean = false)
     fun logout()
     val isReadyForCommands: StateFlow<Boolean>
-    val serverBaseUrl: StateFlow<String?>
     fun resolveImageUrl(
         path: String,
         provider: String,
