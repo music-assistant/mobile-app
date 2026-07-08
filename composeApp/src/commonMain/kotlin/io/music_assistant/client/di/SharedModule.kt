@@ -6,6 +6,7 @@ import io.music_assistant.client.api.KtorServiceClient
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthenticationManager
+import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.CarDspApplier
 import io.music_assistant.client.data.LocalPlayerController
 import io.music_assistant.client.data.MainDataSource
@@ -57,6 +58,12 @@ fun sharedModule(
         singleOf(::ImageCacheInvalidator)
         singleOf(serviceClientConstructor) { bind<ServiceClient>() }
         singleOf(::LogSharer)
+        single(createdAtStart = true) {
+            ConnectionManager(
+                get(),
+                get(),
+            )
+        }
         single(createdAtStart = true) {
             AuthenticationManager(
                 get(),

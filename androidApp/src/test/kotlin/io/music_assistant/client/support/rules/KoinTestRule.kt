@@ -24,8 +24,8 @@ fun createKoinTestRule(): KoinTestRule {
 }
 
 private fun createFakeServiceClient(
-    settingsRepository: SettingsRepository,
+    @Suppress("UNUSED_PARAMETER")settingsRepository: SettingsRepository,
     @Suppress("UNUSED_PARAMETER") errorBus: ErrorMessageBus,
 ): FakeServiceClient {
-    return FakeServiceClient(settingsRepository)
+    return FakeServiceClient()
 }

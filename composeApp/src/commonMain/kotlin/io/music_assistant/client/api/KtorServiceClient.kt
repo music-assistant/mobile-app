@@ -442,20 +442,12 @@ class KtorServiceClient(
                 logger.i { "isReadyForCommands=$ready" }
             }
         }
+
         launch {
             _sessionState.collect { state ->
                 when (state) {
-                    is SessionState.Connected -> {
-                        state.connectionInfo?.let { connInfo ->
-                            settings.updateConnectionInfo(connInfo)
-                        }
-                    }
-
-                    is SessionState.Reconnecting -> {
-                        state.connectionInfo?.let { connInfo ->
-                            settings.updateConnectionInfo(connInfo)
-                        }
-                    }
+                    is SessionState.Connected -> Unit
+                    is SessionState.Reconnecting -> Unit
 
                     is SessionState.Disconnected -> {
                         when (state) {

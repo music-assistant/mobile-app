@@ -24,7 +24,6 @@ import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
-import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
@@ -45,7 +44,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 
-class FakeServiceClient(private val settingsRepository: SettingsRepository) : ServiceClient {
+class FakeServiceClient : ServiceClient {
     private var legacyVersion: LegacyVersion? = null
     private var requestErrors: Boolean = false
     private var connectionError: Exception? = null
@@ -601,7 +600,6 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
                 )
                 _sessionState.value = SessionState.Connected.Direct(connection, connectionData)
                 _serverBaseUrl.value = connectionData.serverInfo?.baseUrl
-                settingsRepository.updateConnectionInfo(connection)
             } else {
                 _sessionState.value = SessionState.Disconnected.Error(it)
                 _serverBaseUrl.value = null
