@@ -31,6 +31,7 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.UniqueIdGenerator
 import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.myJson
+import io.music_assistant.client.utils.update
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
@@ -515,8 +516,16 @@ class FakeServiceClient(private val settingsRepository: SettingsRepository) : Se
     }
 
     override suspend fun login(username: String, password: String) {
-        authorize("token", true)
-        _isReadyForCommands.value = true
+        if (username == this.username && password == this.password) {
+            authorize("token", true)
+            _isReadyForCommands.value = true
+        } else {
+            _sessionState.update { state ->
+                (state as SessionState.Connected).update(
+                    authProcessState = AuthProcessState.Failed("Invalid username or password"),
+                )
+            }
+        }
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
