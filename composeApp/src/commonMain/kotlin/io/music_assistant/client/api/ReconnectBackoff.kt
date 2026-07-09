@@ -8,6 +8,7 @@ package io.music_assistant.client.api
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlin.math.minOf
 
 /**
  * Three-phase reconnection backoff.
@@ -33,16 +34,21 @@ fun reconnectBackoffMs(attempt: Int): Long = when (attempt) {
     else -> 120_000L       // 2‑minute ceiling from attempt 9 onward
 }
 
-/** Default reconnect attempt ceiling.  20 attempts × three-phase backoff ≈ 24 min window. */
+/**
+ * Default reconnect attempt ceiling. Set to a positive integer for finite retry with
+ * a clean failure state (recommended), or to -1 for infinite retry (the loop will
+ * only stop when the calling coroutine is cancelled).
+ */
 const val DEFAULT_MAX_RECONNECT_ATTEMPTS = 20
 
 /**
  * Runs a reconnection loop with three‑phase backoff and a configurable attempt ceiling.
  *
- * When [networkAvailable] is provided and reports `false`, the loop suspends
- * until the network returns instead of burning timed delays.  When the network
- * comes back a short grace period (500 ms) is added to let DNS stabilise
- * through a newly‑established route (e.g. WireGuard tunnel).
+ * When [maxAttempts] is negative the loop retries indefinitely (useful for cases where
+ * an external watchdog manages lifecycle). When [networkAvailable] is provided and
+ * reports `false`, the loop suspends until the network returns instead of burning
+ * timed delays. When the network comes back a short grace period (500 ms) is added
+ * to let DNS stabilise through a newly‑established route (e.g. WireGuard tunnel).
  *
  * @return true if [tryConnect] succeeded — the caller should resume normal
  *         operation.  false if all [maxAttempts] were exhausted.
@@ -53,10 +59,11 @@ suspend fun runReconnectionLoop(
     onAttemptStarting: (attempt: Int) -> Unit,
     tryConnect: suspend (attempt: Int) -> Boolean,
 ): Boolean {
-    for (attempt in 0 until maxAttempts) {
-        onAttemptStarting(attempt + 1)
+    val infinite = maxAttempts < 0
+    var attempt = 0
+    while (infinite || attempt < maxAttempts) {
         if (networkAvailable != null && !networkAvailable.value) {
-            // Network is down — wait for it instead of wasting a timed delay
+            // Network is down — wait for it without burning attempts or applying backoff
             networkAvailable.first { it }
             // Short grace period after the network comes back: DNS resolution through
             // the new route (e.g. WireGuard tunnel) may take a few ms to stabilise.
@@ -65,9 +72,14 @@ suspend fun runReconnectionLoop(
             // connection pool for all subsequent retries.
             delay(500)
         } else {
-            delay(reconnectBackoffMs(attempt))
+            // Apply three-phase backoff. In infinite mode cap the backoff index at 9
+            // so delay stays at 120s after the 10th attempt.
+            val capped = if (infinite) minOf(attempt, 9) else attempt
+            delay(reconnectBackoffMs(capped))
         }
+        onAttemptStarting(attempt + 1)
         if (tryConnect(attempt + 1)) return true
+        attempt++
     }
     return false
 }

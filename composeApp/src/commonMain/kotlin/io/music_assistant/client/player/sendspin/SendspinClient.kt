@@ -175,7 +175,9 @@ class SendspinClient(
                 when (wsState) {
                     WebSocketState.Connected -> {
                         when (_state.value) {
-                            is SendspinState.Connecting, is SendspinState.Reconnecting -> {
+                            is SendspinState.Connecting,
+                            is SendspinState.Reconnecting,
+                            is SendspinState.Error -> {
                                 try {
                                     if (config.requiresAuth) {
                                         _state.update { SendspinState.Authenticating }
