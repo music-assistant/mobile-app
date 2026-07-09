@@ -17,10 +17,10 @@ import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.utils.resultAs
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
