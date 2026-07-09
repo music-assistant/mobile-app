@@ -58,6 +58,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     actual fun resumeSink() { PlatformPlayerProvider.player?.resumeSink() }
     actual fun flush() { PlatformPlayerProvider.player?.flush() }
 
+    actual fun resume() {
+        resumeSink()
+        onRemoteCommand?.invoke("play")
+    }
+
     actual fun stopRawPcmStream() {
         PlatformPlayerProvider.player?.stopRawPcmStream()
         isPrepared = false

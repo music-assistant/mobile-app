@@ -432,6 +432,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
 
+    actual fun resume() {
+        resumeSink()
+        onRemoteCommand?.invoke("play")
+    }
+
     actual fun stopRawPcmStream() {
         logger.i { "Stopping raw PCM stream" }
 

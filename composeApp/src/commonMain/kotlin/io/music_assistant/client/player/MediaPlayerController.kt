@@ -34,6 +34,9 @@ expect class MediaPlayerController(platformContext: PlatformContext) {
     fun resumeSink()
     fun flush()
 
+    // Resume playback after a transport reconnect (resumes audio sink + sends play command)
+    fun resume()
+
     // Volume control (0-100)
     fun setVolume(volume: Int)
 
