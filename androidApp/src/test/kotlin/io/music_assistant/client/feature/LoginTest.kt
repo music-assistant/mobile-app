@@ -6,6 +6,8 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.launchApp
+import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.clickSettings
 import io.music_assistant.client.support.rules.createTestRuleChain
 import org.junit.Rule
 import org.junit.Test
@@ -30,5 +32,12 @@ class LoginTest {
             .connect()
             .loginWithError("wrong", serviceClient.password, "Invalid username or password")
             .loginWithError(serviceClient.username, "wrong", "Invalid username or password")
+    }
+
+    @Test
+    fun canLogout() {
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSettings()
+            .logout()
     }
 }

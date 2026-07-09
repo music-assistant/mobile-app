@@ -547,7 +547,12 @@ class FakeServiceClient : ServiceClient {
     }
 
     override fun logout() {
-        TODO("Not yet implemented")
+        _sessionState.update {
+            (it as? SessionState.Connected)?.update(
+                authProcessState = AuthProcessState.LoggedOut,
+                user = null,
+            ) ?: it
+        }
     }
 
     override fun resolveImageUrl(
