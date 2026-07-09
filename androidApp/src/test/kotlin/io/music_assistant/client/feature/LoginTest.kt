@@ -35,7 +35,7 @@ class LoginTest {
     }
 
     @Test
-    fun canLogout() {
+    fun `can logout`() {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSettings()
             .logout()
