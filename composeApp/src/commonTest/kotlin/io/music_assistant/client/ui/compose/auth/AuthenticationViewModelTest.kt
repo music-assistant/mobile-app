@@ -159,7 +159,7 @@ class AuthenticationViewModelTest {
 
             // serverInfo + user populated → dataConnectionState resolves to Authenticated.
             sessionState.value = connectedDirectWith(
-                ConnectionData(serverInfo = SERVER_INFO, user = USER_FIXTURE),
+                ConnectionData(serverInfo = SERVER_INFO, user = USER_FIXTURE, token = "blah"),
             )
             expectNoEvents()
 

@@ -26,8 +26,14 @@ data class ConnectionData(
     val dataConnectionState: DataConnectionState
         get() = when {
             serverInfo == null -> DataConnectionState.AwaitingServerInfo
-            user == null || needsServerReauth -> DataConnectionState.AwaitingAuth(authProcessState, serverInfo)
-            else -> DataConnectionState.Authenticated(serverInfo, token!!)
+            user == null || needsServerReauth || token == null -> {
+                DataConnectionState.AwaitingAuth(
+                    authProcessState,
+                    serverInfo,
+                )
+            }
+
+            else -> DataConnectionState.Authenticated(serverInfo, token)
         }
 }
 
@@ -37,13 +43,14 @@ data class ConnectionData(
  */
 sealed interface HasConnectionData {
     val connectionData: ConnectionData
-    val serverInfo: ServerInfo? get() = dataConnectionState.let {
-        when (it) {
-            is DataConnectionState.Authenticated -> it.serverInfo
-            is DataConnectionState.AwaitingAuth -> it.serverInfo
-            DataConnectionState.AwaitingServerInfo -> null
+    val serverInfo: ServerInfo?
+        get() = dataConnectionState.let {
+            when (it) {
+                is DataConnectionState.Authenticated -> it.serverInfo
+                is DataConnectionState.AwaitingAuth -> it.serverInfo
+                DataConnectionState.AwaitingServerInfo -> null
+            }
         }
-    }
 
     val user: User? get() = connectionData.user
     val authProcessState: AuthProcessState get() = connectionData.authProcessState
