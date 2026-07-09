@@ -11,7 +11,6 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.getServerIdentifier
 import io.music_assistant.client.utils.mainDispatcher
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CancellationException
@@ -343,3 +342,22 @@ class AuthenticationManager(
 }
 
 class ServerIdMismatchException : Exception()
+
+private fun SettingsRepository.getServerIdentifier(sessionState: SessionState): String? {
+    return when (sessionState) {
+        is SessionState.Connected -> getServerIdentifier(sessionState)
+        else -> null
+    }
+}
+
+private fun SettingsRepository.getServerIdentifier(sessionState: SessionState.Connected): String {
+    return when (sessionState) {
+        is SessionState.Connected.Direct -> this.getDirectServerIdentifier(
+            sessionState.connectionInfo.host,
+            sessionState.connectionInfo.port,
+            sessionState.connectionInfo.isTls,
+        )
+
+        is SessionState.Connected.WebRTC -> this.getWebRTCServerIdentifier(sessionState.remoteId.rawId)
+    }
+}
