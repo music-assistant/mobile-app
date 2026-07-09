@@ -32,8 +32,6 @@ class StubServiceClient : ServiceClient {
         get() = TODO("Not yet implemented")
     override val externalConsumerActive: StateFlow<Boolean>
         get() = TODO("Not yet implemented")
-    override val serverBaseUrl: StateFlow<String?>
-        get() = TODO("Not yet implemented")
 
     override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean, proxyId: String?): String? = null
 
@@ -79,5 +77,8 @@ class StubServiceClient : ServiceClient {
     }
 
     override fun forceDisconnect(reason: Exception) {
+    }
+
+    override fun noServer() {
     }
 }
