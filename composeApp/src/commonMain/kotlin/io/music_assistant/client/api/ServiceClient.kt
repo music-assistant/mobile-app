@@ -39,6 +39,7 @@ interface ServiceClient {
     fun onExternalConsumerInactive()
     fun onPlaybackInactive()
     fun forceDisconnect(reason: Exception)
+    fun noServer()
 
     /** True while an external consumer (Android Auto / CarPlay) is bound. Cross-platform car edge. */
     val externalConsumerActive: StateFlow<Boolean>

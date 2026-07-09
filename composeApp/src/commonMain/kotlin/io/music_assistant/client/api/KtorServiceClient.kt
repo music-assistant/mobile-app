@@ -364,6 +364,10 @@ class KtorServiceClient(
         disconnect(SessionState.Disconnected.Error(reason))
     }
 
+    override fun noServer() {
+        _sessionState.update { SessionState.Disconnected.NoServerData }
+    }
+
     /**
      * Called when the app returns to the foreground.
      */
@@ -429,56 +433,6 @@ class KtorServiceClient(
         launch {
             isReadyForCommands.collect { ready ->
                 logger.i { "isReadyForCommands=$ready" }
-            }
-        }
-
-        launch {
-            _sessionState.collect { state ->
-                when (state) {
-                    is SessionState.Connected -> Unit
-                    is SessionState.Reconnecting -> Unit
-
-                    is SessionState.Disconnected -> {
-                        when (state) {
-                            SessionState.Disconnected.ByUser,
-                            SessionState.Disconnected.NoServerData,
-                            SessionState.Disconnected.Backgrounded,
-                            is SessionState.Disconnected.Error,
-                            -> Unit
-
-                            SessionState.Disconnected.Initial -> {
-                                val mostRecent = settings.connectionHistory.value.firstOrNull()
-                                when (mostRecent?.type) {
-                                    ConnectionType.DIRECT -> {
-                                        val connInfo = mostRecent.connectionInfo
-                                        if (connInfo != null) {
-                                            connect(connInfo)
-                                        } else {
-                                            _sessionState.update { SessionState.Disconnected.NoServerData }
-                                        }
-                                    }
-
-                                    ConnectionType.WEBRTC -> {
-                                        val remoteId =
-                                            mostRecent.remoteId?.let { RemoteId.parse(it) }
-                                        if (remoteId != null) {
-                                            connectWebRTC(remoteId)
-                                        } else {
-                                            _sessionState.update { SessionState.Disconnected.NoServerData }
-                                        }
-                                    }
-
-                                    else -> {
-                                        settings.connectionInfo.value?.let { connect(it) }
-                                            ?: _sessionState.update { SessionState.Disconnected.NoServerData }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    SessionState.Connecting -> Unit
-                }
             }
         }
     }

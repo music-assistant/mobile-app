@@ -626,6 +626,10 @@ class FakeServiceClient : ServiceClient {
         }
     }
 
+    override fun noServer() {
+        _sessionState.update { SessionState.Disconnected.NoServerData }
+    }
+
     fun addToLibrary(vararg items: ServerMediaItem) {
         this.items.addAll(items)
         items.forEach { item ->
