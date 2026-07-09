@@ -30,6 +30,12 @@
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
   <string name="album_disc_header">Disc %1$d</string>
+  <string name="album_type_album">Album</string>
+  <string name="album_type_compilation">Compilation</string>
+  <string name="album_type_ep">EP</string>
+  <string name="album_type_live">Live</string>
+  <string name="album_type_single">Single</string>
+  <string name="album_type_soundtrack">Soundtrack</string>
   <string name="albums_by_artist">Albums by %1$s</string>
   <string name="all_albums">All albums</string>
   <string name="all_artists">All artists</string>
@@ -70,6 +76,7 @@
   <string name="cd_fully_played">Fully played</string>
   <string name="cd_genre_filter">Genre filters</string>
   <string name="cd_in_progress">In progress</string>
+  <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
   <string name="cd_more">More</string>
@@ -97,6 +104,7 @@
   <string name="codec_flac">FLAC (lossless, medium bandwidth)</string>
   <string name="codec_opus">Opus (compressed, lowest bandwidth)</string>
   <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
+  <string name="common_apply">Apply</string>
   <string name="common_back">Back</string>
   <string name="common_cancel">Cancel</string>
   <string name="common_clear">Clear</string>
@@ -114,7 +122,14 @@
   <string name="dsp_error">Failed to load DSP configuration</string>
   <string name="dsp_presets">Presets</string>
   <string name="dsp_title">DSP settings</string>
+  <string name="filter_album_artists_only">Album artists only</string>
+  <string name="filter_album_types">Album types</string>
   <string name="filter_favorites">Favorites</string>
+  <string name="filter_genres">Genres</string>
+  <string name="filter_none_selected">Any</string>
+  <string name="filter_providers">Music providers</string>
+  <string name="filter_selected_count">%1$d selected</string>
+  <string name="filter_sheet_title">Filters</string>
   <string name="genre_filter_empty_all">All</string>
   <string name="genre_filter_empty_default">Default</string>
   <string name="genre_filter_empty_non_empty">Non-empty only</string>

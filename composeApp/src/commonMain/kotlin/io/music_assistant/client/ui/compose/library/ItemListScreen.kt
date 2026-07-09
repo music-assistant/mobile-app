@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -51,10 +50,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.ClickContext
-import io.music_assistant.client.data.model.client.GenreEmptyFilter
+import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.client.hasActive
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
@@ -74,11 +74,10 @@ import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
-import musicassistantclient.composeapp.generated.resources.cd_genre_filter
+import musicassistantclient.composeapp.generated.resources.cd_library_filters
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_clear
-import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.library_quick_search
@@ -117,6 +116,8 @@ fun ItemListScreen(
     }
 
     val state by itemListViewModel.state.collectAsStateWithLifecycle()
+    val providerOptions by itemListViewModel.providerOptions.collectAsStateWithLifecycle()
+    val genreOptions by itemListViewModel.genreOptions.collectAsStateWithLifecycle()
 
     TopBarLayout(
         topBar = {
@@ -131,12 +132,11 @@ fun ItemListScreen(
                 onSortChanged = { itemListViewModel.onSortChanged(it) },
                 mediaType = state.mediaType,
                 sortOption = state.sortOption,
-                onlyFavorites = state.onlyFavorites,
-                onToggleFavorites = itemListViewModel::toggleFavorites,
-                emptyFilter = state.emptyFilter,
-                mediaTypeFilter = state.mediaTypeFilter,
-                onEmptyFilterChange = itemListViewModel::setEmptyFilter,
-                onMediaTypeFilterChange = itemListViewModel::setMediaTypeFilter,
+                filters = state.filters,
+                onFiltersChange = itemListViewModel::setFilters,
+                providerOptions = providerOptions,
+                genreOptions = genreOptions,
+                onLoadFilterOptions = itemListViewModel::loadFilterOptions,
             )
         },
     ) {
@@ -183,15 +183,29 @@ private fun ItemListTopBar(
     onSortChanged: (SortOption) -> Unit,
     mediaType: MediaType,
     sortOption: SortOption,
-    onlyFavorites: Boolean,
-    onToggleFavorites: () -> Unit,
-    emptyFilter: GenreEmptyFilter,
-    mediaTypeFilter: MediaType?,
-    onEmptyFilterChange: (GenreEmptyFilter) -> Unit,
-    onMediaTypeFilterChange: (MediaType?) -> Unit,
+    filters: LibraryFilters,
+    onFiltersChange: (LibraryFilters) -> Unit,
+    providerOptions: DataState<List<SelectOption<String>>>,
+    genreOptions: DataState<List<SelectOption<Int>>>,
+    onLoadFilterOptions: () -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
-    var showFilterMenu by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
+
+    if (showFilterSheet) {
+        LibraryFilterSheet(
+            mediaType = mediaType,
+            filters = filters,
+            providerOptions = providerOptions,
+            genreOptions = genreOptions,
+            onLoadOptions = onLoadFilterOptions,
+            onApply = {
+                onFiltersChange(it)
+                showFilterSheet = false
+            },
+            onDismiss = { showFilterSheet = false },
+        )
+    }
 
     Column {
         TwoRowTopAppBar(
@@ -273,27 +287,16 @@ private fun ItemListTopBar(
                 }
             },
             actions = {
-                if (mediaType == MediaType.GENRE && !showSearch) {
-                    val active = emptyFilter != GenreEmptyFilter.DEFAULT || mediaTypeFilter != null
-                    Box {
-                        IconButton(onClick = { showFilterMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.FilterList,
-                                contentDescription = stringResource(Res.string.cd_genre_filter),
-                                tint = if (active) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    LocalContentColor.current
-                                },
-                            )
-                        }
-                        GenreFilterMenu(
-                            expanded = showFilterMenu,
-                            emptyFilter = emptyFilter,
-                            mediaTypeFilter = mediaTypeFilter,
-                            onEmptyFilterChange = onEmptyFilterChange,
-                            onMediaTypeFilterChange = onMediaTypeFilterChange,
-                            onDismiss = { showFilterMenu = false },
+                if (!showSearch) {
+                    IconButton(onClick = { showFilterSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = stringResource(Res.string.cd_library_filters),
+                            tint = if (filters.hasActive) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                LocalContentColor.current
+                            },
                         )
                     }
                 }
@@ -320,30 +323,22 @@ private fun ItemListTopBar(
             secondRow = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    FilterChip(
-                        selected = onlyFavorites,
-                        onClick = onToggleFavorites,
-                        label = { Text(stringResource(Res.string.filter_favorites)) },
+                    SortChip(
+                        currentSort = sortOption,
+                        availableFields = SortConfig.fieldsFor(mediaType),
+                        onSortChanged = { onSortChanged(it) },
                     )
 
-                    Row {
-                        SortChip(
-                            currentSort = sortOption,
-                            availableFields = SortConfig.fieldsFor(mediaType),
-                            onSortChanged = { onSortChanged(it) },
+                    IconButton(onClick = onToggleViewMode) {
+                        Icon(
+                            imageVector = when (viewMode) {
+                                ViewMode.LIST -> Icons.Default.GridView
+                                ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
+                            },
+                            contentDescription = stringResource(Res.string.cd_toggle_view_mode),
                         )
-
-                        IconButton(onClick = onToggleViewMode) {
-                            Icon(
-                                imageVector = when (viewMode) {
-                                    ViewMode.LIST -> Icons.Default.GridView
-                                    ViewMode.GRID -> Icons.AutoMirrored.Filled.ViewList
-                                },
-                                contentDescription = stringResource(Res.string.cd_toggle_view_mode),
-                            )
-                        }
                     }
                 }
             },
@@ -382,14 +377,14 @@ private fun ItemList(
         ) {
             // Content area
             Box(modifier = Modifier.fillMaxSize()) {
-                when (val currentDataState = dataState) {
+                when (dataState) {
                     is DataState.Loading -> LoadingState()
                     is DataState.Error -> ErrorState()
                     is DataState.NoData -> EmptyState(searchQuery, onGlobalSearch)
                     is DataState.Stale,
                     is DataState.Data,
                         -> {
-                        val items = currentDataState.dataOrNull.orEmpty()
+                        val items = dataState.dataOrNull.orEmpty()
                         if (items.isEmpty()) {
                             EmptyState(searchQuery, onGlobalSearch)
                         } else {

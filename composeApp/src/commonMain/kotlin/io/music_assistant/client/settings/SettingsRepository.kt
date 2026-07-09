@@ -5,6 +5,7 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.GenreEmptyFilter
 import io.music_assistant.client.data.model.client.ItemKind
+import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
@@ -560,35 +561,49 @@ class SettingsRepository(
         viewModeFlow(mediaType).update { mode }
     }
 
-    // Genres-only library filters, persisted like view mode. Single keys: the
-    // genres list is one screen, so no per-MediaType map is needed.
-    private val genreEmptyFilterFlow by lazy {
-        val stored = settings.getStringOrNull("genre_empty_filter")
-        val initial = stored?.let { runCatching { GenreEmptyFilter.valueOf(it) }.getOrNull() }
-            ?: GenreEmptyFilter.DEFAULT
-        MutableStateFlow(initial)
+    // Per-MediaType library filters, persisted like view mode (settings are the
+    // source of truth; the VM folds emissions back into state).
+    private val libraryFilterFlows = mutableMapOf<MediaType, MutableStateFlow<LibraryFilters>>()
+
+    private fun libraryFiltersKey(mediaType: MediaType) = "library_filters_${mediaType.name}"
+
+    private fun libraryFiltersFlow(mediaType: MediaType) = libraryFilterFlows.getOrPut(mediaType) {
+        MutableStateFlow(loadLibraryFilters(mediaType))
     }
 
-    fun genreEmptyFilter() = genreEmptyFilterFlow.asStateFlow()
+    fun libraryFilters(mediaType: MediaType) = libraryFiltersFlow(mediaType).asStateFlow()
 
-    fun setGenreEmptyFilter(filter: GenreEmptyFilter) {
-        settings.putString("genre_empty_filter", filter.name)
-        genreEmptyFilterFlow.update { filter }
+    fun setLibraryFilters(mediaType: MediaType, filters: LibraryFilters) {
+        settings.putString(libraryFiltersKey(mediaType), myJson.encodeToString(filters))
+        libraryFiltersFlow(mediaType).update { filters }
     }
 
-    private val genreMediaTypeFilterFlow by lazy {
-        MutableStateFlow(MediaType.fromServer(settings.getStringOrNull("genre_media_type_filter")))
-    }
-
-    fun genreMediaTypeFilter() = genreMediaTypeFilterFlow.asStateFlow()
-
-    fun setGenreMediaTypeFilter(mediaType: MediaType?) {
-        if (mediaType == null) {
-            settings.remove("genre_media_type_filter")
-        } else {
-            settings.putString("genre_media_type_filter", mediaType.serverValue)
+    private fun loadLibraryFilters(mediaType: MediaType): LibraryFilters {
+        settings.getStringOrNull(libraryFiltersKey(mediaType))?.let { raw ->
+            // coerceInputValues shields top-level nullable enums, but NOT unknown
+            // elements inside albumTypes; a full runCatching fallback is required.
+            return runCatching {
+                myJson.decodeFromString<LibraryFilters>(raw)
+            }.getOrDefault(LibraryFilters())
         }
-        genreMediaTypeFilterFlow.update { mediaType }
+        // Legacy migration: fold the old genres-only single-key filters into the
+        // new per-type object, then drop the legacy keys.
+        if (mediaType == MediaType.GENRE) {
+            val legacyEmpty = settings.getStringOrNull("genre_empty_filter")
+                ?.let { runCatching { GenreEmptyFilter.valueOf(it) }.getOrNull() }
+            val legacyType = MediaType.fromServer(settings.getStringOrNull("genre_media_type_filter"))
+            if (legacyEmpty != null || legacyType != null) {
+                val migrated = LibraryFilters(
+                    hideEmpty = legacyEmpty ?: GenreEmptyFilter.DEFAULT,
+                    genreMediaType = legacyType,
+                )
+                settings.putString(libraryFiltersKey(mediaType), myJson.encodeToString(migrated))
+                settings.remove("genre_empty_filter")
+                settings.remove("genre_media_type_filter")
+                return migrated
+            }
+        }
+        return LibraryFilters()
     }
 
     fun getSortOption(context: SubItemContext): SortOption {
