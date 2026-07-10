@@ -102,6 +102,9 @@ kotlin {
             implementation(libs.androidx.navigation3.material3.adaptive)
             implementation(libs.androidx.navigation3.material3.viewmodel)
 
+            // Sendspin protocol — resolved from the ../sendspin-kmp composite build (see settings.gradle.kts).
+            implementation("com.sendspin:sendspin-protocol:0.1.0-SNAPSHOT")
+
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.client.json)

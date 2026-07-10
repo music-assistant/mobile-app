@@ -396,7 +396,7 @@ class SettingsRepository(
         _sendspinUseTls.update { enabled }
     }
 
-    // User-tuned client-side playback delay (ms). Fed into AudioStreamManager's
+    // User-tuned client-side playback delay (ms). Fed into the Sendspin audio pipeline's
     // wall-clock gate as a subtraction from each chunk's local target time:
     //   target = serverTimeToLocal(ts) - userDelay*1000
     // Positive → play earlier to compensate for downstream pipeline lag (the

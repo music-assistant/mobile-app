@@ -1,130 +1,87 @@
 package io.music_assistant.client.player.sendspin.transport
 
 import co.touchlab.kermit.Logger
-import io.music_assistant.client.player.sendspin.WebSocketState
+import com.sendspin.protocol.SendSpinTransport
+import com.sendspin.protocol.TransportState
 import io.music_assistant.client.webrtc.DataChannelState
 import io.music_assistant.client.webrtc.DataChannelWrapper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * WebRTC data channel implementation of SendspinTransport.
- * Wraps an existing DataChannelWrapper (created during WebRTC peer connection setup).
+ * [SendSpinTransport] over an existing WebRTC data channel. The channel is created during peer
+ * connection setup (before this transport), so [connect] just waits for it to reach Open. Auth is
+ * inherited from the ma-api channel — no [AuthenticatingTransport] wrapper is needed here.
  *
- * Unlike WebSocket transport, the data channel is already created before this transport
- * is instantiated. The connect() method simply waits for the channel to be ready.
+ * Send is non-blocking (mirrors [DataChannelWrapper]); disconnect/close are no-ops because the
+ * channel's lifecycle is owned by WebRTCConnectionManager and shared across Sendspin sessions.
  */
 class WebRTCDataChannelTransport(
     private val dataChannelWrapper: DataChannelWrapper,
-) : SendspinTransport {
+) : SendSpinTransport {
     private val logger = Logger.withTag("WebRTCDataChannelTransport")
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     init {
         logger.i { "Created WebRTC transport for channel: ${dataChannelWrapper.label}" }
     }
 
-    /**
-     * Maps DataChannelState to WebSocketState for compatibility with Sendspin protocol.
-     *
-     * DataChannelState values (from webrtc-kmp):
-     * - Connecting: Channel is being established
-     * - Open: Channel is ready, can send/receive
-     * - Closing: Channel is shutting down
-     * - Closed: Channel is closed
-     */
-    override val connectionState: Flow<WebSocketState> =
-        dataChannelWrapper.state.map { dataChannelState ->
-            when (dataChannelState) {
-                DataChannelState.Connecting -> WebSocketState.Connecting
-                DataChannelState.Open -> WebSocketState.Connected
-                DataChannelState.Closing -> WebSocketState.Disconnected
-                DataChannelState.Closed -> WebSocketState.Disconnected
-            }
-        }
+    override val state: StateFlow<TransportState> =
+        dataChannelWrapper.state.map { it.toTransportState() }
+            .stateIn(scope, SharingStarted.Eagerly, dataChannelWrapper.state.value.toTransportState())
 
-    /**
-     * Text messages (JSON protocol messages) from remote peer.
-     */
-    override val textMessages: Flow<String> = dataChannelWrapper.messages
+    override val textFrames: Flow<String> = dataChannelWrapper.messages
+    override val binaryFrames: Flow<ByteArray> = dataChannelWrapper.binaryMessages
 
-    /**
-     * Binary messages (audio chunks) from remote peer.
-     */
-    override val binaryMessages: Flow<ByteArray> = dataChannelWrapper.binaryMessages
-
-    /**
-     * Connect to the transport.
-     *
-     * For WebRTC, the data channel is already created during peer connection setup.
-     * This method simply waits for the channel to reach "Open" state (with timeout).
-     *
-     * @throws IllegalStateException if channel doesn't open within timeout
-     */
     override suspend fun connect() {
-        val currentState = dataChannelWrapper.state.value
-        logger.i { "Connect called, current state: $currentState" }
+        val current = dataChannelWrapper.state.value
+        logger.i { "connect() — current state: $current" }
+        if (current == DataChannelState.Open) return
 
-        if (currentState == DataChannelState.Open) {
-            logger.d { "Channel already open" }
-            return
-        }
-
-        // Wait for channel to open (with 10 second timeout)
-        logger.d { "Waiting for channel to open..." }
-        val openState = withTimeoutOrNull(10_000) {
+        val opened = withTimeoutOrNull(OPEN_TIMEOUT_MS) {
             dataChannelWrapper.state.first { it == DataChannelState.Open }
         }
-
-        if (openState == null) {
-            val error =
-                "WebRTC data channel did not open within timeout (current state: ${dataChannelWrapper.state.value})"
-            logger.e { error }
-            error(error)
+        if (opened == null) {
+            logger.e { "WebRTC data channel did not open within timeout (state=${dataChannelWrapper.state.value})" }
         }
-
-        logger.i { "Channel opened successfully" }
     }
 
-    /**
-     * Send text message (JSON protocol message).
-     * Channel must be in "open" state.
-     */
-    override suspend fun sendText(message: String) {
-        val currentState = dataChannelWrapper.state.value
-        if (currentState != DataChannelState.Open) {
-            logger.w { "Attempted to send text while channel not open (state: $currentState)" }
-            error("Channel not open (state: $currentState)")
-        }
-
-        dataChannelWrapper.send(message)
+    override fun send(text: String): Boolean {
+        dataChannelWrapper.send(text)
+        return true
     }
 
-    /**
-     * Send binary message (audio data).
-     * Channel must be in "open" state.
-     */
-    override suspend fun sendBinary(data: ByteArray) {
-        val currentState = dataChannelWrapper.state.value
-        if (currentState != DataChannelState.Open) {
-            logger.w { "Attempted to send binary while channel not open (state: $currentState)" }
-            error("Channel not open (state: $currentState)")
-        }
-
-        dataChannelWrapper.sendBinary(data)
+    override fun send(bytes: ByteArray): Boolean {
+        dataChannelWrapper.sendBinary(bytes)
+        return true
     }
 
-    /**
-     * Disconnect from the transport.
-     * Does NOT close the data channel — it's owned by WebRTCConnectionManager
-     * and shared across Sendspin sessions for the lifetime of the peer connection.
-     */
-    override suspend fun disconnect() {
-        logger.i { "Disconnecting WebRTC transport (channel stays open)" }
+    // No-op: the data channel is owned by WebRTCConnectionManager and shared across sessions.
+    override fun disconnect(code: Int, reason: String?) {
+        logger.i { "disconnect() — channel stays open (owned by WebRTCConnectionManager)" }
     }
 
     override fun close() {
-        // No-op: data channel lifecycle is managed by WebRTCConnectionManager
+        scope.cancel()
+    }
+
+    private fun DataChannelState.toTransportState(): TransportState = when (this) {
+        DataChannelState.Connecting -> TransportState.Connecting
+        DataChannelState.Open -> TransportState.Connected
+        DataChannelState.Closing -> TransportState.Disconnected
+        DataChannelState.Closed -> TransportState.Disconnected
+    }
+
+    private companion object {
+        const val OPEN_TIMEOUT_MS = 10_000L
     }
 }

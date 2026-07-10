@@ -2,6 +2,8 @@ package io.music_assistant.client.di
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import com.sendspin.protocol.SendSpinLogLevel
+import com.sendspin.protocol.installSendSpinLogger
 import coil3.SingletonImageLoader
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.imageloader.WebRTCImageFetcher
@@ -27,6 +29,17 @@ fun initKoin(
     // renders every line as <private>, which would otherwise duplicate the
     // public os.Logger bridge.
     Logger.setLogWriters(listOf(InMemoryLogWriter) + platformLogWriters())
+    // Bridge the sendspin-kmp library's logging into Kermit.
+    val sendspinLog = Logger.withTag("sendspin-protocol")
+    installSendSpinLogger { level, throwable, message ->
+        when (level) {
+            SendSpinLogLevel.VERBOSE -> sendspinLog.v(throwable) { message }
+            SendSpinLogLevel.DEBUG -> sendspinLog.d(throwable) { message }
+            SendSpinLogLevel.INFO -> sendspinLog.i(throwable) { message }
+            SendSpinLogLevel.WARN -> sendspinLog.w(throwable) { message }
+            SendSpinLogLevel.ERROR -> sendspinLog.e(throwable) { message }
+        }
+    }
     startKoin {
         config?.invoke(this)
         modules(sharedModule(), webrtcModule, *platformModules)

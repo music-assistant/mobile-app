@@ -1,17 +1,9 @@
 package io.music_assistant.client.player.sendspin
 
 import co.touchlab.kermit.Logger
-import io.music_assistant.client.player.MediaPlayerController
-import io.music_assistant.client.player.sendspin.audio.AudioPipeline
-import io.music_assistant.client.player.sendspin.model.CommandValue
+import com.sendspin.protocol.ClientState
+import io.music_assistant.client.player.sendspin.audio.MediaPlayerAudioPlayer
 import io.music_assistant.client.player.sendspin.model.GoodbyeReason
-import io.music_assistant.client.player.sendspin.model.PlayerStateValue
-import io.music_assistant.client.player.sendspin.model.ServerCommandMessage
-import io.music_assistant.client.player.sendspin.model.StreamMetadataPayload
-import io.music_assistant.client.player.sendspin.protocol.MessageDispatcher
-import io.music_assistant.client.player.sendspin.protocol.MessageDispatcherConfig
-import io.music_assistant.client.player.sendspin.transport.SendspinTransport
-import io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,403 +11,126 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
+import com.sendspin.protocol.SendSpinClient as LibraryClient
 
+/**
+ * Thin app-side adapter over the canonical [LibraryClient]. Preserves the exact seam that
+ * [io.music_assistant.client.data.LocalPlayerController] binds to (`state`, `isStarved`,
+ * `playbackStoppedDueToError`, `stopStream`, `stop`, `close`) while translating the library's
+ * [ClientState] into the app's richer [SendspinState] hierarchy.
+ *
+ * Reconnection and buffering live entirely inside the library client; this adapter only maps state
+ * and surfaces the sink errors published by [MediaPlayerAudioPlayer].
+ */
 class SendspinClient(
-    private val config: SendspinConfig,
-    private val mediaPlayerController: MediaPlayerController,
-    private val audioPipeline: AudioPipeline,
-    private val clockSynchronizer: ClockSynchronizer,
-    private val networkAvailable: StateFlow<Boolean>? = null,
+    private val libraryClient: LibraryClient,
+    private val audioPlayer: MediaPlayerAudioPlayer,
 ) : CoroutineScope {
     private val logger = Logger.withTag("SendspinClient")
     private val supervisorJob = SupervisorJob()
-
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisorJob
 
-    // Components
-    private var transport: SendspinTransport? = null
-    private var messageDispatcher: MessageDispatcher? = null
-    private var stateReporter: StateReporter? = null
-
-    // Unified state
     private val _state = MutableStateFlow<SendspinState>(SendspinState.Idle)
     val state: StateFlow<SendspinState> = _state.asStateFlow()
 
-    // Exposed event for when playback stops due to error (e.g., audio output disconnected)
-    // MainDataSource should monitor this to pause the MA server player
     private val _playbackStoppedDueToError = MutableStateFlow<Throwable?>(null)
     val playbackStoppedDueToError: StateFlow<Throwable?> = _playbackStoppedDueToError.asStateFlow()
 
-    // Reactive buffer-starvation state from the pipeline. The owner composes this with transport
-    // and play state to decide on teardown — see LocalPlayerController.
-    val isStarved: StateFlow<Boolean> get() = audioPipeline.isStarved
+    /** Buffer-starvation, straight from the consumer. Composed with transport state by the owner. */
+    val isStarved: StateFlow<Boolean> get() = audioPlayer.isStarved
 
-    /** Stop the audio stream (release the sink), leaving the client/transport intact. */
-    suspend fun stopStream() = audioPipeline.stopStream()
+    // Tracks whether we've completed at least one handshake, so that a subsequent CONNECTING/
+    // HANDSHAKING/DISCONNECTED reads as Reconnecting rather than a fresh connect. The owner ignores
+    // Reconnecting's payload fields, so approximate values are fine.
+    private var hasConnected = false
+    private var wasStreaming = false
+    private var stopped = false
 
-    // Track current volume/mute state
-    // Initialize with current system volume (not hardcoded 100)
-    private var currentVolume: Int = mediaPlayerController.getCurrentSystemVolume()
-    private var currentMuted: Boolean = false
-
-    val metadata: StateFlow<StreamMetadataPayload?>
-        get() = messageDispatcher?.streamMetadata ?: MutableStateFlow(null)
-
-    suspend fun start() {
-        if (!config.isValid) {
-            logger.w { "Sendspin config invalid: enabled=${config.enabled}" }
-            return
+    init {
+        launch {
+            combine(libraryClient.state, libraryClient.connectionExhausted) { s, exhausted -> s to exhausted }
+                .collect { (s, exhausted) -> _state.value = mapState(s, exhausted) }
         }
-
-        logger.i { "Starting Sendspin client: ${config.deviceName}" }
-
-        try {
-            val serverUrl = config.buildServerUrl()
-            val sendspinTransport =
-                WebSocketSendspinTransport(
-                    serverUrl,
-                    networkAvailable,
-                )
-            connectWithTransport(sendspinTransport)
-        } catch (e: Exception) {
-            logger.e(e) { "Failed to start Sendspin client" }
-            _state.update {
-                SendspinState.Error(
-                    SendspinError.Permanent(
-                        cause = e,
-                        userAction = "Check Sendspin settings and server connection",
-                    ),
-                )
+        launch {
+            // One-shot signal: emit the sink error, then reset (matches the prior 100 ms blip so the
+            // owner's filterNotNull collector fires exactly once per error).
+            audioPlayer.streamError.collect { error ->
+                _playbackStoppedDueToError.value = error
+                delay(ERROR_BLIP_MS)
+                _playbackStoppedDueToError.value = null
             }
         }
     }
 
-    suspend fun connectWithTransport(sendspinTransport: SendspinTransport) {
-        logger.i { "Connecting to Sendspin with transport" }
-
-        try {
-            // Clean up existing connection
-            disconnectFromServer()
-
-            // Update current volume from system right before connecting
-            // (in case it changed since construction)
-            currentVolume = mediaPlayerController.getCurrentSystemVolume()
-            logger.i { "Initializing with system volume: $currentVolume%" }
-
-            // Store transport
-            transport = sendspinTransport
-
-            // Create message dispatcher
-            val capabilities = SendspinCapabilities.buildClientHello(config, config.codecPreference)
-            val dispatcherConfig = MessageDispatcherConfig(
-                clientCapabilities = capabilities,
-                authToken = config.authToken,
-                requiresAuth = config.requiresAuth,
-            )
-            val dispatcher = MessageDispatcher(
-                transport = sendspinTransport,
-                clockSynchronizer = clockSynchronizer,
-                config = dispatcherConfig,
-            )
-            messageDispatcher = dispatcher
-
-            // Create state reporter (uses unified state)
-            val reporter = StateReporter(
-                messageDispatcher = dispatcher,
-                stateProvider = { _state.value },
-            )
-            stateReporter = reporter
-
-            // Mark as connecting
-            _state.update { SendspinState.Connecting }
-
-            // Connect transport
-            sendspinTransport.connect()
-
-            // Start message dispatcher (listens for text messages)
-            dispatcher.start()
-
-            // Run the unified state machine
-            runStateMachine(sendspinTransport, dispatcher)
-        } catch (e: Exception) {
-            logger.e(e) { "Failed to connect to server" }
-            _state.update {
-                SendspinState.Error(
-                    SendspinError.Permanent(
-                        cause = e,
-                        userAction = "Verify server is running and accessible",
-                    ),
-                )
+    private fun mapState(clientState: ClientState, exhausted: Boolean): SendspinState =
+        when (clientState) {
+            ClientState.IDLE -> SendspinState.Idle
+            ClientState.CONNECTING ->
+                if (hasConnected && !stopped) SendspinState.Reconnecting(wasStreaming, 0) else SendspinState.Connecting
+            ClientState.HANDSHAKING ->
+                if (hasConnected && !stopped) SendspinState.Reconnecting(wasStreaming, 0) else SendspinState.Handshaking
+            ClientState.CLOCK_SYNCING -> {
+                hasConnected = true
+                wasStreaming = false
+                SendspinState.Ready(libraryClient.serverId.value, libraryClient.serverName.value)
             }
+            ClientState.STREAMING -> {
+                hasConnected = true
+                wasStreaming = true
+                SendspinState.Synchronized
+            }
+            ClientState.ERROR -> SendspinState.Error(
+                if (exhausted) {
+                    SendspinError.Permanent(
+                        cause = SendspinConnectionException("Sendspin connection failed (retries exhausted)"),
+                        userAction = "Check network connection and server availability",
+                    )
+                } else {
+                    // The library is auto-retrying — willRetry=true tells the owner not to double-retry.
+                    SendspinError.Transient(
+                        cause = SendspinConnectionException("Sendspin transport error"),
+                        willRetry = true,
+                    )
+                },
+            )
+            ClientState.DISCONNECTED ->
+                if (hasConnected && !stopped) SendspinState.Reconnecting(wasStreaming, 0) else SendspinState.Idle
         }
+
+    /** Release the audio sink, leaving the client/transport intact. */
+    suspend fun stopStream() {
+        audioPlayer.stop()
     }
 
     /**
-     * Single state machine that replaces the five former monitor methods.
-     *
-     * Reacts to:
-     *  - transport connection state changes
-     *  - server/hello events from MessageDispatcher
-     *  - stream start/end/clear events
-     *  - binary audio messages
-     *  - server commands
-     *  - audio pipeline errors
+     * Send goodbye and disconnect (no reconnect). A [GoodbyeReason.Restart] is a warm disconnect:
+     * the buffer + player keep draining so audio survives the reinit, and the factory reuses this
+     * client on the next start. Other reasons stop audio.
      */
-    private fun runStateMachine(
-        sendspinTransport: SendspinTransport,
-        dispatcher: MessageDispatcher,
-    ) {
-        // --- Transport state ---
-        launch {
-            sendspinTransport.connectionState.collect { wsState ->
-                when (wsState) {
-                    WebSocketState.Connected -> {
-                        when (_state.value) {
-                            is SendspinState.Connecting, is SendspinState.Reconnecting -> {
-                                try {
-                                    if (config.requiresAuth) {
-                                        _state.update { SendspinState.Authenticating }
-                                        dispatcher.sendAuth()
-                                    } else {
-                                        _state.update { SendspinState.Handshaking }
-                                        dispatcher.sendHello()
-                                    }
-                                } catch (e: Exception) {
-                                    logger.w { "Failed to send auth/hello (transport closed during handshake): ${e.message}" }
-                                }
-                            }
-                            else -> Unit
-                        }
-                    }
-
-                    is WebSocketState.Reconnecting -> {
-                        val current = _state.value
-                        val wasStreaming = current is SendspinState.Buffering ||
-                                current is SendspinState.Synchronized
-                        // DON'T stop the pipeline — AudioPipeline keeps playing from buffer
-                        _state.update { SendspinState.Reconnecting(wasStreaming, wsState.attempt) }
-                    }
-
-                    is WebSocketState.Error -> {
-                        val isPermanent =
-                            wsState.error.message?.contains("Failed to reconnect") == true
-
-                        if (isPermanent) {
-                            // Don't stop the pipeline: let it keep draining whatever is buffered.
-                            // If reconnect lands within the window, chunks resume into the live
-                            // queue; otherwise it goes silent on its own. Only a user stop,
-                            // server stream/end, or a genuine reset tears the audio down.
-                            stateReporter?.stop()
-                            _state.update {
-                                SendspinState.Error(
-                                    SendspinError.Permanent(
-                                        cause = wsState.error,
-                                        userAction = "Check network connection and server availability",
-                                    ),
-                                )
-                            }
-                        } else {
-                            _state.update {
-                                SendspinState.Error(
-                                    SendspinError.Transient(
-                                        cause = wsState.error,
-                                        willRetry = false,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-
-                    WebSocketState.Disconnected -> {
-                        val current = _state.value
-                        if (current !is SendspinState.Reconnecting) {
-                            _state.update { SendspinState.Idle }
-                        }
-                    }
-
-                    WebSocketState.Connecting -> Unit
-                }
-            }
-        }
-
-        // --- server/hello event → Ready ---
-        launch {
-            dispatcher.serverHelloEvent.collect { payload ->
-                val current = _state.value
-                if (current is SendspinState.Handshaking ||
-                    current is SendspinState.Authenticating
-                ) {
-                    logger.i { "server/hello received — transitioning to Ready" }
-                    _state.update {
-                        SendspinState.Ready(
-                            serverId = payload.serverId,
-                            serverName = payload.name,
-                        )
-                    }
-                } else {
-                    logger.d { "server/hello received but state is $current — ignoring" }
-                }
-            }
-        }
-
-        // --- Stream events ---
-        launch {
-            dispatcher.streamStartEvent.collect { event ->
-                event.payload.player?.let { playerConfig ->
-                    audioPipeline.startStream(playerConfig)
-                    _state.update { SendspinState.Buffering }
-                    // Start periodic state reporting
-                    stateReporter?.start()
-                }
-            }
-        }
-
-        launch {
-            dispatcher.streamEndEvent.collect {
-                val current = _state.value
-                audioPipeline.stopStream()
-                if (current is SendspinState.Buffering || current is SendspinState.Synchronized) {
-                    val serverInfo = messageDispatcher?.serverInfo?.value
-                    val nextState = if (serverInfo != null) {
-                        SendspinState.Ready(serverInfo.serverId, serverInfo.name)
-                    } else {
-                        SendspinState.Idle
-                    }
-                    _state.update { nextState }
-                }
-                // Stop periodic state reporting
-                stateReporter?.stop()
-            }
-        }
-
-        launch {
-            dispatcher.streamClearEvent.collect {
-                audioPipeline.clearStream()
-            }
-        }
-
-        // --- Binary audio messages ---
-        launch {
-            sendspinTransport.binaryMessages.collect { data ->
-                audioPipeline.processBinaryMessage(data)
-
-                // Update playback state based on sync quality
-                if (clockSynchronizer.currentQuality == SyncQuality.GOOD) {
-                    if (_state.value is SendspinState.Buffering) {
-                        val stats = clockSynchronizer.getStats()
-                        logger.i { "Playback synchronized (offset=${stats.offsetMs}ms, rtt=${stats.rttMs}ms)" }
-                        _state.update { SendspinState.Synchronized }
-                        stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
-                    }
-                }
-            }
-        }
-
-        // --- Server commands ---
-        launch {
-            dispatcher.serverCommandEvent.collect { command ->
-                handleServerCommand(command)
-            }
-        }
-
-        // --- Audio pipeline errors ---
-        launch {
-            audioPipeline.streamError.collect { error ->
-                val current = _state.value
-                val serverInfo = messageDispatcher?.serverInfo?.value
-                val nextState = if (serverInfo != null) {
-                    SendspinState.Ready(serverInfo.serverId, serverInfo.name)
-                } else {
-                    SendspinState.Idle
-                }
-                logger.w(error) {
-                    "PIPELINE ERROR: ${error.message}, " +
-                            "currentState=${current::class.simpleName}, " +
-                            "nextState=${nextState::class.simpleName}"
-                }
-                _state.update { nextState }
-                stateReporter?.stop()
-                // Notify that playback stopped due to error
-                _playbackStoppedDueToError.update { error }
-                delay(100)
-                _playbackStoppedDueToError.update { null }
-            }
-        }
-    }
-
-    private suspend fun handleServerCommand(command: ServerCommandMessage) {
-        val playerCmd = command.payload.player
-        logger.i { "Handling server command: ${playerCmd.command}" }
-
-        when (playerCmd.command) {
-            "volume" -> {
-                playerCmd.volume?.let { volume ->
-                    logger.i { "Setting volume to $volume" }
-                    currentVolume = volume
-                    mediaPlayerController.setVolume(volume)
-                    stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
-                }
-            }
-
-            "mute" -> {
-                playerCmd.mute?.let { muted ->
-                    logger.i { "Setting mute to $muted" }
-                    currentMuted = muted
-                    mediaPlayerController.setMuted(muted)
-                    stateReporter?.reportNow(PlayerStateValue.SYNCHRONIZED)
-                }
-            }
-
-            else -> {
-                logger.w { "Unknown server command: ${playerCmd.command}" }
-            }
-        }
-    }
-
-    suspend fun sendCommand(command: String, value: CommandValue?) {
-        messageDispatcher?.sendCommand(command, value)
-    }
-
     suspend fun stop(reason: GoodbyeReason) {
-        val current = _state.value
-        // Stop state reporting
-        stateReporter?.stop()
-
-        // Send goodbye if connected
-        if (current is SendspinState.Ready ||
-            current is SendspinState.Buffering ||
-            current is SendspinState.Synchronized
-        ) {
-            try {
-                messageDispatcher?.sendGoodbye(reason)
-                delay(100) // Give it time to send
-            } catch (e: Exception) {
-                logger.e(e) { "Error sending goodbye" }
-            }
-        }
-
-        disconnectFromServer()
-        _state.update { SendspinState.Idle }
+        stopped = true
+        logger.i { "Stopping Sendspin client (${reason.wire})" }
+        libraryClient.disconnect(reason.wire, stopAudio = reason != GoodbyeReason.Restart)
     }
 
-    private suspend fun disconnectFromServer() {
-        stateReporter?.close()
-        stateReporter = null
-        messageDispatcher?.stop()
-        messageDispatcher?.close()
-        messageDispatcher = null
-
-        transport?.disconnect()
-        transport?.close()
-        transport = null
-    }
-
+    /**
+     * Detach this adapter's state collectors. The library client's lifecycle is owned by
+     * [SendspinClientFactory] (reused on Restart, torn down via `destroyPipeline`), so we do NOT
+     * close it here.
+     */
     fun close() {
-        logger.i { "Closing Sendspin client" }
+        logger.i { "Detaching Sendspin client adapter" }
         supervisorJob.cancel()
     }
+
+    private companion object {
+        const val ERROR_BLIP_MS = 100L
+    }
 }
+
+/** Carrier for a Sendspin connection failure surfaced through [SendspinError]. */
+class SendspinConnectionException(message: String) : Exception(message)

@@ -26,5 +26,10 @@ dependencyResolutionManagement {
     }
 }
 
+// Local composite build of the Sendspin protocol library — Gradle substitutes the
+// `com.sendspin:sendspin-protocol` dependency with this on-disk project (no publishing needed
+// for development). Publishing to Maven Central is a later, separate step.
+includeBuild("../sendspin-kmp")
+
 include(":composeApp")
 include(":androidApp")

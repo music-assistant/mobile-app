@@ -1,10 +1,9 @@
 package io.music_assistant.client.player.sendspin
 
 /**
- * Unified Sendspin state machine.
+ * Unified Sendspin state machine, as consumed by LocalPlayerController/MainDataSource.
  *
- * Replaces the former SendspinConnectionState + SendspinPlaybackState + ProtocolState
- * with a single sealed hierarchy so there is exactly one source of truth.
+ * The app's SendspinClient adapter maps the library's `ClientState` onto this richer hierarchy.
  */
 sealed class SendspinState {
     /** Client created but not yet started. */
@@ -34,25 +33,3 @@ sealed class SendspinState {
     /** Unrecoverable or categorised error. */
     data class Error(val error: SendspinError) : SendspinState()
 }
-
-sealed class WebSocketState {
-    object Disconnected : WebSocketState()
-    object Connecting : WebSocketState()
-    data class Reconnecting(val attempt: Int) : WebSocketState()
-    object Connected : WebSocketState()
-    data class Error(val error: Throwable) : WebSocketState()
-}
-
-data class BufferState(
-    // Existing metrics
-    val bufferedDuration: Long, // microseconds
-    val isUnderrun: Boolean,
-    val droppedChunks: Int,
-
-    // Adaptive buffering metrics
-    val targetBufferDuration: Long = 0L, // Target buffer size in microseconds
-    val currentPrebufferThreshold: Long = 0L, // Current prebuffer threshold
-    val smoothedRTT: Double = 0.0, // Smoothed RTT in microseconds
-    val jitter: Double = 0.0, // Jitter (RTT std dev) in microseconds
-    val dropRate: Double = 0.0, // Recent chunk drop rate [0.0, 1.0]
-)
