@@ -85,7 +85,7 @@ data class ServerMetadata(
     @SerialName("release_date") val releaseDate: String? = null,
     // @SerialName("languages") val languages: List<String>? = null,
     @SerialName("chapters") val chapters: List<ServerMediaItemChapter>? = null,
-    @SerialName("last_refresh") val lastRefresh: Long?,
+    @SerialName("last_refresh") val lastRefresh: Long? = null,
 )
 
 @Serializable
