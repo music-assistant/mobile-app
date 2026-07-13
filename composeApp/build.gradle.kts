@@ -103,7 +103,9 @@ kotlin {
             implementation(libs.androidx.navigation3.material3.viewmodel)
 
             // Sendspin protocol — resolved from the ../sendspin-kmp composite build (see settings.gradle.kts).
-            implementation("com.sendspin:sendspin-protocol:0.1.0-SNAPSHOT")
+            // Coordinate matches the published sendspin-kmp; resolved locally via
+            // includeBuild("../sendspin-kmp") composite substitution (no Central fetch).
+            implementation("io.github.formatbce:sendspin-protocol:0.1.0")
 
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.websockets)

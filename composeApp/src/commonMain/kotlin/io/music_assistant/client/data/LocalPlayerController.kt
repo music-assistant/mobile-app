@@ -567,6 +567,18 @@ class LocalPlayerController(
         }
 
         sendspinMonitorJobs += launch {
+            // Audio actually reached the sink for a new stream (stream/start / seek / track change).
+            // Release the optimistic position freeze and confirm the local player's playing state
+            // HERE — not on the one-shot Synchronized connection state, which fires once at connect
+            // (before playback) and never re-fires, leaving the slider frozen after the first
+            // interaction and the player reporting "playing" while still silent.
+            client.audioRendered.collect {
+                localPlayerData.value?.queueInfo?.id?.let(positionTracker::confirmPlaying)
+                confirmLocalPlaying()
+            }
+        }
+
+        sendspinMonitorJobs += launch {
             client.state.collect { state ->
                 _sendspinState.value = state
                 when (state) {
@@ -605,10 +617,10 @@ class LocalPlayerController(
 
                     is SendspinState.Idle -> Unit
 
-                    is SendspinState.Synchronized -> {
-                        localPlayerData.value?.queueInfo?.id?.let(positionTracker::confirmPlaying)
-                        confirmLocalPlaying()
-                    }
+                    // Synchronized is a one-shot connection-ready state (fires at connect, before any
+                    // playback, and never re-fires per interaction). Playback confirmation is driven
+                    // by client.audioRendered instead — see the collector in monitorSendspinClient.
+                    is SendspinState.Synchronized -> Unit
 
                     is SendspinState.Reconnecting -> Unit
                     else -> Unit

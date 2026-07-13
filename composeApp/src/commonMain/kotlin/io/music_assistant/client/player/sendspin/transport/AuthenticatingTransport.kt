@@ -2,6 +2,7 @@ package io.music_assistant.client.player.sendspin.transport
 
 import co.touchlab.kermit.Logger
 import com.sendspin.protocol.SendSpinTransport
+import com.sendspin.protocol.TransportFrame
 import com.sendspin.protocol.TransportState
 import io.music_assistant.client.player.sendspin.model.ClientAuthMessage
 import io.music_assistant.client.utils.myJson
@@ -14,7 +15,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -39,8 +42,7 @@ class AuthenticatingTransport(
 
     private val _state = MutableStateFlow<TransportState>(TransportState.Connecting)
     override val state: StateFlow<TransportState> = _state
-    override val textFrames: Flow<String> = inner.textFrames
-    override val binaryFrames: Flow<ByteArray> = inner.binaryFrames
+    override val frames: Flow<TransportFrame> = inner.frames
 
     override suspend fun connect() {
         // Forward every inner state EXCEPT Connected, which we gate behind the auth handshake.
@@ -58,7 +60,9 @@ class AuthenticatingTransport(
 
         // Subscribe for auth_ok BEFORE sending auth so the reply can't race ahead of the collector.
         val authOk = scope.async(start = CoroutineStart.UNDISPATCHED) {
-            withTimeoutOrNull(AUTH_TIMEOUT_MS) { inner.textFrames.first { it.isAuthOk() } }
+            withTimeoutOrNull(AUTH_TIMEOUT_MS) {
+                inner.frames.filterIsInstance<TransportFrame.Text>().map { it.text }.first { it.isAuthOk() }
+            }
         }
 
         val authJson = myJson.encodeToString(ClientAuthMessage(token = authToken, clientId = clientId))

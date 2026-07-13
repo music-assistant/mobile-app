@@ -1,6 +1,7 @@
 package io.music_assistant.client.webrtc
 
 import co.touchlab.kermit.Logger
+import com.sendspin.protocol.TransportFrame
 import io.ktor.client.webrtc.DataChannelEvent
 import io.ktor.client.webrtc.WebRtc
 import io.ktor.client.webrtc.WebRtcDataChannel
@@ -63,6 +64,12 @@ class DataChannelWrapper(
     private val _binaryMessages = MutableSharedFlow<ByteArray>(extraBufferCapacity = 2000)
     val binaryMessages: Flow<ByteArray> = _binaryMessages.asSharedFlow()
 
+    // Ordered union of text+binary for the sendspin transport (the sendspin client requires
+    // stream/start to be handled in wire order between the right audio chunks). Fed from the same
+    // single receive loop as messages/binaryMessages; uncollected on the ma-api channel, so free there.
+    private val _frames = MutableSharedFlow<TransportFrame>(extraBufferCapacity = 2000)
+    val frames: Flow<TransportFrame> = _frames.asSharedFlow()
+
     private sealed interface Outgoing {
         data class Text(val data: String) : Outgoing
         data class Binary(val data: ByteArray) : Outgoing {
@@ -101,14 +108,22 @@ class DataChannelWrapper(
             runCatchingNonCancellation("receive loop failed on channel $label") {
                 while (true) {
                     when (val msg = dataChannel.receive()) {
-                        is WebRtc.DataChannel.Message.Text ->
+                        is WebRtc.DataChannel.Message.Text -> {
                             if (!_textMessages.tryEmit(msg.data)) {
                                 logger.w { "Text message buffer full on $label, dropping" }
                             }
-                        is WebRtc.DataChannel.Message.Binary ->
+                            if (!_frames.tryEmit(TransportFrame.Text(msg.data))) {
+                                logger.w { "Frame buffer full on $label, dropping text frame" }
+                            }
+                        }
+                        is WebRtc.DataChannel.Message.Binary -> {
                             if (!_binaryMessages.tryEmit(msg.data)) {
                                 logger.w { "Binary message buffer full on $label, dropping chunk" }
                             }
+                            if (!_frames.tryEmit(TransportFrame.Binary(msg.data))) {
+                                logger.w { "Frame buffer full on $label, dropping binary frame" }
+                            }
+                        }
                     }
                 }
             }

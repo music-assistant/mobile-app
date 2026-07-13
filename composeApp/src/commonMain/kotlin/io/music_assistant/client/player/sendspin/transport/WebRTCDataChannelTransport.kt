@@ -2,6 +2,7 @@ package io.music_assistant.client.player.sendspin.transport
 
 import co.touchlab.kermit.Logger
 import com.sendspin.protocol.SendSpinTransport
+import com.sendspin.protocol.TransportFrame
 import com.sendspin.protocol.TransportState
 import io.music_assistant.client.webrtc.DataChannelState
 import io.music_assistant.client.webrtc.DataChannelWrapper
@@ -39,8 +40,7 @@ class WebRTCDataChannelTransport(
         dataChannelWrapper.state.map { it.toTransportState() }
             .stateIn(scope, SharingStarted.Eagerly, dataChannelWrapper.state.value.toTransportState())
 
-    override val textFrames: Flow<String> = dataChannelWrapper.messages
-    override val binaryFrames: Flow<ByteArray> = dataChannelWrapper.binaryMessages
+    override val frames: Flow<TransportFrame> = dataChannelWrapper.frames
 
     override suspend fun connect() {
         val current = dataChannelWrapper.state.value

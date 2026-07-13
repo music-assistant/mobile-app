@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +43,13 @@ class SendspinClient(
 
     /** Buffer-starvation, straight from the consumer. Composed with transport state by the owner. */
     val isStarved: StateFlow<Boolean> get() = audioPlayer.isStarved
+
+    /**
+     * Fires each time audio actually starts flowing to the sink (stream/start, seek, track change).
+     * The owner uses this — not the one-shot connection-level [SendspinState.Synchronized] — to
+     * release its optimistic position freeze and confirm the local player's playing state.
+     */
+    val audioRendered: Flow<Unit> get() = audioPlayer.audioRendered
 
     // Tracks whether we've completed at least one handshake, so that a subsequent CONNECTING/
     // HANDSHAKING/DISCONNECTED reads as Reconnecting rather than a fresh connect. The owner ignores

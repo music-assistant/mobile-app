@@ -61,6 +61,19 @@ class MediaPlayerAudioPlayer(
     /** Sink errors (e.g. audio output disconnected); consumed by the app's SendspinClient adapter. */
     val streamError: Flow<Throwable> = _streamError.asSharedFlow()
 
+    private val _audioRendered = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
+    /**
+     * Emits once each time audio actually begins flowing to the sink after a (re)start or flush —
+     * i.e. a stream/start, seek, or track change that produced real output. The app releases its
+     * optimistic position freeze and confirms the local player's playing state on THIS, not on the
+     * one-shot connection-level Synchronized state (which fires at connect, before any playback).
+     */
+    val audioRendered: Flow<Unit> = _audioRendered.asSharedFlow()
+
+    // Set when a new stream begins (start/flush); the consumer emits [audioRendered] on its first
+    // successful sink write and clears this, so we signal exactly once per playback start.
+    @Volatile private var awaitingRenderConfirm = false
+
     override val isPlaying: Boolean get() = playing
     override val droppedDecodeFrames: Long get() = droppedFrames
 
@@ -133,6 +146,7 @@ class MediaPlayerAudioPlayer(
         playbackJob?.cancel()
         playing = true
         _isStarved.value = false
+        awaitingRenderConfirm = true
         playbackJob = scope.launch {
             logger.i { "Playback consumer started" }
             try {
@@ -163,6 +177,11 @@ class MediaPlayerAudioPlayer(
                     }
                     // Blocks on the hardware ring buffer, which self-paces subsequent chunks.
                     sink.writeRawPcm(pcm)
+                    if (awaitingRenderConfirm) {
+                        // First real output of this stream — audio is now flowing to the sink.
+                        awaitingRenderConfirm = false
+                        _audioRendered.tryEmit(Unit)
+                    }
                 }
             } catch (_: CancellationException) {
                 // normal shutdown
@@ -174,8 +193,13 @@ class MediaPlayerAudioPlayer(
         }
     }
 
-    override fun flush() {
-        buffer.flush()
+    override fun flushSink() {
+        // Buffer is cleared by the library synchronously in wire order on a discontinuity; here we
+        // only drain the hardware sink (so already-queued old audio stops) — we MUST NOT clear the
+        // AudioBuffer, or we'd wipe new-stream chunks already offered after that synchronous clear.
+        // A discontinuity precedes this: the next stream's first sink write re-confirms playback so
+        // the app releases its position freeze.
+        awaitingRenderConfirm = true
         // pause+flush+resume drains the HW ring buffer so dropped audio doesn't keep playing.
         sink.pauseSink()
         sink.flush()
