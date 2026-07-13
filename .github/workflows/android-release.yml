@@ -67,8 +67,32 @@ jobs:
           keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Build release AAB
-        run: ./gradlew :androidApp:bundleRelease
+      - name: Restore debug keystore (signs the GitHub APK)
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
+
+      # Same variant, so the Kotlin compile and R8 pass are shared: the APK
+      # costs packaging only. `splits` is ignored for the bundle, so the AAB
+      # keeps every ABI while the APK is arm64-v8a.
+      - name: Build release AAB and GitHub APK
+        run: ./gradlew :androidApp:bundleRelease :androidApp:assembleRelease
+
+      # AGP signs the APK with the upload key (the AAB needs it). Users get the
+      # debug key instead — it is the cert Play onboarded this package with.
+      - name: Re-sign GitHub APK with the debug key
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          APK="dist/music-assistant-${{ steps.version.outputs.name }}-arm64-v8a.apk"
+          mkdir -p dist
+          "$APKSIGNER" sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            --key-pass pass:android \
+            --out "$APK" \
+            androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk
+          "$APKSIGNER" verify --print-certs "$APK"
 
       - name: Generate Play Store release notes
         run: |
@@ -113,6 +137,12 @@ jobs:
 
             - **Version code**: ${{ steps.version.outputs.code }}
             - **Track**: Open testing (Google Play)
+
+            ### Direct download
+
+            `music-assistant-${{ steps.version.outputs.name }}-arm64-v8a.apk` — arm64-v8a
+            only, which covers essentially every modern device (but not x86_64 emulators).
+          files: dist/music-assistant-*.apk
           generate_release_notes: true
           draft: false
           prerelease: false
