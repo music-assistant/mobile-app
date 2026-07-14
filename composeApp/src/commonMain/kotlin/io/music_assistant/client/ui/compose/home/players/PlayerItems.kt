@@ -61,7 +61,9 @@ import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.QualityTier
 import io.music_assistant.client.data.model.client.items.canBeFavorited
+import io.music_assistant.client.data.model.client.items.hasServerFidelity
 import io.music_assistant.client.data.model.client.items.qualityTier
+import io.music_assistant.client.data.model.server.AudioProcessingChain
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
@@ -83,11 +85,32 @@ import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.player_power_on
 import musicassistantclient.composeapp.generated.resources.player_powered_off
 import musicassistantclient.composeapp.generated.resources.players_nothing
+import musicassistantclient.composeapp.generated.resources.quality_dialog_details
 import musicassistantclient.composeapp.generated.resources.queue_cannot_play
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.DurationUnit
 
 private const val SEEK_STICK_EPSILON_SECONDS = 0.5f
+
+internal data class AudioChainIndicatorState(
+    val tier: QualityTier?,
+    val hasDetails: Boolean,
+)
+
+internal fun audioChainIndicatorState(
+    processingChain: AudioProcessingChain?,
+    legacyTier: QualityTier?,
+): AudioChainIndicatorState {
+    val tier = when {
+        processingChain == null -> legacyTier
+        processingChain.hasServerFidelity -> processingChain.qualityTier
+        else -> processingChain.qualityTier ?: legacyTier
+    }
+    return AudioChainIndicatorState(
+        tier = tier,
+        hasDetails = processingChain != null || legacyTier != null,
+    )
+}
 
 @Composable
 fun CompactPlayerItem(
@@ -483,8 +506,15 @@ fun FullPlayerItem(
 
             // Duration labels
             val currentQueueItem = item.queueInfo?.currentItem
-            val tier = currentQueueItem?.qualityTier
+            val processingChain = item.audioProcessingChain
+            val chainIndicator = audioChainIndicatorState(
+                processingChain = processingChain,
+                legacyTier = currentQueueItem?.qualityTier,
+            )
+            val tier = chainIndicator.tier
+            val hasAudioDetails = chainIndicator.hasDetails
             val isLq = tier == QualityTier.LQ
+            val usesNeutralStyle = tier == null
             var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
             var showSpeedDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
 
@@ -499,6 +529,7 @@ fun FullPlayerItem(
                 AudioChainDialog(
                     queueTrack = currentQueueItem,
                     player = item,
+                    audioProcessingChain = processingChain,
                     onDismissRequest = { showChainDialog = false },
                 )
             }
@@ -523,54 +554,64 @@ fun FullPlayerItem(
                     )
                 },
                 center = {
-                    if (showSpeed) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(colors.controlTint)
-                                .clickable { showSpeedDialog = true }
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = "${formatDecimal(snapSpeed(playbackSpeed), 2)}x",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (colors.controlTint.luminance() > 0.5f) {
-                                    Color.Black
-                                } else {
-                                    Color.White
-                                },
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .alpha(if (tier != null && !poweredOff) 1f else 0f)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (isLq) {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    } else {
-                                        colors.controlTint
-                                    },
-                                )
-                                .clickable(enabled = tier != null) { showChainDialog = true }
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = (tier ?: QualityTier.LQ).name,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isLq) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else {
-                                    if (colors.controlTint.luminance() > 0.5f) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (showSpeed) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(colors.controlTint)
+                                    .clickable { showSpeedDialog = true }
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = "${formatDecimal(snapSpeed(playbackSpeed), 2)}x",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (colors.controlTint.luminance() > 0.5f) {
                                         Color.Black
                                     } else {
                                         Color.White
+                                    },
+                                )
+                            }
+                        }
+
+                        if (!showSpeed || processingChain != null) {
+                            Box(
+                                modifier = Modifier
+                                    .alpha(if (hasAudioDetails && !poweredOff) 1f else 0f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isLq || usesNeutralStyle) {
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        } else {
+                                            colors.controlTint
+                                        },
+                                    )
+                                    .clickable(enabled = hasAudioDetails && !poweredOff) {
+                                        showChainDialog = true
                                     }
-                                },
-                            )
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = tier?.name
+                                        ?: stringResource(Res.string.quality_dialog_details),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isLq || usesNeutralStyle) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        if (colors.controlTint.luminance() > 0.5f) {
+                                            Color.Black
+                                        } else {
+                                            Color.White
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 },

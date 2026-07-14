@@ -23,12 +23,14 @@ import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
+import io.music_assistant.client.data.model.server.AudioProcessingChain
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.events.AudioProcessingUpdatedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemPlayedEvent
@@ -52,6 +54,7 @@ import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconModel
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.resultAs
@@ -75,6 +78,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonNull
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(FlowPreview::class)
@@ -106,6 +110,7 @@ class MainDataSource(
         val queues: List<QueueInfo>,
         val localData: PlayerData?,
         val favoriteOverrides: Map<String, Boolean>,
+        val audioProcessingChains: Map<String, AudioProcessingChain>,
     )
 
     /** Local (Sendspin) player lifecycle, state and commands live in the controller. */
@@ -117,6 +122,11 @@ class MainDataSource(
     private val _serverPlayers = MutableStateFlow<DataState<List<Player>>>(DataState.Loading())
     private val _queueInfos = MutableStateFlow<List<QueueInfo>>(emptyList())
     private val _providersIcons = MutableStateFlow<Map<String, ProviderIconModel>>(emptyMap())
+    private val audioProcessingChainStore = AudioProcessingChainStore()
+
+    /** Latest full schema-38 snapshots keyed by queue id. */
+    val audioProcessingChains: StateFlow<Map<String, AudioProcessingChain>> =
+        audioProcessingChainStore.snapshots
 
     /**
      * Authoritative favorite state per track, keyed by [favKey]. The server's
@@ -177,8 +187,12 @@ class MainDataSource(
     // host path (which sources `localPlayer`, not `_playersData`) never sees the
     // override and the heart only flips after a real server update.
     val localPlayer: StateFlow<PlayerData?> =
-        combine(localPlayerController.localPlayerData, _favoriteOverrides) { data, overrides ->
-            data?.let { applyFavoriteOverride(it, overrides) }
+        combine(
+            localPlayerController.localPlayerData,
+            _favoriteOverrides,
+            audioProcessingChains,
+        ) { data, overrides, chains ->
+            data?.let { applyAudioProcessingChain(applyFavoriteOverride(it, overrides), chains) }
         }.stateIn(this, SharingStarted.Eagerly, null)
 
     val isAnythingPlaying =
@@ -281,6 +295,7 @@ class MainDataSource(
 
     private var watchJob: Job? = null
     private var updateJob: Job? = null
+    private var audioProcessingSessionInitialized = false
 
     init {
         mediaPlayerController.setLongFormSeekIntervals(
@@ -327,8 +342,9 @@ class MainDataSource(
                 _queueInfos,
                 localPlayerController.localPlayerData,
                 _favoriteOverrides,
-            ) { players, queues, localData, favOverrides ->
-                PlayerBuildInputs(players, queues, localData, favOverrides)
+                audioProcessingChains,
+            ) { players, queues, localData, favOverrides, chains ->
+                PlayerBuildInputs(players, queues, localData, favOverrides, chains)
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { input ->
@@ -343,6 +359,7 @@ class MainDataSource(
                                     input.queues,
                                     input.localData,
                                     input.favoriteOverrides,
+                                    input.audioProcessingChains,
                                     oldValues,
                                 ),
                             )
@@ -353,6 +370,7 @@ class MainDataSource(
                                     input.queues,
                                     input.localData,
                                     input.favoriteOverrides,
+                                    input.audioProcessingChains,
                                     oldValues,
                                 ),
                                 disconnectedAt = input.players.disconnectedAt,
@@ -365,6 +383,13 @@ class MainDataSource(
         launch {
             apiClient.sessionState.collect { sessionState ->
                 log.i { "SessionState changed: ${sessionState::class.simpleName}" }
+                val isAuthenticatedConnection =
+                    sessionState is SessionState.Connected &&
+                            sessionState.dataConnectionState is DataConnectionState.Authenticated
+                if (!isAuthenticatedConnection && audioProcessingSessionInitialized) {
+                    audioProcessingSessionInitialized = false
+                    audioProcessingChainStore.invalidateConnection()
+                }
 
                 when (sessionState) {
                     is SessionState.Connected -> {
@@ -373,6 +398,11 @@ class MainDataSource(
                         watchJob = watchApiEvents()
 
                         if (sessionState.dataConnectionState is DataConnectionState.Authenticated) {
+                            if (!audioProcessingSessionInitialized) {
+                                audioProcessingSessionInitialized = true
+                                audioProcessingChainStore.resetConnection()
+                                refreshCurrentAudioProcessingChains()
+                            }
                             when (val currentState = _serverPlayers.value) {
                                 is DataState.Stale -> {
                                     log.i { "Recovering from ${currentState.reason} stale state" }
@@ -811,6 +841,7 @@ class MainDataSource(
         queues: List<QueueInfo>,
         localData: PlayerData?,
         favoriteOverrides: Map<String, Boolean>,
+        audioProcessingChains: Map<String, AudioProcessingChain>,
         oldValues: DataState<List<PlayerData>>,
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinClientId.value
@@ -882,6 +913,7 @@ class MainDataSource(
         // independent (currentMedia vs queue.currentItem.track.favorite), so order is free.
         return withLocal
             .map { applyNowPlayingArtwork(it) }
+            .map { applyAudioProcessingChain(it, audioProcessingChains) }
             .let { list ->
                 if (favoriteOverrides.isEmpty()) {
                     list
@@ -908,6 +940,22 @@ class MainDataSource(
         return playerData.copy(
             player = playerData.player.copy(currentMedia = media.copy(imageUrl = url)),
         )
+    }
+
+    private fun applyAudioProcessingChain(
+        playerData: PlayerData,
+        chains: Map<String, AudioProcessingChain>,
+    ): PlayerData {
+        val chain = selectAudioProcessingChain(
+            snapshots = chains,
+            queueId = playerData.queueInfo?.id,
+            currentQueueItemId = playerData.queueInfo?.currentItem?.id,
+        )
+        return if (playerData.audioProcessingChain == chain) {
+            playerData
+        } else {
+            playerData.copy(audioProcessingChain = chain)
+        }
     }
 
     /** Stable per-track key for [_favoriteOverrides]. */
@@ -978,6 +1026,7 @@ class MainDataSource(
         log.i { "Clearing all cached data" }
         _serverPlayers.update { DataState.NoData() }
         _queueInfos.update { emptyList() }
+        audioProcessingChainStore.resetConnection()
         positionTracker.clear()
         localPlayerController.clearState()
         // Note: _providersIcons deliberately NOT cleared (static data)
@@ -1315,6 +1364,13 @@ class MainDataSource(
                                     value + data
                                 }
                             }
+                            audioProcessingChainStore.clearStoppedQueue(
+                                queueId = data.id,
+                                currentQueueItemId = data.currentItem?.id,
+                            )
+                            if (data.currentItem != null) {
+                                refreshAudioProcessingChain(data.id)
+                            }
                             data.elapsedTime?.let { elapsed ->
                                 val player = (_serverPlayers.value as? DataState.Data)
                                     ?.data?.find { it.queueId == data.id }
@@ -1347,6 +1403,10 @@ class MainDataSource(
                                     if (it.id == data.id) data else it
                                 }
                             }
+                            audioProcessingChainStore.clearStoppedQueue(
+                                queueId = data.id,
+                                currentQueueItemId = data.currentItem?.id,
+                            )
                             data.elapsedTime?.let { elapsed ->
                                 val player = (_serverPlayers.value as? DataState.Data)
                                     ?.data?.find { it.queueId == data.id }
@@ -1373,6 +1433,10 @@ class MainDataSource(
                             // even on a replayed event.
                             val fresh = data.takeIfNotStale("QueueItemsUpdated")
                             fresh?.let { freshData ->
+                                audioProcessingChainStore.clearStoppedQueue(
+                                    queueId = freshData.id,
+                                    currentQueueItemId = freshData.currentItem?.id,
+                                )
                                 _queueInfos.update { value ->
                                     value.map {
                                         if (it.id == freshData.id) freshData else it
@@ -1409,6 +1473,16 @@ class MainDataSource(
                                     queueId = queueId,
                                     elapsedSec = event.data,
                                 )
+                            }
+                        }
+
+                        is AudioProcessingUpdatedEvent -> {
+                            val queueId = event.objectId
+                                ?: event.data?.queueId?.takeIf { it.isNotBlank() }
+                            queueId?.let {
+                                audioProcessingChainStore.applyEvent(it, event.data)
+                            } ?: log.w {
+                                "Ignoring audio processing event without a queue id"
                             }
                         }
 
@@ -1531,6 +1605,9 @@ class MainDataSource(
 
     private fun updatePlayersAndQueues() {
         log.i { "Updating players and queues" }
+        if (!supportsAudioProcessingChain()) {
+            audioProcessingChainStore.resetConnection()
+        }
         launch {
             apiClient.sendRequest(Request.Player.all())
                 .resultAs<List<ServerPlayer>>()?.let { playerFactory.createList(it) }
@@ -1555,6 +1632,13 @@ class MainDataSource(
                 .resultAs<List<ServerQueue>>()?.let { queueFactory.createList(it) }?.let { list ->
                     _queueInfos.update { list }
                     list.forEach { queueInfo ->
+                        audioProcessingChainStore.clearStoppedQueue(
+                            queueId = queueInfo.id,
+                            currentQueueItemId = queueInfo.currentItem?.id,
+                        )
+                        if (queueInfo.currentItem != null) {
+                            refreshAudioProcessingChain(queueInfo.id)
+                        }
                         queueInfo.elapsedTime?.let { elapsed ->
                             val player = (_serverPlayers.value as? DataState.Data)
                                 ?.data?.find { it.queueId == queueInfo.id }
@@ -1585,6 +1669,38 @@ class MainDataSource(
                 state is DataState.Data && state.data.any { it.queueInfo != null }
             }
             refreshAllPlayersQueueItems()
+        }
+    }
+
+    private fun supportsAudioProcessingChain(): Boolean =
+        supportsAudioProcessingChainSchema(
+            (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion,
+        )
+
+    private fun refreshAudioProcessingChain(queueId: String) {
+        if (!supportsAudioProcessingChain()) return
+        val fetchToken = audioProcessingChainStore.captureFetch(queueId)
+        launch {
+            val answer = apiClient.sendRequest(Request.Queue.audioProcessingChain(queueId))
+                .getOrNull() ?: return@launch
+            if (!supportsAudioProcessingChain()) return@launch
+            val payload = answer.result ?: return@launch
+            if (payload is JsonNull) {
+                audioProcessingChainStore.applyFetch(fetchToken, null)
+            } else {
+                answer.resultAs<AudioProcessingChain>()?.let {
+                    audioProcessingChainStore.applyFetch(fetchToken, it)
+                }
+            }
+        }
+    }
+
+    private fun refreshCurrentAudioProcessingChains() {
+        if (!supportsAudioProcessingChain()) return
+        _queueInfos.value.forEach { queueInfo ->
+            if (queueInfo.currentItem != null) {
+                refreshAudioProcessingChain(queueInfo.id)
+            }
         }
     }
 

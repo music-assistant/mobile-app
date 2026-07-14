@@ -159,6 +159,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        fun audioProcessingChain(queueId: String) = Request(
+            command = APICommands.PLAYER_QUEUES_AUDIO_PROCESSING_CHAIN,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+            },
+        )
+
         fun moveItem(
             queueId: String,
             queueItemId: String,

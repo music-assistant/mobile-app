@@ -6,7 +6,9 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.client.QueueTrack
+import io.music_assistant.client.data.model.server.AudioFidelity
 import io.music_assistant.client.data.model.server.AudioFormat
+import io.music_assistant.client.data.model.server.AudioProcessingChain
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.ServerMediaItem
 
@@ -170,6 +172,52 @@ val QueueTrack.qualityTier: QualityTier?
             QualityTier.SQ in tiers -> QualityTier.SQ
             else -> QualityTier.HQ
         }
+    }
+
+private fun String.toQualityTier(): QualityTier? = when (lowercase()) {
+    "low" -> QualityTier.LQ
+    "standard" -> QualityTier.SQ
+    "lossless", "hi_res" -> QualityTier.HQ
+    else -> null
+}
+
+private fun List<QualityTier>.lowestQualityTier(): QualityTier? = when {
+    QualityTier.LQ in this -> QualityTier.LQ
+    QualityTier.SQ in this -> QualityTier.SQ
+    QualityTier.HQ in this -> QualityTier.HQ
+    else -> null
+}
+
+val AudioFidelity.qualityTier: QualityTier?
+    get() = quality.toQualityTier()
+
+val AudioProcessingChain.hasServerFidelity: Boolean
+    get() = fidelity != null ||
+            input?.fidelity != null ||
+            outputs.any { it.fidelity != null }
+
+val AudioProcessingChain.qualityTier: QualityTier?
+    get() {
+        fidelity?.let { return it.minOutputQuality.toQualityTier() }
+
+        if (outputs.any { it.fidelity != null }) {
+            val outputTiers = mutableListOf<QualityTier>()
+            outputs.forEach { output ->
+                val outputTier = when (val outputFidelity = output.fidelity) {
+                    null -> output.outputFormat?.qualityTier
+                    else -> outputFidelity.qualityTier ?: return null
+                }
+                outputTier?.let(outputTiers::add)
+            }
+            return outputTiers.lowestQualityTier()
+        }
+
+        input?.fidelity?.let { return it.qualityTier }
+        outputs.mapNotNull { it.outputFormat?.qualityTier }
+            .lowestQualityTier()
+            ?.let { return it }
+        return input?.sourceFormat?.qualityTier
+            ?: input?.serverInputFormat?.qualityTier
     }
 
 internal data class ProviderHash(val itemId: String, val providerInstance: String)

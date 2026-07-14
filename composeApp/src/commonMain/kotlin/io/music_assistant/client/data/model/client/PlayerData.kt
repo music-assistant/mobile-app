@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.server.AudioProcessingChain
 import io.music_assistant.client.ui.compose.common.DataState
 
 data class PlayerData(
@@ -9,6 +10,7 @@ data class PlayerData(
     val childrenBinds: List<ChildBind>,
     val isLocal: Boolean = false,
     val pendingPlay: Boolean = false,
+    val audioProcessingChain: AudioProcessingChain? = null,
 ) {
     val playerId = player.id
     val queueInfo = (queue as? DataState.Data)?.data?.info
@@ -50,6 +52,7 @@ data class PlayerData(
             childrenBinds = other.childrenBinds,
             isLocal = other.isLocal,
             pendingPlay = other.pendingPlay,
+            audioProcessingChain = other.audioProcessingChain,
         )
     }
 

@@ -15,6 +15,7 @@ object APICommands {
     // Player Queue commands
     const val PLAYER_QUEUES_ALL = "player_queues/all"
     const val PLAYER_QUEUES_ITEMS = "player_queues/items"
+    const val PLAYER_QUEUES_AUDIO_PROCESSING_CHAIN = "player_queues/audio_processing_chain"
     const val PLAYER_QUEUES_MOVE_ITEM = "player_queues/move_item"
     const val PLAYER_QUEUES_DELETE_ITEM = "player_queues/delete_item"
     const val PLAYER_QUEUES_CLEAR = "player_queues/clear"

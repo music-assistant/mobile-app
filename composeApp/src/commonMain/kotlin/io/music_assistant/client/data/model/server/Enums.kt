@@ -60,6 +60,9 @@ enum class EventType {
     @SerialName("queue_settings_updated")
     QUEUE_SETTINGS_UPDATED,
 
+    @SerialName("audio_processing_updated")
+    AUDIO_PROCESSING_UPDATED,
+
     @SerialName("application_shutdown")
     SHUTDOWN,
 

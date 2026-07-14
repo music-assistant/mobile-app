@@ -5,6 +5,7 @@ package io.music_assistant.client.api
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.model.server.EventType
+import io.music_assistant.client.data.model.server.events.AudioProcessingUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.GenericEvent
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
@@ -46,6 +47,8 @@ data class Event(
     @Suppress("MemberNameEqualsClassName") // TODO: rename to `decode()` (touches several callers)
     fun event(): Event<out Any>? = try {
         when (type) {
+            EventType.AUDIO_PROCESSING_UPDATED ->
+                myJson.decodeFromJsonElement<AudioProcessingUpdatedEvent>(json)
             EventType.MEDIA_ITEM_ADDED -> myJson.decodeFromJsonElement<MediaItemAddedEvent>(json)
             EventType.MEDIA_ITEM_DELETED -> myJson.decodeFromJsonElement<MediaItemDeletedEvent>(json)
             EventType.MEDIA_ITEM_PLAYED -> myJson.decodeFromJsonElement<MediaItemPlayedEvent>(json)
