@@ -50,7 +50,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -83,7 +82,7 @@ class KtorServiceClient(
 
     private val clientMutex = Mutex()
 
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var currentClient: HttpClient = createPlatformHttpClient {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(myJson)
@@ -116,7 +115,6 @@ class KtorServiceClient(
     private fun startNetworkObserver() {
         launch {
             networkMonitor.isAvailable
-                .distinctUntilChanged()
                 .collect { available ->
                     if (available && _sessionState.value !is SessionState.Connected) {
                         logger.i { "Network became available while not fully connected — rotating HttpClient" }
@@ -1127,7 +1125,7 @@ class KtorServiceClient(
 
     fun close() {
         supervisorJob.cancel()
-        client.close()
+        currentClient.close()
     }
 
     private fun Request.playerControlLogLabel(): String? {

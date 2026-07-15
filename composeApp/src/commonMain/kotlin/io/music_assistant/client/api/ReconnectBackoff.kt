@@ -8,7 +8,6 @@ package io.music_assistant.client.api
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlin.math.minOf
 
 /**
  * Three-phase reconnection backoff.
@@ -74,7 +73,7 @@ suspend fun runReconnectionLoop(
         } else {
             // Apply three-phase backoff. In infinite mode cap the backoff index at 9
             // so delay stays at 120s after the 10th attempt.
-            val capped = if (infinite) minOf(attempt, 9) else attempt
+            val capped = if (infinite) attempt.coerceAtMost(9) else attempt
             delay(reconnectBackoffMs(capped))
         }
         onAttemptStarting(attempt + 1)
