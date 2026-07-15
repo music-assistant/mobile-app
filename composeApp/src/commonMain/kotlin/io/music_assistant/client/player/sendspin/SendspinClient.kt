@@ -177,7 +177,8 @@ class SendspinClient(
                         when (_state.value) {
                             is SendspinState.Connecting,
                             is SendspinState.Reconnecting,
-                            is SendspinState.Error -> {
+                            is SendspinState.Error,
+                            -> {
                                 val wasStreaming =
                                     (_state.value as? SendspinState.Reconnecting)?.wasStreaming
                                         ?: false

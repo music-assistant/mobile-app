@@ -50,12 +50,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -82,6 +82,7 @@ class KtorServiceClient(
         supervisorJob + Dispatchers.IO + scopeExceptionHandler
 
     private val clientMutex = Mutex()
+
     @Volatile
     private var currentClient: HttpClient = createPlatformHttpClient {
         install(WebSockets) {
