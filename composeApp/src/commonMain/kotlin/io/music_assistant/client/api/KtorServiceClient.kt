@@ -55,6 +55,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -80,10 +81,47 @@ class KtorServiceClient(
     override val coroutineContext: CoroutineContext =
         supervisorJob + Dispatchers.IO + scopeExceptionHandler
 
-    private val client = createPlatformHttpClient {
+    private val clientMutex = Mutex()
+    @Volatile
+    private var currentClient: HttpClient = createPlatformHttpClient {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(myJson)
             pingInterval = 10.seconds
+        }
+    }
+
+    /**
+     * Creates a fresh HttpClient and closes the old one.
+     * Called when the network transitions from unavailable → available while reconnecting,
+     * to discard any cached DNS failures / connection-pool timeouts in the old engine.
+     */
+    private suspend fun rotateHttpClient() {
+        clientMutex.withLock {
+            val oldClient = currentClient
+            currentClient = createPlatformHttpClient {
+                install(WebSockets) {
+                    contentConverter = KotlinxWebsocketSerializationConverter(myJson)
+                    pingInterval = 10.seconds
+                }
+            }
+            oldClient.close()
+        }
+    }
+
+    // Observes network availability and rotates the HttpClient when the network
+    // comes back after an outage. This prevents stale DNS/connection-pool state
+    // (e.g. NSURLErrorCannotFindHost with WireGuard tunnels) from poisoning
+    // subsequent reconnect attempts.
+    private fun startNetworkObserver() {
+        launch {
+            networkMonitor.isAvailable
+                .distinctUntilChanged()
+                .collect { available ->
+                    if (available && _sessionState.value !is SessionState.Connected) {
+                        logger.i { "Network became available while not fully connected — rotating HttpClient" }
+                        rotateHttpClient()
+                    }
+                }
         }
     }
 
@@ -430,6 +468,7 @@ class KtorServiceClient(
     )
 
     init {
+        startNetworkObserver()
         launch {
             isReadyForCommands.collect { ready ->
                 logger.i { "isReadyForCommands=$ready" }
@@ -615,7 +654,7 @@ class KtorServiceClient(
         startConnectWatchdog()
 
         val directTransport = DirectTransport(
-            client = client,
+            clientProvider = { currentClient },
             connectionInfoProvider = { connection },
             parentScope = this,
             networkAvailable = networkMonitor.isAvailable,
