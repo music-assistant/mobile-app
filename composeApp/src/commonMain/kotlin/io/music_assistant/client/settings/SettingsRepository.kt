@@ -323,6 +323,18 @@ class SettingsRepository(
         _sendspinEnabled.update { enabled }
     }
 
+    // Persisted dismissal of the "background usage disabled" warning (Android). Set only by an
+    // explicit dialog dismissal; never auto-reset.
+    private val _bgWarningDismissed = MutableStateFlow(
+        settings.getBoolean("sendspin_bg_warning_dismissed", false),
+    )
+    val bgWarningDismissed = _bgWarningDismissed.asStateFlow()
+
+    fun setBgWarningDismissed(dismissed: Boolean) {
+        settings.putBoolean("sendspin_bg_warning_dismissed", dismissed)
+        _bgWarningDismissed.update { dismissed }
+    }
+
     @OptIn(ExperimentalUuidApi::class)
     private val _sendspinClientId = MutableStateFlow(
         settings.getStringOrNull("sendspin_client_id") ?: Uuid.random().toString().also {
