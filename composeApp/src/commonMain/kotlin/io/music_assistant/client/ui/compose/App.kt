@@ -108,7 +108,10 @@ private fun BackgroundRestrictionDialog() {
         title = { Text(stringResource(Res.string.background_usage_dialog_title)) },
         text = { Text(stringResource(Res.string.background_usage_dialog_message)) },
         confirmButton = {
-            TextButton(onClick = { viewModel.onOpenSettings(); hidden = true }) {
+            TextButton(onClick = {
+                viewModel.onOpenSettings()
+                hidden = true
+            }) {
                 Text(stringResource(Res.string.background_usage_dialog_open_settings))
             }
         },

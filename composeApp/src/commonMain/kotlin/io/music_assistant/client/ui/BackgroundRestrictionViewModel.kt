@@ -27,7 +27,6 @@ class BackgroundRestrictionViewModel(
     private val guard: BackgroundUsageGuard,
     apiClient: ServiceClient,
 ) : ViewModel() {
-
     private val restricted: StateFlow<Boolean> =
         apiClient.foregroundEvents
             .onStart { emit(Unit) } // sample immediately, not only on the next foreground

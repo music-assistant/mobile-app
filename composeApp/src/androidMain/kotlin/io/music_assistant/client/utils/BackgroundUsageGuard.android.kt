@@ -12,7 +12,6 @@ import android.provider.Settings
 class AndroidBackgroundUsageGuard(
     private val context: Context,
 ) : BackgroundUsageGuard {
-
     override fun isBackgroundRestricted(): Boolean =
         (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
             .isBackgroundRestricted // API 28; minSdk = 28
