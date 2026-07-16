@@ -67,32 +67,10 @@ jobs:
           keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Restore debug keystore (signs the GitHub APK)
-        run: |
-          mkdir -p ~/.android
-          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
-
-      # Same variant, so the Kotlin compile and R8 pass are shared: the APK
-      # costs packaging only. `splits` is ignored for the bundle, so the AAB
-      # keeps every ABI while the APK is arm64-v8a.
-      - name: Build release AAB and GitHub APK
-        run: ./gradlew :androidApp:bundleRelease :androidApp:assembleRelease
-
-      # AGP signs the APK with the upload key (the AAB needs it). Users get the
-      # debug key instead — it is the cert Play onboarded this package with.
-      - name: Re-sign GitHub APK with the debug key
-        run: |
-          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          APK="dist/music-assistant-${{ steps.version.outputs.name }}-arm64-v8a.apk"
-          mkdir -p dist
-          "$APKSIGNER" sign \
-            --ks ~/.android/debug.keystore \
-            --ks-pass pass:android \
-            --ks-key-alias androiddebugkey \
-            --key-pass pass:android \
-            --out "$APK" \
-            androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk
-          "$APKSIGNER" verify --print-certs "$APK"
+      # Only the bundle: the GitHub APK is fetched from Play post-upload
+      # (generatedapks API), so it carries the real Play app-signing key.
+      - name: Build release AAB
+        run: ./gradlew :androidApp:bundleRelease
 
       - name: Generate Play Store release notes
         run: |
@@ -111,6 +89,8 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
 
       - name: Upload to Google Play (open testing)
         uses: r0adkll/upload-google-play@v1
@@ -121,6 +101,44 @@ jobs:
           track: beta
           status: completed
           whatsNewDirectory: distribution/whatsnew
+
+      # Fetch the universal APK that Play generated from the uploaded bundle.
+      # It is signed with the Play app-signing key (not forgeable), unlike the
+      # old debug-key re-sign. Play needs a moment to process the bundle first.
+      - name: Download Play-signed universal APK
+        id: playapk
+        run: |
+          set -euo pipefail
+          TOKEN='${{ steps.gcloud-auth.outputs.access_token }}'
+          PKG='io.music_assistant.client'
+          CODE='${{ steps.version.outputs.code }}'
+          BASE="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PKG}/generatedApks/${CODE}"
+          mkdir -p dist
+          OUT="dist/music-assistant-${{ steps.version.outputs.name }}.apk"
+
+          DL=""
+          for i in $(seq 1 40); do   # ~20 min: 40 × 30s
+            RESP=$(curl -sf -H "Authorization: Bearer $TOKEN" "$BASE") || RESP=""
+            DL=$(echo "$RESP" | jq -r 'first(.generatedApks[]?.generatedUniversalApk.downloadId // empty)')
+            if [ -n "$DL" ] && [ "$DL" != "null" ]; then break; fi
+            echo "Play has not generated APKs yet (attempt $i); retrying in 30s…"
+            sleep 30
+          done
+
+          if [ -z "$DL" ] || [ "$DL" = "null" ]; then
+            echo "::warning::Play-generated universal APK not available after polling; releasing without an attached APK."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          curl -sfL -H "Authorization: Bearer $TOKEN" "${BASE}/downloads/${DL}:download?alt=media" -o "$OUT"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          if [ -x "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$OUT"   # log the app-signing cert
+          else
+            echo "::notice::apksigner not found at $APKSIGNER; skipping cert log"
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
       - name: Create and push tag
         run: |
@@ -140,8 +158,8 @@ jobs:
 
             ### Direct download
 
-            `music-assistant-${{ steps.version.outputs.name }}-arm64-v8a.apk` — arm64-v8a
-            only, which covers essentially every modern device (but not x86_64 emulators).
+            `music-assistant-${{ steps.version.outputs.name }}.apk` — universal build
+            signed with the Google Play app key (installs alongside / updates Play installs).
           files: dist/music-assistant-*.apk
           generate_release_notes: true
           draft: false
