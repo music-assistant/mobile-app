@@ -3,6 +3,8 @@
 package io.music_assistant.client.logging
 
 import io.music_assistant.client.player.PlatformContext
+import kotlinx.cinterop.useContents
+import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSString
 import platform.Foundation.NSTemporaryDirectory
@@ -14,6 +16,7 @@ import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
+import platform.UIKit.popoverPresentationController
 
 actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platformContext: PlatformContext) {
     private fun logFilePath() = "${NSTemporaryDirectory()}ma_client_logs.txt"
@@ -67,6 +70,18 @@ actual class LogSharer actual constructor(@Suppress("UNUSED_PARAMETER") platform
             ?.filterIsInstance<UIWindow>()
             ?.firstOrNull { it.isKeyWindow() }
             ?.rootViewController
-        rootVC?.presentViewController(activityVC, animated = true, completion = null)
+            ?: return
+        // On iPad UIActivityViewController is presented as a popover; UIKit throws an
+        // NSException in presentationTransitionWillBegin if no anchor is set
+        // Anchor it to the center of the root view with no arrow.
+        activityVC.popoverPresentationController?.let { popover ->
+            val sourceView = rootVC.view
+            popover.sourceView = sourceView
+            popover.sourceRect = sourceView.bounds.useContents {
+                CGRectMake(size.width / 2.0, size.height / 2.0, 0.0, 0.0)
+            }
+            popover.permittedArrowDirections = 0u // no arrow, centered popover
+        }
+        rootVC.presentViewController(activityVC, animated = true, completion = null)
     }
 }

@@ -9,6 +9,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
@@ -51,8 +52,10 @@ data class ServerMediaItem(
     // podcast episode only
     @SerialName("podcast") val podcast: ServerMediaItem? = null,
     // Audiobook only
-    @SerialName("authors") val authors: List<String>? = null,
-    @SerialName("narrators") val narrators: List<String>? = null,
+    // Server sends plain strings (legacy) or Artist/ItemMapping objects
+    // either shape decodes to the display name.
+    @SerialName("authors") val authors: List<@Serializable(NameOrStringSerializer::class) String>? = null,
+    @SerialName("narrators") val narrators: List<@Serializable(NameOrStringSerializer::class) String>? = null,
     @SerialName("publisher") val publisher: String? = null,
     // Progress tracking (audiobooks, podcast episodes)
     // Server sends Boolean for audiobooks and Int 0/1 for podcast episodes
@@ -85,7 +88,7 @@ data class ServerMetadata(
     @SerialName("release_date") val releaseDate: String? = null,
     // @SerialName("languages") val languages: List<String>? = null,
     @SerialName("chapters") val chapters: List<ServerMediaItemChapter>? = null,
-    @SerialName("last_refresh") val lastRefresh: Long?,
+    @SerialName("last_refresh") val lastRefresh: Long? = null,
 )
 
 @Serializable
@@ -117,6 +120,24 @@ data class ServerMediaItemChapter(
     @SerialName("start") val start: Double,
     @SerialName("end") val end: Double? = null,
 )
+
+// Audiobook authors/narrators changed server-side from `list[str]` to
+// `list[Artist | ItemMapping | str]`. Accept a JSON string as-is, or take the
+// `name` field of an object; the app only needs the display name.
+private object NameOrStringSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("NameOrString", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): String =
+        (decoder as? JsonDecoder)?.decodeJsonElement()?.let { element ->
+            when (element) {
+                is JsonPrimitive -> element.content
+                is JsonObject -> (element["name"] as? JsonPrimitive)?.content ?: ""
+                else -> ""
+            }
+        } ?: decoder.decodeString()
+
+    override fun serialize(encoder: Encoder, value: String) = encoder.encodeString(value)
+}
 
 // Server inconsistency: audiobooks send Boolean, podcast episodes send Int 0/1
 private object FlexibleBooleanSerializer : KSerializer<Boolean> {

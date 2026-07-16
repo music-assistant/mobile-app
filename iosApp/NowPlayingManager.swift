@@ -13,10 +13,13 @@ class NowPlayingManager {
 
     static let shared = NowPlayingManager()
 
+    /// Sole writer of `MPNowPlayingInfoCenter.default().nowPlayingInfo`; all
+    /// dictionary mutations in this class go through it.
+    private let infoStore = NowPlayingInfoStore()
+
     private var commandHandler: CommandHandler?
 
     // State for caching and flicker prevention
-    private var lastTrackIdentifier: String?
     private var cachedArtwork: MPMediaItemArtwork?
     private var currentArtworkLoad: Cancellable?
 
@@ -39,7 +42,6 @@ class NowPlayingManager {
         logDebug("Initializing")
         configureAudioSession()
         setupRemoteCommands() // Setup commands once
-        printDebugState("After init")
     }
 
     /// Sets the category only — does NOT activate. Activation interrupts other
@@ -170,15 +172,9 @@ class NowPlayingManager {
         // intentionally only touch rate (and elapsed if known) — title/artist stay
         // on the previous track until artwork arrives.
         if abs(playbackRate) < 0.001 {
-            var currentInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-            currentInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
-            if let elapsed = elapsedTime {
-                let dur = duration
-                    ?? (currentInfo[MPMediaItemPropertyPlaybackDuration] as? Double)
-                    ?? .greatestFiniteMagnitude
-                currentInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsed, dur))
+            DispatchQueue.main.async { [weak self] in
+                self?.infoStore.setTransport(elapsedSec: elapsedTime, rate: 0.0)
             }
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = currentInfo
         }
 
         // Cancel any previous pending load
@@ -232,24 +228,10 @@ class NowPlayingManager {
         self.currentAlbum = album
     }
 
-    /// Merges new fields into the existing `MPNowPlayingInfoCenter.nowPlayingInfo`
-    /// dict.
-    ///
-    /// When `isNewTrack` is `false` (same-track tick): nil-valued fields are
-    /// skipped (preserving iOS's last-known value) and non-nil fields overwrite.
-    /// This is the right semantics for position-tick / pause-rate updates where
-    /// upstream legitimately doesn't know elapsed.
-    ///
-    /// When `isNewTrack` is `true`: previous-track fields are explicitly cleared
-    /// before the merge — otherwise transitioning to a track that has, say, no
-    /// artwork URL would leave the previous track's cover pinned in the dict
-    /// because the skip-on-nil rule preserves it. The merge then writes whatever
-    /// values the caller has; missing values become absent rather than
-    /// previous-track holdovers.
-    ///
-    /// The stable `contentId` is always set so iOS doesn't auto-assign a fresh
-    /// `ContentItemIdentifier` per call (which would make `mediaremoted` fire
-    /// `PlaybackQueueInvalidation` on every position tick).
+    /// One update = track-group + transport-group write. `isNewTrack` rebuilds the
+    /// track group (else nil fields keep last-known values, which would pin stale
+    /// artwork across a track change). A stable `contentId` prevents mediaremoted
+    /// firing `PlaybackQueueInvalidation` on every position tick.
     private func applyMergedUpdate(
         title: String?,
         artist: String?,
@@ -261,39 +243,18 @@ class NowPlayingManager {
         contentId: String,
         isNewTrack: Bool
     ) {
-        DispatchQueue.main.async {
-            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-
-            if isNewTrack {
-                // Wipe previous-track holdovers so a missing field on the new
-                // track doesn't render as a pinned stale value.
-                info.removeValue(forKey: MPMediaItemPropertyTitle)
-                info.removeValue(forKey: MPMediaItemPropertyArtist)
-                info.removeValue(forKey: MPMediaItemPropertyAlbumTitle)
-                info.removeValue(forKey: MPMediaItemPropertyArtwork)
-                info.removeValue(forKey: MPMediaItemPropertyPlaybackDuration)
-                info.removeValue(forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime)
-            }
-
-            if let title = title { info[MPMediaItemPropertyTitle] = title }
-            if let artist = artist { info[MPMediaItemPropertyArtist] = artist }
-            if let album = album { info[MPMediaItemPropertyAlbumTitle] = album }
-            if let duration = duration { info[MPMediaItemPropertyPlaybackDuration] = duration }
-            if let elapsed = elapsedTime {
-                // Clamp against the freshly supplied duration if we have one,
-                // otherwise the duration already cached on iOS, otherwise unbounded.
-                let dur = duration
-                    ?? (info[MPMediaItemPropertyPlaybackDuration] as? Double)
-                    ?? .greatestFiniteMagnitude
-                info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(elapsed, dur))
-            }
-            info[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
-            if let artwork = artwork {
-                info[MPMediaItemPropertyArtwork] = artwork
-            }
-            info[MPNowPlayingInfoPropertyExternalContentIdentifier] = contentId
-
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.infoStore.setTrackKeys(
+                title: title,
+                artist: artist,
+                album: album,
+                artwork: artwork,
+                duration: duration,
+                contentId: contentId,
+                replacingExisting: isNewTrack
+            )
+            self.infoStore.setTransport(elapsedSec: elapsedTime, rate: playbackRate)
         }
     }
 
@@ -302,28 +263,20 @@ class NowPlayingManager {
         logInfo("Clearing Now Playing info")
         configureAudioSession(mode: .default)
         DispatchQueue.main.async { [weak self] in
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            self?.infoStore.clear()
             self?.cachedArtwork = nil
             self?.updateCurrentState(title: nil, artist: nil, album: nil)
             self?.updateRemoteCommandMode(isLongFormContent: false)
         }
     }
 
-    // MARK: - Debug
-    private func printDebugState(_ context: String) {
-        // ... (Keep existing debug logic if needed, or remove for brevity)
-    }
-
     // MARK: - Private
 
     private func applyRemoteSeekPosition(_ position: TimeInterval) {
-        DispatchQueue.main.async {
-            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-            let duration = (info[MPMediaItemPropertyPlaybackDuration] as? Double) ?? .greatestFiniteMagnitude
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, min(position, duration))
-            // Stop iOS interpolation immediately; KMP will publish the confirmed rate.
-            info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        DispatchQueue.main.async { [weak self] in
+            // Rate 0 stops iOS interpolation immediately; KMP will publish the
+            // confirmed rate once the seek lands.
+            self?.infoStore.setTransport(elapsedSec: position, rate: 0.0)
         }
     }
 

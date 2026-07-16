@@ -181,6 +181,44 @@ class MainDataSource(
             data?.let { applyFavoriteOverride(it, overrides) }
         }.stateIn(this, SharingStarted.Eagerly, null)
 
+    /** Track metadata for the local player's system-media presentation. */
+    val nowPlayingTrack: StateFlow<NowPlayingTrack?> =
+        localPlayer
+            .map(::buildNowPlayingTrack)
+            .distinctUntilChanged()
+            .stateIn(this, SharingStarted.Eagerly, null)
+
+    /**
+     * Transport anchors for the local player's system-media presentation.
+     * The content identity is retained only for deduplication so a new track
+     * always emits a fresh anchor. No-track states remain explicit nulls.
+     */
+    val nowPlayingTransport: StateFlow<NowPlayingTransport?> =
+        localPlayer
+            .map { playerData ->
+                NowPlayingTransportEmission(
+                    mediaItemId = playerData?.queueInfo?.currentItem?.track?.itemId,
+                    transport = buildNowPlayingTransport(playerData, positionTracker),
+                )
+            }
+            .distinctUntilChanged { old, new ->
+                NowPlayingChannelChangeDetection.sameTransport(
+                    oldMediaItemId = old.mediaItemId,
+                    old = old.transport,
+                    newMediaItemId = new.mediaItemId,
+                    new = new.transport,
+                )
+            }
+            .map { it.transport }
+            .stateIn(this, SharingStarted.Eagerly, null)
+
+    /** Queue modes and their shared availability gate for system-media controls. */
+    val nowPlayingModes: StateFlow<NowPlayingModes?> =
+        localPlayer
+            .map(::buildNowPlayingModes)
+            .distinctUntilChanged()
+            .stateIn(this, SharingStarted.Eagerly, null)
+
     val isAnythingPlaying =
         playersData
             .mapNotNull { it as? DataState.Data<List<PlayerData>> }

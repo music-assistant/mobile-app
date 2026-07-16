@@ -237,6 +237,7 @@
   <string name="search_query_label">Search query</string>
   <string name="search_start">Start searching…</string>
   <string name="search_title">Global search</string>
+  <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
@@ -315,5 +316,4 @@
   <string name="toast_marked_played">Marked as played</string>
   <string name="toast_marked_unplayed">Marked as unplayed</string>
   <string name="toast_no_uri">Media item has no URI</string>
-  <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
 </resources>

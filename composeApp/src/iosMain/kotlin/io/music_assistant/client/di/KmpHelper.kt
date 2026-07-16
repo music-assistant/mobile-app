@@ -14,6 +14,9 @@ import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.carplay.CarPlayStrings
 import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.NowPlayingModes
+import io.music_assistant.client.data.NowPlayingTrack
+import io.music_assistant.client.data.NowPlayingTransport
 import io.music_assistant.client.data.executeLocalPlayerDispatch
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
@@ -182,7 +185,7 @@ object KmpHelper : KoinComponent {
 
     /**
      * Subscribe to transport command-readiness. Fires with the current value
-     * on subscribe and on every change. Caller must `cancel()` on teardown.
+     * on subscribe and on every change.
      */
     fun observeReadiness(onChanged: (Boolean) -> Unit): Cancellable {
         val job = mainScope.launch {
@@ -201,6 +204,45 @@ object KmpHelper : KoinComponent {
                 .map { it?.queueInfo?.currentItem != null }
                 .distinctUntilChanged()
                 .collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    // MARK: - Now Playing channels
+    //
+    // Per-concern state for the system media UI (lock screen / Control Center /
+    // CarPlay). Each observer replays the current value on subscribe — late
+    // subscribers (CarPlay connecting mid-playback, foreground return) catch up
+    // immediately. Callbacks arrive on the main thread; Swift needs no dispatch
+    // hop. `null` means "nothing to present" (no current track).
+
+    /**
+     * Subscribe to track metadata changes (identity, titles, artwork URL,
+     * duration, long-form flag).
+     */
+    fun observeNowPlayingTrack(onChanged: (NowPlayingTrack?) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingTrack.collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /**
+     * Subscribe to transport anchor changes (playing state, position anchor,
+     * rate). The anchor timestamp is only meaningful on the Kotlin side;
+     * Swift re-stamps arrival with its own clock.
+     */
+    fun observeNowPlayingTransport(onChanged: (NowPlayingTransport?) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingTransport.collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /** Subscribe to queue-mode changes (shuffle, repeat, toggle availability). */
+    fun observeNowPlayingModes(onChanged: (NowPlayingModes?) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingModes.collect { onChanged(it) }
         }
         return Cancellable { job.cancel() }
     }
