@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -73,7 +74,6 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
-import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -169,7 +169,7 @@ private fun SearchTopBar(
 ) {
     var showFilterSheet by remember { mutableStateOf(false) }
 
-    TwoRowTopAppBar(
+    TopAppBar(
         title = {
             SearchInput(
                 query = searchState.query,
