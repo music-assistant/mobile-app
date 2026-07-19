@@ -43,12 +43,12 @@ private const val SHEET_HEIGHT_FRACTION = 0.8f
 @Composable
 fun <T> SettingsSheet(
     title: String,
-    state: () -> T,
-    onApply: (T) -> Unit,
+    stateFactory: () -> T,
+    onApply: (state: T) -> Unit,
     onDismiss: () -> Unit,
-    content: @Composable ColumnScope.(T) -> Unit,
+    content: @Composable ColumnScope.(state: T) -> Unit,
 ) {
-    val state = remember { state() }
+    val state = remember { stateFactory() }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
