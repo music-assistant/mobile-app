@@ -11,6 +11,7 @@ import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ItemPage
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
+import io.music_assistant.client.support.pages.enableFilter
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
@@ -56,7 +57,7 @@ class SearchTest {
             .search("onion")
             .assertResult(album.name)
             .assertResult(track.name)
-            .enableFilter(Res.string.media_type_albums.get())
+            .enableFilter("Filter ${Res.string.media_type_albums.get()}")
             .assertResult(album.name)
             .assertNoResult(track.name)
             .clickOnMedia(album)

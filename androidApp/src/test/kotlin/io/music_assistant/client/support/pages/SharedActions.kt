@@ -24,7 +24,9 @@ import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.banner_no_network
 import musicassistantclient.composeapp.generated.resources.banner_reconnecting
 import musicassistantclient.composeapp.generated.resources.cd_current_player
+import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.common_apply
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -205,6 +207,14 @@ fun <T : ComposePage> T.assertNoNetworkBanner(showing: Boolean): T {
     } else {
         composeTestRule.onNodeWithText(Res.string.banner_no_network.get()).assertIsNotDisplayed()
     }
+
+    return this
+}
+
+fun <T : ComposePage> T.enableFilter(filter: String): T {
+    composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
+    composeTestRule.onNodeWithText(filter).performClick()
+    composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
 
     return this
 }

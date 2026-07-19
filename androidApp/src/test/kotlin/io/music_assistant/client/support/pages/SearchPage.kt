@@ -64,11 +64,6 @@ class SearchPage(composeTestRule: ComposeTestRule, val query: String? = null) : 
         return this
     }
 
-    fun enableFilter(filter: String): SearchPage {
-        composeTestRule.onNodeWithContentDescription("Filter $filter").performClick()
-        return this
-    }
-
     fun clickOnMedia(item: ServerMediaItem): ItemPage {
         return clickOnMedia(item, Res.string.nav_search.get())
     }
