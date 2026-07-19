@@ -21,6 +21,8 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_apply
@@ -129,10 +131,15 @@ object SettingsSheet {
     ) {
         ChoiceSection(label) {
             options.forEach { option ->
+                val text = stringResource(optionLabel(option))
+
                 FilterChip(
+                    modifier = Modifier.semantics {
+                        contentDescription = "Filter $text"
+                    },
                     selected = option in selected,
                     onClick = { onToggle(option) },
-                    label = { Text(stringResource(optionLabel(option))) },
+                    label = { Text(text) },
                 )
             }
         }

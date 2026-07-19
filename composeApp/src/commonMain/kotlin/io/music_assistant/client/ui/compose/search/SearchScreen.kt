@@ -2,15 +2,11 @@
 
 package io.music_assistant.client.ui.compose.search
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,27 +17,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ClickContext
@@ -88,8 +79,8 @@ import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.filter_sheet_title
+import musicassistantclient.composeapp.generated.resources.genre_filter_media_type
 import musicassistantclient.composeapp.generated.resources.search_error
-import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import musicassistantclient.composeapp.generated.resources.search_no_results
 import musicassistantclient.composeapp.generated.resources.search_start
 import org.jetbrains.compose.resources.stringResource
@@ -128,8 +119,7 @@ fun SearchScreen(
                 searchState.searchState,
                 onQueryChanged = searchViewModel::onQueryChanged,
                 onSearch = searchViewModel::onSearch,
-                onMediaTypeToggled = searchViewModel::onMediaTypeToggled,
-                onLibraryOnlyToggled = searchViewModel::onLibraryOnlyToggled,
+                onFiltersChanged = searchViewModel::onFiltersChanged,
             )
         },
         topAppBarState = state.topAppBarState,
@@ -174,15 +164,13 @@ private fun SearchTopBar(
     searchState: SearchViewModel.SearchState,
     onQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
-    onMediaTypeToggled: (MediaType, Boolean) -> Unit,
-    onLibraryOnlyToggled: (Boolean) -> Unit,
+    onFiltersChanged: (List<MediaType>, Boolean) -> Unit,
 ) {
     var showFilterSheet by remember { mutableStateOf(false) }
 
     TwoRowTopAppBar(
         title = {
             SearchInput(
-                modifier = Modifier.padding(end = 16.dp),
                 query = searchState.query,
                 onQueryChanged = onQueryChanged,
                 onSearch = onSearch,
@@ -199,16 +187,29 @@ private fun SearchTopBar(
     )
 
     if (showFilterSheet) {
+        val workingSelectedMediaTypes =
+            remember(searchState.selectedMediaTypes) { searchState.selectedMediaTypes.toMutableStateList() }
+
         SettingsSheet(
             title = stringResource(Res.string.filter_sheet_title),
-            onApply = { showFilterSheet = false },
+            onApply = {
+                onFiltersChanged(workingSelectedMediaTypes, false)
+                showFilterSheet = false
+            },
             onDismiss = { showFilterSheet = false },
         ) {
-            SearchFilters(
-                modifier = Modifier.padding(end = 16.dp),
-                searchState = searchState,
-                onMediaTypeToggled = onMediaTypeToggled,
-                onLibraryOnlyToggled = onLibraryOnlyToggled,
+            SettingsSheet.MultiChoiceChipsRow(
+                label = Res.string.genre_filter_media_type,
+                options = searchState.mediaTypes.map { it.type },
+                selected = workingSelectedMediaTypes.toList(),
+                optionLabel = { it.stringResource() },
+                onToggle = {
+                    if (workingSelectedMediaTypes.contains(it)) {
+                        workingSelectedMediaTypes.remove(it)
+                    } else {
+                        workingSelectedMediaTypes.add(it)
+                    }
+                },
             )
         }
     }
@@ -418,59 +419,6 @@ private fun SearchContent(
                 .fillMaxSize()
                 .padding(bottom = 48.dp),
         )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun SearchFilters(
-    modifier: Modifier = Modifier,
-    searchState: SearchViewModel.SearchState,
-    onMediaTypeToggled: (MediaType, Boolean) -> Unit,
-    onLibraryOnlyToggled: (Boolean) -> Unit,
-) {
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-        FlowRow(
-            modifier = modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            // Media type filter chips
-            searchState.mediaTypes.forEach { mediaTypeSelect ->
-                FilterChip(
-                    selected = mediaTypeSelect.isSelected,
-                    onClick = {
-                        onMediaTypeToggled(
-                            mediaTypeSelect.type,
-                            !mediaTypeSelect.isSelected,
-                        )
-                    },
-                    label = {
-                        val text = stringResource(mediaTypeSelect.type.stringResource())
-
-                        Text(
-                            text = text,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Filter $text"
-                            },
-                        )
-                    },
-                )
-            }
-
-            // In library only filter chip
-            FilterChip(
-                selected = searchState.libraryOnly,
-                onClick = { onLibraryOnlyToggled(!searchState.libraryOnly) },
-                label = {
-                    Text(
-                        text = stringResource(Res.string.search_in_library_only),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                },
-            )
-        }
     }
 }
 

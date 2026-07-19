@@ -133,25 +133,18 @@ class SearchViewModel(
         searchTrigger.tryEmit(Unit)
     }
 
-    fun onMediaTypeToggled(type: MediaType, isSelected: Boolean) {
+    fun onFiltersChanged(mediaTypes: List<MediaType>, libraryOnly: Boolean) {
         _state.update { state ->
             state.copy(
                 searchState = state.searchState.copy(
                     mediaTypes = state.searchState.mediaTypes.map { mediaTypeSelect ->
-                        if (mediaTypeSelect.type == type) {
-                            mediaTypeSelect.copy(isSelected = isSelected)
-                        } else {
-                            mediaTypeSelect
-                        }
+                        mediaTypeSelect.copy(isSelected = mediaTypes.contains(mediaTypeSelect.type))
                     },
+                    libraryOnly = libraryOnly,
                 ),
             )
         }
-        searchTrigger.tryEmit(Unit)
-    }
 
-    fun onLibraryOnlyToggled(libraryOnly: Boolean) {
-        _state.update { it.copy(searchState = it.searchState.copy(libraryOnly = libraryOnly)) }
         searchTrigger.tryEmit(Unit)
     }
 
