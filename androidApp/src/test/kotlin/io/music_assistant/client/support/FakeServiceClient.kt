@@ -43,7 +43,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
-import kotlin.collections.addAll
 
 class FakeServiceClient : ServiceClient {
     private var legacyVersion: LegacyVersion? = null
@@ -200,6 +199,7 @@ class FakeServiceClient : ServiceClient {
                 val searchArg = "search_query"
                 val mediaTypes =
                     (request.args!!["media_types"] as JsonArray).map { (it as JsonPrimitive).content }
+                val libraryOnly = request.getArgOrNull("library_only") == "true"
 
                 if (mediaTypes.isEmpty()) {
                     Result.success(
@@ -207,7 +207,15 @@ class FakeServiceClient : ServiceClient {
                             request = request,
                             result = SearchResult(
                                 artists = searchItems(request, searchArg, artists),
-                                albums = searchItems(request, searchArg, albums + globalAlbums),
+                                albums = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) {
+                                        albums
+                                    } else {
+                                        albums + globalAlbums
+                                    },
+                                ),
                                 tracks = searchItems(request, searchArg, tracks),
                                 playlists = searchItems(request, searchArg, playlists),
                                 podcasts = searchItems(request, searchArg, podcasts),

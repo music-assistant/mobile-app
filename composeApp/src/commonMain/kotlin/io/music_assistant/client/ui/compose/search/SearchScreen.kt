@@ -81,6 +81,7 @@ import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type
 import musicassistantclient.composeapp.generated.resources.search_error
+import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import musicassistantclient.composeapp.generated.resources.search_no_results
 import musicassistantclient.composeapp.generated.resources.search_start
 import org.jetbrains.compose.resources.stringResource
@@ -189,11 +190,13 @@ private fun SearchTopBar(
     if (showFilterSheet) {
         val workingSelectedMediaTypes =
             remember(searchState.selectedMediaTypes) { searchState.selectedMediaTypes.toMutableStateList() }
+        var workingLibraryOnly by
+            remember(searchState.libraryOnly) { mutableStateOf(searchState.libraryOnly) }
 
         SettingsSheet(
             title = stringResource(Res.string.filter_sheet_title),
             onApply = {
-                onFiltersChanged(workingSelectedMediaTypes, false)
+                onFiltersChanged(workingSelectedMediaTypes, workingLibraryOnly)
                 showFilterSheet = false
             },
             onDismiss = { showFilterSheet = false },
@@ -210,6 +213,12 @@ private fun SearchTopBar(
                         workingSelectedMediaTypes.add(it)
                     }
                 },
+            )
+
+            SettingsSheet.SwitchRow(
+                label = Res.string.search_in_library_only,
+                checked = workingLibraryOnly,
+                onChange = { workingLibraryOnly = it },
             )
         }
     }

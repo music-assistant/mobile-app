@@ -17,6 +17,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,7 +48,7 @@ class SearchTest {
     }
 
     @Test
-    fun `can filter search results`() {
+    fun `can filter search results by media type`() {
         val album = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
         val track = ServerMediaItemFixtures.track(name = "Onion Dip")
         serviceClient.addToLibrary(album, track)
@@ -61,6 +62,21 @@ class SearchTest {
             .assertResult(album.name)
             .assertNoResult(track.name)
             .clickOnMedia(album)
+    }
+
+    @Test
+    fun `can filter search results to library only`() {
+        val libraryAlbum = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
+        val globalAlbum = ServerMediaItemFixtures.album(name = "A Tale of Onions")
+        serviceClient.addToLibrary(libraryAlbum)
+        serviceClient.addToGlobalItems(globalAlbum)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSearch()
+            .search("onion")
+            .enableFilter(Res.string.search_in_library_only.get())
+            .assertResult(libraryAlbum.name)
+            .assertNoResult(globalAlbum.name)
     }
 
     @Test
