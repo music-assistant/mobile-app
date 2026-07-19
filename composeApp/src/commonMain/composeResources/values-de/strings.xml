@@ -76,7 +76,7 @@
   <string name="cd_fully_played">Vollständig abgespielt</string>
   <string name="cd_genre_filter">Genre Filter</string>
   <string name="cd_in_progress">Teilweise abgespielt</string>
-  <string name="cd_library_filters">Filter</string>
+  <string name="cd_filter">Filter</string>
   <string name="cd_lyrics">Songtext</string>
   <string name="cd_lyrics_close">Songrext schließen</string>
   <string name="cd_more">Mehr</string>

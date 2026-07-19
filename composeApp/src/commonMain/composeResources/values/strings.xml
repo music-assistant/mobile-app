@@ -80,7 +80,7 @@
   <string name="cd_fully_played">Fully played</string>
   <string name="cd_genre_filter">Genre filters</string>
   <string name="cd_in_progress">In progress</string>
-  <string name="cd_library_filters">Filters</string>
+  <string name="cd_filter">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
   <string name="cd_more">More</string>

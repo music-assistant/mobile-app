@@ -68,7 +68,7 @@ import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import io.music_assistant.client.ui.compose.search.SearchInput
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
-import musicassistantclient.composeapp.generated.resources.cd_library_filters
+import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_empty
@@ -254,7 +254,7 @@ private fun ItemListTopBar(
                     IconButton(onClick = { showFilterSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.FilterList,
-                            contentDescription = stringResource(Res.string.cd_library_filters),
+                            contentDescription = stringResource(Res.string.cd_filter),
                             tint = if (filters.hasActive) {
                                 MaterialTheme.colorScheme.primary
                             } else {
