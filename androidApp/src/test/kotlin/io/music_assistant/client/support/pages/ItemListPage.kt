@@ -12,6 +12,8 @@ import androidx.compose.ui.test.performTextInput
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_filter
+import musicassistantclient.composeapp.generated.resources.common_apply
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_quick_search
 import musicassistantclient.composeapp.generated.resources.library_search_global
@@ -65,5 +67,13 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
             .assertIsDisplayed()
             .performClick()
         return SearchPage(composeTestRule, query = query).assertOnPage()
+    }
+
+    fun enableFilter(filter: String): ItemListPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
+        composeTestRule.onNodeWithText(filter).performClick()
+        composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
+
+        return this
     }
 }

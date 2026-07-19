@@ -16,6 +16,7 @@ import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import org.junit.Rule
@@ -137,6 +138,20 @@ class LibraryTest {
             .clickGenres()
             .assertMediaDisplayed(genre1.name)
             .assertMediaDisplayed(genre2.name)
+    }
+
+    @Test
+    fun `can filter to only favorites`() {
+        val album1 = ServerMediaItemFixtures.album(favorite = false)
+        val album2 = ServerMediaItemFixtures.album(favorite = true)
+        serviceClient.addToLibrary(album1, album2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickAlbums()
+            .enableFilter(Res.string.filter_favorites.get())
+            .assertMediaNotDisplayed(album1.name)
+            .assertMediaDisplayed(album2.name)
     }
 
     @Test

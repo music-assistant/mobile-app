@@ -743,10 +743,14 @@ class FakeServiceClient : ServiceClient {
         items: Collection<ServerMediaItem>,
     ): List<ServerMediaItem> {
         return items.filter {
-            it.name.contains(
-                (request.args!![requestArg]!! as JsonPrimitive).content,
-                ignoreCase = true,
-            )
+            val nameMatches = it.name.contains(request.getArg(requestArg), ignoreCase = true)
+            val favoriteMatches = if (request.getArgOrNull("favorite") == "true") {
+                it.favorite ?: false
+            } else {
+                true
+            }
+
+            nameMatches && favoriteMatches
         }
     }
 

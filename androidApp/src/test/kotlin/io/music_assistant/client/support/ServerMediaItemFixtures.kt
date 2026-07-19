@@ -11,6 +11,7 @@ object ServerMediaItemFixtures {
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Album $itemId",
         artist: ServerMediaItem = artist(),
+        favorite: Boolean? = null,
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
@@ -20,6 +21,7 @@ object ServerMediaItemFixtures {
             artists = listOf(artist),
             uri = "http://example.com/album/$itemId",
             isPlayable = true,
+            favorite = favorite,
         )
     }
 

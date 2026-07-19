@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.library
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -234,10 +235,19 @@ private fun SwitchRow(
     onChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onChange(!checked)
+            }
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = stringResource(label), modifier = Modifier.weight(1f))
+        Text(
+            text = stringResource(label),
+            modifier = Modifier.weight(1f),
+        )
+
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
