@@ -36,9 +36,11 @@ import musicassistantclient.composeapp.generated.resources.filter_selected_count
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Sheet height as a fraction of the screen — matches the "80% height" spec. */
-private const val SHEET_HEIGHT_FRACTION = 0.8f
-
+/**
+ * Bottom sheet for editing settings that can then be saved with [onApply] which will be passed the
+ * current settings state. The initial state for settings is determined by [stateFactory] and
+ * provided to [content] for the sheet UI to interact with.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> SettingsSheet(
@@ -66,6 +68,9 @@ fun <T> SettingsSheet(
         }
     }
 }
+
+/** Sheet height as a fraction of the screen — matches the "80% height" spec. */
+private const val SHEET_HEIGHT_FRACTION = 0.8f
 
 @Composable
 private fun Header(title: String, onApply: () -> Unit) {
