@@ -51,6 +51,7 @@ import io.music_assistant.client.data.model.client.hasActive
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.ui.compose.common.SortChip
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState

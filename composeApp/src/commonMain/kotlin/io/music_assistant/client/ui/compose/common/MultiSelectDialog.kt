@@ -1,4 +1,4 @@
-package io.music_assistant.client.ui.compose.library
+package io.music_assistant.client.ui.compose.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,9 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
-import io.music_assistant.client.ui.compose.common.CenteredProgress
-import io.music_assistant.client.ui.compose.common.CenteredText
-import io.music_assistant.client.ui.compose.common.DataState
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_done

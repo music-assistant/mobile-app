@@ -20,6 +20,7 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
