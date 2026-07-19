@@ -188,14 +188,14 @@ private fun SearchFilterAction(
     libraryOnly: Boolean,
     onFiltersChanged: (List<MediaType>, Boolean) -> Unit,
 ) {
-    val workingSelectedMediaTypes =
-        remember(selectedMediaTypes) { selectedMediaTypes.toMutableStateList() }
-    var workingLibraryOnly by remember(libraryOnly) { mutableStateOf(libraryOnly) }
-
     FilterAction(
+        state = { SearchFilterState(selectedMediaTypes, libraryOnly) },
         active = selectedMediaTypes.isNotEmpty() || libraryOnly,
-        onApply = { onFiltersChanged(workingSelectedMediaTypes, workingLibraryOnly) },
-    ) {
+        onApply = { onFiltersChanged(it.selectedMediaTypes, it.libraryOnly.value) },
+    ) { state ->
+        val workingSelectedMediaTypes = state.selectedMediaTypes
+        var workingLibraryOnly by state.libraryOnly
+
         SettingsSheet.MultiChoiceChipsRow(
             label = Res.string.genre_filter_media_type,
             options = mediaTypes,
@@ -216,6 +216,11 @@ private fun SearchFilterAction(
             onChange = { workingLibraryOnly = it },
         )
     }
+}
+
+private class SearchFilterState(selectedMediaTypes: List<MediaType>, libraryOnly: Boolean) {
+    val selectedMediaTypes = selectedMediaTypes.toMutableStateList()
+    val libraryOnly = mutableStateOf(libraryOnly)
 }
 
 @Composable

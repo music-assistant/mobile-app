@@ -38,7 +38,6 @@ import musicassistantclient.composeapp.generated.resources.genre_filter_media_ty
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_show
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.stringResource
 
 /**
  * Per-[MediaType] filter bottom sheet. Non-swipeable (gestures disabled); the
@@ -57,14 +56,12 @@ fun LibraryFilterAction(
     onLoadOptions: () -> Unit,
     onApply: (LibraryFilters) -> Unit,
 ) {
-    var working by remember { mutableStateOf(filters) }
-
     FilterAction(
         active = filters.hasActive,
-        onApply = { onApply(working) },
-    ) {
-        // Seeded once at open; never keyed on the live `filters` (a settings
-        // fold-back re-emission would otherwise wipe in-progress edits).
+        state = {  mutableStateOf(filters) },
+        onApply = { onApply(it.value) },
+    ) { state ->
+        var workingFilters by state
 
         var openPicker by remember { mutableStateOf(FilterPicker.NONE) }
         LaunchedEffect(Unit) { onLoadOptions() }
@@ -85,34 +82,34 @@ fun LibraryFilterAction(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             item {
-                SwitchRow(Res.string.filter_favorites, working.favorite) {
-                    working = working.copy(favorite = it)
+                SwitchRow(Res.string.filter_favorites, workingFilters.favorite) {
+                    workingFilters = workingFilters.copy(favorite = it)
                 }
             }
             if (showProviders) {
                 item {
-                    PickerRow(Res.string.filter_providers, working.providers.size) {
+                    PickerRow(Res.string.filter_providers, workingFilters.providers.size) {
                         openPicker = FilterPicker.PROVIDERS
                     }
                 }
             }
             if (showGenres) {
                 item {
-                    PickerRow(Res.string.filter_genres, working.genres.size) {
+                    PickerRow(Res.string.filter_genres, workingFilters.genres.size) {
                         openPicker = FilterPicker.GENRES
                     }
                 }
             }
-            typeSpecific(mediaType, workingProvider = { working }, onChange = { working = it })
+            typeSpecific(mediaType, workingProvider = { workingFilters }, onChange = { workingFilters = it })
         }
 
         when (openPicker) {
             FilterPicker.PROVIDERS -> MultiSelectDialog(
                 title = Res.string.filter_providers,
                 optionsState = providerOptions,
-                selected = working.providers.toSet(),
+                selected = workingFilters.providers.toSet(),
                 onConfirm = {
-                    working = working.copy(providers = it.toList())
+                    workingFilters = workingFilters.copy(providers = it.toList())
                     openPicker = FilterPicker.NONE
                 },
                 onDismiss = { openPicker = FilterPicker.NONE },
@@ -121,9 +118,9 @@ fun LibraryFilterAction(
             FilterPicker.GENRES -> MultiSelectDialog(
                 title = Res.string.filter_genres,
                 optionsState = genreOptions,
-                selected = working.genres.toSet(),
+                selected = workingFilters.genres.toSet(),
                 onConfirm = {
-                    working = working.copy(genres = it.toList())
+                    workingFilters = workingFilters.copy(genres = it.toList())
                     openPicker = FilterPicker.NONE
                 },
                 onDismiss = { openPicker = FilterPicker.NONE },

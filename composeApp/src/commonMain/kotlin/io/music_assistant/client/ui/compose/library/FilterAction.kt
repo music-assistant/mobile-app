@@ -23,10 +23,11 @@ import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun FilterAction(
+fun <T> FilterAction(
     active: Boolean,
-    onApply: () -> Unit,
-    filters: @Composable ColumnScope.() -> Unit,
+    state: () -> T,
+    onApply: (T) -> Unit,
+    filters: @Composable ColumnScope.(state: T) -> Unit,
 ) {
     var showFilterSheet by remember { mutableStateOf(false) }
 
@@ -50,13 +51,14 @@ fun FilterAction(
     if (showFilterSheet) {
         SettingsSheet(
             title = stringResource(Res.string.filter_sheet_title),
+            state,
             onApply = {
-                onApply()
+                onApply(it)
                 showFilterSheet = false
             },
             onDismiss = { showFilterSheet = false },
         ) {
-            filters()
+            filters(it)
         }
     }
 }

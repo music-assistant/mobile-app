@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -40,12 +41,15 @@ private const val SHEET_HEIGHT_FRACTION = 0.8f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsSheet(
+fun <T> SettingsSheet(
     title: String,
-    onApply: () -> Unit,
+    state: () -> T,
+    onApply: (T) -> Unit,
     onDismiss: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.(T) -> Unit,
 ) {
+    val state = remember { state() }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -57,8 +61,8 @@ fun SettingsSheet(
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(SHEET_HEIGHT_FRACTION)) {
-            Header(title = title, onApply = onApply)
-            content()
+            Header(title = title, onApply = { onApply(state) })
+            content(state)
         }
     }
 }
@@ -72,7 +76,7 @@ private fun Header(title: String, onApply: () -> Unit) {
     ) {
         Text(
             text = title,
-            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onApply) {
