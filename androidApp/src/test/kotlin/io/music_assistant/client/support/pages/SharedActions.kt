@@ -3,6 +3,7 @@ package io.music_assistant.client.support.pages
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -216,6 +217,8 @@ fun <T : ComposePage> T.enableFilter(filter: String): T {
     composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
     composeTestRule.onNode(hasText(filter).or(hasContentDescription(filter))).performClick()
     composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
+
+    composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).assertIsOn()
 
     return this
 }

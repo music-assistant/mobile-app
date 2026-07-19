@@ -193,7 +193,7 @@ private fun SearchFilterAction(
     var workingLibraryOnly by remember(libraryOnly) { mutableStateOf(libraryOnly) }
 
     FilterAction(
-        active = false,
+        active = selectedMediaTypes.isNotEmpty() || libraryOnly,
         onApply = { onFiltersChanged(workingSelectedMediaTypes, workingLibraryOnly) },
     ) {
         SettingsSheet.MultiChoiceChipsRow(
