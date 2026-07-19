@@ -16,11 +16,11 @@ import io.music_assistant.client.data.model.client.AlbumType
 import io.music_assistant.client.data.model.client.GenreEmptyFilter
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.hasActive
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.MultiSelectDialog
 import io.music_assistant.client.ui.compose.common.SelectOption
-import io.music_assistant.client.ui.compose.common.SettingsSheet
 import io.music_assistant.client.ui.compose.common.SettingsSheet.MultiChoiceChipsRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.PickerRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SingleChoiceChipsRow
@@ -31,7 +31,6 @@ import musicassistantclient.composeapp.generated.resources.filter_album_types
 import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.filter_genres
 import musicassistantclient.composeapp.generated.resources.filter_providers
-import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_default
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_non_empty
@@ -50,21 +49,19 @@ private enum class FilterPicker { NONE, PROVIDERS, GENRES }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryFilterSheet(
+fun LibraryFilterAction(
     mediaType: MediaType,
     filters: LibraryFilters,
     providerOptions: DataState<List<SelectOption<String>>>,
     genreOptions: DataState<List<SelectOption<Int>>>,
     onLoadOptions: () -> Unit,
     onApply: (LibraryFilters) -> Unit,
-    onDismiss: () -> Unit,
 ) {
     var working by remember { mutableStateOf(filters) }
 
-    SettingsSheet(
-        title = stringResource(Res.string.filter_sheet_title),
+    FilterAction(
+        active = filters.hasActive,
         onApply = { onApply(working) },
-        onDismiss = onDismiss,
     ) {
         // Seeded once at open; never keyed on the live `filters` (a settings
         // fold-back re-emission would otherwise wipe in-progress edits).

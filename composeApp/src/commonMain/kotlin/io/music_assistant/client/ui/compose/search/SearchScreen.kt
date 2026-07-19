@@ -13,12 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -72,13 +68,12 @@ import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.library.FilterAction
 import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.cd_filter
-import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type
 import musicassistantclient.composeapp.generated.resources.search_error
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
@@ -167,8 +162,6 @@ private fun SearchTopBar(
     onSearch: () -> Unit,
     onFiltersChanged: (List<MediaType>, Boolean) -> Unit,
 ) {
-    var showFilterSheet by remember { mutableStateOf(false) }
-
     TopAppBar(
         title = {
             SearchInput(
@@ -178,49 +171,50 @@ private fun SearchTopBar(
             )
         },
         actions = {
-            IconButton(onClick = { showFilterSheet = true }) {
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = stringResource(Res.string.cd_filter),
-                )
-            }
+            SearchFilterAction(
+                searchState.mediaTypes.map { it.type },
+                searchState.selectedMediaTypes,
+                searchState.libraryOnly,
+                onFiltersChanged,
+            )
         },
     )
+}
 
-    if (showFilterSheet) {
-        val workingSelectedMediaTypes =
-            remember(searchState.selectedMediaTypes) { searchState.selectedMediaTypes.toMutableStateList() }
-        var workingLibraryOnly by
-            remember(searchState.libraryOnly) { mutableStateOf(searchState.libraryOnly) }
+@Composable
+private fun SearchFilterAction(
+    mediaTypes: List<MediaType>,
+    selectedMediaTypes: List<MediaType>,
+    libraryOnly: Boolean,
+    onFiltersChanged: (List<MediaType>, Boolean) -> Unit,
+) {
+    val workingSelectedMediaTypes =
+        remember(selectedMediaTypes) { selectedMediaTypes.toMutableStateList() }
+    var workingLibraryOnly by remember(libraryOnly) { mutableStateOf(libraryOnly) }
 
-        SettingsSheet(
-            title = stringResource(Res.string.filter_sheet_title),
-            onApply = {
-                onFiltersChanged(workingSelectedMediaTypes, workingLibraryOnly)
-                showFilterSheet = false
+    FilterAction(
+        active = false,
+        onApply = { onFiltersChanged(workingSelectedMediaTypes, workingLibraryOnly) },
+    ) {
+        SettingsSheet.MultiChoiceChipsRow(
+            label = Res.string.genre_filter_media_type,
+            options = mediaTypes,
+            selected = workingSelectedMediaTypes.toList(),
+            optionLabel = { it.stringResource() },
+            onToggle = {
+                if (workingSelectedMediaTypes.contains(it)) {
+                    workingSelectedMediaTypes.remove(it)
+                } else {
+                    workingSelectedMediaTypes.add(it)
+                }
             },
-            onDismiss = { showFilterSheet = false },
-        ) {
-            SettingsSheet.MultiChoiceChipsRow(
-                label = Res.string.genre_filter_media_type,
-                options = searchState.mediaTypes.map { it.type },
-                selected = workingSelectedMediaTypes.toList(),
-                optionLabel = { it.stringResource() },
-                onToggle = {
-                    if (workingSelectedMediaTypes.contains(it)) {
-                        workingSelectedMediaTypes.remove(it)
-                    } else {
-                        workingSelectedMediaTypes.add(it)
-                    }
-                },
-            )
+        )
 
-            SettingsSheet.SwitchRow(
-                label = Res.string.search_in_library_only,
-                checked = workingLibraryOnly,
-                onChange = { workingLibraryOnly = it },
-            )
-        }
+        SettingsSheet.SwitchRow(
+            label = Res.string.search_in_library_only,
+            checked = workingLibraryOnly,
+            onChange = { workingLibraryOnly = it },
+        )
     }
 }
 

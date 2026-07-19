@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
@@ -25,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -47,7 +45,6 @@ import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
-import io.music_assistant.client.data.model.client.hasActive
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
@@ -69,7 +66,6 @@ import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import io.music_assistant.client.ui.compose.search.SearchInput
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_add_playlist
-import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_empty
@@ -135,32 +131,32 @@ fun ItemListScreen(
     ) {
         var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
         ProvideClickActions(ClickContext.LIBRARY) {
-        ItemList(
-            showCreatePlaylistDialog = showCreatePlaylistDialog,
-            toastState = toastState,
-            onNavigateClick = onNavigateClick,
-            onGlobalSearch = onGlobalSearch,
-            searchQuery = state.searchQuery,
-            onPlayClick = { item, option, radio, _ ->
-                itemListViewModel.onPlayClick(item, option, radio)
-            },
-            onCreatePlaylistClick = { showCreatePlaylistDialog = true },
-            onLoadMore = { itemListViewModel.loadMore() },
-            onDismissCreatePlaylistDialog = { showCreatePlaylistDialog = false },
-            onCreatePlaylist = { name ->
-                itemListViewModel.createPlaylist(name)
-                showCreatePlaylistDialog = false
-            },
-            playlistActions = actionsViewModel,
-            libraryActions = actionsViewModel,
-            progressActions = actionsViewModel,
-            contentPadding = contentPadding,
-            dataState = state.dataState,
-            mediaType = state.mediaType,
-            isLoadingMore = state.isLoadingMore,
-            hasMore = state.hasMore,
-            viewMode = state.viewMode,
-        )
+            ItemList(
+                showCreatePlaylistDialog = showCreatePlaylistDialog,
+                toastState = toastState,
+                onNavigateClick = onNavigateClick,
+                onGlobalSearch = onGlobalSearch,
+                searchQuery = state.searchQuery,
+                onPlayClick = { item, option, radio, _ ->
+                    itemListViewModel.onPlayClick(item, option, radio)
+                },
+                onCreatePlaylistClick = { showCreatePlaylistDialog = true },
+                onLoadMore = { itemListViewModel.loadMore() },
+                onDismissCreatePlaylistDialog = { showCreatePlaylistDialog = false },
+                onCreatePlaylist = { name ->
+                    itemListViewModel.createPlaylist(name)
+                    showCreatePlaylistDialog = false
+                },
+                playlistActions = actionsViewModel,
+                libraryActions = actionsViewModel,
+                progressActions = actionsViewModel,
+                contentPadding = contentPadding,
+                dataState = state.dataState,
+                mediaType = state.mediaType,
+                isLoadingMore = state.isLoadingMore,
+                hasMore = state.hasMore,
+                viewMode = state.viewMode,
+            )
         }
     }
 }
@@ -184,22 +180,6 @@ private fun ItemListTopBar(
     onLoadFilterOptions: () -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
-    var showFilterSheet by remember { mutableStateOf(false) }
-
-    if (showFilterSheet) {
-        LibraryFilterSheet(
-            mediaType = mediaType,
-            filters = filters,
-            providerOptions = providerOptions,
-            genreOptions = genreOptions,
-            onLoadOptions = onLoadFilterOptions,
-            onApply = {
-                onFiltersChange(it)
-                showFilterSheet = false
-            },
-            onDismiss = { showFilterSheet = false },
-        )
-    }
 
     Column {
         TwoRowTopAppBar(
@@ -252,17 +232,16 @@ private fun ItemListTopBar(
             },
             actions = {
                 if (!showSearch) {
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = stringResource(Res.string.cd_filter),
-                            tint = if (filters.hasActive) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                LocalContentColor.current
-                            },
-                        )
-                    }
+                    LibraryFilterAction(
+                        mediaType = mediaType,
+                        filters = filters,
+                        providerOptions = providerOptions,
+                        genreOptions = genreOptions,
+                        onLoadOptions = onLoadFilterOptions,
+                        onApply = {
+                            onFiltersChange(it)
+                        },
+                    )
                 }
                 IconButton(
                     onClick = {
