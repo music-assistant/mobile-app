@@ -7,14 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,8 +30,6 @@ import io.music_assistant.client.ui.compose.common.DataState
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_done
-import musicassistantclient.composeapp.generated.resources.filter_none_selected
-import musicassistantclient.composeapp.generated.resources.filter_selected_count
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import org.jetbrains.compose.resources.StringResource
@@ -43,35 +37,6 @@ import org.jetbrains.compose.resources.stringResource
 
 /** A pickable option: [value] is what gets persisted/sent, [label] is what's shown. */
 data class SelectOption<T>(val value: T, val label: String)
-
-/**
- * A sheet row summarising a multi-select filter (label + "N selected"), tappable
- * to open the picker dialog. Rendered even before options load — the count comes
- * from the persisted selection, not the option list.
- */
-@Composable
-fun FilterPickerRow(
-    label: StringResource,
-    selectedCount: Int,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = stringResource(label), modifier = Modifier.weight(1f))
-        Text(
-            text = if (selectedCount > 0) {
-                stringResource(Res.string.filter_selected_count, selectedCount)
-            } else {
-                stringResource(Res.string.filter_none_selected)
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-    }
-}
 
 /**
  * Multi-select dialog over [optionsState]. Selections accumulate in a working set

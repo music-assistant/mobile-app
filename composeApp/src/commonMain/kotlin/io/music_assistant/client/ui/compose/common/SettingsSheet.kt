@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -26,6 +30,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_apply
+import musicassistantclient.composeapp.generated.resources.filter_none_selected
+import musicassistantclient.composeapp.generated.resources.filter_selected_count
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -88,7 +94,7 @@ object SettingsSheet {
                 .clickable {
                     onChange(!checked)
                 }
-                .padding(vertical = 8.dp),
+                .padding(vertical = 8.dp, horizontal = ROW_HORIZONTAL_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -110,12 +116,23 @@ object SettingsSheet {
         onSelect: (T) -> Unit,
     ) {
         ChoiceSection(label) {
-            options.forEach { option ->
-                FilterChip(
-                    selected = option == selected,
-                    onClick = { onSelect(option) },
-                    label = { Text(stringResource(optionLabel(option))) },
-                )
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = 4.dp,
+                        start = ROW_HORIZONTAL_PADDING,
+                        end = ROW_HORIZONTAL_PADDING,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                options.forEach { option ->
+                    FilterChip(
+                        selected = option == selected,
+                        onClick = { onSelect(option) },
+                        label = { Text(stringResource(optionLabel(option))) },
+                    )
+                }
             }
         }
     }
@@ -130,17 +147,28 @@ object SettingsSheet {
         onToggle: (T) -> Unit,
     ) {
         ChoiceSection(label) {
-            options.forEach { option ->
-                val text = stringResource(optionLabel(option))
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = 4.dp,
+                        start = ROW_HORIZONTAL_PADDING,
+                        end = ROW_HORIZONTAL_PADDING,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                options.forEach { option ->
+                    val text = stringResource(optionLabel(option))
 
-                FilterChip(
-                    modifier = Modifier.semantics {
-                        contentDescription = "Filter $text"
-                    },
-                    selected = option in selected,
-                    onClick = { onToggle(option) },
-                    label = { Text(text) },
-                )
+                    FilterChip(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Filter $text"
+                        },
+                        selected = option in selected,
+                        onClick = { onToggle(option) },
+                        label = { Text(text) },
+                    )
+                }
             }
         }
     }
@@ -149,18 +177,53 @@ object SettingsSheet {
     @Composable
     fun ChoiceSection(
         label: StringResource,
-        chips: @Composable () -> Unit,
+        content: @Composable () -> Unit,
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        ) {
             Text(
+                modifier = Modifier.padding(horizontal = ROW_HORIZONTAL_PADDING),
                 text = stringResource(label),
-                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
             )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) { chips() }
+
+            content()
         }
     }
+
+    /**
+     * A sheet row summarising a multi-select option (label + "N selected"), tappable
+     * to open the picker dialog. Rendered even before options load — the count comes
+     * from the persisted selection, not the option list.
+     */
+    @Composable
+    fun PickerRow(
+        label: StringResource,
+        selectedCount: Int,
+        onClick: () -> Unit,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp, horizontal = ROW_HORIZONTAL_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = stringResource(label), modifier = Modifier.weight(1f))
+            Text(
+                text = if (selectedCount > 0) {
+                    stringResource(Res.string.filter_selected_count, selectedCount)
+                } else {
+                    stringResource(Res.string.filter_none_selected)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        }
+    }
+
+    private val ROW_HORIZONTAL_PADDING = 24.dp
 }

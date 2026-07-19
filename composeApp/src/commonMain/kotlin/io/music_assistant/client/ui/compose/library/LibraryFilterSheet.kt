@@ -20,6 +20,7 @@ import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SettingsSheet
 import io.music_assistant.client.ui.compose.common.SettingsSheet.MultiChoiceChipsRow
+import io.music_assistant.client.ui.compose.common.SettingsSheet.PickerRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SingleChoiceChipsRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SwitchRow
 import musicassistantclient.composeapp.generated.resources.Res
@@ -80,7 +81,6 @@ fun LibraryFilterSheet(
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                horizontal = 24.dp,
                 vertical = 8.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -92,14 +92,14 @@ fun LibraryFilterSheet(
             }
             if (showProviders) {
                 item {
-                    FilterPickerRow(Res.string.filter_providers, working.providers.size) {
+                    PickerRow(Res.string.filter_providers, working.providers.size) {
                         openPicker = FilterPicker.PROVIDERS
                     }
                 }
             }
             if (showGenres) {
                 item {
-                    FilterPickerRow(Res.string.filter_genres, working.genres.size) {
+                    PickerRow(Res.string.filter_genres, working.genres.size) {
                         openPicker = FilterPicker.GENRES
                     }
                 }
