@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_apply
-import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -33,7 +32,12 @@ private const val SHEET_HEIGHT_FRACTION = 0.8f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsSheet(
+    title: String,
+    onApply: () -> Unit,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -45,30 +49,31 @@ fun SettingsSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> 
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(SHEET_HEIGHT_FRACTION)) {
+            Header(title = title, onApply = onApply)
             content()
         }
     }
 }
 
-object SettingsSheet {
-    @Composable
-    fun Header(onApply: () -> Unit) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .padding(start = 24.dp, top = 12.dp, bottom = 4.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(Res.string.filter_sheet_title),
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onApply) {
-                Text(stringResource(Res.string.common_apply))
-            }
+@Composable
+private fun Header(title: String, onApply: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .padding(start = 24.dp, top = 12.dp, bottom = 4.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onApply) {
+            Text(stringResource(Res.string.common_apply))
         }
     }
+}
 
+object SettingsSheet {
     @Composable
     fun SwitchRow(
         label: StringResource,

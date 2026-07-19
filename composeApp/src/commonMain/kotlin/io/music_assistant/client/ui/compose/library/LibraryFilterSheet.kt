@@ -19,7 +19,6 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SettingsSheet
-import io.music_assistant.client.ui.compose.common.SettingsSheet.Header
 import io.music_assistant.client.ui.compose.common.SettingsSheet.MultiChoiceChipsRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SingleChoiceChipsRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SwitchRow
@@ -29,6 +28,7 @@ import musicassistantclient.composeapp.generated.resources.filter_album_types
 import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.filter_genres
 import musicassistantclient.composeapp.generated.resources.filter_providers
+import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_default
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_non_empty
@@ -36,6 +36,7 @@ import musicassistantclient.composeapp.generated.resources.genre_filter_media_ty
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_show
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Per-[MediaType] filter bottom sheet. Non-swipeable (gestures disabled); the
@@ -55,10 +56,16 @@ fun LibraryFilterSheet(
     onApply: (LibraryFilters) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    SettingsSheet(onDismiss = onDismiss) {
+    var working by remember { mutableStateOf(filters) }
+
+    SettingsSheet(
+        title = stringResource(Res.string.filter_sheet_title),
+        onApply = { onApply(working) },
+        onDismiss = onDismiss,
+    ) {
         // Seeded once at open; never keyed on the live `filters` (a settings
         // fold-back re-emission would otherwise wipe in-progress edits).
-        var working by remember { mutableStateOf(filters) }
+
         var openPicker by remember { mutableStateOf(FilterPicker.NONE) }
         LaunchedEffect(Unit) { onLoadOptions() }
 
@@ -70,7 +77,6 @@ fun LibraryFilterSheet(
         val showGenres = mediaType != MediaType.GENRE &&
                 (genreOptions as? DataState.Data)?.data.orEmpty().isNotEmpty()
 
-        Header(onApply = { onApply(working) })
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(

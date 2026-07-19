@@ -17,9 +17,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,8 +33,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -52,6 +58,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SettingsSheet
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
@@ -79,6 +86,8 @@ import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_filter
+import musicassistantclient.composeapp.generated.resources.filter_sheet_title
 import musicassistantclient.composeapp.generated.resources.search_error
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import musicassistantclient.composeapp.generated.resources.search_no_results
@@ -126,36 +135,36 @@ fun SearchScreen(
         topAppBarState = state.topAppBarState,
     ) {
         ProvideClickActions(ClickContext.SEARCH) {
-        SearchContent(
-            state = searchState,
-            toastState = toastState,
-            onItemClick = { item ->
-                when (item) {
-                    is Artist,
-                    is Album,
-                    is Playlist,
-                    is Podcast,
-                    is Audiobook,
-                        -> {
-                        onNavigateToItem(item.itemId, item.mediaType, item.provider)
-                    }
+            SearchContent(
+                state = searchState,
+                toastState = toastState,
+                onItemClick = { item ->
+                    when (item) {
+                        is Artist,
+                        is Album,
+                        is Playlist,
+                        is Podcast,
+                        is Audiobook,
+                            -> {
+                            onNavigateToItem(item.itemId, item.mediaType, item.provider)
+                        }
 
-                    else -> Unit
-                }
-            },
-            onPlayClick = { track, option, radio, _ ->
-                searchViewModel.onPlayClick(track, option, radio)
-            },
-            playlistActions = actionsViewModel,
-            libraryActions = actionsViewModel,
-            progressActions = actionsViewModel,
-            providerIconFetcher = { modifier, provider ->
-                actionsViewModel.getProviderIcon(provider)
-                    ?.let { ProviderIcon(modifier, it) }
-            },
-            contentPadding = contentPadding,
-            lazyListState = state.lazyListState,
-        )
+                        else -> Unit
+                    }
+                },
+                onPlayClick = { track, option, radio, _ ->
+                    searchViewModel.onPlayClick(track, option, radio)
+                },
+                playlistActions = actionsViewModel,
+                libraryActions = actionsViewModel,
+                progressActions = actionsViewModel,
+                providerIconFetcher = { modifier, provider ->
+                    actionsViewModel.getProviderIcon(provider)
+                        ?.let { ProviderIcon(modifier, it) }
+                },
+                contentPadding = contentPadding,
+                lazyListState = state.lazyListState,
+            )
         }
     }
 }
@@ -168,6 +177,8 @@ private fun SearchTopBar(
     onMediaTypeToggled: (MediaType, Boolean) -> Unit,
     onLibraryOnlyToggled: (Boolean) -> Unit,
 ) {
+    var showFilterSheet by remember { mutableStateOf(false) }
+
     TwoRowTopAppBar(
         title = {
             SearchInput(
@@ -177,15 +188,30 @@ private fun SearchTopBar(
                 onSearch = onSearch,
             )
         },
-        secondRow = {
+        actions = {
+            IconButton(onClick = { showFilterSheet = true }) {
+                Icon(
+                    imageVector = Icons.Default.FilterList,
+                    contentDescription = stringResource(Res.string.cd_filter),
+                )
+            }
+        },
+    )
+
+    if (showFilterSheet) {
+        SettingsSheet(
+            title = stringResource(Res.string.filter_sheet_title),
+            onApply = { showFilterSheet = false },
+            onDismiss = { showFilterSheet = false },
+        ) {
             SearchFilters(
                 modifier = Modifier.padding(end = 16.dp),
                 searchState = searchState,
                 onMediaTypeToggled = onMediaTypeToggled,
                 onLibraryOnlyToggled = onLibraryOnlyToggled,
             )
-        },
-    )
+        }
+    }
 }
 
 @Composable

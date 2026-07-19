@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.longClick
@@ -213,7 +214,7 @@ fun <T : ComposePage> T.assertNoNetworkBanner(showing: Boolean): T {
 
 fun <T : ComposePage> T.enableFilter(filter: String): T {
     composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
-    composeTestRule.onNodeWithText(filter).performClick()
+    composeTestRule.onNode(hasText(filter).or(hasContentDescription(filter))).performClick()
     composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
 
     return this
