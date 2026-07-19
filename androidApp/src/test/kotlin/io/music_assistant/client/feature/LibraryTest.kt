@@ -1,6 +1,8 @@
 package io.music_assistant.client.feature
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
@@ -150,7 +152,9 @@ class LibraryTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickLibrary()
             .clickAlbums()
-            .enableFilter(Res.string.filter_favorites.get())
+            .enableFilter {
+                it.composeTestRule.onNodeWithText(Res.string.filter_favorites.get()).performClick()
+            }
             .assertMediaNotDisplayed(album1.name)
             .assertMediaDisplayed(album2.name)
     }

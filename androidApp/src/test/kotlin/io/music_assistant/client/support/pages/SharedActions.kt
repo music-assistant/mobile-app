@@ -1,11 +1,11 @@
 package io.music_assistant.client.support.pages
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.longClick
@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performTouchInput
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
+import io.music_assistant.client.support.hasRole
 import io.music_assistant.client.support.isTab
 import io.music_assistant.client.support.withinTag
 import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
@@ -213,12 +214,17 @@ fun <T : ComposePage> T.assertNoNetworkBanner(showing: Boolean): T {
     return this
 }
 
-fun <T : ComposePage> T.enableFilter(filter: String): T {
+fun <T : ComposePage> T.enableFilter(action: (T) -> Unit): T {
     composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
-    composeTestRule.onNode(hasText(filter).or(hasContentDescription(filter))).performClick()
+    action(this)
     composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
 
     composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).assertIsOn()
 
+    return this
+}
+
+fun <T : ComposePage> T.clickChip(text: String): T {
+    composeTestRule.onNode(hasRole(Role.Checkbox).and(hasText(text))).performClick()
     return this
 }

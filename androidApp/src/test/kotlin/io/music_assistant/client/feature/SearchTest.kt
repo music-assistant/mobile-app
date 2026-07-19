@@ -1,6 +1,8 @@
 package io.music_assistant.client.feature
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
@@ -9,6 +11,7 @@ import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ItemPage
+import io.music_assistant.client.support.pages.clickChip
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.pages.enableFilter
@@ -58,7 +61,9 @@ class SearchTest {
             .search("onion")
             .assertResult(album.name)
             .assertResult(track.name)
-            .enableFilter("Filter ${Res.string.media_type_albums.get()}")
+            .enableFilter {
+                it.clickChip(Res.string.media_type_albums.get())
+            }
             .assertResult(album.name)
             .assertNoResult(track.name)
             .clickOnMedia(album)
@@ -74,7 +79,10 @@ class SearchTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
             .search("onion")
-            .enableFilter(Res.string.search_in_library_only.get())
+            .enableFilter {
+                it.composeTestRule.onNodeWithText(Res.string.search_in_library_only.get())
+                    .performClick()
+            }
             .assertResult(libraryAlbum.name)
             .assertNoResult(globalAlbum.name)
     }
@@ -104,17 +112,17 @@ class SearchTest {
             .clickOnMedia(album2)
             .clickHome(
                 ItemPage(
-                album1,
-                navigationItem = Res.string.nav_home.get(),
-                composeTestRule = composeTestRule,
-            ),
+                    album1,
+                    navigationItem = Res.string.nav_home.get(),
+                    composeTestRule = composeTestRule,
+                ),
             )
             .clickSearch(
                 ItemPage(
-                album2,
-                navigationItem = Res.string.nav_search.get(),
-                composeTestRule = composeTestRule,
-            ),
+                    album2,
+                    navigationItem = Res.string.nav_search.get(),
+                    composeTestRule = composeTestRule,
+                ),
             )
     }
 }
