@@ -43,6 +43,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KProperty
 
 class FakeServiceClient : ServiceClient {
     private var legacyVersion: LegacyVersion? = null
@@ -57,85 +59,22 @@ class FakeServiceClient : ServiceClient {
     private val items = mutableSetOf<ServerMediaItem>()
     private val globalItems = mutableSetOf<ServerMediaItem>()
 
-    private val albums: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.ALBUM.serverValue }
-        }
-
-    private val globalArtists: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.ARTIST.serverValue }
-        }
-
-    private val globalAlbums: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.ALBUM.serverValue }
-        }
-
-    private val globalTracks: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.TRACK.serverValue }
-        }
-
-    private val globalPlaylists: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.PLAYLIST.serverValue }
-        }
-
-    private val globalAudiobooks: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.AUDIOBOOK.serverValue }
-        }
-
-    private val globalPodcasts: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.PODCAST.serverValue }
-        }
-
-    private val globalRadios: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.RADIO.serverValue }
-        }
-
-    private val globalGenres: List<ServerMediaItem>
-        get() {
-            return globalItems.filter { it.mediaType == MediaType.GENRE.serverValue }
-        }
-
-    private val artists: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.ARTIST.serverValue }
-        }
-
-    private val tracks: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.TRACK.serverValue }
-        }
-
-    private val playlists: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.PLAYLIST.serverValue }
-        }
-
-    private val audiobooks: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.AUDIOBOOK.serverValue }
-        }
-
-    private val podcasts: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.PODCAST.serverValue }
-        }
-
-    private val radios: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.RADIO.serverValue }
-        }
-
-    private val genres: List<ServerMediaItem>
-        get() {
-            return items.filter { it.mediaType == MediaType.GENRE.serverValue }
-        }
+    private val albums: List<ServerMediaItem> by items(items, MediaType.ALBUM)
+    private val artists: List<ServerMediaItem> by items(items, MediaType.ARTIST)
+    private val tracks: List<ServerMediaItem> by items(items, MediaType.TRACK)
+    private val playlists: List<ServerMediaItem> by items(items, MediaType.PLAYLIST)
+    private val audiobooks: List<ServerMediaItem> by items(items, MediaType.AUDIOBOOK)
+    private val podcasts: List<ServerMediaItem> by items(items, MediaType.PODCAST)
+    private val radios: List<ServerMediaItem> by items(items, MediaType.RADIO)
+    private val genres: List<ServerMediaItem> by items(items, MediaType.GENRE)
+    private val globalArtists: List<ServerMediaItem> by items(globalItems, MediaType.ARTIST)
+    private val globalAlbums: List<ServerMediaItem> by items(globalItems, MediaType.ALBUM)
+    private val globalTracks: List<ServerMediaItem> by items(globalItems, MediaType.TRACK)
+    private val globalPlaylists: List<ServerMediaItem> by items(globalItems, MediaType.PLAYLIST)
+    private val globalAudiobooks: List<ServerMediaItem> by items(globalItems, MediaType.AUDIOBOOK)
+    private val globalPodcasts: List<ServerMediaItem> by items(globalItems, MediaType.PODCAST)
+    private val globalRadios: List<ServerMediaItem> by items(globalItems, MediaType.RADIO)
+    private val globalGenres: List<ServerMediaItem> by items(globalItems, MediaType.GENRE)
 
     private val playlistItems = mutableMapOf<String, List<String>>()
     private val shortcuts = mutableListOf<String>()
@@ -992,3 +931,17 @@ private fun Request.getArg(arg: String): String {
 private fun Request.getArgOrNull(arg: String): String? {
     return (args!![arg] as JsonPrimitive?)?.content
 }
+
+private class FilteredMediaTypeDelegate(
+    private val items: Set<ServerMediaItem>,
+    private val mediaType: MediaType,
+) : ReadOnlyProperty<Any?, List<ServerMediaItem>> {
+    override fun getValue(thisRef: Any?, property: KProperty<*>): List<ServerMediaItem> {
+        return items.filter { it.mediaType == mediaType.serverValue }
+    }
+}
+
+private fun items(
+    items: Set<ServerMediaItem>,
+    mediaType: MediaType,
+): FilteredMediaTypeDelegate = FilteredMediaTypeDelegate(items, mediaType)
