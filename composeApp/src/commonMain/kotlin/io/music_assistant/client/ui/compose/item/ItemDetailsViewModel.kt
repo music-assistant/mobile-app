@@ -262,8 +262,11 @@ class ItemDetailsViewModel(
      * owned subset); a non-library artist is already its own source.
      */
     private fun Artist.subItemSources(): List<Pair<String, String>> =
-        if (isInLibrary) providerMappings?.map { it.itemId to it.providerInstance } ?: emptyList()
-        else listOf(itemId to provider)
+        if (isInLibrary) {
+            providerMappings?.map { it.itemId to it.providerInstance } ?: emptyList()
+        } else {
+            listOf(itemId to provider)
+        }
 
     /** First source (in order) whose [fetch] returns items, paired with those items; else null + []. */
     private suspend fun <T> List<Pair<String, String>>.firstNonEmpty(
@@ -704,9 +707,9 @@ private fun DataState<out List<*>>.hasItems(): Boolean = when (this) {
  * it has no items. [library] is [DataState.NoData] for non-library artists.
  */
 data class ArtistSections<T>(
-    val library: DataState<List<T>>,
-    val top: DataState<List<T>>,
-    val all: DataState<List<T>>,
+    val library: DataState<List<T>> = DataState.NoData(),
+    val top: DataState<List<T>> = DataState.NoData(),
+    val all: DataState<List<T>> = DataState.NoData(),
 ) {
     /** Loading while any section is; otherwise the concatenation, for tab loading/selection checks. */
     fun aggregate(): DataState<List<T>> = when {
@@ -744,7 +747,9 @@ private class RawSections<T : AppMediaItem> {
     var all: List<T> = emptyList()
 
     fun set(library: List<T>, top: List<T>, all: List<T>) {
-        this.library = library; this.top = top; this.all = all
+        this.library = library
+        this.top = top
+        this.all = all
     }
 
     fun replace(changed: T) {
