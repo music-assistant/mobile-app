@@ -1,8 +1,6 @@
 package io.music_assistant.client.feature
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
@@ -11,7 +9,6 @@ import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ItemPage
-import io.music_assistant.client.support.pages.clickChip
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.pages.enableFilter
@@ -62,7 +59,7 @@ class SearchTest {
             .assertResult(album.name)
             .assertResult(track.name)
             .enableFilter {
-                it.clickChip(Res.string.media_type_albums.get())
+                it.enableChip(Res.string.media_type_albums.get())
             }
             .assertResult(album.name)
             .assertNoResult(track.name)
@@ -80,8 +77,7 @@ class SearchTest {
             .clickSearch()
             .search("onion")
             .enableFilter {
-                it.composeTestRule.onNodeWithText(Res.string.search_in_library_only.get())
-                    .performClick()
+                it.enableSwitch(Res.string.search_in_library_only.get())
             }
             .assertResult(libraryAlbum.name)
             .assertNoResult(globalAlbum.name)
