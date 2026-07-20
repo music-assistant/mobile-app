@@ -19,9 +19,9 @@ import androidx.compose.ui.Modifier
 @Composable
 fun TwoRowTopAppBar(
     title: @Composable () -> Unit,
-    navigationIcon: @Composable () -> Unit,
-    actions: @Composable RowScope.() -> Unit,
-    secondRow: @Composable RowScope.() -> Unit,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    secondRow: @Composable RowScope.() -> Unit = {},
 ) {
     Column {
         TopAppBar(

@@ -20,6 +20,7 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,8 +28,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -43,6 +42,8 @@ class ItemListViewModel(
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
+    private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     private val _state = MutableStateFlow(
         State(
             dataState = DataState.Loading(),
@@ -66,12 +67,11 @@ class ItemListViewModel(
 
     init {
         viewModelScope.launch {
-            _state.map {
-                listOf(it.searchQuery, it.sortOption, it.filters)
-            }
-                .distinctUntilChanged()
+            searchTrigger
                 .debounce { Timings.INPUT_DEBOUNCE }
-                .collect { loadFirstPage() }
+                .collect {
+                    loadFirstPage()
+                }
         }
 
         viewModelScope.launch {
@@ -85,6 +85,7 @@ class ItemListViewModel(
         viewModelScope.launch {
             settingsRepository.libraryFilters(mediaType).collect { filters ->
                 _state.update { it.copy(filters = filters) }
+                searchTrigger.tryEmit(Unit)
             }
         }
 
@@ -105,6 +106,8 @@ class ItemListViewModel(
                 }
             }
         }
+
+        searchTrigger.tryEmit(Unit)
     }
 
     private fun removeItem(deleted: AppMediaItem) {
@@ -215,12 +218,17 @@ class ItemListViewModel(
         else -> null
     }
 
+    fun onSearch() {
+        searchTrigger.tryEmit(Unit)
+    }
+
     fun onSearchQueryChanged(query: String) {
         _state.update { it.copy(searchQuery = query) }
     }
 
     fun onSortChanged(sortOption: SortOption) {
         _state.update { it.copy(sortOption = sortOption) }
+        searchTrigger.tryEmit(Unit)
     }
 
     fun loadMore() {
@@ -391,6 +399,8 @@ class ItemListViewModel(
             val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
 
             item.mediaUri?.let { mediaUri ->
+                Logger.withTag("PlayDispatch")
+                    .i { "ItemListViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
                 apiClient.sendRequest(
                     Request.Library.play(
                         media = listOf(mediaUri),

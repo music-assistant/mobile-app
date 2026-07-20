@@ -14,7 +14,6 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
  */
 actual class MediaPlayerController actual constructor(platformContext: PlatformContext) {
     private val log = Logger.withTag("MediaPlayerController")
-    private var isPrepared: Boolean = false
 
     // Callback for remote commands from Control Center
     actual var onRemoteCommand: ((String) -> Unit)? = null
@@ -31,7 +30,6 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         val player = PlatformPlayerProvider.player
         if (player != null) {
             player.prepareStream(codec.name.lowercase(), sampleRate, channels, bitDepth, codecHeader, listener)
-            isPrepared = true
 
             // Set up remote command handler for iOS-originated commands
             player.setRemoteCommandHandler(object : RemoteCommandHandler {
@@ -58,9 +56,13 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
     actual fun resumeSink() { PlatformPlayerProvider.player?.resumeSink() }
     actual fun flush() { PlatformPlayerProvider.player?.flush() }
 
+    actual fun resume() {
+        resumeSink()
+        onRemoteCommand?.invoke("play")
+    }
+
     actual fun stopRawPcmStream() {
         PlatformPlayerProvider.player?.stopRawPcmStream()
-        isPrepared = false
     }
 
     actual fun setVolume(volume: Int) {
@@ -73,39 +75,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
 
     actual fun release() {
         PlatformPlayerProvider.player?.dispose()
-        isPrepared = false
     }
 
     actual fun getCurrentSystemVolume(): Int {
         // Return a default volume value - actual system volume control is managed by iOS
         return 100
-    }
-
-    // Now Playing (Control Center / Lock Screen)
-    actual fun updateNowPlaying(
-        title: String?,
-        artist: String?,
-        album: String?,
-        artworkUrl: String?,
-        duration: Double?,
-        elapsedTime: Double?,
-        playbackRate: Double,
-        isLongFormContent: Boolean,
-    ) {
-        PlatformPlayerProvider.player?.updateNowPlaying(
-            title,
-            artist,
-            album,
-            artworkUrl,
-            duration,
-            elapsedTime,
-            playbackRate,
-            isLongFormContent,
-        )
-    }
-
-    actual fun clearNowPlaying() {
-        PlatformPlayerProvider.player?.clearNowPlaying()
     }
 
     actual fun setLongFormSeekIntervals(backSeconds: Long, forwardSeconds: Long) {

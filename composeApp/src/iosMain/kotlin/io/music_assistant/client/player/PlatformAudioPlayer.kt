@@ -37,23 +37,6 @@ interface PlatformAudioPlayer {
     fun setMuted(muted: Boolean)
     fun dispose()
 
-    // Now Playing (Control Center / Lock Screen).
-    //
-    // Nullable `duration` / `elapsedTime` means "unknown — leave the iOS field alone."
-    // The Swift-side adapter merges into the existing `MPNowPlayingInfoCenter` dict
-    // rather than replacing it, so a nil here preserves whatever iOS last had.
-    fun updateNowPlaying(
-        title: String?,
-        artist: String?,
-        album: String?,
-        artworkUrl: String?,
-        duration: Double?,
-        elapsedTime: Double?,
-        playbackRate: Double,
-        isLongFormContent: Boolean,
-    )
-    fun clearNowPlaying()
-
     fun setLongFormSeekIntervals(backSeconds: Long, forwardSeconds: Long)
 
     // Remote command handler (set by Kotlin to receive play/pause/next/prev events)

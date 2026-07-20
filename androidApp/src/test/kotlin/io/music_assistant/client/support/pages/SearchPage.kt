@@ -1,6 +1,7 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -18,9 +19,14 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.search_query_label
 import musicassistantclient.composeapp.generated.resources.search_start
 
-class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
+class SearchPage(composeTestRule: ComposeTestRule, val query: String? = null) : ComposePage(composeTestRule) {
     override fun assert() {
-        composeTestRule.onNodeWithText(Res.string.search_start.get()).assertIsDisplayed()
+        if (query != null) {
+            composeTestRule.onNodeWithText(query).assertIsDisplayed()
+        } else {
+            composeTestRule.onNodeWithText(Res.string.search_start.get()).assertIsDisplayed()
+        }
+
         assertNavBar(
             items = listOf(
                 Res.string.nav_home.get(),
@@ -45,6 +51,11 @@ class SearchPage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule
 
     fun assertResult(result: String): SearchPage {
         composeTestRule.onNodeWithText(result).assertIsDisplayed()
+        return this
+    }
+
+    fun assertNoResult(result: String): SearchPage {
+        composeTestRule.onNodeWithText(result).assertIsNotDisplayed()
         return this
     }
 

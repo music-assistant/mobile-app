@@ -2,6 +2,7 @@ package io.music_assistant.client.ui.compose.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
@@ -129,29 +130,22 @@ class SearchViewModel(
         _state.update { it.copy(searchState = it.searchState.copy(query = query)) }
     }
 
-    fun onSearchTriggered() {
+    fun onSearch() {
         searchTrigger.tryEmit(Unit)
     }
 
-    fun onMediaTypeToggled(type: MediaType, isSelected: Boolean) {
+    fun onFiltersChanged(mediaTypes: List<MediaType>, libraryOnly: Boolean) {
         _state.update { state ->
             state.copy(
                 searchState = state.searchState.copy(
                     mediaTypes = state.searchState.mediaTypes.map { mediaTypeSelect ->
-                        if (mediaTypeSelect.type == type) {
-                            mediaTypeSelect.copy(isSelected = isSelected)
-                        } else {
-                            mediaTypeSelect
-                        }
+                        mediaTypeSelect.copy(isSelected = mediaTypes.contains(mediaTypeSelect.type))
                     },
+                    libraryOnly = libraryOnly,
                 ),
             )
         }
-        searchTrigger.tryEmit(Unit)
-    }
 
-    fun onLibraryOnlyToggled(libraryOnly: Boolean) {
-        _state.update { it.copy(searchState = it.searchState.copy(libraryOnly = libraryOnly)) }
         searchTrigger.tryEmit(Unit)
     }
 
@@ -163,6 +157,8 @@ class SearchViewModel(
         viewModelScope.launch {
             mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
                 track.mediaUri?.let { mediaUri ->
+                    Logger.withTag("PlayDispatch")
+                        .i { "SearchViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
                     apiClient.sendRequest(
                         Request.Library.play(
                             media = listOf(mediaUri),

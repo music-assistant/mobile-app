@@ -116,6 +116,7 @@ class NowPlayingTrackChannelTest {
 
 class NowPlayingTransportDedupTest {
     private val playing = NowPlayingTransport(
+        mediaItemId = "track-1",
         isPlaying = true,
         elapsedSec = 30.0,
         anchorMs = 10_000L,
@@ -125,26 +126,20 @@ class NowPlayingTransportDedupTest {
     @Test
     fun uninterruptedPlaybackProjectsOldAnchorBeforeComparing() {
         val later = playing.copy(anchorMs = 20_000L, elapsedSec = 40.0)
-        assertTrue(
-            NowPlayingChannelChangeDetection.sameTransport("track-1", playing, "track-1", later),
-        )
+        assertTrue(NowPlayingChannelChangeDetection.sameTransport(playing, later))
     }
 
     @Test
     fun realPositionJumpEmits() {
         val jumped = playing.copy(anchorMs = 20_000L, elapsedSec = 43.0)
-        assertFalse(
-            NowPlayingChannelChangeDetection.sameTransport("track-1", playing, "track-1", jumped),
-        )
+        assertFalse(NowPlayingChannelChangeDetection.sameTransport(playing, jumped))
     }
 
     @Test
     fun playingAndRateChangesEmit() {
         assertFalse(
             NowPlayingChannelChangeDetection.sameTransport(
-                "track-1",
                 playing,
-                "track-1",
                 playing.copy(isPlaying = false, rate = 0.0),
             ),
         )
@@ -154,38 +149,26 @@ class NowPlayingTransportDedupTest {
     fun nullElapsedMatchesOnlyNullElapsed() {
         val old = playing.copy(elapsedSec = null)
         assertTrue(
-            NowPlayingChannelChangeDetection.sameTransport(
-                "track-1",
-                old,
-                "track-1",
-                old.copy(anchorMs = 20_000L),
-            ),
+            NowPlayingChannelChangeDetection.sameTransport(old, old.copy(anchorMs = 20_000L)),
         )
-        assertFalse(
-            NowPlayingChannelChangeDetection.sameTransport("track-1", old, "track-1", playing),
-        )
+        assertFalse(NowPlayingChannelChangeDetection.sameTransport(old, playing))
     }
 
     @Test
     fun identityChangeAlwaysEmitsFreshAnchor() {
-        val samePosition = playing.copy(anchorMs = 20_000L, elapsedSec = 40.0)
-        assertFalse(
-            NowPlayingChannelChangeDetection.sameTransport(
-                "track-1",
-                playing,
-                "track-2",
-                samePosition,
-            ),
+        val samePosition = playing.copy(
+            mediaItemId = "track-2",
+            anchorMs = 20_000L,
+            elapsedSec = 40.0,
         )
+        assertFalse(NowPlayingChannelChangeDetection.sameTransport(playing, samePosition))
     }
 
     @Test
     fun nullTransportIsReplayedAsNull() {
-        assertTrue(
-            NowPlayingChannelChangeDetection.sameTransport(null, null, null, null),
-        )
+        assertTrue(NowPlayingChannelChangeDetection.sameTransport(null, null))
+        assertFalse(NowPlayingChannelChangeDetection.sameTransport(playing, null))
         assertNull(buildNowPlayingTransport(null, PlayerPositionTracker(), anchorMs = 1_000L))
-        assertNull(NowPlayingTransportEmission("track-1", null).transport)
     }
 
     @Test

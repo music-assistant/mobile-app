@@ -3,6 +3,7 @@ package io.music_assistant.client.support.pages
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
@@ -24,7 +25,9 @@ import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.banner_no_network
 import musicassistantclient.composeapp.generated.resources.banner_reconnecting
 import musicassistantclient.composeapp.generated.resources.cd_current_player
+import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.common_apply
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -205,6 +208,16 @@ fun <T : ComposePage> T.assertNoNetworkBanner(showing: Boolean): T {
     } else {
         composeTestRule.onNodeWithText(Res.string.banner_no_network.get()).assertIsNotDisplayed()
     }
+
+    return this
+}
+
+fun <T : ComposePage> T.enableFilter(action: (FilterSheetPage) -> Unit): T {
+    composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
+    action(FilterSheetPage(composeTestRule).assertOnPage())
+    composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
+
+    composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).assertIsOn()
 
     return this
 }

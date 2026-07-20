@@ -7,9 +7,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -19,6 +27,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.theme.AppTheme
@@ -26,6 +35,12 @@ import io.music_assistant.client.ui.theme.SystemAppearance
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.ui.theme.isSystemInDarkTheme
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.background_usage_dialog_dismiss
+import musicassistantclient.composeapp.generated.resources.background_usage_dialog_message
+import musicassistantclient.composeapp.generated.resources.background_usage_dialog_open_settings
+import musicassistantclient.composeapp.generated.resources.background_usage_dialog_title
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
@@ -68,8 +83,44 @@ fun App() {
                 TopLevelNavRoot()
             }
             StatusBarScrim(darkTheme, Modifier.align(Alignment.TopCenter))
+            BackgroundRestrictionDialog()
         }
     }
+}
+
+/**
+ * Single warning dialog for the OS "background usage disabled" state (Android), which kills local
+ * playback shortly after backgrounding. Shown at most once per launch and on enabling the local
+ * player; see [BackgroundRestrictionViewModel] for the cadence.
+ */
+@OptIn(KoinExperimentalAPI::class)
+@Composable
+private fun BackgroundRestrictionDialog() {
+    val viewModel = koinViewModel<BackgroundRestrictionViewModel>()
+    val shouldWarn by viewModel.shouldWarn.collectAsStateWithLifecycle()
+    // Transient per-appearance hide (Open settings / tap-outside) that doesn't persist. Reset when a
+    // fresh warning condition arises (e.g. the local player is re-enabled) so that re-triggers show.
+    var hidden by remember { mutableStateOf(false) }
+    LaunchedEffect(shouldWarn) { if (shouldWarn) hidden = false }
+    if (!shouldWarn || hidden) return
+    AlertDialog(
+        onDismissRequest = { hidden = true },
+        title = { Text(stringResource(Res.string.background_usage_dialog_title)) },
+        text = { Text(stringResource(Res.string.background_usage_dialog_message)) },
+        confirmButton = {
+            TextButton(onClick = {
+                viewModel.onOpenSettings()
+                hidden = true
+            }) {
+                Text(stringResource(Res.string.background_usage_dialog_open_settings))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = viewModel::onDismiss) {
+                Text(stringResource(Res.string.background_usage_dialog_dismiss))
+            }
+        },
+    )
 }
 
 /**

@@ -12,7 +12,6 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.carplay.CarPlayStrings
-import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.NowPlayingModes
 import io.music_assistant.client.data.NowPlayingTrack
@@ -53,8 +52,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.component.KoinComponent
@@ -78,7 +75,6 @@ object KmpHelper : KoinComponent {
     val mainDataSource: MainDataSource by inject()
     val serviceClient: ServiceClient by inject()
     val authManager: AuthenticationManager by inject()
-    val connectionManager: ConnectionManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -87,10 +83,6 @@ object KmpHelper : KoinComponent {
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    fun getServerUrl(): String? {
-        return connectionManager.serverBaseUrl.value
-    }
 
     /**
      * The connected MA server's stable identifier (UUID-style, e.g.
@@ -190,20 +182,6 @@ object KmpHelper : KoinComponent {
     fun observeReadiness(onChanged: (Boolean) -> Unit): Cancellable {
         val job = mainScope.launch {
             serviceClient.isReadyForCommands.collect { onChanged(it) }
-        }
-        return Cancellable { job.cancel() }
-    }
-
-    /**
-     * Subscribe to "local player has a current track" transitions. Fires
-     * with the current value on subscribe, then on every distinct change.
-     */
-    fun observeLocalPlayerPresence(onChanged: (Boolean) -> Unit): Cancellable {
-        val job = mainScope.launch {
-            mainDataSource.localPlayer
-                .map { it?.queueInfo?.currentItem != null }
-                .distinctUntilChanged()
-                .collect { onChanged(it) }
         }
         return Cancellable { job.cancel() }
     }

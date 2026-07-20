@@ -8,7 +8,6 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
-import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot.Companion.ELAPSED_ANCHOR_EPSILON_S
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
@@ -22,7 +21,6 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
-import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
@@ -190,26 +188,16 @@ class MainDataSource(
 
     /**
      * Transport anchors for the local player's system-media presentation.
-     * The content identity is retained only for deduplication so a new track
-     * always emits a fresh anchor. No-track states remain explicit nulls.
+     * Each anchor carries its content identity: the dedup keys on it (a new
+     * track always emits a fresh anchor) and the Swift consumer uses it to
+     * correlate anchors with the track it is presenting, since the track and
+     * transport channels have no cross-channel ordering guarantee. No-track
+     * states remain explicit nulls.
      */
     val nowPlayingTransport: StateFlow<NowPlayingTransport?> =
         localPlayer
-            .map { playerData ->
-                NowPlayingTransportEmission(
-                    mediaItemId = playerData?.queueInfo?.currentItem?.track?.itemId,
-                    transport = buildNowPlayingTransport(playerData, positionTracker),
-                )
-            }
-            .distinctUntilChanged { old, new ->
-                NowPlayingChannelChangeDetection.sameTransport(
-                    oldMediaItemId = old.mediaItemId,
-                    old = old.transport,
-                    newMediaItemId = new.mediaItemId,
-                    new = new.transport,
-                )
-            }
-            .map { it.transport }
+            .map { buildNowPlayingTransport(it, positionTracker) }
+            .distinctUntilChanged(NowPlayingChannelChangeDetection::sameTransport)
             .stateIn(this, SharingStarted.Eagerly, null)
 
     /** Queue modes and their shared availability gate for system-media controls. */
@@ -709,59 +697,6 @@ class MainDataSource(
             }
         }
 
-        // Keep Now Playing (iOS Control Center / Lock Screen) in sync with the
-        // local player. iOS interpolates the playback bar internally from the
-        // `(elapsed, timestamp, rate)` triple on every `setNowPlayingInfo`
-        // call; per Apple's guidance the right pattern is one anchor write
-        // per server event, plus track/rate transitions, and let iOS take
-        // it from there. So we drive this off `localPlayer` — which re-emits
-        // on track change, play/pause, and server queue event — and dedupe
-        // via [NowPlayingSnapshot.sameDictWriteWouldBe] so sub-second
-        // position jitter doesn't cause a write per tick. Mid-pause
-        // `elapsed_time = null` events flow through as `null` and the iOS
-        // adapter's skip-on-nil semantics preserve the previous anchor.
-        launch {
-            localPlayer
-                .map { pd ->
-                    val track = pd?.queueInfo?.currentItem?.track
-                    if (track == null) {
-                        NowPlayingSnapshot.Cleared
-                    } else {
-                        NowPlayingSnapshot.Active(
-                            title = track.displayName,
-                            artist = track.subtitle,
-                            album = track.parentName,
-                            artworkUrl = track.image(ImageType.THUMB)?.url,
-                            duration = track.duration,
-                            // Read live position from the tracker rather than the stale
-                            // anchor on `pd.queueInfo` (which is only updated by
-                            // QueueAdded/UpdatedEvent, not by QueueTimeUpdatedEvent).
-                            elapsedTime = pd.queueInfo.id.let {
-                                positionTracker.effectiveSec(it)
-                            } ?: pd.queueInfo.elapsedTime,
-                            isPlaying = pd.player.isPlaying,
-                            isPositionFrozen = positionTracker.isFrozenUntilConfirmed(pd.queueInfo.id),
-                            isLongFormContent = track.isLongFormSpokenContent,
-                        )
-                    }
-                }
-                .distinctUntilChanged { a, b -> NowPlayingSnapshot.sameDictWriteWouldBe(a, b) }
-                .collect { snapshot ->
-                    when (snapshot) {
-                        NowPlayingSnapshot.Cleared -> mediaPlayerController.clearNowPlaying()
-                        is NowPlayingSnapshot.Active -> mediaPlayerController.updateNowPlaying(
-                            title = snapshot.title,
-                            artist = snapshot.artist,
-                            album = snapshot.album,
-                            artworkUrl = snapshot.artworkUrl,
-                            duration = snapshot.duration,
-                            elapsedTime = snapshot.elapsedTime,
-                            playbackRate = if (snapshot.isPlaying && !snapshot.isPositionFrozen) 1.0 else 0.0,
-                            isLongFormContent = snapshot.isLongFormContent,
-                        )
-                    }
-                }
-        }
         // Arms `hasActivePlayback` so backgrounding mid-playback doesn't tear down
         // Sendspin (goodbye=shutdown → audio stops, server cold-resumes. Driven off
         // logical `isPlaying`, which survives the transient transport blip — unlike
@@ -771,72 +706,6 @@ class MainDataSource(
                 .map { it?.player?.isPlaying == true }
                 .distinctUntilChanged()
                 .collect { if (it) apiClient.onPlaybackActive() else apiClient.onPlaybackInactive() }
-        }
-    }
-
-    /**
-     * Captures the fields a single emission would push to iOS's Now Playing
-     * dict — [Active] when the local player has a track, [Cleared] when it
-     * doesn't. Paired with [Companion.sameDictWriteWouldBe] as a
-     * [distinctUntilChanged] key so the flow only emits once per visible
-     * anchor change (new track, pause/play, real elapsed jump).
-     */
-    internal sealed interface NowPlayingSnapshot {
-        data object Cleared : NowPlayingSnapshot
-        data class Active(
-            val title: String?,
-            val artist: String?,
-            val album: String?,
-            val artworkUrl: String?,
-            val duration: Double?,
-            val elapsedTime: Double?,
-            val isPlaying: Boolean,
-            val isPositionFrozen: Boolean = false,
-            val isLongFormContent: Boolean,
-        ) : NowPlayingSnapshot
-
-        companion object {
-            /**
-             * Threshold (seconds) below which two `elapsed` values are treated
-             * as the same anchor: iOS's own interpolator covers sub-second
-             * drift from `(elapsed, timestamp, rate)`, so writing a fresh
-             * value within this window is a no-op the user can't see.
-             *
-             * 2 s is comfortably wider than typical position-tracker jitter
-             * (we tick at 500 ms with ±50 ms of dispatch noise) and tighter
-             * than any user-visible seek.
-             */
-            internal const val ELAPSED_ANCHOR_EPSILON_S = 2.0
-
-            /**
-             * Returns `true` when [a] and [b] would produce indistinguishable
-             * `MPNowPlayingInfoCenter` dict writes — i.e. emitting [b] after
-             * [a] would not visibly change the lock screen / CarPlay bar.
-             *
-             * Most fields compare by value equality. `elapsedTime` is the
-             * exception: small drifts (within [ELAPSED_ANCHOR_EPSILON_S]) are
-             * treated as equal because iOS is already interpolating from the
-             * last anchor. Crossing the threshold (e.g. a server-side seek,
-             * a reconnect re-anchoring with a wildly different value) emits.
-             */
-            fun sameDictWriteWouldBe(a: NowPlayingSnapshot, b: NowPlayingSnapshot): Boolean {
-                if (a !is Active || b !is Active) return a === b
-                if (a.title != b.title) return false
-                if (a.artist != b.artist) return false
-                if (a.album != b.album) return false
-                if (a.artworkUrl != b.artworkUrl) return false
-                if (a.duration != b.duration) return false
-                if (a.isPlaying != b.isPlaying) return false
-                if (a.isPositionFrozen != b.isPositionFrozen) return false
-                if (a.isLongFormContent != b.isLongFormContent) return false
-                val ae = a.elapsedTime
-                val be = b.elapsedTime
-                return when {
-                    ae == null && be == null -> true
-                    ae == null || be == null -> false
-                    else -> kotlin.math.abs(ae - be) < ELAPSED_ANCHOR_EPSILON_S
-                }
-            }
         }
     }
 

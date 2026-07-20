@@ -32,8 +32,15 @@ data class NowPlayingTrack(
  * bridge. Swift re-anchors the elapsed value with its own clock on delivery.
  * [rate] is zero while paused or seek-frozen; otherwise it carries the queue's
  * playback speed so variable-rate spoken content remains synchronized.
+ *
+ * [mediaItemId] correlates the anchor with the track it belongs to. The track
+ * and transport channels are delivered independently with no cross-channel
+ * ordering guarantee, so the consumer must be able to reject (or hold) an
+ * anchor that does not match the track it is currently presenting. It is a
+ * correlation stamp only — never rendered from this channel.
  */
 data class NowPlayingTransport(
+    val mediaItemId: String,
     val isPlaying: Boolean,
     val elapsedSec: Double?,
     val anchorMs: Long,
@@ -54,17 +61,15 @@ internal object NowPlayingChannelChangeDetection {
 
     /**
      * Returns whether two transport values can share one system-media anchor.
-     * The caller supplies content identity because a new track always needs a
-     * fresh anchor, even when its position happens to equal the old track's.
+     * A new track always needs a fresh anchor, even when its position happens
+     * to equal the old track's, so identity is compared first.
      */
     fun sameTransport(
-        oldMediaItemId: String?,
         old: NowPlayingTransport?,
-        newMediaItemId: String?,
         new: NowPlayingTransport?,
     ): Boolean {
-        if (oldMediaItemId != newMediaItemId) return false
         if (old == null || new == null) return old == new
+        if (old.mediaItemId != new.mediaItemId) return false
         if (old.isPlaying != new.isPlaying || old.rate != new.rate) return false
 
         if (old.elapsedSec == null || new.elapsedSec == null) {
@@ -91,9 +96,10 @@ internal fun buildNowPlayingTransport(
     anchorMs: Long = monotonicMs(),
 ): NowPlayingTransport? {
     val queueInfo = playerData?.queueInfo ?: return null
-    queueInfo.currentItem?.track ?: return null
+    val track = queueInfo.currentItem?.track ?: return null
     val isPlaying = playerData.player.isPlaying
     return NowPlayingTransport(
+        mediaItemId = track.itemId,
         isPlaying = isPlaying,
         elapsedSec = positionTracker.effectiveSec(queueInfo.id) ?: queueInfo.elapsedTime,
         anchorMs = anchorMs,
@@ -133,10 +139,4 @@ private fun PlayableItem.toNowPlayingTrack(): NowPlayingTrack = NowPlayingTrack(
     artworkUrl = image(ImageType.THUMB)?.url,
     duration = duration,
     isLongFormContent = isLongFormSpokenContent,
-)
-
-/** Internal key used to reset transport comparison at a content transition. */
-internal data class NowPlayingTransportEmission(
-    val mediaItemId: String?,
-    val transport: NowPlayingTransport?,
 )

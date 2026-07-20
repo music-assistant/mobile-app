@@ -240,6 +240,8 @@ class HomeScreenViewModel(
         dataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
             item.mediaUri?.let { mediaUri ->
                 viewModelScope.launch {
+                    Logger.withTag("PlayDispatch")
+                        .i { "HomeScreenViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
                     apiClient.sendRequest(
                         Request.Library.play(
                             media = listOf(mediaUri),

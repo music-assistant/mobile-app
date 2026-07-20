@@ -496,30 +496,9 @@ class LocalPlayerController(
         mediaPlayerController.onRemoteCommand = { command ->
             localPlayerData.value?.let { playerData ->
                 log.i { "Remote command: $command" }
-                when (command) {
-                    "play" -> handleLocalCommand(playerData, PlayerAction.Play)
-                    "pause" -> handleLocalCommand(playerData, PlayerAction.Pause)
-                    "toggle_play_pause" -> handleLocalCommand(
-                        playerData,
-                        PlayerAction.TogglePlayPause,
-                    )
-
-                    "next" -> handleLocalCommand(playerData, PlayerAction.Next)
-                    "previous" -> handleLocalCommand(playerData, PlayerAction.Previous)
-                    else -> {
-                        if (command.startsWith("seek:")) {
-                            command.removePrefix("seek:").toDoubleOrNull()?.let { position ->
-                                handleLocalCommand(playerData, PlayerAction.SeekTo(position.toLong()))
-                            }
-                        } else if (command.startsWith("seek_by:")) {
-                            command.removePrefix("seek_by:").toLongOrNull()?.let { offset ->
-                                handleLocalCommand(playerData, PlayerAction.SeekBy(offset))
-                            }
-                        } else {
-                            log.w { "Unknown remote command: $command" }
-                        }
-                    }
-                }
+                remoteCommandToPlayerAction(command, playerData.queueInfo)
+                    ?.let { action -> handleLocalCommand(playerData, action) }
+                    ?: log.w { "Unknown remote command: $command" }
             } ?: log.w { "No local player available for remote command: $command" }
         }
 
@@ -807,4 +786,27 @@ class LocalPlayerController(
         /** Backstop for play requests that neither confirm nor fail. */
         private const val PENDING_PLAY_TIMEOUT_MS = 10_000L
     }
+}
+
+/**
+ * Maps a platform remote-command string (Control Center / lock screen / CarPlay)
+ * to the [PlayerAction] to dispatch. Toggle commands read their current state
+ * from [queueInfo], defaulting to off when no queue exists. Returns null for
+ * unrecognized commands and malformed seek payloads.
+ */
+internal fun remoteCommandToPlayerAction(command: String, queueInfo: QueueInfo?): PlayerAction? = when {
+    command == "play" -> PlayerAction.Play
+    command == "pause" -> PlayerAction.Pause
+    command == "toggle_play_pause" -> PlayerAction.TogglePlayPause
+    command == "next" -> PlayerAction.Next
+    command == "previous" -> PlayerAction.Previous
+    command == "toggle_shuffle" ->
+        PlayerAction.ToggleShuffle(current = queueInfo?.shuffleEnabled == true)
+    command == "toggle_repeat" ->
+        PlayerAction.ToggleRepeatMode(current = queueInfo?.repeatMode ?: RepeatMode.OFF)
+    command.startsWith("seek:") ->
+        command.removePrefix("seek:").toDoubleOrNull()?.let { PlayerAction.SeekTo(it.toLong()) }
+    command.startsWith("seek_by:") ->
+        command.removePrefix("seek_by:").toLongOrNull()?.let { PlayerAction.SeekBy(it) }
+    else -> null
 }

@@ -57,6 +57,10 @@
   <string name="auth_show_password">Wachtwoord tonen</string>
   <string name="auth_title">Authenticatie</string>
   <string name="auth_username">Gebruikersnaam</string>
+  <string name="background_usage_dialog_dismiss">Niet meer laten zien</string>
+  <string name="background_usage_dialog_message">Achtergrondgebruik voor deze app is uitgeschakeld, waardoor lokaal afspelen kort na het verlaten van de app stopt. Tik op Instellingen openen, vervolgens op Batterij en schakel achtergrondgebruik in om door te kunnen gaan met afspelen.</string>
+  <string name="background_usage_dialog_open_settings">Instellingen openen</string>
+  <string name="background_usage_dialog_title">Het afspelen op het apparaat kan worden onderbroken</string>
   <string name="banner_no_network">Geen netwerk beschikbaar</string>
   <string name="banner_reconnecting">Opnieuw verbinden… (poging %1$d)</string>
   <string name="bound_player_joined_to">%1$s is verbonden met %2$s\n(tik om te bekijken)</string>
@@ -76,7 +80,7 @@
   <string name="cd_fully_played">Volledig afgespeeld</string>
   <string name="cd_genre_filter">Genrefilters</string>
   <string name="cd_in_progress">In behandeling</string>
-  <string name="cd_library_filters">Filters</string>
+  <string name="cd_filter">Filters</string>
   <string name="cd_lyrics">Songtekst</string>
   <string name="cd_lyrics_close">Songtekst sluiten</string>
   <string name="cd_more">Meer</string>

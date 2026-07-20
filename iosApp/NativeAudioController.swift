@@ -220,7 +220,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         if !streamStarted {
             streamStarted = true
             logDebug("First data received (\(swiftData.count) bytes)")
-            NowPlayingManager.shared.activatePlayback()
+            NowPlayingCoordinator.shared.activatePlayback()
             startAudioQueue()
         }
 
@@ -267,7 +267,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     func resumeSink() {
         logInfo("resumeSink")
         shouldPlay = true
-        NowPlayingManager.shared.activatePlayback()
+        NowPlayingCoordinator.shared.activatePlayback()
         isPlaying = true
         if let queue = audioQueue {
             AudioQueueStart(queue, nil)
@@ -293,7 +293,8 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     }
 
     func dispose() {
-        NowPlayingManager.shared.clearNowPlayingInfo()
+        // The Now Playing surface is cleared by the track channel going null
+        // (pipeline teardown removes the current item); no direct clear here.
         stopAudioQueue()
         decoder = nil
     }
@@ -412,49 +413,17 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     private var remoteCommandHandler: RemoteCommandHandler?
 
-    /// `duration` and `elapsedTime` are passed as `KotlinDouble?` because Kotlin/Native
-    /// boxes nullable primitives in interface signatures. A nil here means "value
-    /// unknown — leave the corresponding `MPNowPlayingInfoCenter` field alone" (vs.
-    /// the prior contract which forced callers to fabricate a 0 and visibly reset the
-    /// playback bar). See `MainDataSource`'s position-tracker overlay for why this
-    /// distinction matters in practice.
-    func updateNowPlaying(
-        title: String?,
-        artist: String?,
-        album: String?,
-        artworkUrl: String?,
-        duration: KotlinDouble?,
-        elapsedTime: KotlinDouble?,
-        playbackRate: Double,
-        isLongFormContent: Bool
-    ) {
-        NowPlayingManager.shared.updateNowPlayingInfo(
-            title: title,
-            artist: artist,
-            album: album,
-            artworkUrl: artworkUrl,
-            duration: duration?.doubleValue,
-            elapsedTime: elapsedTime?.doubleValue,
-            playbackRate: playbackRate,
-            isLongFormContent: isLongFormContent
-        )
-    }
-
     func setLongFormSeekIntervals(backSeconds: Int64, forwardSeconds: Int64) {
-        NowPlayingManager.shared.setLongFormSeekIntervals(
+        NowPlayingCoordinator.shared.setLongFormSeekIntervals(
             backSeconds: backSeconds,
             forwardSeconds: forwardSeconds
         )
     }
 
-    func clearNowPlaying() {
-        NowPlayingManager.shared.clearNowPlayingInfo()
-    }
-
     func setRemoteCommandHandler(handler: RemoteCommandHandler?) {
         self.remoteCommandHandler = handler
 
-        NowPlayingManager.shared.setCommandHandler { [weak self] command in
+        NowPlayingCoordinator.shared.setCommandHandler { [weak self] command in
             self?.logInfo("Remote command: \(command)")
             self?.remoteCommandHandler?.onCommand(command: command, source: "remote")
         }

@@ -45,6 +45,9 @@
   <string name="all_podcasts">All podcasts</string>
   <string name="all_radio">All radio stations</string>
   <string name="all_tracks">All tracks</string>
+  <string name="artist_section_all">All</string>
+  <string name="artist_section_in_library">In library</string>
+  <string name="artist_section_top">Top</string>
   <string name="auth_authenticating">Authenticating…</string>
   <string name="auth_authorize_ha">Authorize with Home Assistant</string>
   <string name="auth_hide_password">Hide password</string>
@@ -57,6 +60,10 @@
   <string name="auth_show_password">Show password</string>
   <string name="auth_title">Authentication</string>
   <string name="auth_username">Username</string>
+  <string name="background_usage_dialog_dismiss">Don't show again</string>
+  <string name="background_usage_dialog_message">Background usage is disabled for this app, so local playback stops shortly after you leave. Tap Open settings, then Battery, and allow background usage to keep playing.</string>
+  <string name="background_usage_dialog_open_settings">Open settings</string>
+  <string name="background_usage_dialog_title">Local playback may stop</string>
   <string name="banner_no_network">No network available</string>
   <string name="banner_reconnecting">Reconnecting… (attempt %1$d)</string>
   <string name="bound_player_joined_to">%1$s is joined to %2$s\n(tap to view)</string>
@@ -76,7 +83,7 @@
   <string name="cd_fully_played">Fully played</string>
   <string name="cd_genre_filter">Genre filters</string>
   <string name="cd_in_progress">In progress</string>
-  <string name="cd_library_filters">Filters</string>
+  <string name="cd_filter">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
   <string name="cd_more">More</string>
@@ -234,7 +241,7 @@
   <string name="search_error">Error loading search results</string>
   <string name="search_in_library_only">In library only</string>
   <string name="search_no_results">No results found</string>
-  <string name="search_query_label">Search query</string>
+  <string name="search_query_label">Search…</string>
   <string name="search_start">Start searching…</string>
   <string name="search_title">Global search</string>
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>

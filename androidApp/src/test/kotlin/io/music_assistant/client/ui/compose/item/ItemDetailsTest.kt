@@ -49,9 +49,12 @@ class ItemDetailsTest {
         composeTestRule.setContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    DataState.Data(artist),
-                    DataState.Data(albums),
-                    DataState.NoData(),
+                    itemState = DataState.Data(artist),
+                    albumsState = DataState.NoData(),
+                    playableItemsState = DataState.NoData(),
+                    // An artist's albums now live in the Library/Top/All sub-sections, not albumsState.
+                    artistAlbumSections = ArtistSections(all = DataState.Data(albums)),
+                    artistTrackSections = ArtistSections(),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
                 fetchColors = NoColors,

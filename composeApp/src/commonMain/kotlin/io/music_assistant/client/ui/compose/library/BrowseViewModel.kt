@@ -56,6 +56,8 @@ class BrowseViewModel(
         viewModelScope.launch {
             val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
             item.mediaUri?.let { mediaUri ->
+                Logger.withTag("PlayDispatch")
+                    .i { "BrowseViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
                 apiClient.sendRequest(
                     Request.Library.play(
                         media = listOf(mediaUri),

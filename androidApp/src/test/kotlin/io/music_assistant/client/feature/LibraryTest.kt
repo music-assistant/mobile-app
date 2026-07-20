@@ -14,8 +14,10 @@ import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickLibrary
+import io.music_assistant.client.support.pages.enableFilter
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import org.junit.Rule
@@ -140,7 +142,23 @@ class LibraryTest {
     }
 
     @Test
-    fun `can search item`() {
+    fun `can filter to only favorites`() {
+        val album1 = ServerMediaItemFixtures.album(favorite = false)
+        val album2 = ServerMediaItemFixtures.album(favorite = true)
+        serviceClient.addToLibrary(album1, album2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickAlbums()
+            .enableFilter {
+                it.enableSwitch(Res.string.filter_favorites.get())
+            }
+            .assertMediaNotDisplayed(album1.name)
+            .assertMediaDisplayed(album2.name)
+    }
+
+    @Test
+    fun `can search within items`() {
         val album1 = ServerMediaItemFixtures.album(name = "Balloon Trapeze Experience")
         val album2 = ServerMediaItemFixtures.album(name = "Frontal Lobe Annihilation Puzzle")
         serviceClient.addToLibrary(album1, album2)
@@ -152,6 +170,21 @@ class LibraryTest {
             .search("lobe")
             .assertMediaDisplayed(album2.name)
             .assertMediaNotDisplayed(album1.name)
+    }
+
+    @Test
+    fun `can search outside of library if there are no results`() {
+        val album = ServerMediaItemFixtures.album(name = "Balloon Trapeze Experience")
+        serviceClient.addToGlobalItems(album)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickAlbums()
+            .openSearch()
+            .search("balloon")
+            .assertNoItems()
+            .clickSearchEverywhere("balloon")
+            .assertResult(album.name)
     }
 
     @Test

@@ -12,11 +12,14 @@ import androidx.compose.ui.test.performTextInput
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_quick_search
+import musicassistantclient.composeapp.generated.resources.library_search_global
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
+import musicassistantclient.composeapp.generated.resources.search_query_label
 
 class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
     ComposePage(composeTestRule) {
@@ -38,7 +41,7 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
     }
 
     fun search(query: String): ItemListPage {
-        composeTestRule.onNodeWithText(Res.string.library_quick_search.get())
+        composeTestRule.onNodeWithText(Res.string.search_query_label.get())
             .assertIsDisplayed()
             .performTextInput(query)
 
@@ -50,5 +53,17 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
     fun openSearch(): ItemListPage {
         composeTestRule.onNodeWithContentDescription(Res.string.library_quick_search.get()).performClick()
         return this
+    }
+
+    fun assertNoItems(): ItemListPage {
+        composeTestRule.onNodeWithText(Res.string.library_empty.get()).assertIsDisplayed()
+        return this
+    }
+
+    fun clickSearchEverywhere(query: String): SearchPage {
+        composeTestRule.onNodeWithText(Res.string.library_search_global.get())
+            .assertIsDisplayed()
+            .performClick()
+        return SearchPage(composeTestRule, query = query).assertOnPage()
     }
 }
