@@ -62,9 +62,44 @@ class FakeServiceClient : ServiceClient {
             return items.filter { it.mediaType == MediaType.ALBUM.serverValue }
         }
 
+    private val globalArtists: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.ARTIST.serverValue }
+        }
+
     private val globalAlbums: List<ServerMediaItem>
         get() {
             return globalItems.filter { it.mediaType == MediaType.ALBUM.serverValue }
+        }
+
+    private val globalTracks: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.TRACK.serverValue }
+        }
+
+    private val globalPlaylists: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.PLAYLIST.serverValue }
+        }
+
+    private val globalAudiobooks: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.AUDIOBOOK.serverValue }
+        }
+
+    private val globalPodcasts: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.PODCAST.serverValue }
+        }
+
+    private val globalRadios: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.RADIO.serverValue }
+        }
+
+    private val globalGenres: List<ServerMediaItem>
+        get() {
+            return globalItems.filter { it.mediaType == MediaType.GENRE.serverValue }
         }
 
     private val artists: List<ServerMediaItem>
@@ -206,19 +241,46 @@ class FakeServiceClient : ServiceClient {
                         answer(
                             request = request,
                             result = SearchResult(
-                                artists = searchItems(request, searchArg, artists),
+                                artists = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) artists else artists + globalArtists,
+                                ),
                                 albums = searchItems(
                                     request,
                                     searchArg,
-                                    if (libraryOnly) {
-                                        albums
-                                    } else {
-                                        albums + globalAlbums
-                                    },
+                                    if (libraryOnly) albums else albums + globalAlbums,
                                 ),
-                                tracks = searchItems(request, searchArg, tracks),
-                                playlists = searchItems(request, searchArg, playlists),
-                                podcasts = searchItems(request, searchArg, podcasts),
+                                tracks = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) tracks else tracks + globalTracks,
+                                ),
+                                playlists = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) playlists else playlists + globalPlaylists,
+                                ),
+                                podcasts = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) podcasts else podcasts + globalPodcasts,
+                                ),
+                                audiobooks = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) audiobooks else audiobooks + globalAudiobooks,
+                                ),
+                                radio = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) radios else radios + globalRadios,
+                                ),
+                                genres = searchItems(
+                                    request,
+                                    searchArg,
+                                    if (libraryOnly) genres else genres + globalGenres,
+                                ),
                             ),
                         ),
                     )
@@ -228,27 +290,74 @@ class FakeServiceClient : ServiceClient {
                             request = request,
                             result = SearchResult(
                                 artists = if (mediaTypes.contains(MediaType.ARTIST.serverValue)) {
-                                    searchItems(request, searchArg, artists)
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) artists else artists + globalArtists,
+                                    )
                                 } else {
                                     emptyList()
                                 },
                                 albums = if (mediaTypes.contains(MediaType.ALBUM.serverValue)) {
-                                    searchItems(request, searchArg, albums + globalAlbums)
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) albums else albums + globalAlbums,
+                                    )
                                 } else {
                                     emptyList()
                                 },
                                 tracks = if (mediaTypes.contains(MediaType.TRACK.serverValue)) {
-                                    searchItems(request, searchArg, tracks)
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) tracks else tracks + globalTracks,
+                                    )
                                 } else {
                                     emptyList()
                                 },
                                 playlists = if (mediaTypes.contains(MediaType.PLAYLIST.serverValue)) {
-                                    searchItems(request, searchArg, playlists)
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) playlists else playlists + globalPlaylists,
+                                    )
                                 } else {
                                     emptyList()
                                 },
                                 podcasts = if (mediaTypes.contains(MediaType.PODCAST.serverValue)) {
-                                    searchItems(request, searchArg, podcasts)
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) podcasts else podcasts + globalPodcasts,
+                                    )
+                                } else {
+                                    emptyList()
+                                },
+                                audiobooks = if (mediaTypes.contains(MediaType.AUDIOBOOK.serverValue)) {
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) audiobooks else audiobooks + globalAudiobooks,
+                                    )
+                                } else {
+                                    emptyList()
+                                },
+                                radio = if (mediaTypes.contains(MediaType.RADIO.serverValue)) {
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) radios else radios + globalRadios,
+                                    )
+                                } else {
+                                    emptyList()
+                                },
+                                genres = if (mediaTypes.contains(MediaType.GENRE.serverValue)) {
+                                    searchItems(
+                                        request,
+                                        searchArg,
+                                        if (libraryOnly) genres else genres + globalGenres,
+                                    )
                                 } else {
                                     emptyList()
                                 },
