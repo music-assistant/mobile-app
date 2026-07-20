@@ -55,7 +55,7 @@ class FakeServiceClient : ServiceClient {
     private val queues = mutableListOf<ServerQueue>()
     private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
     private val items = mutableSetOf<ServerMediaItem>()
-    private val globalItems = mutableListOf<ServerMediaItem>()
+    private val globalItems = mutableSetOf<ServerMediaItem>()
 
     private val albums: List<ServerMediaItem>
         get() {
@@ -800,21 +800,11 @@ class FakeServiceClient : ServiceClient {
     }
 
     fun addToLibrary(vararg items: ServerMediaItem) {
-        this.items.addAll(items)
-        items.forEach { item ->
-            item.artists?.let {
-                this.items.addAll(it)
-            }
-        }
-        items.forEach { item ->
-            item.album?.let {
-                this.items.add(it)
-            }
-        }
+        addItems(items, this.items)
     }
 
     fun addToGlobalItems(vararg items: ServerMediaItem) {
-        this.globalItems.addAll(items)
+        addItems(items, globalItems)
     }
 
     fun addPlayers(vararg players: ServerPlayer) {
@@ -954,6 +944,23 @@ class FakeServiceClient : ServiceClient {
 
                     else -> error("Unhandled SessionState: $it")
                 }
+            }
+        }
+    }
+
+    private fun addItems(
+        itemsToAdd: Array<out ServerMediaItem>,
+        items: MutableSet<ServerMediaItem>,
+    ) {
+        items.addAll(itemsToAdd)
+        itemsToAdd.forEach { item ->
+            item.artists?.let {
+                items.addAll(it)
+            }
+        }
+        itemsToAdd.forEach { item ->
+            item.album?.let {
+                items.add(it)
             }
         }
     }
