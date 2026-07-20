@@ -5,6 +5,7 @@
   <string name="action_add_to_playlist">添加到播放列表</string>
   <string name="action_add_to_queue">添加到队列</string>
   <string name="action_browse">浏览</string>
+  <string name="action_choose_artist">选择歌手</string>
   <string name="action_customize">自定义…</string>
   <string name="action_favorite">添加到收藏夹</string>
   <string name="action_go_to_album">前往专辑</string>
@@ -29,6 +30,12 @@
   <string name="action_start_radio">启动电台</string>
   <string name="action_unfavorite">从收藏夹中移除</string>
   <string name="album_disc_header">唱片 %1$d</string>
+  <string name="album_type_album">专辑</string>
+  <string name="album_type_compilation">合辑</string>
+  <string name="album_type_ep">EP</string>
+  <string name="album_type_live">现场</string>
+  <string name="album_type_single">单曲</string>
+  <string name="album_type_soundtrack">原声带</string>
   <string name="albums_by_artist">%1$s的专辑</string>
   <string name="all_albums">所有专辑</string>
   <string name="all_artists">所有歌手</string>
@@ -50,6 +57,7 @@
   <string name="auth_show_password">显示密码</string>
   <string name="auth_title">验证</string>
   <string name="auth_username">用户名</string>
+  <string name="background_usage_dialog_dismiss">不再显示</string>
   <string name="banner_no_network">无可用网络</string>
   <string name="banner_reconnecting">正在重新连接…（尝试 %1$d）</string>
   <string name="bound_player_joined_to">%1$s 已加入 %2$s\n（点击查看）</string>
@@ -69,6 +77,7 @@
   <string name="cd_fully_played">已全部播放</string>
   <string name="cd_genre_filter">流派筛选器</string>
   <string name="cd_in_progress">进行中</string>
+  <string name="cd_library_filters">过滤器</string>
   <string name="cd_lyrics">歌词</string>
   <string name="cd_lyrics_close">关闭歌词</string>
   <string name="cd_more">更多</string>
@@ -96,6 +105,7 @@
   <string name="codec_flac">FLAC（无损，中等带宽）</string>
   <string name="codec_opus">Opus（压缩，最低带宽）</string>
   <string name="codec_pcm">PCM（无损、高带宽）</string>
+  <string name="common_apply">应用</string>
   <string name="common_back">返回</string>
   <string name="common_cancel">取消</string>
   <string name="common_clear">清除</string>
@@ -113,7 +123,14 @@
   <string name="dsp_error">无法加载 DSP 配置</string>
   <string name="dsp_presets">预设</string>
   <string name="dsp_title">DSP 设置</string>
+  <string name="filter_album_artists_only">仅限专辑歌手</string>
+  <string name="filter_album_types">专辑类型</string>
   <string name="filter_favorites">收藏夹</string>
+  <string name="filter_genres">流派</string>
+  <string name="filter_none_selected">任何</string>
+  <string name="filter_providers">音乐源提供程序</string>
+  <string name="filter_selected_count">%1$d 个已选中</string>
+  <string name="filter_sheet_title">过滤器</string>
   <string name="genre_filter_empty_all">全部</string>
   <string name="genre_filter_empty_default">默认</string>
   <string name="genre_filter_empty_non_empty">仅非空</string>
@@ -136,6 +153,10 @@
   <string name="kind_audiobook">有声书</string>
   <string name="kind_playlist">播放列表</string>
   <string name="kind_podcast">播客</string>
+  <string name="kind_podcast_episode">播客剧集</string>
+  <string name="kind_radio">广播电台</string>
+  <string name="kind_track">曲目</string>
+  <string name="library_customize">自定义</string>
   <string name="player_power_off">关机</string>
   <string name="player_power_on">开机</string>
   <string name="player_powered_off">已关机</string>
