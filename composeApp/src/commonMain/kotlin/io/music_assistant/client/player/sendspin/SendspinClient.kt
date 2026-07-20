@@ -36,6 +36,15 @@ class SendspinClient(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisorJob
 
+    companion object {
+        /** Max reconnect attempt index that still triggers auto-resume.
+         *  Matches attempt 9 = ~4 minutes on the backoff ladder.
+         *  Beyond this the outage is considered too long for safe
+         *  auto-resume — the server may have rebooted or the user
+         *  context may have changed. */
+        private const val RECONNECT_AUTO_RESUME_MAX_ATTEMPTS = 9
+    }
+
     // Components
     private var transport: SendspinTransport? = null
     private var messageDispatcher: MessageDispatcher? = null
@@ -179,9 +188,9 @@ class SendspinClient(
                             is SendspinState.Reconnecting,
                             is SendspinState.Error,
                             -> {
-                                val wasStreaming =
-                                    (_state.value as? SendspinState.Reconnecting)?.wasStreaming
-                                        ?: false
+                                val reconnecting = _state.value as? SendspinState.Reconnecting
+                                val wasStreaming = reconnecting?.wasStreaming ?: false
+                                val reconnectAttempt = reconnecting?.attempt ?: 0
                                 try {
                                     if (config.requiresAuth) {
                                         _state.update { SendspinState.Authenticating }
@@ -194,12 +203,19 @@ class SendspinClient(
                                     logger.w { "Failed to send auth/hello (transport closed during handshake): ${e.message}" }
                                 }
                                 // Auto-resume playback if we were streaming before the disconnect
-                                if (wasStreaming) {
+                                // and the outage wasn't too long (attempt <= threshold).
+                                // Beyond ~4 minutes (attempt 9) the server may have rebooted or
+                                // the user context changed — don't startle the user.
+                                if (wasStreaming && reconnectAttempt < RECONNECT_AUTO_RESUME_MAX_ATTEMPTS) {
                                     try {
                                         mediaPlayerController.resume()
-                                        logger.i { "Auto-resumed playback after reconnect" }
+                                        logger.i { "Auto-resumed playback after reconnect (attempt $reconnectAttempt)" }
                                     } catch (e: Exception) {
                                         logger.w(e) { "Auto-resume failed" }
+                                    }
+                                } else if (wasStreaming) {
+                                    logger.i {
+                                        "Skipped auto-resume after $reconnectAttempt attempts (max=$RECONNECT_AUTO_RESUME_MAX_ATTEMPTS)"
                                     }
                                 }
                             }
