@@ -3,6 +3,7 @@
 package io.music_assistant.client.ui.compose.item
 
 import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.GridView
@@ -43,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
@@ -105,6 +108,9 @@ import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.utils.gridItemMinSize
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.album_disc_header
+import musicassistantclient.composeapp.generated.resources.artist_section_all
+import musicassistantclient.composeapp.generated.resources.artist_section_in_library
+import musicassistantclient.composeapp.generated.resources.artist_section_top
 import musicassistantclient.composeapp.generated.resources.cd_toggle_view_mode
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
@@ -618,9 +624,34 @@ private fun TabContent(
     gridState: LazyGridState,
 ) {
     when (tab) {
-        ItemDetailsTab.ARTIST_ALBUMS,
-        ItemDetailsTab.GENRE_ALBUMS,
-            -> AlbumsTabContent(
+        ItemDetailsTab.ARTIST_ALBUMS -> ArtistAlbumsTabContent(
+            sections = state.artistAlbumSections ?: ArtistSections.loading(),
+            viewModeProvider = viewModeProvider,
+            onNavigateClick = onNavigateClick,
+            onPlayChildClick = onPlayChildClick,
+            playlistActions = playlistActions,
+            libraryActions = libraryActions,
+            providerIconFetcher = providerIconFetcher,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+
+        ItemDetailsTab.ARTIST_TRACKS -> ArtistTracksTabContent(
+            sections = state.artistTrackSections ?: ArtistSections.loading(),
+            viewModeProvider = viewModeProvider,
+            onPlayChildClick = onPlayChildClick,
+            playlistActions = playlistActions,
+            libraryActions = libraryActions,
+            providerIconFetcher = providerIconFetcher,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+
+        ItemDetailsTab.GENRE_ALBUMS -> AlbumsTabContent(
             albumsState = state.albumsState,
             viewModeProvider = viewModeProvider,
             onNavigateClick = onNavigateClick,
@@ -634,7 +665,6 @@ private fun TabContent(
             gridState = gridState,
         )
 
-        ItemDetailsTab.ARTIST_TRACKS,
         ItemDetailsTab.ALBUM_TRACKS,
         ItemDetailsTab.PLAYLIST_ITEMS,
         ItemDetailsTab.PODCAST_EPISODES,
@@ -938,6 +968,138 @@ private fun DiscHeader(disc: Int) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
     )
+}
+
+@Composable
+private fun ArtistSectionHeader(section: ArtistSection) {
+    Text(
+        text = stringResource(
+            when (section) {
+                ArtistSection.LIBRARY -> Res.string.artist_section_in_library
+                ArtistSection.TOP -> Res.string.artist_section_top
+                ArtistSection.ALL -> Res.string.artist_section_all
+            },
+        ),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
+}
+
+/**
+ * Emits the artist tab's Library/Top/All sub-sections: each non-empty section gets a header row
+ * then its [items]. If none has data, shows a single error/empty message (mirroring [tabListBody]).
+ */
+private inline fun <T> LazyGridScope.artistSectionsBody(
+    sections: ArtistSections<T>,
+    crossinline items: LazyGridScope.(ArtistSection, List<T>) -> Unit,
+) {
+    val visible = sections.ordered().mapNotNull { (section, state) ->
+        (state.dataOrNull?.takeIf { it.isNotEmpty() })?.let { section to it }
+    }
+    if (visible.isEmpty()) {
+        if (sections.ordered().any { it.second is DataState.Error }) {
+            fullSpanItem(DETAIL_ERROR_KEY) {
+                CenteredText(
+                    text = stringResource(Res.string.library_error),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        } else {
+            fullSpanItem(DETAIL_EMPTY_KEY) { CenteredText(stringResource(Res.string.library_empty)) }
+        }
+        return
+    }
+    visible.forEach { (section, data) ->
+        fullSpanItem("section-header-${section.name}") { ArtistSectionHeader(section) }
+        items(section, data)
+    }
+}
+
+@Composable
+private fun ArtistAlbumsTabContent(
+    sections: ArtistSections<Album>,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
+    onNavigateClick: (AppMediaItem) -> Unit,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
+    playlistActions: PlaylistActions,
+    libraryActions: LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    val viewMode = viewModeProvider(MediaType.ALBUM)
+    DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
+        artistSectionsBody(sections) { section, albums ->
+            val albumKeys = albums.lazyListOccurrenceKeys()
+            itemsIndexed(
+                items = albums,
+                // Prefix by section: the same album can appear in more than one section.
+                key = { index, _ -> "album-${section.name}-${albumKeys[index]}" },
+                span = when (viewMode) {
+                    ViewMode.LIST -> { _, _ -> GridItemSpan(maxLineSpan) }
+                    ViewMode.GRID -> null
+                },
+            ) { _, album ->
+                AlbumWithMenu(
+                    item = album,
+                    viewMode = viewMode,
+                    onNavigateClick = onNavigateClick,
+                    onPlayOption = onPlayChildClick,
+                    playlistActions = playlistActions,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = providerIconFetcher,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistTracksTabContent(
+    sections: ArtistSections<Track>,
+    viewModeProvider: @Composable (MediaType) -> ViewMode,
+    onPlayChildClick: PlayHandler<AppMediaItem>,
+    playlistActions: PlaylistActions,
+    libraryActions: LibraryActions,
+    providerIconFetcher: @Composable (Modifier, String) -> Unit,
+    contentPadding: PaddingValues,
+    heroSlot: @Composable () -> Unit,
+    tabsSlot: @Composable () -> Unit,
+    gridState: LazyGridState,
+) {
+    val viewMode = viewModeProvider(MediaType.TRACK)
+    DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
+        artistSectionsBody(sections) { section, tracks ->
+            val trackKeys = tracks.playableLazyListOccurrenceKeys()
+            itemsIndexed(
+                items = tracks,
+                key = { index, _ -> "track-${section.name}-${trackKeys[index]}" },
+                span = when (viewMode) {
+                    ViewMode.LIST -> { _, _ -> GridItemSpan(maxLineSpan) }
+                    ViewMode.GRID -> null
+                },
+            ) { _, track ->
+                TrackWithMenu(
+                    item = track,
+                    viewMode = viewMode,
+                    showTrackNumber = false,
+                    onPlayOption = onPlayChildClick,
+                    playlistActions = playlistActions,
+                    onRemoveFromPlaylist = null,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = providerIconFetcher,
+                )
+            }
+        }
+    }
 }
 
 @Composable

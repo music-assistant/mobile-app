@@ -512,6 +512,24 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             providerInstanceIdOrDomain,
         )
 
+        fun getTopAlbums(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_ARTISTS_TOP_ALBUMS,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+
+        fun getTopTracks(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_ARTISTS_TOP_TRACKS,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+
         fun getSimilarArtists(
             itemId: String,
             providerInstanceIdOrDomain: String,
