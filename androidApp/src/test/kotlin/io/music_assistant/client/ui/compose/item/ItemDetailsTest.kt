@@ -1,10 +1,14 @@
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -33,6 +37,16 @@ private val NoColors = object : ExtractedColorsSource {
     override suspend fun fetch(imageUrl: String): ExtractedColors? = null
 }
 
+/**
+ * Composes with inspection mode on so the Koin-backed dynamic-colors seams
+ * (`rememberDynamicColorsEnabled`, `dynamicColorsMenuOption`) short-circuit to their
+ * @Preview defaults instead of hitting a Koin graph this test doesn't start.
+ */
+private fun ComposeContentTestRule.setInspectableContent(content: @Composable () -> Unit) =
+    setContent {
+        CompositionLocalProvider(LocalInspectionMode provides true, content = content)
+    }
+
 @RunWith(AndroidJUnit4::class)
 class ItemDetailsTest {
     @get:Rule
@@ -46,7 +60,7 @@ class ItemDetailsTest {
             AppMediaItemFixtures.album(artist = artist),
         )
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(artist),
@@ -74,7 +88,7 @@ class ItemDetailsTest {
         val album = AppMediaItemFixtures.album(artist = artist)
         val tracks = AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"), album)
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
@@ -99,7 +113,7 @@ class ItemDetailsTest {
         val artist = AppMediaItemFixtures.artist()
         val album = AppMediaItemFixtures.album(artist = artist, version = "Best Version")
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
@@ -119,7 +133,7 @@ class ItemDetailsTest {
     fun `does not show go to artist button if there are none`() {
         val album = AppMediaItemFixtures.album(artist = null)
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
@@ -139,7 +153,7 @@ class ItemDetailsTest {
         val playlist = AppMediaItemFixtures.playlist()
         val tracks = AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"))
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(playlist),
@@ -166,7 +180,7 @@ class ItemDetailsTest {
         val episodes =
             AppMediaItemFixtures.episodes(listOf("Episode 1", "Episode 2"), podcast = podcast)
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(podcast),
@@ -189,7 +203,7 @@ class ItemDetailsTest {
     fun `displays audiobooks`() {
         val audiobook = AppMediaItemFixtures.audiobook(chapters = listOf("Chapter 1", "Chapter 2"))
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(audiobook),
@@ -221,7 +235,7 @@ class ItemDetailsTest {
 
         val onPlayClick = MockFunction2<QueueOption, Boolean>()
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = state.value,
                 geEditablePlaylists = suspend { emptyList() },
@@ -262,7 +276,7 @@ class ItemDetailsTest {
             ),
         )
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = state.value,
                 onBack = onBack,
