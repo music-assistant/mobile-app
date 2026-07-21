@@ -91,6 +91,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
+import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
@@ -99,6 +100,7 @@ import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
@@ -160,6 +162,7 @@ fun PlayersPager(
         }
 
         val colorsSource = rememberExtractedColorsSource()
+        val dynamicColorsEnabled = rememberDynamicColorsEnabled()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -192,6 +195,7 @@ fun PlayersPager(
                 imageUrl = media?.imageUrl,
                 fallback = MaterialTheme.colorScheme.primaryContainer,
                 source = colorsSource,
+                enabled = dynamicColorsEnabled,
             )
         }
         val isExpandedScreen = WindowClass.isAtLeastExpanded()
@@ -884,6 +888,7 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        add(dynamicColorsMenuOption())
     }
 
     val navigationOptions =

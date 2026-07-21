@@ -312,6 +312,17 @@ class SettingsRepository(
         flow.update { action }
     }
 
+    // Whether player surfaces derive their background from the current track's artwork.
+    private val _dynamicColors = MutableStateFlow(
+        settings.getBoolean("dynamic_colors", true),
+    )
+    val dynamicColors = _dynamicColors.asStateFlow()
+
+    fun setDynamicColors(enabled: Boolean) {
+        settings.putBoolean("dynamic_colors", enabled)
+        _dynamicColors.update { enabled }
+    }
+
     // Sendspin settings
     private val _sendspinEnabled = MutableStateFlow(
         settings.getBoolean("sendspin_enabled", false),

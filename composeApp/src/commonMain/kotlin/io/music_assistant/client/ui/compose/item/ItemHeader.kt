@@ -58,6 +58,7 @@ import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -243,7 +244,8 @@ private fun ItemOverflow(
         }
     }
     OverflowMenuButton(
-        options = canonical + item.navigationOptions(navigateToItem) + similarArtists,
+        options = canonical + item.navigationOptions(navigateToItem) + similarArtists +
+            dynamicColorsMenuOption(),
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(

@@ -20,9 +20,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.LocalPlatformContext
 import io.music_assistant.client.data.model.server.MediaItemPalette
 import io.music_assistant.client.data.model.server.RgbColor
+import io.music_assistant.client.settings.SettingsRepository
 import org.koin.compose.koinInject
 
 /**
@@ -109,11 +112,23 @@ data class PlayerColors(
     val controlTint: Color,
 )
 
+/**
+ * Reads the persisted "Dynamic colors" preference (default on). Guards [LocalInspectionMode]
+ * so previews render without a Koin graph.
+ */
+@Composable
+fun rememberDynamicColorsEnabled(): Boolean {
+    if (LocalInspectionMode.current) return true
+    val settings: SettingsRepository = koinInject()
+    return settings.dynamicColors.collectAsStateWithLifecycle().value
+}
+
 @Composable
 fun rememberAnimatedPlayerColors(
     imageUrl: String?,
     fallback: Color,
     source: ExtractedColorsSource,
+    enabled: Boolean = true,
 ): State<PlayerColors> {
     val onDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
@@ -121,11 +136,12 @@ fun rememberAnimatedPlayerColors(
     // final and animateColorAsState renders it without a tween. A miss seeds null → fallback and
     // animates once fetch() resolves. remember(imageUrl) is required over produceState here:
     // produceState doesn't re-apply initialValue when its key changes, so a cached value would
-    // never replace the previous image's colors.
-    val cached = remember(imageUrl) { imageUrl?.let { source.peek(it) } }
-    var extracted by remember(imageUrl) { mutableStateOf(cached) }
-    LaunchedEffect(imageUrl) {
-        if (cached == null) extracted = imageUrl?.let { source.fetch(it) }
+    // never replace the previous image's colors. [enabled] is a key so toggling the preference
+    // re-seeds to null → fallback and animates the artwork tint away.
+    val cached = remember(imageUrl, enabled) { if (enabled) imageUrl?.let { source.peek(it) } else null }
+    var extracted by remember(imageUrl, enabled) { mutableStateOf(cached) }
+    LaunchedEffect(imageUrl, enabled) {
+        if (enabled && cached == null) extracted = imageUrl?.let { source.fetch(it) }
     }
 
     val targetDominant = extracted
