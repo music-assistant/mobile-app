@@ -78,7 +78,14 @@ fun App() {
     }
     SystemAppearance(isDarkTheme = darkTheme, followsSystem = followsSystem)
     AppTheme(darkTheme = darkTheme) {
-        Box(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
+        // Paint a themed background behind everything so the (light) platform window background
+        // never bleeds through the transparent system bars in edge-to-edge — otherwise any region
+        // Compose doesn't cover (e.g. the nav-bar strip beside the rail) shows as an off-theme white.
+        Box(
+            Modifier.fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .dismissKeyboardOnTap(),
+        ) {
             ProvideClickActionPrefs {
                 TopLevelNavRoot()
             }

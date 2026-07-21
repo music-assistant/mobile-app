@@ -3,8 +3,13 @@ package io.music_assistant.client.ui.compose.nav
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -46,11 +51,18 @@ fun AdaptiveNavigationBarLayout(
         val showRail = showNavigation && isExpandedScreen
         val showBar = showNavigation && !isExpandedScreen
 
+        // Reserve the real system navigation-bar inset so the chrome reflows when it is
+        // shown/hidden (edge-to-edge). Zero when hidden or on devices without a bottom bar.
+        val bottomInset = WindowInsets.navigationBars
+            .only(WindowInsetsSides.Bottom)
+            .asPaddingValues()
+            .calculateBottomPadding()
+
         content(
             if (showRail) {
-                PaddingValues(start = navigationRailWidth)
+                PaddingValues(start = navigationRailWidth, bottom = bottomInset)
             } else if (showBar) {
-                PaddingValues(bottom = navigationBarHeight)
+                PaddingValues(bottom = navigationBarHeight + bottomInset)
             } else {
                 PaddingValues()
             },
@@ -73,8 +85,10 @@ fun AdaptiveNavigationBarLayout(
             }
         } else if (showBar) {
             NavigationBar(
-                modifier = Modifier.align(Alignment.BottomCenter).height(navigationBarHeight),
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .height(navigationBarHeight + bottomInset),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                windowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
             ) {
                 navigationItems.forEach {
                     NavigationBarItem(
