@@ -5,6 +5,7 @@ package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -103,6 +106,7 @@ private fun PlayerSelection(
     var internalPlayers by remember { mutableStateOf(players) }
     var dragEndIndex by remember { mutableStateOf<Int?>(null) }
     val listState = rememberLazyListState()
+    val listFocusRequester = remember { FocusRequester() }
     val reorderableLazyListState =
         rememberReorderableLazyListState(listState) { from, to ->
             internalPlayers = internalPlayers.toMutableList().apply {
@@ -110,6 +114,14 @@ private fun PlayerSelection(
             }
             dragEndIndex = to.index
         }
+
+    // Claim keyboard/D-pad focus for the list as soon as the dialog opens, landing on its
+    // first focusable row. Without this, a TV remote's up/down has nothing in the dialog to
+    // move between and can end up adjusting whatever was focused behind it instead (e.g. the
+    // now-playing volume slider).
+    LaunchedEffect(Unit) {
+        listFocusRequester.requestFocus()
+    }
 
     // Upstream emits frequently while a player is playing. Adopting them emits
     // mid-drag wipes the user's reorder and the list jumps. Sync upstream into
@@ -128,6 +140,8 @@ private fun PlayerSelection(
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
+            .focusRequester(listFocusRequester)
+            .focusGroup()
             .selectableGroup()
             .heightIn(max = MAX_DIALOG_HEIGHT),
         state = listState,
