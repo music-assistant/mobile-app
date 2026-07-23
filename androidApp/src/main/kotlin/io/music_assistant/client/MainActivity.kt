@@ -3,6 +3,7 @@ package io.music_assistant.client
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -30,10 +31,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Lock orientation on compact devices
-        if (this.resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
+        resolveOrientationLock(resources.configuration)?.let { requestedOrientation = it }
 
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -111,6 +109,22 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val COMPACT_DEVICE_WIDTH = 600
+        internal const val COMPACT_DEVICE_WIDTH = 600
     }
 }
+
+/**
+ * TVs are always landscape and never rotate, so that takes priority over the phone-width
+ * check. Compact (phone-width) devices are locked to portrait. Larger/tablet configurations
+ * are left as the platform default (free rotation) — hence the nullable return.
+ */
+internal fun resolveOrientationLock(configuration: Configuration): Int? = when {
+    configuration.isTelevision() -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    configuration.smallestScreenWidthDp <= MainActivity.COMPACT_DEVICE_WIDTH ->
+        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+    else -> null
+}
+
+internal fun Configuration.isTelevision(): Boolean =
+    (uiMode and Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_TELEVISION
