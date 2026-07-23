@@ -81,6 +81,7 @@ import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.hasCamera
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
@@ -763,12 +764,14 @@ private fun WebRTCConnectionContent(
             isError = isInvalidRemoteId,
         )
 
-        IconButton(onClick = { showQrDialog = true }) {
-            Icon(
-                imageVector = Icons.Default.QrCodeScanner,
-                contentDescription = stringResource(Res.string.cd_scan_qr_code),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+        if (hasCamera()) {
+            IconButton(onClick = { showQrDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.QrCodeScanner,
+                    contentDescription = stringResource(Res.string.cd_scan_qr_code),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 
