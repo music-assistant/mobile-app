@@ -1,5 +1,10 @@
 # Android TV / Google TV Support (Work in Progress)
 
+> **Do not include this file in any PR sent upstream (or anywhere else).** It's a local
+> working note for this branch, not project documentation — strip it out (`git rm
+> docs/ANDROID-TV.md` or drop the commit that added it) before opening a PR. Maintainers
+> generally don't want AI-generated process/decision docs landing in their repo.
+
 This branch (`claude/music-assistant-android-tv-95iu6l`) adds a first pass of Android TV /
 Google TV support. It has **not** been built or tested with a real Gradle run — the
 environment that authored it had no network access to `dl.google.com` (required to resolve
