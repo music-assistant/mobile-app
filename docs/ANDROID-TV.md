@@ -6,10 +6,11 @@
 > generally don't want AI-generated process/decision docs landing in their repo.
 
 This branch (`claude/music-assistant-android-tv-95iu6l`) adds a first pass of Android TV /
-Google TV support. It has **not** been built or tested with a real Gradle run — the
-environment that authored it had no network access to `dl.google.com` (required to resolve
-the Android Gradle Plugin), so every change below needs local verification before it's relied
-on or sent upstream.
+Google TV support. It was originally authored in an environment with no network access to
+`dl.google.com` (required to resolve the Android Gradle Plugin), so none of it had been built
+or tested with a real Gradle run. It has since been built, unit-tested, and run on a real
+Google TV emulator locally — see "Local verification results" below for what that surfaced
+(two real bugs found and fixed, one still open).
 
 ## Why
 
@@ -56,6 +57,48 @@ playback control focus indication at 10-foot viewing distance, search/library gr
 traversal. None of these blocked basic TV usability the way manifest eligibility and the
 player-switcher bug did.
 
+## Local verification results (2026-07-23)
+
+Built and run for real this time (Gradle 9.6.1 / AGP 9.2.1 / JDK 25, Google TV `android-36`
+x86_64 emulator). Findings:
+
+- **`QrScanAvailabilityTest` had two real bugs**, both fixed: it used `assertDoesNotExist`,
+  which doesn't exist in this project's pinned Compose UI Test version (1.11.4) — replaced
+  with `assertIsNotDisplayed()`, matching the rest of the suite. The "shows the QR button"
+  case also failed because the button was scrolled out of the Robolectric viewport — fixed
+  with `.performScrollTo()`.
+- **The manifest fix in `986faae` didn't actually work.** `ktor-client-webrtc` bundles its own
+  `<uses-feature android:name="android.hardware.camera"/>` with no `required` attribute
+  (defaults to `true`), and the manifest merger takes the more restrictive value across all
+  merged manifests. The app's own `required="false"` was silently losing to the library's
+  implicit `required="true"` — confirmed by inspecting the merged manifest output. Fixed by
+  adding `tools:node="replace"` to the app's `<uses-feature>` declaration. Without this, the
+  original goal (Play Store TV eligibility) was not actually met despite the test passing in
+  isolation.
+- **Full unit suite and `assembleDebug` pass** after the above fixes.
+- **On a real Google TV emulator: the `ddebf9f` fix is incomplete.** The dialog does correctly
+  claim initial focus on open ("My Phone" shows a focus ring immediately, confirmed via
+  screenshot) — that part works. But pressing D-pad **DOWN once** from that initial focus
+  doesn't move to the next player row; it closes the dialog and the key event leaks through to
+  scroll the Home screen behind it. Reproduced twice, cleanly, on a real device/emulator (not
+  Robolectric). Likely cause: each row is wrapped in `ReorderableItem` (from
+  `sh.calvin.reorderable`) before the `.selectable()` row gets its focus modifiers, and that
+  wrapper probably isn't preserving the `LazyColumn`'s `focusGroup()` up/down traversal order
+  between siblings. `SelectPlayerDialogFocusTest` didn't catch this because it asserts on focus
+  *after simulating* a `DirectionDown` key event without checking whether focus actually landed
+  on the second row vs. the dialog just closing — worth tightening.
+- **Open product question, not yet resolved:** does a player switcher even belong in the TV
+  nav? Unlike the phone/tablet UI where you're choosing among several Sonos-like rooms/players,
+  a TV is inherently one fixed playback target. If that's true, the switcher dialog may not
+  need D-pad polish at all here — worth deciding before sinking more time into the
+  `ReorderableItem` focus bug above, since fixing a dialog you're about to hide on this form
+  factor is wasted effort. Raised by the user during manual QA; not investigated further yet.
+
+Emulator note: ANR "Not Responding" dialogs during testing traced to host memory pressure
+(observed with ~768MB free / 7.2GB of 8GB swap in use), not an app-side deadlock — logs showed
+normal per-second Sendspin clock-sync traffic and no evidence of a stuck main thread. If this
+recurs, check host memory before assuming it's the app.
+
 ## How to verify locally
 
 ```sh
@@ -76,8 +119,10 @@ Chromecast with Google TV:
 
 - [ ] App appears on the TV home screen's app row (banner shows correctly).
 - [ ] Navigate home/library/search using only the D-pad.
-- [ ] Open the player switcher and change players using D-pad + center/OK only — confirm
-      up/down moves between rows and doesn't touch the volume slider behind the dialog.
+- [ ] ~~Open the player switcher and change players using D-pad + center/OK only — confirm
+      up/down moves between rows and doesn't touch the volume slider behind the dialog.~~
+      **Known broken** — see "Local verification results": DOWN closes the dialog instead of
+      moving focus. Also revisit whether this dialog belongs on TV at all before fixing it.
 - [ ] Adjust volume with D-pad without it stealing focus from surrounding lists.
 - [ ] Drive playback controls (play/pause/skip) via D-pad + center/OK.
 - [ ] Confirm the Now Playing card appears correctly.
