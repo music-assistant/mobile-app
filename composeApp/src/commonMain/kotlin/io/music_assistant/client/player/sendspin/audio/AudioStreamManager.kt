@@ -269,6 +269,7 @@ class AudioStreamManager(
             val pos = queue.binarySearchBy(ts) { it.timestamp }
             if (pos >= 0) return@withLock false
             queue.add(-(pos + 1), RawFrame(ts, binaryMessage.data))
+            updateBufferedDurationLocked()
             true
         }
         if (inserted) frameSignal.trySend(Unit)
@@ -299,7 +300,10 @@ class AudioStreamManager(
                     while (isActive && isStreaming) {
                         val frame = queueLock.withLock {
                             if (queue.size > reorderDepth) {
-                                queue.removeFirst().also { lastConsumedTs = it.timestamp }
+                                queue.removeFirst().also {
+                                    lastConsumedTs = it.timestamp
+                                    updateBufferedDurationLocked()
+                                }
                             } else {
                                 null
                             }
@@ -378,6 +382,22 @@ class AudioStreamManager(
         }
         _isStarved.value = false
         _playbackPosition.update { 0L }
+        _bufferState.update { BufferState(0L, false, 0) }
+    }
+
+    /**
+     * Recompute [BufferState.bufferedDuration] = microseconds of audio queued ahead of the
+     * consumer head (server presentation-time span). MUST be called while holding [queueLock].
+     * Before the first consume [lastConsumedTs] is MIN_VALUE, so the queue head is the baseline.
+     */
+    private fun updateBufferedDurationLocked() {
+        val span = if (queue.isEmpty()) {
+            0L
+        } else {
+            val head = if (lastConsumedTs != Long.MIN_VALUE) lastConsumedTs else queue.first().timestamp
+            (queue.last().timestamp - head).coerceAtLeast(0L)
+        }
+        _bufferState.update { it.copy(bufferedDuration = span) }
     }
 
     override suspend fun stopStream() = streamLifecycleLock.withLock {

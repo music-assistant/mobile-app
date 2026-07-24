@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -66,6 +67,12 @@ class HomeScreenViewModel(
 
     /** Live elapsed-time flow for the slider. Ticks at 500 ms only while playing + subscribed. */
     fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
+
+    /**
+     * Seconds of audio buffered ahead of the local playhead, sampled to ~2 Hz so the buffered
+     * segment on the slider tracks the position tick without spamming recomposition.
+     */
+    fun observeLocalBufferedSeconds() = dataSource.localBufferedSeconds.sample(500L)
 
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     val connectionState = _connectionState.asStateFlow()

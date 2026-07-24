@@ -63,6 +63,10 @@ class SendspinClient(
     // and play state to decide on teardown — see LocalPlayerController.
     val isStarved: StateFlow<Boolean> get() = audioPipeline.isStarved
 
+    // Reactive buffer fill (µs of audio queued ahead of the playhead) for the UI's
+    // buffered-progress indicator. Local player only — remote players expose no buffer.
+    val bufferState: StateFlow<BufferState> get() = audioPipeline.bufferState
+
     /** Stop the audio stream (release the sink), leaving the client/transport intact. */
     suspend fun stopStream() = audioPipeline.stopStream()
 

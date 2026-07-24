@@ -116,6 +116,12 @@ class LocalPlayerController(
     private val _sendspinState = MutableStateFlow<SendspinState?>(null)
     val sendspinState: StateFlow<SendspinState?> = _sendspinState.asStateFlow()
 
+    // Seconds of audio buffered ahead of the local playhead — drives the buffered-progress
+    // indicator on the now-playing slider. Fed from the active client's pipeline; reset to 0
+    // whenever monitoring is torn down (client replaced/stopped).
+    private val _bufferedSeconds = MutableStateFlow(0.0)
+    val bufferedSeconds: StateFlow<Double> = _bufferedSeconds.asStateFlow()
+
     /**
      * Fires after Sendspin registers (state → Ready) so [MainDataSource] re-fetches
      * the server players/queues — replaces the former direct `updatePlayersAndQueues()`
@@ -525,6 +531,11 @@ class LocalPlayerController(
         }
 
         sendspinMonitorJobs += launch {
+            // Mirror pipeline buffer fill (µs → s) for the UI's buffered-progress indicator.
+            client.bufferState.collect { _bufferedSeconds.value = it.bufferedDuration / 1_000_000.0 }
+        }
+
+        sendspinMonitorJobs += launch {
             // Tear playback down only when all three hold at once: we're playing, the audio buffer
             // has run dry, and the transport is actually down. A dry buffer while the transport is
             // up is a normal transient — pause/resume or post-(re)connect ramp-up — and must NOT
@@ -629,6 +640,7 @@ class LocalPlayerController(
             sendspinMonitorJobs.forEach { it.cancel() }
             sendspinMonitorJobs.clear()
         }
+        _bufferedSeconds.value = 0.0
     }
 
     /**

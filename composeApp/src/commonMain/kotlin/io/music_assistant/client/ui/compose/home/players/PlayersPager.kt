@@ -270,6 +270,10 @@ fun PlayersPager(
                         val livePositionFlow = remember(queueId) {
                             queueId?.let { homeScreenViewModel.observePosition(it) }
                         }
+                        // Buffered-ahead seconds — local player only; remote players expose no buffer.
+                        val bufferedAheadSecFlow = remember(queueId, player.isLocal) {
+                            if (player.isLocal) homeScreenViewModel.observeLocalBufferedSeconds() else null
+                        }
                         // Lyrics: only the displayed page drives the shared VM, so the
                         // fetch (and the button) track the player currently on screen.
                         val currentTrack = player.queueInfo?.currentItem?.track as? Track
@@ -322,6 +326,7 @@ fun PlayersPager(
                                 isCurrentPage = isCurrentPage,
                                 navigateToItem = navigateToItem,
                                 livePositionFlow = livePositionFlow,
+                                bufferedAheadSecFlow = bufferedAheadSecFlow,
                                 lyricsAvailable = isCurrentPage && lyrics != null,
                                 onLyricsClick = { sheetLyrics = lyrics },
                             )
@@ -415,6 +420,7 @@ private fun ExpandedPlayerPage(
     isCurrentPage: Boolean,
     navigateToItem: (AppMediaItem) -> Unit = {},
     livePositionFlow: Flow<Double>?,
+    bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
 ) {
@@ -579,6 +585,7 @@ private fun ExpandedPlayerPage(
                             lyricsAvailable = lyricsAvailable,
                             onLyricsClick = onLyricsClick,
                             livePositionFlow = livePositionFlow,
+                            bufferedAheadSecFlow = bufferedAheadSecFlow,
                         )
                     }
                 }

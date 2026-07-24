@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
@@ -88,6 +89,15 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.time.DurationUnit
 
 private const val SEEK_STICK_EPSILON_SECONDS = 0.5f
+
+// Buffered-progress health tint, in absolute seconds of look-ahead (independent of the codec
+// capacity ceiling): below BUFFER_HEALTHY_SECONDS the buffer is marginal (orange), at or above it
+// it's healthy (green) — floored by seconds-left-in-track near a boundary. Colors match the
+// local-player status dots. Alpha sits just above the inactive track (0.4) for a subtle highlight.
+private const val BUFFER_HEALTHY_SECONDS = 15f
+private val BUFFER_MARGINAL_COLOR = Color(0xFFFF9800) // orange
+private val BUFFER_HEALTHY_COLOR = Color(0xFF4CAF50) // green
+private const val BUFFER_TRACK_ALPHA = 0.5f
 
 @Composable
 fun CompactPlayerItem(
@@ -271,6 +281,7 @@ fun FullPlayerItem(
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
     livePositionFlow: Flow<Double>?,
+    bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
 ) {
@@ -399,6 +410,10 @@ fun FullPlayerItem(
             ?: item.queueInfo?.elapsedTime?.toFloat()
             ?: 0f
 
+        // Buffered-ahead seconds (local player only; null → 0 for remote/preview).
+        val bufferedAheadSec = bufferedAheadSecFlow
+            ?.collectAsStateWithLifecycle(initialValue = 0.0)?.value?.toFloat() ?: 0f
+
         // Latch the released seek until the tracker publishes its frozen anchor.
         var userDragPosition by remember { mutableStateOf<Float?>(null) }
         var releasedSeekPosition by remember { mutableStateOf<Float?>(null) }
@@ -460,6 +475,43 @@ fun FullPlayerItem(
                             enabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff,
                             modifier = Modifier.height(8.dp),
                         )
+                        // Buffered-ahead highlight — the region between the real playhead and
+                        // the buffered point, at an alpha between the inactive (0.4) and active
+                        // (1.0) track. Local player with audio buffered ahead; shown while paused
+                        // too (pause keeps the buffer — only a genuine stop zeroes bufferedAhead).
+                        if (item.isLocal &&
+                            duration != null && duration > 0f && bufferedAheadSec > 0f
+                        ) {
+                            val playheadFraction = (displayPosition / duration).coerceIn(0f, 1f)
+                            val bufferedFraction =
+                                ((displayPosition + bufferedAheadSec) / duration).coerceIn(0f, 1f)
+                            // Healthy at >= BUFFER_HEALTHY_SECONDS buffered ahead, but never
+                            // require more than what's left in the current track: the stream is
+                            // continuous into the next song, so as the look-ahead naturally tapers
+                            // toward a track boundary the threshold collapses with it — no false
+                            // "exhausting" warning near the end of a song.
+                            val remainingTrackSec = (duration - displayPosition).coerceAtLeast(0f)
+                            val healthyThresholdSec =
+                                BUFFER_HEALTHY_SECONDS.coerceAtMost(remainingTrackSec)
+                            val bufferedColor = (
+                                if (bufferedAheadSec >= healthyThresholdSec) {
+                                    BUFFER_HEALTHY_COLOR
+                                } else {
+                                    BUFFER_MARGINAL_COLOR
+                                }
+                                ).copy(alpha = BUFFER_TRACK_ALPHA)
+                            Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
+                                val startX = playheadFraction * size.width
+                                val endX = bufferedFraction * size.width
+                                if (endX > startX) {
+                                    drawRect(
+                                        color = bufferedColor,
+                                        topLeft = Offset(startX, 0f),
+                                        size = Size(endX - startX, size.height),
+                                    )
+                                }
+                            }
+                        }
                         if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
                             val tickColor =
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)

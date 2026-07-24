@@ -109,6 +109,9 @@ class MainDataSource(
     /** Local (Sendspin) player lifecycle, state and commands live in the controller. */
     val sendspinState = localPlayerController.sendspinState
 
+    /** Seconds of audio buffered ahead of the local playhead (buffered-progress indicator). */
+    val localBufferedSeconds = localPlayerController.bufferedSeconds
+
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
