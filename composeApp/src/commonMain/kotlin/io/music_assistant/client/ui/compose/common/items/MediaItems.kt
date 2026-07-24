@@ -44,6 +44,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -113,21 +114,9 @@ fun ArtistGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -189,21 +178,9 @@ fun AlbumGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -275,21 +252,9 @@ fun PlaylistGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -383,21 +348,9 @@ fun PodcastGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -709,21 +662,9 @@ internal fun AudiobookGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -784,24 +725,12 @@ private fun AudiobookImage(
 private fun GridPlayableItemLabels(item: PlayableItem) {
     val subtitleText = (item as? AppMediaItem)?.localizedSubtitle()
     Spacer(Modifier.height(4.dp))
-    Text(
-        text = "${item.displayName}${
+    MediaItemLabels(
+        title = "${item.displayName}${
             item.version
                 ?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
         }",
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-    )
-    Text(
-        text = subtitleText.orEmpty(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth(),
+        subtitle = subtitleText,
         textAlign = TextAlign.Center,
     )
 }
@@ -1122,21 +1051,9 @@ fun GenreGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -1221,12 +1138,9 @@ fun FolderCell(
         ) {
             FolderImage(item)
             Spacer(Modifier.height(4.dp))
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            MediaItemLabels(
+                title = item.displayName,
+                subtitle = null,
                 textAlign = TextAlign.Center,
             )
         }
@@ -1288,6 +1202,44 @@ internal fun AudiobookRowItem(
     )
 }
 
+private val MEDIA_TITLE_WEIGHT = FontWeight.SemiBold
+private const val SUBTITLE_ALPHA = 0.6f
+
+/**
+ * Canonical title + optional subtitle for every list/grid media item.
+ * Title is emphasised via weight; the subtitle is dimmed with alpha rather than a
+ * distinct color, keeping the hierarchy sleek and consistent app-wide.
+ */
+@Composable
+private fun MediaItemLabels(
+    title: String,
+    subtitle: String?,
+    textAlign: TextAlign? = null,
+    titleMaxLines: Int = 1,
+) {
+    Text(
+        modifier = Modifier.fillMaxWidth(),
+        text = title,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = MEDIA_TITLE_WEIGHT,
+        textAlign = textAlign,
+        maxLines = titleMaxLines,
+        overflow = TextOverflow.Ellipsis,
+    )
+    if (!subtitle.isNullOrBlank()) {
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = MEDIA_TITLE_WEIGHT,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = SUBTITLE_ALPHA),
+            textAlign = textAlign,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun RowItem(
     modifier: Modifier = Modifier,
@@ -1313,21 +1265,11 @@ private fun RowItem(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            MediaItemLabels(
+                title = name,
+                subtitle = subtitle,
+                titleMaxLines = 2,
             )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
     }
 }

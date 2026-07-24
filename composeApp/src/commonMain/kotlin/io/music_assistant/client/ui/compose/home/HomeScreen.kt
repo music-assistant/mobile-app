@@ -5,6 +5,7 @@ package io.music_assistant.client.ui.compose.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -172,6 +173,7 @@ fun HomeScreen(
                     modifier = Modifier.testTag(HomeScreenSemantics.LIST_TAG),
                     state = state.lazyListState,
                     contentPadding = contentPadding,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(
                         items = displayedData,
