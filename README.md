@@ -1,6 +1,6 @@
-# Music Assistant Mobile app
+# Music Assistant Mobile App
 
-*Please note: that this project is still under (heavy) development and not yet in a production state or published to any of the app stores. Development work is in progress to allow this project to become the official mobile app for the Music Assistant project.*
+*Please note that this project is still under (heavy) development and not yet in a production state or published to any of the app stores. Development work is in progress to allow this project to become the official mobile app for the Music Assistant project.*
 
 The (official) Music Assistant Mobile app is a cross-platform client application designed for Android and iOS. Developed using Kotlin Multiplatform (KMP) and Compose Multiplatform frameworks, this project aims to provide a unified codebase for seamless music management across mobile platforms.
 
@@ -9,7 +9,7 @@ The (official) Music Assistant Mobile app is a cross-platform client application
 *Disclaimer: This app is not intended to provide offline playback*
 
 - All platforms:
-  - managing MA players queues and playback;
+  - managing MA player queues and playback;
   - managing dynamic and static groups (no static group creation);
   - local playback on device from MA library (Sendspin streaming protocol over WebRTC or WebSocket);
   - comprehensive Settings screen with section-based UI for server connection, authentication (builtin/OAuth), and local player configuration.
