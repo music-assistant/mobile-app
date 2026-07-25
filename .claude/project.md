@@ -71,3 +71,23 @@ generally can't attach a repo from a *different* owner (e.g. `music-assistant/mo
 alongside it — cross-owner repo attachment is typically blocked once a session already holds
 a repo from another owner. Interacting with the upstream org's issues/PRs directly needs a
 separate session seeded with `music-assistant/mobile-app` from the start.
+
+## Contribution Hygiene — read before opening any PR
+
+Claude-authored process/decision documentation must never appear in a PR diff — upstream
+(`music-assistant/mobile-app`) **or** against this repo's own `main`. Maintainers reviewing a
+PR want the code change, not a narrated history of how an AI agent worked through it. This
+covers, at minimum:
+
+- Any `docs/ANDROID-TV.md`-style working note (branch-local scratch doc, not real project
+  docs — drop the file/commit entirely before the PR).
+- The session-added content in this file: the *Android TV / Google TV* bullet above and this
+  whole *Upstream & Repository Relationship* / *Contribution Hygiene* section.
+- All of `.claude/testing.md` (added this session).
+- The *Manifest gotcha* note under WebRTC KMP in `.claude/dependencies.md` (added this
+  session).
+
+These are genuinely useful to keep on this fork/branch for future Claude Code sessions —
+just strip them (don't cherry-pick the commits that only touch these docs, or manually drop
+the added hunks) when assembling a PR branch, whether that PR targets upstream or this repo's
+own `main`.
