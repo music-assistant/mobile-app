@@ -74,6 +74,9 @@ class HomeScreenViewModel(
      */
     fun observeLocalBufferedSeconds() = dataSource.localBufferedSeconds.sample(500L)
 
+    /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
+    val showBufferVisualization = settings.showBufferVisualization
+
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     val connectionState = _connectionState.asStateFlow()
 

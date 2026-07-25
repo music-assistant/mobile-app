@@ -202,6 +202,7 @@
   <string name="not_connected_retry">Not connected — try again when reconnected</string>
   <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="player_dynamic_colors">Dynamic colors</string>
+  <string name="player_show_buffer_indicator">Show buffer indicator</string>
   <string name="player_power_off">Power off</string>
   <string name="player_power_on">Power on</string>
   <string name="player_powered_off">Powered off</string>
@@ -259,6 +260,7 @@
   <string name="settings_car_dsp_unavailable">A previously selected preset was removed on the server and has been reset to "Nothing".</string>
   <string name="settings_car_enqueue_action">Enqueue action</string>
   <string name="settings_car_item_actions">Item actions</string>
+  <string name="settings_buffer_size">Buffer size</string>
   <string name="settings_car_tabs">Tabs</string>
   <string name="settings_codec_preference">Codec preference</string>
   <string name="settings_connect">Connect</string>

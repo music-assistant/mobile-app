@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.player.sendspin.SendspinConfig
 import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -397,6 +398,28 @@ class SettingsRepository(
     fun setSendspinCodecPreference(codec: Codec) {
         settings.putString("sendspin_codec_preference", codec.name)
         _sendspinCodecPreference.update { codec }
+    }
+
+    // Advertised buffer_capacity, stored in MB (converted to bytes when building the client hello).
+    private val _sendspinBufferCapacityMb = MutableStateFlow(
+        settings.getInt("sendspin_buffer_capacity_mb", SendspinConfig.BUFFER_MB_DEFAULT),
+    )
+    val sendspinBufferCapacityMb = _sendspinBufferCapacityMb.asStateFlow()
+
+    fun setSendspinBufferCapacityMb(mb: Int) {
+        settings.putInt("sendspin_buffer_capacity_mb", mb)
+        _sendspinBufferCapacityMb.update { mb }
+    }
+
+    // Whether the local player's now-playing slider draws the buffered-ahead segment.
+    private val _showBufferVisualization = MutableStateFlow(
+        settings.getBoolean("show_buffer_visualization", true),
+    )
+    val showBufferVisualization = _showBufferVisualization.asStateFlow()
+
+    fun setShowBufferVisualization(show: Boolean) {
+        settings.putBoolean("show_buffer_visualization", show)
+        _showBufferVisualization.update { show }
     }
 
     private val _sendspinHost = MutableStateFlow(

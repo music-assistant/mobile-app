@@ -90,14 +90,10 @@ import kotlin.time.DurationUnit
 
 private const val SEEK_STICK_EPSILON_SECONDS = 0.5f
 
-// Buffered-progress health tint, in absolute seconds of look-ahead (independent of the codec
-// capacity ceiling): below BUFFER_HEALTHY_SECONDS the buffer is marginal (orange), at or above it
-// it's healthy (green) — floored by seconds-left-in-track near a boundary. Colors match the
-// local-player status dots. Alpha sits just above the inactive track (0.4) for a subtle highlight.
-private const val BUFFER_HEALTHY_SECONDS = 15f
-private val BUFFER_MARGINAL_COLOR = Color(0xFFFF9800) // orange
-private val BUFFER_HEALTHY_COLOR = Color(0xFF4CAF50) // green
-private const val BUFFER_TRACK_ALPHA = 0.5f
+// Buffered-ahead band uses the slider's own control tint, one alpha, no health tint. Sits just
+// above the inactive track (0.4) so the buffered region reads a touch more opaque than "not yet
+// buffered" without introducing a second color.
+private const val BUFFER_TRACK_ALPHA = 0.45f
 
 @Composable
 fun CompactPlayerItem(
@@ -485,21 +481,9 @@ fun FullPlayerItem(
                             val playheadFraction = (displayPosition / duration).coerceIn(0f, 1f)
                             val bufferedFraction =
                                 ((displayPosition + bufferedAheadSec) / duration).coerceIn(0f, 1f)
-                            // Healthy at >= BUFFER_HEALTHY_SECONDS buffered ahead, but never
-                            // require more than what's left in the current track: the stream is
-                            // continuous into the next song, so as the look-ahead naturally tapers
-                            // toward a track boundary the threshold collapses with it — no false
-                            // "exhausting" warning near the end of a song.
-                            val remainingTrackSec = (duration - displayPosition).coerceAtLeast(0f)
-                            val healthyThresholdSec =
-                                BUFFER_HEALTHY_SECONDS.coerceAtMost(remainingTrackSec)
-                            val bufferedColor = (
-                                if (bufferedAheadSec >= healthyThresholdSec) {
-                                    BUFFER_HEALTHY_COLOR
-                                } else {
-                                    BUFFER_MARGINAL_COLOR
-                                }
-                                ).copy(alpha = BUFFER_TRACK_ALPHA)
+                            // Same hue as the slider itself, just a touch more opaque than the
+                            // inactive track — a subtle "already buffered" band, no health tint.
+                            val bufferedColor = controlTint.copy(alpha = BUFFER_TRACK_ALPHA)
                             Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
                                 val startX = playheadFraction * size.width
                                 val endX = bufferedFraction * size.width

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +21,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun OverflowMenuButton(
     modifier: Modifier = Modifier,
-    options: List<OverflowMenuOption>,
+    options: List<OverflowMenuEntry>,
     buttonContent: @Composable (onClick: () -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -37,14 +38,25 @@ fun OverflowMenuButton(
 }
 
 @Composable
-fun OverflowMenu(expanded: Boolean, onClose: () -> Unit = {}, options: List<OverflowMenuOption>) {
+fun OverflowMenu(expanded: Boolean, onClose: () -> Unit = {}, options: List<OverflowMenuEntry>) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = { onClose() },
     ) {
-        options.forEach { it.DropdownMenuItem(onClose) }
+        options.forEach { entry ->
+            when (entry) {
+                is OverflowMenuOption -> entry.DropdownMenuItem(onClose)
+                OverflowMenuDivider -> HorizontalDivider()
+            }
+        }
     }
 }
+
+/** An entry in an overflow menu: either a clickable [OverflowMenuOption] or an [OverflowMenuDivider]. */
+sealed interface OverflowMenuEntry
+
+/** Visual separator between option groups (e.g. player actions vs track actions). */
+data object OverflowMenuDivider : OverflowMenuEntry
 
 data class OverflowMenuOption(
     val title: String,
@@ -54,7 +66,7 @@ data class OverflowMenuOption(
     // glyphs (e.g. an MDI font icon via PlayerIcon/MdiIcon).
     val leadingContent: (@Composable () -> Unit)? = null,
     val onClick: () -> Unit,
-)
+) : OverflowMenuEntry
 
 @Composable
 private fun OverflowMenuOption.DropdownMenuItem(onClose: () -> Unit) {
