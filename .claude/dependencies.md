@@ -11,6 +11,12 @@
 - **WebSocket** - Real-time server connection
 - **WebRTC KMP** (v0.125.11) - Remote access tunneling (✅ production ready on Android)
   - **Note**: Uses native `org.webrtc.DataChannel` API for TEXT message transmission (webrtc-kmp limitation workaround)
+  - **Manifest gotcha**: bundles its own `<uses-feature android:name="android.hardware.camera"/>`
+    with no `required` attribute (defaults to `true`). Manifest merger takes the most
+    restrictive value across all merged manifests, so this silently overrides any
+    `required="false"` set in the app's own manifest unless the app's declaration adds
+    `tools:node="replace"`. Always check the *merged* manifest output when relying on a
+    `<uses-feature>`/`<uses-permission>` override — a dependency can win invisibly.
 
 ## Data
 - **kotlinx.serialization** - JSON serialization

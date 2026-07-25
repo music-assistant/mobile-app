@@ -47,8 +47,19 @@ open iosApp/iosApp.xcodeproj
   hard-required manifest feature (blocks the TV Play Store listing), and no shared Compose
   screen has D-pad/keyboard focus handling. A first pass (manifest eligibility, TV landscape
   lock, QR-scan camera gating, player-switcher D-pad focus fix) lives on branch
-  `claude/music-assistant-android-tv-95iu6l`; see `docs/ANDROID-TV.md` on that branch for
-  verification steps (that file is a local working note — **do not include it in any PR**).
+  `claude/music-assistant-android-tv-95iu6l`. Two things confirmed by running it on a real
+  Google TV emulator, worth knowing before touching this area again:
+  - **Manifest merger gotcha**: `ktor-client-webrtc` bundles its own
+    `<uses-feature android:name="android.hardware.camera"/>` with no `required` attribute
+    (defaults to `true`). The manifest merger takes the most restrictive value across all
+    merged manifests, so the library's implicit `required="true"` silently wins over the
+    app's own `required="false"` unless the app's declaration adds
+    `tools:node="replace"`. Always check the *merged* manifest output when changing
+    `<uses-feature>`/`<uses-permission>` — a library dependency can override it invisibly.
+  - **D-pad focus fix is incomplete**: initial focus landing on the player-switcher dialog
+    works, but D-pad row-to-row navigation within the list is still broken, and it's an open
+    question whether the player switcher (a touch-oriented drag-to-reorder list) is the right
+    UI for TV at all vs. a simpler TV-specific picker.
 
 ## Upstream & Repository Relationship
 
