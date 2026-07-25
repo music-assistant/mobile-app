@@ -72,7 +72,7 @@ class HomeScreenViewModel(
      * Seconds of audio buffered ahead of the local playhead, sampled to ~2 Hz so the buffered
      * segment on the slider tracks the position tick without spamming recomposition.
      */
-    fun observeLocalBufferedSeconds() = dataSource.localBufferedSeconds.sample(500L)
+    fun observeLocalBufferedSeconds() = dataSource.localBufferedSeconds.sample(BUFFER_REAL_INTERVAL)
 
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization
@@ -415,6 +415,6 @@ class HomeScreenViewModel(
     }
 
     private companion object {
-        const val MAX_RECOMMENDATION_ATTEMPTS = 3
+        private const val BUFFER_REAL_INTERVAL = 500L
     }
 }

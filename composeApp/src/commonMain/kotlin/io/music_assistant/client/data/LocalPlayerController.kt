@@ -532,7 +532,7 @@ class LocalPlayerController(
 
         sendspinMonitorJobs += launch {
             // Mirror pipeline buffer fill (µs → s) for the UI's buffered-progress indicator.
-            client.bufferState.collect { _bufferedSeconds.value = it.bufferedDuration / 1_000_000.0 }
+            client.bufferState.collect { _bufferedSeconds.value = it.bufferedDuration / MICROS }
         }
 
         sendspinMonitorJobs += launch {
@@ -785,6 +785,8 @@ class LocalPlayerController(
 
         /** Backstop for play requests that neither confirm nor fail. */
         private const val PENDING_PLAY_TIMEOUT_MS = 10_000L
+
+        private const val MICROS = 1_000_000.0
     }
 }
 
