@@ -33,6 +33,7 @@ open iosApp/iosApp.xcodeproj
 @import .claude/project-structure.md
 @import .claude/dependencies.md
 @import .claude/guidelines.md
+@import .claude/testing.md
 
 ## UI Documentation
 
@@ -42,3 +43,20 @@ open iosApp/iosApp.xcodeproj
 ## Planned Features
 
 - **WebRTC Remote Access**: See `.claude/webrtc-implementation-plan.md` for comprehensive implementation plan, protocol details, and architecture design
+- **Android TV / Google TV**: Not yet supported upstream — no leanback launcher, camera is a
+  hard-required manifest feature (blocks the TV Play Store listing), and no shared Compose
+  screen has D-pad/keyboard focus handling. A first pass (manifest eligibility, TV landscape
+  lock, QR-scan camera gating, player-switcher D-pad focus fix) lives on branch
+  `claude/music-assistant-android-tv-95iu6l`; see `docs/ANDROID-TV.md` on that branch for
+  verification steps (that file is a local working note — **do not include it in any PR**).
+
+## Upstream & Repository Relationship
+
+This repo is a fork/downstream of the official **`music-assistant/mobile-app`** — that is the
+correct upstream to file issues/PRs against, not `music-assistant/server` (that's the
+separate backend project this app talks to; easy to conflate the two by name). When working
+from a Claude Code session already scoped to this fork, note that a GitHub-scoped session
+generally can't attach a repo from a *different* owner (e.g. `music-assistant/mobile-app`)
+alongside it — cross-owner repo attachment is typically blocked once a session already holds
+a repo from another owner. Interacting with the upstream org's issues/PRs directly needs a
+separate session seeded with `music-assistant/mobile-app` from the start.
