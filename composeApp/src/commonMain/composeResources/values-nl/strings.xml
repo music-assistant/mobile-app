@@ -45,6 +45,9 @@
   <string name="all_podcasts">Alle podcasts</string>
   <string name="all_radio">Alle radiostations</string>
   <string name="all_tracks">Alle nummers</string>
+  <string name="artist_section_all">Alle</string>
+  <string name="artist_section_in_library">In bibliotheek</string>
+  <string name="artist_section_top">Top</string>
   <string name="auth_authenticating">Authenticeren…</string>
   <string name="auth_authorize_ha">Autoriseer met Home Assistant</string>
   <string name="auth_hide_password">Wachtwoord verbergen</string>
@@ -77,10 +80,11 @@
   <string name="cd_customize_tabs">Tabbladen aanpassen</string>
   <string name="cd_delete_crash_logs">Verwijder crashlogs</string>
   <string name="cd_favorite">Favoriet</string>
+  <string name="cd_filter">Filters</string>
   <string name="cd_fully_played">Volledig afgespeeld</string>
   <string name="cd_genre_filter">Genrefilters</string>
   <string name="cd_in_progress">In behandeling</string>
-  <string name="cd_filter">Filters</string>
+  <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Songtekst</string>
   <string name="cd_lyrics_close">Songtekst sluiten</string>
   <string name="cd_more">Meer</string>
@@ -130,7 +134,7 @@
   <string name="filter_album_types">Albumtypes</string>
   <string name="filter_favorites">Favorieten</string>
   <string name="filter_genres">Genres</string>
-  <string name="filter_none_selected">Elke</string>
+  <string name="filter_none_selected">Alle</string>
   <string name="filter_providers">Muziekproviders</string>
   <string name="filter_selected_count">%1$d geselecteerd</string>
   <string name="filter_sheet_title">Filters</string>
@@ -198,9 +202,11 @@
   <string name="nav_settings">Instellingen</string>
   <string name="not_connected_retry">Niet verbonden — probeer opnieuw wanneer de verbinding hersteld is</string>
   <string name="playback_speed_dialog_title">Afspeelsnelheid</string>
+  <string name="player_dynamic_colors">Dynamische kleuren</string>
   <string name="player_power_off">Uitschakelen</string>
   <string name="player_power_on">Inschakelen</string>
   <string name="player_powered_off">Uitgeschakeld</string>
+  <string name="player_show_buffer_indicator">Bufferindicator weergeven</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
@@ -244,6 +250,7 @@
   <string name="server_id_mismatch_error">De server-ID is gewijzigd. Je moet je opnieuw authenticeren.</string>
   <string name="settings_about_description">Music Assistant is een gratis, open-source, zelfgehoste muziekserver. Maak hieronder verbinding met jouw server om door je bibliotheek te bladeren en de weergave in je hele huis te bedienen.</string>
   <string name="settings_about_learn_more">Meer informatie op music-assistant.io →</string>
+  <string name="settings_buffer_size">Buffergrootte</string>
   <string name="settings_car">Auto (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s acties</string>
   <string name="settings_car_dsp">DSP presets</string>

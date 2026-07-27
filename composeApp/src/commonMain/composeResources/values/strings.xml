@@ -80,10 +80,11 @@
   <string name="cd_customize_tabs">Customize categories</string>
   <string name="cd_delete_crash_logs">Delete crash logs</string>
   <string name="cd_favorite">Favorite</string>
+  <string name="cd_filter">Filters</string>
   <string name="cd_fully_played">Fully played</string>
   <string name="cd_genre_filter">Genre filters</string>
   <string name="cd_in_progress">In progress</string>
-  <string name="cd_filter">Filters</string>
+  <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
   <string name="cd_more">More</string>
@@ -202,10 +203,10 @@
   <string name="not_connected_retry">Not connected — try again when reconnected</string>
   <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="player_dynamic_colors">Dynamic colors</string>
-  <string name="player_show_buffer_indicator">Show buffer indicator</string>
   <string name="player_power_off">Power off</string>
   <string name="player_power_on">Power on</string>
   <string name="player_powered_off">Powered off</string>
+  <string name="player_show_buffer_indicator">Show buffer indicator</string>
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
@@ -249,6 +250,7 @@
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
+  <string name="settings_buffer_size">Buffer size</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s actions</string>
   <string name="settings_car_dsp">DSP presets</string>
@@ -260,7 +262,6 @@
   <string name="settings_car_dsp_unavailable">A previously selected preset was removed on the server and has been reset to "Nothing".</string>
   <string name="settings_car_enqueue_action">Enqueue action</string>
   <string name="settings_car_item_actions">Item actions</string>
-  <string name="settings_buffer_size">Buffer size</string>
   <string name="settings_car_tabs">Tabs</string>
   <string name="settings_codec_preference">Codec preference</string>
   <string name="settings_connect">Connect</string>

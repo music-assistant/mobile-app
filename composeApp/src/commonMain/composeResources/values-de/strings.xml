@@ -45,6 +45,8 @@
   <string name="all_podcasts">Alle Podcasts</string>
   <string name="all_radio">Alle Radiosender</string>
   <string name="all_tracks">Alle Titel</string>
+  <string name="artist_section_all">Alle</string>
+  <string name="artist_section_in_library">In Bibliothek</string>
   <string name="auth_authenticating">Anmelden...</string>
   <string name="auth_authorize_ha">Mit Home Assistant anmelden</string>
   <string name="auth_hide_password">Passwort verstecken</string>
@@ -57,6 +59,9 @@
   <string name="auth_show_password">Passwort zeigen</string>
   <string name="auth_title">Authentifizierung</string>
   <string name="auth_username">Benutzername</string>
+  <string name="background_usage_dialog_dismiss">Nicht erneut anzeigen</string>
+  <string name="background_usage_dialog_open_settings">Einstellungen öffnen</string>
+  <string name="background_usage_dialog_title">Lokale Wiedergabe könnte stoppen</string>
   <string name="banner_no_network">Kein Netzwerk verfügbar</string>
   <string name="banner_reconnecting">Wiederverbinden... (Versuch %1$d)</string>
   <string name="bound_player_joined_to">%1$s ist verbunden mit %2$s\n(zum Anzeigen klicken)</string>
@@ -73,12 +78,13 @@
   <string name="cd_customize_tabs">Kategorien anpassen</string>
   <string name="cd_delete_crash_logs">Absturzberichte löschen</string>
   <string name="cd_favorite">Favorit</string>
+  <string name="cd_filter">Filter</string>
   <string name="cd_fully_played">Vollständig abgespielt</string>
   <string name="cd_genre_filter">Genre Filter</string>
   <string name="cd_in_progress">Teilweise abgespielt</string>
-  <string name="cd_filter">Filter</string>
+  <string name="cd_library_filters">Filter</string>
   <string name="cd_lyrics">Songtext</string>
-  <string name="cd_lyrics_close">Songrext schließen</string>
+  <string name="cd_lyrics_close">Songtext schließen</string>
   <string name="cd_more">Mehr</string>
   <string name="cd_mute">Stummschalten</string>
   <string name="cd_play_now">Jetzt abspielen</string>
@@ -194,6 +200,7 @@
   <string name="nav_settings">Einstellungen</string>
   <string name="not_connected_retry">Nicht verbunden — erneut versuchen, wenn Verbindung hergestellt wurde</string>
   <string name="playback_speed_dialog_title">Wiedergabegeschwindigkeit</string>
+  <string name="player_dynamic_colors">Dynamische Farben</string>
   <string name="player_power_off">Ausschalten</string>
   <string name="player_power_on">Einschalten</string>
   <string name="player_powered_off">Ausgeschaltet</string>
@@ -234,12 +241,13 @@
   <string name="search_error">Fehler beim Laden der Suchergebnisse</string>
   <string name="search_in_library_only">Nur in Bibliothek</string>
   <string name="search_no_results">Keine Ergebnisse gefunden</string>
-  <string name="search_query_label">Suchanfrage</string>
+  <string name="search_query_label">Suche...</string>
   <string name="search_start">Suche starten</string>
   <string name="search_title">Globale Suche</string>
   <string name="server_id_mismatch_error">Server ID hat sich geändert. Reauthentifizierung nötig.</string>
   <string name="settings_about_description">Music Assistant ist ein kostenloser und selbst gehosteter open-source Musik Server. Verbinde Dich mit Deinem Server, um Deine Bibliothek zu durchsuchen und die Wiedergabe aller Player im Haus zu steuern.</string>
   <string name="settings_about_learn_more">Mehr Informationen auf music-assistant.io →</string>
+  <string name="settings_buffer_size">Puffergröße</string>
   <string name="settings_car">Android Auto / Apple CarPlay</string>
   <string name="settings_car_bulk_for">Aktionen für %1$s</string>
   <string name="settings_car_dsp">DSP Voreinstellungen</string>
