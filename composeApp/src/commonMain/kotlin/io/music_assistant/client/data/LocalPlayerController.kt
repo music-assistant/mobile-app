@@ -165,6 +165,17 @@ class LocalPlayerController(
         applyOptimisticUpdate(data, resolved)
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
+            // Request-driven recovery: if the Sendspin transport was torn down (e.g. the
+            // process outlived a foreground-service stop) while the feature is still enabled,
+            // revive it and queue this command for replay on Ready instead of firing it at a
+            // dead transport (which surfaces as "queue not available"). Nothing else
+            // resurrects the transport in-process — the play choke point does.
+            if (_sendspinState.value == null && settings.sendspinEnabled.value) {
+                log.i { "Local command with no live Sendspin transport — reviving and queueing" }
+                enqueue(resolved, request)
+                launch { start() }
+                return@launch
+            }
             sendOrQueue(resolved, request)
         }
     }
@@ -564,6 +575,10 @@ class LocalPlayerController(
                         sendspinRetryCount = 0
                         delay(1000) // Give server a moment to register the player
                         _needsServerRefresh.emit(Unit)
+                        // Replay any commands queued while the transport was down (e.g. a
+                        // play issued after a service-stop teardown). Atomic drain, so it's
+                        // idempotent with the external reconnect-path drains in MainDataSource.
+                        drainCommandQueue()
                     }
 
                     is SendspinState.Error -> {

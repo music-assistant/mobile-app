@@ -66,6 +66,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -671,13 +672,21 @@ class MainDataSource(
                 .collect { settings.setLastSelectedPlayerId(it) }
         }
         launch {
-            selectedPlayerIndex.filterNotNull().collect { index ->
-                // sendRequest's gate handles "not ready" — outer guard would only
-                // add a TOCTOU race. If we're offline, the gate fails fast.
-                (playersData.value as? DataState.Data)?.data?.let { list ->
-                    refreshPlayerQueueItems(list[index])
-                }
+            // Fetch queue items for the selected player. Keyed on
+            // (playerId, queueInfo.id) rather than the selection *index* so it
+            // also re-fires when the selected player's queueInfo arrives late —
+            // e.g. the local player, whose metadata lands only after Sendspin
+            // registers, long after its row (and index) first appears. An
+            // index-keyed trigger never re-emits for a same-slot player, leaving
+            // the active local player's items unfetched on cold start.
+            // sendRequest's gate handles "not ready"; a pre-check would only add
+            // a TOCTOU race.
+            combine(playersData, _selectedPlayerId) { pd, id ->
+                (pd as? DataState.Data)?.data?.firstOrNull { it.playerId == id }
             }
+                .mapNotNull { it?.takeIf { pd -> pd.queueInfo != null } }
+                .distinctUntilChangedBy { it.playerId to it.queueInfo?.id }
+                .collect { refreshPlayerQueueItems(it) }
         }
 
         // Watch for Sendspin settings changes
@@ -1606,18 +1615,6 @@ class MainDataSource(
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Called when the app task is removed (user closed the app from recents).
-     * Stops Sendspin if nothing is actively playing — playing state is intentionally
-     * kept alive for background audio and is not affected by this call.
-     */
-    fun onAppClosed() {
-        if (!isAnythingPlaying.value) {
-            log.i { "App closed with no active playback — stopping Sendspin" }
-            launch { localPlayerController.stop(GoodbyeReason.Shutdown) }
         }
     }
 
