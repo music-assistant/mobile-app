@@ -29,7 +29,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.SchemaVersionWarningViewModel
+import io.music_assistant.client.ui.SchemaWarning
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
+import io.music_assistant.client.ui.compose.nav.exitApp
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.ui.theme.SystemAppearance
@@ -41,6 +43,9 @@ import musicassistantclient.composeapp.generated.resources.background_usage_dial
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_message
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_open_settings
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_title
+import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_exit
+import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_message
+import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_title
 import musicassistantclient.composeapp.generated.resources.schema_version_dialog_confirm
 import musicassistantclient.composeapp.generated.resources.schema_version_dialog_message
 import musicassistantclient.composeapp.generated.resources.schema_version_dialog_title
@@ -136,35 +141,50 @@ private fun BackgroundRestrictionDialog() {
 }
 
 /**
- * Warns that the connected server reports a newer schema than this client supports (so some
- * features may misbehave). Informational only — auth proceeds underneath. Re-shown on every fresh
- * server-info arrival (see [SchemaVersionWarningViewModel]); no persisted "don't show again".
+ * Schema-compatibility warning for the connected server (see [SchemaVersionWarningViewModel]),
+ * re-shown on every fresh server-info arrival:
+ * - [SchemaWarning.CLIENT_INCOMPATIBLE] — terminal: the client is below the server's minimum
+ *   supported schema, so it can't function. Exit-only; any dismissal closes the app.
+ * - [SchemaWarning.SERVER_AHEAD] — informational: the server is newer than the client, some
+ *   features may misbehave. Dismissible; auth proceeds underneath.
  */
 @OptIn(KoinExperimentalAPI::class)
 @Composable
 private fun SchemaVersionWarningDialog() {
     val viewModel = koinViewModel<SchemaVersionWarningViewModel>()
-    val schema by viewModel.incompatibleSchema.collectAsStateWithLifecycle()
-    // Transient per-appearance hide; reset whenever a fresh incompatible server info arrives.
+    val warning by viewModel.warning.collectAsStateWithLifecycle()
+    // Transient hide for the dismissible warning; reset whenever a fresh warning arrives.
     var hidden by remember { mutableStateOf(false) }
-    LaunchedEffect(schema) { if (schema != null) hidden = false }
-    if (hidden) return
-    AlertDialog(
-        onDismissRequest = { hidden = true },
-        title = { Text(stringResource(Res.string.schema_version_dialog_title)) },
-        text = {
-            Text(
-                stringResource(
-                    Res.string.schema_version_dialog_message,
-                ),
+    LaunchedEffect(warning) { hidden = false }
+    when (warning) {
+        null -> Unit
+
+        SchemaWarning.CLIENT_INCOMPATIBLE ->
+            AlertDialog(
+                onDismissRequest = { exitApp() },
+                title = { Text(stringResource(Res.string.schema_incompatible_dialog_title)) },
+                text = { Text(stringResource(Res.string.schema_incompatible_dialog_message)) },
+                confirmButton = {
+                    TextButton(onClick = { exitApp() }) {
+                        Text(stringResource(Res.string.schema_incompatible_dialog_exit))
+                    }
+                },
             )
-        },
-        confirmButton = {
-            TextButton(onClick = { hidden = true }) {
-                Text(stringResource(Res.string.schema_version_dialog_confirm))
+
+        SchemaWarning.SERVER_AHEAD ->
+            if (!hidden) {
+                AlertDialog(
+                    onDismissRequest = { hidden = true },
+                    title = { Text(stringResource(Res.string.schema_version_dialog_title)) },
+                    text = { Text(stringResource(Res.string.schema_version_dialog_message)) },
+                    confirmButton = {
+                        TextButton(onClick = { hidden = true }) {
+                            Text(stringResource(Res.string.schema_version_dialog_confirm))
+                        }
+                    },
+                )
             }
-        },
-    )
+    }
 }
 
 /**
