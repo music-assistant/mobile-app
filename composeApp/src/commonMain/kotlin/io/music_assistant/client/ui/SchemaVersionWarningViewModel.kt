@@ -29,7 +29,6 @@ enum class SchemaWarning {
  * arrival (each real connect), which the dialog's `LaunchedEffect` uses to re-show — matching "every time".
  */
 class SchemaVersionWarningViewModel(apiClient: ServiceClient) : ViewModel() {
-
     /** The compatibility warning to show for the current server, or null when compatible. */
     val warning: StateFlow<SchemaWarning?> =
         apiClient.sessionState
