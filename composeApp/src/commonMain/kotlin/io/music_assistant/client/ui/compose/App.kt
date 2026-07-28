@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
+import io.music_assistant.client.ui.SchemaVersionWarningViewModel
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.theme.AppTheme
@@ -40,6 +41,9 @@ import musicassistantclient.composeapp.generated.resources.background_usage_dial
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_message
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_open_settings
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_title
+import musicassistantclient.composeapp.generated.resources.schema_version_dialog_confirm
+import musicassistantclient.composeapp.generated.resources.schema_version_dialog_message
+import musicassistantclient.composeapp.generated.resources.schema_version_dialog_title
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -91,6 +95,7 @@ fun App() {
             }
             StatusBarScrim(darkTheme, Modifier.align(Alignment.TopCenter))
             BackgroundRestrictionDialog()
+            SchemaVersionWarningDialog()
         }
     }
 }
@@ -125,6 +130,38 @@ private fun BackgroundRestrictionDialog() {
         dismissButton = {
             TextButton(onClick = viewModel::onDismiss) {
                 Text(stringResource(Res.string.background_usage_dialog_dismiss))
+            }
+        },
+    )
+}
+
+/**
+ * Warns that the connected server reports a newer schema than this client supports (so some
+ * features may misbehave). Informational only — auth proceeds underneath. Re-shown on every fresh
+ * server-info arrival (see [SchemaVersionWarningViewModel]); no persisted "don't show again".
+ */
+@OptIn(KoinExperimentalAPI::class)
+@Composable
+private fun SchemaVersionWarningDialog() {
+    val viewModel = koinViewModel<SchemaVersionWarningViewModel>()
+    val schema by viewModel.incompatibleSchema.collectAsStateWithLifecycle()
+    // Transient per-appearance hide; reset whenever a fresh incompatible server info arrives.
+    var hidden by remember { mutableStateOf(false) }
+    LaunchedEffect(schema) { if (schema != null) hidden = false }
+    if (hidden) return
+    AlertDialog(
+        onDismissRequest = { hidden = true },
+        title = { Text(stringResource(Res.string.schema_version_dialog_title)) },
+        text = {
+            Text(
+                stringResource(
+                    Res.string.schema_version_dialog_message,
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { hidden = true }) {
+                Text(stringResource(Res.string.schema_version_dialog_confirm))
             }
         },
     )

@@ -3,6 +3,9 @@ package io.music_assistant.client.data.model.server
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Highest server schema_version this client is built and tested against. */
+const val MAX_SUPPORTED_SCHEMA_VERSION = 31
+
 @Serializable
 data class ServerInfo(
     @SerialName("server_id") var serverId: String,

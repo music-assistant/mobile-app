@@ -242,6 +242,9 @@
   <string name="queue_not_loaded">Not loaded</string>
   <string name="queue_transfer">Transfer queue</string>
   <string name="refresh">Refresh</string>
+  <string name="schema_version_dialog_confirm">OK</string>
+  <string name="schema_version_dialog_message">This server uses newer data format version than this app. Some features may not work correctly. Consider updating the app.</string>
+  <string name="schema_version_dialog_title">App update advised</string>
   <string name="search_error">Error loading search results</string>
   <string name="search_in_library_only">In library only</string>
   <string name="search_no_results">No results found</string>
