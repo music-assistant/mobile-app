@@ -249,7 +249,7 @@ class MessageDispatcher(
 
     suspend fun sendState(state: PlayerStateObject) {
         val message = ClientStateMessage(
-            payload = ClientStatePayload(player = state),
+            payload = ClientStatePayload(player = state, available = true),
         )
         val json = myJson.encodeToString(message)
         if (state.state != lastLoggedState) {

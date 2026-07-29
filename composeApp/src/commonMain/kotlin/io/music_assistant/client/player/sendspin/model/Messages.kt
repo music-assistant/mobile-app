@@ -162,6 +162,7 @@ data class ClientStateMessage(
 @Serializable
 data class ClientStatePayload(
     val player: PlayerStateObject? = null,
+    val available: Boolean? = null,
 )
 
 @Serializable
