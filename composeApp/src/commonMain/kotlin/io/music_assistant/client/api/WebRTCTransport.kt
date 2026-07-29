@@ -26,9 +26,87 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlin.io.encoding.Base64
 
 private const val HTTP_PROXY_TYPE_SCAN_WINDOW = 256
 private const val HTTP_PROXY_TYPE_TOKEN = "\"type\":\"http-proxy-response\""
+private const val CHUNK_TYPE_TOKEN = "\"__chunk__\""
+private const val MAX_CHUNK_COUNT = 256
+internal const val MAX_PENDING_CHUNK_GROUPS = 16
+private const val MAX_REASSEMBLED_BYTES = 16 * 1024 * 1024
+
+/** Reassembles server-side `__chunk__` envelopes while passing legacy whole messages through. */
+internal class WebRTCChunkReassembler {
+    private class PendingGroup(
+        val count: Int,
+        val parts: Array<ByteArray?>,
+        var received: Int = 0,
+        var totalBytes: Int = 0,
+    )
+
+    // Insertion order lets us evict the oldest incomplete group if a buggy peer continuously
+    // starts groups without finishing them. The instance is confined to one listener coroutine.
+    private val groups = linkedMapOf<Int, PendingGroup>()
+
+    fun accept(message: String): String? {
+        // The server always emits `type` first. Bound the fast scan so legacy multi-MB responses
+        // do not incur another full payload pass before the existing bounded proxy-type scan.
+        val scanEnd = minOf(HTTP_PROXY_TYPE_SCAN_WINDOW, message.length)
+        if (message.indexOf(CHUNK_TYPE_TOKEN) !in 0 until scanEnd) return message
+
+        val frame = runCatching { myJson.decodeFromString<JsonObject>(message) }.getOrNull()
+            ?: return message
+        if (frame.string("type") != "__chunk__") return message
+
+        // Once identified as a chunk envelope, malformed frames are consumed rather than leaked
+        // into the normal API dispatcher. A later valid frame/group can still be processed.
+        val id = frame.int("id") ?: return null
+        val seq = frame.int("seq") ?: return null
+        val count = frame.int("count") ?: return null
+        val encoded = frame.string("b64") ?: return null
+        if (count !in 1..MAX_CHUNK_COUNT || seq !in 0 until count) return null
+
+        val existing = groups[id]
+        if (existing != null && existing.count != count) return null
+        val bytes = runCatching { Base64.decode(encoded) }.getOrNull() ?: return null
+        val pending = existing ?: registerGroup(id, count)
+        val previous = pending.parts[seq]
+        val newTotal = pending.totalBytes - (previous?.size ?: 0) + bytes.size
+        if (newTotal > MAX_REASSEMBLED_BYTES) {
+            groups.remove(id)
+            return null
+        }
+        if (previous == null) pending.received++
+        pending.parts[seq] = bytes
+        pending.totalBytes = newTotal
+        if (pending.received < pending.count) return null
+
+        val assembled = ByteArray(pending.totalBytes)
+        var offset = 0
+        // received == count guarantees every valid sequence slot has been populated.
+        for (part in pending.parts) {
+            val bytes = checkNotNull(part)
+            bytes.copyInto(assembled, destinationOffset = offset)
+            offset += bytes.size
+        }
+        groups.remove(id)
+        return runCatching { assembled.decodeToString(throwOnInvalidSequence = true) }.getOrNull()
+    }
+
+    private fun registerGroup(id: Int, count: Int): PendingGroup {
+        if (groups.size >= MAX_PENDING_CHUNK_GROUPS) {
+            groups.remove(groups.keys.first())
+        }
+        return PendingGroup(count, arrayOfNulls(count)).also { groups[id] = it }
+    }
+}
+
+private fun JsonObject.int(name: String): Int? = (this[name] as? JsonPrimitive)?.intOrNull
+
+private fun JsonObject.string(name: String): String? = (this[name] as? JsonPrimitive)?.contentOrNull
 
 private fun isHttpProxyResponse(jsonString: String): Boolean {
     val end = minOf(HTTP_PROXY_TYPE_SCAN_WINDOW, jsonString.length)
@@ -180,9 +258,15 @@ class WebRTCTransport(
     private fun startMessageListener(mgr: WebRTCConnectionManager) {
         messageListenerJob?.cancel()
         messageListenerJob = scope.launch {
+            // Listener-local ownership avoids mutable reassembly state racing lifecycle teardown.
+            val chunkReassembler = WebRTCChunkReassembler()
             try {
-                mgr.incomingMessages.collect { jsonString ->
+                mgr.incomingMessages.collect { wireMessage ->
                     try {
+                        // New servers chunk messages that exceed libdatachannel's 256 KiB limit.
+                        // Legacy servers still send whole messages, which pass through unchanged.
+                        val jsonString = chunkReassembler.accept(wireMessage) ?: return@collect
+
                         // CHEAP peek: avoid full JSON parse for multi-MB http-proxy-response frames.
                         // The full parse would block the listener (single coroutine), queueing every
                         // subsequent control-plane message behind each image body for hundreds of ms.
@@ -194,7 +278,9 @@ class WebRTCTransport(
                             _messages.emit(jsonObject)
                         }
                     } catch (e: Exception) {
-                        logger.e(e) { "Failed to parse incoming WebRTC message: ${jsonString.take(200)}" }
+                        // For chunked traffic wireMessage is only the final envelope, not the
+                        // reassembled payload, so identify the stage without mislabeling the frame.
+                        logger.e(e) { "Failed to dispatch incoming WebRTC frame: ${wireMessage.take(200)}" }
                     }
                 }
             } catch (e: Exception) {
