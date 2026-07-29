@@ -47,19 +47,19 @@ data class ClientHelloMessage(
 data class ClientHelloPayload(
     @SerialName("client_id") val clientId: String,
     val name: String,
-    @SerialName("device_info") val deviceInfo: DeviceInfo?,
+    @SerialName("device_info") val deviceInfo: DeviceInfo? = null,
     val version: Int,
     @SerialName("supported_roles") val supportedRoles: List<VersionedRole>,
-    @SerialName("player@v1_support") val playerV1Support: PlayerSupport?,
+    @SerialName("player@v1_support") val playerV1Support: PlayerSupport? = null,
 )
 
 @Serializable
 data class DeviceInfo(
-    @SerialName("model") val model: String?,
-    @SerialName("model_id") val modelId: String?,
-    @SerialName("manufacturer") val manufacturer: String?,
-    @SerialName("manufacturer_id") val manufacturerId: String?,
-    @SerialName("software_version") val softwareVersion: String?,
+    @SerialName("model") val model: String? = null,
+    @SerialName("model_id") val modelId: String? = null,
+    @SerialName("manufacturer") val manufacturer: String? = null,
+    @SerialName("manufacturer_id") val manufacturerId: String? = null,
+    @SerialName("software_version") val softwareVersion: String? = null,
 ) {
     companion object {
         // Platform-specific implementation needed
@@ -161,7 +161,7 @@ data class ClientStateMessage(
 
 @Serializable
 data class ClientStatePayload(
-    val player: PlayerStateObject?,
+    val player: PlayerStateObject? = null,
 )
 
 @Serializable
@@ -185,7 +185,7 @@ data class StreamStartMessage(
 
 @Serializable
 data class StreamStartPayload(
-    val player: StreamStartPlayer?,
+    val player: StreamStartPlayer? = null,
     val artwork: StreamStartArtwork? = null,
     val visualizer: StreamStartVisualizer? = null,
 )
@@ -233,10 +233,10 @@ data class StreamMetadataMessage(
 
 @Serializable
 data class StreamMetadataPayload(
-    val title: String?,
-    val artist: String?,
-    val album: String?,
-    @SerialName("artwork_url") val artworkUrl: String?,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    @SerialName("artwork_url") val artworkUrl: String? = null,
 )
 
 @Serializable
@@ -247,25 +247,25 @@ data class SessionUpdateMessage(
 
 @Serializable
 data class SessionUpdatePayload(
-    @SerialName("group_id") val groupId: String?,
-    @SerialName("playback_state") val playbackState: String?,
-    val metadata: SessionMetadata?,
+    @SerialName("group_id") val groupId: String? = null,
+    @SerialName("playback_state") val playbackState: String? = null,
+    val metadata: SessionMetadata? = null,
 )
 
 @Serializable
 data class SessionMetadata(
-    val title: String?,
-    val artist: String?,
-    val album: String?,
-    @SerialName("album_artist") val albumArtist: String?,
-    val track: Int?,
-    @SerialName("track_duration") val trackDuration: Int?,
-    val year: Int?,
-    @SerialName("playback_speed") val playbackSpeed: Double?,
-    val repeat: String?,
-    val shuffle: Boolean?,
-    @SerialName("artwork_url") val artworkUrl: String?,
-    val timestamp: Long?,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    @SerialName("album_artist") val albumArtist: String? = null,
+    val track: Int? = null,
+    @SerialName("track_duration") val trackDuration: Int? = null,
+    val year: Int? = null,
+    @SerialName("playback_speed") val playbackSpeed: Double? = null,
+    val repeat: String? = null,
+    val shuffle: Boolean? = null,
+    @SerialName("artwork_url") val artworkUrl: String? = null,
+    val timestamp: Long? = null,
 )
 
 @Serializable

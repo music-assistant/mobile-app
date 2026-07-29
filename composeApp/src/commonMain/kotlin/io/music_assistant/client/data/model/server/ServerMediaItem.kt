@@ -100,7 +100,7 @@ data class ServerMediaItemImage(
     @SerialName("type") val type: String,
     @SerialName("path") val path: String,
     @SerialName("provider") val provider: String,
-    @SerialName("remotely_accessible") val remotelyAccessible: Boolean,
+    @SerialName("remotely_accessible") val remotelyAccessible: Boolean = false,
     @SerialName("proxy_id") val proxyId: String? = null,
 )
 
