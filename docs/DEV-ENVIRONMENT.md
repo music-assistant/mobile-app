@@ -24,6 +24,12 @@ To build a non-debuggable "release mode" APK for testing performance using your 
 ./gradlew :androidApp:assembleSelfSignedRelease
 ```
 
+Please note the following [key/keystore requirements](https://github.com/music-assistant/mobile-app/blob/8c681e2cbb0daaef2985cdb67367542bfcce29d5/androidApp/build.gradle.kts#L26-L31):
+- keystore location: `$USER_HOME/.android/debug.keystore`
+- keystore password: `android`
+- key alias: `androiddebugkey`
+- key password: `android`
+
 ## Structure
 
 The project currently supports the iOS and Android targets. Common code is held within a KMP library module (`composeApp`) which the two platform specific app modules then depend on (`androidApp` and `iosApp`).
