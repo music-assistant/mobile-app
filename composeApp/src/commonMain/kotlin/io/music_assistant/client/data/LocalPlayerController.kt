@@ -542,8 +542,8 @@ class LocalPlayerController(
         }
 
         sendspinMonitorJobs += launch {
-            // Mirror pipeline buffer fill (µs → s) for the UI's buffered-progress indicator.
-            client.bufferState.collect { _bufferedSeconds.value = it.bufferedDuration / MICROS }
+            // Mirror library buffer fill (µs → s) for the UI's buffered-progress indicator.
+            client.bufferedMicros.collect { _bufferedSeconds.value = it / MICROS }
         }
 
         sendspinMonitorJobs += launch {

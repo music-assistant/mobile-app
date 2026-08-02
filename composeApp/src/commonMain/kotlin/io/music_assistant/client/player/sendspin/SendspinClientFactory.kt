@@ -269,8 +269,9 @@ class SendspinClientFactory(
         return ClientPreferences(
             supportedFormats = formats,
             artworkChannels = emptyList(),
-            // Preserve the app's advertised buffer window and (empty) command set.
-            playerBufferCapacity = SendspinConfig.bufferCapacityFor(config.codecPreference),
+            // Advertise the user-configured buffer_capacity (BYTES, per Sendspin spec) and (empty)
+            // command set. Byte-bounded — see [SendspinConfig] companion.
+            playerBufferCapacity = config.bufferCapacityBytes,
             playerSupportedCommands = emptyList(),
             // Match the previously-working app: advertise ONLY player@v1 (no metadata/artwork/
             // controller/color roles), so the server responds server/hello as before.

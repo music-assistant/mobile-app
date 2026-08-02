@@ -45,6 +45,9 @@ class SendspinClient(
     /** Buffer-starvation, straight from the consumer. Composed with transport state by the owner. */
     val isStarved: StateFlow<Boolean> get() = audioPlayer.isStarved
 
+    /** Buffered-ahead audio (µs), from the library buffer, for the UI's buffered-progress indicator. */
+    val bufferedMicros: StateFlow<Long> get() = libraryClient.bufferedDurationMicros
+
     /**
      * Fires each time audio actually starts flowing to the sink (stream/start, seek, track change).
      * The owner uses this — not the one-shot connection-level [SendspinState.Synchronized] — to
