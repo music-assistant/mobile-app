@@ -99,6 +99,7 @@ import io.music_assistant.client.ui.compose.common.items.playableLazyListOccurre
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -407,6 +408,7 @@ private fun ItemContent(
         imageUrl = item.image(ImageType.THUMB)?.url,
         fallback = MaterialTheme.colorScheme.primaryContainer,
         source = resolvedColorsSource,
+        enabled = rememberDynamicColorsEnabled(),
     )
 
     val heroSlot: @Composable () -> Unit = {
@@ -747,7 +749,7 @@ private fun DetailGrid(
     CompositionLocalProvider(LocalOverscrollFactory provides null) {
         LazyVerticalGrid(
             state = gridState,
-            modifier = Modifier.fillMaxSize().testTag("LazyVerticalGrid"),
+            modifier = Modifier.fillMaxSize().testTag(ItemDetailsScreenSemantics.LIST_TAG),
             columns = GridCells.Adaptive(minSize = gridItemMinSize()),
             contentPadding = gridPadding,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1167,6 +1169,10 @@ private fun ChapterRow(
             )
         }
     }
+}
+
+object ItemDetailsScreenSemantics {
+    const val LIST_TAG = "LazyVerticalGrid"
 }
 
 @Preview

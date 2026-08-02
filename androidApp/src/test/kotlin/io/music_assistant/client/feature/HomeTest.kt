@@ -30,22 +30,22 @@ class HomeTest {
     @Test
     fun `can refresh home recommendations`() {
         val album1 = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album1)
+        serviceClient.addItems(album1)
 
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
-            .assertMediaDisplayed(album1.name)
+            .assertMediaDisplayed(album1)
 
         val album2 = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album2)
+        serviceClient.addItems(album2)
 
         homePage.refresh()
-            .assertMediaDisplayed(album2.name)
+            .assertMediaDisplayed(album2)
     }
 
     @Test
     fun `can refresh home shortcuts`() {
         val album = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
 
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
 
@@ -58,16 +58,16 @@ class HomeTest {
     @Test
     fun `shows error if data can't be loaded and can recover with refresh`() {
         val album = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
 
         serviceClient.setRequestErrors(true)
         homePage.refresh()
             .assertErrorLoadingData()
-            .assertMediaNotDisplayed(album.name)
+            .assertMediaNotDisplayed(album)
 
         serviceClient.setRequestErrors(false)
         homePage.refresh()
-            .assertMediaDisplayed(album.name)
+            .assertMediaDisplayed(album)
     }
 }

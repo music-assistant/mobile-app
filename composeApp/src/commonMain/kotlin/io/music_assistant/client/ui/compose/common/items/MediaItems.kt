@@ -44,6 +44,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -77,6 +80,7 @@ import io.music_assistant.client.ui.theme.favoriteTint
 import io.music_assistant.client.utils.gridItemMinSize
 import io.music_assistant.client.utils.rowImageSize
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_album_item
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_fully_played
 import musicassistantclient.composeapp.generated.resources.cd_in_progress
@@ -102,6 +106,7 @@ fun ArtistGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -113,21 +118,9 @@ fun ArtistGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -178,6 +171,7 @@ fun AlbumGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -189,21 +183,9 @@ fun AlbumGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -264,6 +246,7 @@ fun PlaylistGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -275,21 +258,9 @@ fun PlaylistGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -372,6 +343,7 @@ fun PodcastGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -383,21 +355,9 @@ fun PodcastGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -480,6 +440,7 @@ internal fun TrackGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -547,6 +508,7 @@ internal fun PodcastEpisodeGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -634,6 +596,7 @@ internal fun RadioGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -694,6 +657,7 @@ internal fun AudiobookGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -709,21 +673,9 @@ internal fun AudiobookGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -784,24 +736,12 @@ private fun AudiobookImage(
 private fun GridPlayableItemLabels(item: PlayableItem) {
     val subtitleText = (item as? AppMediaItem)?.localizedSubtitle()
     Spacer(Modifier.height(4.dp))
-    Text(
-        text = "${item.displayName}${
+    MediaItemLabels(
+        title = "${item.displayName}${
             item.version
                 ?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
         }",
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-    )
-    Text(
-        text = subtitleText.orEmpty(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth(),
+        subtitle = subtitleText,
         textAlign = TextAlign.Center,
     )
 }
@@ -812,11 +752,16 @@ private fun GridPlayableItemLabels(item: PlayableItem) {
 @Composable
 private fun GridItem(
     modifier: Modifier = Modifier,
+    description: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    BoxWithConstraints {
+    BoxWithConstraints(
+        modifier = Modifier.clearAndSetSemantics {
+        contentDescription = description
+    },
+    ) {
         val cellWidthModifier = if (constraints.hasBoundedWidth) {
             Modifier.fillMaxWidth()
         } else {
@@ -928,6 +873,7 @@ internal fun TrackRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = if (showTrackNumber) {
             item.trackNumber?.toString()?.let { trackNumber ->
                 {
@@ -965,6 +911,7 @@ internal fun AlbumRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             AlbumImage(item)
             Badges(
@@ -989,6 +936,7 @@ internal fun ArtistRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             ArtistImage(item)
             Badges(
@@ -1013,6 +961,7 @@ internal fun PlaylistRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             PlaylistImage(item)
             Badges(
@@ -1037,6 +986,7 @@ internal fun PodcastRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             PodcastImage(item)
             Badges(
@@ -1061,6 +1011,7 @@ internal fun PodcastEpisodeRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             PodcastEpisodeImage(item)
             Badges(
@@ -1089,6 +1040,7 @@ internal fun RadioRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             RadioImage(item)
             Badges(
@@ -1111,6 +1063,7 @@ fun GenreGridItem(
 ) {
     GridItem(
         modifier = modifier,
+        description = contentDescription(item),
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
@@ -1122,21 +1075,9 @@ fun GenreGridItem(
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.localizedSubtitle().orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
             textAlign = TextAlign.Center,
         )
     }
@@ -1183,6 +1124,7 @@ internal fun GenreRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             GenreImage(item)
             Badges(
@@ -1211,22 +1153,22 @@ fun FolderCell(
             modifier = Modifier.fillMaxWidth(),
             name = item.displayName,
             subtitle = null,
+            description = contentDescription(item),
             prefixContent = { FolderImage(item) },
             onClick = { onNavigateClick(item) },
             onLongClick = {},
         )
+
         ViewMode.GRID -> GridItem(
+            description = contentDescription(item),
             onClick = { onNavigateClick(item) },
             onLongClick = {},
         ) {
             FolderImage(item)
             Spacer(Modifier.height(4.dp))
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = item.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            MediaItemLabels(
+                title = item.displayName,
+                subtitle = null,
                 textAlign = TextAlign.Center,
             )
         }
@@ -1272,6 +1214,7 @@ internal fun AudiobookRowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
         prefixContent = {
             AudiobookImage(item)
             Badges(
@@ -1288,11 +1231,50 @@ internal fun AudiobookRowItem(
     )
 }
 
+private val MEDIA_TITLE_WEIGHT = FontWeight.SemiBold
+private const val SUBTITLE_ALPHA = 0.6f
+
+/**
+ * Canonical title + optional subtitle for every list/grid media item.
+ * Title is emphasised via weight; the subtitle is dimmed with alpha rather than a
+ * distinct color, keeping the hierarchy sleek and consistent app-wide.
+ */
+@Composable
+private fun MediaItemLabels(
+    title: String,
+    subtitle: String?,
+    textAlign: TextAlign? = null,
+    titleMaxLines: Int = 1,
+) {
+    Text(
+        modifier = Modifier.fillMaxWidth(),
+        text = title,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = MEDIA_TITLE_WEIGHT,
+        textAlign = textAlign,
+        maxLines = titleMaxLines,
+        overflow = TextOverflow.Ellipsis,
+    )
+    if (!subtitle.isNullOrBlank()) {
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = MEDIA_TITLE_WEIGHT,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = SUBTITLE_ALPHA),
+            textAlign = textAlign,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun RowItem(
     modifier: Modifier = Modifier,
     name: String,
     subtitle: String?,
+    description: String,
     prefixContent: @Composable (BoxScope.() -> Unit)?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -1302,7 +1284,10 @@ private fun RowItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clearAndSetSemantics {
+                contentDescription = description
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         prefixContent?.let {
@@ -1313,21 +1298,20 @@ private fun RowItem(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            MediaItemLabels(
+                title = name,
+                subtitle = subtitle,
+                titleMaxLines = 2,
             )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
+    }
+}
+
+@Composable
+private fun contentDescription(appMediaItem: AppMediaItem): String {
+    return if (appMediaItem is Album) {
+        stringResource(Res.string.cd_album_item, appMediaItem.displayName, appMediaItem.provider)
+    } else {
+        appMediaItem.displayName
     }
 }

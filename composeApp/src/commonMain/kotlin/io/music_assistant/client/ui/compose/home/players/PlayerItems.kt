@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
@@ -88,6 +89,11 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.time.DurationUnit
 
 private const val SEEK_STICK_EPSILON_SECONDS = 0.5f
+
+// Buffered-ahead band uses the slider's own control tint, one alpha, no health tint. Sits just
+// above the inactive track (0.4) so the buffered region reads a touch more opaque than "not yet
+// buffered" without introducing a second color.
+private const val BUFFER_TRACK_ALPHA = 0.45f
 
 @Composable
 fun CompactPlayerItem(
@@ -271,6 +277,7 @@ fun FullPlayerItem(
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
     livePositionFlow: Flow<Double>?,
+    bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
 ) {
@@ -399,6 +406,10 @@ fun FullPlayerItem(
             ?: item.queueInfo?.elapsedTime?.toFloat()
             ?: 0f
 
+        // Buffered-ahead seconds (local player only; null → 0 for remote/preview).
+        val bufferedAheadSec = bufferedAheadSecFlow
+            ?.collectAsStateWithLifecycle(initialValue = 0.0)?.value?.toFloat() ?: 0f
+
         // Latch the released seek until the tracker publishes its frozen anchor.
         var userDragPosition by remember { mutableStateOf<Float?>(null) }
         var releasedSeekPosition by remember { mutableStateOf<Float?>(null) }
@@ -460,6 +471,31 @@ fun FullPlayerItem(
                             enabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff,
                             modifier = Modifier.height(8.dp),
                         )
+                        // Buffered-ahead highlight — the region between the real playhead and
+                        // the buffered point, at an alpha between the inactive (0.4) and active
+                        // (1.0) track. Local player with audio buffered ahead; shown while paused
+                        // too (pause keeps the buffer — only a genuine stop zeroes bufferedAhead).
+                        if (item.isLocal &&
+                            duration != null && duration > 0f && bufferedAheadSec > 0f
+                        ) {
+                            val playheadFraction = (displayPosition / duration).coerceIn(0f, 1f)
+                            val bufferedFraction =
+                                ((displayPosition + bufferedAheadSec) / duration).coerceIn(0f, 1f)
+                            // Same hue as the slider itself, just a touch more opaque than the
+                            // inactive track — a subtle "already buffered" band, no health tint.
+                            val bufferedColor = controlTint.copy(alpha = BUFFER_TRACK_ALPHA)
+                            Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
+                                val startX = playheadFraction * size.width
+                                val endX = bufferedFraction * size.width
+                                if (endX > startX) {
+                                    drawRect(
+                                        color = bufferedColor,
+                                        topLeft = Offset(startX, 0f),
+                                        size = Size(endX - startX, size.height),
+                                    )
+                                }
+                            }
+                        }
                         if (!chapters.isNullOrEmpty() && duration != null && duration > 0f) {
                             val tickColor =
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)

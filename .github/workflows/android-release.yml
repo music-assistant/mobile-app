@@ -73,11 +73,28 @@ jobs:
         run: ./gradlew :androidApp:bundleRelease
 
       - name: Generate Play Store release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p distribution/whatsnew
           PREV_TAG=$(git tag -l 'android-v*' --sort=-v:refname | head -1)
           if [ -n "$PREV_TAG" ]; then
-            NOTES=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
+            RAW=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
+            # Drop entries whose PR carries the 'chore' label. Each first-parent
+            # subject names its PR ("Merge pull request #N" / squash "title (#N)");
+            # entries without a PR number (direct pushes) are kept.
+            NOTES=""
+            while IFS= read -r LINE; do
+              [ -z "$LINE" ] && continue
+              PR=$(printf '%s' "$LINE" | grep -oE '#[0-9]+' | head -1 | tr -d '#' || true)
+              if [ -n "$PR" ]; then
+                if gh pr view "$PR" --json labels --jq '.labels[].name' 2>/dev/null | grep -qx 'chore'; then
+                  echo "Skipping chore PR #$PR: $LINE"
+                  continue
+                fi
+              fi
+              NOTES="${NOTES}${LINE}"$'\n'
+            done <<< "$RAW"
           else
             NOTES="Initial release"
           fi
@@ -223,5 +240,5 @@ jobs:
               core.info(`Created PR #${prNumber}`);
             }
             await github.rest.issues.addLabels({
-              owner, repo, issue_number: prNumber, labels: ['automated'],
+              owner, repo, issue_number: prNumber, labels: ['automated', 'chore'],
             });

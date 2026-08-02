@@ -34,7 +34,7 @@ class AndroidBackGestureTest {
     fun `using back while on expanded player closes the player instead of popping nav stack`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -53,7 +53,7 @@ class AndroidBackGestureTest {
     fun `using back while on expanded player doesn't close app`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)

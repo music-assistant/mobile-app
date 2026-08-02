@@ -5,6 +5,7 @@ package io.music_assistant.client.ui.compose.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -172,6 +173,7 @@ fun HomeScreen(
                     modifier = Modifier.testTag(HomeScreenSemantics.LIST_TAG),
                     state = state.lazyListState,
                     contentPadding = contentPadding,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(
                         items = displayedData,
@@ -268,6 +270,7 @@ private fun getCategories(
                     title = it.displayName.toDisplayString(),
                     items = it.items.orEmpty(),
                     lazyListKey = it.lazyListKey(),
+                    tag = HomeScreenSemantics.rowTag(it.itemId),
                 )
             }
 
@@ -350,6 +353,7 @@ class HomeScreenState(
 }
 
 object HomeScreenSemantics {
+    fun rowTag(categoryId: String): String = "Row:$categoryId"
     const val SHORTCUTS_ROW_TAG = "ShortcutsRow"
     const val LIST_TAG = "List"
 }

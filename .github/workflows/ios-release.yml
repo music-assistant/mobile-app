@@ -257,7 +257,7 @@ jobs:
               core.info(`Created PR #${prNumber}`);
             }
             await github.rest.issues.addLabels({
-              owner, repo, issue_number: prNumber, labels: ['automated'],
+              owner, repo, issue_number: prNumber, labels: ['automated', 'chore'],
             });
 
       - name: Summary

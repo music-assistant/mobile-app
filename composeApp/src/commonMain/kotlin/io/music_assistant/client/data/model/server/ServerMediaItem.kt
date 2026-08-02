@@ -66,7 +66,11 @@ data class ServerMediaItem(
     @SerialName("items") val items: List<ServerMediaItem>? = null,
     // BrowseFolder only: the server browse path to descend into (distinct from `uri`).
     @SerialName("path") val path: String? = null,
-)
+) {
+    companion object {
+        const val LIBRARY_PROVIDER = "library"
+    }
+}
 
 @Serializable
 data class ServerMetadata(
@@ -96,7 +100,7 @@ data class ServerMediaItemImage(
     @SerialName("type") val type: String,
     @SerialName("path") val path: String,
     @SerialName("provider") val provider: String,
-    @SerialName("remotely_accessible") val remotelyAccessible: Boolean,
+    @SerialName("remotely_accessible") val remotelyAccessible: Boolean = false,
     @SerialName("proxy_id") val proxyId: String? = null,
 )
 

@@ -21,7 +21,7 @@ import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.search_query_label
 
-class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
+class LibraryListPage(private val type: String, composeTestRule: ComposeTestRule) :
     ComposePage(composeTestRule) {
     override fun assert() {
         composeTestRule.onAllNodesWithText(type).onFirst().assertIsDisplayed()
@@ -37,10 +37,14 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
     }
 
     fun clickOnMedia(item: ServerMediaItem): ItemPage {
-        return clickOnMedia(item, Res.string.nav_library.get())
+        return clickOnMedia(
+            item,
+            Res.string.nav_library.get(),
+            provider = ServerMediaItem.LIBRARY_PROVIDER,
+        )
     }
 
-    fun search(query: String): ItemListPage {
+    fun search(query: String): LibraryListPage {
         composeTestRule.onNodeWithText(Res.string.search_query_label.get())
             .assertIsDisplayed()
             .performTextInput(query)
@@ -50,12 +54,13 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
         return this
     }
 
-    fun openSearch(): ItemListPage {
-        composeTestRule.onNodeWithContentDescription(Res.string.library_quick_search.get()).performClick()
+    fun openSearch(): LibraryListPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.library_quick_search.get())
+            .performClick()
         return this
     }
 
-    fun assertNoItems(): ItemListPage {
+    fun assertNoItems(): LibraryListPage {
         composeTestRule.onNodeWithText(Res.string.library_empty.get()).assertIsDisplayed()
         return this
     }
@@ -65,5 +70,13 @@ class ItemListPage(private val type: String, composeTestRule: ComposeTestRule) :
             .assertIsDisplayed()
             .performClick()
         return SearchPage(composeTestRule, query = query).assertOnPage()
+    }
+
+    fun assertMediaNotDisplayed(item: ServerMediaItem): LibraryListPage {
+        return assertMediaNotDisplayed(item, provider = ServerMediaItem.LIBRARY_PROVIDER)
+    }
+
+    fun assertMediaDisplayed(item: ServerMediaItem): LibraryListPage {
+        return assertMediaDisplayed(item, provider = ServerMediaItem.LIBRARY_PROVIDER)
     }
 }

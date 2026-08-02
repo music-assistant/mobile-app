@@ -9,6 +9,7 @@ import io.music_assistant.client.webrtc.model.RemoteId
 import io.music_assistant.client.webrtc.model.SignalingMessage
 import io.music_assistant.client.webrtc.model.WebRTCConnectionState
 import io.music_assistant.client.webrtc.model.WebRTCError
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -245,6 +246,8 @@ class WebRTCConnectionManager(
                             ),
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.e(e) { "Error collecting ICE candidates" }
                 }
@@ -261,6 +264,8 @@ class WebRTCConnectionManager(
                             setupDataChannel(channel, message.sessionId.orEmpty(), remoteId)
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.e(e) { "Error collecting data channels" }
                 }
@@ -331,6 +336,8 @@ class WebRTCConnectionManager(
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.e(e) { "Error collecting connection state" }
                 }
@@ -477,6 +484,8 @@ class WebRTCConnectionManager(
                 channel.messages.collect { msg ->
                     _incomingMessages.emit(msg)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(e) { "Error receiving messages from data channel" }
             }
@@ -493,6 +502,8 @@ class WebRTCConnectionManager(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(e) { "Error monitoring data channel state" }
             }
@@ -524,6 +535,8 @@ class WebRTCConnectionManager(
                         logger.i { "Sendspin data channel ready for use" }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.e(e) { "Error monitoring sendspin data channel state" }
             }

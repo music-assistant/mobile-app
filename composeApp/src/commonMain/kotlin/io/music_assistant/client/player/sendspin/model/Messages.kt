@@ -27,11 +27,11 @@ data class ClientAuthMessage(
 
 @Serializable
 data class DeviceInfo(
-    @SerialName("model") val model: String?,
-    @SerialName("model_id") val modelId: String?,
-    @SerialName("manufacturer") val manufacturer: String?,
-    @SerialName("manufacturer_id") val manufacturerId: String?,
-    @SerialName("software_version") val softwareVersion: String?,
+    @SerialName("model") val model: String? = null,
+    @SerialName("model_id") val modelId: String? = null,
+    @SerialName("manufacturer") val manufacturer: String? = null,
+    @SerialName("manufacturer_id") val manufacturerId: String? = null,
+    @SerialName("software_version") val softwareVersion: String? = null,
 ) {
     companion object {
         // Platform-specific implementation needed

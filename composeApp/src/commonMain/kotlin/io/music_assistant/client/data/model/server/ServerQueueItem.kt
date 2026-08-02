@@ -34,7 +34,7 @@ data class StreamDetails(
 //    @SerialName("target_loudness") val targetLoudness: Double,
 //    @SerialName("strip_silence_begin") val stripSilenceBegin: Boolean,
 //    @SerialName("strip_silence_end") val stripSilenceEnd: Boolean,
-    @SerialName("dsp") val dsp: Map<String, DSPSettings> = emptyMap(),
+    @SerialName("dsp") val dsp: Map<String, DSPSettings>? = null,
 )
 
 @Serializable

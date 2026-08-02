@@ -402,6 +402,26 @@ final class NowPlayingCoordinator {
         logDebug("Command handler updated")
     }
 
+    /// Dispatches a CarPlay-originated command through the same handler the
+    /// MPRemoteCommandCenter targets use, so every system surface shares one
+    /// command path (and one PlayerAction mapping on the Kotlin side).
+    func dispatchCarCommand(_ command: String) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let resolvedCommand = resolveRemoteCommand(command)
+        guard let commandHandler else {
+            // Narrow window (the handler is wired during player init, before
+            // any CarPlay button can become enabled), but a silently vanishing
+            // tap is undebuggable — leave a trace.
+            logError("CarPlay command dropped — no command handler: \(resolvedCommand)")
+            return
+        }
+        // Deliberately `.info` where the lock-screen targets log `.debug`:
+        // CarPlay taps are rare and hard to reproduce at a desk, so they earn
+        // a production-visible log line.
+        logInfo("CarPlay command: \(resolvedCommand)")
+        commandHandler(resolvedCommand)
+    }
+
     private func setupRemoteCommands() {
         let commandCenter = MPRemoteCommandCenter.shared()
         logDebug("Setting up remote commands (once)")

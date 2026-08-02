@@ -3,12 +3,15 @@ package io.music_assistant.client.feature
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.ItemPage
+import io.music_assistant.client.support.pages.assertMediaDisplayed
+import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.pages.enableFilter
@@ -38,12 +41,12 @@ class SearchTest {
     @Test
     fun `can navigate to items via search`() {
         val album = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
             .search("onion")
-            .assertResult(album.name)
+            .assertMediaDisplayed(album)
             .clickOnMedia(album)
     }
 
@@ -51,27 +54,29 @@ class SearchTest {
     fun `can filter search results by media type`() {
         val album = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
         val track = ServerMediaItemFixtures.track(name = "Onion Dip")
-        serviceClient.addToLibrary(album, track)
+        serviceClient.addItems(album, track)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
             .search("onion")
-            .assertResult(album.name)
-            .assertResult(track.name)
+            .assertMediaDisplayed(album)
+            .assertMediaDisplayed(track)
             .enableFilter {
                 it.enableChip(Res.string.media_type_albums.get())
             }
-            .assertResult(album.name)
-            .assertNoResult(track.name)
+            .assertMediaDisplayed(album)
+            .assertMediaNotDisplayed(track)
             .clickOnMedia(album)
     }
 
     @Test
     fun `can filter search results to library only`() {
         val libraryAlbum = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
-        val globalAlbum = ServerMediaItemFixtures.album(name = "A Tale of Onions")
+        val globalAlbum =
+            ServerMediaItemFixtures.album(name = "A Tale of Onions")
+        serviceClient.addItems(libraryAlbum)
         serviceClient.addToLibrary(libraryAlbum)
-        serviceClient.addToGlobalItems(globalAlbum)
+        serviceClient.addItems(globalAlbum)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
@@ -79,14 +84,14 @@ class SearchTest {
             .enableFilter {
                 it.enableSwitch(Res.string.search_in_library_only.get())
             }
-            .assertResult(libraryAlbum.name)
-            .assertNoResult(globalAlbum.name)
+            .assertMediaDisplayed(libraryAlbum, provider = ServerMediaItem.LIBRARY_PROVIDER)
+            .assertMediaNotDisplayed(globalAlbum)
     }
 
     @Test
     fun `clicking clear clears results`() {
         val album = ServerMediaItemFixtures.album(name = "Blast from Dastardly Past")
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
@@ -99,7 +104,7 @@ class SearchTest {
     fun `search has its own backstack`() {
         val album1 = ServerMediaItemFixtures.album()
         val album2 = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album1, album2)
+        serviceClient.addItems(album1, album2)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album1)

@@ -211,6 +211,6 @@ data class SessionDescription(
 @Serializable
 data class IceCandidateData(
     @SerialName("candidate") val candidate: String,
-    @SerialName("sdpMid") val sdpMid: String?,
-    @SerialName("sdpMLineIndex") val sdpMLineIndex: Int?,
+    @SerialName("sdpMid") val sdpMid: String? = null,
+    @SerialName("sdpMLineIndex") val sdpMLineIndex: Int? = null,
 )

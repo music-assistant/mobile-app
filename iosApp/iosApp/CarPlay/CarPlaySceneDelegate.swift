@@ -19,9 +19,40 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private var isReady: Bool = false
     private var readinessSubscription: Cancellable?
 
+    /// Monotonic connection generation, bumped on every connect AND
+    /// disconnect. Async completions capture it at dispatch and re-check on
+    /// delivery: on a rapid disconnect → reconnect, connection A's in-flight
+    /// `loadCarPlayStrings` completion would otherwise see connection B's
+    /// non-nil `interfaceController`, pass the guard, and double-subscribe
+    /// (leaking A's channel subscriptions when B's completion overwrites
+    /// them).
+    private var connectionGen: Int = 0
+
     // Localized CarPlay strings, resolved from the shared Compose catalog once
     // per connect (see didConnect). Always set before any template is built.
     private var strings: CarPlayStrings?
+
+    // MARK: - Now Playing buttons (shuffle/repeat)
+    //
+    // Created once per connection and NEVER rebuilt — installing fresh button
+    // instances on state changes is the flicker/lock-up class this design
+    // exists to avoid. State flows one way per concern:
+    //   - Track channel: profile flips (music ↔ long-form) swap which retained
+    //     instances are installed; long-form content gets no shuffle/repeat.
+    //   - Modes channel: enablement only.
+    // Selected state is never written here: CarPlay renders it from
+    // MPRemoteCommandCenter's currentShuffleType/currentRepeatType, whose sole
+    // writer is NowPlayingCoordinator's modes handler.
+    private var shuffleButton: CPNowPlayingShuffleButton?
+    private var repeatButton: CPNowPlayingRepeatButton?
+    private var trackSubscription: Cancellable?
+    private var modesSubscription: Cancellable?
+    /// nil = nothing applied yet this connection, so the first emission
+    /// always installs.
+    private var nowPlayingButtonsInstalled: Bool?
+    /// Last enablement pushed to the buttons; nil until the first modes
+    /// emission so the initial value always applies.
+    private var nowPlayingButtonsEnabled: Bool?
 
     // Weakly held so a connectivity restore can re-fire the homepage fetch
     // without retaining the template after CarPlay disconnects.
@@ -47,6 +78,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         self.interfaceController = interfaceController
         os_log("CP: didConnect", log: cpLog, type: .default)
         // Reset per-session state for a clean reconnect.
+        connectionGen += 1
         recommendationsFetchGen = 0
         isReady = false
         KmpHelper.shared.onExternalConsumerActive()
@@ -56,21 +88,39 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         // preserves the subscribe-before-setupTemplates ordering that drives the
         // initial Library fetch (see handleReadinessChange / createLibraryTemplate).
         // `(Boolean) -> Unit` from Kotlin exposes as `KotlinBoolean`; unbox.
+        // The generation check (not just `interfaceController != nil`) rejects
+        // completions from a connection that has since been torn down.
+        let gen = connectionGen
         KmpHelper.shared.loadCarPlayStrings { [weak self] loaded in
-            guard let self = self, self.interfaceController != nil else { return }
+            guard let self = self, self.connectionGen == gen,
+                  self.interfaceController != nil else { return }
             self.strings = loaded
             self.readinessSubscription = KmpHelper.shared.observeReadiness { [weak self] ready in
                 self?.handleReadinessChange(ready.boolValue)
             }
+            self.setupNowPlayingButtons()
             self.setupTemplates()
         }
     }
 
     func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+        // Invalidate any in-flight didConnect completions for this connection.
+        connectionGen += 1
         // Cancel subscriptions before tearing down state to avoid the
         // callbacks racing with a nil interfaceController.
         readinessSubscription?.cancel()
         readinessSubscription = nil
+        trackSubscription?.cancel()
+        trackSubscription = nil
+        modesSubscription?.cancel()
+        modesSubscription = nil
+        // The now-playing template is a process-lifetime singleton; leave it
+        // empty rather than holding this connection's button instances.
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons([])
+        shuffleButton = nil
+        repeatButton = nil
+        nowPlayingButtonsInstalled = nil
+        nowPlayingButtonsEnabled = nil
         libraryTemplate = nil
         libraryBrowseSection = nil
         self.interfaceController = nil
@@ -132,6 +182,82 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             ]
         )
         interfaceController.presentTemplate(alert, animated: true, completion: nil)
+    }
+
+    // MARK: - Now Playing buttons
+
+    /// Creates the shuffle/repeat button instances for this connection and
+    /// subscribes to the channels that drive them. StateFlow replay delivers
+    /// the current values immediately, so a late connect (audiobook mid-play,
+    /// dynamic playlist) starts with the correct profile and enablement.
+    private func setupNowPlayingButtons() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        // Taps deliberately skip the `isReady` gate the navigation taps use:
+        // the lock-screen shuffle/repeat targets don't gate either, and the
+        // buttons are only enabled while a live queue publishes modes, so a
+        // not-ready tap is unreachable in practice.
+        shuffleButton = CPNowPlayingShuffleButton { _ in
+            NowPlayingCoordinator.shared.dispatchCarCommand("toggle_shuffle")
+        }
+        repeatButton = CPNowPlayingRepeatButton { _ in
+            NowPlayingCoordinator.shared.dispatchCarCommand("toggle_repeat")
+        }
+        // Fresh CPNowPlayingButtons default to enabled. Start disabled so the
+        // track replay can't install enabled-looking buttons for the runloop
+        // gap before the modes replay delivers the real enablement.
+        shuffleButton?.isEnabled = false
+        repeatButton?.isEnabled = false
+        nowPlayingButtonsInstalled = nil
+        nowPlayingButtonsEnabled = nil
+
+        trackSubscription = KmpHelper.shared.observeNowPlayingTrack { [weak self] track in
+            // Long-form content swaps prev/next for ±N skips in the command
+            // center; its CarPlay surface likewise drops shuffle/repeat.
+            // A nil track keeps the music profile (buttons present, and the
+            // modes channel's nil disables them).
+            self?.applyNowPlayingButtons(installed: track?.isLongFormContent != true)
+        }
+        modesSubscription = KmpHelper.shared.observeNowPlayingModes { [weak self] modes in
+            guard let self else { return }
+            let enabled = modes?.togglesEnabled == true
+            guard self.nowPlayingButtonsEnabled != enabled else { return }
+            self.nowPlayingButtonsEnabled = enabled
+            self.shuffleButton?.isEnabled = enabled
+            self.repeatButton?.isEnabled = enabled
+            // CarPlay snapshots button state at presentation: a property write
+            // on an already-installed instance does not re-render. Re-present
+            // the SAME retained instances (not new ones) to publish the change.
+            if self.nowPlayingButtonsInstalled == true {
+                self.presentNowPlayingButtons()
+            }
+        }
+    }
+
+    /// Installs or removes the retained button instances, only on profile
+    /// change — never rebuilding them.
+    private func applyNowPlayingButtons(installed: Bool) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard nowPlayingButtonsInstalled != installed else { return }
+        let hadApplied = nowPlayingButtonsInstalled != nil
+        nowPlayingButtonsInstalled = installed
+        // First emission of the long-form profile: the template is already
+        // empty (didDisconnect teardown / fresh process), so there is nothing
+        // to remove — record the state without a misleading "removed" log or
+        // a no-op empty update.
+        guard installed || hadApplied else { return }
+        os_log("CP: now-playing buttons %{public}@",
+               log: cpLog, type: .default, installed ? "installed" : "removed")
+        presentNowPlayingButtons()
+    }
+
+    /// Pushes the current retained instances (or none) to the template.
+    /// The sole `updateNowPlayingButtons` caller besides disconnect teardown.
+    private func presentNowPlayingButtons() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let buttons: [CPNowPlayingButton] = nowPlayingButtonsInstalled == true
+            ? [shuffleButton, repeatButton].compactMap { $0 }
+            : []
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons(buttons)
     }
 
     /// Set Library as the initial home screen / Root

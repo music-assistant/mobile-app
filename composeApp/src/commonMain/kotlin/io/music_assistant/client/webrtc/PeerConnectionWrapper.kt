@@ -10,6 +10,7 @@ import io.music_assistant.client.webrtc.model.IceCandidateData
 import io.music_assistant.client.webrtc.model.IceServer
 import io.music_assistant.client.webrtc.model.PeerConnectionStateValue
 import io.music_assistant.client.webrtc.model.SessionDescription
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -88,6 +89,8 @@ class PeerConnectionWrapper : KoinComponent {
                             ),
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.e(e) { "ICE candidate flow failed" }
                 }
@@ -104,6 +107,8 @@ class PeerConnectionWrapper : KoinComponent {
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.e(e) { "Data channel events flow failed" }
                 }
@@ -116,6 +121,8 @@ class PeerConnectionWrapper : KoinComponent {
                         logger.d { "Connection state: $state -> $mapped" }
                         _connectionState.value = mapped
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.e(e) { "Connection state flow failed" }
                 }

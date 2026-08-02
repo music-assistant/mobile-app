@@ -35,11 +35,6 @@ class SendspinClient(
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisorJob
 
-    // Components
-    private var transport: SendspinTransport? = null
-    private var messageDispatcher: MessageDispatcher? = null
-    private var stateReporter: StateReporter? = null
-
     // Unified state
     private val _state = MutableStateFlow<SendspinState>(SendspinState.Idle)
     val state: StateFlow<SendspinState> = _state.asStateFlow()
