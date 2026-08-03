@@ -73,6 +73,7 @@
   <string name="browse_subtitle">Artists, Albums, Tracks &amp; more</string>
   <string name="cd_add_playlist">Add playlist</string>
   <string name="cd_add_to_group">Add to group</string>
+  <string name="cd_album_item">Album "%1$s" from %2$s</string>
   <string name="cd_applied">Applied</string>
   <string name="cd_close">Close</string>
   <string name="cd_connection_history">Connection history</string>
@@ -101,7 +102,6 @@
   <string name="cd_toggle_view_mode">Toggle view mode</string>
   <string name="cd_unmute">Unmute</string>
   <string name="cd_vinyl_record">Vinyl Record</string>
-  <string name="cd_album_item">Album "%1$s" from %2$s</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artist</string>
   <string name="clickctx_browse">Browse</string>
