@@ -18,16 +18,16 @@ import io.music_assistant.client.ui.compose.common.items.ItemCategory
  * - Stored ids no longer present on the server are ignored.
  */
 internal fun reconcileHomeRows(
-    categories: List<ItemCategory>,
+    categories: List<ItemCategory<*>>,
     config: List<HomeRowPref>,
     onTop: String? = null,
-): List<Pair<ItemCategory, Boolean>> {
+): List<Pair<ItemCategory<*>, Boolean>> {
     val enabledById = config.associate { it.id to it.enabled }
     val orderById = config.withIndex().associate { (index, pref) -> pref.id to index }
     val sortedCategories = categories
         .map { category -> category to (enabledById[category.id] ?: true) }
         .sortedWith(
-            compareByDescending<Pair<ItemCategory, Boolean>> { it.second }
+            compareByDescending<Pair<ItemCategory<*>, Boolean>> { it.second }
                 .thenBy { orderById[it.first.id] ?: Int.MAX_VALUE },
         )
 

@@ -154,7 +154,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.error,
             )
         } else {
-            val rowContent: @Composable (ItemCategory) -> Unit = {
+            val rowContent: @Composable (ItemCategory<*>) -> Unit = {
                 CategoryRow(
                     itemCategory = it,
                     onNavigateClick = onNavigateClick,
@@ -247,7 +247,7 @@ private fun getCategories(
     recommendationsState: DataState<List<RecommendationFolder>>,
     shortcutsState: DataState<List<Shortcut>>,
     homeRowsConfig: List<SettingsRepository.HomeRowPref>,
-): List<Pair<ItemCategory, Boolean>> {
+): List<Pair<ItemCategory<*>, Boolean>> {
     val baseList = if (recommendationsState is DataState.Data) {
         val recommendations = recommendationsState.data
             .filter {
@@ -265,7 +265,7 @@ private fun getCategories(
             }
             .distinctBy { it.lazyListKey() }
             .map {
-                ItemCategory(
+                ItemCategory<Nothing>(
                     id = it.itemId,
                     title = it.displayName.toDisplayString(),
                     items = it.items.orEmpty(),
@@ -276,7 +276,7 @@ private fun getCategories(
 
         if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
             val shortcuts = shortcutsState.data
-            val shortcutsCategory = ItemCategory(
+            val shortcutsCategory = ItemCategory<Nothing>(
                 id = SHORTCUTS_CATEGORY_ID,
                 title = Res.string.home_shortcuts.toDisplayString(),
                 items = shortcuts.map { it.item },

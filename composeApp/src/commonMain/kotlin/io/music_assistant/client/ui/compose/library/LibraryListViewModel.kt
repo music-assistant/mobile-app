@@ -35,7 +35,7 @@ import musicassistantclient.composeapp.generated.resources.toast_error_create_pl
 import org.jetbrains.compose.resources.getString
 
 @OptIn(FlowPreview::class)
-class ItemListViewModel(
+class LibraryListViewModel(
     private val mediaType: MediaType,
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
@@ -248,7 +248,7 @@ class ItemListViewModel(
             }
 
             val request = getRequest(
-                this@ItemListViewModel.mediaType,
+                this@LibraryListViewModel.mediaType,
                 currentState.offset,
                 orderBy,
                 searchQuery,
@@ -420,7 +420,7 @@ class ItemListViewModel(
             updateState(DataState.Loading())
 
             val request = getRequest(
-                this@ItemListViewModel.mediaType,
+                this@LibraryListViewModel.mediaType,
                 0,
                 orderBy,
                 searchQuery,

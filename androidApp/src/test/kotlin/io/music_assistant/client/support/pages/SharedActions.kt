@@ -31,6 +31,7 @@ import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.common_apply
+import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -210,6 +211,11 @@ fun <T : ComposePage> T.enableFilter(action: (FilterSheetPage) -> Unit): T {
 
     composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).assertIsOn()
 
+    return this
+}
+
+fun <T : ComposePage> T.assertNoItems(): T {
+    composeTestRule.onNodeWithText(Res.string.library_empty.get()).assertIsDisplayed()
     return this
 }
 

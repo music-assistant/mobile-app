@@ -30,3 +30,6 @@ enum class StaleReason {
     RECONNECTING,          // Auto-reconnect in progress (transient)
     PERSISTENT_ERROR,      // Max attempts exhausted (manual action needed)
 }
+
+inline fun <T> DataState<T>.mapData(transform: (T) -> T): DataState<T> =
+    if (this is DataState.Data) DataState.Data(transform(data)) else this

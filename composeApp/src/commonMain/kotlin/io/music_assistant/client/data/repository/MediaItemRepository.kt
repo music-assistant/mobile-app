@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
 
 /**
@@ -47,6 +48,18 @@ class MediaItemRepository(
                 ?.let(factory::createList)
                 ?: error("Missing or undecodable media list payload")
         }
+
+    suspend fun fetchMediaItems(request: Request, observer: (List<AppMediaItem>) -> Unit) {
+        val result = fetchMediaItems(request)
+        val items = result.getOrNull()
+
+        if (items != null) {
+            observer(items)
+            itemChanges
+                .scan(items) { items, change -> items.replacing(change.item) }
+                .collect { observer(it) }
+        }
+    }
 
     /**
      * Issue [request] and decode its payload as a single client media item.
@@ -117,3 +130,6 @@ class MediaItemRepository(
         )
     }
 }
+
+private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =
+    map { if (it.itemId == changed.itemId) changed else it }

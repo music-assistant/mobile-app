@@ -7,7 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HomeRowsConfigTest {
-    private fun itemCategory(id: String) = ItemCategory(
+    private fun itemCategory(id: String) = ItemCategory<Nothing>(
         id = id,
         title = id.toDisplayString(),
         items = emptyList(),
