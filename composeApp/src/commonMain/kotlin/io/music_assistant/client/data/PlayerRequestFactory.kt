@@ -17,13 +17,22 @@ class PlayerRequestFactory(
     private val positionTracker: PlayerPositionTracker,
 ) {
     /**
-     * Resolves a relative [PlayerAction.SeekBy] into an absolute [PlayerAction.SeekTo]
-     * (the only callers that emit `SeekBy` — UI/notification — don't hold live position).
-     * Every other action passes through unchanged. Callers resolve once, then feed the
-     * result to both the optimistic update and [buildRequest].
+     * Normalises relative/logical actions into the absolute [PlayerAction.SeekTo] they
+     * ultimately mean, reading the live position *now*:
+     *  - [PlayerAction.SeekBy] → absolute seek (callers — UI/notification — don't hold position).
+     *  - Audiobook [PlayerAction.Next]/[PlayerAction.Previous] → seek to the adjacent chapter
+     *    start; a bare Next/Previous otherwise.
+     * Every other action passes through unchanged. Callers resolve once, then feed the result
+     * to both the optimistic update and [buildRequest] — so the optimistic update freezes to the
+     * true target instead of a track-boundary 0.0 that would clobber the position read here.
      */
     fun resolve(data: PlayerData, action: PlayerAction): PlayerAction =
-        (action as? PlayerAction.SeekBy)?.toSeekTo(data) ?: action
+        when (action) {
+            is PlayerAction.SeekBy -> action.toSeekTo(data)
+            PlayerAction.Next -> data.nextChapterSeek() ?: action
+            PlayerAction.Previous -> data.previousChapterSeek() ?: action
+            else -> action
+        }
 
     fun buildRequest(data: PlayerData, action: PlayerAction): Request? {
         return when (action) {
@@ -36,32 +45,13 @@ class PlayerRequestFactory(
             PlayerAction.Pause ->
                 Request.Player.simpleCommand(playerId = data.playerId, command = "pause")
 
-            PlayerAction.Next -> {
-                val currentPos = data.effectivePositionSec()
-                (data.queueInfo?.currentItem?.track as? Audiobook)
-                    ?.chapters?.firstOrNull { it.start > currentPos }?.start
-                    ?.let { Request.Player.seek(queueId = data.playerId, position = it.toLong()) }
-                    ?: Request.Player.simpleCommand(playerId = data.playerId, command = "next")
-            }
+            // Audiobook chapter jumps are already turned into SeekTo by resolve(); only the
+            // plain track-boundary fallback reaches here.
+            PlayerAction.Next ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "next")
 
-            PlayerAction.Previous -> {
-                val currentPos = data.effectivePositionSec()
-                (data.queueInfo?.currentItem?.track as? Audiobook)
-                    ?.chapters?.takeIf { it.isNotEmpty() }
-                    ?.let { chapters ->
-                        val currentChapterStart =
-                            chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
-                        val prevStart =
-                            if (currentPos - currentChapterStart > 5) {
-                                currentChapterStart
-                            } else {
-                                chapters.lastOrNull { it.start < currentChapterStart }?.start
-                                    ?: 0.0
-                            }
-                        Request.Player.seek(queueId = data.playerId, position = prevStart.toLong())
-                    }
-                    ?: Request.Player.simpleCommand(playerId = data.playerId, command = "previous")
-            }
+            PlayerAction.Previous ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "previous")
 
             is PlayerAction.SetPower ->
                 Request.Player.setPower(playerId = data.playerId, powered = action.powered)
@@ -140,6 +130,38 @@ class PlayerRequestFactory(
     private fun PlayerData.effectivePositionSec(): Double =
         queueInfo?.id?.let(positionTracker::effectiveSec)
             ?: queueInfo?.elapsedTime ?: 0.0
+
+    /**
+     * Next-chapter target for an audiobook: the first chapter starting after the live
+     * position. Null when the track isn't an audiobook or there's no later chapter — the
+     * caller then falls back to a plain `next`.
+     */
+    private fun PlayerData.nextChapterSeek(): PlayerAction.SeekTo? {
+        val currentPos = effectivePositionSec()
+        return (queueInfo?.currentItem?.track as? Audiobook)
+            ?.chapters?.firstOrNull { it.start > currentPos }?.start
+            ?.let { PlayerAction.SeekTo(it.toLong()) }
+    }
+
+    /**
+     * Previous-chapter target for an audiobook: within a 5 s grace of the current chapter's
+     * start, jump to the prior chapter; otherwise restart the current chapter (clamped to
+     * the book start). Null when the track isn't an audiobook or has no chapters — the caller
+     * then falls back to a plain `previous`.
+     */
+    private fun PlayerData.previousChapterSeek(): PlayerAction.SeekTo? {
+        val chapters = (queueInfo?.currentItem?.track as? Audiobook)
+            ?.chapters?.takeIf { it.isNotEmpty() } ?: return null
+        val currentPos = effectivePositionSec()
+        val currentChapterStart = chapters.lastOrNull { it.start <= currentPos }?.start ?: 0.0
+        val prevStart =
+            if (currentPos - currentChapterStart > 5) {
+                currentChapterStart
+            } else {
+                chapters.lastOrNull { it.start < currentChapterStart }?.start ?: 0.0
+            }
+        return PlayerAction.SeekTo(prevStart.toLong())
+    }
 
     /**
      * Resolves a relative [PlayerAction.SeekBy] into an absolute [PlayerAction.SeekTo],
