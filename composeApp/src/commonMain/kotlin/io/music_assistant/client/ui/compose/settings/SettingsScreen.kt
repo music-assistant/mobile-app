@@ -52,8 +52,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,9 +79,12 @@ import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
+import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
 import io.music_assistant.client.ui.compose.common.toDisplayString
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -83,8 +93,10 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.hasCamera
 import io.music_assistant.client.utils.isIpPort
+import io.music_assistant.client.utils.isTelevisionDevice
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
+import kotlinx.coroutines.delay
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_title
 import musicassistantclient.composeapp.generated.resources.cd_connection_history
@@ -149,6 +161,14 @@ import org.publicvalue.multiplatform.qrcode.CameraPosition
 import org.publicvalue.multiplatform.qrcode.CodeType
 import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
+// Android TV: initial-focus landing for the config form. The target sits behind a tab switch and
+// needs a frame to attach its FocusRequester; additionally, the app's cold start on Google TV races
+// a platform focus/IME transition that clears the first grant ~150ms in (leaving the screen with no
+// focused node at all, so the remote goes dead). Re-requesting over this window survives that one-
+// shot race; re-requesting an already-focused target is a no-op.
+private const val CONFIG_FOCUS_RETRIES = 5
+private const val CONFIG_FOCUS_RETRY_DELAY = 250L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
@@ -161,8 +181,155 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
     val isAuthenticated = dataConnection is DataConnectionState.Authenticated
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
+    val sendspinUseCustomConnection by viewModel.sendspinUseCustomConnection.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
+    val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
+
+    // Android TV: Compose's geometric focus search does not reliably move focus between siblings
+    // on this hardware, so the initial-config form declares explicit directional links per target
+    // via FocusProperties instead of trusting geometry. Both connection tabs stay in the graph and
+    // link sideways; UP from the first field lands on the right-hand tab.
+    val isTv = isTelevisionDevice()
+    val configFlow = rememberTvFocusFlow()
+    val isDirect = preferredMethod != "webrtc"
+    val configLinks = if (isDirect) {
+        buildMap {
+            put("exitApp", TvFocusFlow.Links(down = "tabDirect"))
+            put("tabDirect", TvFocusFlow.Links(up = "exitApp", right = "tabWebRTC", down = "host"))
+            put("tabWebRTC", TvFocusFlow.Links(up = "exitApp", left = "tabDirect", down = "host"))
+            put("host", TvFocusFlow.Links(up = "tabWebRTC", down = "port"))
+            put("port", TvFocusFlow.Links(up = "host", down = "tls"))
+            put("tls", TvFocusFlow.Links(up = "port", down = "connect"))
+            put("connect", TvFocusFlow.Links(up = "tls", down = "history", right = "history"))
+            put("history", TvFocusFlow.Links(up = "connect", left = "connect", down = "shareLogs"))
+            put("shareLogs", TvFocusFlow.Links(up = "history"))
+            if (hasCrashLog) {
+                put("shareLogs", TvFocusFlow.Links(up = "history", down = "crashShare"))
+                put("crashShare", TvFocusFlow.Links(up = "shareLogs", right = "crashDelete"))
+                put("crashDelete", TvFocusFlow.Links(up = "shareLogs", left = "crashShare"))
+            }
+        }
+    } else {
+        buildMap {
+            put("exitApp", TvFocusFlow.Links(down = "tabDirect"))
+            put("tabDirect", TvFocusFlow.Links(up = "exitApp", right = "tabWebRTC", down = "remoteId"))
+            put("tabWebRTC", TvFocusFlow.Links(up = "exitApp", left = "tabDirect", down = "remoteId"))
+            put("remoteId", TvFocusFlow.Links(up = "tabWebRTC", down = "connect"))
+            put("connect", TvFocusFlow.Links(up = "remoteId", down = "history", right = "history"))
+            put("history", TvFocusFlow.Links(up = "connect", left = "connect", down = "shareLogs"))
+            put("shareLogs", TvFocusFlow.Links(up = "history"))
+            if (hasCrashLog) {
+                put("shareLogs", TvFocusFlow.Links(up = "history", down = "crashShare"))
+                put("crashShare", TvFocusFlow.Links(up = "shareLogs", right = "crashDelete"))
+                put("crashDelete", TvFocusFlow.Links(up = "shareLogs", left = "crashShare"))
+            }
+        }
+    }
+
+    // Same explicit-link strategy for the connected screen: the Server/Login/Local-player cards are
+    // separate composables whose controls the geometric search on this hardware also fails to chain
+    // (verified: D-pad focus gets stuck on the Codec and Enable rows and can't move up). The chain
+    // follows the on-screen order and adapts to whichever controls actually exist right now (the
+    // login form vs. the logged-in row; the Sendspin custom-connection fields vs. the plain toggle;
+    // the Enable vs. Disable local-player button).
+    val authFlow = rememberTvFocusFlow()
+    val authLinks: Map<String, TvFocusFlow.Links> = when {
+        sessionState is SessionState.Connected && !isAuthenticated -> buildMap {
+            put("exitApp", TvFocusFlow.Links(down = "disconnect"))
+            put("disconnect", TvFocusFlow.Links(up = "exitApp", down = "loginTab"))
+            put("loginTab", TvFocusFlow.Links(up = "disconnect", down = "username"))
+            put("username", TvFocusFlow.Links(up = "loginTab", down = "password"))
+            put("password", TvFocusFlow.Links(up = "username", down = "login"))
+            put("login", TvFocusFlow.Links(up = "password", down = "shareLogs"))
+            put("shareLogs", TvFocusFlow.Links(up = "login"))
+            if (hasCrashLog) {
+                put("shareLogs", TvFocusFlow.Links(up = "login", down = "crashShare"))
+                put("crashShare", TvFocusFlow.Links(up = "shareLogs", right = "crashDelete"))
+                put("crashDelete", TvFocusFlow.Links(up = "shareLogs", left = "crashShare"))
+            }
+        }
+
+        sessionState is SessionState.Connected && sendspinEnabled -> buildMap {
+            put("disconnect", TvFocusFlow.Links(down = "logout"))
+            put("logout", TvFocusFlow.Links(up = "disconnect", down = "playerToggle"))
+            put("playerToggle", TvFocusFlow.Links(up = "logout", down = "shareLogs"))
+            put("shareLogs", TvFocusFlow.Links(up = "playerToggle"))
+            if (hasCrashLog) {
+                put("shareLogs", TvFocusFlow.Links(up = "playerToggle", down = "crashShare"))
+                put("crashShare", TvFocusFlow.Links(up = "shareLogs", right = "crashDelete"))
+                put("crashDelete", TvFocusFlow.Links(up = "shareLogs", left = "crashShare"))
+            }
+        }
+
+        sessionState is SessionState.Connected && sendspinUseCustomConnection -> buildMap {
+            put("disconnect", TvFocusFlow.Links(down = "logout"))
+            put("logout", TvFocusFlow.Links(up = "disconnect", down = "playerName"))
+            put("playerName", TvFocusFlow.Links(up = "logout", down = "codec"))
+            put("codec", TvFocusFlow.Links(up = "playerName", down = "customToggle"))
+            put("customToggle", TvFocusFlow.Links(up = "codec", down = "customHost"))
+            put("customHost", TvFocusFlow.Links(up = "customToggle", down = "customPort"))
+            put("customPort", TvFocusFlow.Links(up = "customHost", right = "customPath", down = "customTls"))
+            put("customPath", TvFocusFlow.Links(up = "customPort", left = "customPort", down = "customTls"))
+            put("customTls", TvFocusFlow.Links(up = "customPort", down = "playerToggle"))
+            put("playerToggle", TvFocusFlow.Links(up = "customTls", down = "shareLogs"))
+            put("shareLogs", TvFocusFlow.Links(up = "playerToggle"))
+            if (hasCrashLog) {
+                put("shareLogs", TvFocusFlow.Links(up = "playerToggle", down = "crashShare"))
+                put("crashShare", TvFocusFlow.Links(up = "shareLogs", right = "crashDelete"))
+                put("crashDelete", TvFocusFlow.Links(up = "shareLogs", left = "crashShare"))
+            }
+        }
+
+        sessionState is SessionState.Connected -> buildMap {
+            put("disconnect", TvFocusFlow.Links(down = "logout"))
+            put("logout", TvFocusFlow.Links(up = "disconnect", down = "playerName"))
+            put("playerName", TvFocusFlow.Links(up = "logout", down = "codec"))
+            put("codec", TvFocusFlow.Links(up = "playerName", down = "customToggle"))
+            put("customToggle", TvFocusFlow.Links(up = "codec", down = "playerToggle"))
+            put("playerToggle", TvFocusFlow.Links(up = "customToggle", down = "shareLogs"))
+            put("shareLogs", TvFocusFlow.Links(up = "playerToggle"))
+            if (hasCrashLog) {
+                put("shareLogs", TvFocusFlow.Links(up = "playerToggle", down = "crashShare"))
+                put("crashShare", TvFocusFlow.Links(up = "shareLogs", right = "crashDelete"))
+                put("crashDelete", TvFocusFlow.Links(up = "shareLogs", left = "crashShare"))
+            }
+        }
+
+        else -> emptyMap()
+    }
+
+    // On TV, land D-pad focus on a non-text control when the form appears (or when switching
+    // tabs). Landing straight on a text field makes the app request the Leanback keyboard, and on
+    // Google TV that focus does not stick (the field loses focus within a frame and the platform's
+    // initial-focus fallback starts fighting the field for it). A button stays focused, and the
+    // explicit links below still move the remote into the fields.
+    val isConnected = sessionState is SessionState.Connected
+    val tvFlow = if (isConnected) authFlow else configFlow
+    val primaryTarget = when {
+        !isTv -> null
+        sessionState is SessionState.Connected -> "disconnect"
+        sessionState is SessionState.Disconnected && !isAuthenticated -> "tabDirect"
+        else -> null
+    }
+    LaunchedEffect(primaryTarget, tvFlow) {
+        if (primaryTarget != null) {
+            var attempt = 0
+            while (attempt < CONFIG_FOCUS_RETRIES) {
+                tvFlow.requestFocus(primaryTarget)
+                attempt++
+                delay(CONFIG_FOCUS_RETRY_DELAY)
+            }
+        }
+    }
+
+    // Self-healing D-pad: the cold-start focus race above can still leave the form without any
+    // focused node (or with focus on a node outside the declared link chain, e.g. a clipped Misc
+    // button), which makes the remote a dead control until something is re-focused. When a
+    // directional key arrives and the current focus is not a linked target of the on-screen chain,
+    // land it on the primary target and consume that press (the next press navigates). Tracked
+    // per-recomposition so it only applies while a TV form is the on-screen content.
+    val activeLinks = if (isConnected) authLinks else configLinks
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
@@ -204,9 +371,30 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
-                    .clearFocusOnScroll()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    // Android TV: the Compose scroll container is a focus target in this CMP
+                    // version, and on Google TV it fights the D-pad for focus (the framework keeps
+                    // re-granting it, wiping out the focused field within ~50ms). The settings form
+                    // fits a 1080p TV screen, so skip scrolling there and keep D-pad focus stable.
+                    .then(if (isTv) Modifier else Modifier.clearFocusOnScroll())
+                    .onPreviewKeyEvent { event ->
+                        val directional = event.type == KeyEventType.KeyDown &&
+                            (event.key == Key.DirectionUp || event.key == Key.DirectionDown ||
+                                event.key == Key.DirectionLeft || event.key == Key.DirectionRight)
+                        if (directional) {
+                            val focusIsOnLinkedTarget =
+                                tvFlow.focusedTarget != null && activeLinks.containsKey(tvFlow.focusedTarget)
+                            if (primaryTarget != null && !focusIsOnLinkedTarget) {
+                                tvFlow.requestFocus(primaryTarget)
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                    .then(if (isTv) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                verticalArrangement = Arrangement.spacedBy(if (isTv) 8.dp else 16.dp),
             ) {
                 var ipAddress by remember { mutableStateOf(Defaults.URI) }
                 var port by remember { mutableStateOf(Defaults.PORT.toString()) }
@@ -226,7 +414,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 // Auto-reconnect on error ONLY if user hasn't changed the connection info
                 // This prevents auto-reconnect to old server when user is trying to connect to new server
                 // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
-                val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
                 LaunchedEffect(sessionState) {
                     val connInfo = savedConnectionInfo
                     if (sessionState is SessionState.Disconnected.Error &&
@@ -259,15 +446,30 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     if (!isAuthenticated) {
-                        OutlinedButton(onClick = exitApp) { Text(stringResource(Res.string.settings_exit_app)) }
+                        OutlinedButton(
+                            onClick = exitApp,
+                            modifier = if (isTv) {
+                                Modifier.tvFocus(flow = tvFlow, links = activeLinks, id = "exitApp")
+                            } else {
+                                Modifier
+                            },
+                        ) { Text(stringResource(Res.string.settings_exit_app)) }
                     }
                 }
 
                 when (sessionState) {
                     is SessionState.Disconnected -> {
-                        AboutSection()
+                        // The settings form already needs every pixel of a 1080p TV screen
+                        // (scrolling is disabled on TV to keep D-pad focus stable), so skip the
+                        // informational About card there; it stays on phones which can scroll.
+                        if (!isTv) {
+                            AboutSection()
+                        }
                         ConnectionMethodTabs(
                             viewModel = viewModel,
+                            preferredMethod = preferredMethod,
+                            configFlow = configFlow,
+                            configLinks = configLinks,
                             ipAddress = ipAddress,
                             port = port,
                             isTls = isTls,
@@ -313,10 +515,16 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             connectionInfo = savedConnectionInfo,
                             serverInfo = connectedState.serverInfo,
                             isWebRTC = connectedState is SessionState.Connected.WebRTC,
+                            authFlow = if (isTv) authFlow else null,
+                            authLinks = authLinks,
                             onDisconnect = { viewModel.disconnect() },
                         )
 
-                        LoginSection(connectedState.user)
+                        LoginSection(
+                            connectedState.user,
+                            authFlow = if (isTv) authFlow else null,
+                            authLinks = authLinks,
+                        )
 
                         when (dataConnection) {
                             is DataConnectionState.Authenticated -> {
@@ -325,6 +533,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 // Local Player Section
                                 SendspinSection(
                                     viewModel = viewModel,
+                                    authFlow = if (isTv) authFlow else null,
+                                    authLinks = authLinks,
                                 )
 
                                 // Car options route to the local player — only meaningful when
@@ -348,6 +558,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     isPreparingShare = isPreparingShare,
                     onShareCrashLog = { viewModel.shareCrashLog(shareCrashLogsTitle) },
                     onDeleteCrashLog = { viewModel.deleteCrashLog() },
+                    tvFlow = if (isTv) tvFlow else null,
+                    tvLinks = activeLinks,
                 )
 
                 Spacer(modifier = Modifier.size(16.dp))
@@ -365,11 +577,15 @@ private fun MiscSection(
     isPreparingShare: Boolean,
     onShareCrashLog: () -> Unit,
     onDeleteCrashLog: () -> Unit,
+    tvFlow: TvFocusFlow?,
+    tvLinks: Map<String, TvFocusFlow.Links>,
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
         OutlinedButton(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .tvFocus(flow = tvFlow, links = tvLinks, id = "shareLogs"),
             enabled = !isPreparingShare,
             onClick = onShareLogs,
         ) {
@@ -389,13 +605,16 @@ private fun MiscSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .tvFocus(flow = tvFlow, links = tvLinks, id = "crashShare"),
                     enabled = !isPreparingShare,
                     onClick = onShareCrashLog,
                 ) {
                     Text(stringResource(Res.string.settings_share_crash_logs))
                 }
                 OutlinedButton(
+                    modifier = Modifier.tvFocus(flow = tvFlow, links = tvLinks, id = "crashDelete"),
                     enabled = !isPreparingShare,
                     onClick = onDeleteCrashLog,
                 ) {
@@ -419,7 +638,9 @@ internal fun SectionCard(
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            // Tighter padding on TV so more settings fit without scrolling (see SettingsScreen:
+            // TV disables scrolling to keep D-pad focus stable).
+            modifier = Modifier.padding(if (isTelevisionDevice()) 8.dp else 16.dp),
         ) {
             content()
         }
@@ -432,7 +653,7 @@ internal fun SectionTitle(text: String) {
         text = text,
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(bottom = 12.dp),
+        modifier = Modifier.padding(bottom = if (isTelevisionDevice()) 8.dp else 12.dp),
     )
 }
 
@@ -475,6 +696,9 @@ private fun ExperimentalPill() {
 @Composable
 private fun ConnectionMethodTabs(
     viewModel: SettingsViewModel,
+    preferredMethod: String?,
+    configFlow: TvFocusFlow,
+    configLinks: Map<String, TvFocusFlow.Links>,
     ipAddress: String,
     port: String,
     isTls: Boolean,
@@ -486,7 +710,6 @@ private fun ConnectionMethodTabs(
     sessionState: SessionState,
     connectionHistory: List<ConnectionHistoryEntry>,
 ) {
-    val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
     val selectedTab = if (preferredMethod == "webrtc") 1 else 0
     val webrtcRemoteId by viewModel.webrtcRemoteId.collectAsStateWithLifecycle()
     var showHistoryDialog by remember { mutableStateOf(false) }
@@ -508,11 +731,15 @@ private fun ConnectionMethodTabs(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { viewModel.setPreferredConnectionMethod("direct") },
+                modifier = configFlow.modifierFor("tabDirect", configLinks.getValue("tabDirect"))
+                    .testTag("Config-TabDirect"),
                 text = { Text(stringResource(Res.string.settings_connection_direct)) },
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { viewModel.setPreferredConnectionMethod("webrtc") },
+                modifier = configFlow.modifierFor("tabWebRTC", configLinks.getValue("tabWebRTC"))
+                    .testTag("Config-TabWebRTC"),
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(Res.string.settings_connection_webrtc))
@@ -530,6 +757,8 @@ private fun ConnectionMethodTabs(
             0 -> {
                 // Direct connection tab
                 DirectConnectionContent(
+                    configFlow = configFlow,
+                    configLinks = configLinks,
                     ipAddress = ipAddress,
                     port = port,
                     isTls = isTls,
@@ -546,6 +775,8 @@ private fun ConnectionMethodTabs(
             1 -> {
                 // WebRTC connection tab
                 WebRTCConnectionContent(
+                    configFlow = configFlow,
+                    configLinks = configLinks,
                     remoteId = webrtcRemoteId,
                     onRemoteIdChange = { viewModel.setWebrtcRemoteId(it.uppercase()) },
                     onConnect = { viewModel.attemptWebRTCConnection(webrtcRemoteId) },
@@ -601,7 +832,9 @@ private fun ConnectionMethodTabs(
 }
 
 @Composable
-private fun DirectConnectionContent(
+fun DirectConnectionContent(
+    configFlow: TvFocusFlow,
+    configLinks: Map<String, TvFocusFlow.Links>,
     ipAddress: String,
     port: String,
     isTls: Boolean,
@@ -617,7 +850,8 @@ private fun DirectConnectionContent(
 
     // Host input
     TextField(
-        modifier = Modifier
+        modifier = configFlow.modifierFor("host", configLinks.getValue("host"))
+            .testTag("Config-Host")
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         value = ipAddress,
@@ -637,7 +871,8 @@ private fun DirectConnectionContent(
 
     // Port input
     TextField(
-        modifier = Modifier
+        modifier = configFlow.modifierFor("port", configLinks.getValue("port"))
+            .testTag("Config-Port")
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         value = port,
@@ -666,6 +901,8 @@ private fun DirectConnectionContent(
         Checkbox(
             checked = isTls,
             onCheckedChange = onTlsChange,
+            modifier = configFlow.modifierFor("tls", configLinks.getValue("tls"))
+                .testTag("Config-Tls"),
         )
         Text(stringResource(Res.string.settings_use_tls))
     }
@@ -676,7 +913,9 @@ private fun DirectConnectionContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Button(
-            modifier = Modifier.weight(1f),
+            modifier = configFlow.modifierFor("connect", configLinks.getValue("connect"))
+                .testTag("Config-Connect")
+                .weight(1f),
             onClick = onConnect,
             enabled = enabled,
         ) {
@@ -690,7 +929,11 @@ private fun DirectConnectionContent(
                 },
             )
         }
-        IconButton(onClick = onShowHistory) {
+        IconButton(
+            onClick = onShowHistory,
+            modifier = configFlow.modifierFor("history", configLinks.getValue("history"))
+                .testTag("Config-History"),
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.List,
                 contentDescription = stringResource(Res.string.cd_connection_history),
@@ -700,7 +943,9 @@ private fun DirectConnectionContent(
 }
 
 @Composable
-private fun WebRTCConnectionContent(
+fun WebRTCConnectionContent(
+    configFlow: TvFocusFlow,
+    configLinks: Map<String, TvFocusFlow.Links>,
     remoteId: String,
     onRemoteIdChange: (String) -> Unit,
     onConnect: () -> Unit,
@@ -731,7 +976,8 @@ private fun WebRTCConnectionContent(
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Remote ID input field
         TextField(
-            modifier = Modifier
+            modifier = configFlow.modifierFor("remoteId", configLinks.getValue("remoteId"))
+                .testTag("Config-RemoteId")
                 .weight(1f)
                 .padding(bottom = 8.dp),
             value = remoteId,
@@ -799,7 +1045,9 @@ private fun WebRTCConnectionContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Button(
-            modifier = Modifier.weight(1f),
+            modifier = configFlow.modifierFor("connect", configLinks.getValue("connect"))
+                .testTag("Config-Connect")
+                .weight(1f),
             onClick = onConnect,
             enabled = remoteId.isNotBlank() && !isInvalidRemoteId && !isConnected && !isConnecting,
         ) {
@@ -812,7 +1060,11 @@ private fun WebRTCConnectionContent(
                 },
             )
         }
-        IconButton(onClick = onShowHistory) {
+        IconButton(
+            onClick = onShowHistory,
+            modifier = configFlow.modifierFor("history", configLinks.getValue("history"))
+                .testTag("Config-History"),
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.List,
                 contentDescription = stringResource(Res.string.cd_connection_history),
@@ -918,6 +1170,8 @@ private fun ServerInfoSection(
     connectionInfo: ConnectionInfo?,
     serverInfo: ServerInfo?,
     isWebRTC: Boolean = false,
+    authFlow: TvFocusFlow? = null,
+    authLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
     onDisconnect: () -> Unit,
 ) {
     SectionCard {
@@ -928,45 +1182,74 @@ private fun ServerInfoSection(
         } else {
             connectionInfo?.let { stringResource(Res.string.settings_connected_to, it.host, it.port) }
         }
-        connectionText?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
+        connectionText?.let { text ->
+            if (isTelevisionDevice()) {
+                // TV: no scrolling, so condense the status card to a single row and leave the
+                // vertical space for the login / local-player forms below.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    OutlinedButton(
+                        modifier = Modifier.tvFocus(authFlow, authLinks, "disconnect"),
+                        onClick = onDisconnect,
+                    ) {
+                        Text(stringResource(Res.string.settings_disconnect))
+                    }
+                }
+            } else {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
 
-        serverInfo?.let { server ->
-            Text(
-                text = stringResource(
-                    Res.string.settings_version_info,
-                    server.serverVersion ?: "",
-                    server.schemaVersion?.toString().orEmpty(),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-        }
+                serverInfo?.let { server ->
+                    Text(
+                        text = stringResource(
+                            Res.string.settings_version_info,
+                            server.serverVersion ?: "",
+                            server.schemaVersion?.toString().orEmpty(),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                }
 
-        OutlinedButton(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onDisconnect,
-        ) {
-            Text(stringResource(Res.string.settings_disconnect))
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDisconnect,
+                ) {
+                    Text(stringResource(Res.string.settings_disconnect))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun LoginSection(user: User?) {
+private fun LoginSection(
+    user: User?,
+    authFlow: TvFocusFlow? = null,
+    authLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
+) {
     SectionCard {
         SectionTitle(stringResource(Res.string.auth_title))
 
         AuthenticationPanel(
             modifier = Modifier.fillMaxWidth(),
             user = user,
+            authFlow = authFlow,
+            authLinks = authLinks,
         )
     }
 }
@@ -975,6 +1258,8 @@ private fun LoginSection(user: User?) {
 private fun SendspinSection(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel,
+    authFlow: TvFocusFlow? = null,
+    authLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
 ) {
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -998,6 +1283,7 @@ private fun SendspinSection(
         // Text fields on top - disabled when player is running
         TextField(
             modifier = Modifier
+                .tvFocus(authFlow, authLinks, "playerName")
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
             value = sendspinDeviceName,
@@ -1024,6 +1310,7 @@ private fun SendspinSection(
             buttonContent = { onClick ->
                 Row(
                     modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "codec")
                         .fillMaxWidth()
                         .clickable(enabled = !sendspinEnabled) { onClick() }
                         .padding(bottom = 16.dp),
@@ -1071,6 +1358,7 @@ private fun SendspinSection(
                 checked = sendspinUseCustomConnection,
                 onCheckedChange = { viewModel.setSendspinUseCustomConnection(it) },
                 enabled = !sendspinEnabled,
+                modifier = Modifier.tvFocus(authFlow, authLinks, "customToggle"),
             )
             Text(
                 text = stringResource(Res.string.settings_custom_sendspin),
@@ -1089,6 +1377,7 @@ private fun SendspinSection(
 
             TextField(
                 modifier = Modifier
+                    .tvFocus(authFlow, authLinks, "customHost")
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
                 value = sendspinHost,
@@ -1113,6 +1402,7 @@ private fun SendspinSection(
             ) {
                 TextField(
                     modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "customPort")
                         .weight(1f)
                         .padding(bottom = 12.dp),
                     value = sendspinPort.toString(),
@@ -1138,6 +1428,7 @@ private fun SendspinSection(
 
                 TextField(
                     modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "customPath")
                         .weight(1f)
                         .padding(bottom = 12.dp),
                     value = sendspinPath,
@@ -1165,6 +1456,7 @@ private fun SendspinSection(
                     checked = sendspinUseTls,
                     onCheckedChange = { viewModel.setSendspinUseTls(it) },
                     enabled = !sendspinEnabled,
+                    modifier = Modifier.tvFocus(authFlow, authLinks, "customTls"),
                 )
                 Text(
                     text = stringResource(Res.string.settings_use_tls_wss),
@@ -1180,14 +1472,18 @@ private fun SendspinSection(
         // Toggle button on the bottom
         if (sendspinEnabled) {
             OutlinedButton(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .tvFocus(authFlow, authLinks, "playerToggle")
+                    .fillMaxWidth(),
                 onClick = { viewModel.setSendspinEnabled(false) },
             ) {
                 Text(stringResource(Res.string.settings_disable_local_player))
             }
         } else {
             Button(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .tvFocus(authFlow, authLinks, "playerToggle")
+                    .fillMaxWidth(),
                 onClick = { viewModel.setSendspinEnabled(true) },
             ) {
                 Text(stringResource(Res.string.settings_enable_local_player))

@@ -1,6 +1,8 @@
 package io.music_assistant.client.ui.compose.auth
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +29,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
@@ -41,6 +44,9 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.utils.isTelevisionDevice
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_authenticating
 import musicassistantclient.composeapp.generated.resources.auth_authorize_ha
@@ -61,6 +67,8 @@ fun AuthenticationPanel(
     viewModel: AuthenticationViewModel = koinViewModel(),
     modifier: Modifier = Modifier,
     user: User?,
+    authFlow: TvFocusFlow? = null,
+    authLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
 ) {
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val authState by viewModel.authState.collectAsStateWithLifecycle()
@@ -75,19 +83,42 @@ fun AuthenticationPanel(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        user?.let {
-            Text(
-                text = stringResource(Res.string.auth_logged_in_as, user.description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+        user?.let { u ->
+            if (isTelevisionDevice()) {
+                // TV: no scrolling, so condense the logged-in status to a single row and leave
+                // vertical space for the local-player form below.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.auth_logged_in_as, u.description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    OutlinedButton(
+                        modifier = Modifier.tvFocus(authFlow, authLinks, "logout"),
+                        onClick = { viewModel.logout() },
+                    ) {
+                        Text(stringResource(Res.string.auth_logout))
+                    }
+                }
+            } else {
+                Text(
+                    text = stringResource(Res.string.auth_logged_in_as, u.description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
 
-            OutlinedButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { viewModel.logout() },
-            ) {
-                Text(stringResource(Res.string.auth_logout))
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { viewModel.logout() },
+                ) {
+                    Text(stringResource(Res.string.auth_logout))
+                }
             }
         } ?: run {
             // Show provider selection and auth UI
@@ -102,6 +133,7 @@ fun AuthenticationPanel(
                             "builtin" -> Tab(
                                 selected = index == selectedTab,
                                 onClick = { selectedTab = index },
+                                modifier = Modifier.tvFocus(authFlow, authLinks, "loginTab"),
                                 text = {
                                     Text("Music Assistant")
                                 },
@@ -125,7 +157,7 @@ fun AuthenticationPanel(
                 // Show provider-specific UI
                 providers.getOrNull(selectedTab)?.let { provider ->
                     when (provider.type) {
-                        "builtin" -> BuiltinAuthForm(viewModel, provider)
+                        "builtin" -> BuiltinAuthForm(viewModel, provider, authFlow, authLinks)
                         "homeassistant" -> Button(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { viewModel.login(provider) },
@@ -177,7 +209,12 @@ fun AuthenticationPanel(
 }
 
 @Composable
-private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthProvider) {
+private fun BuiltinAuthForm(
+    viewModel: AuthenticationViewModel,
+    provider: AuthProvider,
+    authFlow: TvFocusFlow?,
+    authLinks: Map<String, TvFocusFlow.Links>,
+) {
     val username by viewModel.username.collectAsStateWithLifecycle()
     val password by viewModel.password.collectAsStateWithLifecycle()
     var isPasswordVisible by remember { mutableStateOf(false) }
@@ -185,7 +222,10 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
 
     Column {
         TextField(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            modifier = Modifier
+                .tvFocus(authFlow, authLinks, "username")
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
             value = username,
             onValueChange = { viewModel.username.value = it },
             label = { Text(stringResource(Res.string.auth_username)) },
@@ -201,7 +241,10 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
         )
 
         TextField(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            modifier = Modifier
+                .tvFocus(authFlow, authLinks, "password")
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
             value = password,
             onValueChange = { viewModel.password.value = it },
             label = { Text(stringResource(Res.string.auth_password)) },
@@ -245,7 +288,9 @@ private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthPr
         )
 
         Button(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .tvFocus(authFlow, authLinks, "login")
+                .fillMaxWidth(),
             onClick = { viewModel.login(provider) },
             enabled = username.isNotEmpty() && password.isNotEmpty(),
         ) {

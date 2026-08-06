@@ -35,9 +35,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,7 +113,8 @@ private fun PlayerSelection(
     var internalPlayers by remember { mutableStateOf(players) }
     var dragEndIndex by remember { mutableStateOf<Int?>(null) }
     val listState = rememberLazyListState()
-    val listFocusRequester = remember { FocusRequester() }
+    // Used once, on dialog entry, to claim D-pad focus for the first player row.
+    val firstRowRequester = remember { FocusRequester() }
     val reorderableLazyListState =
         rememberReorderableLazyListState(listState) { from, to ->
             internalPlayers = internalPlayers.toMutableList().apply {
@@ -120,7 +128,7 @@ private fun PlayerSelection(
     // move between and can end up adjusting whatever was focused behind it instead (e.g. the
     // now-playing volume slider).
     LaunchedEffect(Unit) {
-        listFocusRequester.requestFocus()
+        firstRowRequester.requestFocus()
     }
 
     // Upstream emits frequently while a player is playing. Adopting them emits
@@ -137,13 +145,28 @@ private fun PlayerSelection(
         }
     }
 
+    // D-pad navigation. The dialog is its own window, so a remote's up/down must never leak to
+    // whatever holds OS focus behind it. focusGroup() already contains 2D focus search within the
+    // list; routing the keys through focusManager.moveFocus — the Compose-recommended way to
+    // advance focus programmatically — keeps them inside that group and lets the LazyColumn's own
+    // focus handling scroll the focused row into view at the boundaries.
+    val focusManager = LocalFocusManager.current
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
-            .focusRequester(listFocusRequester)
             .focusGroup()
             .selectableGroup()
-            .heightIn(max = MAX_DIALOG_HEIGHT),
+            .heightIn(max = MAX_DIALOG_HEIGHT)
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val direction = when (event.key) {
+                    Key.DirectionDown -> FocusDirection.Down
+                    Key.DirectionUp -> FocusDirection.Up
+                    else -> return@onPreviewKeyEvent false
+                }
+                focusManager.moveFocus(direction)
+                true
+            },
         state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -163,11 +186,22 @@ private fun PlayerSelection(
                 Color.Transparent
             }
 
+            val isFirstRow = internalPlayers.isNotEmpty() &&
+                item.player.id == internalPlayers.first().player.id
+
             ReorderableItem(state = reorderableLazyListState, key = item.player.id) {
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .fillMaxWidth()
+                        .testTag("PlayerRow-${item.player.id}")
+                        .then(
+                            if (isFirstRow) {
+                                Modifier.focusRequester(firstRowRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clip(plateShape)
                         .background(backgroundColor)
                         .border(1.dp, borderColor, plateShape)
