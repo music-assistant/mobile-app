@@ -23,8 +23,12 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -43,9 +47,26 @@ fun AdaptiveNavigationBarLayout(
     showNavigation: Boolean = true,
     navigationBarHeight: Dp = 88.dp,
     navigationRailWidth: Dp = 80.dp,
+    // Android TV: a freshly composed root (cold start, or returning from Settings via the
+    // back arrow) doesn't reliably receive a focus grant once the window already holds focus,
+    // leaving the remote dead until a D-pad press. The caller attaches this requester to the
+    // currently-selected item so it can land initial focus there explicitly, and tracks whether
+    // the item actually holds focus (to know when the landing has stuck).
+    selectedItemFocusRequester: FocusRequester? = null,
+    selectedItemFocused: MutableState<Boolean>? = null,
     content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit,
 ) {
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
+
+    val selectedItemModifier = { isSelected: Boolean ->
+        if (isSelected && selectedItemFocusRequester != null) {
+            Modifier
+                .focusRequester(selectedItemFocusRequester)
+                .onFocusChanged { state -> selectedItemFocused?.value = state.isFocused }
+        } else {
+            Modifier
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val showRail = showNavigation && isExpandedScreen
@@ -75,6 +96,7 @@ fun AdaptiveNavigationBarLayout(
             ) {
                 navigationItems.forEach {
                     NavigationRailItem(
+                        modifier = selectedItemModifier(it.selected),
                         selected = it.selected,
                         onClick = it.onClick,
                         icon = {
@@ -92,6 +114,7 @@ fun AdaptiveNavigationBarLayout(
             ) {
                 navigationItems.forEach {
                     NavigationBarItem(
+                        modifier = selectedItemModifier(it.selected),
                         selected = it.selected,
                         onClick = it.onClick,
                         icon = {
