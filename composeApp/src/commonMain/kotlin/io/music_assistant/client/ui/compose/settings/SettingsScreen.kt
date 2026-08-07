@@ -244,7 +244,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
             put("disconnect", TvFocusFlow.Links(up = "exitApp", down = "loginTab"))
             put("loginTab", TvFocusFlow.Links(up = "disconnect", down = "username"))
             put("username", TvFocusFlow.Links(up = "loginTab", down = "password"))
-            put("password", TvFocusFlow.Links(up = "username", down = "login"))
+            put("password", TvFocusFlow.Links(up = "username", down = "login", right = "passwordToggle"))
+            put("passwordToggle", TvFocusFlow.Links(up = "password", down = "login", left = "password"))
             put("login", TvFocusFlow.Links(up = "password", down = "shareLogs"))
             put("shareLogs", TvFocusFlow.Links(up = "login"))
             if (hasCrashLog) {

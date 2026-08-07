@@ -235,6 +235,7 @@ fun CompactPlayerItem(
                 showSkipBack = onSelectPlayer != null,
                 tint = colors.controlTint,
                 tvFocusFlow = tvFocusFlow,
+                playUpTarget = "playerSelect",
             )
         }
 
@@ -290,7 +291,7 @@ fun FullPlayerItem(
     val playerTvFocusFlow = tvFocusFlow ?: rememberTvFocusFlow()
     val playerFocusLinks = remember {
         mapOf(
-            "slider" to TvFocusFlow.Links(down = "play"),
+            "slider" to TvFocusFlow.Links(up = "playerSelect", down = "play"),
             "favorite" to TvFocusFlow.Links(right = "shuffle", down = "play"),
             "lyrics" to TvFocusFlow.Links(left = "repeat", down = "play"),
         )

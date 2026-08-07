@@ -45,7 +45,9 @@ import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.ui.compose.common.TvFocusFlow
+import io.music_assistant.client.ui.compose.common.TvTextInputGuard
 import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.ui.compose.common.tvSelectToEdit
 import io.music_assistant.client.utils.isTelevisionDevice
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_authenticating
@@ -73,6 +75,7 @@ fun AuthenticationPanel(
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     var loginError by remember { mutableStateOf<String?>(null) }
+    var selectedTab by remember(key1 = providers) { mutableIntStateOf(0) }
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Error) {
@@ -123,7 +126,6 @@ fun AuthenticationPanel(
         } ?: run {
             // Show provider selection and auth UI
             if (providers.isNotEmpty()) {
-                var selectedTab by remember(key1 = providers) { mutableIntStateOf(0) }
                 // Provider tabs
                 PrimaryTabRow(
                     selectedTabIndex = selectedTab,
@@ -157,7 +159,13 @@ fun AuthenticationPanel(
                 // Show provider-specific UI
                 providers.getOrNull(selectedTab)?.let { provider ->
                     when (provider.type) {
-                        "builtin" -> BuiltinAuthForm(viewModel, provider, authFlow, authLinks)
+                        "builtin" -> BuiltinAuthForm(
+                            viewModel,
+                            provider,
+                            authFlow,
+                            authLinks,
+                            loginError = loginError,
+                        )
                         "homeassistant" -> Button(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { viewModel.login(provider) },
@@ -195,12 +203,18 @@ fun AuthenticationPanel(
             }
         }
 
-        loginError?.let {
-            Logger.e("Error $it")
+        // The builtin form renders its own login error between the password field and the Login
+        // button; other providers (and phone layouts) fall back to this spot. On the non-scrolling
+        // TV layout the bottom edge of the card clips anything rendered last in this Column, so the
+        // builtin error must stay up in the form where it is visible.
+        val shownError = loginError
+        if (shownError != null && providers.getOrNull(selectedTab)?.type != "builtin") {
+            Logger.e("Error $shownError")
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = it,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                text = shownError,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
             )
@@ -214,87 +228,123 @@ private fun BuiltinAuthForm(
     provider: AuthProvider,
     authFlow: TvFocusFlow?,
     authLinks: Map<String, TvFocusFlow.Links>,
+    loginError: String?,
 ) {
     val username by viewModel.username.collectAsStateWithLifecycle()
     val password by viewModel.password.collectAsStateWithLifecycle()
     var isPasswordVisible by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val tv = isTelevisionDevice()
+    // TV only: the input method stays closed while the D-pad traverses the fields and opens on an
+    // explicit CENTER/ENTER press (see TvTextInput.kt). On phones the guard is skipped entirely and
+    // tapping a field opens the keyboard as usual.
+    val usernameEditing = remember { mutableStateOf(false) }
+    val passwordEditing = remember { mutableStateOf(false) }
 
-    Column {
-        TextField(
-            modifier = Modifier
-                .tvFocus(authFlow, authLinks, "username", textField = true)
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            value = username,
-            onValueChange = { viewModel.username.value = it },
-            label = { Text(stringResource(Res.string.auth_username)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) },
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            ),
-        )
+    TvTextInputGuard(
+        enabled = tv,
+        editing = usernameEditing.value || passwordEditing.value,
+    ) {
+        Column {
+            TextField(
+                modifier = Modifier
+                    .tvFocus(authFlow, authLinks, "username", textField = true)
+                    .tvSelectToEdit(usernameEditing)
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                value = username,
+                onValueChange = { viewModel.username.value = it },
+                label = { Text(stringResource(Res.string.auth_username)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                ),
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                ),
+            )
 
-        TextField(
-            modifier = Modifier
-                .tvFocus(authFlow, authLinks, "password", textField = true)
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            value = password,
-            onValueChange = { viewModel.password.value = it },
-            label = { Text(stringResource(Res.string.auth_password)) },
-            visualTransformation = if (isPasswordVisible) {
-                VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
-            trailingIcon = {
-                val icon = if (isPasswordVisible) {
-                    Icons.Filled.VisibilityOff
-                } else {
-                    Icons.Filled.Visibility
-                }
-                val description = if (isPasswordVisible) {
-                    stringResource(Res.string.auth_hide_password)
-                } else {
-                    stringResource(Res.string.auth_show_password)
-                }
-                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextField(
+                    modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "password", textField = true)
+                        .tvSelectToEdit(passwordEditing)
+                        .weight(1f),
+                    value = password,
+                    onValueChange = { viewModel.password.value = it },
+                    label = { Text(stringResource(Res.string.auth_password)) },
+                    visualTransformation = if (isPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            if (username.isNotEmpty() && password.isNotEmpty()) {
+                                viewModel.login(provider)
+                            }
+                        },
+                    ),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    ),
+                )
+                IconButton(
+                    modifier = Modifier.tvFocus(authFlow, authLinks, "passwordToggle"),
+                    onClick = { isPasswordVisible = !isPasswordVisible },
+                ) {
+                    val icon = if (isPasswordVisible) {
+                        Icons.Filled.VisibilityOff
+                    } else {
+                        Icons.Filled.Visibility
+                    }
+                    val description = if (isPasswordVisible) {
+                        stringResource(Res.string.auth_hide_password)
+                    } else {
+                        stringResource(Res.string.auth_show_password)
+                    }
                     Icon(imageVector = icon, contentDescription = description)
                 }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus()
-                    if (username.isNotEmpty() && password.isNotEmpty()) {
-                        viewModel.login(provider)
-                    }
-                },
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            ),
-        )
+            }
 
-        Button(
-            modifier = Modifier
-                .tvFocus(authFlow, authLinks, "login")
-                .fillMaxWidth(),
-            onClick = { viewModel.login(provider) },
-            enabled = username.isNotEmpty() && password.isNotEmpty(),
-        ) {
-            Text(stringResource(Res.string.auth_login))
+            // Inline, above the button: the non-scrolling TV layout clips anything appended after
+            // the form, so a login failure rendered below the button would be invisible.
+            loginError?.let {
+                Logger.e("Error $it")
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    text = it,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            Button(
+                modifier = Modifier
+                    .tvFocus(authFlow, authLinks, "login")
+                    .fillMaxWidth(),
+                onClick = { viewModel.login(provider) },
+                enabled = username.isNotEmpty() && password.isNotEmpty(),
+            ) {
+                Text(stringResource(Res.string.auth_login))
+            }
         }
     }
 }

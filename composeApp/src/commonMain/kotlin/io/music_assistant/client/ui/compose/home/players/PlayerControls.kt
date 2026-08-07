@@ -58,6 +58,7 @@ fun PlayerControls(
     showSkipBack: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.primary,
     tvFocusFlow: TvFocusFlow? = null,
+    playUpTarget: String = "slider",
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
@@ -77,7 +78,7 @@ fun PlayerControls(
     // Links are built from the buttons actually rendered (which vary with showSkip/showSkipBack/
     // showAdditionalButtons), so a missing button never leaves a dead directional link. The
     // play/pause main button links up to the seek slider (declared by the hosting screen).
-    val focusLinks = remember(tvFocusFlow, showAdditionalButtons, showSkip, showSkipBack) {
+    val focusLinks = remember(tvFocusFlow, showAdditionalButtons, showSkip, showSkipBack, playUpTarget) {
         val sequence = buildList {
             if (showAdditionalButtons) add("shuffle")
             if (showSkipBack || showAdditionalButtons) add("prev")
@@ -92,7 +93,7 @@ fun PlayerControls(
                     TvFocusFlow.Links(
                         left = sequence.getOrNull(i - 1),
                         right = sequence.getOrNull(i + 1),
-                        up = if (sequence[i] == "play") "slider" else null,
+                        up = if (sequence[i] == "play") playUpTarget else null,
                     ),
                 )
             }

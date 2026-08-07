@@ -33,6 +33,8 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_current_player
@@ -46,6 +48,8 @@ fun PlayerSelectionButton(
     sendSpinState: SendspinState?,
     onSelectPlayer: () -> Unit = {},
     onGroupButton: () -> Unit = {},
+    tvFocusFlow: TvFocusFlow? = null,
+    tvFocusLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
@@ -67,6 +71,7 @@ fun PlayerSelectionButton(
                     onClick = onSelectPlayer,
                     colors = ButtonDefaults.outlinedButtonColors(),
                     border = ButtonDefaults.outlinedButtonBorder(),
+                    modifier = Modifier.tvFocus(tvFocusFlow, tvFocusLinks, "playerSelect"),
                 ) {
                     PlayerButtonContent(
                         isLocalPlayer = isLocalPlayer,
@@ -99,6 +104,7 @@ fun PlayerSelectionButton(
                         onClick = onGroupButton,
                         colors = buttonColor,
                         border = border,
+                        modifier = Modifier.tvFocus(tvFocusFlow, tvFocusLinks, "groupButton"),
                     ) {
                         iconColor?.let {
                             Icon(
@@ -118,7 +124,7 @@ fun PlayerSelectionButton(
         )
     } else {
         OutlinedButton(
-            modifier = modifier,
+            modifier = modifier.tvFocus(tvFocusFlow, tvFocusLinks, "playerSelect"),
             onClick = onSelectPlayer,
         ) {
             PlayerButtonContent(

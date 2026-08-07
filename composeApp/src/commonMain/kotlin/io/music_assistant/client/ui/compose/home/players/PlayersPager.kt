@@ -104,6 +104,8 @@ import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
@@ -436,6 +438,43 @@ private fun ExpandedPlayerPage(
     // always exists in the current layout. Without this the initial focus request no-ops and the
     // remote goes dead.
     val compactTvFocusFlow = rememberTvFocusFlow()
+    // The switcher header (collapse / player pill / group icon / overflow) sits above both the
+    // full control cluster (queue collapsed) and the compact row (queue expanded), so its D-pad
+    // chain must live in whichever flow owns the visible transport below it. DOWN lands on the
+    // seek slider in the full layout and on the play/pause button in the compact layout; UP from
+    // the transport (slider -> pill, or compact play -> pill) returns to the switcher.
+    val headerTvFocusFlow = if (isQueueExpanded) compactTvFocusFlow else playerTvFocusFlow
+    val hasGroupChildren = player.childrenBinds.isNotEmpty()
+    val headerFocusLinks = remember(isQueueExpanded, hasGroupChildren) {
+        val downTarget = if (isQueueExpanded) "play" else "slider"
+        val pillLinks = if (hasGroupChildren) {
+            mapOf(
+                "playerSelect" to TvFocusFlow.Links(
+                    left = "collapse",
+                    right = "groupButton",
+                    down = downTarget,
+                ),
+                "groupButton" to TvFocusFlow.Links(
+                    left = "playerSelect",
+                    right = "more",
+                    down = downTarget,
+                ),
+                "more" to TvFocusFlow.Links(left = "groupButton", down = downTarget),
+            )
+        } else {
+            mapOf(
+                "playerSelect" to TvFocusFlow.Links(
+                    left = "collapse",
+                    right = "more",
+                    down = downTarget,
+                ),
+                "more" to TvFocusFlow.Links(left = "playerSelect", down = downTarget),
+            )
+        }
+        mapOf(
+            "collapse" to TvFocusFlow.Links(right = "playerSelect", down = downTarget),
+        ) + pillLinks
+    }
     LaunchedEffect(isCurrentPage, isQueueExpanded) {
         if (isCurrentPage) {
             val flow = if (isQueueExpanded) compactTvFocusFlow else playerTvFocusFlow
@@ -468,7 +507,10 @@ private fun ExpandedPlayerPage(
         CenteredThreeSlotRow(
             modifier = Modifier.fillMaxWidth(),
             start = {
-                IconButton(onClick = onClose) {
+                IconButton(
+                    modifier = Modifier.tvFocus(headerTvFocusFlow, headerFocusLinks, "collapse"),
+                    onClick = onClose,
+                ) {
                     Icon(
                         Icons.Default.ExpandMore,
                         "Collapse",
@@ -483,6 +525,8 @@ private fun ExpandedPlayerPage(
                     sendSpinState = sendspinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton,
+                    tvFocusFlow = headerTvFocusFlow,
+                    tvFocusLinks = headerFocusLinks,
                 )
             },
             end = {
@@ -507,6 +551,8 @@ private fun ExpandedPlayerPage(
                         onPlayerSelected = { moveToPlayer(it) },
                         onOpenDsp = onDspButton,
                         playlistActions = playlistActions,
+                        tvFocusFlow = headerTvFocusFlow,
+                        tvFocusLinks = headerFocusLinks,
                     )
                 }
             },
@@ -794,6 +840,8 @@ private fun PlayerOverflowMenu(
     onPlayerSelected: (String) -> Unit,
     onOpenDsp: (() -> Unit)?,
     playlistActions: PlaylistActions? = null,
+    tvFocusFlow: TvFocusFlow? = null,
+    tvFocusLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
     val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
@@ -934,7 +982,10 @@ private fun PlayerOverflowMenu(
             modifier = Modifier,
             options = menuOptions,
         ) { onClick ->
-            IconButton(onClick = onClick) {
+            IconButton(
+                modifier = Modifier.tvFocus(tvFocusFlow, tvFocusLinks, "more"),
+                onClick = onClick,
+            ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = stringResource(Res.string.cd_more),
