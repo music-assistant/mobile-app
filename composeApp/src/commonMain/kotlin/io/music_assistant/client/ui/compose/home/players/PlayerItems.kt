@@ -67,10 +67,13 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.PlayerColors
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
+import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.theme.favoriteTint
@@ -99,6 +102,7 @@ fun CompactPlayerItem(
     onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
     sendSpinState: SendspinState?,
+    tvFocusFlow: TvFocusFlow? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -230,6 +234,7 @@ fun CompactPlayerItem(
                 showSkip = true,
                 showSkipBack = onSelectPlayer != null,
                 tint = colors.controlTint,
+                tvFocusFlow = tvFocusFlow,
             )
         }
 
@@ -273,10 +278,23 @@ fun FullPlayerItem(
     livePositionFlow: Flow<Double>?,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
+    tvFocusFlow: TvFocusFlow? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
+
+    // Android TV: explicit D-pad chain for the control cluster (seek slider, transport row,
+    // favorite/lyrics). The transport row declares its own left/right links inside PlayerControls
+    // against the same flow; the slider and side buttons link vertically to the main play/pause.
+    val playerTvFocusFlow = tvFocusFlow ?: rememberTvFocusFlow()
+    val playerFocusLinks = remember {
+        mapOf(
+            "slider" to TvFocusFlow.Links(down = "play"),
+            "favorite" to TvFocusFlow.Links(right = "shuffle", down = "play"),
+            "lyrics" to TvFocusFlow.Links(left = "repeat", down = "play"),
+        )
+    }
 
     // Do not add padding here - title/subtitle should be full width.
     Column(
@@ -437,7 +455,8 @@ fun FullPlayerItem(
                         userDragPosition = null  // Clear drag state
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
+                    .tvFocus(playerTvFocusFlow, playerFocusLinks, "slider"),
                 thumb = {
                     sliderPosition.takeIf { duration != null }?.let {
                         SliderDefaults.Thumb(
@@ -615,7 +634,9 @@ fun FullPlayerItem(
             if (currentTrack?.canBeFavorited == true) {
                 val isFavorite = currentTrack.favorite == true
                 IconButton(
-                    modifier = Modifier.size(favoriteSlot),
+                    modifier = Modifier
+                        .size(favoriteSlot)
+                        .tvFocus(playerTvFocusFlow, playerFocusLinks, "favorite"),
                     onClick = { onFavoriteClick(currentTrack) },
                 ) {
                     Icon(
@@ -632,12 +653,15 @@ fun FullPlayerItem(
                 playerAction = playerAction,
                 mainButtonSize = 60.dp,
                 tint = controlTint,
+                tvFocusFlow = playerTvFocusFlow,
             )
             // Mirrors the heart slot: lyrics button when available, else a spacer
             // so the transport controls stay centered.
             if (lyricsAvailable) {
                 IconButton(
-                    modifier = Modifier.size(favoriteSlot),
+                    modifier = Modifier
+                        .size(favoriteSlot)
+                        .tvFocus(playerTvFocusFlow, playerFocusLinks, "lyrics"),
                     onClick = onLyricsClick,
                 ) {
                     Icon(

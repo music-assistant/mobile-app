@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
@@ -46,18 +44,17 @@ import org.junit.runner.RunWith
  * `FocusProperties` links rather than trusting geometry, so this test asserts the framework's own
  * key dispatch honours those links.
  *
- * Text-field targets are verified by *typing* rather than `assertIsFocused`: requestFocus() on a
- * TextField lands on the field's internal text node, which is editable but does not reflect its
- * focus in the outer node's semantics, so `assertIsFocused` cannot see it. Button/checkbox/tab
- * targets focus on their own node and are verified with `assertIsFocused`.
+ * On TV the config form uses the settings row pattern: host/port/remote-ID are [TvPreferenceRow]s
+ * that open the full-window [TvTextEditorDialog] when selected, and buttons/checkbox/tabs are
+ * ordinary focusable targets. Rows and buttons focus on their own node and are verified with
+ * `assertIsFocused`; the row editors are verified by *committing* — selecting the row, typing into
+ * the dialog's field, and pressing the keyboard's Done key, then checking the row's value state.
  *
- * Key finding on this hardware: a focused TextField swallows D-pad in its own key handling before
- * the framework can honour the `FocusProperties` links on the field's node, so D-pad navigation
- * out of a text field never moves. `TvFocusFlow.modifierFor` therefore also intercepts directional
- * keys in the preview phase and routes them through the same explicit links. The tests still
- * dismiss the system keyboard with BACK before pressing D-pad to leave a text field (the Leanback
- * keyboard on real TVs captures D-pad until dismissed) — mirroring the remote flow of
- * "type, then press Done, then navigate on".
+ * Key finding on this hardware: a focused TextField swallows D-pad in the system IME layer (the
+ * Leanback keyboard reopens and consumes the key), so D-pad navigation out of a text field never
+ * moves — in the main window *and* inside the editor dialog. Editors are therefore committed via
+ * the IME action (Done), and the dialog's own Done/Cancel buttons are secondary targets that the
+ * remote reaches by walking the focus chain, not the primary flow.
  */
 @RunWith(AndroidJUnit4::class)
 class SettingsConfigDpadNavigationTest {
@@ -80,7 +77,6 @@ class SettingsConfigDpadNavigationTest {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                         .testTag("SettingsColumn"),
                 ) {
                     Row(
@@ -133,33 +129,27 @@ class SettingsConfigDpadNavigationTest {
 
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
 
-        // DOWN leaves the button via its explicit link and lands on the host field; typing proves
-        // the field is focused.
+        // DOWN leaves the button via its explicit link and lands on the host row. On TV the host is
+        // a preference row: selecting it opens the full-window editor dialog, typing lands in its
+        // field, and the keyboard's Done key (KEYCODE_ENTER) commits back to the row.
         device.pressDPadDown()
-        composeTestRule.waitForIdle()
-        typeInto(device, android.view.KeyEvent.KEYCODE_H)
+        composeTestRule.waitForFocus("Config-Host")
+        editRowValue(device, android.view.KeyEvent.KEYCODE_H)
         check(host.value == "h") {
-            "DOWN did not focus the host field (value='${host.value}')"
+            "Host row editor did not commit (value='${host.value}')"
         }
+        composeTestRule.waitForFocus("Config-Host")
 
-        // Focusing the host field auto-opens the system keyboard, which may swallow D-pad until it
-        // is dismissed. Close it, then DOWN to the port field.
-        device.pressBack()
-        composeTestRule.waitForIdle()
-        Thread.sleep(500)
+        // DOWN to the port row; same editor flow.
         device.pressDPadDown()
-        composeTestRule.waitForIdle()
-        typeInto(device, android.view.KeyEvent.KEYCODE_1)
+        composeTestRule.waitForFocus("Config-Port")
+        editRowValue(device, android.view.KeyEvent.KEYCODE_1)
         check(port.value == "1") {
-            "DOWN did not focus the port field. host='${host.value}', port='${port.value}'"
+            "Port row editor did not commit. host='${host.value}', port='${port.value}'"
         }
+        composeTestRule.waitForFocus("Config-Port")
 
-        // Port focus re-opened the Leanback keyboard; dismiss it before the next D-pad press.
-        device.pressBack()
-        composeTestRule.waitForIdle()
-        Thread.sleep(500)
-
-        // DOWN through the non-text targets (no keyboard involved).
+        // DOWN through the non-text targets.
         device.pressDPadDown()
         composeTestRule.waitForFocus("Config-Tls")
         device.pressDPadDown()
@@ -173,27 +163,16 @@ class SettingsConfigDpadNavigationTest {
         device.pressDPadUp()
         composeTestRule.waitForFocus("Config-Tls")
 
-        // UP back onto the port field (typing proves focus), then on to host.
+        // UP back onto the port row and then the host row (the editor commits prove both are
+        // reachable and editable from their rows).
         device.pressDPadUp()
-        typeInto(device, android.view.KeyEvent.KEYCODE_2)
-        check(port.value.contains("2")) {
-            "UP did not focus the port field (value='${port.value}')"
-        }
-        device.pressBack()
-        composeTestRule.waitForIdle()
-        Thread.sleep(500)
+        composeTestRule.waitForFocus("Config-Port")
         device.pressDPadUp()
-        typeInto(device, android.view.KeyEvent.KEYCODE_X)
-        check(host.value.contains("x")) {
-            "UP did not focus the host field (value='${host.value}')"
-        }
+        composeTestRule.waitForFocus("Config-Host")
 
-        // UP from the first field lands on the right-hand tab (explicit link), and LEFT crosses
-        // to the left-hand tab. The final hop from the tab row back up to Exit App is geometric
-        // and deliberately not asserted here — that crossing is not what this test pins down.
-        device.pressBack()
-        composeTestRule.waitForIdle()
-        Thread.sleep(500)
+        // UP from the first row lands on the right-hand tab (explicit link), and LEFT crosses to
+        // the left-hand tab. The final hop from the tab row back up to Exit App is geometric and
+        // deliberately not asserted here — that crossing is not what this test pins down.
         device.pressDPadUp()
         composeTestRule.waitForFocus("Config-TabWebRTC")
         device.pressDPadLeft()
@@ -212,7 +191,6 @@ class SettingsConfigDpadNavigationTest {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                         .testTag("SettingsColumn"),
                 ) {
                     Row(
@@ -260,22 +238,21 @@ class SettingsConfigDpadNavigationTest {
 
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
 
-        // DOWN to the remote-ID field; typing proves it is focused.
+        // DOWN to the remote-ID row; selecting it opens the editor dialog and typing proves the
+        // field is focused once the edit is committed with the keyboard's Done key.
         device.pressDPadDown()
-        composeTestRule.waitForIdle()
-        typeInto(device, android.view.KeyEvent.KEYCODE_A)
+        composeTestRule.waitForFocus("Config-RemoteId")
+        editRowValue(device, android.view.KeyEvent.KEYCODE_A)
         check(remoteId.value != VALID_REMOTE_ID) {
-            "DOWN did not focus the remote-ID field (value='${remoteId.value}')"
+            "Remote-ID row editor did not commit (value='${remoteId.value}')"
         }
 
-        // Restore a valid ID so the Connect button is enabled for the rest of the flow.
+        // Restore a valid ID so the Connect button is enabled for the rest of the flow, and wait
+        // for focus to return to the row that opened the editor.
         composeTestRule.runOnUiThread { remoteId.value = VALID_REMOTE_ID }
         composeTestRule.waitForIdle()
+        composeTestRule.waitForFocus("Config-RemoteId")
 
-        // Dismiss the auto-opened Leanback keyboard before navigating on with D-pad.
-        device.pressBack()
-        composeTestRule.waitForIdle()
-        Thread.sleep(500)
         device.pressDPadDown()
         composeTestRule.waitForFocus("Config-Connect")
         device.pressDPadDown()
@@ -290,10 +267,28 @@ class SettingsConfigDpadNavigationTest {
         }
     }
 
-    private fun typeInto(device: UiDevice, keyCode: Int) {
+    /**
+     * The TV editor flow for a preference row: CENTER opens the full-window dialog, the typed key
+     * lands in its field, and the keyboard's Done key (KEYCODE_ENTER) commits back to the row.
+     * The dialog's field cannot receive D-pad on this hardware (the Leanback keyboard reopens and
+     * swallows it), so commit goes through the IME action, mirroring the real remote flow.
+     */
+    private fun editRowValue(device: UiDevice, keyCode: Int) {
+        device.pressDPadCenter()
+        composeTestRule.waitForIdle()
+        Thread.sleep(800)
         device.pressKeyCode(keyCode)
         composeTestRule.waitForIdle()
         Thread.sleep(300)
+        device.pressKeyCode(android.view.KeyEvent.KEYCODE_ENTER)
+        composeTestRule.waitForIdle()
+        Thread.sleep(500)
+        // The settings screen re-lands focus on the row that opened the editor via a
+        // `LaunchedEffect { delay(150); requestFocus(returnTo) }`. Under the test's virtual clock
+        // that delay only completes when the clock advances, so flush it here — otherwise it fires
+        // mid-way through the later D-pad navigation and yanks focus back to this row.
+        composeTestRule.mainClock.advanceTimeBy(200)
+        composeTestRule.waitForIdle()
     }
 
     companion object {

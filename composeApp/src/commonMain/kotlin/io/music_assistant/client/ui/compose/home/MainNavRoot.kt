@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
@@ -156,6 +157,23 @@ fun MainNavigationRoot(
 
     val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
 
+    // Queue panel visibility inside the expanded player. Hoisted from PlayersPager so the
+    // "players" deep link (notification / TV now-playing card) can land directly on the
+    // queue with the transport controls visible instead of the collapsed-controls view.
+    var isQueueExpanded by remember { mutableStateOf(false) }
+
+    // TV: the collapsed FloatingBar Surface is the D-pad's entry point to the player.
+    // Expanding removes that focused Surface and the expanded layout grants no focus
+    // (remote goes dead), so restore focus on the bar when collapsing back.
+    val floatingBarFocusRequester = remember { FocusRequester() }
+    var wasPlayerExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(playerExpanded) {
+        if (!playerExpanded && wasPlayerExpanded) {
+            floatingBarFocusRequester.requestFocus()
+        }
+        wasPlayerExpanded = playerExpanded
+    }
+
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
         rememberMainNavBackStack(MainNav.Library),
@@ -197,8 +215,12 @@ fun MainNavigationRoot(
             DeepLinkDestination.Players -> {
                 // Expand the now-playing layout over the current tab (the
                 // FloatingBar is global, so no tab switch needed). The pager
-                // renders its own empty state if no player is present.
+                // renders its own empty state if no player is present. Open the
+                // queue too: this path is the "return to a playing app" entry
+                // (notification tap / TV now-playing card), where the queue
+                // alongside the transport is the useful landing.
                 playerExpanded = true
+                isQueueExpanded = true
             }
         }
         deepLinkBus.consume(dest)
@@ -266,6 +288,7 @@ fun MainNavigationRoot(
                     FloatingBar(
                         expanded = playerExpanded,
                         onExpand = onExpandPlayer,
+                        focusRequester = floatingBarFocusRequester,
                         content = { expanded, contentPadding ->
                             PlayersPager(
                                 playerPagerState = playerPagerState,
@@ -276,15 +299,18 @@ fun MainNavigationRoot(
                                 expanded = expanded,
                                 onClose = { playerExpanded = false },
                                 contentPadding = contentPadding,
-                            ) { item ->
-                                multiBackStack.add(
-                                    MainNav.ItemDetails(
-                                        itemId = item.itemId,
-                                        mediaType = item.mediaType,
-                                        providerId = item.provider,
-                                    ),
-                                )
-                            }
+                                isQueueExpanded = isQueueExpanded,
+                                onExpandQueue = { isQueueExpanded = it },
+                                navigateToItem = { item ->
+                                    multiBackStack.add(
+                                        MainNav.ItemDetails(
+                                            itemId = item.itemId,
+                                            mediaType = item.mediaType,
+                                            providerId = item.provider,
+                                        ),
+                                    )
+                                },
+                            )
                         },
                     )
                 },

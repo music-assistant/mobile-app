@@ -223,7 +223,7 @@ private fun BuiltinAuthForm(
     Column {
         TextField(
             modifier = Modifier
-                .tvFocus(authFlow, authLinks, "username")
+                .tvFocus(authFlow, authLinks, "username", textField = true)
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
             value = username,
@@ -242,7 +242,7 @@ private fun BuiltinAuthForm(
 
         TextField(
             modifier = Modifier
-                .tvFocus(authFlow, authLinks, "password")
+                .tvFocus(authFlow, authLinks, "password", textField = true)
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
             value = password,

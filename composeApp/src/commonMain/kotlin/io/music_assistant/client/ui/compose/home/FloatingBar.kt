@@ -27,6 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.dp
 fun FloatingBar(
     expanded: Boolean = false,
     onExpand: (Boolean) -> Unit = {},
+    focusRequester: FocusRequester? = null,
     content: @Composable (expanded: Boolean, contentPadding: PaddingValues) -> Unit,
 ) {
     val clip by animateDpAsState(if (expanded) 0.dp else 16.dp)
@@ -47,6 +50,7 @@ fun FloatingBar(
     Surface(
         modifier = Modifier
             .testTag(FloatingBarSemantics.TAG)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .padding(paddingValues)
             .fillMaxWidth()
             .let {

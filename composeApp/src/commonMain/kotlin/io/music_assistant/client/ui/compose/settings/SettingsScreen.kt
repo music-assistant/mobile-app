@@ -73,12 +73,15 @@ import io.music_assistant.client.api.Defaults
 import io.music_assistant.client.auth.ServerIdMismatchException
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
+import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.TvPreferenceRow
+import io.music_assistant.client.ui.compose.common.TvTextEditorDialog
 import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
@@ -216,8 +219,9 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
             put("tabDirect", TvFocusFlow.Links(up = "exitApp", right = "tabWebRTC", down = "remoteId"))
             put("tabWebRTC", TvFocusFlow.Links(up = "exitApp", left = "tabDirect", down = "remoteId"))
             put("remoteId", TvFocusFlow.Links(up = "tabWebRTC", down = "connect"))
-            put("connect", TvFocusFlow.Links(up = "remoteId", down = "history", right = "history"))
-            put("history", TvFocusFlow.Links(up = "connect", left = "connect", down = "shareLogs"))
+            put("connect", TvFocusFlow.Links(up = "remoteId", down = "history", right = "scanQr"))
+            put("scanQr", TvFocusFlow.Links(left = "connect", right = "history", down = "history"))
+            put("history", TvFocusFlow.Links(up = "connect", left = "scanQr", down = "shareLogs"))
             put("shareLogs", TvFocusFlow.Links(up = "history"))
             if (hasCrashLog) {
                 put("shareLogs", TvFocusFlow.Links(up = "history", down = "crashShare"))
@@ -846,11 +850,29 @@ fun DirectConnectionContent(
     enabled: Boolean,
     onShowHistory: () -> Unit,
 ) {
+    if (isTelevisionDevice()) {
+        DirectConnectionContentTv(
+            configFlow = configFlow,
+            configLinks = configLinks,
+            ipAddress = ipAddress,
+            port = port,
+            isTls = isTls,
+            hasToken = hasToken,
+            onIpAddressChange = onIpAddressChange,
+            onPortChange = onPortChange,
+            onTlsChange = onTlsChange,
+            onConnect = onConnect,
+            enabled = enabled,
+            onShowHistory = onShowHistory,
+        )
+        return
+    }
+
     val focusManager = LocalFocusManager.current
 
     // Host input
     TextField(
-        modifier = configFlow.modifierFor("host", configLinks.getValue("host"))
+        modifier = configFlow.modifierFor("host", configLinks.getValue("host"), textField = true)
             .testTag("Config-Host")
             .fillMaxWidth()
             .padding(bottom = 12.dp),
@@ -871,7 +893,7 @@ fun DirectConnectionContent(
 
     // Port input
     TextField(
-        modifier = configFlow.modifierFor("port", configLinks.getValue("port"))
+        modifier = configFlow.modifierFor("port", configLinks.getValue("port"), textField = true)
             .testTag("Config-Port")
             .fillMaxWidth()
             .padding(bottom = 12.dp),
@@ -942,6 +964,146 @@ fun DirectConnectionContent(
     }
 }
 
+/**
+ * TV variant of [DirectConnectionContent]: the host/port fields become "label + value" rows
+ * ([TvPreferenceRow]) that open the full-window editor dialog ([TvTextEditorDialog]) when
+ * selected, so the form needs no inline text fields and fits any TV screen without scrolling.
+ */
+@Composable
+private fun DirectConnectionContentTv(
+    configFlow: TvFocusFlow,
+    configLinks: Map<String, TvFocusFlow.Links>,
+    ipAddress: String,
+    port: String,
+    isTls: Boolean,
+    hasToken: Boolean,
+    onIpAddressChange: (String) -> Unit,
+    onPortChange: (String) -> Unit,
+    onTlsChange: (Boolean) -> Unit,
+    onConnect: () -> Unit,
+    enabled: Boolean,
+    onShowHistory: () -> Unit,
+) {
+    var editing by remember { mutableStateOf<String?>(null) }
+    var returnTo by remember { mutableStateOf("host") }
+    // Set when a dialog opens; the LaunchedEffect below then knows to re-land focus after it
+    // closes, without stealing focus from the tabs on the form's first composition.
+    var dialogWasOpen by remember { mutableStateOf(false) }
+
+    if (editing != null) {
+        val editor = when (editing) {
+            "host" -> TvEditorSpec(
+                title = stringResource(Res.string.settings_server_host),
+                initialValue = ipAddress,
+                keyboardType = KeyboardType.Text,
+                validate = { true },
+                onSave = onIpAddressChange,
+            )
+
+            "port" -> TvEditorSpec(
+                title = stringResource(Res.string.settings_port),
+                initialValue = port,
+                keyboardType = KeyboardType.Number,
+                validate = { it.isEmpty() || it.toIntOrNull() != null },
+                onSave = onPortChange,
+            )
+
+            else -> null
+        }
+        if (editor != null) {
+            dialogWasOpen = true
+            TvTextEditorDialog(
+                title = editor.title,
+                initialValue = editor.initialValue,
+                keyboardType = editor.keyboardType,
+                validate = editor.validate,
+                onConfirm = { value ->
+                    editor.onSave(value)
+                    returnTo = editing ?: "host"
+                    editing = null
+                },
+                onDismiss = {
+                    returnTo = editing ?: "host"
+                    editing = null
+                },
+            )
+        }
+    }
+
+    // The dialog is its own window, so once it closes put D-pad focus back on the row that opened
+    // it (the platform does not restore it for us).
+    LaunchedEffect(editing) {
+        if (editing == null && dialogWasOpen) {
+            dialogWasOpen = false
+            delay(150)
+            configFlow.requestFocus(returnTo)
+        }
+    }
+
+    TvPreferenceRow(
+        label = stringResource(Res.string.settings_server_host),
+        value = ipAddress.ifBlank { "homeassistant.local" },
+        onClick = { editing = "host" },
+        focusModifier = configFlow.modifierFor("host", configLinks.getValue("host"))
+            .testTag("Config-Host"),
+    )
+    TvPreferenceRow(
+        label = stringResource(Res.string.settings_port),
+        value = port.ifBlank { "8095" },
+        onClick = { editing = "port" },
+        focusModifier = configFlow.modifierFor("port", configLinks.getValue("port"))
+            .testTag("Config-Port"),
+    )
+
+    // TLS toggle
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = isTls,
+            onCheckedChange = onTlsChange,
+            modifier = configFlow.modifierFor("tls", configLinks.getValue("tls"))
+                .testTag("Config-Tls"),
+        )
+        Text(stringResource(Res.string.settings_use_tls))
+    }
+
+    // Connect button + history icon
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Button(
+            modifier = configFlow.modifierFor("connect", configLinks.getValue("connect"))
+                .testTag("Config-Connect")
+                .weight(1f),
+            onClick = onConnect,
+            enabled = enabled,
+        ) {
+            Text(
+                if (hasToken) {
+                    stringResource(Res.string.settings_connect_saved)
+                } else {
+                    stringResource(Res.string.settings_connect)
+                },
+            )
+        }
+        IconButton(
+            onClick = onShowHistory,
+            modifier = configFlow.modifierFor("history", configLinks.getValue("history"))
+                .testTag("Config-History"),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.List,
+                contentDescription = stringResource(Res.string.cd_connection_history),
+            )
+        }
+    }
+}
+
 @Composable
 fun WebRTCConnectionContent(
     configFlow: TvFocusFlow,
@@ -953,6 +1115,20 @@ fun WebRTCConnectionContent(
     hasToken: Boolean,
     onShowHistory: () -> Unit,
 ) {
+    if (isTelevisionDevice()) {
+        WebRTCConnectionContentTv(
+            configFlow = configFlow,
+            configLinks = configLinks,
+            remoteId = remoteId,
+            onRemoteIdChange = onRemoteIdChange,
+            onConnect = onConnect,
+            sessionState = sessionState,
+            hasToken = hasToken,
+            onShowHistory = onShowHistory,
+        )
+        return
+    }
+
     val isInvalidRemoteId = remoteId.isNotBlank() && !RemoteId.isValid(remoteId)
     val isConnected = sessionState is SessionState.Connected.WebRTC
     val isConnecting = sessionState is SessionState.Connecting
@@ -976,8 +1152,7 @@ fun WebRTCConnectionContent(
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Remote ID input field
         TextField(
-            modifier = configFlow.modifierFor("remoteId", configLinks.getValue("remoteId"))
-                .testTag("Config-RemoteId")
+            modifier = configFlow.modifierFor("remoteId", configLinks.getValue("remoteId"), textField = true)
                 .weight(1f)
                 .padding(bottom = 8.dp),
             value = remoteId,
@@ -1059,6 +1234,130 @@ fun WebRTCConnectionContent(
                     else -> stringResource(Res.string.settings_connect_webrtc)
                 },
             )
+        }
+        IconButton(
+            onClick = onShowHistory,
+            modifier = configFlow.modifierFor("history", configLinks.getValue("history"))
+                .testTag("Config-History"),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.List,
+                contentDescription = stringResource(Res.string.cd_connection_history),
+            )
+        }
+    }
+
+    if (showQrDialog) {
+        QrScanDialog(
+            onDismiss = { showQrDialog = false },
+            onScanned = { scannedText ->
+                onRemoteIdChange(
+                    (scannedText.indexOf(WEB_RTC_URL_PREFIX) + WEB_RTC_URL_PREFIX.length)
+                        .takeIf { it < scannedText.length }
+                        ?.let { scannedText.substring(it) }
+                        ?: scannedText,
+                )
+                showQrDialog = false
+            },
+        )
+    }
+}
+
+/**
+ * TV variant of [WebRTCConnectionContent]: the remote-ID field becomes a [TvPreferenceRow] that
+ * opens the full-window editor dialog ([TvTextEditorDialog]) when selected, so the tab needs no
+ * inline text field and fits any TV screen without scrolling.
+ */
+@Composable
+private fun WebRTCConnectionContentTv(
+    configFlow: TvFocusFlow,
+    configLinks: Map<String, TvFocusFlow.Links>,
+    remoteId: String,
+    onRemoteIdChange: (String) -> Unit,
+    onConnect: () -> Unit,
+    sessionState: SessionState,
+    hasToken: Boolean,
+    onShowHistory: () -> Unit,
+) {
+    val isInvalidRemoteId = remoteId.isNotBlank() && !RemoteId.isValid(remoteId)
+    val isConnected = sessionState is SessionState.Connected.WebRTC
+    val isConnecting = sessionState is SessionState.Connecting
+    var showQrDialog by remember { mutableStateOf(false) }
+
+    var editing by remember { mutableStateOf<String?>(null) }
+    var dialogWasOpen by remember { mutableStateOf(false) }
+
+    if (editing != null) {
+        dialogWasOpen = true
+        TvTextEditorDialog(
+            title = stringResource(Res.string.settings_remote_id),
+            initialValue = remoteId,
+            keyboardType = KeyboardType.Text,
+            validate = { true },
+            onConfirm = { value ->
+                onRemoteIdChange(value)
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+
+    LaunchedEffect(editing) {
+        if (editing == null && dialogWasOpen) {
+            dialogWasOpen = false
+            delay(150)
+            configFlow.requestFocus("remoteId")
+        }
+    }
+
+    TvPreferenceRow(
+        label = stringResource(Res.string.settings_remote_id),
+        value = remoteId.ifBlank { "XXXXXXXX-XXXXX-XXXXX-XXXXXXXX" },
+        onClick = { editing = "remoteId" },
+        focusModifier = configFlow.modifierFor("remoteId", configLinks.getValue("remoteId"))
+            .testTag("Config-RemoteId"),
+    )
+    if (isInvalidRemoteId) {
+        Text(
+            text = stringResource(Res.string.settings_remote_id_invalid),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+    }
+
+    // Connect button + history icon
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Button(
+            modifier = configFlow.modifierFor("connect", configLinks.getValue("connect"))
+                .testTag("Config-Connect")
+                .weight(1f),
+            onClick = onConnect,
+            enabled = remoteId.isNotBlank() && !isInvalidRemoteId && !isConnected && !isConnecting,
+        ) {
+            Text(
+                when {
+                    isConnected -> stringResource(Res.string.settings_connected)
+                    isConnecting -> stringResource(Res.string.settings_connecting)
+                    hasToken -> stringResource(Res.string.settings_connect_saved)
+                    else -> stringResource(Res.string.settings_connect_webrtc)
+                },
+            )
+        }
+        if (hasCamera()) {
+            IconButton(
+                onClick = { showQrDialog = true },
+                modifier = configFlow.modifierFor("scanQr", configLinks["scanQr"] ?: TvFocusFlow.Links()),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.QrCodeScanner,
+                    contentDescription = stringResource(Res.string.cd_scan_qr_code),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
         IconButton(
             onClick = onShowHistory,
@@ -1280,115 +1579,32 @@ private fun SendspinSection(
             },
         )
 
-        // Text fields on top - disabled when player is running
-        TextField(
-            modifier = Modifier
-                .tvFocus(authFlow, authLinks, "playerName")
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            value = sendspinDeviceName,
-            onValueChange = { viewModel.setSendspinDeviceName(it) },
-            label = { Text(stringResource(Res.string.settings_player_name)) },
-            singleLine = true,
-            enabled = !sendspinEnabled,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-            ),
-        )
-
-        // Codec selection
-        OverflowMenuButton(
-            options = Codecs.list.map { item ->
-                OverflowMenuOption(
-                    title = item.localizedTitle(),
-                ) { viewModel.setSendspinCodecPreference(item) }
-            },
-            buttonContent = { onClick ->
-                Row(
-                    modifier = Modifier
-                        .tvFocus(authFlow, authLinks, "codec")
-                        .fillMaxWidth()
-                        .clickable(enabled = !sendspinEnabled) { onClick() }
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(Res.string.settings_codec_preference),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = sendspinCodecPreference.localizedTitle(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (sendspinEnabled) {
-                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                            } else {
-                                MaterialTheme.colorScheme.onBackground
-                            },
-                        )
-                    }
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = stringResource(Res.string.cd_select_codec),
-                        tint = if (sendspinEnabled) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            },
-        )
-
-        // Custom connection toggle
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(
-                checked = sendspinUseCustomConnection,
-                onCheckedChange = { viewModel.setSendspinUseCustomConnection(it) },
-                enabled = !sendspinEnabled,
-                modifier = Modifier.tvFocus(authFlow, authLinks, "customToggle"),
+        if (isTelevisionDevice() && authFlow != null) {
+            SendspinSectionTv(
+                viewModel = viewModel,
+                authFlow = authFlow,
+                authLinks = authLinks,
+                sendspinEnabled = sendspinEnabled,
+                sendspinDeviceName = sendspinDeviceName,
+                sendspinUseCustomConnection = sendspinUseCustomConnection,
+                sendspinPort = sendspinPort,
+                sendspinPath = sendspinPath,
+                sendspinCodecPreference = sendspinCodecPreference,
             )
-            Text(
-                text = stringResource(Res.string.settings_custom_sendspin),
-                color = if (sendspinEnabled) {
-                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                } else {
-                    MaterialTheme.colorScheme.onBackground
-                },
-            )
-        }
-
-        // Connection fields (only shown when using custom connection)
-        if (sendspinUseCustomConnection) {
-            val sendspinHost by viewModel.sendspinHost.collectAsStateWithLifecycle()
-            val sendspinUseTls by viewModel.sendspinUseTls.collectAsStateWithLifecycle()
-
+        } else {
+            // Text fields on top - disabled when player is running
             TextField(
                 modifier = Modifier
-                    .tvFocus(authFlow, authLinks, "customHost")
+                    .tvFocus(authFlow, authLinks, "playerName")
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                value = sendspinHost,
-                onValueChange = { viewModel.setSendspinHost(it) },
-                label = { Text(stringResource(Res.string.settings_host)) },
+                value = sendspinDeviceName,
+                onValueChange = { viewModel.setSendspinDeviceName(it) },
+                label = { Text(stringResource(Res.string.settings_player_name)) },
                 singleLine = true,
                 enabled = !sendspinEnabled,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 colors = TextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onBackground,
                     unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
@@ -1396,56 +1612,54 @@ private fun SendspinSection(
                 ),
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                TextField(
-                    modifier = Modifier
-                        .tvFocus(authFlow, authLinks, "customPort")
-                        .weight(1f)
-                        .padding(bottom = 12.dp),
-                    value = sendspinPort.toString(),
-                    onValueChange = {
-                        it.toIntOrNull()?.let { port -> viewModel.setSendspinPort(port) }
-                    },
-                    label = { Text(stringResource(Res.string.settings_port_default)) },
-                    singleLine = true,
-                    enabled = !sendspinEnabled,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Next,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Next) },
-                    ),
-                    colors = TextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    ),
-                )
+            // Codec selection
+            OverflowMenuButton(
+                options = Codecs.list.map { item ->
+                    OverflowMenuOption(
+                        title = item.localizedTitle(),
+                    ) { viewModel.setSendspinCodecPreference(item) }
+                },
+                buttonContent = { onClick ->
+                    Row(
+                        modifier = Modifier
+                            .tvFocus(authFlow, authLinks, "codec")
+                            .fillMaxWidth()
+                            .clickable(enabled = !sendspinEnabled) { onClick() }
+                            .padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(Res.string.settings_codec_preference),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = sendspinCodecPreference.localizedTitle(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (sendspinEnabled) {
+                                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                } else {
+                                    MaterialTheme.colorScheme.onBackground
+                                },
+                            )
+                        }
+                        Icon(
+                            modifier = Modifier.size(24.dp),
+                            imageVector = Icons.Default.ExpandMore,
+                            contentDescription = stringResource(Res.string.cd_select_codec),
+                            tint = if (sendspinEnabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                },
+            )
 
-                TextField(
-                    modifier = Modifier
-                        .tvFocus(authFlow, authLinks, "customPath")
-                        .weight(1f)
-                        .padding(bottom = 12.dp),
-                    value = sendspinPath,
-                    onValueChange = { viewModel.setSendspinPath(it) },
-                    label = { Text(stringResource(Res.string.settings_path)) },
-                    singleLine = true,
-                    enabled = !sendspinEnabled,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                    colors = TextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    ),
-                )
-            }
-
+            // Custom connection toggle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1453,13 +1667,13 @@ private fun SendspinSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(
-                    checked = sendspinUseTls,
-                    onCheckedChange = { viewModel.setSendspinUseTls(it) },
+                    checked = sendspinUseCustomConnection,
+                    onCheckedChange = { viewModel.setSendspinUseCustomConnection(it) },
                     enabled = !sendspinEnabled,
-                    modifier = Modifier.tvFocus(authFlow, authLinks, "customTls"),
+                    modifier = Modifier.tvFocus(authFlow, authLinks, "customToggle"),
                 )
                 Text(
-                    text = stringResource(Res.string.settings_use_tls_wss),
+                    text = stringResource(Res.string.settings_custom_sendspin),
                     color = if (sendspinEnabled) {
                         MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     } else {
@@ -1467,30 +1681,362 @@ private fun SendspinSection(
                     },
                 )
             }
-        }
 
-        // Toggle button on the bottom
-        if (sendspinEnabled) {
-            OutlinedButton(
-                modifier = Modifier
-                    .tvFocus(authFlow, authLinks, "playerToggle")
-                    .fillMaxWidth(),
-                onClick = { viewModel.setSendspinEnabled(false) },
-            ) {
-                Text(stringResource(Res.string.settings_disable_local_player))
+            // Connection fields (only shown when using custom connection)
+            if (sendspinUseCustomConnection) {
+                val sendspinHost by viewModel.sendspinHost.collectAsStateWithLifecycle()
+                val sendspinUseTls by viewModel.sendspinUseTls.collectAsStateWithLifecycle()
+
+                TextField(
+                    modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "customHost")
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    value = sendspinHost,
+                    onValueChange = { viewModel.setSendspinHost(it) },
+                    label = { Text(stringResource(Res.string.settings_host)) },
+                    singleLine = true,
+                    enabled = !sendspinEnabled,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    ),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    ),
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    TextField(
+                        modifier = Modifier
+                            .tvFocus(authFlow, authLinks, "customPort")
+                            .weight(1f)
+                            .padding(bottom = 12.dp),
+                        value = sendspinPort.toString(),
+                        onValueChange = {
+                            it.toIntOrNull()?.let { port -> viewModel.setSendspinPort(port) }
+                        },
+                        label = { Text(stringResource(Res.string.settings_port_default)) },
+                        singleLine = true,
+                        enabled = !sendspinEnabled,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Next) },
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        ),
+                    )
+
+                    TextField(
+                        modifier = Modifier
+                            .tvFocus(authFlow, authLinks, "customPath")
+                            .weight(1f)
+                            .padding(bottom = 12.dp),
+                        value = sendspinPath,
+                        onValueChange = { viewModel.setSendspinPath(it) },
+                        label = { Text(stringResource(Res.string.settings_path)) },
+                        singleLine = true,
+                        enabled = !sendspinEnabled,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            disabledTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        ),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = sendspinUseTls,
+                        onCheckedChange = { viewModel.setSendspinUseTls(it) },
+                        enabled = !sendspinEnabled,
+                        modifier = Modifier.tvFocus(authFlow, authLinks, "customTls"),
+                    )
+                    Text(
+                        text = stringResource(Res.string.settings_use_tls_wss),
+                        color = if (sendspinEnabled) {
+                            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        } else {
+                            MaterialTheme.colorScheme.onBackground
+                        },
+                    )
+                }
             }
-        } else {
-            Button(
-                modifier = Modifier
-                    .tvFocus(authFlow, authLinks, "playerToggle")
-                    .fillMaxWidth(),
-                onClick = { viewModel.setSendspinEnabled(true) },
-            ) {
-                Text(stringResource(Res.string.settings_enable_local_player))
+
+            // Toggle button on the bottom
+            if (sendspinEnabled) {
+                OutlinedButton(
+                    modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "playerToggle")
+                        .fillMaxWidth(),
+                    onClick = { viewModel.setSendspinEnabled(false) },
+                ) {
+                    Text(stringResource(Res.string.settings_disable_local_player))
+                }
+            } else {
+                Button(
+                    modifier = Modifier
+                        .tvFocus(authFlow, authLinks, "playerToggle")
+                        .fillMaxWidth(),
+                    onClick = { viewModel.setSendspinEnabled(true) },
+                ) {
+                    Text(stringResource(Res.string.settings_enable_local_player))
+                }
             }
         }
     }
 }
+
+/**
+ * Android TV version of the local-player card: rows instead of inline text fields. Each text value
+ * opens [TvTextEditorDialog] on select, so the card stays short enough to fit a 1080p screen even
+ * with the custom-connection fields enabled (inline fields overflowed, and TV can't scroll).
+ */
+@Composable
+private fun SendspinSectionTv(
+    viewModel: SettingsViewModel,
+    authFlow: TvFocusFlow,
+    authLinks: Map<String, TvFocusFlow.Links>,
+    sendspinEnabled: Boolean,
+    sendspinDeviceName: String,
+    sendspinUseCustomConnection: Boolean,
+    sendspinPort: Int,
+    sendspinPath: String,
+    sendspinCodecPreference: Codec,
+) {
+    val sendspinHost by viewModel.sendspinHost.collectAsStateWithLifecycle()
+    val sendspinUseTls by viewModel.sendspinUseTls.collectAsStateWithLifecycle()
+
+    var editing by remember { mutableStateOf<String?>(null) }
+    var returnTo by remember { mutableStateOf("playerName") }
+
+    if (editing != null) {
+        val editor = when (editing) {
+            "playerName" -> TvEditorSpec(
+                title = stringResource(Res.string.settings_player_name),
+                initialValue = sendspinDeviceName,
+                keyboardType = KeyboardType.Text,
+                validate = { true },
+                onSave = { viewModel.setSendspinDeviceName(it) },
+            )
+            "customHost" -> TvEditorSpec(
+                title = stringResource(Res.string.settings_host),
+                initialValue = sendspinHost,
+                keyboardType = KeyboardType.Text,
+                validate = { true },
+                onSave = { viewModel.setSendspinHost(it) },
+            )
+            "customPort" -> TvEditorSpec(
+                title = stringResource(Res.string.settings_port),
+                initialValue = sendspinPort.toString(),
+                keyboardType = KeyboardType.Number,
+                validate = { it.toIntOrNull() != null },
+                onSave = { it.toIntOrNull()?.let { port -> viewModel.setSendspinPort(port) } },
+            )
+            "customPath" -> TvEditorSpec(
+                title = stringResource(Res.string.settings_path),
+                initialValue = sendspinPath,
+                keyboardType = KeyboardType.Text,
+                validate = { true },
+                onSave = { viewModel.setSendspinPath(it) },
+            )
+            else -> null
+        }
+        if (editor != null) {
+            TvTextEditorDialog(
+                title = editor.title,
+                initialValue = editor.initialValue,
+                keyboardType = editor.keyboardType,
+                validate = editor.validate,
+                onConfirm = { value ->
+                    editor.onSave(value)
+                    returnTo = editing ?: "playerName"
+                    editing = null
+                },
+                onDismiss = {
+                    returnTo = editing ?: "playerName"
+                    editing = null
+                },
+            )
+        }
+    }
+
+    // The dialog is its own window, so once it closes put D-pad focus back on the row that
+    // opened it (the platform does not restore it for us).
+    LaunchedEffect(editing) {
+        if (editing == null) {
+            delay(150)
+            authFlow.requestFocus(returnTo)
+        }
+    }
+
+    TvPreferenceRow(
+        label = stringResource(Res.string.settings_player_name),
+        value = sendspinDeviceName,
+        onClick = if (sendspinEnabled) null else ({ editing = "playerName" }),
+        focusModifier = Modifier.tvFocus(authFlow, authLinks, "playerName"),
+    )
+
+    // Codec selection
+    OverflowMenuButton(
+        options = Codecs.list.map { item ->
+            OverflowMenuOption(
+                title = item.localizedTitle(),
+            ) { viewModel.setSendspinCodecPreference(item) }
+        },
+        buttonContent = { onClick ->
+            Row(
+                modifier = Modifier
+                    .tvFocus(authFlow, authLinks, "codec")
+                    .fillMaxWidth()
+                    .clickable(enabled = !sendspinEnabled) { onClick() }
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(Res.string.settings_codec_preference),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = sendspinCodecPreference.localizedTitle(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (sendspinEnabled) {
+                            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        } else {
+                            MaterialTheme.colorScheme.onBackground
+                        },
+                    )
+                }
+                Icon(
+                    modifier = Modifier.size(24.dp),
+                    imageVector = Icons.Default.ExpandMore,
+                    contentDescription = stringResource(Res.string.cd_select_codec),
+                    tint = if (sendspinEnabled) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        },
+    )
+
+    // Custom connection toggle
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = sendspinUseCustomConnection,
+            onCheckedChange = { viewModel.setSendspinUseCustomConnection(it) },
+            enabled = !sendspinEnabled,
+            modifier = Modifier.tvFocus(authFlow, authLinks, "customToggle"),
+        )
+        Text(
+            text = stringResource(Res.string.settings_custom_sendspin),
+            color = if (sendspinEnabled) {
+                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            } else {
+                MaterialTheme.colorScheme.onBackground
+            },
+        )
+    }
+
+    // Connection rows (only shown when using custom connection)
+    if (sendspinUseCustomConnection) {
+        TvPreferenceRow(
+            label = stringResource(Res.string.settings_host),
+            value = sendspinHost,
+            onClick = if (sendspinEnabled) null else ({ editing = "customHost" }),
+            focusModifier = Modifier.tvFocus(authFlow, authLinks, "customHost"),
+        )
+        TvPreferenceRow(
+            label = stringResource(Res.string.settings_port),
+            value = sendspinPort.toString(),
+            onClick = if (sendspinEnabled) null else ({ editing = "customPort" }),
+            focusModifier = Modifier.tvFocus(authFlow, authLinks, "customPort"),
+        )
+        TvPreferenceRow(
+            label = stringResource(Res.string.settings_path),
+            value = sendspinPath,
+            onClick = if (sendspinEnabled) null else ({ editing = "customPath" }),
+            focusModifier = Modifier.tvFocus(authFlow, authLinks, "customPath"),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = sendspinUseTls,
+                onCheckedChange = { viewModel.setSendspinUseTls(it) },
+                enabled = !sendspinEnabled,
+                modifier = Modifier.tvFocus(authFlow, authLinks, "customTls"),
+            )
+            Text(
+                text = stringResource(Res.string.settings_use_tls_wss),
+                color = if (sendspinEnabled) {
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                } else {
+                    MaterialTheme.colorScheme.onBackground
+                },
+            )
+        }
+    }
+
+    // Toggle button on the bottom
+    if (sendspinEnabled) {
+        OutlinedButton(
+            modifier = Modifier
+                .tvFocus(authFlow, authLinks, "playerToggle")
+                .fillMaxWidth(),
+            onClick = { viewModel.setSendspinEnabled(false) },
+        ) {
+            Text(stringResource(Res.string.settings_disable_local_player))
+        }
+    } else {
+        Button(
+            modifier = Modifier
+                .tvFocus(authFlow, authLinks, "playerToggle")
+                .fillMaxWidth(),
+            onClick = { viewModel.setSendspinEnabled(true) },
+        ) {
+            Text(stringResource(Res.string.settings_enable_local_player))
+        }
+    }
+}
+
+private data class TvEditorSpec(
+    val title: String,
+    val initialValue: String,
+    val keyboardType: KeyboardType,
+    val validate: (String) -> Boolean,
+    val onSave: (String) -> Unit,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -54,6 +54,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -102,6 +103,7 @@ import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
+import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
@@ -111,6 +113,7 @@ import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.LrcParser
 import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
@@ -154,6 +157,8 @@ fun PlayersPager(
     onClose: () -> Unit,
     contentPadding: PaddingValues,
     navigateToItem: (AppMediaItem) -> Unit,
+    isQueueExpanded: Boolean,
+    onExpandQueue: (Boolean) -> Unit,
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         val moveToPlayer: (String) -> Unit = { id: String ->
@@ -171,7 +176,6 @@ fun PlayersPager(
                     action,
                 )
             }
-        var isQueueExpanded by remember { mutableStateOf(false) }
         // Extract playerData list to ensure proper recomposition
         val playerDataList = state.playerData
         // Select-player dialog is hoisted out of the pager so that reordering-induced
@@ -317,7 +321,7 @@ fun PlayersPager(
                                 isExpandedScreen = isExpandedScreen,
                                 sendspinState = state.sendspinState,
                                 isQueueExpanded = isQueueExpanded,
-                                onExpandQueue = { isQueueExpanded = it },
+                                onExpandQueue = onExpandQueue,
                                 contentPadding = contentPadding,
                                 isCurrentPage = isCurrentPage,
                                 navigateToItem = navigateToItem,
@@ -422,6 +426,31 @@ private fun ExpandedPlayerPage(
     val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
     // Minimum gesture speed (px/s) to count as a fling rather than a slow drag.
     val minFlingVelocityPx = with(LocalDensity.current) { 1000.dp.toPx() }
+    // TV: expanding the FloatingBar replaces the collapsed (focused) Surface with this layout,
+    // which grants no focus on its own — the remote would go dead. Land initial focus on the
+    // main play/pause control so transport is immediately reachable, re-requesting whenever this
+    // player becomes the current pager page.
+    val playerTvFocusFlow = rememberTvFocusFlow()
+    // With the queue open the full control cluster (FullPlayerItem) is hidden and replaced by
+    // CompactPlayerItem, whose transport row renders against its own flow so the "play" target
+    // always exists in the current layout. Without this the initial focus request no-ops and the
+    // remote goes dead.
+    val compactTvFocusFlow = rememberTvFocusFlow()
+    LaunchedEffect(isCurrentPage, isQueueExpanded) {
+        if (isCurrentPage) {
+            val flow = if (isQueueExpanded) compactTvFocusFlow else playerTvFocusFlow
+            // The visible control cluster swaps with the queue toggle, so the previous layout's
+            // "play" node is gone. On a cold start the window may also not hold focus when this
+            // first runs, and a single requestFocus can no-op and leave the remote dead. Retry
+            // until focus actually lands on the play/pause control.
+            flow.focusedTarget = null
+            var attempts = 0
+            while (attempts++ < 30 && flow.focusedTarget == null) {
+                flow.requestFocus("play")
+                delay(100)
+            }
+        }
+    }
     val queueCollapseNestedScroll = remember(onExpandQueue, minFlingVelocityPx) {
         object : NestedScrollConnection {
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
@@ -504,6 +533,7 @@ private fun ExpandedPlayerPage(
                     onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
                     showAdditionalControls = isExpandedScreen,
                     sendSpinState = sendspinState,
+                    tvFocusFlow = compactTvFocusFlow,
                 )
             }
         }
@@ -579,6 +609,7 @@ private fun ExpandedPlayerPage(
                             lyricsAvailable = lyricsAvailable,
                             onLyricsClick = onLyricsClick,
                             livePositionFlow = livePositionFlow,
+                            tvFocusFlow = playerTvFocusFlow,
                         )
                     }
                 }
