@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -432,6 +433,10 @@ fun FullPlayerItem(
         val sliderPosition =
             if (poweredOff) 0f else userDragPosition ?: releasedSeekPosition ?: displayPosition
 
+        // Android TV: enlarge the thumb while the slider holds D-pad focus so seeking is visibly
+        // armed (Material3 shows no focus change on a slider, so a focused slider reads as inert).
+        var sliderFocused by remember { mutableStateOf(false) }
+
         val progressSliderColors = SliderDefaults.colors().copy(
             thumbColor = controlTint,
             activeTrackColor = controlTint,
@@ -440,29 +445,44 @@ fun FullPlayerItem(
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING),
         ) {
-            Slider(
-                value = sliderPosition,
-                valueRange = duration?.let { 0f..it } ?: 0f..1f,
-                enabled = displayPosition.takeIf { duration != null } != null,
-                onValueChange = {
-                    userDragPosition = it  // Track drag position locally
+            Box(
+                modifier = Modifier.fillMaxWidth().onFocusChanged { state ->
+                    // The Slider applies its own focusable() outside the passed modifier chain, so a
+                    // focusRequest routed through tvFocus lands on the slider's internal focus node
+                    // rather than on our modifiers — onFocusChanged attached to the Slider never
+                    // fires. Observe the wrapping Box instead: hasFocus is true whenever the focused
+                    // slider is a descendant of this Box.
+                    sliderFocused = state.hasFocus
                 },
-                onValueChangeFinished = {
-                    userDragPosition?.let { seekPos ->
-                        // Match the server/tracker whole-second seek target to avoid thumb snapback.
-                        val seekSeconds = seekPos.toLong()
-                        releasedSeekPosition = seekSeconds.toFloat()
-                        playerAction(item, PlayerAction.SeekTo(seekSeconds))
-                        userDragPosition = null  // Clear drag state
-                    }
-                },
+            ) {
+                Slider(
+                    value = sliderPosition,
+                    valueRange = duration?.let { 0f..it } ?: 0f..1f,
+                    enabled = displayPosition.takeIf { duration != null } != null,
+                    onValueChange = {
+                        userDragPosition = it  // Track drag position locally
+                    },
+                    onValueChangeFinished = {
+                        userDragPosition?.let { seekPos ->
+                            // Match the server/tracker whole-second seek target to avoid thumb snapback.
+                            val seekSeconds = seekPos.toLong()
+                            releasedSeekPosition = seekSeconds.toFloat()
+                            playerAction(item, PlayerAction.SeekTo(seekSeconds))
+                            userDragPosition = null  // Clear drag state
+                        }
+                    },
                 modifier = Modifier.fillMaxWidth()
+                    .height(26.dp)
                     .tvFocus(playerTvFocusFlow, playerFocusLinks, "slider"),
-                thumb = {
-                    sliderPosition.takeIf { duration != null }?.let {
+                    thumb = {
+                        sliderPosition.takeIf { duration != null }?.let {
                         SliderDefaults.Thumb(
                             interactionSource = remember { MutableInteractionSource() },
-                            thumbSize = DpSize(16.dp, 16.dp),
+                            thumbSize = if (sliderFocused) {
+                                DpSize(26.dp, 26.dp)
+                            } else {
+                                DpSize(16.dp, 16.dp)
+                            },
                             colors = progressSliderColors,
                         )
                     }
@@ -500,6 +520,7 @@ fun FullPlayerItem(
                     }
                 },
             )
+            }
 
             // Duration labels
             val currentQueueItem = item.queueInfo?.currentItem

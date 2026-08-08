@@ -1,17 +1,28 @@
 package io.music_assistant.client.ui.compose.common
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /**
  * Explicit D-pad navigation between a fixed set of focus targets.
@@ -124,4 +135,28 @@ fun Modifier.tvFocus(
     flow.modifierFor(id, links.getValue(id), textField)
 } else {
     this
+}
+
+/**
+ * Android TV: draw a visible focus ring around a node while it holds D-pad focus. Material3's
+ * default focus indication is a subtle tint that reads as a mere background shade change on a TV
+ * in a lit room (the settings connection-method tabs), so focused controls that need to be
+ * discoverable get an explicit outline instead. The ring only affects the focused state and draws
+ * within the node's existing bounds (no layout shift).
+ */
+fun Modifier.tvFocusRing(
+    focusedColor: Color? = null,
+    thickness: Dp = 2.dp,
+    shape: Shape = RoundedCornerShape(4.dp),
+): Modifier = composed {
+    val color = focusedColor ?: MaterialTheme.colorScheme.primary
+    var isFocused by remember { mutableStateOf(false) }
+    onFocusChanged { state -> isFocused = state.isFocused }
+        .then(
+            if (isFocused) {
+                Modifier.border(thickness, color, shape)
+            } else {
+                Modifier
+            },
+        )
 }

@@ -47,6 +47,7 @@ import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.TvTextInputGuard
 import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.ui.compose.common.tvSelectToEdit
 import io.music_assistant.client.utils.isTelevisionDevice
 import musicassistantclient.composeapp.generated.resources.Res
@@ -135,7 +136,9 @@ fun AuthenticationPanel(
                             "builtin" -> Tab(
                                 selected = index == selectedTab,
                                 onClick = { selectedTab = index },
-                                modifier = Modifier.tvFocus(authFlow, authLinks, "loginTab"),
+                                modifier = Modifier
+                                    .tvFocus(authFlow, authLinks, "loginTab")
+                                    .tvFocusRing(),
                                 text = {
                                     Text("Music Assistant")
                                 },
@@ -144,6 +147,7 @@ fun AuthenticationPanel(
                             "homeassistant" -> Tab(
                                 selected = index == selectedTab,
                                 onClick = { selectedTab = index },
+                                modifier = Modifier.tvFocusRing(),
                                 text = {
                                     Text("Home Assistant")
                                 },

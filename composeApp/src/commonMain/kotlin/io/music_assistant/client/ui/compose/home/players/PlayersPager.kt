@@ -63,6 +63,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -667,6 +668,10 @@ private fun ExpandedPlayerPage(
                         var currentVolume by remember(player.player.currentVolume) {
                             mutableStateOf(player.player.currentVolume)
                         }
+                        // Android TV: enlarge the thumb while the slider holds D-pad focus so
+                        // adjusting volume is visibly armed (Material3 shows no focus change on a
+                        // slider, so a focused slider reads as inert).
+                        var volumeSliderFocused by remember { mutableStateOf(false) }
                         val controlTint = colors.controlTint
                         val volumeSliderColors = SliderDefaults.colors().copy(
                             thumbColor = controlTint,
@@ -733,7 +738,11 @@ private fun ExpandedPlayerPage(
                                 },
                             ) {
                                 Slider(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onFocusChanged { state ->
+                                            volumeSliderFocused = state.isFocused
+                                        },
                                     value = currentVolume,
                                     valueRange = 0f..100f,
                                     onValueChange = {
@@ -752,7 +761,11 @@ private fun ExpandedPlayerPage(
                                     thumb = {
                                         SliderDefaults.Thumb(
                                             interactionSource = remember { MutableInteractionSource() },
-                                            thumbSize = DpSize(16.dp, 16.dp),
+                                            thumbSize = if (volumeSliderFocused) {
+                                                DpSize(26.dp, 26.dp)
+                                            } else {
+                                                DpSize(16.dp, 16.dp)
+                                            },
                                             colors = volumeSliderColors,
                                         )
                                     },

@@ -88,6 +88,7 @@ import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -311,8 +312,13 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     // explicit links below still move the remote into the fields.
     val isConnected = sessionState is SessionState.Connected
     val tvFlow = if (isConnected) authFlow else configFlow
+    // Land initial focus on a non-text control. Right after a successful connect that's the auth
+    // provider tab row (progress toward the next expected step, not the destructive Disconnect
+    // button); when already authenticated there is no tab row, so the top of the connected form
+    // (Disconnect) is the sensible entry. On the config form it's the connection-method tab row.
     val primaryTarget = when {
         !isTv -> null
+        sessionState is SessionState.Connected && !isAuthenticated -> "loginTab"
         sessionState is SessionState.Connected -> "disconnect"
         sessionState is SessionState.Disconnected && !isAuthenticated -> "tabDirect"
         else -> null
@@ -737,6 +743,7 @@ private fun ConnectionMethodTabs(
                 selected = selectedTab == 0,
                 onClick = { viewModel.setPreferredConnectionMethod("direct") },
                 modifier = configFlow.modifierFor("tabDirect", configLinks.getValue("tabDirect"))
+                    .tvFocusRing()
                     .testTag("Config-TabDirect"),
                 text = { Text(stringResource(Res.string.settings_connection_direct)) },
             )
@@ -744,6 +751,7 @@ private fun ConnectionMethodTabs(
                 selected = selectedTab == 1,
                 onClick = { viewModel.setPreferredConnectionMethod("webrtc") },
                 modifier = configFlow.modifierFor("tabWebRTC", configLinks.getValue("tabWebRTC"))
+                    .tvFocusRing()
                     .testTag("Config-TabWebRTC"),
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
