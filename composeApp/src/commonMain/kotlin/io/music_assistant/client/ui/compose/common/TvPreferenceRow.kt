@@ -1,17 +1,20 @@
 package io.music_assistant.client.ui.compose.common
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -25,16 +28,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import io.music_assistant.client.ui.compose.common.TvFocusFlow.Links
 import kotlinx.coroutines.delay
 import musicassistantclient.composeapp.generated.resources.Res
@@ -107,8 +109,11 @@ fun TvPreferenceRow(
  * dialog's own window (so D-pad and the Leanback keyboard can't collide with the settings screen),
  * and Done commits while Back/Cancel discards. The settings screen re-lands focus on the row that
  * opened the editor when this closes.
+ *
+ * The dialog owns its window and anchors the card just above the on-screen keyboard via
+ * [imePadding]: some TV keypads (e.g. a leanback numeric pad) are tall enough that a centered
+ * dialog would leave its Cancel button underneath them.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TvTextEditorDialog(
     title: String,
@@ -126,7 +131,7 @@ fun TvTextEditorDialog(
         "cancel" to Links(up = "input", right = "done"),
     )
 
-    // Land focus on the field (the Leanback keyboard opens with it). This hardware can drop the
+    // Land focus on the field (the on-screen keyboard opens with it). This hardware can drop the
     // first requestFocus, so retry like the settings screen does.
     LaunchedEffect(Unit) {
         var attempt = 0
@@ -143,52 +148,64 @@ fun TvTextEditorDialog(
         }
     }
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Column(
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.32f)),
+            contentAlignment = Alignment.BottomCenter,
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            TextField(
-                modifier = flow.modifierFor("input", links.getValue("input"), textField = true)
-                    .fillMaxWidth(),
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = keyboardType,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(onDone = { commit() }),
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                ),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(16.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedButton(
-                    modifier = flow.modifierFor("cancel", links.getValue("cancel")),
-                    onClick = onDismiss,
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                TextField(
+                    modifier = flow.modifierFor("input", links.getValue("input"), textField = true)
+                        .fillMaxWidth(),
+                    value = value,
+                    onValueChange = { value = it },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = keyboardType,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { commit() }),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    ),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 ) {
-                    Text(stringResource(Res.string.common_cancel))
-                }
-                Button(
-                    modifier = flow.modifierFor("done", links.getValue("done")),
-                    onClick = { commit() },
-                    enabled = validate(value),
-                ) {
-                    Text(stringResource(Res.string.common_done))
+                    OutlinedButton(
+                        modifier = flow.modifierFor("cancel", links.getValue("cancel")),
+                        onClick = onDismiss,
+                    ) {
+                        Text(stringResource(Res.string.common_cancel))
+                    }
+                    Button(
+                        modifier = flow.modifierFor("done", links.getValue("done")),
+                        onClick = { commit() },
+                        enabled = validate(value),
+                    ) {
+                        Text(stringResource(Res.string.common_done))
+                    }
                 }
             }
         }
