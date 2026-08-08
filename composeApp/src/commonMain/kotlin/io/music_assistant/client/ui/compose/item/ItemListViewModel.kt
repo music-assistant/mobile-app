@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.fetchMediaItems
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.combineAsStateFlow
 import kotlinx.coroutines.flow.MutableStateFlow

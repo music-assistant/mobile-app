@@ -101,7 +101,7 @@ class RecommendationFoldersCompatTest {
     }
 
     private fun repository(client: FakeClient) =
-        MediaItemRepository(client, MediaItemFactory(client))
+        ServiceClientMediaItemRepository(client, MediaItemFactory(client))
 
     @Test
     fun embeddedRowItemsAreUsedDirectly() = runTest {

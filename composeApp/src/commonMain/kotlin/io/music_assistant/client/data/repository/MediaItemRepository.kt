@@ -29,6 +29,18 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
 
+interface MediaItemRepository {
+    suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>>
+    val itemChanges: SharedFlow<MediaItemChange>
+    suspend fun search(request: Request): Result<SearchResultData>
+    suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?>
+    suspend fun fetchRecommendationRowItems(folder: RecommendationFolder): List<AppMediaItem>?
+    fun supportsRecommendationRowItems(): Boolean
+    suspend fun fetchRecommendationRows(): Result<List<RecommendationFolder>>
+    suspend fun fetchRecommendationFolders(): Result<List<RecommendationFolder>>
+    fun publishLocalChange(change: MediaItemChange)
+}
+
 /**
  * Single seam between RPC + DTO land and the UI's typed `AppMediaItem` world.
  *
@@ -37,10 +49,10 @@ import kotlinx.coroutines.withContext
  * and centralizes the "decode payload + map to client model" boilerplate
  * that was duplicated across every list/get/search call site.
  */
-class MediaItemRepository(
+class ServiceClientMediaItemRepository(
     private val apiClient: ServiceClient,
     private val factory: MediaItemFactory,
-) {
+) : MediaItemRepository {
     // Singleton-scoped app-lifetime job; only used to keep [itemChanges]
     // hot. Survives subscriber turnover so quick navigation between screens
     // doesn't churn the upstream `apiClient.events` subscription.
@@ -51,30 +63,18 @@ class MediaItemRepository(
      * Failures (RPC error, decode failure, missing payload) surface as a
      * failed [Result] so callers can still log via `result.exceptionOrNull()`.
      */
-    suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>> =
+    override suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>> =
         apiClient.sendRequest(request).mapCatching { answer ->
             answer.resultAs<List<ServerMediaItem>>()
                 ?.let(factory::createList)
                 ?: error("Missing or undecodable media list payload")
         }
 
-    suspend fun fetchMediaItems(request: Request, observer: (List<AppMediaItem>) -> Unit) {
-        val result = fetchMediaItems(request)
-        val items = result.getOrNull()
-
-        if (items != null) {
-            observer(items)
-            itemChanges
-                .scan(items) { items, change -> items.replacing(change.item) }
-                .collect { observer(it) }
-        }
-    }
-
     /**
      * The home-page recommendation rows as the server returned them, with or
      * without embedded items (see [supportsRecommendationRowItems]).
      */
-    suspend fun fetchRecommendationRows(): Result<List<RecommendationFolder>> =
+    override suspend fun fetchRecommendationRows(): Result<List<RecommendationFolder>> =
         withContext(Dispatchers.IO) {
             fetchMediaItems(Request.Library.recommendations())
                 .map { items -> items.filterIsInstance<RecommendationFolder>() }
@@ -86,7 +86,7 @@ class MediaItemRepository(
      * instead. This can be simplified once v2.10 is our minimum supported server
      * version.
      */
-    fun supportsRecommendationRowItems(): Boolean =
+    override fun supportsRecommendationRowItems(): Boolean =
         (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
             ?.let { it >= RECOMMENDATION_ITEMS_SCHEMA } == true
 
@@ -94,7 +94,7 @@ class MediaItemRepository(
      * One-shot, fully-resolved recommendation rows for consumers without a
      * progressive UI (e.g. CarPlay lists).
      */
-    suspend fun fetchRecommendationFolders(): Result<List<RecommendationFolder>> {
+    override suspend fun fetchRecommendationFolders(): Result<List<RecommendationFolder>> {
         val folders = fetchRecommendationRows().getOrElse { error ->
             if (error is CancellationException) throw error
             return Result.failure(error)
@@ -113,7 +113,7 @@ class MediaItemRepository(
     }
 
     /** Items of one recommendation row, or null when the fetch failed (logged). */
-    suspend fun fetchRecommendationRowItems(
+    override suspend fun fetchRecommendationRowItems(
         folder: RecommendationFolder,
     ): List<AppMediaItem>? = withContext(Dispatchers.IO) {
         fetchMediaItems(
@@ -133,13 +133,13 @@ class MediaItemRepository(
      * Returns `Result.success(null)` for an absent payload so a 404-style
      * "not found" stays distinguishable from a transport failure.
      */
-    suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?> =
+    override suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?> =
         apiClient.sendRequest(request).map { answer ->
             answer.resultAs<ServerMediaItem>()?.let(factory::create)
         }
 
     /** Issue [request] and decode its payload as a typed [SearchResultData]. */
-    suspend fun search(request: Request): Result<SearchResultData> =
+    override suspend fun search(request: Request): Result<SearchResultData> =
         apiClient.sendRequest(request).mapCatching { answer ->
             answer.resultAs<SearchResult>()
                 ?.let(factory::createSearchResult)
@@ -152,7 +152,7 @@ class MediaItemRepository(
     private val localChanges = MutableSharedFlow<MediaItemChange>(extraBufferCapacity = 16)
 
     /** Publish an optimistic, client-originated [change] to [itemChanges] subscribers. */
-    fun publishLocalChange(change: MediaItemChange) {
+    override fun publishLocalChange(change: MediaItemChange) {
         localChanges.tryEmit(change)
     }
 
@@ -163,7 +163,7 @@ class MediaItemRepository(
      * `mediaItemFactory.create(...)` themselves. Replay is zero — late
      * subscribers only see future changes.
      */
-    val itemChanges: SharedFlow<MediaItemChange> = merge(
+    override val itemChanges: SharedFlow<MediaItemChange> = merge(
         localChanges,
         apiClient.events.mapNotNull { event ->
             when (event) {
@@ -195,6 +195,18 @@ class MediaItemRepository(
             favorite = null,
             uri = "${fallback.providerInstance}://$mediaType/${fallback.itemId}",
         )
+    }
+}
+
+suspend fun MediaItemRepository.fetchMediaItems(request: Request, observer: (List<AppMediaItem>) -> Unit) {
+    val result = fetchMediaItems(request)
+    val items = result.getOrNull()
+
+    if (items != null) {
+        observer(items)
+        itemChanges
+            .scan(items) { items, change -> items.replacing(change.item) }
+            .collect { observer(it) }
     }
 }
 
