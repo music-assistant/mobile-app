@@ -10,6 +10,7 @@ assignees: ''
  - Operating system and version:
  - App version:
  - Music Assistant server version:
+ - Music Assistant server installation method (Home Assistant App or Docker image):
 
 ### Problem description
 
