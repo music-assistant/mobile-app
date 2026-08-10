@@ -423,8 +423,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .then(if (isTv) Modifier else Modifier.verticalScroll(rememberScrollState())),
                 verticalArrangement = Arrangement.spacedBy(if (isTv) 8.dp else 16.dp),
             ) {
-                var ipAddress by remember { mutableStateOf("") }
-                var port by remember { mutableStateOf("") }
+                var ipAddress by remember { mutableStateOf(if (isTv) "" else Defaults.URI) }
+                var port by remember { mutableStateOf(if (isTv) "" else Defaults.PORT.toString()) }
                 var isTls by remember { mutableStateOf(false) }
 
                 LaunchedEffect(savedConnectionInfo) {
@@ -818,9 +818,10 @@ private fun ConnectionMethodTabs(
 
         val error = (sessionState as? SessionState.Disconnected.Error)?.reason
         if (error != null) {
-            val errorMessage = when (error) {
-                is ServerIdMismatchException -> Res.string.server_id_mismatch_error.toDisplayString()
-                else -> friendlyConnectionError(error)
+            val errorMessage = when {
+                error is ServerIdMismatchException -> Res.string.server_id_mismatch_error.toDisplayString()
+                isTelevisionDevice() -> friendlyConnectionError(error)
+                else -> error.message?.toDisplayString()
             }
 
             if (errorMessage != null) {

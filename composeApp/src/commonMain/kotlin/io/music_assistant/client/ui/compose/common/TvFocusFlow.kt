@@ -132,7 +132,7 @@ fun Modifier.tvFocus(
     id: String,
     textField: Boolean = false,
 ): Modifier = if (flow != null && links.containsKey(id)) {
-    flow.modifierFor(id, links.getValue(id), textField)
+    then(flow.modifierFor(id, links.getValue(id), textField))
 } else {
     this
 }
