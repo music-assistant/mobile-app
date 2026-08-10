@@ -414,8 +414,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .then(if (isTv) Modifier else Modifier.verticalScroll(rememberScrollState())),
                 verticalArrangement = Arrangement.spacedBy(if (isTv) 8.dp else 16.dp),
             ) {
-                var ipAddress by remember { mutableStateOf(Defaults.URI) }
-                var port by remember { mutableStateOf(Defaults.PORT.toString()) }
+                var ipAddress by remember { mutableStateOf("") }
+                var port by remember { mutableStateOf("") }
                 var isTls by remember { mutableStateOf(false) }
 
                 LaunchedEffect(savedConnectionInfo) {
@@ -924,7 +924,7 @@ fun DirectConnectionContent(
         value = ipAddress,
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
-        placeholder = { Text("homeassistant.local") },
+        placeholder = { Text(Defaults.URI) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -945,7 +945,7 @@ fun DirectConnectionContent(
         value = port,
         onValueChange = onPortChange,
         label = { Text(stringResource(Res.string.settings_port)) },
-        placeholder = { Text("8095") },
+        placeholder = { Text(Defaults.PORT.toString()) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Number,
