@@ -93,6 +93,7 @@
   <string name="cd_play_now">Nu afspelen</string>
   <string name="cd_play_options">Afspeelopties</string>
   <string name="cd_playing">Speelt %1$s</string>
+  <string name="cd_provider_filter">%1$s op provider %2$s filteren</string>
   <string name="cd_provider_icon">Providerpictogram</string>
   <string name="cd_remove_from_group">Verwijderen uit groep</string>
   <string name="cd_scan_qr_code">Scan QR-code</string>
@@ -101,6 +102,7 @@
   <string name="cd_toggle_queue">Wachtrij schakelen</string>
   <string name="cd_toggle_view_mode">Weergavemodus schakelen</string>
   <string name="cd_unmute">Dempen opheffen</string>
+  <string name="cd_view_all">Bekijk alle %1$s</string>
   <string name="cd_vinyl_record">Vinylplaat</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artiest</string>
