@@ -70,7 +70,7 @@ fun Modifier.tvSelectToEdit(editing: MutableState<Boolean>): Modifier = composed
     onPreviewKeyEvent { event ->
         if (editingEnabled &&
             event.type == KeyEventType.KeyDown &&
-            (event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter)
+            isConfirmKey(event.key)
         ) {
             editing.value = true
             true
@@ -82,3 +82,6 @@ fun Modifier.tvSelectToEdit(editing: MutableState<Boolean>): Modifier = composed
         if (!state.isFocused) editing.value = false
     }
 }
+
+private fun isConfirmKey(key: Key): Boolean =
+    key == Key.DirectionCenter || key == Key.Enter || key == Key.NumPadEnter

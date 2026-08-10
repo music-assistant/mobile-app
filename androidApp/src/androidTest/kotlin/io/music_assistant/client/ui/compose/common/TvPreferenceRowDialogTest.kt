@@ -65,7 +65,10 @@ class TvPreferenceRowDialogTest {
                     TvTextEditorDialog(
                         title = "Edit A",
                         initialValue = valueA.value,
-                        onConfirm = { valueA.value = it; editingA.value = false },
+                        onConfirm = {
+                            valueA.value = it
+                            editingA.value = false
+                        },
                         onDismiss = { editingA.value = false },
                     )
                 }
@@ -141,7 +144,10 @@ class TvPreferenceRowDialogTest {
                     TvTextEditorDialog(
                         title = "Edit A",
                         initialValue = valueA.value,
-                        onConfirm = { valueA.value = it; editingA.value = false },
+                        onConfirm = {
+                            valueA.value = it
+                            editingA.value = false
+                        },
                         onDismiss = { editingA.value = false },
                     )
                 }

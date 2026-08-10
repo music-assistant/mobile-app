@@ -44,6 +44,10 @@ import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_done
 import org.jetbrains.compose.resources.stringResource
 
+// This hardware can drop the first requestFocus, so retry like the settings screen does.
+private const val INPUT_FOCUS_RETRIES = 5
+private const val INPUT_FOCUS_RETRY_DELAY = 100L
+
 /**
  * A settings row for Android TV: label + current value, D-pad focusable via [focusModifier], and
  * the trailing chevron signalling that [onClick] opens an editor.
@@ -131,14 +135,13 @@ fun TvTextEditorDialog(
         "cancel" to Links(up = "input", right = "done"),
     )
 
-    // Land focus on the field (the on-screen keyboard opens with it). This hardware can drop the
-    // first requestFocus, so retry like the settings screen does.
+    // Land focus on the field (the on-screen keyboard opens with it).
     LaunchedEffect(Unit) {
         var attempt = 0
-        while (attempt < 5) {
+        while (attempt < INPUT_FOCUS_RETRIES) {
             flow.requestFocus("input")
             attempt++
-            delay(100)
+            delay(INPUT_FOCUS_RETRY_DELAY)
         }
     }
 

@@ -53,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -83,9 +82,9 @@ import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.DisplayString
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.TvPreferenceRow
 import io.music_assistant.client.ui.compose.common.TvTextEditorDialog
-import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
@@ -183,6 +182,10 @@ import kotlin.math.roundToInt
 // shot race; re-requesting an already-focused target is a no-op.
 private const val CONFIG_FOCUS_RETRIES = 5
 private const val CONFIG_FOCUS_RETRY_DELAY = 250L
+
+// A dialog is its own window, so once it closes the platform does not restore D-pad focus to the
+// row that opened it. Wait for the window to tear down before re-requesting focus.
+private const val DIALOG_CLOSE_FOCUS_DELAY = 150L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -400,8 +403,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .then(if (isTv) Modifier else Modifier.clearFocusOnScroll())
                     .onPreviewKeyEvent { event ->
                         val directional = event.type == KeyEventType.KeyDown &&
-                            (event.key == Key.DirectionUp || event.key == Key.DirectionDown ||
-                                event.key == Key.DirectionLeft || event.key == Key.DirectionRight)
+                            (
+                                event.key == Key.DirectionUp || event.key == Key.DirectionDown ||
+                                event.key == Key.DirectionLeft || event.key == Key.DirectionRight
+                            )
                         if (directional) {
                             val focusIsOnLinkedTarget =
                                 tvFlow.focusedTarget != null && activeLinks.containsKey(tvFlow.focusedTarget)
@@ -1084,7 +1089,7 @@ private fun DirectConnectionContentTv(
     LaunchedEffect(editing) {
         if (editing == null && dialogWasOpen) {
             dialogWasOpen = false
-            delay(150)
+            delay(DIALOG_CLOSE_FOCUS_DELAY)
             configFlow.requestFocus(returnTo)
         }
     }
@@ -1354,7 +1359,7 @@ private fun WebRTCConnectionContentTv(
     LaunchedEffect(editing) {
         if (editing == null && dialogWasOpen) {
             dialogWasOpen = false
-            delay(150)
+            delay(DIALOG_CLOSE_FOCUS_DELAY)
             configFlow.requestFocus("remoteId")
         }
     }
@@ -1966,7 +1971,7 @@ private fun SendspinSectionTv(
     // opened it (the platform does not restore it for us).
     LaunchedEffect(editing) {
         if (editing == null) {
-            delay(150)
+            delay(DIALOG_CLOSE_FOCUS_DELAY)
             authFlow.requestFocus(returnTo)
         }
     }
