@@ -226,13 +226,11 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
             logger.i { "Unregistered audio device callback" }
             dataSource.apiClient.onPlaybackInactive()
-            // The control surface is gone (no notification): the user is done. Release the local
-            // audio stack (AudioTrack/decoder/consumer + Sendspin client) — unless Android Auto is
-            // still hosting the local player. onAppClosed() re-checks "nothing playing" and no-ops
-            // otherwise; it launches in the app-scoped MainDataSource, surviving this service.
-            if (!sharedSession.autoHostActive.value) {
-                dataSource.onAppClosed()
-            }
+            // Stopping this foreground service unpins the process so the OS can reclaim a
+            // backgrounded, idle app. We deliberately do NOT tear down the app-scoped Sendspin
+            // transport here: the connection lives as long as the process does. Only explicit
+            // user action (Sendspin disabled) or OS process death severs it — never a mere
+            // notification swipe / service stop.
         }
         sharedSession.release()
         scope.cancel()

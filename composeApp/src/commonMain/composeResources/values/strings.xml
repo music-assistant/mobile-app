@@ -45,9 +45,9 @@
   <string name="all_podcasts">All podcasts</string>
   <string name="all_radio">All radio stations</string>
   <string name="all_tracks">All tracks</string>
-  <string name="artist_section_all">All</string>
+  <string name="artist_section_all">Discography</string>
   <string name="artist_section_in_library">In library</string>
-  <string name="artist_section_top">Top</string>
+  <string name="artist_section_top">Top tracks</string>
   <string name="auth_authenticating">Authenticating…</string>
   <string name="auth_authorize_ha">Authorize with Home Assistant</string>
   <string name="auth_hide_password">Hide password</string>
@@ -73,6 +73,7 @@
   <string name="browse_subtitle">Artists, Albums, Tracks &amp; more</string>
   <string name="cd_add_playlist">Add playlist</string>
   <string name="cd_add_to_group">Add to group</string>
+  <string name="cd_album_item">Album "%1$s" from %2$s</string>
   <string name="cd_applied">Applied</string>
   <string name="cd_close">Close</string>
   <string name="cd_connection_history">Connection history</string>
@@ -80,10 +81,11 @@
   <string name="cd_customize_tabs">Customize categories</string>
   <string name="cd_delete_crash_logs">Delete crash logs</string>
   <string name="cd_favorite">Favorite</string>
+  <string name="cd_filter">Filters</string>
   <string name="cd_fully_played">Fully played</string>
   <string name="cd_genre_filter">Genre filters</string>
   <string name="cd_in_progress">In progress</string>
-  <string name="cd_filter">Filters</string>
+  <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
   <string name="cd_more">More</string>
@@ -100,6 +102,8 @@
   <string name="cd_toggle_view_mode">Toggle view mode</string>
   <string name="cd_unmute">Unmute</string>
   <string name="cd_vinyl_record">Vinyl Record</string>
+  <string name="cd_provider_filter">Filtering %1$s by provider %2$s</string>
+  <string name="cd_view_all">View all %1$s</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artist</string>
   <string name="clickctx_browse">Browse</string>
@@ -211,6 +215,7 @@
   <string name="player_power_off">Power off</string>
   <string name="player_power_on">Power on</string>
   <string name="player_powered_off">Powered off</string>
+  <string name="player_show_buffer_indicator">Show buffer indicator</string>
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
@@ -245,6 +250,12 @@
   <string name="queue_not_loaded">Not loaded</string>
   <string name="queue_transfer">Transfer queue</string>
   <string name="refresh">Refresh</string>
+  <string name="schema_incompatible_dialog_exit">Exit</string>
+  <string name="schema_incompatible_dialog_message">This app is too old to connect to this server. Please update the app to continue.</string>
+  <string name="schema_incompatible_dialog_title">Update required</string>
+  <string name="schema_version_dialog_confirm">OK</string>
+  <string name="schema_version_dialog_message">This server uses newer data format version than this app. Some features may not work correctly. Consider updating the app.</string>
+  <string name="schema_version_dialog_title">App update advised</string>
   <string name="search_error">Error loading search results</string>
   <string name="search_in_library_only">In library only</string>
   <string name="search_no_results">No results found</string>
@@ -254,6 +265,7 @@
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
+  <string name="settings_buffer_size">Buffer size</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s actions</string>
   <string name="settings_car_dsp">DSP presets</string>

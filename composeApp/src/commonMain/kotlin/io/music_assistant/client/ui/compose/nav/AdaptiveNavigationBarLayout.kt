@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.nav
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
@@ -29,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -45,7 +48,7 @@ import io.music_assistant.client.utils.WindowClass
 fun AdaptiveNavigationBarLayout(
     navigationItems: List<NavigationItem>,
     showNavigation: Boolean = true,
-    navigationBarHeight: Dp = 88.dp,
+    navigationBarHeight: Dp = 64.dp,
     navigationRailWidth: Dp = 80.dp,
     // Android TV: a freshly composed root (cold start, or returning from Settings via the
     // back arrow) doesn't reliably receive a focus grant once the window already holds focus,
@@ -106,21 +109,34 @@ fun AdaptiveNavigationBarLayout(
                 }
             }
         } else if (showBar) {
-            NavigationBar(
+            // Two concerns are split so icon placement doesn't depend on M3's inset handling:
+            //  - the wrapper Box (navigationBarHeight + bottomInset tall) paints the bar background
+            //    down behind the system nav / home indicator, so no white bleeds through edge-to-edge;
+            //  - the transparent NavigationBar is pinned to the top at exactly navigationBarHeight
+            //    (M3's intrinsic min is ~80dp, so the explicit height is required to go smaller), with
+            //    zeroed windowInsets so its icons stay centered in that height instead of being pushed
+            //    up over a lopsided empty band (which showed as an iOS gap / Android 3-button crimp).
+            Box(
                 modifier = Modifier.align(Alignment.BottomCenter)
-                    .height(navigationBarHeight + bottomInset),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                windowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom),
+                    .fillMaxWidth()
+                    .height(navigationBarHeight + bottomInset)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             ) {
-                navigationItems.forEach {
-                    NavigationBarItem(
-                        modifier = selectedItemModifier(it.selected),
-                        selected = it.selected,
-                        onClick = it.onClick,
-                        icon = {
-                            Icon(it.icon, contentDescription = it.label)
-                        },
-                    )
+                NavigationBar(
+                    modifier = Modifier.align(Alignment.TopCenter).height(navigationBarHeight),
+                    containerColor = Color.Transparent,
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                ) {
+                    navigationItems.forEach {
+                        NavigationBarItem(
+                            modifier = selectedItemModifier(it.selected),
+                            selected = it.selected,
+                            onClick = it.onClick,
+                            icon = {
+                                Icon(it.icon, contentDescription = it.label)
+                            },
+                        )
+                    }
                 }
             }
         }

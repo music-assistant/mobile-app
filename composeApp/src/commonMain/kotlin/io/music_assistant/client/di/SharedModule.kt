@@ -24,6 +24,7 @@ import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
+import io.music_assistant.client.ui.SchemaVersionWarningViewModel
 import io.music_assistant.client.ui.compose.auth.AuthenticationViewModel
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel
 import io.music_assistant.client.ui.compose.common.providers.MdiCodepoints
@@ -31,9 +32,11 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
+import io.music_assistant.client.ui.compose.item.ItemListViewModel
+import io.music_assistant.client.ui.compose.item.ViewModeViewModel
 import io.music_assistant.client.ui.compose.library.BrowseViewModel
-import io.music_assistant.client.ui.compose.library.ItemListViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
+import io.music_assistant.client.ui.compose.library.LibraryListViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.ui.compose.settings.CarActionsViewModel
 import io.music_assistant.client.ui.compose.settings.CarDspViewModel
@@ -90,6 +93,7 @@ fun sharedModule(
         singleOf(::MdiCodepoints)           // Singleton - MDI name->codepoint table (one-time load)
         viewModelOf(::ThemeViewModel)
         factory { BackgroundRestrictionViewModel(get(), get(), get()) }
+        factory { SchemaVersionWarningViewModel(get()) }
         factory { ActionsViewModel(get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get()) }
         factory { DefaultClickActionsViewModel(get()) }
@@ -102,7 +106,7 @@ fun sharedModule(
             )
         }
         factory { LibraryCategoriesViewModel(get()) }
-        factory { params -> ItemListViewModel(params[0], get(), get(), get(), get()) }
+        factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get()) }
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(
@@ -115,6 +119,8 @@ fun sharedModule(
                 params[2],
             )
         }
+        factory { ViewModeViewModel(get()) }
+        factory { params -> ItemListViewModel(params[0], get()) }
         factory { DspSettingsViewModel(get()) }
         factory { HomeScreenViewModel(get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get()) }

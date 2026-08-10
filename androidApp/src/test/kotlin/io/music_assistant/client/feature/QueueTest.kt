@@ -32,7 +32,7 @@ class QueueTest {
         val album = ServerMediaItemFixtures.album()
         val track1 = ServerMediaItemFixtures.track(album = album)
         val track2 = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track1, track2)
+        serviceClient.addItems(track1, track2)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -49,7 +49,7 @@ class QueueTest {
     fun `can clear current player queue`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -65,7 +65,7 @@ class QueueTest {
     fun `can transfer queue to another player`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player1 = ServerPlayerFixtures.player()
         val player2 = ServerPlayerFixtures.player()
@@ -75,6 +75,10 @@ class QueueTest {
             .clickOnMedia(album)
             .clickPlay()
             .expandPlayer(player1.displayName, playing = true, item = track.name)
-            .transferQueue(player2.displayName)
+            .transferQueue(player2.displayName) {
+                composeTestRule.waitUntil {
+                    serviceClient.getCurrentlyPlaying(player2.playerId) == track
+                }
+            }
     }
 }

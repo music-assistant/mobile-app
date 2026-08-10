@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.nav
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -22,6 +23,7 @@ fun TwoRowTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     secondRow: @Composable RowScope.() -> Unit = {},
+    secondRowArrangement: Arrangement.Horizontal = Arrangement.End,
 ) {
     Column {
         TopAppBar(
@@ -34,6 +36,7 @@ fun TwoRowTopAppBar(
             title = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = secondRowArrangement,
                 ) {
                     secondRow()
                 }

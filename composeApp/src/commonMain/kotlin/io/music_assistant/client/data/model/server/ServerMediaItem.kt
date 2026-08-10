@@ -66,7 +66,11 @@ data class ServerMediaItem(
     @SerialName("items") val items: List<ServerMediaItem>? = null,
     // BrowseFolder only: the server browse path to descend into (distinct from `uri`).
     @SerialName("path") val path: String? = null,
-)
+) {
+    companion object {
+        const val LIBRARY_PROVIDER = "library"
+    }
+}
 
 @Serializable
 data class ServerMetadata(
@@ -96,16 +100,14 @@ data class ServerMediaItemImage(
     @SerialName("type") val type: String,
     @SerialName("path") val path: String,
     @SerialName("provider") val provider: String,
-    @SerialName("remotely_accessible") val remotelyAccessible: Boolean,
+    @SerialName("remotely_accessible") val remotelyAccessible: Boolean = false,
     @SerialName("proxy_id") val proxyId: String? = null,
 )
 
 @Serializable
 data class ProviderMapping(
     @SerialName("item_id") val itemId: String,
-    // Required by the server when a media_item is sent back (e.g. music/mark_played),
-    // so it must be retained on parse to round-trip in provider_mappings.
-    @SerialName("provider_domain") val providerDomain: String? = null,
+    @SerialName("provider_domain") val providerDomain: String,
     @SerialName("provider_instance") val providerInstance: String,
 //    @SerialName("available") val available: Boolean,
 //    @SerialName("audio_format") val audioFormat: AudioFormat? = null,

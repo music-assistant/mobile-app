@@ -2,10 +2,13 @@ package io.music_assistant.client.ui.compose.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.repository.MediaItemChange
@@ -157,6 +160,28 @@ class ActionsViewModel(
     }
 
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
+
+    fun onPlayClick(
+        item: AppMediaItem,
+        option: QueueOption,
+        radio: Boolean,
+    ) {
+        viewModelScope.launch {
+            val queueId = dataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
+            item.mediaUri?.let { mediaUri ->
+                Logger.withTag("PlayDispatch")
+                    .i { "ActionsViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+                apiClient.sendRequest(
+                    Request.Library.play(
+                        media = listOf(mediaUri),
+                        queueOrPlayerId = queueId,
+                        option = option,
+                        radioMode = radio && item !is Genre,
+                    ),
+                )
+            }
+        }
+    }
 
     private companion object {
         // Upper bound for awaiting the server's "playlist added" confirmation.

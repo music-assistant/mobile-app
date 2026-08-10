@@ -28,8 +28,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
+import io.music_assistant.client.ui.SchemaVersionWarningViewModel
+import io.music_assistant.client.ui.SchemaWarning
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
+import io.music_assistant.client.ui.compose.nav.exitApp
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.ui.theme.SystemAppearance
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -40,6 +43,12 @@ import musicassistantclient.composeapp.generated.resources.background_usage_dial
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_message
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_open_settings
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_title
+import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_exit
+import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_message
+import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_title
+import musicassistantclient.composeapp.generated.resources.schema_version_dialog_confirm
+import musicassistantclient.composeapp.generated.resources.schema_version_dialog_message
+import musicassistantclient.composeapp.generated.resources.schema_version_dialog_title
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -91,6 +100,7 @@ fun App() {
             }
             StatusBarScrim(darkTheme, Modifier.align(Alignment.TopCenter))
             BackgroundRestrictionDialog()
+            SchemaVersionWarningDialog()
         }
     }
 }
@@ -128,6 +138,53 @@ private fun BackgroundRestrictionDialog() {
             }
         },
     )
+}
+
+/**
+ * Schema-compatibility warning for the connected server (see [SchemaVersionWarningViewModel]),
+ * re-shown on every fresh server-info arrival:
+ * - [SchemaWarning.CLIENT_INCOMPATIBLE] — terminal: the client is below the server's minimum
+ *   supported schema, so it can't function. Exit-only; any dismissal closes the app.
+ * - [SchemaWarning.SERVER_AHEAD] — informational: the server is newer than the client, some
+ *   features may misbehave. Dismissible; auth proceeds underneath.
+ */
+@OptIn(KoinExperimentalAPI::class)
+@Composable
+private fun SchemaVersionWarningDialog() {
+    val viewModel = koinViewModel<SchemaVersionWarningViewModel>()
+    val warning by viewModel.warning.collectAsStateWithLifecycle()
+    // Transient hide for the dismissible warning; reset whenever a fresh warning arrives.
+    var hidden by remember { mutableStateOf(false) }
+    LaunchedEffect(warning) { hidden = false }
+    when (warning) {
+        null -> Unit
+
+        SchemaWarning.CLIENT_INCOMPATIBLE ->
+            AlertDialog(
+                onDismissRequest = { exitApp() },
+                title = { Text(stringResource(Res.string.schema_incompatible_dialog_title)) },
+                text = { Text(stringResource(Res.string.schema_incompatible_dialog_message)) },
+                confirmButton = {
+                    TextButton(onClick = { exitApp() }) {
+                        Text(stringResource(Res.string.schema_incompatible_dialog_exit))
+                    }
+                },
+            )
+
+        SchemaWarning.SERVER_AHEAD ->
+            if (!hidden) {
+                AlertDialog(
+                    onDismissRequest = { hidden = true },
+                    title = { Text(stringResource(Res.string.schema_version_dialog_title)) },
+                    text = { Text(stringResource(Res.string.schema_version_dialog_message)) },
+                    confirmButton = {
+                        TextButton(onClick = { hidden = true }) {
+                            Text(stringResource(Res.string.schema_version_dialog_confirm))
+                        }
+                    },
+                )
+            }
+    }
 }
 
 /**

@@ -17,7 +17,6 @@ import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SelectOption
@@ -35,7 +34,7 @@ import musicassistantclient.composeapp.generated.resources.toast_error_create_pl
 import org.jetbrains.compose.resources.getString
 
 @OptIn(FlowPreview::class)
-class ItemListViewModel(
+class LibraryListViewModel(
     private val mediaType: MediaType,
     private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
@@ -72,12 +71,6 @@ class ItemListViewModel(
                 .collect {
                     loadFirstPage()
                 }
-        }
-
-        viewModelScope.launch {
-            settingsRepository.viewMode(mediaType).collect { mode ->
-                _state.update { it.copy(viewMode = mode) }
-            }
         }
 
         // Settings are the source of truth for filters; fold emissions into state
@@ -142,11 +135,6 @@ class ItemListViewModel(
     private fun AppMediaItem.matchesIdentityOf(other: AppMediaItem): Boolean =
         (mediaType == other.mediaType && provider == other.provider && itemId == other.itemId) ||
             hasAnyMappingFrom(other)
-
-    fun toggleViewMode() {
-        val current = settingsRepository.viewMode(mediaType).value
-        settingsRepository.setViewMode(mediaType, current.toggled())
-    }
 
     // Persistence is the source of truth (like view mode); the settings flow
     // collector folds the new value back into state and triggers a refetch.
@@ -248,7 +236,7 @@ class ItemListViewModel(
             }
 
             val request = getRequest(
-                this@ItemListViewModel.mediaType,
+                this@LibraryListViewModel.mediaType,
                 currentState.offset,
                 orderBy,
                 searchQuery,
@@ -420,7 +408,7 @@ class ItemListViewModel(
             updateState(DataState.Loading())
 
             val request = getRequest(
-                this@ItemListViewModel.mediaType,
+                this@LibraryListViewModel.mediaType,
                 0,
                 orderBy,
                 searchQuery,
@@ -477,7 +465,6 @@ class ItemListViewModel(
         val hasMore: Boolean = true,
         val searchQuery: String = "",
         val sortOption: SortOption = SortConfig.defaultFor(mediaType),
-        val viewMode: ViewMode = ViewMode.GRID,
         val offset: Int = 0,
         // Per-type filter set; only the fields applicable to [mediaType] are surfaced.
         val filters: LibraryFilters = LibraryFilters.DEFAULT,

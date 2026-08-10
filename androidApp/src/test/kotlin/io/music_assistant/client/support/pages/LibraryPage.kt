@@ -34,42 +34,42 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
         )
     }
 
-    fun clickAlbums(): ItemListPage {
+    fun clickAlbums(): LibraryListPage {
         return clickType(Res.string.media_type_albums.get())
     }
 
-    fun clickArtists(): ItemListPage {
+    fun clickArtists(): LibraryListPage {
         return clickType(Res.string.media_type_artists.get())
     }
 
-    fun clickPlaylists(): ItemListPage {
+    fun clickPlaylists(): LibraryListPage {
         return clickType(Res.string.media_type_playlists.get())
     }
 
-    fun clickTracks(): ItemListPage {
+    fun clickTracks(): LibraryListPage {
         return clickType(Res.string.media_type_tracks.get())
     }
 
-    fun clickAudiobooks(): ItemListPage {
+    fun clickAudiobooks(): LibraryListPage {
         return clickType(Res.string.media_type_audiobooks.get())
     }
 
-    fun clickPodcasts(): ItemListPage {
+    fun clickPodcasts(): LibraryListPage {
         return clickType(Res.string.media_type_podcasts.get())
     }
 
-    fun clickRadio(): ItemListPage {
+    fun clickRadio(): LibraryListPage {
         return clickType(Res.string.media_type_radio.get())
     }
 
-    fun clickGenres(): ItemListPage {
+    fun clickGenres(): LibraryListPage {
         val type = Res.string.media_type_genres.get()
         composeTestRule.onNodeWithText(type).onParent().performScrollToIndex(7)
         return clickType(type)
     }
 
-    private fun clickType(type: String): ItemListPage {
+    private fun clickType(type: String): LibraryListPage {
         composeTestRule.onNodeWithText(type).performClick()
-        return ItemListPage(type, composeTestRule).assertOnPage()
+        return LibraryListPage(type, composeTestRule).assertOnPage()
     }
 }

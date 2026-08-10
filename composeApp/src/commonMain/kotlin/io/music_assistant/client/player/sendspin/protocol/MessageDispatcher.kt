@@ -27,8 +27,6 @@ import io.music_assistant.client.player.sendspin.model.ServerHelloPayload
 import io.music_assistant.client.player.sendspin.model.ServerStateMessage
 import io.music_assistant.client.player.sendspin.model.ServerTimeMessage
 import io.music_assistant.client.player.sendspin.model.SessionUpdateMessage
-import io.music_assistant.client.player.sendspin.model.StreamClearMessage
-import io.music_assistant.client.player.sendspin.model.StreamEndMessage
 import io.music_assistant.client.player.sendspin.model.StreamMetadataMessage
 import io.music_assistant.client.player.sendspin.model.StreamMetadataPayload
 import io.music_assistant.client.player.sendspin.model.StreamStartMessage
@@ -54,6 +52,16 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.seconds
+
+/**
+ * Stream lifecycle events, carried on a single ordered flow so start/end/clear keep their
+ * relative order. Only [Start] carries a payload; end/clear messages have no body.
+ */
+sealed interface StreamLifecycleEvent {
+    data class Start(val message: StreamStartMessage) : StreamLifecycleEvent
+    data object End : StreamLifecycleEvent
+    data object Clear : StreamLifecycleEvent
+}
 
 class MessageDispatcher(
     private val transport: SendspinTransport,
@@ -86,14 +94,13 @@ class MessageDispatcher(
     private val _streamMetadata = MutableStateFlow<StreamMetadataPayload?>(null)
     val streamMetadata: StateFlow<StreamMetadataPayload?> = _streamMetadata.asStateFlow()
 
-    private val _streamStartEvent = MutableSharedFlow<StreamStartMessage>(extraBufferCapacity = 1)
-    val streamStartEvent: Flow<StreamStartMessage> = _streamStartEvent.asSharedFlow()
-
-    private val _streamEndEvent = MutableSharedFlow<StreamEndMessage>(extraBufferCapacity = 1)
-    val streamEndEvent: Flow<StreamEndMessage> = _streamEndEvent.asSharedFlow()
-
-    private val _streamClearEvent = MutableSharedFlow<StreamClearMessage>(extraBufferCapacity = 1)
-    val streamClearEvent: Flow<StreamClearMessage> = _streamClearEvent.asSharedFlow()
+    // Single ordered lifecycle flow: start/end/clear share one channel so their relative
+    // order (which three separate flows destroyed) is preserved. Downstream collectLatest
+    // coalesces rapid skips by cancelling stale streams — see SendspinClient. Capacity 64
+    // is headroom so a skip burst never stalls the single text-message loop.
+    private val _streamLifecycleEvent =
+        MutableSharedFlow<StreamLifecycleEvent>(extraBufferCapacity = 64)
+    val streamLifecycleEvent: Flow<StreamLifecycleEvent> = _streamLifecycleEvent.asSharedFlow()
 
     private val _serverCommandEvent =
         MutableSharedFlow<ServerCommandMessage>(extraBufferCapacity = 5)
@@ -163,13 +170,11 @@ class MessageDispatcher(
                 }
 
                 "stream/end" -> {
-                    val message = myJson.decodeFromJsonElement<StreamEndMessage>(json)
-                    handleStreamEnd(message)
+                    handleStreamEnd()
                 }
 
                 "stream/clear" -> {
-                    val message = myJson.decodeFromJsonElement<StreamClearMessage>(json)
-                    handleStreamClear(message)
+                    handleStreamClear()
                 }
 
                 "stream/metadata" -> {
@@ -244,7 +249,7 @@ class MessageDispatcher(
 
     suspend fun sendState(state: PlayerStateObject) {
         val message = ClientStateMessage(
-            payload = ClientStatePayload(player = state),
+            payload = ClientStatePayload(player = state, available = true),
         )
         val json = myJson.encodeToString(message)
         if (state.state != lastLoggedState) {
@@ -336,17 +341,17 @@ class MessageDispatcher(
 
     private suspend fun handleStreamStart(message: StreamStartMessage) {
         logger.i { "Received stream/start" }
-        _streamStartEvent.emit(message)
+        _streamLifecycleEvent.emit(StreamLifecycleEvent.Start(message))
     }
 
-    private suspend fun handleStreamEnd(message: StreamEndMessage) {
+    private suspend fun handleStreamEnd() {
         logger.i { "Received stream/end" }
-        _streamEndEvent.emit(message)
+        _streamLifecycleEvent.emit(StreamLifecycleEvent.End)
     }
 
-    private suspend fun handleStreamClear(message: StreamClearMessage) {
+    private suspend fun handleStreamClear() {
         logger.i { "Received stream/clear" }
-        _streamClearEvent.emit(message)
+        _streamLifecycleEvent.emit(StreamLifecycleEvent.Clear)
     }
 
     private fun handleStreamMetadata(message: StreamMetadataMessage) {

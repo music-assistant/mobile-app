@@ -2,6 +2,7 @@
 
 package io.music_assistant.client.ui.compose.search
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -284,6 +285,7 @@ private fun SearchContent(
                                 .clearFocusOnScroll(),
                             state = lazyListState,
                             contentPadding = contentPadding,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             val (title, items) = results.nonEmptyLists.first()
                             item {
@@ -387,6 +389,7 @@ private fun SearchContent(
                                     .clearFocusOnScroll(),
                                 state = lazyListState,
                                 contentPadding = contentPadding,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 preparedItems.forEach { (stringTitle, items) ->
                                     if (items.isNotEmpty()) {

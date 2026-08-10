@@ -11,7 +11,7 @@ import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
-class StubServiceClient : ServiceClient {
+open class StubServiceClient : ServiceClient {
     override val sessionState: StateFlow<SessionState>
         get() = TODO("Not yet implemented")
 

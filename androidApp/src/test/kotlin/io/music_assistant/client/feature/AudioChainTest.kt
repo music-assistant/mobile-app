@@ -33,7 +33,7 @@ class AudioChainTest {
     fun `does not crash`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val audioFormat = AudioFormat(
             contentType = "s16le",
@@ -57,7 +57,7 @@ class AudioChainTest {
 
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val audioFormat = AudioFormat(
             contentType = "s16le",

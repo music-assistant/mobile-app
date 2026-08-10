@@ -49,7 +49,7 @@ class PlayerTest {
     fun `can play album`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -71,7 +71,7 @@ class PlayerTest {
         val album = ServerMediaItemFixtures.album()
         val track1 = ServerMediaItemFixtures.track(album = album)
         val track2 = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track1, track2)
+        serviceClient.addItems(track1, track2)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -99,7 +99,7 @@ class PlayerTest {
     @Test
     fun `can pause playback`() {
         val track = ServerMediaItemFixtures.track()
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)

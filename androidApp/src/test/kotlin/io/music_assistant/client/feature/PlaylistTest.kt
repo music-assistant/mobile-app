@@ -40,8 +40,9 @@ class PlaylistTest {
         val track1 = ServerMediaItemFixtures.track()
         val track2 = ServerMediaItemFixtures.track()
         val track3 = ServerMediaItemFixtures.track()
-        serviceClient.addToLibrary(playlist, track1, track2, track3)
+        serviceClient.addItems(playlist, track1, track2, track3)
         serviceClient.setPlaylist(playlist, track1, track2, track3)
+        serviceClient.addToLibrary(playlist)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -61,8 +62,9 @@ class PlaylistTest {
         val track1 = ServerMediaItemFixtures.track()
         val track2 = ServerMediaItemFixtures.track()
         val track3 = ServerMediaItemFixtures.track()
-        serviceClient.addToLibrary(playlist, track1, track2, track3)
+        serviceClient.addItems(playlist, track1, track2, track3)
         serviceClient.setPlaylist(playlist, track1, track2, track3)
+        serviceClient.addToLibrary(playlist)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)

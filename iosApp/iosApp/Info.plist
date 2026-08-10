@@ -24,7 +24,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>io.music-assistant.client.oauth</string>
+			<string>io.music-assistant.mobile-client.oauth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>musicassistant</string>
@@ -32,7 +32,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>43</string>
+	<string>45</string>
 	<key>INIntentsSupported</key>
 	<array>
 		<string>INPlayMediaIntent</string>

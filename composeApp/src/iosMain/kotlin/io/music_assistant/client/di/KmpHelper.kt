@@ -119,6 +119,9 @@ object KmpHelper : KoinComponent {
         mainScope.launch { completion(CarPlayStrings.load()) }
     }
 
+    /** Whether the local player is enabled; CarPlay gates attachment on this. */
+    fun isLocalPlayerEnabled(): Boolean = settingsRepository.sendspinEnabled.value
+
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
 
@@ -252,7 +255,7 @@ object KmpHelper : KoinComponent {
 
     fun fetchRecommendations(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("recommendations", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Library.recommendations()).getOrNull()
+            mediaItemRepository.fetchRecommendationFolders().getOrNull()
                 ?: emptyList()
         }
     }
@@ -261,8 +264,7 @@ object KmpHelper : KoinComponent {
         completion: (List<RecommendationFolder>?) -> Unit,
     ) {
         launchFetch("recommendationFolders", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Library.recommendations()).getOrNull()
-                ?.filterIsInstance<RecommendationFolder>()
+            mediaItemRepository.fetchRecommendationFolders().getOrNull()
                 ?: emptyList()
         }
     }

@@ -10,6 +10,7 @@ import io.music_assistant.client.player.sendspin.model.ServerCommandMessage
 import io.music_assistant.client.player.sendspin.model.StreamMetadataPayload
 import io.music_assistant.client.player.sendspin.protocol.MessageDispatcher
 import io.music_assistant.client.player.sendspin.protocol.MessageDispatcherConfig
+import io.music_assistant.client.player.sendspin.protocol.StreamLifecycleEvent
 import io.music_assistant.client.player.sendspin.transport.SendspinTransport
 import io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
@@ -62,6 +64,10 @@ class SendspinClient(
     // Reactive buffer-starvation state from the pipeline. The owner composes this with transport
     // and play state to decide on teardown — see LocalPlayerController.
     val isStarved: StateFlow<Boolean> get() = audioPipeline.isStarved
+
+    // Reactive buffer fill (µs of audio queued ahead of the playhead) for the UI's
+    // buffered-progress indicator. Local player only — remote players expose no buffer.
+    val bufferState: StateFlow<BufferState> get() = audioPipeline.bufferState
 
     /** Stop the audio stream (release the sink), leaving the client/transport intact. */
     suspend fun stopStream() = audioPipeline.stopStream()
@@ -293,39 +299,14 @@ class SendspinClient(
             }
         }
 
-        // --- Stream events ---
+        // --- Stream lifecycle (coalesced) ---
+        // collectLatest cancels the in-flight handler when a newer event arrives, so a rapid
+        // skip burst only fully materializes the final track — intermediate stream/start setups
+        // are cancelled (see AudioStreamManager) before producing audio. Ordering across
+        // start/end/clear is preserved because they share one flow (see MessageDispatcher).
         launch {
-            dispatcher.streamStartEvent.collect { event ->
-                event.payload.player?.let { playerConfig ->
-                    audioPipeline.startStream(playerConfig)
-                    _state.update { SendspinState.Buffering }
-                    // Start periodic state reporting
-                    stateReporter?.start()
-                }
-            }
-        }
-
-        launch {
-            dispatcher.streamEndEvent.collect {
-                val current = _state.value
-                audioPipeline.stopStream()
-                if (current is SendspinState.Buffering || current is SendspinState.Synchronized) {
-                    val serverInfo = messageDispatcher?.serverInfo?.value
-                    val nextState = if (serverInfo != null) {
-                        SendspinState.Ready(serverInfo.serverId, serverInfo.name)
-                    } else {
-                        SendspinState.Idle
-                    }
-                    _state.update { nextState }
-                }
-                // Stop periodic state reporting
-                stateReporter?.stop()
-            }
-        }
-
-        launch {
-            dispatcher.streamClearEvent.collect {
-                audioPipeline.clearStream()
+            dispatcher.streamLifecycleEvent.collectLatest { event ->
+                handleStreamLifecycle(event)
             }
         }
 
@@ -375,6 +356,39 @@ class SendspinClient(
                 delay(100)
                 _playbackStoppedDueToError.update { null }
             }
+        }
+    }
+
+    /**
+     * Handle one stream lifecycle event. Extracted from the [collectLatest] collector so it is
+     * unit-testable and so cancellation of a stale [StreamLifecycleEvent.Start] propagates cleanly
+     * out of [AudioPipeline.startStream]. Dropping an intermediate End/Clear is safe: the next
+     * Start fully re-initializes decoder, sink, queue and consumer (a strict superset).
+     */
+    private suspend fun handleStreamLifecycle(event: StreamLifecycleEvent) {
+        when (event) {
+            is StreamLifecycleEvent.Start -> event.message.payload.player?.let { playerConfig ->
+                audioPipeline.startStream(playerConfig)
+                _state.update { SendspinState.Buffering }
+                stateReporter?.start()
+            }
+
+            StreamLifecycleEvent.End -> {
+                val current = _state.value
+                audioPipeline.stopStream()
+                if (current is SendspinState.Buffering || current is SendspinState.Synchronized) {
+                    val serverInfo = messageDispatcher?.serverInfo?.value
+                    val nextState = if (serverInfo != null) {
+                        SendspinState.Ready(serverInfo.serverId, serverInfo.name)
+                    } else {
+                        SendspinState.Idle
+                    }
+                    _state.update { nextState }
+                }
+                stateReporter?.stop()
+            }
+
+            StreamLifecycleEvent.Clear -> audioPipeline.clearStream()
         }
     }
 

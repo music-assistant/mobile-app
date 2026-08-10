@@ -5,7 +5,7 @@ import os.log
 
 /// CarPlay lifecycle markers. Logged at `.default` so they survive a
 /// post-drive sysdiagnose (`.info`/`.debug` are in-memory only).
-private let cpLog = OSLog(subsystem: "io.music-assistant.client", category: "CarPlay")
+private let cpLog = OSLog(subsystem: "io.music-assistant.mobile-client", category: "CarPlay")
 
 class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
@@ -17,6 +17,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     // tap-time checks don't have to await the StateFlow. Updated by the
     // `readinessSubscription` callback on the main thread.
     private var isReady: Bool = false
+    /// True only when this connection passed the local-player gate and attached
+    /// to the shared external-consumer lifecycle.
+    private var didAttachExternalConsumer: Bool = false
     private var readinessSubscription: Cancellable?
 
     /// Monotonic connection generation, bumped on every connect AND
@@ -81,6 +84,15 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         connectionGen += 1
         recommendationsFetchGen = 0
         isReady = false
+        didAttachExternalConsumer = false
+
+        // If the local player is disabled, refuse CarPlay entirely (no attach, no reconnect, no browse).
+        guard KmpHelper.shared.isLocalPlayerEnabled() else {
+            os_log("CP: local player disabled — refusing CarPlay attachment", log: cpLog, type: .default)
+            self.interfaceController = nil
+            return
+        }
+        didAttachExternalConsumer = true
         KmpHelper.shared.onExternalConsumerActive()
         // Resolve localized strings before building templates: CarPlay template
         // titles are immutable after construction, so the active-locale strings
@@ -124,7 +136,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         libraryTemplate = nil
         libraryBrowseSection = nil
         self.interfaceController = nil
-        KmpHelper.shared.onExternalConsumerInactive()
+        if didAttachExternalConsumer {
+            KmpHelper.shared.onExternalConsumerInactive()
+            didAttachExternalConsumer = false
+        }
         os_log("CP: didDisconnect", log: cpLog, type: .default)
     }
 

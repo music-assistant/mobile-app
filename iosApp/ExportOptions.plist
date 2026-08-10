@@ -5,14 +5,14 @@
 	<key>method</key>
 	<string>app-store-connect</string>
 	<key>teamID</key>
-	<string>5J5R9QK64D</string>
+	<string>GUYFAK8DC6</string>
 	<key>signingStyle</key>
 	<string>manual</string>
 	<key>signingCertificate</key>
 	<string>Apple Distribution</string>
 	<key>provisioningProfiles</key>
 	<dict>
-		<key>io.music-assistant.client</key>
+		<key>io.music-assistant.mobile-client</key>
 		<string>Music Assistant App Store</string>
 	</dict>
 	<key>stripSwiftSymbols</key>

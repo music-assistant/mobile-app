@@ -2,6 +2,11 @@ package io.music_assistant.client.utils
 
 import androidx.compose.ui.Modifier
 import io.music_assistant.client.api.Answer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -67,3 +72,14 @@ fun Modifier.conditional(
 }
 
 inline fun <reified T : Any> Result<Answer>.resultAs(): T? = getOrNull()?.resultAs()
+
+fun <T1, T2, R> CoroutineScope.combineAsStateFlow(
+    flow1: StateFlow<T1>,
+    flow2: StateFlow<T2>,
+    transform: (a: T1, b: T2) -> R,
+): StateFlow<R> {
+    val initialValue = transform(flow1.value, flow2.value)
+    return flow1
+        .combine(flow2, transform)
+        .stateIn(this, SharingStarted.Eagerly, initialValue)
+}

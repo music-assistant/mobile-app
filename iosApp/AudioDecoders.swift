@@ -160,6 +160,7 @@ class OpusLibDecoder: NativeAudioDecoder {
 /// FLAC decoder using libFLAC C library
 class FLACLibDecoder: NativeAudioDecoder {
     private var decoder: UnsafeMutablePointer<FLAC__StreamDecoder>?
+    private let decodeLock = NSLock()
     private let sampleRate: Int
     private let channels: Int
     private let bitDepth: Int
@@ -244,6 +245,9 @@ class FLACLibDecoder: NativeAudioDecoder {
     private let maxPendingSize = 1_048_576
 
     func decode(_ data: Data) throws -> Data {
+        decodeLock.lock()
+        defer { decodeLock.unlock() }
+
         // Append new data to pending buffer
         pendingData.append(data)
 

@@ -1,0 +1,58 @@
+package io.music_assistant.client.support.pages
+
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
+import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.support.get
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.library_quick_search
+import musicassistantclient.composeapp.generated.resources.library_search_global
+import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.search_query_label
+
+class LibraryListPage(type: String, composeTestRule: ComposeTestRule) :
+    ItemListPage(type, Res.string.nav_library.get(), composeTestRule) {
+    fun clickOnMedia(item: ServerMediaItem): ItemPage {
+        return clickOnMedia(
+            item,
+            Res.string.nav_library.get(),
+            provider = ServerMediaItem.LIBRARY_PROVIDER,
+        )
+    }
+
+    fun search(query: String): LibraryListPage {
+        composeTestRule.onNodeWithText(Res.string.search_query_label.get())
+            .assertIsDisplayed()
+            .performTextInput(query)
+
+        composeTestRule.onNodeWithText(query).performImeAction()
+
+        return this
+    }
+
+    fun openSearch(): LibraryListPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.library_quick_search.get())
+            .performClick()
+        return this
+    }
+
+    fun clickSearchEverywhere(query: String): SearchPage {
+        composeTestRule.onNodeWithText(Res.string.library_search_global.get())
+            .assertIsDisplayed()
+            .performClick()
+        return SearchPage(composeTestRule, query = query).assertOnPage()
+    }
+
+    fun assertMediaNotDisplayed(item: ServerMediaItem): LibraryListPage {
+        return assertMediaNotDisplayed(item, provider = ServerMediaItem.LIBRARY_PROVIDER)
+    }
+
+    fun assertMediaDisplayed(item: ServerMediaItem): LibraryListPage {
+        return assertMediaDisplayed(item, provider = ServerMediaItem.LIBRARY_PROVIDER)
+    }
+}

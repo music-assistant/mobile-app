@@ -8,7 +8,7 @@ data class ProviderManifest(
     @SerialName("type") val type: String,
     @SerialName("domain") val domain: String,
     @SerialName("name") val name: String,
-    @SerialName("icon") val icon: String?,
-    @SerialName("icon_svg") val iconSvg: String?,
-    @SerialName("icon_svg_dark") val iconSvgDark: String?,
+    @SerialName("icon") val icon: String? = null,
+    @SerialName("icon_svg") val iconSvg: String? = null,
+    @SerialName("icon_svg_dark") val iconSvgDark: String? = null,
 )

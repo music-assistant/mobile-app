@@ -37,7 +37,7 @@ class ShortcutsTest {
     @Test
     fun `can navigate to shortcut items`() {
         val album = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
         serviceClient.addShortcut(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
@@ -47,7 +47,7 @@ class ShortcutsTest {
     @Test
     fun `can play shortcut items`() {
         val track = ServerMediaItemFixtures.track()
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
         serviceClient.addShortcut(track)
 
         val player = ServerPlayerFixtures.player()
@@ -63,10 +63,10 @@ class ShortcutsTest {
         serviceClient.setLegacyVersion(LegacyVersion.V2_8)
 
         val album = ServerMediaItemFixtures.album()
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .assertMediaDisplayed(album.name)
+            .assertMediaDisplayed(album)
     }
 
     @Test

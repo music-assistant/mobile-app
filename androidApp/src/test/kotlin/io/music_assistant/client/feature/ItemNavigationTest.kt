@@ -32,7 +32,7 @@ class ItemNavigationTest {
     fun `can navigate from album to artist`() {
         val artist = ServerMediaItemFixtures.artist()
         val album = ServerMediaItemFixtures.album(artist = artist)
-        serviceClient.addToLibrary(album)
+        serviceClient.addItems(album)
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
@@ -43,7 +43,7 @@ class ItemNavigationTest {
     fun `can navigate to artist from expanded player`() {
         val artist = ServerMediaItemFixtures.artist()
         val track = ServerMediaItemFixtures.track(artists = listOf(artist))
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -58,7 +58,7 @@ class ItemNavigationTest {
     fun `can navigate to album from expanded player`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track)
+        serviceClient.addItems(track)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
