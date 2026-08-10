@@ -78,6 +78,7 @@ import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
+import io.music_assistant.client.ui.compose.common.DisplayString
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.TvPreferenceRow
@@ -110,6 +111,12 @@ import musicassistantclient.composeapp.generated.resources.cd_select_codec
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
+import musicassistantclient.composeapp.generated.resources.connection_error_generic
+import musicassistantclient.composeapp.generated.resources.connection_error_lost
+import musicassistantclient.composeapp.generated.resources.connection_error_timeout
+import musicassistantclient.composeapp.generated.resources.connection_error_tls
+import musicassistantclient.composeapp.generated.resources.connection_error_unreachable
+import musicassistantclient.composeapp.generated.resources.connection_error_webrtc
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 import musicassistantclient.composeapp.generated.resources.settings_about_description
@@ -804,7 +811,7 @@ private fun ConnectionMethodTabs(
         if (error != null) {
             val errorMessage = when (error) {
                 is ServerIdMismatchException -> Res.string.server_id_mismatch_error.toDisplayString()
-                else -> error.message?.toDisplayString()
+                else -> friendlyConnectionError(error)
             }
 
             if (errorMessage != null) {
@@ -841,6 +848,35 @@ private fun ConnectionMethodTabs(
             onDelete = viewModel::removeFromHistory,
             onDismiss = { showHistoryDialog = false },
         )
+    }
+}
+
+/**
+ * Map a raw connect failure to wording a user can act on. Transport and watchdog
+ * errors surface technical strings ("Connect timed out after 30000ms", Ktor's
+ * "Connection refused" / TLS / DNS exceptions), so the settings screen shows a
+ * friendly line instead. Matching is on message content only to stay
+ * platform-agnostic; unknown failures fall back to a generic message.
+ */
+private fun friendlyConnectionError(error: Throwable): DisplayString {
+    val message = error.message?.lowercase() ?: ""
+    return when {
+        message.contains("timed out") || message.contains("timeout") ->
+            Res.string.connection_error_timeout.toDisplayString()
+        message.contains("refused") || message.contains("failed to connect") ||
+            message.contains("unable to connect") || message.contains("resolve host") ||
+            message.contains("unknown host") || message.contains("no route to host") ->
+            Res.string.connection_error_unreachable.toDisplayString()
+        message.contains("ssl") || message.contains("tls") || message.contains("certificate") ||
+            message.contains("trust anchor") || message.contains("cleartext") ->
+            Res.string.connection_error_tls.toDisplayString()
+        message.contains("webrtc") || message.contains("signaling") ||
+            message.contains("remote id") || message.contains("ice") ->
+            Res.string.connection_error_webrtc.toDisplayString()
+        message.contains("reconnect") || message.contains("recovery machinery") ||
+            message.contains("connection lost") ->
+            Res.string.connection_error_lost.toDisplayString()
+        else -> Res.string.connection_error_generic.toDisplayString()
     }
 }
 
