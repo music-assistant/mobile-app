@@ -8,16 +8,16 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class CarActionPrefsTest {
-    // PLAY_FROM_HERE needs a parent container + start track, only resolvable for a TRACK tap
-    // inside an album/playlist drilldown — and only Android Auto threads that context through.
+    // PLAY_FROM_HERE needs a parent container + start track, resolvable for a TRACK tap
+    // inside an album/playlist drilldown on both Android Auto and CarPlay.
     @Test
-    fun playFromHereSupportedOnlyForAndroidAutoTrackTap() {
-        assertTrue(
-            DefaultClickOption.PLAY_FROM_HERE.isCarSupported(CarPlatform.ANDROID_AUTO, ItemKind.TRACK),
-        )
-        assertFalse(
-            DefaultClickOption.PLAY_FROM_HERE.isCarSupported(CarPlatform.CARPLAY, ItemKind.TRACK),
-        )
+    fun playFromHereSupportedForTrackTapsOnBothCarPlatforms() {
+        CarPlatform.entries.forEach { platform ->
+            assertTrue(
+                DefaultClickOption.PLAY_FROM_HERE.isCarSupported(platform, ItemKind.TRACK),
+                "PLAY_FROM_HERE should be supported for TRACK on $platform",
+            )
+        }
     }
 
     @Test
@@ -56,6 +56,61 @@ class CarActionPrefsTest {
         val offered = DefaultClickOption.entries
             .filter { it.isCarSupported(CarPlatform.ANDROID_AUTO, ItemKind.TRACK) }
         assertTrue(DefaultClickOption.PLAY_FROM_HERE in offered)
+    }
+
+    @Test
+    fun playFromHereBuildsParentAwareDispatchForAlbumAndPlaylist() {
+        listOf("library://album/42", "library://playlist/9").forEach { parentUri ->
+            val dispatch = planCarItemDispatch(
+                action = DefaultClickOption.PLAY_FROM_HERE,
+                itemUri = "library://track/7",
+                itemId = "track-7",
+                parentUri = parentUri,
+            )
+
+            assertEquals(listOf(parentUri), dispatch?.mediaUris)
+            assertEquals("track-7", dispatch?.startItem)
+            assertEquals(QueueOption.REPLACE, dispatch?.option)
+            assertFalse(dispatch?.radioMode ?: true)
+        }
+    }
+
+    @Test
+    fun playFromHereRejectsMissingParentContext() {
+        val dispatch = planCarItemDispatch(
+            action = DefaultClickOption.PLAY_FROM_HERE,
+            itemUri = "library://track/7",
+            itemId = "track-7",
+            parentUri = null,
+        )
+
+        assertEquals(null, dispatch)
+    }
+
+    @Test
+    fun playFromHereRejectsMissingStartItem() {
+        val dispatch = planCarItemDispatch(
+            action = DefaultClickOption.PLAY_FROM_HERE,
+            itemUri = "library://track/7",
+            itemId = null,
+            parentUri = "library://album/42",
+        )
+
+        assertEquals(null, dispatch)
+    }
+
+    @Test
+    fun plainCarActionUsesLeafUriAndIgnoresParentContext() {
+        val dispatch = planCarItemDispatch(
+            action = DefaultClickOption.ADD_TO_QUEUE,
+            itemUri = "library://track/7",
+            itemId = "track-7",
+            parentUri = "library://playlist/9",
+        )
+
+        assertEquals(listOf("library://track/7"), dispatch?.mediaUris)
+        assertEquals(null, dispatch?.startItem)
+        assertEquals(QueueOption.ADD, dispatch?.option)
     }
 
     @Test

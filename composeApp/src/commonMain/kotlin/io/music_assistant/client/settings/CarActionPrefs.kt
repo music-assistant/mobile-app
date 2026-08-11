@@ -44,9 +44,9 @@ fun DefaultClickOption.isCarSupported(platform: CarPlatform, kind: ItemKind): Bo
 
     return if (this == DefaultClickOption.PLAY_FROM_HERE) {
         // Needs a parent container + start track, only resolvable for a TRACK tap inside an
-        // album/playlist drilldown — and only AA threads that context through (see AutoLibrary).
+        // album/playlist drilldown. Android Auto and CarPlay both thread that parent context.
         // Tap-only: TRACK is never a browsable bulk kind, so this also keeps it out of bulk lists.
-        platform == CarPlatform.ANDROID_AUTO && kind == ItemKind.TRACK
+        kind == ItemKind.TRACK
     } else {
         when (platform) {
             CarPlatform.ANDROID_AUTO -> true
@@ -68,6 +68,45 @@ fun Map<ItemKind, List<DefaultClickOption>>.carBulkActions(
     platform: CarPlatform,
 ): List<DefaultClickOption> =
     (this[kind] ?: defaultCarBulkActions).filter { it.isCarSupported(platform, kind) }
+
+/** Fully resolved media payload for a car-item tap. */
+data class CarItemDispatch(
+    val mediaUris: List<String>,
+    val option: QueueOption,
+    val radioMode: Boolean,
+    val startItem: String? = null,
+)
+
+/**
+ * Resolve a configured car tap into an MA play-media payload. PLAY_FROM_HERE targets the parent
+ * album/playlist URI and starts at the tapped track; plain actions target the tapped item's URI.
+ * Returns null instead of degrading PLAY_FROM_HERE to single-track playback when context is absent.
+ */
+fun planCarItemDispatch(
+    action: DefaultClickOption,
+    itemUri: String?,
+    itemId: String?,
+    parentUri: String?,
+): CarItemDispatch? {
+    if (action == DefaultClickOption.PLAY_FROM_HERE) {
+        val containerUri = parentUri ?: return null
+        val startItem = itemId ?: return null
+        return CarItemDispatch(
+            mediaUris = listOf(containerUri),
+            option = QueueOption.REPLACE,
+            radioMode = false,
+            startItem = startItem,
+        )
+    }
+
+    val mediaUri = itemUri ?: return null
+    val dispatch = action.toCarDispatch()
+    return CarItemDispatch(
+        mediaUris = listOf(mediaUri),
+        option = dispatch.option,
+        radioMode = dispatch.radioMode,
+    )
+}
 
 /** How a [DefaultClickOption] is dispatched to a player: queue option + radio-mode flag. */
 data class CarDispatch(val option: QueueOption, val radioMode: Boolean)

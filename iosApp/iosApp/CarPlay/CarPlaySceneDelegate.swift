@@ -568,10 +568,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     // MARK: - Item Selection
 
-    private func attachHandlers(to items: [CPListItem]) {
+    private func attachHandlers(to items: [CPListItem], parent: AppMediaItem? = nil) {
         for item in items {
             item.handler = { [weak self] listItem, completion in
-                self?.handleItemSelection(listItem)
+                self?.handleItemSelection(listItem, parent: parent)
                 completion()
             }
         }
@@ -580,7 +580,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     /// Type-aware dispatch: container items (Artist, Album, Playlist, Podcast) drill
     /// in to their contained items; leaf items (Track, RadioStation, Audiobook,
     /// PodcastEpisode) play and push Now Playing.
-    private func handleItemSelection(_ item: CPSelectableListItem) {
+    private func handleItemSelection(
+        _ item: CPSelectableListItem,
+        parent: AppMediaItem? = nil
+    ) {
         // Drop offline taps with a visible alert.
         guard isReady else { showOfflineAlert(); return }
         guard
@@ -600,7 +603,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             // Track / RadioStation / Audiobook / PodcastEpisode — leaf items run the per-kind
             // configured tap action. Only push Now Playing when it actually starts playback
             // (a configured "add to queue" tap is non-disruptive).
-            let dispatched = CarPlayContentManager.shared.playWithDefault(mediaItem)
+            let dispatched = CarPlayContentManager.shared.playWithDefault(mediaItem, parent: parent)
             if let name = dispatched, Self.actionStartsPlayback(name) {
                 pushNowPlayingTemplate(animated: true)
             }
@@ -665,7 +668,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 if items.isEmpty {
                     template.updateSections([self.emptyStateSection(text: strings.empty)])
                 } else {
-                    self.attachHandlers(to: items)
+                    self.attachHandlers(to: items, parent: bulkActionParent)
                     let prefix = self.bulkActionRows(for: bulkActionParent)
                     template.updateSections([CPListSection(items: prefix + items)])
                 }
