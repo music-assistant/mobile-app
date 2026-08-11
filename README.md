@@ -50,7 +50,7 @@ Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you 
 
 Android users can join [the Play Store testing program](https://play.google.com/apps/testing/io.music_assistant.client).
 
-iOS users can join [TestFlight](https://testflight.apple.com/join/4byCu2Nk).
+iOS users can join [TestFlight](https://testflight.apple.com/join/AkvSDf2z).
 
 ## Android Auto & Google Assistant
 
