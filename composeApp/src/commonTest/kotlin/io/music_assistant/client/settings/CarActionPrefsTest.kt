@@ -115,7 +115,7 @@ class CarActionPrefsTest {
 
     @Test
     fun toCarDispatchRejectsPlayFromHere() {
-        // It's resolved at the AA call site (parent URI + start item), never via toCarDispatch.
+        // Parent-aware Android Auto and CarPlay call sites resolve this; toCarDispatch never does.
         val error = runCatching { DefaultClickOption.PLAY_FROM_HERE.toCarDispatch() }.exceptionOrNull()
         assertTrue(error is IllegalArgumentException)
     }

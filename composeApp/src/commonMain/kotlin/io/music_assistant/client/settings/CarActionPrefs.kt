@@ -119,7 +119,7 @@ fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
     DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, radioMode = false)
     DefaultClickOption.START_RADIO -> CarDispatch(QueueOption.REPLACE, radioMode = true)
     // PLAY_FROM_HERE isn't a plain queue-option dispatch — it needs a parent URI + start item,
-    // so it's resolved at the AA call site (AutoLibrary.play), never here.
+    // so Android Auto and CarPlay resolve it through their parent-aware call sites, never here.
     DefaultClickOption.PLAY_FROM_HERE ->
         throw IllegalArgumentException("$name must be handled at the call site, not toCarDispatch")
 }
