@@ -76,6 +76,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 
+/** Preserve newer event/optimistic state when a delayed full snapshot arrives. */
+internal fun mergeFullQueueSnapshot(
+    retained: List<QueueInfo>,
+    incoming: List<QueueInfo>,
+): List<QueueInfo> {
+    val retainedById = retained.associateBy { it.id }
+    return incoming.map { candidate ->
+        val current = retainedById[candidate.id]
+        if (current != null && candidate.isBefore(current)) current else candidate
+    }
+}
+
 @OptIn(FlowPreview::class)
 class MainDataSource(
     private val settings: SettingsRepository,
@@ -923,6 +935,15 @@ class MainDataSource(
         _userSelectedPlayerId.update { player.id }
     }
 
+    /**
+     * Re-read authoritative player/queue state when CarPlay attaches.
+     * This reuses the existing read-only refresh path and never issues playback commands.
+     */
+    fun refreshCarPlayNowPlayingState() {
+        log.i { "CarPlay attached: refreshing authoritative player and queue state" }
+        updatePlayersAndQueues()
+    }
+
     /** `null` if this event is older than what `_queueInfos` already holds for the same id. */
     private fun QueueInfo.takeIfNotStale(label: String): QueueInfo? {
         val existing = _queueInfos.value.find { it.id == id } ?: return this
@@ -1472,8 +1493,11 @@ class MainDataSource(
         launch {
             apiClient.sendRequest(Request.Queue.all())
                 .resultAs<List<ServerQueue>>()?.let { queueFactory.createList(it) }?.let { list ->
-                    _queueInfos.update { list }
-                    list.forEach { queueInfo ->
+                    var mergedSnapshot = list
+                    _queueInfos.update { retained ->
+                        mergeFullQueueSnapshot(retained, list).also { mergedSnapshot = it }
+                    }
+                    mergedSnapshot.forEach { queueInfo ->
                         queueInfo.elapsedTime?.let { elapsed ->
                             val player = (_serverPlayers.value as? DataState.Data)
                                 ?.data?.find { it.queueId == queueInfo.id }
@@ -1491,7 +1515,7 @@ class MainDataSource(
                     val localPlayerId = settings.sendspinClientId.value
                     val localQueueId = (_serverPlayers.value as? DataState.Data)?.data
                         ?.find { it.id == localPlayerId }?.queueId
-                    list.find { it.id == localPlayerId || it.id == localQueueId }
+                    mergedSnapshot.find { it.id == localPlayerId || it.id == localQueueId }
                         ?.let { localPlayerController.onServerQueueUpdate(it) }
                 }
         }

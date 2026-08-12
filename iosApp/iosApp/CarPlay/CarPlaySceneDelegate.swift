@@ -94,6 +94,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         }
         didAttachExternalConsumer = true
         KmpHelper.shared.onExternalConsumerActive()
+        // Rehydrate Now Playing from the server; attaching alone never authorizes playback.
+        KmpHelper.shared.refreshCarPlayNowPlayingState()
         // Resolve localized strings before building templates: CarPlay template
         // titles are immutable after construction, so the active-locale strings
         // must be known up front. Subscribing to readiness inside the completion
