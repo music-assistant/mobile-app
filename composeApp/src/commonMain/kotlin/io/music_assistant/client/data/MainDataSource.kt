@@ -935,12 +935,9 @@ class MainDataSource(
         _userSelectedPlayerId.update { player.id }
     }
 
-    /**
-     * Re-read authoritative player/queue state when CarPlay attaches.
-     * This reuses the existing read-only refresh path and never issues playback commands.
-     */
-    fun refreshCarPlayNowPlayingState() {
-        log.i { "CarPlay attached: refreshing authoritative player and queue state" }
+    /** Re-read authoritative player and queue state without issuing playback commands. */
+    fun refreshPlayersAndQueues() {
+        log.i { "Refreshing authoritative player and queue state" }
         updatePlayersAndQueues()
     }
 

@@ -5,7 +5,7 @@ import io.music_assistant.client.data.model.client.RepeatMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class CarPlayQueueSnapshotMergeTest {
+class FullQueueSnapshotMergeTest {
     private fun queue(id: String, stamp: Double, elapsed: Double) = QueueInfo(
         id = id,
         available = true,

@@ -125,7 +125,7 @@ object KmpHelper : KoinComponent {
 
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
-    fun refreshCarPlayNowPlayingState() = mainDataSource.refreshCarPlayNowPlayingState()
+    fun refreshCarPlayNowPlayingState() = mainDataSource.refreshPlayersAndQueues()
 
     // MARK: - Artwork loader (Swift-callable)
     //
