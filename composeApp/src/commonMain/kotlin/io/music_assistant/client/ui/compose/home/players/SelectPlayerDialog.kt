@@ -57,6 +57,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
+import io.music_assistant.client.utils.isTelevisionDevice
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.stringResource
@@ -149,24 +150,32 @@ private fun PlayerSelection(
     // whatever holds OS focus behind it. focusGroup() already contains 2D focus search within the
     // list; routing the keys through focusManager.moveFocus — the Compose-recommended way to
     // advance focus programmatically — keeps them inside that group and lets the LazyColumn's own
-    // focus handling scroll the focused row into view at the boundaries.
+    // focus handling scroll the focused row into view at the boundaries. TV-only: phone/iOS have no
+    // D-pad, so this stays out of their focus/key-event path entirely.
+    val isTv = isTelevisionDevice()
     val focusManager = LocalFocusManager.current
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
-            .focusGroup()
+            .then(if (isTv) Modifier.focusGroup() else Modifier)
             .selectableGroup()
             .heightIn(max = MAX_DIALOG_HEIGHT)
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                val direction = when (event.key) {
-                    Key.DirectionDown -> FocusDirection.Down
-                    Key.DirectionUp -> FocusDirection.Up
-                    else -> return@onPreviewKeyEvent false
-                }
-                focusManager.moveFocus(direction)
-                true
-            },
+            .then(
+                if (isTv) {
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        val direction = when (event.key) {
+                            Key.DirectionDown -> FocusDirection.Down
+                            Key.DirectionUp -> FocusDirection.Up
+                            else -> return@onPreviewKeyEvent false
+                        }
+                        focusManager.moveFocus(direction)
+                        true
+                    }
+                } else {
+                    Modifier
+                },
+            ),
         state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
