@@ -76,7 +76,7 @@ class CarActionPrefsTest {
     }
 
     @Test
-    fun playFromHereRejectsMissingParentContext() {
+    fun playFromHereFallsBackToTappedTrackWhenParentContextIsMissing() {
         val dispatch = planCarItemDispatch(
             action = DefaultClickOption.PLAY_FROM_HERE,
             itemUri = "library://track/7",
@@ -84,11 +84,14 @@ class CarActionPrefsTest {
             parentUri = null,
         )
 
-        assertEquals(null, dispatch)
+        assertEquals(listOf("library://track/7"), dispatch?.mediaUris)
+        assertEquals(null, dispatch?.startItem)
+        assertEquals(QueueOption.REPLACE, dispatch?.option)
+        assertFalse(dispatch?.radioMode ?: true)
     }
 
     @Test
-    fun playFromHereRejectsMissingStartItem() {
+    fun playFromHereFallsBackToTappedTrackWhenStartItemIsMissing() {
         val dispatch = planCarItemDispatch(
             action = DefaultClickOption.PLAY_FROM_HERE,
             itemUri = "library://track/7",
@@ -96,7 +99,10 @@ class CarActionPrefsTest {
             parentUri = "library://album/42",
         )
 
-        assertEquals(null, dispatch)
+        assertEquals(listOf("library://track/7"), dispatch?.mediaUris)
+        assertEquals(null, dispatch?.startItem)
+        assertEquals(QueueOption.REPLACE, dispatch?.option)
+        assertFalse(dispatch?.radioMode ?: true)
     }
 
     @Test

@@ -79,8 +79,8 @@ data class CarItemDispatch(
 
 /**
  * Resolve a configured car tap into an MA play-media payload. PLAY_FROM_HERE targets the parent
- * album/playlist URI and starts at the tapped track; plain actions target the tapped item's URI.
- * Returns null instead of degrading PLAY_FROM_HERE to single-track playback when context is absent.
+ * album/playlist URI and starts at the tapped track when full context is available. If that context
+ * is incomplete, it falls back to replacing the queue with the tapped track, matching Android Auto.
  */
 fun planCarItemDispatch(
     action: DefaultClickOption,
@@ -89,13 +89,22 @@ fun planCarItemDispatch(
     parentUri: String?,
 ): CarItemDispatch? {
     if (action == DefaultClickOption.PLAY_FROM_HERE) {
-        val containerUri = parentUri ?: return null
-        val startItem = itemId ?: return null
+        parentUri?.let { containerUri ->
+            itemId?.let { startItem ->
+                return CarItemDispatch(
+                    mediaUris = listOf(containerUri),
+                    option = QueueOption.REPLACE,
+                    radioMode = false,
+                    startItem = startItem,
+                )
+            }
+        }
+
+        val mediaUri = itemUri ?: return null
         return CarItemDispatch(
-            mediaUris = listOf(containerUri),
+            mediaUris = listOf(mediaUri),
             option = QueueOption.REPLACE,
             radioMode = false,
-            startItem = startItem,
         )
     }
 
