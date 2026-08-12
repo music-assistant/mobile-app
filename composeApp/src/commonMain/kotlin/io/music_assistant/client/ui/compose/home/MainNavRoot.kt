@@ -90,6 +90,7 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.isTelevisionDevice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
@@ -185,10 +186,11 @@ fun MainNavigationRoot(
     // TV: the collapsed FloatingBar Surface is the D-pad's entry point to the player.
     // Expanding removes that focused Surface and the expanded layout grants no focus
     // (remote goes dead), so restore focus on the bar when collapsing back.
+    val isTv = isTelevisionDevice()
     val floatingBarFocusRequester = remember { FocusRequester() }
     var wasPlayerExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(playerExpanded) {
-        if (!playerExpanded && wasPlayerExpanded) {
+        if (isTv && !playerExpanded && wasPlayerExpanded) {
             floatingBarFocusRequester.requestFocus()
         }
         wasPlayerExpanded = playerExpanded
@@ -213,6 +215,7 @@ fun MainNavigationRoot(
     val selectedNavItemFocused = remember { mutableStateOf(false) }
     LaunchedEffect(navEntryLifecycleOwner) {
         navEntryLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (!isTv) return@repeatOnLifecycle
             selectedNavItemFocused.value = false
             var attempts = 0
             while (attempts++ < HOME_FOCUS_RETRIES && !playerExpanded && !selectedNavItemFocused.value) {
