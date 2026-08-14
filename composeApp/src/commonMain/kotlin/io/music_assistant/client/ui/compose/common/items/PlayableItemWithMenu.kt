@@ -25,6 +25,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.ConfirmationDialog
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_remove
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_message
@@ -215,7 +216,10 @@ private fun <T> PlayableItemWithMenu(
     // Non-playable items keep the long-press menu (favorite, library, …) but can't be played:
     // dim them and route a tap to the menu instead of starting playback.
     val playable = item.isPlayable
-    Box(modifier = modifier) {
+    // Android TV: this wrapper Box isn't itself the focusable node -- the real clickable target
+    // is built several layers down by itemComposable (a different composable per media type/view
+    // mode) -- so tvFocusRing needs trackDescendants to see focus land on any of them.
+    Box(modifier = modifier.tvFocusRing(trackDescendants = true)) {
         itemComposable(
             Modifier.align(Alignment.Center)
                 .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA)),

@@ -67,6 +67,7 @@ import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import io.music_assistant.client.ui.compose.common.toDisplayString
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.ScreenState
@@ -339,7 +340,7 @@ private fun LandingPageTopBar(
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
         actions = {
-            IconButton(onClick = onToggleEditMode) {
+            IconButton(modifier = Modifier.tvFocusRing(), onClick = onToggleEditMode) {
                 Icon(
                     imageVector = if (editMode) Icons.Default.Done else Icons.Default.Edit,
                     contentDescription = stringResource(
@@ -349,7 +350,7 @@ private fun LandingPageTopBar(
             }
 
             if (!editMode) {
-                IconButton(onClick = onRefresh) {
+                IconButton(modifier = Modifier.tvFocusRing(), onClick = onRefresh) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = stringResource(Res.string.refresh),

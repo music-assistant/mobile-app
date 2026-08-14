@@ -22,6 +22,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 
 @Composable
 fun AlbumWithMenu(
@@ -287,7 +288,10 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         customizationAllowed = false,
     )
 
-    Box(modifier = modifier) {
+    // Android TV: this wrapper Box isn't itself the focusable node -- the real clickable target
+    // is built several layers down by itemComposable (a different composable per media type/view
+    // mode) -- so tvFocusRing needs trackDescendants to see focus land on any of them.
+    Box(modifier = modifier.tvFocusRing(trackDescendants = true)) {
         // Browsable items stay navigable even when non-playable; dim + drop playback actions.
         val contentModifier = Modifier.align(Alignment.Center)
             .then(if (item.isPlayable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))

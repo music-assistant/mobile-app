@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.utils.WindowClass
 
 /**
@@ -112,7 +113,8 @@ fun AdaptiveNavigationBarLayout(
                 navigationItems.forEachIndexed { index, item ->
                     NavigationRailItem(
                         modifier = selectedItemModifier(item.selected)
-                            .then(bottomLinkModifier(index == navigationItems.lastIndex)),
+                            .then(bottomLinkModifier(index == navigationItems.lastIndex))
+                            .tvFocusRing(),
                         selected = item.selected,
                         onClick = item.onClick,
                         icon = {

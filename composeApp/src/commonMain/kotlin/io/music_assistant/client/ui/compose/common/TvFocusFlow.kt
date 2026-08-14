@@ -148,10 +148,18 @@ fun Modifier.tvFocusRing(
     focusedColor: Color? = null,
     thickness: Dp = 2.dp,
     shape: Shape = RoundedCornerShape(4.dp),
+    // Set true when attaching this to a non-focusable wrapper around the actual focus target
+    // (e.g. a shared item-card Box whose real clickable/focusable content is built by a caller-
+    // supplied composable several layers down) rather than to the focusable node itself. hasFocus
+    // reports true for the node OR any focused descendant, where isFocused only reports true for
+    // this exact node.
+    trackDescendants: Boolean = false,
 ): Modifier = composed {
     val color = focusedColor ?: MaterialTheme.colorScheme.primary
     var isFocused by remember { mutableStateOf(false) }
-    onFocusChanged { state -> isFocused = state.isFocused }
+    onFocusChanged { state ->
+        isFocused = if (trackDescendants) state.hasFocus else state.isFocused
+    }
         .then(
             if (isFocused) {
                 Modifier.border(thickness, color, shape)
