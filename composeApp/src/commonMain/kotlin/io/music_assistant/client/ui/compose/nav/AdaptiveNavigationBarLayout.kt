@@ -29,6 +29,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -57,6 +58,10 @@ fun AdaptiveNavigationBarLayout(
     // the item actually holds focus (to know when the landing has stuck).
     selectedItemFocusRequester: FocusRequester? = null,
     selectedItemFocused: MutableState<Boolean>? = null,
+    // Android TV: the persistent mini-player sits below this nav rail/bar in its own overlay,
+    // not as an ordinary sibling, so default focus search doesn't reach it. Declaring an explicit
+    // DOWN link from the last nav item is the same pattern used throughout the Settings screen.
+    bottomFocusRequester: FocusRequester? = null,
     content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit,
 ) {
     val isExpandedScreen = WindowClass.isAtLeastExpanded()
@@ -66,6 +71,13 @@ fun AdaptiveNavigationBarLayout(
             Modifier
                 .focusRequester(selectedItemFocusRequester)
                 .onFocusChanged { state -> selectedItemFocused?.value = state.isFocused }
+        } else {
+            Modifier
+        }
+    }
+    val bottomLinkModifier = { isLastItem: Boolean ->
+        if (isLastItem && bottomFocusRequester != null) {
+            Modifier.focusProperties { down = bottomFocusRequester }
         } else {
             Modifier
         }
@@ -97,13 +109,14 @@ fun AdaptiveNavigationBarLayout(
                 modifier = Modifier.width(navigationRailWidth),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
-                navigationItems.forEach {
+                navigationItems.forEachIndexed { index, item ->
                     NavigationRailItem(
-                        modifier = selectedItemModifier(it.selected),
-                        selected = it.selected,
-                        onClick = it.onClick,
+                        modifier = selectedItemModifier(item.selected)
+                            .then(bottomLinkModifier(index == navigationItems.lastIndex)),
+                        selected = item.selected,
+                        onClick = item.onClick,
                         icon = {
-                            Icon(it.icon, contentDescription = it.label)
+                            Icon(item.icon, contentDescription = item.label)
                         },
                     )
                 }

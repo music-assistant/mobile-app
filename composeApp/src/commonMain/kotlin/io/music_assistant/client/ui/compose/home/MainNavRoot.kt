@@ -335,6 +335,7 @@ fun MainNavigationRoot(
             navigationItems = navigationItems,
             selectedItemFocusRequester = selectedNavItemFocusRequester,
             selectedItemFocused = selectedNavItemFocused,
+            bottomFocusRequester = floatingBarFocusRequester,
         ) { scaffoldContentPadding ->
             FloatingBarLayout(
                 modifier = Modifier.padding(scaffoldContentPadding),
@@ -343,6 +344,7 @@ fun MainNavigationRoot(
                         expanded = playerExpanded,
                         onExpand = onExpandPlayer,
                         focusRequester = floatingBarFocusRequester,
+                        upFocusRequester = selectedNavItemFocusRequester,
                         content = { expanded, contentPadding ->
                             PlayersPager(
                                 playerPagerState = playerPagerState,
@@ -392,6 +394,7 @@ fun MainNavigationRoot(
                                 homeScreenState,
                                 libraryScreenState,
                                 searchScreenState,
+                                floatingBarFocusRequester,
                             ),
                         ),
                     ),
@@ -416,6 +419,7 @@ private fun mainNavEntryProvider(
     homeScreenState: MutableState<HomeScreenState?>,
     libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
+    floatingBarFocusRequester: FocusRequester? = null,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -455,6 +459,7 @@ private fun mainNavEntryProvider(
                 },
                 actionsViewModel = actionsViewModel,
                 state = screenState,
+                floatingBarFocusRequester = floatingBarFocusRequester,
             )
         }
 
