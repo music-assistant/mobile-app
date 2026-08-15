@@ -26,6 +26,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -76,12 +77,26 @@ fun AdaptiveNavigationBarLayout(
             Modifier
         }
     }
-    val bottomLinkModifier = { isLastItem: Boolean ->
-        if (isLastItem && bottomFocusRequester != null) {
-            Modifier.focusProperties { down = bottomFocusRequester }
-        } else {
-            Modifier
-        }
+
+    // Android TV: verified live on hardware that UP/DOWN between nav rail items was relying on
+    // Compose's default geometric search alone -- pressing UP from the last item didn't just fail
+    // to move focus, it dropped focus entirely (confirmed via the accessibility tree reporting no
+    // focused node afterward, not just an unchanged one). Every other TV screen in this app already
+    // declares explicit directional links instead of trusting geometry (see TvFocusFlow); the nav
+    // rail needs the same treatment for its own internal traversal, not just the DOWN-to-floating-
+    // bar link at the boundary.
+    val itemFocusRequesters = remember(navigationItems.size) { List(navigationItems.size) { FocusRequester() } }
+    val adjacencyModifier = { index: Int ->
+        Modifier
+            .focusRequester(itemFocusRequesters[index])
+            .focusProperties {
+                if (index > 0) up = itemFocusRequesters[index - 1]
+                if (index < navigationItems.lastIndex) {
+                    down = itemFocusRequesters[index + 1]
+                } else if (bottomFocusRequester != null) {
+                    down = bottomFocusRequester
+                }
+            }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -113,7 +128,7 @@ fun AdaptiveNavigationBarLayout(
                 navigationItems.forEachIndexed { index, item ->
                     NavigationRailItem(
                         modifier = selectedItemModifier(item.selected)
-                            .then(bottomLinkModifier(index == navigationItems.lastIndex))
+                            .then(adjacencyModifier(index))
                             .tvFocusRing(),
                         selected = item.selected,
                         onClick = item.onClick,
