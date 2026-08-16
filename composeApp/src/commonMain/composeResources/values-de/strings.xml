@@ -45,7 +45,7 @@
   <string name="all_podcasts">Alle Podcasts</string>
   <string name="all_radio">Alle Radiosender</string>
   <string name="all_tracks">Alle Titel</string>
-  <string name="artist_section_all">Alle</string>
+  <string name="artist_section_all">Diskografie</string>
   <string name="artist_section_in_library">In Bibliothek</string>
   <string name="artist_section_top">Beliebt</string>
   <string name="auth_authenticating">Anmelden...</string>
@@ -93,7 +93,8 @@
   <string name="cd_play_now">Jetzt abspielen</string>
   <string name="cd_play_options">Wiedergabe Optionen</string>
   <string name="cd_playing">Spielt %1$s</string>
-  <string name="cd_provider_icon">Provider Icon</string>
+  <string name="cd_provider_filter">Filtere %1$s nach Anbieter %2$s</string>
+  <string name="cd_provider_icon">Anbieter-Icon</string>
   <string name="cd_remove_from_group">Aus Gruppe entfernen</string>
   <string name="cd_scan_qr_code">QR-Code scannen</string>
   <string name="cd_select_codec">Codec auswählen</string>
@@ -101,6 +102,7 @@
   <string name="cd_toggle_queue">Warteschlange umschalten</string>
   <string name="cd_toggle_view_mode">Ansicht umschalten</string>
   <string name="cd_unmute">Stummschaltung aufheben</string>
+  <string name="cd_view_all">Alle %1$s anzeigen</string>
   <string name="cd_vinyl_record">Schallplatte</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Künstler</string>

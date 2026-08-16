@@ -39,6 +39,7 @@ import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.carBulkActions
 import io.music_assistant.client.settings.carTapAction
+import io.music_assistant.client.settings.planCarItemDispatch
 import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.compose.library.LibraryCategory
 import io.music_assistant.client.ui.compose.library.carTabCategories
@@ -124,6 +125,7 @@ object KmpHelper : KoinComponent {
 
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
+    fun refreshCarPlayNowPlayingState() = mainDataSource.refreshPlayersAndQueues()
 
     // MARK: - Artwork loader (Swift-callable)
     //
@@ -437,13 +439,27 @@ object KmpHelper : KoinComponent {
         dispatchLocal(item, option, radioMode = false)
 
     private fun dispatchLocal(item: AppMediaItem, option: QueueOption, radioMode: Boolean): Boolean {
+        return dispatchLocal(
+            mediaUris = listOfNotNull(item.mediaUri),
+            option = option,
+            radioMode = radioMode,
+        )
+    }
+
+    private fun dispatchLocal(
+        mediaUris: List<String>,
+        option: QueueOption,
+        radioMode: Boolean,
+        startItem: String? = null,
+    ): Boolean {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
             localPlayerId = player?.id,
             localPlayerSyncedTo = player?.syncedTo,
-            mediaUris = listOfNotNull(item.mediaUri),
+            mediaUris = mediaUris,
             option = option,
             radioMode = radioMode,
+            startItem = startItem,
         ) ?: return false
         plan.detachFrom?.let { syncedToId ->
             log.i { "dispatchLocal($option, radio=$radioMode): detaching ${plan.playerId} from $syncedToId" }
@@ -482,12 +498,28 @@ object KmpHelper : KoinComponent {
      * dispatched DefaultClickAction.name so Swift can decide whether to push Now Playing, or null
      * on failure / no playable URI.
      */
-    fun playCarDefaultTap(item: AppMediaItem): String? {
+    fun playCarDefaultTap(item: AppMediaItem, parent: AppMediaItem?): String? {
         val action = item.mediaType.toItemKind()
             ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
             ?: DefaultClickOption.PLAY_NOW
-        val dispatch = action.toCarDispatch()
-        return if (dispatchLocal(item, dispatch.option, dispatch.radioMode)) action.name else null
+        val dispatch = planCarItemDispatch(
+            action = action,
+            itemUri = item.mediaUri,
+            itemId = item.itemId,
+            parentUri = parent?.mediaUri,
+        ) ?: return null
+        return if (
+            dispatchLocal(
+                mediaUris = dispatch.mediaUris,
+                option = dispatch.option,
+                radioMode = dispatch.radioMode,
+                startItem = dispatch.startItem,
+            )
+        ) {
+            action.name
+        } else {
+            null
+        }
     }
 
     /**

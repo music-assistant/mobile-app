@@ -93,6 +93,7 @@
   <string name="cd_play_now">Play now</string>
   <string name="cd_play_options">Play options</string>
   <string name="cd_playing">Playing %1$s</string>
+  <string name="cd_provider_filter">Filtering %1$s by provider %2$s</string>
   <string name="cd_provider_icon">Provider Icon</string>
   <string name="cd_remove_from_group">Remove from group</string>
   <string name="cd_scan_qr_code">Scan QR code</string>
@@ -101,9 +102,8 @@
   <string name="cd_toggle_queue">Toggle Queue</string>
   <string name="cd_toggle_view_mode">Toggle view mode</string>
   <string name="cd_unmute">Unmute</string>
-  <string name="cd_vinyl_record">Vinyl Record</string>
-  <string name="cd_provider_filter">Filtering %1$s by provider %2$s</string>
   <string name="cd_view_all">View all %1$s</string>
+  <string name="cd_vinyl_record">Vinyl Record</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artist</string>
   <string name="clickctx_browse">Browse</string>

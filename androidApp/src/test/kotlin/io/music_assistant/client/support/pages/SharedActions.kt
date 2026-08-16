@@ -109,10 +109,11 @@ fun <T : ComposePage> T.assertMediaDisplayed(
     provider: String? = null,
 ): T {
     val matcher = mediaItemMatcher(serverMediaItem, withinTag, provider)
-    if (inScrollable != null) {
-        composeTestRule.inScrollable(inScrollable) { onNode(matcher).assertIsDisplayed() }
-    } else {
-        composeTestRule.onNode(matcher).assertIsDisplayed()
+    composeTestRule.waitUntil {
+        if (inScrollable != null) {
+            composeTestRule.inScrollable(inScrollable) { onNode(matcher) }
+        }
+        composeTestRule.onNode(matcher).isDisplayed()
     }
 
     return this

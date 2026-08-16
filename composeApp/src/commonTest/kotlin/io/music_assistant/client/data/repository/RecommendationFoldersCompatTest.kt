@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -54,7 +56,10 @@ class RecommendationFoldersCompatTest {
         private val rowsError: Exception? = null,
         schemaVersion: Int = ITEM_LESS_ROWS_SCHEMA,
     ) : StubServiceClient() {
-        val itemsRequests = mutableListOf<Pair<String, String>>()
+        private val itemsRequestsMutex = Mutex()
+        private val _itemsRequests = mutableListOf<Pair<String, String>>()
+        val itemsRequests: List<Pair<String, String>>
+            get() = _itemsRequests.toList()
 
         override val events: Flow<Event<out Any>> = emptyFlow()
 
@@ -78,7 +83,9 @@ class RecommendationFoldersCompatTest {
                         ?: fail("items request missing provider arg")
                     val itemId = args["item_id"]?.jsonPrimitive?.content
                         ?: fail("items request missing item_id arg")
-                    itemsRequests += provider to itemId
+                    itemsRequestsMutex.withLock {
+                        _itemsRequests += provider to itemId
+                    }
                     itemsJsonFor(provider, itemId).map(::answer)
                 }
 

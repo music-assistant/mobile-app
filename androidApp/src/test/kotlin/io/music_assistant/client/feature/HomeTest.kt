@@ -73,6 +73,7 @@ class HomeTest {
         val album = ServerMediaItemFixtures.album()
         serviceClient.addItems(album)
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
+            .assertMediaDisplayed(album)
 
         serviceClient.setRequestErrors(true)
         homePage.refresh()

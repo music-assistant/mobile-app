@@ -2,6 +2,7 @@ package io.music_assistant.client.data.model.server
 
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
@@ -72,5 +73,18 @@ class ServerMediaItemSerializationTest {
 
         assertEquals(listOf("Ashley Elston", "Plain String Author"), item.authors)
         assertEquals(listOf("Nora Narrator"), item.narrators)
+    }
+
+    @Test
+    fun factoryPreservesDynamicRadioFlag() {
+        val item = myJson.decodeFromString<ServerMediaItem>(
+            """
+                {"item_id":"radio-1","provider":"provider","name":"Dynamic Radio",
+                 "media_type":"radio","is_dynamic":true,"is_playable":true}
+            """.trimIndent(),
+        )
+
+        assertEquals(true, item.isDynamic)
+        assertEquals(true, (factory.create(item) as RadioStation).isDynamic)
     }
 }
