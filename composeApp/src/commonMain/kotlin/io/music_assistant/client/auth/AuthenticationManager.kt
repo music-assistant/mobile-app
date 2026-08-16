@@ -85,22 +85,24 @@ class AuthenticationManager(
                                     if (isLoggingOut) {
                                         log.i { "AwaitingAuth(NotStarted) — skipping auto-login (logging out)" }
                                     } else {
-                                        val serverIdentifier = when (state) {
-                                            is SessionState.Connected.Direct ->
-                                                settings.getDirectServerIdentifier(
-                                                    state.connectionInfo.host,
-                                                    state.connectionInfo.port,
-                                                    state.connectionInfo.isTls,
-                                                )
-                                            is SessionState.Connected.WebRTC ->
-                                                settings.getWebRTCServerIdentifier(state.remoteId.rawId)
-                                        }
+                                        val serverIdentifier = settings.getServerIdentifier(state)
                                         val token = settings.getTokenForServer(serverIdentifier)
                                         if (token == null) {
                                             log.i { "AwaitingAuth(NotStarted) — no saved token for server" }
                                         } else {
                                             log.i { "AwaitingAuth(NotStarted) — auto-login with saved token" }
-                                            authorizeWithSavedToken(token)
+
+                                            val currentServerId =
+                                                dataConnectionState.serverInfo.serverId
+                                            val previousServerId =
+                                                settings.getIdForServer(serverIdentifier)
+                                            if (previousServerId == null || currentServerId == previousServerId) {
+                                                authorizeWithSavedToken(token)
+                                            } else {
+                                                serviceClient.forceDisconnect(
+                                                    ServerIdMismatchException(),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -111,6 +113,10 @@ class AuthenticationManager(
                                 }
 
                                 is AuthProcessState.Failed -> {
+                                    val serverIdentifier = settings.getServerIdentifier(state)
+                                    settings.setTokenForServer(serverIdentifier, null)
+                                    log.i { "Cleared token for server due to auth failure" }
+
                                     log.i {
                                         "AwaitingAuth(Failed): " +
                                             dataConnectionState.authProcessState.reason
@@ -120,16 +126,28 @@ class AuthenticationManager(
                                 }
 
                                 AuthProcessState.LoggedOut -> {
+                                    val serverIdentifier = settings.getServerIdentifier(state)
+                                    settings.setTokenForServer(serverIdentifier, null)
+                                    log.d { "Cleared token for server" }
+
                                     log.i { "AwaitingAuth(LoggedOut)" }
                                     _authState.value = AuthState.Idle
                                 }
                             }
                         }
 
-                        DataConnectionState.Authenticated -> {
+                        is DataConnectionState.Authenticated -> {
                             state.user?.let { user ->
                                 log.i { "Authenticated" }
                                 _authState.value = AuthState.Authenticated(user)
+
+                                val serverIdentifier = settings.getServerIdentifier(state)
+                                val serverId = dataConnectionState.serverInfo.serverId
+                                settings.setIdForServer(serverIdentifier, serverId)
+                                settings.setTokenForServer(
+                                    serverIdentifier,
+                                    dataConnectionState.token,
+                                )
                             }
                         }
 
@@ -299,19 +317,11 @@ class AuthenticationManager(
             // Set flag FIRST, before any async operations
             _isLoggingOut.value = true
             val currentState = serviceClient.sessionState.value
-            if (currentState is SessionState.Connected) {
-                val serverIdentifier = when (currentState) {
-                    is SessionState.Connected.Direct ->
-                        settings.getDirectServerIdentifier(
-                            currentState.connectionInfo.host,
-                            currentState.connectionInfo.port,
-                            currentState.connectionInfo.isTls,
-                        )
-                    is SessionState.Connected.WebRTC ->
-                        settings.getWebRTCServerIdentifier(currentState.remoteId.rawId)
-                }
+            val serverIdentifier = settings.getServerIdentifier(currentState)
+            if (serverIdentifier != null) {
                 settings.setTokenForServer(serverIdentifier, null)
             }
+
             serviceClient.logout()
             _authState.value = AuthState.Idle
             // Keep the flag set to prevent auto-login until user explicitly logs in again
@@ -328,5 +338,26 @@ class AuthenticationManager(
 
     private companion object {
         const val CONNECT_WAIT_MS = 10_000L
+    }
+}
+
+class ServerIdMismatchException : Exception()
+
+private fun SettingsRepository.getServerIdentifier(sessionState: SessionState): String? {
+    return when (sessionState) {
+        is SessionState.Connected -> getServerIdentifier(sessionState)
+        else -> null
+    }
+}
+
+private fun SettingsRepository.getServerIdentifier(sessionState: SessionState.Connected): String {
+    return when (sessionState) {
+        is SessionState.Connected.Direct -> this.getDirectServerIdentifier(
+            sessionState.connectionInfo.host,
+            sessionState.connectionInfo.port,
+            sessionState.connectionInfo.isTls,
+        )
+
+        is SessionState.Connected.WebRTC -> this.getWebRTCServerIdentifier(sessionState.remoteId.rawId)
     }
 }

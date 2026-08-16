@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  * model chain that drives folder navigation and titles.
  */
 class BrowseFolderMappingTest {
-    private val factory = MediaItemFactory(FakeClient())
+    private val factory = MediaItemFactory(StubServiceClient())
 
     private fun folderJson(name: String, path: String?) = buildString {
         append("""{"item_id":"f1","provider":"tidal","media_type":"${MediaType.FOLDER.serverValue}"""")

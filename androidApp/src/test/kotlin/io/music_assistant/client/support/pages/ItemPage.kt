@@ -3,6 +3,10 @@ package io.music_assistant.client.support.pages
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTextExactly
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -11,10 +15,13 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
+import io.music_assistant.client.ui.compose.item.ItemDetailsScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_play_now
 import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.cd_provider_filter
+import musicassistantclient.composeapp.generated.resources.cd_view_all
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_home
@@ -40,7 +47,7 @@ class ItemPage(
     )
 
     override fun assert() {
-        composeTestRule.onNodeWithText(name).assertIsDisplayed()
+        composeTestRule.onNode(hasTextExactly(name)).assertIsDisplayed()
         composeTestRule.onNodeWithText(Res.string.action_play_now.get()).assertIsDisplayed()
             .assertHasClickAction()
         assertNavBar(
@@ -54,13 +61,7 @@ class ItemPage(
         )
 
         when (type) {
-            MediaType.ARTIST -> {
-                composeTestRule.onNode(isTab(Res.string.media_type_albums.get()))
-                    .assertIsDisplayed()
-                composeTestRule.onNode(isTab(Res.string.media_type_tracks.get()))
-                    .assertIsDisplayed()
-            }
-
+            MediaType.ARTIST -> Unit
             MediaType.ALBUM -> {
                 composeTestRule.onNode(isTab(Res.string.media_type_tracks.get()))
                     .assertIsDisplayed()
@@ -73,6 +74,7 @@ class ItemPage(
                 composeTestRule.onNode(isTab(Res.string.media_type_tracks.get()))
                     .assertIsDisplayed()
             }
+
             MediaType.RADIO -> TODO()
             MediaType.AUDIOBOOK -> TODO()
             MediaType.PODCAST -> TODO()
@@ -99,5 +101,28 @@ class ItemPage(
     fun clickPlay(): ItemPage {
         composeTestRule.onNodeWithText(Res.string.action_play_now.get()).performClick()
         return this
+    }
+
+    fun switchProvider(row: String, current: String, new: String): ItemPage {
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_provider_filter.get(row, current))
+            .performClick()
+        composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText(new))).performClick()
+        return this
+    }
+
+    fun assertMediaDisplayed(item: ServerMediaItem, provider: String? = null): ItemPage {
+        return assertMediaDisplayed(
+            item,
+            inScrollable = ItemDetailsScreenSemantics.LIST_TAG,
+            provider = provider,
+        )
+    }
+
+    fun clickViewAll(row: String): ItemListPage {
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_view_all.get(row))
+            .performClick()
+        return ItemListPage(row, navigationItem, composeTestRule).assertOnPage()
     }
 }

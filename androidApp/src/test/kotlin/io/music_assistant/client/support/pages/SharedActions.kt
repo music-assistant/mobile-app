@@ -1,10 +1,12 @@
 package io.music_assistant.client.support.pages
 
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -18,49 +20,40 @@ import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
 import io.music_assistant.client.support.withinTag
 import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
+import io.music_assistant.client.ui.compose.support.inScrollable
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.banner_no_network
 import musicassistantclient.composeapp.generated.resources.banner_reconnecting
+import musicassistantclient.composeapp.generated.resources.cd_album_item
 import musicassistantclient.composeapp.generated.resources.cd_current_player
+import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.common_apply
+import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_nothing
 
 fun ComposePage.clickOnMedia(
     serverMediaItem: ServerMediaItem,
     navigationItem: String,
     withinTag: String? = null,
+    provider: String? = null,
 ): ItemPage {
-    return clickOnMedia(
-        serverMediaItem.name,
-        MediaType.fromServer(serverMediaItem.mediaType) ?: MediaType.UNKNOWN,
-        navigationItem,
-        withinTag,
-    )
-}
+    composeTestRule.onNode(mediaItemMatcher(serverMediaItem, withinTag, provider))
+        .assertIsDisplayed()
+        .performClick()
 
-fun ComposePage.clickOnMedia(
-    name: String,
-    type: MediaType,
-    navigationItem: String,
-    withinTag: String? = null,
-): ItemPage {
-    val matcher = if (withinTag != null) {
-        withinTag(withinTag).and(hasText(name))
-    } else {
-        hasText(name)
-    }
-
-    composeTestRule.onNode(matcher).assertIsDisplayed().performClick()
-    return ItemPage(name, type, navigationItem, composeTestRule).assertOnPage()
+    val type = MediaType.fromServer(serverMediaItem.mediaType) ?: MediaType.UNKNOWN
+    return ItemPage(serverMediaItem.name, type, navigationItem, composeTestRule).assertOnPage()
 }
 
 fun <T : ComposePage> T.clickItemOption(serverMediaItem: ServerMediaItem, action: String): T {
-    composeTestRule.onNodeWithText(serverMediaItem.name).performTouchInput { longClick() }
+    composeTestRule.onNode(mediaItemMatcher(serverMediaItem)).performTouchInput { longClick() }
     composeTestRule.onNodeWithText(action).performClick()
     return this
 }
@@ -104,30 +97,39 @@ fun <T : Page> ComposePage.clickLibrary(destination: T): T {
     return destination.assertOnPage()
 }
 
-fun <T : ComposePage> T.assertMediaDisplayed(name: String, withinTag: String? = null): T {
-    val matcher = if (withinTag != null) {
-        withinTag(withinTag).and(hasText(name))
-    } else {
-        hasText(name)
+fun ComposePage.clickSettings(): SettingsPage {
+    clickNavBarItem(Res.string.nav_settings.get())
+    return SettingsPage(composeTestRule).assertOnPage()
+}
+
+fun <T : ComposePage> T.assertMediaDisplayed(
+    serverMediaItem: ServerMediaItem,
+    withinTag: String? = null,
+    inScrollable: String? = null,
+    provider: String? = null,
+): T {
+    val matcher = mediaItemMatcher(serverMediaItem, withinTag, provider)
+    composeTestRule.waitUntil {
+        if (inScrollable != null) {
+            composeTestRule.inScrollable(inScrollable) { onNode(matcher) }
+        }
+        composeTestRule.onNode(matcher).isDisplayed()
     }
 
-    composeTestRule.onNode(matcher).assertIsDisplayed()
     return this
 }
 
-fun <T : ComposePage> T.assertMediaNotDisplayed(name: String): T {
-    composeTestRule.onNodeWithText(name).assertIsNotDisplayed()
+fun <T : ComposePage> T.assertMediaNotDisplayed(
+    serverMediaItem: ServerMediaItem,
+    provider: String? = null,
+): T {
+    composeTestRule.onNode(mediaItemMatcher(serverMediaItem, provider = provider))
+        .assertIsNotDisplayed()
     return this
 }
 
 fun <T : ComposePage> T.playMedia(item: ServerMediaItem, withinTag: String? = null): T {
-    val matcher = if (withinTag != null) {
-        withinTag(withinTag).and(hasText(item.name))
-    } else {
-        hasText(item.name)
-    }
-
-    composeTestRule.onNode(matcher).performClick()
+    composeTestRule.onNode(mediaItemMatcher(item, withinTag)).performClick()
     return this
 }
 
@@ -201,4 +203,41 @@ fun <T : ComposePage> T.assertNoNetworkBanner(showing: Boolean): T {
     }
 
     return this
+}
+
+fun <T : ComposePage> T.enableFilter(action: (FilterSheetPage) -> Unit): T {
+    composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).performClick()
+    action(FilterSheetPage(composeTestRule).assertOnPage())
+    composeTestRule.onNodeWithText(Res.string.common_apply.get()).performClick()
+
+    composeTestRule.onNodeWithContentDescription(Res.string.cd_filter.get()).assertIsOn()
+
+    return this
+}
+
+fun <T : ComposePage> T.assertNoItems(): T {
+    composeTestRule.onNodeWithText(Res.string.library_empty.get()).assertIsDisplayed()
+    return this
+}
+
+private fun mediaItemMatcher(
+    item: ServerMediaItem,
+    withinTag: String? = null,
+    provider: String? = null,
+): SemanticsMatcher {
+    val matcher = if (MediaType.fromServer(item.mediaType) == MediaType.ALBUM) {
+        if (provider != null) {
+            hasContentDescription(Res.string.cd_album_item.get(item.name, provider))
+        } else {
+            hasContentDescription(Res.string.cd_album_item.get(item.name, item.provider))
+        }
+    } else {
+        hasContentDescription(item.name)
+    }
+
+    return if (withinTag != null) {
+        withinTag(withinTag).and(matcher)
+    } else {
+        matcher
+    }
 }

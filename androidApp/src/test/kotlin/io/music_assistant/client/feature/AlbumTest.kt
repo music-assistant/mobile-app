@@ -39,7 +39,7 @@ class AlbumTest {
         val track1 = ServerMediaItemFixtures.track(album = album)
         val track2 = ServerMediaItemFixtures.track(album = album)
         val track3 = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track1, track2, track3)
+        serviceClient.addItems(track1, track2, track3)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)
@@ -57,7 +57,7 @@ class AlbumTest {
         val track1 = ServerMediaItemFixtures.track(album = album)
         val track2 = ServerMediaItemFixtures.track(album = album)
         val track3 = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addToLibrary(track1, track2, track3)
+        serviceClient.addItems(track1, track2, track3)
 
         val player = ServerPlayerFixtures.player()
         serviceClient.addPlayers(player)

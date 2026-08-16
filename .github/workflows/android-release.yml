@@ -9,7 +9,7 @@ on:
 permissions:
   contents: write
   id-token: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   release:
@@ -67,15 +67,34 @@ jobs:
           keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
+      # Only the bundle: the GitHub APK is fetched from Play post-upload
+      # (generatedapks API), so it carries the real Play app-signing key.
       - name: Build release AAB
         run: ./gradlew :androidApp:bundleRelease
 
       - name: Generate Play Store release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p distribution/whatsnew
           PREV_TAG=$(git tag -l 'android-v*' --sort=-v:refname | head -1)
           if [ -n "$PREV_TAG" ]; then
-            NOTES=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
+            RAW=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- . ':!.github')
+            # Drop entries whose PR carries the 'chore' label. Each first-parent
+            # subject names its PR ("Merge pull request #N" / squash "title (#N)");
+            # entries without a PR number (direct pushes) are kept.
+            NOTES=""
+            while IFS= read -r LINE; do
+              [ -z "$LINE" ] && continue
+              PR=$(printf '%s' "$LINE" | grep -oE '#[0-9]+' | head -1 | tr -d '#' || true)
+              if [ -n "$PR" ]; then
+                if gh pr view "$PR" --json labels --jq '.labels[].name' 2>/dev/null | grep -qx 'chore'; then
+                  echo "Skipping chore PR #$PR: $LINE"
+                  continue
+                fi
+              fi
+              NOTES="${NOTES}${LINE}"$'\n'
+            done <<< "$RAW"
           else
             NOTES="Initial release"
           fi
@@ -87,6 +106,8 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
 
       - name: Upload to Google Play (open testing)
         uses: r0adkll/upload-google-play@v1
@@ -97,6 +118,44 @@ jobs:
           track: beta
           status: completed
           whatsNewDirectory: distribution/whatsnew
+
+      # Fetch the universal APK that Play generated from the uploaded bundle.
+      # It is signed with the Play app-signing key (not forgeable), unlike the
+      # old debug-key re-sign. Play needs a moment to process the bundle first.
+      - name: Download Play-signed universal APK
+        id: playapk
+        run: |
+          set -euo pipefail
+          TOKEN='${{ steps.gcloud-auth.outputs.access_token }}'
+          PKG='io.music_assistant.client'
+          CODE='${{ steps.version.outputs.code }}'
+          BASE="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PKG}/generatedApks/${CODE}"
+          mkdir -p dist
+          OUT="dist/music-assistant-${{ steps.version.outputs.name }}.apk"
+
+          DL=""
+          for i in $(seq 1 40); do   # ~20 min: 40 × 30s
+            RESP=$(curl -sf -H "Authorization: Bearer $TOKEN" "$BASE") || RESP=""
+            DL=$(echo "$RESP" | jq -r 'first(.generatedApks[]?.generatedUniversalApk.downloadId // empty)')
+            if [ -n "$DL" ] && [ "$DL" != "null" ]; then break; fi
+            echo "Play has not generated APKs yet (attempt $i); retrying in 30s…"
+            sleep 30
+          done
+
+          if [ -z "$DL" ] || [ "$DL" = "null" ]; then
+            echo "::warning::Play-generated universal APK not available after polling; releasing without an attached APK."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          curl -sfL -H "Authorization: Bearer $TOKEN" "${BASE}/downloads/${DL}:download?alt=media" -o "$OUT"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          if [ -x "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$OUT"   # log the app-signing cert
+          else
+            echo "::notice::apksigner not found at $APKSIGNER; skipping cert log"
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
       - name: Create and push tag
         run: |
@@ -113,6 +172,12 @@ jobs:
 
             - **Version code**: ${{ steps.version.outputs.code }}
             - **Track**: Open testing (Google Play)
+
+            ### Direct download
+
+            `music-assistant-${{ steps.version.outputs.name }}.apk` — universal build
+            signed with the Google Play app key (installs alongside / updates Play installs).
+          files: dist/music-assistant-*.apk
           generate_release_notes: true
           draft: false
           prerelease: false
@@ -144,3 +209,36 @@ jobs:
           git add androidApp/build.gradle.kts
           git commit -m "chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})"
           git push origin "${{ steps.next.outputs.branch }}"
+
+      # Same mechanism as lokalise-pull.yml: actions/github-script + Octokit
+      # (github.token), create-or-update, and issues.addLabels — which
+      # auto-creates the label. Avoids the gh-CLI PR path that failed before.
+      - name: Open bump PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const branch = '${{ steps.next.outputs.branch }}';
+            const base = 'main';
+            const { data: existing } = await github.rest.pulls.list({
+              owner, repo, state: 'open', head: `${owner}:${branch}`, base, per_page: 1,
+            });
+            let prNumber;
+            if (existing.length > 0) {
+              prNumber = existing[0].number;
+              core.info(`PR #${prNumber} already open for ${branch}`);
+            } else {
+              const { data: pr } = await github.rest.pulls.create({
+                owner, repo, base, head: branch,
+                title: 'chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})',
+                body: 'Automated post-release version bump so `main` carries the next versionName/versionCode.',
+                draft: true,
+                maintainer_can_modify: true,
+              });
+              prNumber = pr.number;
+              core.info(`Created PR #${prNumber}`);
+            }
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber, labels: ['automated', 'chore'],
+            });

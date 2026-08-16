@@ -22,6 +22,8 @@ Production / Play Store builds work out of the box. For debug or self-signed APK
 
 Changing the phone's *Customize Tabs* setting takes effect on the next browse refresh — no reconnect required.
 
+> **The Local Player must be enabled for MA to appear in Android Auto.** Android Auto is scoped entirely to the local on-device player, so with it disabled the browser service denies real media hosts — `onGetRoot` returns `null` for every non-SystemUI caller. MA then stays out of the car's media-app list and never seizes the now-playing slot from another app. The phone media notification for *remote* MA players is unaffected (SystemUI still gets a valid root and the `MediaSession` stays active). Enabling the local player while already connected to AA takes effect on the next AA reconnect.
+
 ---
 
 ## 2. Library browsing in the car
@@ -217,7 +219,7 @@ Where each "missing step" points the finger:
 | Missing | Cause | Fix |
 |---|---|---|
 | No `VoiceDispatch` | Assistant didn't route to us (Connected apps / default-provider problem) | Enable MA in Assistant settings; see Section 4 |
-| `VoiceDispatch` present but no `AAPlayFromSearch` | `MediaBrowser` bind failed (rare) | Check that the AA service isn't crashing; check `onGetRoot` |
+| `VoiceDispatch` present but no `AAPlayFromSearch` | Local player disabled (`onGetRoot` denies the host by design), or `MediaBrowser` bind failed (rare) | Enable the Local Player; otherwise check that the AA service isn't crashing |
 | `AAPlayFromSearch` present but no `AAVoice` | Local player did not initialize within 10s | Open the app once to bootstrap auth + local player |
 | `AAVoice` zero-hit warning | Query returned no matches against your library | Verify the query exists in MA |
 
@@ -225,6 +227,7 @@ Where each "missing step" points the finger:
 
 ## 6. Limitations & known quirks
 
+- **Local player required**: the whole Android Auto surface (browsing, voice, now-playing) is gated on the local on-device player being enabled. With it disabled, MA is deliberately invisible to AA (see Section 1) so it can never take over the car's media slot on behalf of a remote player. There is intentionally no "not enabled" placeholder in the car — MA simply doesn't appear.
 - **Player target**: voice playback always goes to the **local on-device player** (the phone speakers or whatever the phone's audio output is routed to). Voice control of remote MA players (a Sonos in the kitchen, a Squeezebox in the office) is not supported — voice integration is scoped to the local player only.
 - **Android Auto voice routing when another app is playing**: the AA Assistant frequently ignores the "on Music Assistant" suffix when another media app currently owns the active `MediaSession`. Workaround: focus Music Assistant in the AA media-app picker first, or pause the other app. This is documented Google behavior, not something we can override from the app side.
 - **Phone Assistant routing to default provider**: with Spotify (or another partner-certified app) configured as the default music provider, both Gemini and Google Assistant may pre-empt the routing decision before our App Actions capability fires. Set the default provider to MA — or to "none" — to avoid this.

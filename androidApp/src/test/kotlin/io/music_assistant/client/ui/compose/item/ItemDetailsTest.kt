@@ -1,10 +1,14 @@
 package io.music_assistant.client.ui.compose.item
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -22,6 +26,7 @@ import io.music_assistant.client.utils.support.MockFunction0
 import io.music_assistant.client.utils.support.MockFunction2
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.cd_album_item
 import musicassistantclient.composeapp.generated.resources.cd_more
 import org.junit.Rule
 import org.junit.Test
@@ -32,6 +37,16 @@ private val NoColors = object : ExtractedColorsSource {
     override fun peek(imageUrl: String): ExtractedColors? = null
     override suspend fun fetch(imageUrl: String): ExtractedColors? = null
 }
+
+/**
+ * Composes with inspection mode on so the Koin-backed dynamic-colors seams
+ * (`rememberDynamicColorsEnabled`, `dynamicColorsMenuOption`) short-circuit to their
+ * @Preview defaults instead of hitting a Koin graph this test doesn't start.
+ */
+private fun ComposeContentTestRule.setInspectableContent(content: @Composable () -> Unit) =
+    setContent {
+        CompositionLocalProvider(LocalInspectionMode provides true, content = content)
+    }
 
 @RunWith(AndroidJUnit4::class)
 class ItemDetailsTest {
@@ -46,12 +61,13 @@ class ItemDetailsTest {
             AppMediaItemFixtures.album(artist = artist),
         )
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
-                    DataState.Data(artist),
-                    DataState.Data(albums),
-                    DataState.NoData(),
+                    itemState = DataState.Data(artist),
+                    albumsState = DataState.NoData(),
+                    playableItemsState = DataState.NoData(),
+                    artistSections = ArtistSections(library = DataState.Data(Section(albums))),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
                 fetchColors = NoColors,
@@ -60,8 +76,23 @@ class ItemDetailsTest {
 
         composeTestRule.onAllNodes(hasText(artist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(albums[0].displayName)).assertIsDisplayed()
-            onNode(hasText(albums[1].displayName)).assertIsDisplayed()
+            onNode(
+                hasContentDescription(
+                    Res.string.cd_album_item.get(
+                        albums[0].displayName,
+                        albums[0].provider,
+                    ),
+                ),
+            ).assertIsDisplayed()
+
+            onNode(
+                hasContentDescription(
+                    Res.string.cd_album_item.get(
+                        albums[1].displayName,
+                        albums[1].provider,
+                    ),
+                ),
+            ).assertIsDisplayed()
         }
     }
 
@@ -71,7 +102,7 @@ class ItemDetailsTest {
         val album = AppMediaItemFixtures.album(artist = artist)
         val tracks = AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"), album)
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
@@ -86,8 +117,8 @@ class ItemDetailsTest {
         composeTestRule.onAllNodes(hasText(album.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.onAllNodes(hasText(artist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(tracks[0].displayName)).assertIsDisplayed()
-            onNode(hasText(tracks[1].displayName)).assertIsDisplayed()
+            onNode(hasContentDescription(tracks[0].displayName)).assertIsDisplayed()
+            onNode(hasContentDescription(tracks[1].displayName)).assertIsDisplayed()
         }
     }
 
@@ -96,7 +127,7 @@ class ItemDetailsTest {
         val artist = AppMediaItemFixtures.artist()
         val album = AppMediaItemFixtures.album(artist = artist, version = "Best Version")
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
@@ -116,7 +147,7 @@ class ItemDetailsTest {
     fun `does not show go to artist button if there are none`() {
         val album = AppMediaItemFixtures.album(artist = null)
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(album),
@@ -136,7 +167,7 @@ class ItemDetailsTest {
         val playlist = AppMediaItemFixtures.playlist()
         val tracks = AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"))
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(playlist),
@@ -150,10 +181,8 @@ class ItemDetailsTest {
 
         composeTestRule.onAllNodes(hasText(playlist.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(tracks[0].displayName)).assertIsDisplayed()
-            onNode(hasText(tracks[0].artists[0].displayName)).assertIsDisplayed()
-            onNode(hasText(tracks[1].displayName)).assertIsDisplayed()
-            onNode(hasText(tracks[1].artists[0].displayName)).assertIsDisplayed()
+            onNode(hasContentDescription(tracks[0].displayName)).assertIsDisplayed()
+            onNode(hasContentDescription(tracks[1].displayName)).assertIsDisplayed()
         }
     }
 
@@ -163,7 +192,7 @@ class ItemDetailsTest {
         val episodes =
             AppMediaItemFixtures.episodes(listOf("Episode 1", "Episode 2"), podcast = podcast)
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(podcast),
@@ -177,8 +206,8 @@ class ItemDetailsTest {
 
         composeTestRule.onAllNodes(hasText(podcast.displayName)).onFirst().assertIsDisplayed()
         composeTestRule.inScrollable("LazyVerticalGrid") {
-            onNode(hasText(episodes[0].displayName)).assertIsDisplayed()
-            onNode(hasText(episodes[1].displayName)).assertIsDisplayed()
+            onNode(hasContentDescription(episodes[0].displayName)).assertIsDisplayed()
+            onNode(hasContentDescription(episodes[1].displayName)).assertIsDisplayed()
         }
     }
 
@@ -186,7 +215,7 @@ class ItemDetailsTest {
     fun `displays audiobooks`() {
         val audiobook = AppMediaItemFixtures.audiobook(chapters = listOf("Chapter 1", "Chapter 2"))
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = ItemDetailsViewModel.State(
                     itemState = DataState.Data(audiobook),
@@ -218,7 +247,7 @@ class ItemDetailsTest {
 
         val onPlayClick = MockFunction2<QueueOption, Boolean>()
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = state.value,
                 geEditablePlaylists = suspend { emptyList() },
@@ -259,7 +288,7 @@ class ItemDetailsTest {
             ),
         )
 
-        composeTestRule.setContent {
+        composeTestRule.setInspectableContent {
             ItemDetails(
                 state = state.value,
                 onBack = onBack,

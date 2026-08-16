@@ -37,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -63,8 +64,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Defaults
+import io.music_assistant.client.auth.ServerIdMismatchException
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
+import io.music_assistant.client.player.sendspin.SendspinConfig
 import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
@@ -73,6 +76,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
+import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.BackHandler
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -92,8 +96,10 @@ import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.nav_settings
+import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
+import musicassistantclient.composeapp.generated.resources.settings_buffer_size
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_connect
 import musicassistantclient.composeapp.generated.resources.settings_connect_saved
@@ -144,6 +150,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.publicvalue.multiplatform.qrcode.CameraPosition
 import org.publicvalue.multiplatform.qrcode.CodeType
 import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,7 +162,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val connectionHistory by viewModel.connectionHistory.collectAsStateWithLifecycle()
     val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
-    val isAuthenticated = dataConnection == DataConnectionState.Authenticated
+    val isAuthenticated = dataConnection is DataConnectionState.Authenticated
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
@@ -247,9 +254,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             )
                         }
                         // If user changed connection info, don't auto-retry - let them manually retry
-                    } else if (sessionState is SessionState.Connected) {
-                        // Reset flag on successful connection
-                        autoReconnectAttempted = false
                     }
                 }
 
@@ -318,7 +322,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         LoginSection(connectedState.user)
 
                         when (dataConnection) {
-                            DataConnectionState.Authenticated -> {
+                            is DataConnectionState.Authenticated -> {
                                 // State 4: Connected and authenticated
 
                                 // Local Player Section
@@ -555,13 +559,20 @@ private fun ConnectionMethodTabs(
             }
         }
 
-        val error = (sessionState as? SessionState.Disconnected.Error)?.reason?.message
+        val error = (sessionState as? SessionState.Disconnected.Error)?.reason
         if (error != null) {
-            Text(
-                error,
-                modifier = Modifier.padding(top = 8.dp),
-                color = MaterialTheme.colorScheme.error,
-            )
+            val errorMessage = when (error) {
+                is ServerIdMismatchException -> Res.string.server_id_mismatch_error.toDisplayString()
+                else -> error.message?.toDisplayString()
+            }
+
+            if (errorMessage != null) {
+                Text(
+                    errorMessage.string(),
+                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 
@@ -1049,6 +1060,40 @@ private fun SendspinSection(
                 }
             },
         )
+
+        // Buffer size (advertised buffer_capacity in MB). Connect-time config, so locked while
+        // the local player is running — takes effect on the next connect.
+        val sendspinBufferCapacityMb by viewModel.sendspinBufferCapacityMb.collectAsStateWithLifecycle()
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_buffer_size),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "$sendspinBufferCapacityMb MB",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (sendspinEnabled) {
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onBackground
+                    },
+                )
+            }
+            Slider(
+                value = sendspinBufferCapacityMb.toFloat(),
+                onValueChange = { viewModel.setSendspinBufferCapacityMb(it.roundToInt()) },
+                valueRange = SendspinConfig.BUFFER_MB_MIN.toFloat()..SendspinConfig.BUFFER_MB_MAX.toFloat(),
+                steps = (SendspinConfig.BUFFER_MB_MAX - SendspinConfig.BUFFER_MB_MIN) /
+                    SendspinConfig.BUFFER_MB_STEP - 1,
+                enabled = !sendspinEnabled,
+            )
+        }
 
         // Custom connection toggle
         Row(

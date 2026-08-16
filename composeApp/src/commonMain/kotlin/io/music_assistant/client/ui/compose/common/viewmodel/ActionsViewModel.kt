@@ -2,10 +2,13 @@ package io.music_assistant.client.ui.compose.common.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.repository.MediaItemChange
@@ -60,26 +63,7 @@ class ActionsViewModel(
     /**
      * Sets exact or toggles favorite status of the item.
      */
-    override fun onFavoriteClick(item: AppMediaItem) {
-        viewModelScope.launch {
-            val newFavorite = item.favorite != true
-            // Optimistic: the server's queue payload reports a stale `favorite`
-            // for the now-playing track and clobbers the confirmed value, so the
-            // UI is driven from this override until MediaItemUpdatedEvent reconciles.
-            val result = if (newFavorite) {
-                val uri = item.uri ?: return@launch
-                dataSource.setFavoriteOverride(item, true)
-                apiClient.sendRequest(Request.Library.addFavorite(uri))
-            } else {
-                dataSource.setFavoriteOverride(item, false)
-                apiClient.sendRequest(
-                    Request.Library.removeFavorite(item.itemId, item.mediaType),
-                )
-            }
-            // Roll back to the pre-toggle value if the server rejected it.
-            result.onFailure { dataSource.setFavoriteOverride(item, item.favorite) }
-        }
-    }
+    override fun onFavoriteClick(item: AppMediaItem) = dataSource.toggleFavorite(item)
 
     override suspend fun getEditablePlaylists(): List<Playlist> =
         mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
@@ -176,6 +160,28 @@ class ActionsViewModel(
     }
 
     fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
+
+    fun onPlayClick(
+        item: AppMediaItem,
+        option: QueueOption,
+        radio: Boolean,
+    ) {
+        viewModelScope.launch {
+            val queueId = dataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
+            item.mediaUri?.let { mediaUri ->
+                Logger.withTag("PlayDispatch")
+                    .i { "ActionsViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+                apiClient.sendRequest(
+                    Request.Library.play(
+                        media = listOf(mediaUri),
+                        queueOrPlayerId = queueId,
+                        option = option,
+                        radioMode = radio && item !is Genre,
+                    ),
+                )
+            }
+        }
+    }
 
     private companion object {
         // Upper bound for awaiting the server's "playlist added" confirmation.

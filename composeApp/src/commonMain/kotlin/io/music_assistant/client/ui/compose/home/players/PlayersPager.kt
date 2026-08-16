@@ -74,6 +74,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Lyrics
@@ -89,16 +90,21 @@ import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
+import io.music_assistant.client.ui.compose.common.OverflowMenuDivider
+import io.music_assistant.client.ui.compose.common.OverflowMenuEntry
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
+import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
@@ -160,6 +166,7 @@ fun PlayersPager(
         }
 
         val colorsSource = rememberExtractedColorsSource()
+        val dynamicColorsEnabled = rememberDynamicColorsEnabled()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -192,6 +199,7 @@ fun PlayersPager(
                 imageUrl = media?.imageUrl,
                 fallback = MaterialTheme.colorScheme.primaryContainer,
                 source = colorsSource,
+                enabled = dynamicColorsEnabled,
             )
         }
         val isExpandedScreen = WindowClass.isAtLeastExpanded()
@@ -266,6 +274,17 @@ fun PlayersPager(
                         val livePositionFlow = remember(queueId) {
                             queueId?.let { homeScreenViewModel.observePosition(it) }
                         }
+                        // Buffered-ahead seconds — local player only, and only when the user has the
+                        // buffer indicator enabled; remote players / disabled → null (no segment).
+                        val showBufferViz by homeScreenViewModel.showBufferVisualization
+                            .collectAsStateWithLifecycle()
+                        val bufferedAheadSecFlow = remember(queueId, player.isLocal, showBufferViz) {
+                            if (player.isLocal && showBufferViz) {
+                                homeScreenViewModel.observeLocalBufferedSeconds()
+                            } else {
+                                null
+                            }
+                        }
                         // Lyrics: only the displayed page drives the shared VM, so the
                         // fetch (and the button) track the player currently on screen.
                         val currentTrack = player.queueInfo?.currentItem?.track as? Track
@@ -318,6 +337,7 @@ fun PlayersPager(
                                 isCurrentPage = isCurrentPage,
                                 navigateToItem = navigateToItem,
                                 livePositionFlow = livePositionFlow,
+                                bufferedAheadSecFlow = bufferedAheadSecFlow,
                                 lyricsAvailable = isCurrentPage && lyrics != null,
                                 onLyricsClick = { sheetLyrics = lyrics },
                             )
@@ -325,7 +345,6 @@ fun PlayersPager(
                         sheetLyrics?.let { shown ->
                             LyricsSheet(
                                 lyrics = shown,
-                                colors = colors,
                                 livePositionFlow = livePositionFlow,
                                 onDismiss = { sheetLyrics = null },
                             )
@@ -412,6 +431,7 @@ private fun ExpandedPlayerPage(
     isCurrentPage: Boolean,
     navigateToItem: (AppMediaItem) -> Unit = {},
     livePositionFlow: Flow<Double>?,
+    bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
 ) {
@@ -576,6 +596,7 @@ private fun ExpandedPlayerPage(
                             lyricsAvailable = lyricsAvailable,
                             onLyricsClick = onLyricsClick,
                             livePositionFlow = livePositionFlow,
+                            bufferedAheadSecFlow = bufferedAheadSecFlow,
                         )
                     }
                 }
@@ -866,7 +887,9 @@ private fun PlayerOverflowMenu(
         emptyList()
     }
 
-    val playerOptions = buildList {
+    // Player actions (top group): power, queue ops, DSP, then the display toggles — dynamic
+    // colors and buffer indicator sit right after DSP, consistently for every player.
+    val displayOptions = buildList {
         if (onOpenDsp != null) {
             add(
                 OverflowMenuOption(
@@ -876,6 +899,21 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        add(dynamicColorsMenuOption())
+        // Buffer indicator toggle — local player only (the segment it controls is local-only).
+        if (currentPlayer.isLocal) {
+            add(bufferIndicatorMenuOption())
+        }
+    }
+    val playerActions = powerOption + queueOptions + displayOptions
+
+    // Track actions (bottom group): add-to-playlist + navigation (go to artist/album).
+    val navigationOptions =
+        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(
+            navigateToItem,
+        )
+            ?: emptyList()
+    val trackActions = buildList {
         if (currentTrack != null && playlistActions != null) {
             add(
                 OverflowMenuOption(
@@ -885,15 +923,17 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        addAll(navigationOptions)
     }
 
-    val navigationOptions =
-        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(
-            navigateToItem,
-        )
-            ?: emptyList()
-
-    val menuOptions = powerOption + queueOptions + playerOptions + navigationOptions
+    // Divider only when both groups are present.
+    val menuOptions: List<OverflowMenuEntry> = buildList {
+        addAll(playerActions)
+        if (trackActions.isNotEmpty()) {
+            add(OverflowMenuDivider)
+            addAll(trackActions)
+        }
+    }
     if (menuOptions.isNotEmpty()) {
         OverflowMenuButton(
             modifier = Modifier,

@@ -180,6 +180,7 @@ class SendspinClientFactory(
             clientId = settings.sendspinClientId.value,
             deviceName = settings.sendspinDeviceName.value,
             codecPreference = settings.sendspinCodecPreference.value,
+            bufferCapacityBytes = settings.sendspinBufferCapacityMb.value * SendspinConfig.BYTES_PER_MB,
             // WebRTC: auth inherited from ma-api channel, no server connection needed
             serverHost = "",
             serverPort = 0,
@@ -274,6 +275,7 @@ class SendspinClientFactory(
                 deviceName = settings.sendspinDeviceName.value,
                 enabled = true,
                 codecPreference = settings.sendspinCodecPreference.value,
+                bufferCapacityBytes = settings.sendspinBufferCapacityMb.value * SendspinConfig.BYTES_PER_MB,
                 serverHost = settings.sendspinHost.value.takeIf { it.isNotEmpty() } ?: serverHost,
                 serverPort = settings.sendspinPort.value,
                 serverPath = settings.sendspinPath.value,
@@ -289,6 +291,7 @@ class SendspinClientFactory(
                 deviceName = settings.sendspinDeviceName.value,
                 enabled = true,
                 codecPreference = settings.sendspinCodecPreference.value,
+                bufferCapacityBytes = settings.sendspinBufferCapacityMb.value * SendspinConfig.BYTES_PER_MB,
                 serverHost = serverHost,
                 serverPort = mainConnection.port,
                 serverPath = "/sendspin",

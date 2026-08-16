@@ -432,6 +432,11 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
         }
     }
 
+    actual fun resume() {
+        resumeSink()
+        onRemoteCommand?.invoke("play")
+    }
+
     actual fun stopRawPcmStream() {
         logger.i { "Stopping raw PCM stream" }
 
@@ -545,24 +550,6 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
                 logger.e(e) { "Error unregistering noisy audio receiver" }
             }
         }
-    }
-
-    // Now Playing - no-op on Android (uses MediaSession instead)
-    actual fun updateNowPlaying(
-        title: String?,
-        artist: String?,
-        album: String?,
-        artworkUrl: String?,
-        duration: Double?,
-        elapsedTime: Double?,
-        playbackRate: Double,
-        isLongFormContent: Boolean,
-    ) {
-        // Android handles Now Playing via MediaSession, not implemented here
-    }
-
-    actual fun clearNowPlaying() {
-        // Android handles Now Playing via MediaSession, not implemented here
     }
 
     actual fun setLongFormSeekIntervals(backSeconds: Long, forwardSeconds: Long) {

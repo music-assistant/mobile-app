@@ -14,8 +14,8 @@ android {
         applicationId = "io.music_assistant.client"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 7
-        versionName = "0.6.0"
+        versionCode = 11
+        versionName = "0.10.0"
     }
     packaging {
         resources {
@@ -65,12 +65,14 @@ android {
         }
     }
 
-    // ABI splits for the GitHub-distributed APK only. The Play AAB path
-    // (bundleRelease) handles per-device delivery natively, so leave it alone.
+    // ABI splits for the GitHub-distributed APK only. Harmless to the Play AAB:
+    // `splits` is ignored when building an app bundle, so a combined
+    // `bundleRelease assembleRelease` invocation still yields an all-ABI bundle.
     splits {
         abi {
             isEnable = gradle.startParameter.taskNames.any {
-                it.contains("SelfSignedRelease", ignoreCase = true)
+                it.contains("assembleRelease", ignoreCase = true) ||
+                    it.contains("SelfSignedRelease", ignoreCase = true)
             }
             reset()
             include("arm64-v8a")

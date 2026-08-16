@@ -11,7 +11,7 @@ import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
-class FakeClient : ServiceClient {
+open class StubServiceClient : ServiceClient {
     override val sessionState: StateFlow<SessionState>
         get() = TODO("Not yet implemented")
 
@@ -31,8 +31,6 @@ class FakeClient : ServiceClient {
     override val isReadyForCommands: StateFlow<Boolean>
         get() = TODO("Not yet implemented")
     override val externalConsumerActive: StateFlow<Boolean>
-        get() = TODO("Not yet implemented")
-    override val serverBaseUrl: StateFlow<String?>
         get() = TODO("Not yet implemented")
 
     override fun resolveImageUrl(path: String, provider: String, isRemotelyAccessible: Boolean, proxyId: String?): String? = null
@@ -76,5 +74,11 @@ class FakeClient : ServiceClient {
     }
 
     override fun onPlaybackInactive() {
+    }
+
+    override fun forceDisconnect(reason: Exception) {
+    }
+
+    override fun noServer() {
     }
 }

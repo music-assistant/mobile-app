@@ -41,8 +41,18 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
-import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.auth_authenticating
+import musicassistantclient.composeapp.generated.resources.auth_authorize_ha
+import musicassistantclient.composeapp.generated.resources.auth_hide_password
+import musicassistantclient.composeapp.generated.resources.auth_loading_providers
+import musicassistantclient.composeapp.generated.resources.auth_logged_in_as
+import musicassistantclient.composeapp.generated.resources.auth_login
+import musicassistantclient.composeapp.generated.resources.auth_logout
+import musicassistantclient.composeapp.generated.resources.auth_password
+import musicassistantclient.composeapp.generated.resources.auth_retry_providers
+import musicassistantclient.composeapp.generated.resources.auth_show_password
+import musicassistantclient.composeapp.generated.resources.auth_username
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 

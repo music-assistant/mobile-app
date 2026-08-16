@@ -1,5 +1,6 @@
 package io.music_assistant.client.data
 
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.QueueOption
@@ -60,6 +61,10 @@ suspend fun executeLocalPlayerDispatch(
                 playersToRemove = listOf(plan.playerId),
             ),
         ).onFailure { onRpcFailure("detach", it) }
+    }
+    Logger.withTag("PlayDispatch").i {
+        "LocalPlayerDispatch (CarPlay/Siri): uris=${plan.mediaUris} option=${plan.option} " +
+            "startItem=${plan.startItem} player=${plan.playerId} detachFrom=${plan.detachFrom}"
     }
     serviceClient.sendRequest(
         Request.Library.play(

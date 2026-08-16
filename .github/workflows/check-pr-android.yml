@@ -2,6 +2,9 @@ name: Check PR (Android)
 
 on:
   pull_request:
+    # ready_for_review is added so that flipping an auto-opened draft bump PR
+    # to "Ready for review" triggers this check (default types don't include it).
+    types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ main ]
     # Skip Android PR checks when a PR only touches iOS-exclusive files.
     # Shared code (composeApp, gradle, etc.) still triggers a build.

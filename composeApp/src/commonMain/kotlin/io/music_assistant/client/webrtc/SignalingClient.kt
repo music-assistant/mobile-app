@@ -8,6 +8,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import io.music_assistant.client.webrtc.model.SignalingMessage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -197,6 +198,8 @@ class SignalingClient(
 
             _connectionState.value = SignalingState.Disconnected
             logger.i { "Disconnected from signaling server" }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logger.e(e) { "Error during disconnect" }
         }

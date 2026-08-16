@@ -34,6 +34,7 @@ import kotlin.time.Duration.Companion.seconds
 class SendspinWsHandler(
     private val serverUrl: String,
     private val networkAvailable: StateFlow<Boolean>? = null,
+    private val maxAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
 ) : CoroutineScope {
     private val logger = Logger.withTag("SendspinWsHandler")
     private val supervisorJob = SupervisorJob()
@@ -54,7 +55,9 @@ class SendspinWsHandler(
     private var explicitDisconnect = false
     private var reconnectAttempts = 0
     private var reconnectJob: Job? = null
-    private val maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS
+
+    // Callback invoked after a successful automatic reconnect
+    var onReconnected: (() -> Unit)? = null
 
     private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 50)
     val textMessages: Flow<String> = _textMessages.asSharedFlow()
@@ -211,12 +214,13 @@ class SendspinWsHandler(
     private fun attemptReconnect() {
         reconnectJob?.cancel()
         reconnectJob = launch {
+            val attemptsLabel = if (maxAttempts < 0) "∞" else maxAttempts.toString()
             val reconnected = runReconnectionLoop(
-                maxAttempts = maxReconnectAttempts,
+                maxAttempts = maxAttempts,
                 networkAvailable = networkAvailable,
                 onAttemptStarting = { attempt ->
                     reconnectAttempts = attempt
-                    logger.i { "Reconnect attempt $attempt/$maxReconnectAttempts" }
+                    logger.i { "Reconnect attempt $attempt/$attemptsLabel" }
                     _connectionState.value = WebSocketState.Reconnecting(attempt)
                 },
                 tryConnect = { attempt ->
@@ -227,6 +231,7 @@ class SendspinWsHandler(
                         reconnectAttempts = 0
                         _connectionState.value = WebSocketState.Connected
                         startListening(wsSession)
+                        onReconnected?.invoke()
                         true
                     } catch (e: Exception) {
                         logger.w(e) { "Reconnect attempt $attempt failed" }
@@ -235,10 +240,10 @@ class SendspinWsHandler(
                 },
             )
             if (!reconnected) {
-                logger.e { "Max reconnect attempts ($maxReconnectAttempts) reached, giving up" }
+                logger.e { "Max reconnect attempts ($maxAttempts) reached, giving up" }
                 session = null
                 _connectionState.value = WebSocketState.Error(
-                    Exception("Failed to reconnect after $maxReconnectAttempts attempts"),
+                    Exception("Failed to reconnect after $maxAttempts attempts"),
                 )
             }
         }

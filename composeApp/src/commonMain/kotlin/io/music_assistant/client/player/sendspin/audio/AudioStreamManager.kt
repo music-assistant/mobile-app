@@ -17,8 +17,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -158,6 +161,11 @@ class AudioStreamManager(
     override suspend fun startStream(config: StreamStartPlayer) = streamLifecycleLock.withLock {
         logger.i { "Starting stream: ${config.codec}, ${config.sampleRate}Hz, ${config.channels}ch, ${config.bitDepth}bit" }
 
+        // A rapid skip burst can queue several stream/start events behind this lock. If a
+        // newer one already superseded us (collectLatest cancelled this coroutine), bail before
+        // touching the decoder so the final stream is the only one that materializes.
+        currentCoroutineContext().ensureActive()
+
         // Resume path: a reconnect can re-issue stream/start with the same format while we're
         // still streaming. Keep the buffered audio, decoder, and consumer alive — chunks just
         // resume flowing into the live queue (producer de-dups overlap). Wiping here would
@@ -171,67 +179,86 @@ class AudioStreamManager(
             return@withLock
         }
 
-        streamConfig = config
-        isStreaming = true
-        // Create and configure decoder atomically under lock
-        val (outputCodec, outputBitDepth) = decoderLock.withLock {
-            audioDecoder?.release()
-            audioDecoder = null
+        try {
+            stopPlaybackThread()
 
-            val newDecoder = createDecoder(config)
-            val formatSpec = AudioFormatSpec(
-                codec = AudioCodec.valueOf(config.codec.uppercase()),
-                channels = config.channels,
-                sampleRate = config.sampleRate,
-                bitDepth = config.bitDepth,
-            )
-            newDecoder.configure(formatSpec, config.codecHeader)
-            audioDecoder = newDecoder
-            newDecoder.getOutputCodec() to newDecoder.getOutputBitDepth()
-        }
+            streamConfig = config
+            // Create and configure decoder atomically under lock
+            val (outputCodec, outputBitDepth) = decoderLock.withLock {
+                audioDecoder?.release()
+                audioDecoder = null
 
-        // Reuse existing AudioTrack if format unchanged (avoids click on track transitions)
-        val newSinkConfig =
-            SinkConfig(outputCodec, config.sampleRate, config.channels, outputBitDepth)
-        if (newSinkConfig == currentSinkConfig) {
-            logger.i { "Reusing existing AudioTrack (same format: $newSinkConfig)" }
-            mediaPlayerController.flush()
-            mediaPlayerController.resumeSink()
-        } else {
-            logger.i { "Creating new AudioTrack: $newSinkConfig" }
-            mediaPlayerController.prepareStream(
-                codec = outputCodec,
-                sampleRate = config.sampleRate,
-                channels = config.channels,
-                bitDepth = outputBitDepth,
-                codecHeader = config.codecHeader,
-                listener = object : MediaPlayerListener {
-                    override fun onReady() {
-                        logger.i { "MediaPlayer ready for stream ($outputCodec)" }
-                    }
+                // Guard the expensive (~50-200ms, blocking) decoder rebuild — the dominant
+                // per-skip cost. If superseded, abort before paying it.
+                currentCoroutineContext().ensureActive()
 
-                    override fun onAudioCompleted() {
-                        logger.i { "Audio completed" }
-                    }
+                val newDecoder = createDecoder(config)
+                val formatSpec = AudioFormatSpec(
+                    codec = AudioCodec.valueOf(config.codec.uppercase()),
+                    channels = config.channels,
+                    sampleRate = config.sampleRate,
+                    bitDepth = config.bitDepth,
+                )
+                newDecoder.configure(formatSpec, config.codecHeader)
+                audioDecoder = newDecoder
+                newDecoder.getOutputCodec() to newDecoder.getOutputBitDepth()
+            }
 
-                    override fun onError(error: Throwable?) {
-                        logger.e(error) { "MediaPlayer error - stopping stream" }
-                        launch {
-                            _streamError.emit(error ?: Exception("Unknown MediaPlayer error"))
-                            stopStream()
+            // Reuse existing AudioTrack if format unchanged (avoids click on track transitions)
+            val newSinkConfig =
+                SinkConfig(outputCodec, config.sampleRate, config.channels, outputBitDepth)
+            if (newSinkConfig == currentSinkConfig) {
+                logger.i { "Reusing existing AudioTrack (same format: $newSinkConfig)" }
+                mediaPlayerController.flush()
+                mediaPlayerController.resumeSink()
+            } else {
+                logger.i { "Creating new AudioTrack: $newSinkConfig" }
+                mediaPlayerController.prepareStream(
+                    codec = outputCodec,
+                    sampleRate = config.sampleRate,
+                    channels = config.channels,
+                    bitDepth = outputBitDepth,
+                    codecHeader = config.codecHeader,
+                    listener = object : MediaPlayerListener {
+                        override fun onReady() {
+                            logger.i { "MediaPlayer ready for stream ($outputCodec)" }
                         }
-                    }
-                },
-            )
-            currentSinkConfig = newSinkConfig
-        }
 
-        queueLock.withLock {
-            queue.clear()
-            lastConsumedTs = Long.MIN_VALUE
+                        override fun onAudioCompleted() {
+                            logger.i { "Audio completed" }
+                        }
+
+                        override fun onError(error: Throwable?) {
+                            logger.e(error) { "MediaPlayer error - stopping stream" }
+                            launch {
+                                _streamError.emit(error ?: Exception("Unknown MediaPlayer error"))
+                                stopStream()
+                            }
+                        }
+                    },
+                )
+                currentSinkConfig = newSinkConfig
+            }
+
+            isStreaming = true
+            queueLock.withLock {
+                queue.clear()
+                lastConsumedTs = Long.MIN_VALUE
+            }
+            _isStarved.value = false
+
+            // Don't start a consumer for a track that's already been skipped past.
+            currentCoroutineContext().ensureActive()
+            startPlaybackThread()
+        } catch (e: CancellationException) {
+            // Superseded mid-setup. Invalidate the reuse guard so the next (final) startStream
+            // is forced into a clean rebuild rather than the resume fast-path — otherwise an
+            // armed guard with no running consumer would leave us silent. Also stop any consumer
+            // this call managed to launch on the detached playback scope.
+            streamConfig = null
+            stopPlaybackThread(join = false)
+            throw e
         }
-        _isStarved.value = false
-        startPlaybackThread()
     }
 
     private fun createDecoder(config: StreamStartPlayer): AudioDecoder {
@@ -269,6 +296,7 @@ class AudioStreamManager(
             val pos = queue.binarySearchBy(ts) { it.timestamp }
             if (pos >= 0) return@withLock false
             queue.add(-(pos + 1), RawFrame(ts, binaryMessage.data))
+            updateBufferedDurationLocked()
             true
         }
         if (inserted) frameSignal.trySend(Unit)
@@ -278,6 +306,16 @@ class AudioStreamManager(
      * Consumer: decode the oldest frame from sorted queue and write PCM to AudioTrack.
      * Runs on high-priority [audioDispatcher]. Paced by blocking AudioTrack.write().
      */
+    private suspend fun stopPlaybackThread(join: Boolean = true) {
+        isStreaming = false
+        if (join) {
+            playbackJob?.cancelAndJoin()
+        } else {
+            playbackJob?.cancel()
+        }
+        playbackJob = null
+    }
+
     private fun startPlaybackThread() {
         playbackJob?.cancel()
         playbackJob = CoroutineScope(audioDispatcher + SupervisorJob()).launch {
@@ -299,7 +337,10 @@ class AudioStreamManager(
                     while (isActive && isStreaming) {
                         val frame = queueLock.withLock {
                             if (queue.size > reorderDepth) {
-                                queue.removeFirst().also { lastConsumedTs = it.timestamp }
+                                queue.removeFirst().also {
+                                    lastConsumedTs = it.timestamp
+                                    updateBufferedDurationLocked()
+                                }
                             } else {
                                 null
                             }
@@ -378,14 +419,28 @@ class AudioStreamManager(
         }
         _isStarved.value = false
         _playbackPosition.update { 0L }
+        _bufferState.update { BufferState(0L, false, 0) }
+    }
+
+    /**
+     * Recompute [BufferState.bufferedDuration] = microseconds of audio queued ahead of the
+     * consumer head (server presentation-time span). MUST be called while holding [queueLock].
+     * Before the first consume [lastConsumedTs] is MIN_VALUE, so the queue head is the baseline.
+     */
+    private fun updateBufferedDurationLocked() {
+        val span = if (queue.isEmpty()) {
+            0L
+        } else {
+            val head = if (lastConsumedTs != Long.MIN_VALUE) lastConsumedTs else queue.first().timestamp
+            (queue.last().timestamp - head).coerceAtLeast(0L)
+        }
+        _bufferState.update { it.copy(bufferedDuration = span) }
     }
 
     override suspend fun stopStream() = streamLifecycleLock.withLock {
         logger.i { "Stopping stream" }
-        isStreaming = false
         _isStarved.value = false
-        playbackJob?.cancel()
-        playbackJob = null
+        stopPlaybackThread()
 
         queueLock.withLock {
             queue.clear()

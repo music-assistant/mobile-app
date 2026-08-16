@@ -1,8 +1,6 @@
 package io.music_assistant.client.support.pages
 
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -31,8 +29,8 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
         )
     }
 
-    fun clickOnMedia(item: ServerMediaItem): ItemPage {
-        return clickOnMedia(item, Res.string.nav_home.get())
+    fun clickOnMedia(item: ServerMediaItem, withinTag: String? = null): ItemPage {
+        return clickOnMedia(item, Res.string.nav_home.get(), withinTag)
     }
 
     fun refresh(): HomePage {
@@ -54,19 +52,12 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     }
 
     fun assertShortcutDisplayed(item: ServerMediaItem): HomePage {
-        assertMediaDisplayed(item.name, withinTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG)
+        assertMediaDisplayed(item, withinTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG)
         return this
     }
 
     fun assertErrorLoadingData(): HomePage {
         composeTestRule.onNodeWithText(Res.string.library_error.get()).assertIsDisplayed()
-        return this
-    }
-
-    fun assertProgress(): HomePage {
-        composeTestRule.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate))
-            .assertIsDisplayed()
-
         return this
     }
 }

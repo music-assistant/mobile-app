@@ -13,6 +13,9 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.carplay.CarPlayStrings
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.NowPlayingModes
+import io.music_assistant.client.data.NowPlayingTrack
+import io.music_assistant.client.data.NowPlayingTransport
 import io.music_assistant.client.data.executeLocalPlayerDispatch
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
@@ -36,6 +39,7 @@ import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.carBulkActions
 import io.music_assistant.client.settings.carTapAction
+import io.music_assistant.client.settings.planCarItemDispatch
 import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.compose.library.LibraryCategory
 import io.music_assistant.client.ui.compose.library.carTabCategories
@@ -49,8 +53,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.component.KoinComponent
@@ -82,10 +84,6 @@ object KmpHelper : KoinComponent {
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    fun getServerUrl(): String? {
-        return serviceClient.serverBaseUrl.value
-    }
 
     /**
      * The connected MA server's stable identifier (UUID-style, e.g.
@@ -122,8 +120,12 @@ object KmpHelper : KoinComponent {
         mainScope.launch { completion(CarPlayStrings.load()) }
     }
 
+    /** Whether the local player is enabled; CarPlay gates attachment on this. */
+    fun isLocalPlayerEnabled(): Boolean = settingsRepository.sendspinEnabled.value
+
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
+    fun refreshCarPlayNowPlayingState() = mainDataSource.refreshPlayersAndQueues()
 
     // MARK: - Artwork loader (Swift-callable)
     //
@@ -180,7 +182,7 @@ object KmpHelper : KoinComponent {
 
     /**
      * Subscribe to transport command-readiness. Fires with the current value
-     * on subscribe and on every change. Caller must `cancel()` on teardown.
+     * on subscribe and on every change.
      */
     fun observeReadiness(onChanged: (Boolean) -> Unit): Cancellable {
         val job = mainScope.launch {
@@ -189,16 +191,41 @@ object KmpHelper : KoinComponent {
         return Cancellable { job.cancel() }
     }
 
+    // MARK: - Now Playing channels
+    //
+    // Per-concern state for the system media UI (lock screen / Control Center /
+    // CarPlay). Each observer replays the current value on subscribe — late
+    // subscribers (CarPlay connecting mid-playback, foreground return) catch up
+    // immediately. Callbacks arrive on the main thread; Swift needs no dispatch
+    // hop. `null` means "nothing to present" (no current track).
+
     /**
-     * Subscribe to "local player has a current track" transitions. Fires
-     * with the current value on subscribe, then on every distinct change.
+     * Subscribe to track metadata changes (identity, titles, artwork URL,
+     * duration, long-form flag).
      */
-    fun observeLocalPlayerPresence(onChanged: (Boolean) -> Unit): Cancellable {
+    fun observeNowPlayingTrack(onChanged: (NowPlayingTrack?) -> Unit): Cancellable {
         val job = mainScope.launch {
-            mainDataSource.localPlayer
-                .map { it?.queueInfo?.currentItem != null }
-                .distinctUntilChanged()
-                .collect { onChanged(it) }
+            mainDataSource.nowPlayingTrack.collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /**
+     * Subscribe to transport anchor changes (playing state, position anchor,
+     * rate). The anchor timestamp is only meaningful on the Kotlin side;
+     * Swift re-stamps arrival with its own clock.
+     */
+    fun observeNowPlayingTransport(onChanged: (NowPlayingTransport?) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingTransport.collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /** Subscribe to queue-mode changes (shuffle, repeat, toggle availability). */
+    fun observeNowPlayingModes(onChanged: (NowPlayingModes?) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingModes.collect { onChanged(it) }
         }
         return Cancellable { job.cancel() }
     }
@@ -230,7 +257,7 @@ object KmpHelper : KoinComponent {
 
     fun fetchRecommendations(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("recommendations", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Library.recommendations()).getOrNull()
+            mediaItemRepository.fetchRecommendationFolders().getOrNull()
                 ?: emptyList()
         }
     }
@@ -239,8 +266,7 @@ object KmpHelper : KoinComponent {
         completion: (List<RecommendationFolder>?) -> Unit,
     ) {
         launchFetch("recommendationFolders", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Library.recommendations()).getOrNull()
-                ?.filterIsInstance<RecommendationFolder>()
+            mediaItemRepository.fetchRecommendationFolders().getOrNull()
                 ?: emptyList()
         }
     }
@@ -413,13 +439,27 @@ object KmpHelper : KoinComponent {
         dispatchLocal(item, option, radioMode = false)
 
     private fun dispatchLocal(item: AppMediaItem, option: QueueOption, radioMode: Boolean): Boolean {
+        return dispatchLocal(
+            mediaUris = listOfNotNull(item.mediaUri),
+            option = option,
+            radioMode = radioMode,
+        )
+    }
+
+    private fun dispatchLocal(
+        mediaUris: List<String>,
+        option: QueueOption,
+        radioMode: Boolean,
+        startItem: String? = null,
+    ): Boolean {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
             localPlayerId = player?.id,
             localPlayerSyncedTo = player?.syncedTo,
-            mediaUris = listOfNotNull(item.mediaUri),
+            mediaUris = mediaUris,
             option = option,
             radioMode = radioMode,
+            startItem = startItem,
         ) ?: return false
         plan.detachFrom?.let { syncedToId ->
             log.i { "dispatchLocal($option, radio=$radioMode): detaching ${plan.playerId} from $syncedToId" }
@@ -458,12 +498,28 @@ object KmpHelper : KoinComponent {
      * dispatched DefaultClickAction.name so Swift can decide whether to push Now Playing, or null
      * on failure / no playable URI.
      */
-    fun playCarDefaultTap(item: AppMediaItem): String? {
+    fun playCarDefaultTap(item: AppMediaItem, parent: AppMediaItem?): String? {
         val action = item.mediaType.toItemKind()
             ?.let { settingsRepository.carPlayableClickActions.value.carTapAction(it) }
             ?: DefaultClickOption.PLAY_NOW
-        val dispatch = action.toCarDispatch()
-        return if (dispatchLocal(item, dispatch.option, dispatch.radioMode)) action.name else null
+        val dispatch = planCarItemDispatch(
+            action = action,
+            itemUri = item.mediaUri,
+            itemId = item.itemId,
+            parentUri = parent?.mediaUri,
+        ) ?: return null
+        return if (
+            dispatchLocal(
+                mediaUris = dispatch.mediaUris,
+                option = dispatch.option,
+                radioMode = dispatch.radioMode,
+                startItem = dispatch.startItem,
+            )
+        ) {
+            action.name
+        } else {
+            null
+        }
     }
 
     /**

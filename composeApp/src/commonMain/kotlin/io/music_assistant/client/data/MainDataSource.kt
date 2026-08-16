@@ -8,7 +8,6 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
-import io.music_assistant.client.data.MainDataSource.NowPlayingSnapshot.Companion.ELAPSED_ANCHOR_EPSILON_S
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
@@ -22,7 +21,6 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
-import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
@@ -68,6 +66,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -76,6 +75,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
+
+/** Preserve newer event/optimistic state when a delayed full snapshot arrives. */
+internal fun mergeFullQueueSnapshot(
+    retained: List<QueueInfo>,
+    incoming: List<QueueInfo>,
+): List<QueueInfo> {
+    val retainedById = retained.associateBy { it.id }
+    return incoming.map { candidate ->
+        val current = retainedById[candidate.id]
+        if (current != null && candidate.isBefore(current)) current else candidate
+    }
+}
 
 @OptIn(FlowPreview::class)
 class MainDataSource(
@@ -110,6 +121,9 @@ class MainDataSource(
 
     /** Local (Sendspin) player lifecycle, state and commands live in the controller. */
     val sendspinState = localPlayerController.sendspinState
+
+    /** Seconds of audio buffered ahead of the local playhead (buffered-progress indicator). */
+    val localBufferedSeconds = localPlayerController.bufferedSeconds
 
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
@@ -172,7 +186,42 @@ class MainDataSource(
     private val _playersData = MutableStateFlow<DataState<List<PlayerData>>>(DataState.Loading())
     val playersData = _playersData.asStateFlow()
 
-    val localPlayer = localPlayerController.localPlayerData
+    // Overlay the optimistic favorite override onto the local player, exactly as
+    // [buildPlayerDataList] does for `_playersData`. Without this, the Android-Auto
+    // host path (which sources `localPlayer`, not `_playersData`) never sees the
+    // override and the heart only flips after a real server update.
+    val localPlayer: StateFlow<PlayerData?> =
+        combine(localPlayerController.localPlayerData, _favoriteOverrides) { data, overrides ->
+            data?.let { applyFavoriteOverride(it, overrides) }
+        }.stateIn(this, SharingStarted.Eagerly, null)
+
+    /** Track metadata for the local player's system-media presentation. */
+    val nowPlayingTrack: StateFlow<NowPlayingTrack?> =
+        localPlayer
+            .map(::buildNowPlayingTrack)
+            .distinctUntilChanged()
+            .stateIn(this, SharingStarted.Eagerly, null)
+
+    /**
+     * Transport anchors for the local player's system-media presentation.
+     * Each anchor carries its content identity: the dedup keys on it (a new
+     * track always emits a fresh anchor) and the Swift consumer uses it to
+     * correlate anchors with the track it is presenting, since the track and
+     * transport channels have no cross-channel ordering guarantee. No-track
+     * states remain explicit nulls.
+     */
+    val nowPlayingTransport: StateFlow<NowPlayingTransport?> =
+        localPlayer
+            .map { buildNowPlayingTransport(it, positionTracker) }
+            .distinctUntilChanged(NowPlayingChannelChangeDetection::sameTransport)
+            .stateIn(this, SharingStarted.Eagerly, null)
+
+    /** Queue modes and their shared availability gate for system-media controls. */
+    val nowPlayingModes: StateFlow<NowPlayingModes?> =
+        localPlayer
+            .map(::buildNowPlayingModes)
+            .distinctUntilChanged()
+            .stateIn(this, SharingStarted.Eagerly, null)
 
     val isAnythingPlaying =
         playersData
@@ -365,7 +414,7 @@ class MainDataSource(
                         watchJob?.cancel()
                         watchJob = watchApiEvents()
 
-                        if (sessionState.dataConnectionState == DataConnectionState.Authenticated) {
+                        if (sessionState.dataConnectionState is DataConnectionState.Authenticated) {
                             when (val currentState = _serverPlayers.value) {
                                 is DataState.Stale -> {
                                     log.i { "Recovering from ${currentState.reason} stale state" }
@@ -635,13 +684,21 @@ class MainDataSource(
                 .collect { settings.setLastSelectedPlayerId(it) }
         }
         launch {
-            selectedPlayerIndex.filterNotNull().collect { index ->
-                // sendRequest's gate handles "not ready" — outer guard would only
-                // add a TOCTOU race. If we're offline, the gate fails fast.
-                (playersData.value as? DataState.Data)?.data?.let { list ->
-                    refreshPlayerQueueItems(list[index])
-                }
+            // Fetch queue items for the selected player. Keyed on
+            // (playerId, queueInfo.id) rather than the selection *index* so it
+            // also re-fires when the selected player's queueInfo arrives late —
+            // e.g. the local player, whose metadata lands only after Sendspin
+            // registers, long after its row (and index) first appears. An
+            // index-keyed trigger never re-emits for a same-slot player, leaving
+            // the active local player's items unfetched on cold start.
+            // sendRequest's gate handles "not ready"; a pre-check would only add
+            // a TOCTOU race.
+            combine(playersData, _selectedPlayerId) { pd, id ->
+                (pd as? DataState.Data)?.data?.firstOrNull { it.playerId == id }
             }
+                .mapNotNull { it?.takeIf { pd -> pd.queueInfo != null } }
+                .distinctUntilChangedBy { it.playerId to it.queueInfo?.id }
+                .collect { refreshPlayerQueueItems(it) }
         }
 
         // Watch for Sendspin settings changes
@@ -664,59 +721,6 @@ class MainDataSource(
             }
         }
 
-        // Keep Now Playing (iOS Control Center / Lock Screen) in sync with the
-        // local player. iOS interpolates the playback bar internally from the
-        // `(elapsed, timestamp, rate)` triple on every `setNowPlayingInfo`
-        // call; per Apple's guidance the right pattern is one anchor write
-        // per server event, plus track/rate transitions, and let iOS take
-        // it from there. So we drive this off `localPlayer` — which re-emits
-        // on track change, play/pause, and server queue event — and dedupe
-        // via [NowPlayingSnapshot.sameDictWriteWouldBe] so sub-second
-        // position jitter doesn't cause a write per tick. Mid-pause
-        // `elapsed_time = null` events flow through as `null` and the iOS
-        // adapter's skip-on-nil semantics preserve the previous anchor.
-        launch {
-            localPlayer
-                .map { pd ->
-                    val track = pd?.queueInfo?.currentItem?.track
-                    if (track == null) {
-                        NowPlayingSnapshot.Cleared
-                    } else {
-                        NowPlayingSnapshot.Active(
-                            title = track.displayName,
-                            artist = track.subtitle,
-                            album = track.parentName,
-                            artworkUrl = track.image(ImageType.THUMB)?.url,
-                            duration = track.duration,
-                            // Read live position from the tracker rather than the stale
-                            // anchor on `pd.queueInfo` (which is only updated by
-                            // QueueAdded/UpdatedEvent, not by QueueTimeUpdatedEvent).
-                            elapsedTime = pd.queueInfo.id.let {
-                                positionTracker.effectiveSec(it)
-                            } ?: pd.queueInfo.elapsedTime,
-                            isPlaying = pd.player.isPlaying,
-                            isPositionFrozen = positionTracker.isFrozenUntilConfirmed(pd.queueInfo.id),
-                            isLongFormContent = track.isLongFormSpokenContent,
-                        )
-                    }
-                }
-                .distinctUntilChanged { a, b -> NowPlayingSnapshot.sameDictWriteWouldBe(a, b) }
-                .collect { snapshot ->
-                    when (snapshot) {
-                        NowPlayingSnapshot.Cleared -> mediaPlayerController.clearNowPlaying()
-                        is NowPlayingSnapshot.Active -> mediaPlayerController.updateNowPlaying(
-                            title = snapshot.title,
-                            artist = snapshot.artist,
-                            album = snapshot.album,
-                            artworkUrl = snapshot.artworkUrl,
-                            duration = snapshot.duration,
-                            elapsedTime = snapshot.elapsedTime,
-                            playbackRate = if (snapshot.isPlaying && !snapshot.isPositionFrozen) 1.0 else 0.0,
-                            isLongFormContent = snapshot.isLongFormContent,
-                        )
-                    }
-                }
-        }
         // Arms `hasActivePlayback` so backgrounding mid-playback doesn't tear down
         // Sendspin (goodbye=shutdown → audio stops, server cold-resumes. Driven off
         // logical `isPlaying`, which survives the transient transport blip — unlike
@@ -726,72 +730,6 @@ class MainDataSource(
                 .map { it?.player?.isPlaying == true }
                 .distinctUntilChanged()
                 .collect { if (it) apiClient.onPlaybackActive() else apiClient.onPlaybackInactive() }
-        }
-    }
-
-    /**
-     * Captures the fields a single emission would push to iOS's Now Playing
-     * dict — [Active] when the local player has a track, [Cleared] when it
-     * doesn't. Paired with [Companion.sameDictWriteWouldBe] as a
-     * [distinctUntilChanged] key so the flow only emits once per visible
-     * anchor change (new track, pause/play, real elapsed jump).
-     */
-    internal sealed interface NowPlayingSnapshot {
-        data object Cleared : NowPlayingSnapshot
-        data class Active(
-            val title: String?,
-            val artist: String?,
-            val album: String?,
-            val artworkUrl: String?,
-            val duration: Double?,
-            val elapsedTime: Double?,
-            val isPlaying: Boolean,
-            val isPositionFrozen: Boolean = false,
-            val isLongFormContent: Boolean,
-        ) : NowPlayingSnapshot
-
-        companion object {
-            /**
-             * Threshold (seconds) below which two `elapsed` values are treated
-             * as the same anchor: iOS's own interpolator covers sub-second
-             * drift from `(elapsed, timestamp, rate)`, so writing a fresh
-             * value within this window is a no-op the user can't see.
-             *
-             * 2 s is comfortably wider than typical position-tracker jitter
-             * (we tick at 500 ms with ±50 ms of dispatch noise) and tighter
-             * than any user-visible seek.
-             */
-            internal const val ELAPSED_ANCHOR_EPSILON_S = 2.0
-
-            /**
-             * Returns `true` when [a] and [b] would produce indistinguishable
-             * `MPNowPlayingInfoCenter` dict writes — i.e. emitting [b] after
-             * [a] would not visibly change the lock screen / CarPlay bar.
-             *
-             * Most fields compare by value equality. `elapsedTime` is the
-             * exception: small drifts (within [ELAPSED_ANCHOR_EPSILON_S]) are
-             * treated as equal because iOS is already interpolating from the
-             * last anchor. Crossing the threshold (e.g. a server-side seek,
-             * a reconnect re-anchoring with a wildly different value) emits.
-             */
-            fun sameDictWriteWouldBe(a: NowPlayingSnapshot, b: NowPlayingSnapshot): Boolean {
-                if (a !is Active || b !is Active) return a === b
-                if (a.title != b.title) return false
-                if (a.artist != b.artist) return false
-                if (a.album != b.album) return false
-                if (a.artworkUrl != b.artworkUrl) return false
-                if (a.duration != b.duration) return false
-                if (a.isPlaying != b.isPlaying) return false
-                if (a.isPositionFrozen != b.isPositionFrozen) return false
-                if (a.isLongFormContent != b.isLongFormContent) return false
-                val ae = a.elapsedTime
-                val be = b.elapsedTime
-                return when {
-                    ae == null && be == null -> true
-                    ae == null || be == null -> false
-                    else -> kotlin.math.abs(ae - be) < ELAPSED_ANCHOR_EPSILON_S
-                }
-            }
         }
     }
 
@@ -918,6 +856,30 @@ class MainDataSource(
         }
     }
 
+    /**
+     * Canonical favorite toggle for [item], shared by the in-app player heart and the
+     * media-session (Android Auto) favorite action. Optimistically flips the override
+     * (the server's queue payload reports a stale `favorite`), fires the add/remove
+     * request, and rolls the override back if the server rejects it. Reconciled later
+     * by [MediaItemUpdatedEvent].
+     */
+    fun toggleFavorite(item: AppMediaItem) {
+        launch {
+            val newFavorite = item.favorite != true
+            val result = if (newFavorite) {
+                val uri = item.uri ?: return@launch
+                setFavoriteOverride(item, true)
+                apiClient.sendRequest(Request.Library.addFavorite(uri))
+            } else {
+                setFavoriteOverride(item, false)
+                apiClient.sendRequest(
+                    Request.Library.removeFavorite(item.itemId, item.mediaType),
+                )
+            }
+            result.onFailure { setFavoriteOverride(item, item.favorite) }
+        }
+    }
+
     /** Overrides the now-playing track's favorite flag from [overrides]. */
     private fun applyFavoriteOverride(
         playerData: PlayerData,
@@ -971,6 +933,12 @@ class MainDataSource(
         // launch in [init] mirrors it into [SettingsRepository] for the next
         // app launch.
         _userSelectedPlayerId.update { player.id }
+    }
+
+    /** Re-read authoritative player and queue state without issuing playback commands. */
+    fun refreshPlayersAndQueues() {
+        log.i { "Refreshing authoritative player and queue state" }
+        updatePlayersAndQueues()
     }
 
     /** `null` if this event is older than what `_queueInfos` already holds for the same id. */
@@ -1522,8 +1490,11 @@ class MainDataSource(
         launch {
             apiClient.sendRequest(Request.Queue.all())
                 .resultAs<List<ServerQueue>>()?.let { queueFactory.createList(it) }?.let { list ->
-                    _queueInfos.update { list }
-                    list.forEach { queueInfo ->
+                    var mergedSnapshot = list
+                    _queueInfos.update { retained ->
+                        mergeFullQueueSnapshot(retained, list).also { mergedSnapshot = it }
+                    }
+                    mergedSnapshot.forEach { queueInfo ->
                         queueInfo.elapsedTime?.let { elapsed ->
                             val player = (_serverPlayers.value as? DataState.Data)
                                 ?.data?.find { it.queueId == queueInfo.id }
@@ -1541,7 +1512,7 @@ class MainDataSource(
                     val localPlayerId = settings.sendspinClientId.value
                     val localQueueId = (_serverPlayers.value as? DataState.Data)?.data
                         ?.find { it.id == localPlayerId }?.queueId
-                    list.find { it.id == localPlayerId || it.id == localQueueId }
+                    mergedSnapshot.find { it.id == localPlayerId || it.id == localQueueId }
                         ?.let { localPlayerController.onServerQueueUpdate(it) }
                 }
         }
@@ -1665,18 +1636,6 @@ class MainDataSource(
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Called when the app task is removed (user closed the app from recents).
-     * Stops Sendspin if nothing is actively playing — playing state is intentionally
-     * kept alive for background audio and is not affected by this call.
-     */
-    fun onAppClosed() {
-        if (!isAnythingPlaying.value) {
-            log.i { "App closed with no active playback — stopping Sendspin" }
-            launch { localPlayerController.stop(GoodbyeReason.Shutdown) }
         }
     }
 

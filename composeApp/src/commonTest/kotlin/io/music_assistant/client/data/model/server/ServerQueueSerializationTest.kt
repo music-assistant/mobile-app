@@ -17,7 +17,7 @@ import kotlin.test.assertNull
  * stale entry in a `List<ServerQueue>` payload never aborts the decode.
  */
 class ServerQueueSerializationTest {
-    private val queueFactory = QueueFactory(MediaItemFactory(FakeClient()))
+    private val queueFactory = QueueFactory(MediaItemFactory(StubServiceClient()))
 
     @Test
     fun deserializesWithOnlyQueueIdPresent() {

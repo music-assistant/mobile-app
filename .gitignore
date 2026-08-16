@@ -50,6 +50,8 @@ obj/
 .externalNativeBuild
 composeApp/keystore.properties
 composeApp/upload-keystore.jks
+androidApp/keystore.properties
+androidApp/upload-keystore.jks
 gha-creds-*.json
 
 .local_gitignore
@@ -74,3 +76,4 @@ androidApp/src/selfSignedRelease/assets/adi-registration.properties
 
 # Logs and other junk files
 tmp/
+.server

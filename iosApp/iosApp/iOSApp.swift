@@ -9,7 +9,7 @@ import os.log
 import os.lock
 
 private let siriLog = OSLog(
-    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.client",
+    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.mobile-client",
     category: "Siri"
 )
 
@@ -100,7 +100,6 @@ enum KmpState {
         get { _isReady.withLock { $0 } }
         set { _isReady.withLock { $0 = newValue } }
     }
-    static let readyNotification = Notification.Name("KMPReadyNotification")
 }
 
 /// Buffers an incoming musicassistant:// URL when it arrives before Koin is
@@ -166,7 +165,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 /// Forwards Kermit logs (via the KMP `OsLogSink` bridge) to the unified log with
 /// `privacy: .public`, for local development
 final class OsLogSinkImpl: NSObject, OsLogSink {
-    private let subsystem = Bundle.main.bundleIdentifier ?? "io.music-assistant.client"
+    private let subsystem = Bundle.main.bundleIdentifier ?? "io.music-assistant.mobile-client"
 
     func log(severity: String, tag: String, message: String) {
         let logger = os.Logger(subsystem: subsystem, category: tag)
@@ -204,8 +203,9 @@ struct iOSApp: App {
         OsLogSinkProvider.shared.sink = OsLogSinkImpl()
         #endif
 
-        // Initialize NowPlayingManager early to configure AudioSession
-        _ = NowPlayingManager.shared
+        // Initialize NowPlayingCoordinator early to configure AudioSession
+        // and install remote-command targets (its Swift-only init phase).
+        _ = NowPlayingCoordinator.shared
 
         // KMP/Koin init MUST run here, not in any SwiftUI lifecycle callback.
         // A CarPlay-only cold launch (head unit tap) connects only the
@@ -216,10 +216,13 @@ struct iOSApp: App {
         // `MainViewController()` is safe.
         MainViewControllerKt.bootstrapKmp()
         KmpState.isReady = true
+
+        // Second coordinator init phase: the now-playing channel observers
+        // need the Kotlin graph, which exists only after bootstrapKmp().
+        NowPlayingCoordinator.shared.startObserving()
         if UIApplication.shared.applicationState == .active {
             volumeButtonObserver.start()
         }
-        NotificationCenter.default.post(name: KmpState.readyNotification, object: nil)
 
         // Required for apps to appear in Control Center
         // Must be called for remote control events to work

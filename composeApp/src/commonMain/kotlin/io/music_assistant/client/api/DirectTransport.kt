@@ -27,11 +27,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.Volatile
 
 class DirectTransport(
-    private val client: HttpClient,
+    private val clientProvider: () -> HttpClient,
     private val connectionInfoProvider: () -> ConnectionInfo,
     parentScope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
-    private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
 ) : Transport {
     private val logger = Logger.withTag("DirectTransport")
 
@@ -115,23 +114,23 @@ class DirectTransport(
             }
         }
         if (info.isTls) {
-            client.wss(HttpMethod.Get, info.host, info.port, "/ws", block = block)
+            clientProvider().wss(HttpMethod.Get, info.host, info.port, "/ws", block = block)
         } else {
-            client.ws(HttpMethod.Get, info.host, info.port, "/ws", block = block)
+            clientProvider().ws(HttpMethod.Get, info.host, info.port, "/ws", block = block)
         }
     }
 
     private suspend fun startReconnection() {
-        // Outer loop: each successful-then-dropped connection gets a fresh attempt cycle
+        // Outer loop: each successful-then-dropped connection gets a fresh attempt cycle.
         while (true) {
             val reconnected = runReconnectionLoop(
-                maxAttempts = maxReconnectAttempts,
+                maxAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS,
                 networkAvailable = networkAvailable,
                 onAttemptStarting = { _state.value = TransportState.Reconnecting(it) },
                 tryConnect = { attempt ->
                     var connectedThisAttempt = false
                     try {
-                        logger.i { "Reconnect attempt $attempt/$maxReconnectAttempts" }
+                        logger.i { "Reconnect attempt $attempt" }
                         openWebSocket(connectionInfoProvider()) { connectedThisAttempt = true }
                         // Returned normally = was connected, then dropped — signal success for fresh cycle
                         true

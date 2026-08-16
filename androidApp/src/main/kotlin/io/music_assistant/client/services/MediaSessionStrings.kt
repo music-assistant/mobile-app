@@ -1,6 +1,7 @@
 package io.music_assistant.client.services
 
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.media_action_forward
 import musicassistantclient.composeapp.generated.resources.media_action_next_player
 import musicassistantclient.composeapp.generated.resources.media_action_open_app
@@ -29,6 +30,7 @@ class MediaSessionStrings internal constructor(
     val nextPlayer: String,
     val shuffle: String,
     val repeat: String,
+    val favorite: String,
     val openApp: String,
     private val artistOnPlayerTemplate: String,
 ) {
@@ -46,6 +48,7 @@ class MediaSessionStrings internal constructor(
             nextPlayer = getString(Res.string.media_action_next_player),
             shuffle = getString(Res.string.media_action_shuffle),
             repeat = getString(Res.string.media_action_repeat),
+            favorite = getString(Res.string.cd_favorite),
             openApp = getString(Res.string.media_action_open_app),
             artistOnPlayerTemplate = getString(Res.string.media_artist_on_player),
         )

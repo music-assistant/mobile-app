@@ -14,9 +14,20 @@ class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
     }
 
     fun login(username: String, password: String): HomePage {
+        fillLogin(username, password)
+        return HomePage(composeTestRule).assertOnPage()
+    }
+
+    fun loginWithError(username: String, password: String, error: String): AuthenticatePage {
+        fillLogin(username, password)
+
+        composeTestRule.onNodeWithText(error).assertIsDisplayed()
+        return this.assertOnPage()
+    }
+
+    private fun fillLogin(username: String, password: String) {
         composeTestRule.onNodeWithText("Username").assertIsDisplayed().performTextInput(username)
         composeTestRule.onNodeWithText("Password").assertIsDisplayed().performTextInput(password)
         composeTestRule.onNodeWithText("Login").assertIsDisplayed().performClick()
-        return HomePage(composeTestRule).assertOnPage()
     }
 }

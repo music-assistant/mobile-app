@@ -56,7 +56,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 SessionState.Disconnected.Initial -> true
                 SessionState.Connecting -> true
                 is SessionState.Connected ->
-                    s.dataConnectionState != DataConnectionState.Authenticated &&
+                    s.dataConnectionState !is DataConnectionState.Authenticated &&
                             s.authProcessState !is AuthProcessState.Failed
 
                 else -> false
@@ -64,7 +64,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     LaunchedEffect(sessionState) {
         val terminal = when (val s = sessionState) {
             is SessionState.Connected -> {
-                s.dataConnectionState == DataConnectionState.Authenticated ||
+                s.dataConnectionState is DataConnectionState.Authenticated ||
                         s.authProcessState is AuthProcessState.Failed
             }
 
@@ -89,7 +89,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     // LaunchedEffect below redirects Main → Settings in the same recomposition pass.
     val initialScreen = when {
         sessionState is SessionState.Connected &&
-                (sessionState as SessionState.Connected).dataConnectionState ==
+                (sessionState as SessionState.Connected).dataConnectionState is
                 DataConnectionState.Authenticated -> Nav.Main
 
         authManager.willAutoLoginOnLaunch -> Nav.Main
@@ -137,7 +137,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
                 when {
                     // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
-                    connState == DataConnectionState.Authenticated && connectedState.wasAutoLogin -> {
+                    connState is DataConnectionState.Authenticated && connectedState.wasAutoLogin -> {
                         if (backStack.last() !is Nav.Main) {
                             backStack.clear()
                             backStack.add(Nav.Main)

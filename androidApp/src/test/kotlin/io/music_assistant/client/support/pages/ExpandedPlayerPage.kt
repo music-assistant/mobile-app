@@ -71,10 +71,14 @@ class ExpandedPlayerPage(
             .performClick()
     }
 
-    fun transferQueue(player: String): ExpandedPlayerPage {
+    fun transferQueue(
+        player: String,
+        awaitTransfer: () -> Unit = {},
+    ): ExpandedPlayerPage {
         clickMore()
         composeTestRule.onNodeWithText(Res.string.queue_transfer.get()).performClick()
         composeTestRule.onNodeWithText(player).performClick()
+        awaitTransfer()
         return ExpandedPlayerPage(player, true, item, composeTestRule).assertOnPage()
     }
 
@@ -93,5 +97,10 @@ class ExpandedPlayerPage(
         }
 
         return this
+    }
+
+    fun clickQualityTier(tier: String): AudioChainPage {
+        composeTestRule.onNodeWithText(tier).performClick()
+        return AudioChainPage(composeTestRule).assertOnPage()
     }
 }

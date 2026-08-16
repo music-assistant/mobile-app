@@ -6,6 +6,9 @@ name: Check PR (iOS)
 
 on:
   pull_request:
+    # ready_for_review is added so that flipping an auto-opened draft bump PR
+    # to "Ready for review" triggers this check (default types don't include it).
+    types: [ opened, synchronize, reopened, ready_for_review ]
     branches: [ main ]
     paths-ignore:
       - 'androidApp/**'
@@ -15,16 +18,23 @@ jobs:
     runs-on: macos-26
 
     steps:
+      - name: Skip for version bump PRs
+        if: ${{ startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        run: echo "Version bump PR — skipping compile"
+
       - name: Checkout code
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         uses: actions/checkout@v6
 
       - name: Set up JDK 21
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Cache Gradle
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         uses: actions/cache@v4
         with:
           path: |
@@ -40,6 +50,7 @@ jobs:
       # version/patch bumps trigger a redownload automatically. Keep in
       # sync with ios-release.yml and IOS-BUILD-INSTRUCTIONS.md.
       - name: Cache WebRTC.xcframework
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         id: cache-webrtc
         uses: actions/cache@v4
         with:
@@ -47,7 +58,7 @@ jobs:
           key: webrtc-xcframework-m125-cow-bloat-fix.1
 
       - name: Download WebRTC.xcframework
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && steps.cache-webrtc.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
           curl -L --fail \
@@ -59,12 +70,14 @@ jobs:
           test -d iosApp/Frameworks/WebRTC.xcframework/ios-arm64/WebRTC.framework
 
       - name: Grant execute permission for gradlew
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: chmod +x ./gradlew
 
       # The Xcode app scheme has no test target, so `xcodebuild build` only proves
       # the app compiles. Run the KMP iOS test executable explicitly to catch
       # commonTest/iosTest failures, including Kotlin/Native-only test-name errors.
       - name: Run iOS Kotlin/Native tests
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: ./gradlew :composeApp:iosSimulatorArm64Test
 
       # Simulator destination + signing disabled gives us a compile-only pass:
@@ -72,6 +85,7 @@ jobs:
       # Swift compiles against the real iOS 26 SDK. No provisioning profile or
       # distribution cert required.
       - name: Build (no signing, simulator target)
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: |
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \

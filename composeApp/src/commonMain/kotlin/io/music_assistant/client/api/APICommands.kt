@@ -51,6 +51,8 @@ object APICommands {
     const val MUSIC_ARTISTS_LIBRARY_ITEMS = "music/artists/library_items"
     const val MUSIC_ARTISTS_ARTIST_ALBUMS = "music/artists/artist_albums"
     const val MUSIC_ARTISTS_ARTIST_TRACKS = "music/artists/artist_tracks"
+    const val MUSIC_ARTISTS_TOP_ALBUMS = "music/artists/top_albums"
+    const val MUSIC_ARTISTS_TOP_TRACKS = "music/artists/top_tracks"
     const val MUSIC_ARTISTS_SIMILAR_ARTISTS = "music/artists/similar_artists"
 
     // Album commands
@@ -82,7 +84,12 @@ object APICommands {
     // Search and recommendations
     const val MUSIC_SEARCH = "music/search"
     const val MUSIC_RECOMMENDATIONS = "music/recommendations"
+
+    // Contents of a single recommendation row. Exists on servers (2.10+) whose
+    // MUSIC_RECOMMENDATIONS response returns rows without embedded items
+    const val MUSIC_RECOMMENDATIONS_ITEMS = "music/recommendations/items"
     const val PROVIDERS_MANIFESTS = "providers/manifests"
+    const val PROVIDERS = "providers"
 
     // Items
     const val MUSIC_ITEM_BY_URI = "music/item_by_uri"

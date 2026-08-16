@@ -181,8 +181,10 @@ class CarPlayContentManager {
     /// Dispatch the per-kind configured tap action. Returns the dispatched action name (so the
     /// caller can decide whether to push Now Playing), or nil on failure.
     @discardableResult
-    func playWithDefault(_ item: AppMediaItem) -> String? {
-        guard let name = KmpHelper.shared.playCarDefaultTap(item: item) else { return nil }
+    func playWithDefault(_ item: AppMediaItem, parent: AppMediaItem? = nil) -> String? {
+        guard let name = KmpHelper.shared.playCarDefaultTap(item: item, parent: parent) else {
+            return nil
+        }
         SiriIntentHandler.donatePlayed(item)
         return name
     }

@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
  *    `coerceInputValues = true` in [myJson] for unknown variants.
  */
 class ServerPlayerSerializationTest {
-    private val playerFactory = PlayerFactory(FakeClient())
+    private val playerFactory = PlayerFactory(StubServiceClient())
 
     @Test
     fun deserializesWithOnlyPlayerIdPresent() {
