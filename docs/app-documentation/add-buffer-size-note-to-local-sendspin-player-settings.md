@@ -10,6 +10,7 @@ Before enabling, configure the following options:
 
 - **Player name** — The name that will appear in Music Assistant (default: My phone).
 - **Codec preference** — The audio codec used for streaming. See [Codec Preference](#codec-preference) below.
+- **Buffer size** — Allows you to set the maximum buffer size of a current stream. The app isn't intended for offline playback and won't buffer multiple queue items in advance.
 - **Custom Sendspin connection** — Leave unchecked unless your setup requires a custom connection (see [Custom Sendspin Connection](#custom-sendspin-connection)).
 
 Tap **Enable local player** to activate it. The section header will update to **Local player enabled**, and the button will change to **Disable local player**.
