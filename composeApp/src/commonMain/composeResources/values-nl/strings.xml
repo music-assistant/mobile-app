@@ -206,10 +206,10 @@
   <string name="not_connected_retry">Niet verbonden — probeer opnieuw wanneer de verbinding hersteld is</string>
   <string name="playback_speed_dialog_title">Afspeelsnelheid</string>
   <string name="player_dynamic_colors">Dynamische kleuren</string>
-  <string name="player_power_off">Uitschakelen</string>
-  <string name="player_power_on">Inschakelen</string>
+  <string name="player_power_off">Uitzetten</string>
+  <string name="player_power_on">Aanzetten</string>
   <string name="player_powered_off">Uitgeschakeld</string>
-  <string name="player_show_buffer_indicator">Bufferindicator weergeven</string>
+  <string name="player_show_buffer_indicator">Bufferindicator</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
