@@ -73,6 +73,7 @@
   <string name="browse_subtitle">Artiesten, Albums, Nummers &amp; meer</string>
   <string name="cd_add_playlist">Afspeellijst toevoegen</string>
   <string name="cd_add_to_group">Voeg toe aan groep</string>
+  <string name="cd_album_item">Album "%1$s" van de %2$s</string>
   <string name="cd_applied">Toegepast</string>
   <string name="cd_close">Sluiten</string>
   <string name="cd_connection_history">Verbindingsgeschiedenis</string>
@@ -92,6 +93,7 @@
   <string name="cd_play_now">Nu afspelen</string>
   <string name="cd_play_options">Afspeelopties</string>
   <string name="cd_playing">Speelt %1$s</string>
+  <string name="cd_provider_filter">%1$s op provider %2$s filteren</string>
   <string name="cd_provider_icon">Providerpictogram</string>
   <string name="cd_remove_from_group">Verwijderen uit groep</string>
   <string name="cd_scan_qr_code">Scan QR-code</string>
@@ -100,6 +102,7 @@
   <string name="cd_toggle_queue">Wachtrij schakelen</string>
   <string name="cd_toggle_view_mode">Weergavemodus schakelen</string>
   <string name="cd_unmute">Dempen opheffen</string>
+  <string name="cd_view_all">Bekijk alle %1$s</string>
   <string name="cd_vinyl_record">Vinylplaat</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artiest</string>
@@ -203,10 +206,10 @@
   <string name="not_connected_retry">Niet verbonden — probeer opnieuw wanneer de verbinding hersteld is</string>
   <string name="playback_speed_dialog_title">Afspeelsnelheid</string>
   <string name="player_dynamic_colors">Dynamische kleuren</string>
-  <string name="player_power_off">Uitschakelen</string>
-  <string name="player_power_on">Inschakelen</string>
+  <string name="player_power_off">Uitzetten</string>
+  <string name="player_power_on">Aanzetten</string>
   <string name="player_powered_off">Uitgeschakeld</string>
-  <string name="player_show_buffer_indicator">Bufferindicator weergeven</string>
+  <string name="player_show_buffer_indicator">Bufferindicator</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
@@ -241,6 +244,12 @@
   <string name="queue_not_loaded">Niet geladen</string>
   <string name="queue_transfer">Wachtrij overzetten</string>
   <string name="refresh">Vernieuwen</string>
+  <string name="schema_incompatible_dialog_exit">Afsluiten</string>
+  <string name="schema_incompatible_dialog_message">Deze app is te oud om verbinding te maken met deze server. Werk de app bij om door te gaan.</string>
+  <string name="schema_incompatible_dialog_title">Update vereist</string>
+  <string name="schema_version_dialog_confirm">OK</string>
+  <string name="schema_version_dialog_message">Deze server maakt gebruik van een nieuwere versie van het gegevensformaat dan deze app. Sommige functies werken mogelijk niet correct. Overweeg om de app bij te werken.</string>
+  <string name="schema_version_dialog_title">App-update aanbevolen</string>
   <string name="search_error">Fout bij laden zoekresultaten</string>
   <string name="search_in_library_only">Alleen in bibliotheek</string>
   <string name="search_no_results">Geen resultaten gevonden</string>
@@ -281,7 +290,7 @@
   <string name="settings_disable_local_player">Lokale speler uitschakelen</string>
   <string name="settings_disconnect">Verbinding verbreken</string>
   <string name="settings_enable_local_player">Lokale speler inschakelen</string>
-  <string name="settings_exit_app">APP VERLATEN</string>
+  <string name="settings_exit_app">APP AFSLUITEN</string>
   <string name="settings_history_direct">Direct</string>
   <string name="settings_history_webrtc">WebRTC (Externe Toegang)</string>
   <string name="settings_host">Host</string>

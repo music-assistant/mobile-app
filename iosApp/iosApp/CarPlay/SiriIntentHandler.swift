@@ -4,7 +4,7 @@ import ComposeApp
 import os.log
 
 private let log = OSLog(
-    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.client",
+    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.mobile-client",
     category: "Siri"
 )
 

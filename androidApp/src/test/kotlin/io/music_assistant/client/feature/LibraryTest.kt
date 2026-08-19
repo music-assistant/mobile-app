@@ -12,6 +12,7 @@ import io.music_assistant.client.support.pages.ItemPage
 import io.music_assistant.client.support.pages.LibraryPage
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
+import io.music_assistant.client.support.pages.assertNoItems
 import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.pages.enableFilter

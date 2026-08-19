@@ -9,6 +9,7 @@ internal class FakeMediaItemStore {
     private val mediaItems = mutableSetOf<ServerMediaItem>()
     private val libraryIds = mutableMapOf<Pair<String, String>, String>()
     private val playlistItems = mutableMapOf<String, List<String>>()
+    private val topTracks = mutableMapOf<Pair<String, String>, List<String>>()
 
     fun query(
         query: String? = null,
@@ -55,6 +56,13 @@ internal class FakeMediaItemStore {
         return mediaItems
             .filter { it.mediaType == MediaType.TRACK.serverValue }
             .filter { playlistItems[playlist.itemId]?.contains(it.itemId) ?: false }
+    }
+
+    fun getTracksByArtist(artist: ServerMediaItem, topOnly: Boolean = false): List<ServerMediaItem> {
+        return mediaItems
+            .filter { it.mediaType == MediaType.TRACK.serverValue }
+            .filter { it.artists?.contains(artist) ?: false }
+            .filter { !topOnly || topTracks[artist.globalId()]?.contains(it.itemId) ?: false }
     }
 
     fun addItems(vararg items: ServerMediaItem) {
@@ -110,6 +118,10 @@ internal class FakeMediaItemStore {
 
     fun setPlaylist(playlist: ServerMediaItem, vararg tracks: ServerMediaItem) {
         playlistItems[playlist.itemId] = tracks.map { it.itemId }
+    }
+
+    fun setTopTracks(artist: ServerMediaItem, vararg tracks: ServerMediaItem) {
+        topTracks[artist.globalId()] = tracks.map { it.itemId }
     }
 
     fun enrichLibraryItem(item: ServerMediaItem): ServerMediaItem {

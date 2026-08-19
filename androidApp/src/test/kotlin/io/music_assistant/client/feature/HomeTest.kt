@@ -27,6 +27,19 @@ class HomeTest {
 
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
+    // The default FakeServiceClient serves item-less rows resolved per row;
+    // legacy versions embed the items in the rows response.
+    @Test
+    fun `loads home recommendations from servers that embed row items`() {
+        serviceClient.setLegacyVersion(FakeServiceClient.LegacyVersion.V2_9)
+
+        val album = ServerMediaItemFixtures.album()
+        serviceClient.addItems(album)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .assertMediaDisplayed(album)
+    }
+
     @Test
     fun `can refresh home recommendations`() {
         val album1 = ServerMediaItemFixtures.album()
@@ -60,6 +73,7 @@ class HomeTest {
         val album = ServerMediaItemFixtures.album()
         serviceClient.addItems(album)
         val homePage = launchLoggedInApp(composeTestRule, serviceClient)
+            .assertMediaDisplayed(album)
 
         serviceClient.setRequestErrors(true)
         homePage.refresh()

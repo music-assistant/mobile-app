@@ -2,8 +2,10 @@ package io.music_assistant.client.data
 
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerMedia
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
@@ -14,6 +16,7 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.testAudiobook
+import io.music_assistant.client.data.model.client.testRadio
 import io.music_assistant.client.data.model.client.testTrack
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlin.test.Test
@@ -111,6 +114,82 @@ class NowPlayingTrackChannelTest {
             buildNowPlayingTrack(playerData(testAudiobook(), queueInfo(queueId = "queue-1")))!!
                 .isLongFormContent,
         )
+    }
+}
+
+class NowPlayingRadioStreamMetadataTest {
+    private fun streamMedia(
+        title: String? = "Song",
+        artist: String? = "Artist",
+        queueItemId: String? = "queue-item-1",
+        imageUrl: String? = null,
+    ) = PlayerMedia(
+        title = title,
+        artist = artist,
+        album = null,
+        imageUrl = imageUrl,
+        duration = null,
+        queueId = "queue-1",
+        queueItemId = queueItemId,
+        mediaType = MediaType.RADIO,
+        uri = null,
+    )
+
+    private fun radioTrack(media: PlayerMedia?): NowPlayingTrack =
+        buildNowPlayingTrack(
+            playerData(testRadio(), queueInfo(queueId = "queue-1"), currentMedia = media),
+        )!!
+
+    @Test
+    fun overlaysDynamicStreamMetadataKeepingStationIdentity() {
+        val built = radioTrack(streamMedia(imageUrl = "https://example.invalid/song.jpg"))
+        assertEquals("Song", built.title)
+        assertEquals("Artist", built.artist)
+        assertEquals("name", built.album)
+        assertEquals("id", built.mediaItemId)
+        assertEquals("https://example.invalid/song.jpg", built.artworkUrl)
+    }
+
+    @Test
+    fun streamTitleEqualToStationNameKeepsStaticPresentation() {
+        val built = radioTrack(streamMedia(title = "name"))
+        assertEquals("name", built.title)
+        assertNull(built.artist)
+        assertNull(built.album)
+    }
+
+    @Test
+    fun missingOrBlankStreamTitleKeepsStaticPresentation() {
+        assertEquals("name", radioTrack(null).title)
+        assertEquals("name", radioTrack(streamMedia(title = null)).title)
+        assertEquals("name", radioTrack(streamMedia(title = " ")).title)
+    }
+
+    @Test
+    fun mediaStampedWithAnotherQueueItemIsIgnored() {
+        val built = radioTrack(streamMedia(queueItemId = "queue-item-other"))
+        assertEquals("name", built.title)
+        assertNull(built.artist)
+    }
+
+    @Test
+    fun unstampedMediaIsIgnored() {
+        val built = radioTrack(streamMedia(queueItemId = null))
+        assertEquals("name", built.title)
+        assertNull(built.artist)
+    }
+
+    @Test
+    fun blankStreamArtistRendersAsNoArtist() {
+        assertNull(radioTrack(streamMedia(artist = " ")).artist)
+    }
+
+    @Test
+    fun nonRadioContentIgnoresCurrentMedia() {
+        val built = buildNowPlayingTrack(
+            playerData(testTrack(), queueInfo(queueId = "queue-1"), currentMedia = streamMedia()),
+        )!!
+        assertEquals("name", built.title)
     }
 }
 
@@ -267,7 +346,11 @@ private fun queueInfo(
     playbackSpeed = playbackSpeed,
 )
 
-private fun playerData(item: PlayableItem, queueInfo: QueueInfo): PlayerData = PlayerData(
+private fun playerData(
+    item: PlayableItem,
+    queueInfo: QueueInfo,
+    currentMedia: PlayerMedia? = null,
+): PlayerData = PlayerData(
     player = Player(
         id = "player-1",
         name = "Test player",
@@ -291,7 +374,7 @@ private fun playerData(item: PlayableItem, queueInfo: QueueInfo): PlayerData = P
         syncedTo = null,
         groupVolume = null,
         groupVolumeMuted = false,
-        currentMedia = null,
+        currentMedia = currentMedia,
     ),
     queue = DataState.Data(
         Queue(

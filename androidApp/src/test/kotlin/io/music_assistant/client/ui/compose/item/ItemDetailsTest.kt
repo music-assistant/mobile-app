@@ -67,9 +67,7 @@ class ItemDetailsTest {
                     itemState = DataState.Data(artist),
                     albumsState = DataState.NoData(),
                     playableItemsState = DataState.NoData(),
-                    // An artist's albums now live in the Library/Top/All sub-sections, not albumsState.
-                    artistAlbumSections = ArtistSections(all = DataState.Data(albums)),
-                    artistTrackSections = ArtistSections(),
+                    artistSections = ArtistSections(library = DataState.Data(Section(albums))),
                 ),
                 geEditablePlaylists = suspend { emptyList() },
                 fetchColors = NoColors,

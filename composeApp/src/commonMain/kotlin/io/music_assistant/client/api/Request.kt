@@ -729,6 +729,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
 
         fun recommendations() = Request(command = APICommands.MUSIC_RECOMMENDATIONS)
 
+        /**
+         * Items of a single recommendation row. Only exists on servers that
+         * return [recommendations] rows without embedded items.
+         */
+        fun recommendationItems(provider: String, itemId: String) = Request(
+            command = APICommands.MUSIC_RECOMMENDATIONS_ITEMS,
+            args = buildJsonObject {
+                put("provider", JsonPrimitive(provider))
+                put("item_id", JsonPrimitive(itemId))
+            },
+        )
+
         fun providersManifests() = Request(command = APICommands.PROVIDERS_MANIFESTS)
 
         /** Loaded provider instances (music/player/…); filter client-side by type. */

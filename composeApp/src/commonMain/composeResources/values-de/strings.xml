@@ -45,8 +45,9 @@
   <string name="all_podcasts">Alle Podcasts</string>
   <string name="all_radio">Alle Radiosender</string>
   <string name="all_tracks">Alle Titel</string>
-  <string name="artist_section_all">Alle</string>
+  <string name="artist_section_all">Diskografie</string>
   <string name="artist_section_in_library">In Bibliothek</string>
+  <string name="artist_section_top">Beliebt</string>
   <string name="auth_authenticating">Anmelden...</string>
   <string name="auth_authorize_ha">Mit Home Assistant anmelden</string>
   <string name="auth_hide_password">Passwort verstecken</string>
@@ -60,6 +61,7 @@
   <string name="auth_title">Authentifizierung</string>
   <string name="auth_username">Benutzername</string>
   <string name="background_usage_dialog_dismiss">Nicht erneut anzeigen</string>
+  <string name="background_usage_dialog_message">Die App kann nicht im Hintergrund ausgeführt werden. Deshalb endet die lokale Wiedergabe kurz nach dem Verlassen. Öffne "Einstellungen", dann "Akku“ und erlaube die Hintergrundnutzung.</string>
   <string name="background_usage_dialog_open_settings">Einstellungen öffnen</string>
   <string name="background_usage_dialog_title">Lokale Wiedergabe könnte stoppen</string>
   <string name="banner_no_network">Kein Netzwerk verfügbar</string>
@@ -71,6 +73,7 @@
   <string name="browse_subtitle">Künstler, Alben, Titel &amp; mehr</string>
   <string name="cd_add_playlist">Wiedergabeliste hinzufügen</string>
   <string name="cd_add_to_group">Zu Gruppe hinzufügen</string>
+  <string name="cd_album_item">Album "%1$s" von %2$s</string>
   <string name="cd_applied">Angewandt</string>
   <string name="cd_close">Schließen</string>
   <string name="cd_connection_history">Verbindungsprotokoll</string>
@@ -90,7 +93,8 @@
   <string name="cd_play_now">Jetzt abspielen</string>
   <string name="cd_play_options">Wiedergabe Optionen</string>
   <string name="cd_playing">Spielt %1$s</string>
-  <string name="cd_provider_icon">Provider Icon</string>
+  <string name="cd_provider_filter">Filtere %1$s nach Anbieter %2$s</string>
+  <string name="cd_provider_icon">Anbieter-Icon</string>
   <string name="cd_remove_from_group">Aus Gruppe entfernen</string>
   <string name="cd_scan_qr_code">QR-Code scannen</string>
   <string name="cd_select_codec">Codec auswählen</string>
@@ -98,6 +102,7 @@
   <string name="cd_toggle_queue">Warteschlange umschalten</string>
   <string name="cd_toggle_view_mode">Ansicht umschalten</string>
   <string name="cd_unmute">Stummschaltung aufheben</string>
+  <string name="cd_view_all">Alle %1$s anzeigen</string>
   <string name="cd_vinyl_record">Schallplatte</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Künstler</string>
@@ -204,6 +209,7 @@
   <string name="player_power_off">Ausschalten</string>
   <string name="player_power_on">Einschalten</string>
   <string name="player_powered_off">Ausgeschaltet</string>
+  <string name="player_show_buffer_indicator">Pufferstatus anzeigen</string>
   <string name="players_dsp_settings">DSP-Einstellungen</string>
   <string name="players_group_settings">Gruppeneinstellungen</string>
   <string name="players_group_volume">%1$s Lautstärke der Gruppe</string>
@@ -238,6 +244,12 @@
   <string name="queue_not_loaded">Nicht geladen</string>
   <string name="queue_transfer">Warteschlange übertragen</string>
   <string name="refresh">Neu laden</string>
+  <string name="schema_incompatible_dialog_exit">Beenden</string>
+  <string name="schema_incompatible_dialog_message">Die App-Version ist zu alt für diesen Server. Bitte aktualisiere die App.</string>
+  <string name="schema_incompatible_dialog_title">Update erforderlich</string>
+  <string name="schema_version_dialog_confirm">OK</string>
+  <string name="schema_version_dialog_message">Der Server nutzt ein neueres Datenformat als diese App. Manche Funktionen sind möglicherweise eingeschränkt. Bitte aktualisiere die App.</string>
+  <string name="schema_version_dialog_title">App-Update empfohlen</string>
   <string name="search_error">Fehler beim Laden der Suchergebnisse</string>
   <string name="search_in_library_only">Nur in Bibliothek</string>
   <string name="search_no_results">Keine Ergebnisse gefunden</string>

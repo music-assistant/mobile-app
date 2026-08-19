@@ -1,7 +1,9 @@
 package io.music_assistant.client.data
 
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.image
@@ -83,8 +85,40 @@ internal object NowPlayingChannelChangeDetection {
 }
 
 /** Maps local-player state to the metadata channel. */
-internal fun buildNowPlayingTrack(playerData: PlayerData?): NowPlayingTrack? =
-    playerData?.queueInfo?.currentItem?.track?.toNowPlayingTrack()
+internal fun buildNowPlayingTrack(playerData: PlayerData?): NowPlayingTrack? {
+    val currentItem = playerData?.queueInfo?.currentItem ?: return null
+    return withRadioStreamMetadata(
+        base = currentItem.track.toNowPlayingTrack(),
+        playerData = playerData,
+        currentItem = currentItem,
+    )
+}
+
+/**
+ * Overlay the radio stream's dynamic metadata (from `currentMedia`) onto the static
+ * station entry. [NowPlayingTrack.mediaItemId] stays the station's so transport
+ * anchors correlate and Swift treats stream-title changes as same-track updates.
+ */
+private fun withRadioStreamMetadata(
+    base: NowPlayingTrack,
+    playerData: PlayerData,
+    currentItem: QueueTrack,
+): NowPlayingTrack {
+    if (currentItem.track.mediaType != MediaType.RADIO) return base
+    val media = playerData.player.currentMedia ?: return base
+    // The server always stamps queue_item_id when an MA queue item is current;
+    // media stamped otherwise is not this station's stream.
+    if (media.queueItemId != currentItem.id) return base
+    // A title equal to the station name carries no information (idle streams and
+    // the synthesized pre-play fallback both produce it).
+    val streamTitle = media.title?.takeIf { it.isNotBlank() && it != base.title } ?: return base
+    return base.copy(
+        title = streamTitle,
+        artist = media.artist?.takeIf { it.isNotBlank() },
+        album = base.title,
+        artworkUrl = media.imageUrl ?: base.artworkUrl,
+    )
+}
 
 /**
  * Maps local-player state to an anchor, or null when there is no current item.

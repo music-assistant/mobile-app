@@ -5,7 +5,7 @@ import os.log
 
 /// CarPlay lifecycle markers. Logged at `.default` so they survive a
 /// post-drive sysdiagnose (`.info`/`.debug` are in-memory only).
-private let cpLog = OSLog(subsystem: "io.music-assistant.client", category: "CarPlay")
+private let cpLog = OSLog(subsystem: "io.music-assistant.mobile-client", category: "CarPlay")
 
 class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
@@ -17,6 +17,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     // tap-time checks don't have to await the StateFlow. Updated by the
     // `readinessSubscription` callback on the main thread.
     private var isReady: Bool = false
+    /// True only when this connection passed the local-player gate and attached
+    /// to the shared external-consumer lifecycle.
+    private var didAttachExternalConsumer: Bool = false
     private var readinessSubscription: Cancellable?
 
     /// Monotonic connection generation, bumped on every connect AND
@@ -81,7 +84,18 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         connectionGen += 1
         recommendationsFetchGen = 0
         isReady = false
+        didAttachExternalConsumer = false
+
+        // If the local player is disabled, refuse CarPlay entirely (no attach, no reconnect, no browse).
+        guard KmpHelper.shared.isLocalPlayerEnabled() else {
+            os_log("CP: local player disabled — refusing CarPlay attachment", log: cpLog, type: .default)
+            self.interfaceController = nil
+            return
+        }
+        didAttachExternalConsumer = true
         KmpHelper.shared.onExternalConsumerActive()
+        // Rehydrate Now Playing from the server; attaching alone never authorizes playback.
+        KmpHelper.shared.refreshCarPlayNowPlayingState()
         // Resolve localized strings before building templates: CarPlay template
         // titles are immutable after construction, so the active-locale strings
         // must be known up front. Subscribing to readiness inside the completion
@@ -124,7 +138,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         libraryTemplate = nil
         libraryBrowseSection = nil
         self.interfaceController = nil
-        KmpHelper.shared.onExternalConsumerInactive()
+        if didAttachExternalConsumer {
+            KmpHelper.shared.onExternalConsumerInactive()
+            didAttachExternalConsumer = false
+        }
         os_log("CP: didDisconnect", log: cpLog, type: .default)
     }
 
@@ -553,10 +570,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     // MARK: - Item Selection
 
-    private func attachHandlers(to items: [CPListItem]) {
+    private func attachHandlers(to items: [CPListItem], parent: AppMediaItem? = nil) {
         for item in items {
             item.handler = { [weak self] listItem, completion in
-                self?.handleItemSelection(listItem)
+                self?.handleItemSelection(listItem, parent: parent)
                 completion()
             }
         }
@@ -565,7 +582,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     /// Type-aware dispatch: container items (Artist, Album, Playlist, Podcast) drill
     /// in to their contained items; leaf items (Track, RadioStation, Audiobook,
     /// PodcastEpisode) play and push Now Playing.
-    private func handleItemSelection(_ item: CPSelectableListItem) {
+    private func handleItemSelection(
+        _ item: CPSelectableListItem,
+        parent: AppMediaItem? = nil
+    ) {
         // Drop offline taps with a visible alert.
         guard isReady else { showOfflineAlert(); return }
         guard
@@ -585,7 +605,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             // Track / RadioStation / Audiobook / PodcastEpisode — leaf items run the per-kind
             // configured tap action. Only push Now Playing when it actually starts playback
             // (a configured "add to queue" tap is non-disruptive).
-            let dispatched = CarPlayContentManager.shared.playWithDefault(mediaItem)
+            let dispatched = CarPlayContentManager.shared.playWithDefault(mediaItem, parent: parent)
             if let name = dispatched, Self.actionStartsPlayback(name) {
                 pushNowPlayingTemplate(animated: true)
             }
@@ -650,7 +670,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 if items.isEmpty {
                     template.updateSections([self.emptyStateSection(text: strings.empty)])
                 } else {
-                    self.attachHandlers(to: items)
+                    self.attachHandlers(to: items, parent: bulkActionParent)
                     let prefix = self.bulkActionRows(for: bulkActionParent)
                     template.updateSections([CPListSection(items: prefix + items)])
                 }

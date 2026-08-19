@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Highest server schema_version this client is built and tested against. */
-const val LOCAL_SCHEMA_VERSION = 31
+const val LOCAL_SCHEMA_VERSION = 53
 
 @Serializable
 data class ServerInfo(

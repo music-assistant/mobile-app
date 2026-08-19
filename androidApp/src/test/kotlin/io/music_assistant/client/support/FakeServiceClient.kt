@@ -46,10 +46,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
+import java.util.concurrent.atomic.AtomicBoolean
 
 class FakeServiceClient : ServiceClient {
     private var legacyVersion: LegacyVersion? = null
-    private var requestErrors: Boolean = false
+    private val requestErrors = AtomicBoolean(false)
     private var connectionError: Exception? = null
 
     private val uniqueIdGenerator = UniqueIdGenerator()
@@ -75,7 +76,7 @@ class FakeServiceClient : ServiceClient {
     override val externalConsumerActive: StateFlow<Boolean> = MutableStateFlow(false)
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
-        if (requestErrors) {
+        if (requestErrors.get()) {
             return Result.failure(Exception())
         }
 
@@ -128,34 +129,41 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.MUSIC_RECOMMENDATIONS -> {
+                // Legacy servers embed each row's items; current servers return
+                // item-less rows resolved via MUSIC_RECOMMENDATIONS_ITEMS.
+                val embedItems = legacyVersion != null
                 Result.success(
                     answer(
                         request = request,
-                        result = listOf(
+                        result = recommendationRowIds.map { (itemId, name) ->
                             ServerMediaItem(
-                                itemId = "recently_added_albums",
+                                itemId = itemId,
                                 provider = "library",
-                                name = "Recently added albums",
+                                name = name,
                                 mediaType = MediaType.FOLDER.serverValue,
-                                items = mediaItemStore.query(mediaType = MediaType.ALBUM),
-                            ),
-                            ServerMediaItem(
-                                itemId = "recently_added_tracks",
-                                provider = "library",
-                                name = "Recently added tracks",
-                                mediaType = MediaType.FOLDER.serverValue,
-                                items = mediaItemStore.query(mediaType = MediaType.TRACK),
-                            ),
-                            ServerMediaItem(
-                                itemId = "recently_added_artists",
-                                provider = "library",
-                                name = "Recently added artists",
-                                mediaType = MediaType.FOLDER.serverValue,
-                                items = mediaItemStore.query(mediaType = MediaType.ARTIST),
-                            ),
-                        ),
+                                items = if (embedItems) {
+                                    recommendationRowItems(itemId)
+                                } else {
+                                    emptyList()
+                                },
+                            )
+                        },
                     ),
                 )
+            }
+
+            APICommands.MUSIC_RECOMMENDATIONS_ITEMS -> {
+                if (legacyVersion != null) {
+                    // Command doesn't exist on legacy servers.
+                    Result.failure(UnsupportedOperationException())
+                } else {
+                    Result.success(
+                        answer(
+                            request = request,
+                            result = recommendationRowItems(request.getArg("item_id")),
+                        ),
+                    )
+                }
             }
 
             APICommands.MUSIC_SEARCH -> {
@@ -472,6 +480,18 @@ class FakeServiceClient : ServiceClient {
                 Result.success(Answer(JsonObject(emptyMap())))
             }
 
+            APICommands.MUSIC_ARTISTS_TOP_TRACKS -> {
+                val artist = findItem(request)
+                val tracks = mediaItemStore.getTracksByArtist(artist, topOnly = true)
+
+                Result.success(
+                    answer(
+                        request = request,
+                        result = tracks,
+                    ),
+                )
+            }
+
             else -> {
                 Result.failure(UnsupportedOperationException())
             }
@@ -630,7 +650,10 @@ class FakeServiceClient : ServiceClient {
                     serverInfo = ServerInfo(
                         serverId = serverId,
                         serverVersion = "fake",
-                        schemaVersion = -1,
+                        // Schema 39+ moved recommendation row items behind
+                        // MUSIC_RECOMMENDATIONS_ITEMS; this fake serves that
+                        // shape unless a legacy version is set.
+                        schemaVersion = if (legacyVersion != null) -1 else 39,
                         baseUrl = "http://homeassistant.example",
                     ),
                 )
@@ -713,6 +736,20 @@ class FakeServiceClient : ServiceClient {
         }
     }
 
+    private val recommendationRowIds = listOf(
+        "recently_added_albums" to "Recently added albums",
+        "recently_added_tracks" to "Recently added tracks",
+        "recently_added_artists" to "Recently added artists",
+    )
+
+    private fun recommendationRowItems(itemId: String): List<ServerMediaItem> =
+        when (itemId) {
+            "recently_added_albums" -> mediaItemStore.query(mediaType = MediaType.ALBUM)
+            "recently_added_tracks" -> mediaItemStore.query(mediaType = MediaType.TRACK)
+            "recently_added_artists" -> mediaItemStore.query(mediaType = MediaType.ARTIST)
+            else -> emptyList()
+        }
+
     private fun findItem(request: Request): ServerMediaItem {
         val itemId = request.getArg("item_id")
         val provider = request.getArg("provider_instance_id_or_domain")
@@ -741,8 +778,12 @@ class FakeServiceClient : ServiceClient {
         mediaItemStore.setPlaylist(playlist, *tracks)
     }
 
-    fun setRequestErrors(reachable: Boolean) {
-        this.requestErrors = reachable
+    fun setTopTracks(artist: ServerMediaItem, vararg tracks: ServerMediaItem) {
+        mediaItemStore.setTopTracks(artist, *tracks)
+    }
+
+    fun setRequestErrors(requestError: Boolean) {
+        requestErrors.set(requestError)
     }
 
     fun setLegacyVersion(version: LegacyVersion) {

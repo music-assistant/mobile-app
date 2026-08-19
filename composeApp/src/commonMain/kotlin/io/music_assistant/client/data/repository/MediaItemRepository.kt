@@ -1,23 +1,33 @@
 package io.music_assistant.client.data.repository
 
+import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.utils.HasConnectionData
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.withContext
 
 /**
  * Single seam between RPC + DTO land and the UI's typed `AppMediaItem` world.
@@ -47,6 +57,76 @@ class MediaItemRepository(
                 ?.let(factory::createList)
                 ?: error("Missing or undecodable media list payload")
         }
+
+    suspend fun fetchMediaItems(request: Request, observer: (List<AppMediaItem>) -> Unit) {
+        val result = fetchMediaItems(request)
+        val items = result.getOrNull()
+
+        if (items != null) {
+            observer(items)
+            itemChanges
+                .scan(items) { items, change -> items.replacing(change.item) }
+                .collect { observer(it) }
+        }
+    }
+
+    /**
+     * The home-page recommendation rows as the server returned them, with or
+     * without embedded items (see [supportsRecommendationRowItems]).
+     */
+    suspend fun fetchRecommendationRows(): Result<List<RecommendationFolder>> =
+        withContext(Dispatchers.IO) {
+            fetchMediaItems(Request.Library.recommendations())
+                .map { items -> items.filterIsInstance<RecommendationFolder>() }
+        }
+
+    /**
+     * Whether the connected server strips the items from `music/recommendations`
+     * rows and serves each row's contents via `music/recommendations/items`
+     * instead. This can be simplified once v2.10 is our minimum supported server
+     * version.
+     */
+    fun supportsRecommendationRowItems(): Boolean =
+        (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
+            ?.let { it >= RECOMMENDATION_ITEMS_SCHEMA } == true
+
+    /**
+     * One-shot, fully-resolved recommendation rows for consumers without a
+     * progressive UI (e.g. CarPlay lists).
+     */
+    suspend fun fetchRecommendationFolders(): Result<List<RecommendationFolder>> {
+        val folders = fetchRecommendationRows().getOrElse { error ->
+            if (error is CancellationException) throw error
+            return Result.failure(error)
+        }
+        if (!supportsRecommendationRowItems()) return Result.success(folders)
+
+        return Result.success(
+            coroutineScope {
+                folders.map { folder ->
+                    async {
+                        folder.copy(items = fetchRecommendationRowItems(folder).orEmpty())
+                    }
+                }.awaitAll()
+            },
+        )
+    }
+
+    /** Items of one recommendation row, or null when the fetch failed (logged). */
+    suspend fun fetchRecommendationRowItems(
+        folder: RecommendationFolder,
+    ): List<AppMediaItem>? = withContext(Dispatchers.IO) {
+        fetchMediaItems(
+            Request.Library.recommendationItems(folder.provider, folder.itemId),
+        ).getOrElse { error ->
+            if (error is CancellationException) throw error
+            Logger.w(
+                "Failed fetching recommendation items for " +
+                        "${folder.provider}/${folder.itemId}: $error",
+            )
+            null
+        }
+    }
 
     /**
      * Issue [request] and decode its payload as a single client media item.
@@ -117,3 +197,9 @@ class MediaItemRepository(
         )
     }
 }
+
+private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =
+    map { if (it.itemId == changed.itemId) changed else it }
+
+/** Server schema version that split `music/recommendations` into rows + per-row items. */
+private const val RECOMMENDATION_ITEMS_SCHEMA = 39

@@ -9,7 +9,7 @@ import os.log
 import os.lock
 
 private let siriLog = OSLog(
-    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.client",
+    subsystem: Bundle.main.bundleIdentifier ?? "io.music-assistant.mobile-client",
     category: "Siri"
 )
 
@@ -165,7 +165,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 /// Forwards Kermit logs (via the KMP `OsLogSink` bridge) to the unified log with
 /// `privacy: .public`, for local development
 final class OsLogSinkImpl: NSObject, OsLogSink {
-    private let subsystem = Bundle.main.bundleIdentifier ?? "io.music-assistant.client"
+    private let subsystem = Bundle.main.bundleIdentifier ?? "io.music-assistant.mobile-client"
 
     func log(severity: String, tag: String, message: String) {
         let logger = os.Logger(subsystem: subsystem, category: tag)

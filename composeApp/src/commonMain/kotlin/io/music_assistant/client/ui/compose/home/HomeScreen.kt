@@ -55,7 +55,6 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
-import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.CenteredProgress
@@ -107,7 +106,8 @@ fun HomeScreen(
     // snapshotted fresh on entering edit mode.
     var items by remember { mutableStateOf(working) }
     val enabledCount = items.count { it.second }
-    val enabledByKey = remember(items) { items.associate { it.first.lazyListKey to it.second } }
+    val enabledByKey =
+        remember(items) { items.associate { it.first.category.lazyListKey to it.second } }
 
     var editMode by remember { mutableStateOf(false) }
     val displayedData =
@@ -131,7 +131,7 @@ fun HomeScreen(
                         homeScreenViewModel.saveHomeRows(
                             items.map {
                                 SettingsRepository.HomeRowPref(
-                                    it.first.id,
+                                    it.first.category.id,
                                     it.second,
                                 )
                             },
@@ -154,9 +154,10 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.error,
             )
         } else {
-            val rowContent: @Composable (ItemCategory) -> Unit = {
+            val rowContent: @Composable (HomeRow) -> Unit = { row ->
                 CategoryRow(
-                    itemCategory = it,
+                    data = if (row.loading) DataState.Loading() else DataState.Data(row.category),
+                    itemCategoryProvider = { it },
                     onNavigateClick = onNavigateClick,
                     onPlayClick = { item, option, radio, _ ->
                         homeScreenViewModel.onPlayClick(item, option, radio)
@@ -177,13 +178,13 @@ fun HomeScreen(
                 ) {
                     items(
                         items = displayedData,
-                        key = { it.lazyListKey },
-                    ) { itemCategory ->
+                        key = { it.category.lazyListKey },
+                    ) { homeRow ->
                         if (editMode) {
-                            val enabled = enabledByKey[itemCategory.lazyListKey] ?: true
-                            ReorderableItem(reorderableState, key = itemCategory.lazyListKey) {
+                            val enabled = enabledByKey[homeRow.category.lazyListKey] ?: true
+                            ReorderableItem(reorderableState, key = homeRow.category.lazyListKey) {
                                 Box(modifier = Modifier.fillMaxWidth()) {
-                                    rowContent(itemCategory)
+                                    rowContent(homeRow)
                                     Box(
                                         modifier = Modifier
                                             .matchParentSize()
@@ -213,7 +214,7 @@ fun HomeScreen(
                                                 items =
                                                     moveToEnabledBoundary(
                                                         items,
-                                                        itemCategory,
+                                                        homeRow,
                                                         newEnabled,
                                                     )
                                             },
@@ -234,7 +235,7 @@ fun HomeScreen(
                                 }
                             }
                         } else {
-                            rowContent(itemCategory)
+                            rowContent(homeRow)
                         }
                     }
                 }
@@ -243,15 +244,31 @@ fun HomeScreen(
     }
 }
 
-private fun getCategories(
-    recommendationsState: DataState<List<RecommendationFolder>>,
+/**
+ * One reconciled home row: its display/reorder identity ([category], valid before
+ * the row's items resolve) plus whether those items are still loading, which
+ * [CategoryRow]'s [DataState] overload renders as a placeholder.
+ */
+internal data class HomeRow(
+    val category: ItemCategory<Nothing>,
+    val loading: Boolean,
+) : IdProvider {
+    override val id: String get() = category.id
+}
+
+// Internal so HomeScreenCategoriesTest can pin the row visibility rules: loading
+// rows stay, resolved-empty rows are hidden.
+internal fun getCategories(
+    recommendationsState: DataState<List<RecommendationRowState>>,
     shortcutsState: DataState<List<Shortcut>>,
     homeRowsConfig: List<SettingsRepository.HomeRowPref>,
-): List<Pair<ItemCategory, Boolean>> {
+): List<Pair<HomeRow, Boolean>> {
     val baseList = if (recommendationsState is DataState.Data) {
         val recommendations = recommendationsState.data
-            .filter {
-                it.items?.any { item ->
+            // A still-loading row stays visible as a placeholder; a resolved row
+            // must contain something the home page can render.
+            .filter { row ->
+                row.items is DataState.Loading || row.resolvedItems?.any { item ->
                     item is Track ||
                             item is Artist ||
                             item is Album ||
@@ -263,28 +280,34 @@ private fun getCategories(
                             item is Genre
                 } == true
             }
-            .distinctBy { it.lazyListKey() }
-            .map {
-                ItemCategory(
-                    id = it.itemId,
-                    title = it.displayName.toDisplayString(),
-                    items = it.items.orEmpty(),
-                    lazyListKey = it.lazyListKey(),
-                    tag = HomeScreenSemantics.rowTag(it.itemId),
+            .distinctBy { it.folder.lazyListKey() }
+            .map { row ->
+                HomeRow(
+                    category = ItemCategory(
+                        id = row.folder.itemId,
+                        title = row.folder.displayName.toDisplayString(),
+                        items = row.resolvedItems.orEmpty(),
+                        lazyListKey = row.folder.lazyListKey(),
+                        tag = HomeScreenSemantics.rowTag(row.folder.itemId),
+                    ),
+                    loading = row.items is DataState.Loading,
                 )
             }
 
         if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
             val shortcuts = shortcutsState.data
-            val shortcutsCategory = ItemCategory(
-                id = SHORTCUTS_CATEGORY_ID,
-                title = Res.string.home_shortcuts.toDisplayString(),
-                items = shortcuts.map { it.item },
-                lazyListKey = SHORTCUTS_CATEGORY_ID,
-                tag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
+            val shortcutsRow = HomeRow(
+                category = ItemCategory(
+                    id = SHORTCUTS_CATEGORY_ID,
+                    title = Res.string.home_shortcuts.toDisplayString(),
+                    items = shortcuts.map { it.item },
+                    lazyListKey = SHORTCUTS_CATEGORY_ID,
+                    tag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
+                ),
+                loading = false,
             )
 
-            recommendations + shortcutsCategory
+            recommendations + shortcutsRow
         } else {
             recommendations
         }

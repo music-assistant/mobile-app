@@ -4,7 +4,6 @@
 package io.music_assistant.client.services
 
 import android.app.ForegroundServiceStartNotAllowedException
-import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -25,8 +24,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -34,7 +31,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_error_connection_lost
-import musicassistantclient.composeapp.generated.resources.media_error_local_player_off
 import musicassistantclient.composeapp.generated.resources.media_error_reconnecting
 import org.jetbrains.compose.resources.getString
 import org.koin.android.ext.android.inject
@@ -87,7 +83,6 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         sharedSession.bindAutoHost(autoPlayHandler)
         dataSource.apiClient.onExternalConsumerActive()
         observeSessionState()
-        observeLocalPlayer()
     }
 
     private val autoPlayHandler = object : SharedMediaSessionManager.AutoPlayHandler {
@@ -126,8 +121,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
-    override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
+    override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot? {
         androidAutoLog.i { "onGetRoot from package=$packageName uid=$uID" }
+        // Local player off → MA must be invisible to real AA/media hosts (they discover
+        // media apps via this browser service). Deny before promoting so no host binds and
+        // no session is offered to the car. SystemUI still gets a valid root, so the phone
+        // notification for remote players is untouched (the session stays active).
+        if (!settingsRepository.sendspinEnabled.value && packageName != SYSTEMUI_PACKAGE) {
+            androidAutoLog.i { "Local player disabled — denying AA host '$packageName'" }
+            return null
+        }
         promoteIfRealHost(packageName)
         val extras = Bundle().apply {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
@@ -204,45 +207,6 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                     }
 
                     is SessionState.Connecting -> {}
-                }
-            }
-        }
-    }
-
-    private fun observeLocalPlayer() {
-        scope.launch {
-            combine(
-                dataSource.apiClient.sessionState,
-                localPlayer,
-            ) { sessionState, playerData ->
-                val isAuthenticated = (sessionState as? SessionState.Connected)
-                    ?.dataConnectionState is DataConnectionState.Authenticated
-                isAuthenticated to playerData
-            }.collect { (isAuthenticated, playerData) ->
-                if (isAuthenticated && playerData == null) {
-                    delay(2000)
-                    // Re-check after debounce
-                    if (localPlayer.value == null) {
-                        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-                            ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-                        val pendingIntent = launchIntent?.let {
-                            PendingIntent.getActivity(
-                                this@AndroidAutoPlaybackService,
-                                0,
-                                it,
-                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                            )
-                        }
-                        sharedSession.setErrorState(
-                            PlaybackStateCompat.ERROR_CODE_APP_ERROR,
-                            getString(Res.string.media_error_local_player_off),
-                            pendingIntent,
-                        )
-                    }
-                } else if (playerData != null) {
-                    // Local player appeared (e.g. Sendspin initialized after AA started) —
-                    // clear the "not enabled" error so cached playback data is restored.
-                    sharedSession.clearErrorState()
                 }
             }
         }
