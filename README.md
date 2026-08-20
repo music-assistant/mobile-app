@@ -48,7 +48,7 @@ Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you 
 
 ## Want to try it?
 
-Android users can join [the Play Store testing program](https://play.google.com/apps/testing/io.music_assistant.client).
+Android users can download the APK [for the latest release](https://github.com/music-assistant/mobile-app/releases).
 
 iOS users can join [TestFlight](https://testflight.apple.com/join/AkvSDf2z).
 
