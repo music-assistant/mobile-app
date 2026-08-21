@@ -108,6 +108,15 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             stopSelf()
             return
         }
+        // The car is connected with no local player: the session presents nothing, so there
+        // is no notification to show either. startForeground above is not skipped — the
+        // startForegroundService contract demands it before we may stop.
+        if (sharedSession.sessionBlocked.value) {
+            logger.i { "Session blocked (car connected, no local player) — no notification" }
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
 
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
         logger.i { "Registered audio device callback for routing change detection" }
@@ -123,6 +132,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         scope.launch {
             // Block until everything is stopped, then bail
             dataSource.doesAnythingHavePlayableItem.filter { !it }.first()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+        scope.launch {
+            // Same, for the car-connected-without-local-player window.
+            sharedSession.sessionBlocked.filter { it }.first()
+            logger.i { "Session became blocked — removing notification" }
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }

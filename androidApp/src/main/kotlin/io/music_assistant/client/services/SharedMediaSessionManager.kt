@@ -21,6 +21,7 @@ import coil3.SingletonImageLoader
 import io.music_assistant.client.R
 import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
+import io.music_assistant.client.data.CarConnectionMonitor
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
@@ -38,6 +39,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -46,6 +48,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -64,10 +67,16 @@ import kotlinx.coroutines.launch
 class SharedMediaSessionManager(
     private val applicationContext: Context,
     private val dataSource: MainDataSource,
+    private val carConnection: CarConnectionMonitor,
 ) {
     private var mediaSession: MediaSessionCompat? = null
     private var writerScope: CoroutineScope? = null
     private var refCount = 0
+
+    // Outlives the ref-counted [writerScope]: the AA-connected and blocked signals must be
+    // readable before the first [acquire] and after the last [release]. This manager is a
+    // Koin singleton, so the scope is never cancelled.
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Localized labels, resolved once before the writer collectors start (see
     // [startWriter]). The synchronous writers read these; null only in the brief
@@ -100,14 +109,45 @@ class SharedMediaSessionManager(
 
     private var autoPlayHandler: AutoPlayHandler? = null
 
-    // True while a real Android Auto / media host is bound. AA is deliberately isolated to
-    // the LOCAL player: when a host is connected the session presents/controls only the
-    // local player; otherwise it presents the canonical all-players now-playing (the phone
-    // notification, with its switch-player action). SystemUI binds never flip this.
-    private val _autoHostActive = MutableStateFlow(false)
+    // True while a real Android Auto / media host is bound. SystemUI binds never flip this.
+    private val _hostBound = MutableStateFlow(false)
 
-    /** True while a real Android Auto / media host is bound to the LOCAL player. */
-    val autoHostActive: StateFlow<Boolean> = _autoHostActive
+    /**
+     * True while the session must be isolated to the LOCAL player: the car presents and
+     * controls only the local player; otherwise the session presents the canonical
+     * all-players now-playing (the phone notification, with its switch-player action).
+     *
+     * Two independent signals, OR-ed. [CarConnectionMonitor] is the dependable Android Auto
+     * projection edge and works even when no host bound the browser service; [_hostBound]
+     * additionally covers non-projection media hosts (Assistant, Wear).
+     */
+    private val _autoHostActive = MutableStateFlow(false)
+    val autoHostActive: StateFlow<Boolean> = _autoHostActive.asStateFlow()
+
+    init {
+        managerScope.launch { carConnection.connected.collect { recomputeAutoHost() } }
+    }
+
+    // Recomputed rather than derived with combine(): bind/unbind must take effect before
+    // the call returns, because the session callbacks read [autoHostActive] synchronously.
+    private fun recomputeAutoHost() {
+        _autoHostActive.value = _hostBound.value || carConnection.connected.value
+    }
+
+    /**
+     * True while the car is connected but there is no local player at all (the user disabled
+     * it, or it has not come up). The session must then present nothing: it is deactivated,
+     * metadata and queue are cleared, and the phone notification service stops. Without this
+     * the last remote-player state stays on the session and the car shows and controls a
+     * remote player.
+     *
+     * Keyed on the absence of the local player, not on the setting, so the not-yet-connected
+     * case is covered too. The debounce rides out Sendspin bootstrap at car-connect time.
+     */
+    val sessionBlocked: StateFlow<Boolean> =
+        combine(autoHostActive, dataSource.localPlayer) { auto, player -> auto && player == null }
+            .debounce(SESSION_BLOCK_DEBOUNCE_MS)
+            .stateIn(managerScope, SharingStarted.Eagerly, false)
 
     // Cached last playback data — used to restore state after clearing errors.
     private var lastData: MediaNotificationData? = null
@@ -156,13 +196,15 @@ class SharedMediaSessionManager(
     /** A real AA host connected: isolate the session to the local player + accept browse/voice play. */
     fun bindAutoHost(handler: AutoPlayHandler) {
         autoPlayHandler = handler
-        _autoHostActive.value = true
+        _hostBound.value = true
+        recomputeAutoHost()
     }
 
     /** The AA host went away: return to the all-players notification view, drop any host error. */
     fun unbindAutoHost() {
         autoPlayHandler = null
-        _autoHostActive.value = false
+        _hostBound.value = false
+        recomputeAutoHost()
         clearErrorState()
     }
 
@@ -191,6 +233,7 @@ class SharedMediaSessionManager(
             strings = MediaSessionStrings.load()
             launchPlaybackWriter(scope)
             launchQueueWriter(scope)
+            launchBlockWriter(scope)
         }
     }
 
@@ -235,6 +278,17 @@ class SharedMediaSessionManager(
                         },
                     )
                 }
+        }
+    }
+
+    private fun launchBlockWriter(scope: CoroutineScope) {
+        // Applies / lifts the [sessionBlocked] presentation. The playback and queue writers
+        // are guarded on the same flag, so a debounced emission that lands after the block
+        // cannot re-publish stale remote-player data.
+        scope.launch {
+            sessionBlocked.collect { blocked ->
+                if (blocked) writeBlockToSession() else liftBlockFromSession()
+            }
         }
     }
 
@@ -338,7 +392,7 @@ class SharedMediaSessionManager(
     @Synchronized
     fun setErrorState(code: Int, message: String, resolution: PendingIntent? = null) {
         currentError = ErrorState(code, message, resolution).also {
-            writeErrorToSession(it)
+            if (!sessionBlocked.value) writeErrorToSession(it)
         }
     }
 
@@ -349,6 +403,7 @@ class SharedMediaSessionManager(
     @Synchronized
     fun clearErrorState() {
         currentError = null
+        if (sessionBlocked.value) return
         lastData?.let { writePlaybackToSession(it, lastBitmap, lastMultiPlayer) }
     }
 
@@ -361,6 +416,8 @@ class SharedMediaSessionManager(
         lastData = data
         lastBitmap = bitmap
         lastMultiPlayer = multiPlayer
+        // Precedence, decided in this one place: blocked > error > playback.
+        if (sessionBlocked.value) return
         currentError?.let {
             writeErrorToSession(it)
         } ?: run {
@@ -370,6 +427,7 @@ class SharedMediaSessionManager(
 
     @Synchronized
     private fun updateQueue(queue: List<MediaSessionCompat.QueueItem>) {
+        if (sessionBlocked.value) return
         mediaSession?.setQueue(queue)
         mediaSession?.setQueueTitle(strings?.nowPlaying ?: "")
     }
@@ -506,6 +564,30 @@ class SharedMediaSessionManager(
         return strings?.artistWithPlayer(artist, player) ?: artist
     }
 
+    /**
+     * Present nothing: deactivate the session so no host draws a card for it, and drop the
+     * metadata and queue left behind by the previously presented player.
+     */
+    @Synchronized
+    private fun writeBlockToSession() {
+        val session = mediaSession ?: return
+        session.setPlaybackState(
+            PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_NONE, 0, 0f).build(),
+        )
+        session.setMetadata(MediaMetadataCompat.Builder().build())
+        session.setQueue(emptyList())
+        session.isActive = false
+    }
+
+    /** Reactivate the session and restore the last known playback data. */
+    @Synchronized
+    private fun liftBlockFromSession() {
+        val session = mediaSession ?: return
+        session.isActive = true
+        currentError?.let { writeErrorToSession(it) }
+            ?: lastData?.let { writePlaybackToSession(it, lastBitmap, lastMultiPlayer) }
+    }
+
     private fun writeErrorToSession(error: ErrorState) {
         val session = mediaSession ?: return
         val extras = error.resolution?.let { intent ->
@@ -547,4 +629,10 @@ class SharedMediaSessionManager(
         } else {
             R.drawable.baseline_arrow_right_alt_24
         }
+
+    private companion object {
+        // Sendspin needs a moment to come up after the car connects. Without this window the
+        // block state flashes on every connect, tearing down and rebuilding the session.
+        const val SESSION_BLOCK_DEBOUNCE_MS = 1500L
+    }
 }
