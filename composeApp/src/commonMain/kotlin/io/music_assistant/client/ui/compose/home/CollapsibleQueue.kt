@@ -64,6 +64,7 @@ import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
+import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.NoOverscroll
 import io.music_assistant.client.ui.compose.common.action.QueueAction
@@ -453,7 +454,7 @@ fun Queue(
                                                 .clip(RoundedCornerShape(size = 4.dp)),
                                             placeholder = placeholder,
                                             fallback = placeholder,
-                                            model = item.track.image(ImageType.THUMB)?.url,
+                                            model = rememberArtworkRequest(item.track.image(ImageType.THUMB)?.url),
                                             contentDescription = null,
                                             contentScale = ContentScale.Crop,
                                         )

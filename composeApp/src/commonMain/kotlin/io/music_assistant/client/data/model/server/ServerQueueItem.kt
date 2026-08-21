@@ -35,6 +35,20 @@ data class StreamDetails(
 //    @SerialName("strip_silence_begin") val stripSilenceBegin: Boolean,
 //    @SerialName("strip_silence_end") val stripSilenceEnd: Boolean,
     @SerialName("dsp") val dsp: Map<String, DSPSettings>? = null,
+    @SerialName("stream_metadata") val streamMetadata: ServerStreamMetadata? = null,
+)
+
+/**
+ * Metadata of a live broadcast, describing the track a radio station plays right now.
+ * The queue item itself is the station, so its artwork is the station logo — this is the
+ * only source for the current song's artwork.
+ */
+@Serializable
+data class ServerStreamMetadata(
+//    @SerialName("title") val title: String,
+//    @SerialName("artist") val artist: String? = null,
+//    @SerialName("album") val album: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
 )
 
 @Serializable
