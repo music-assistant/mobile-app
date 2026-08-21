@@ -56,7 +56,7 @@ class AuthenticationManagerTest {
     @Test
     fun `getProviders rethrows cancellation instead of driving authState to Error`() = runTest {
         val client = StubServiceClient()
-        val manager = AuthenticationManager(client, SettingsRepository(MapSettings()))
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
         try {
             val job = launch { manager.getProviders() }
             runCurrent() // getProviders sets Loading, then suspends inside sendRequest
@@ -84,7 +84,7 @@ class AuthenticationManagerTest {
     @Test
     fun `loginWithCredentials rethrows cancellation instead of driving authState to Error`() = runTest {
         val client = StubServiceClient()
-        val manager = AuthenticationManager(client, SettingsRepository(MapSettings()))
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
         try {
             val job = launch { manager.loginWithCredentials("builtin", "user", "pass") }
             runCurrent() // login sets Loading, then suspends inside serviceClient.login
@@ -105,7 +105,7 @@ class AuthenticationManagerTest {
     @Test
     fun `getOAuthUrl rethrows cancellation instead of completing with a failure result`() = runTest {
         val client = StubServiceClient()
-        val manager = AuthenticationManager(client, SettingsRepository(MapSettings()))
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
         try {
             // getOAuthUrl never touches authState, and job.isCancelled is true whether
             // or not the body swallows the cancellation — so the discriminator is the

@@ -25,7 +25,47 @@ import kotlin.uuid.Uuid
 
 class SettingsRepository(
     private val settings: Settings,
+    private val secrets: Settings,
 ) {
+    /**
+     * Move secrets out of the general store into [secrets].
+     *
+     * This block is declared first on purpose. Kotlin runs initialisers in
+     * declaration order, and the property initialisers below read these keys.
+     *
+     * The block is idempotent, so it is safe on every start. It also catches a
+     * secret that a platform backup restored from a version before the split.
+     */
+    init {
+        settings.keys
+            .filter { it.startsWith(TOKEN_PREFIX) || it.startsWith(SERVER_ID_PREFIX) }
+            .forEach { moveString(it) }
+        SECRET_STRING_KEYS.forEach { moveString(it) }
+        moveInt("port")
+        moveBoolean("isTls")
+    }
+
+    private fun moveString(key: String) {
+        settings.getStringOrNull(key)
+            ?.takeIf { !secrets.hasKey(key) }
+            ?.let { secrets.putString(key, it) }
+        settings.remove(key)
+    }
+
+    private fun moveInt(key: String) {
+        settings.getIntOrNull(key)
+            ?.takeIf { !secrets.hasKey(key) }
+            ?.let { secrets.putInt(key, it) }
+        settings.remove(key)
+    }
+
+    private fun moveBoolean(key: String) {
+        settings.getBooleanOrNull(key)
+            ?.takeIf { !secrets.hasKey(key) }
+            ?.let { secrets.putBoolean(key, it) }
+        settings.remove(key)
+    }
+
     private val _theme = MutableStateFlow(
         ThemeSetting.valueOf(
             settings.getString("theme", ThemeSetting.FollowSystem.name),
@@ -39,9 +79,9 @@ class SettingsRepository(
     }
 
     private val _connectionInfo = MutableStateFlow(
-        settings.getStringOrNull("host")?.takeIf { it.isNotBlank() }?.let { host ->
-            settings.getIntOrNull("port")?.takeIf { it > 0 }?.let { port ->
-                ConnectionInfo(host, port, settings.getBoolean("isTls", false))
+        secrets.getStringOrNull("host")?.takeIf { it.isNotBlank() }?.let { host ->
+            secrets.getIntOrNull("port")?.takeIf { it > 0 }?.let { port ->
+                ConnectionInfo(host, port, secrets.getBoolean("isTls", false))
             }
         },
     )
@@ -49,9 +89,9 @@ class SettingsRepository(
 
     fun updateConnectionInfo(connectionInfo: ConnectionInfo?) {
         if (connectionInfo != this._connectionInfo.value) {
-            settings.putString("host", connectionInfo?.host.orEmpty())
-            settings.putInt("port", connectionInfo?.port ?: 0)
-            settings.putBoolean("isTls", connectionInfo?.isTls == true)
+            secrets.putString("host", connectionInfo?.host.orEmpty())
+            secrets.putInt("port", connectionInfo?.port ?: 0)
+            secrets.putBoolean("isTls", connectionInfo?.isTls == true)
             _connectionInfo.update { connectionInfo }
         }
     }
@@ -61,7 +101,7 @@ class SettingsRepository(
      * @param serverIdentifier "direct:ws://host:port" / "direct:wss://host:port" or "webrtc:remoteId"
      */
     fun getTokenForServer(serverIdentifier: String): String? {
-        return settings.getStringOrNull("token_$serverIdentifier")?.takeIf { it.isNotBlank() }
+        return secrets.getStringOrNull("$TOKEN_PREFIX$serverIdentifier")?.takeIf { it.isNotBlank() }
     }
 
     /**
@@ -71,18 +111,18 @@ class SettingsRepository(
      */
     fun setTokenForServer(serverIdentifier: String, token: String?) {
         if (token.isNullOrBlank()) {
-            settings.remove("token_$serverIdentifier")
+            secrets.remove("$TOKEN_PREFIX$serverIdentifier")
         } else {
-            settings.putString("token_$serverIdentifier", token)
+            secrets.putString("$TOKEN_PREFIX$serverIdentifier", token)
         }
     }
 
     fun getIdForServer(serverIdentifier: String): String? {
-        return settings.getStringOrNull("id_$serverIdentifier")
+        return secrets.getStringOrNull("$SERVER_ID_PREFIX$serverIdentifier")
     }
 
     fun setIdForServer(serverIdentifier: String, id: String) {
-        settings.putString("id_$serverIdentifier", id)
+        secrets.putString("$SERVER_ID_PREFIX$serverIdentifier", id)
     }
 
     /**
@@ -423,12 +463,12 @@ class SettingsRepository(
     }
 
     private val _sendspinHost = MutableStateFlow(
-        settings.getString("sendspin_host", ""),
+        secrets.getString("sendspin_host", ""),
     )
     val sendspinHost = _sendspinHost.asStateFlow()
 
     fun setSendspinHost(host: String) {
-        settings.putString("sendspin_host", host)
+        secrets.putString("sendspin_host", host)
         _sendspinHost.update { host }
     }
 
@@ -464,7 +504,7 @@ class SettingsRepository(
     // Migration logic: if user has custom host or non-default port, they're using custom connection
     private val _sendspinUseCustomConnection = MutableStateFlow(
         settings.getBooleanOrNull("sendspin_use_custom_connection") ?: run {
-            val hasCustomHost = settings.getString("sendspin_host", "").isNotEmpty()
+            val hasCustomHost = secrets.getString("sendspin_host", "").isNotEmpty()
             val hasCustomPort = settings.getInt("sendspin_port", 8095) != 8095
             val useCustom = hasCustomHost || hasCustomPort
             settings.putBoolean("sendspin_use_custom_connection", useCustom)
@@ -491,23 +531,23 @@ class SettingsRepository(
 
     // WebRTC Remote Access settings
     private val _webrtcRemoteId = MutableStateFlow(
-        settings.getString("webrtc_remote_id", ""),
+        secrets.getString("webrtc_remote_id", ""),
     )
     val webrtcRemoteId = _webrtcRemoteId.asStateFlow()
 
     fun setWebrtcRemoteId(remoteId: String) {
-        settings.putString("webrtc_remote_id", remoteId)
+        secrets.putString("webrtc_remote_id", remoteId)
         _webrtcRemoteId.update { remoteId }
     }
 
     // Last successful connection mode ("direct" or "webrtc")
     // Used for auto-connect - reconnects using the last mode that worked
     private val _lastConnectionMode = MutableStateFlow(
-        settings.getStringOrNull("last_connection_mode"),
+        secrets.getStringOrNull("last_connection_mode"),
     )
 
     fun setLastConnectionMode(mode: String) {
-        settings.putString("last_connection_mode", mode)
+        secrets.putString("last_connection_mode", mode)
         _lastConnectionMode.update { mode }
     }
 
@@ -535,26 +575,26 @@ class SettingsRepository(
     val connectionHistory = _connectionHistory.asStateFlow()
 
     private fun loadConnectionHistory(): List<ConnectionHistoryEntry> {
-        val json = settings.getStringOrNull("connection_history")
+        val json = secrets.getStringOrNull("connection_history")
         if (json != null) {
             return try { myJson.decodeFromString(json) } catch (_: Exception) { emptyList() }
         }
         // Migration: build history from legacy single-server keys (runs once on first upgrade)
-        return when (settings.getStringOrNull("last_connection_mode")) {
+        return when (secrets.getStringOrNull("last_connection_mode")) {
             "webrtc" -> {
-                val id = settings.getString("webrtc_remote_id", "").takeIf { it.isNotBlank() }
+                val id = secrets.getString("webrtc_remote_id", "").takeIf { it.isNotBlank() }
                     ?: return emptyList()
                 listOf(ConnectionHistoryEntry(type = ConnectionType.WEBRTC, remoteId = id))
             }
             else -> {
-                val host = settings.getStringOrNull("host")?.takeIf { it.isNotBlank() } ?: return emptyList()
-                val port = settings.getIntOrNull("port")?.takeIf { it > 0 } ?: return emptyList()
+                val host = secrets.getStringOrNull("host")?.takeIf { it.isNotBlank() } ?: return emptyList()
+                val port = secrets.getIntOrNull("port")?.takeIf { it > 0 } ?: return emptyList()
                 listOf(
                     ConnectionHistoryEntry(
                     type = ConnectionType.DIRECT,
                     host = host,
                     port = port,
-                    isTls = settings.getBoolean("isTls", false),
+                    isTls = secrets.getBoolean("isTls", false),
                 ),
                 )
             }
@@ -566,13 +606,13 @@ class SettingsRepository(
             .filter { it.serverIdentifier != entry.serverIdentifier }
             .let { listOf(entry) + it }
             .take(10)
-        settings.putString("connection_history", myJson.encodeToString(updated))
+        secrets.putString("connection_history", myJson.encodeToString(updated))
         _connectionHistory.update { updated }
     }
 
     fun removeHistoryEntry(serverIdentifier: String) {
         val updated = _connectionHistory.value.filter { it.serverIdentifier != serverIdentifier }
-        settings.putString("connection_history", myJson.encodeToString(updated))
+        secrets.putString("connection_history", myJson.encodeToString(updated))
         _connectionHistory.update { updated }
     }
 
@@ -673,5 +713,17 @@ class SettingsRepository(
     private companion object {
         const val CAR_DSP_CONNECT_KEY = "car_dsp_action_connect"
         const val CAR_DSP_DISCONNECT_KEY = "car_dsp_action_disconnect"
+
+        // Keys below live in `secrets`, not in `settings`. Add a new key here
+        // when it authenticates to the user's server or identifies it.
+        const val TOKEN_PREFIX = "token_"
+        const val SERVER_ID_PREFIX = "id_"
+        val SECRET_STRING_KEYS = listOf(
+            "host",
+            "webrtc_remote_id",
+            "last_connection_mode",
+            "connection_history",
+            "sendspin_host",
+        )
     }
 }

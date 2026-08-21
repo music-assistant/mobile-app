@@ -22,6 +22,7 @@ import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.provideSecretSettings
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.SchemaVersionWarningViewModel
@@ -47,14 +48,16 @@ import io.music_assistant.client.utils.NetworkMonitor
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 fun sharedModule(
     serviceClientConstructor: (SettingsRepository, ErrorMessageBus) -> ServiceClient = ::KtorServiceClient,
 ) =
     module {
-        single { provideSettings() }
-        singleOf(::SettingsRepository)
+        single(named("app")) { provideSettings() }
+        single(named("secrets")) { provideSecretSettings() }
+        single { SettingsRepository(get(named("app")), get(named("secrets"))) }
         singleOf(::NetworkMonitor)
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)

@@ -6,9 +6,15 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
 import org.koin.core.context.GlobalContext
 
-actual fun provideSettings(): Settings {
+private fun sharedPreferences(name: String): SharedPreferences {
     val context: Context = GlobalContext.get().get()
-    val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-    return SharedPreferencesSettings(sharedPreferences)
+    return context.getSharedPreferences(name, Context.MODE_PRIVATE)
 }
+
+actual fun provideSettings(): Settings =
+    SharedPreferencesSettings(sharedPreferences("AppPreferences"))
+
+// The file name must stay "AppSecrets". The backup rules exclude
+// "AppSecrets.xml" by name. A rename here silently backs up the tokens again.
+actual fun provideSecretSettings(): Settings =
+    SharedPreferencesSettings(sharedPreferences("AppSecrets"))
