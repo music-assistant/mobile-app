@@ -51,13 +51,23 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
+/**
+ * Qualifier for the secrets store. Its backing file is excluded from the
+ * Android backup, so put a value here only when it authenticates to the
+ * user's server or identifies it.
+ */
+const val SECRETS = "secrets"
+
 fun sharedModule(
     serviceClientConstructor: (SettingsRepository, ErrorMessageBus) -> ServiceClient = ::KtorServiceClient,
 ) =
     module {
-        single(named("app")) { provideSettings() }
-        single(named("secrets")) { provideSecretSettings() }
-        single { SettingsRepository(get(named("app")), get(named("secrets"))) }
+        // The general store stays unqualified so that any consumer resolving
+        // `Settings` by type keeps the backed-up store. Only the secrets store
+        // is qualified — ask for it on purpose.
+        single { provideSettings() }
+        single(named(SECRETS)) { provideSecretSettings() }
+        single { SettingsRepository(get(), get(named(SECRETS))) }
         singleOf(::NetworkMonitor)
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)

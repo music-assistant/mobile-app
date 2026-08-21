@@ -9,7 +9,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SecretsMigrationTest {
-
     private fun legacyStore() = MapSettings(
         "host" to "nas.local",
         "port" to 8095,
