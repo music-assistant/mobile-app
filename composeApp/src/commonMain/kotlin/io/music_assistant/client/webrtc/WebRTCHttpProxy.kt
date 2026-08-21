@@ -25,10 +25,21 @@ import kotlinx.serialization.json.put
  *
  * Wire protocol (matches `music-assistant/frontend` → `src/plugins/remote/webrtc-transport.ts`):
  *   Request : { "type": "http-proxy-request",  "id": "...", "method": "GET", "path": "...", "headers": {...} }
- *   Response: { "type": "http-proxy-response", "id": "...", "status": 200, "headers": {...}, "body": "<hex>" }
  *
- * Rides the shared `ma-api` data channel. A Semaphore caps in-flight requests so artwork
- * bursts don't head-of-line-block control-plane RPCs on the same SCTP stream.
+ * Responses come in two framings, chosen by the channel the request went out on:
+ *  - `ma-api` (any server): one JSON message with the body hex-encoded, which costs about
+ *    2.7x the image once oversized-message chunking is applied on top.
+ *    `{ "type": "http-proxy-response", "id", "status", "headers", "body": "<hex>" }`
+ *  - `http_proxy` (server schema 49+, MA 2.10): a small JSON header carrying the body length,
+ *    followed by the body as raw binary messages — the image costs its own size and no more.
+ *    `{ "type": "http-proxy-response", "id", "status", "headers", "size": N }` then N bytes.
+ *    Those binary frames carry no request id, so the server holds the channel for a whole
+ *    reply; replies never interleave there and one reassembly slot is enough.
+ *
+ * A Semaphore caps in-flight requests. On `ma-api` that stops artwork bursts from
+ * head-of-line-blocking control-plane RPCs on the same SCTP stream; the dedicated channel
+ * exists to remove that contention entirely, but the server bounds its own concurrency at
+ * the same figure so the cap stays useful there too.
  */
 class WebRTCHttpProxy(
     private val sender: suspend (JsonObject) -> Unit,
@@ -38,12 +49,53 @@ class WebRTCHttpProxy(
 
     private val pendingMutex = Mutex()
 
-    // CRITICAL: deferred carries the RAW JSON STRING, not a parsed JsonObject. Both JSON parsing
-    // AND hex decoding happen in the awaiter's coroutine — never on the message-listener coroutine.
-    // For a 2 MB hex-encoded image body, full kotlinx.serialization parse is 100–500 ms; if that
-    // ran on the listener it would queue every subsequent control-plane RPC and server event behind
-    // each image. The listener only does a cheap regex peek to extract the request id.
-    private val pending = mutableMapOf<String, CompletableDeferred<String>>()
+    /**
+     * What a completed response hands back to the awaiter.
+     *
+     * [Hex] carries the RAW JSON STRING, not a parsed JsonObject: both JSON parsing AND hex
+     * decoding must happen in the awaiter's coroutine, never on the message-listener
+     * coroutine. For a 2 MB hex-encoded body a full kotlinx.serialization parse is
+     * 100–500 ms; on the listener that would queue every subsequent control-plane RPC and
+     * server event behind each image. The listener only peeks out the request id.
+     *
+     * [Binary] is already decoded — its body arrived as raw bytes, so there is nothing left
+     * to parse and no reason to defer it.
+     */
+    private sealed interface Payload {
+        class Hex(val raw: String) : Payload
+        class Binary(val response: ProxyResponse) : Payload
+    }
+
+    /**
+     * @param onProxyChannel whether the request went out on the dedicated channel. Requests
+     *   sent there die with it, unlike those on `ma-api`, which the server still answers.
+     */
+    private class Pending(
+        val deferred: CompletableDeferred<Payload>,
+        val onProxyChannel: Boolean,
+    )
+
+    /** A binary reply being reassembled on the dedicated channel: its header, then its body. */
+    private class PendingBody(
+        val id: String,
+        val status: Int,
+        val headers: Map<String, String>,
+        val size: Int,
+    ) {
+        val parts = mutableListOf<ByteArray>()
+        var received: Int = 0
+    }
+
+    private val pending = mutableMapOf<String, Pending>()
+
+    // Sends on the dedicated image channel; null whenever there isn't one. Guarded by
+    // `pendingMutex` together with `pending`, so a request cannot register itself as
+    // proxy-channel-bound after detachChannel has already failed that generation.
+    private var proxySender: (suspend (JsonObject) -> Unit)? = null
+
+    // Single slot: the server holds a send lock for header-plus-body on this channel.
+    private var pendingBody: PendingBody? = null
+
     private val concurrencyGate = Semaphore(maxConcurrent)
 
     data class ProxyResponse(
@@ -85,17 +137,30 @@ class WebRTCHttpProxy(
             val permitAcquiredMs = currentTimeMillis()
             val acquireWaitMs = permitAcquiredMs - queuedAtMs
             val id = nextRequestId()
-            val deferred = CompletableDeferred<String>()
-            pendingMutex.withLock { pending[id] = deferred }
+            val deferred = CompletableDeferred<Payload>()
+            // Snapshot the channel and register under one lock, so a detach racing this
+            // cannot leave an entry nobody will ever fail waiting out its full timeout.
+            val send = pendingMutex.withLock {
+                val proxy = proxySender
+                pending[id] = Pending(deferred, onProxyChannel = proxy != null)
+                proxy ?: sender
+            }
             logger.d { "GET $path id=$id acquire_wait_ms=$acquireWaitMs" }
-            val rawJsonString = try {
-                sender(buildRequest(id, path, headers))
+            val payload = try {
+                send(buildRequest(id, path, headers))
                 withTimeout(timeoutMs) { deferred.await() }
             } finally {
-                pendingMutex.withLock { pending.remove(id) }
+                pendingMutex.withLock {
+                    pending.remove(id)
+                    // Stop buffering frames nothing is waiting for any more.
+                    if (pendingBody?.id == id) pendingBody = null
+                }
             }
             val parseStartMs = currentTimeMillis()
-            val response = parseResponse(rawJsonString)
+            val response = when (payload) {
+                is Payload.Binary -> payload.response
+                is Payload.Hex -> parseResponse(payload.raw)
+            }
             val nowMs = currentTimeMillis()
             logger.d {
                 "← id=$id status=${response.status} bytes=${response.body.size} " +
@@ -104,6 +169,33 @@ class WebRTCHttpProxy(
             }
             response
         }
+    }
+
+    /**
+     * Routes subsequent requests onto the dedicated image channel. Requests already in
+     * flight on `ma-api` stay there — the server answers on the channel a request arrived on.
+     */
+    suspend fun attachChannel(send: suspend (JsonObject) -> Unit) {
+        pendingMutex.withLock { proxySender = send }
+    }
+
+    /**
+     * The dedicated channel is gone. Fails everything that went out on it at once, rather
+     * than leaving each caller to wait out its timeout, and drops a half-received body that
+     * can never be completed. Requests in flight on `ma-api` are deliberately left alone.
+     */
+    suspend fun detachChannel(cause: Throwable) {
+        val doomed = pendingMutex.withLock {
+            proxySender = null
+            pendingBody = null
+            val dead = pending.filterValues { it.onProxyChannel }
+            dead.keys.forEach { pending.remove(it) }
+            dead.values.toList()
+        }
+        if (doomed.isNotEmpty()) {
+            logger.w { "http_proxy channel closed with ${doomed.size} request(s) in flight" }
+        }
+        doomed.forEach { it.deferred.completeExceptionally(cause) }
     }
 
     /**
@@ -116,12 +208,99 @@ class WebRTCHttpProxy(
             logger.w { "Dropping http-proxy-response without id" }
             return
         }
-        val deferred = pendingMutex.withLock { pending[id] }
-        if (deferred == null) {
+        val entry = pendingMutex.withLock { pending[id] }
+        if (entry == null) {
             logger.w { "No pending request for id=$id (timed out or cancelled)" }
             return
         }
-        deferred.complete(rawJsonString)
+        entry.deferred.complete(Payload.Hex(rawJsonString))
+    }
+
+    /**
+     * Called with a text frame from the dedicated image channel, which is either a binary
+     * response header or — from a schema-49 server that predates the binary framing — a
+     * whole hex-in-JSON response.
+     */
+    suspend fun dispatchProxyChannelText(rawJsonString: String) {
+        // A header is a few hundred bytes; a hex response is megabytes. Full-parsing only
+        // the small frame keeps `size` from ever being confused with a same-named response
+        // header, and never walks a multi-MB hex body an extra time.
+        if (rawJsonString.length > PROXY_HEADER_MAX_CHARS) {
+            dispatchRawResponse(rawJsonString)
+            return
+        }
+        val frame = runCatching { myJson.decodeFromString<JsonObject>(rawJsonString) }.getOrNull()
+        val size = (frame?.get("size") as? JsonPrimitive)?.intOrNull
+        if (frame == null || size == null) {
+            // No body length: the hex-in-JSON form, which the existing path already handles.
+            dispatchRawResponse(rawJsonString)
+            return
+        }
+        beginBinaryBody(frame, size)
+    }
+
+    /** Called with a raw body frame from the dedicated image channel. */
+    suspend fun dispatchProxyChannelBinary(bytes: ByteArray) {
+        val complete = pendingMutex.withLock {
+            // Frames carry no id, so one arriving with no header open is unattributable.
+            val body = pendingBody ?: return
+            body.parts.add(bytes)
+            body.received += bytes.size
+            body.received >= body.size
+        }
+        if (complete) completeBinaryBody()
+    }
+
+    private suspend fun beginBinaryBody(frame: JsonObject, size: Int) {
+        val id = (frame["id"] as? JsonPrimitive)?.contentOrNull ?: run {
+            logger.w { "Dropping http-proxy-response header without id" }
+            return
+        }
+        if (size !in 0..MAX_BODY_BYTES) {
+            logger.w { "Rejecting http-proxy-response id=$id with implausible size=$size" }
+            return
+        }
+        val status = (frame["status"] as? JsonPrimitive)?.intOrNull ?: 0
+        val headers = frame["headers"]?.jsonObject
+            ?.mapValues { it.value.jsonPrimitive.contentOrNull.orEmpty() }
+            .orEmpty()
+        val waiting = pendingMutex.withLock {
+            // No point buffering a body for a request that already gave up.
+            if (pending[id] == null) {
+                pendingBody = null
+                false
+            } else {
+                pendingBody = PendingBody(id, status, headers, size)
+                true
+            }
+        }
+        if (!waiting) {
+            logger.w { "No pending request for id=$id (timed out or cancelled)" }
+            return
+        }
+        // An empty body is sent as a header on its own, with no frame to follow.
+        if (size == 0) completeBinaryBody()
+    }
+
+    private suspend fun completeBinaryBody() {
+        // Check for a waiting caller before assembling, which for an image copies real bytes.
+        val (body, entry) = pendingMutex.withLock {
+            val b = pendingBody ?: return
+            pendingBody = null
+            b to pending.remove(b.id)
+        }
+        val waiting = entry ?: return
+        val assembled = ByteArray(body.size)
+        var offset = 0
+        for (part in body.parts) {
+            val n = minOf(part.size, body.size - offset)
+            if (n <= 0) break
+            part.copyInto(assembled, destinationOffset = offset, startIndex = 0, endIndex = n)
+            offset += n
+        }
+        waiting.deferred.complete(
+            Payload.Binary(ProxyResponse(body.status, body.headers, assembled)),
+        )
     }
 
     /** Fail every in-flight request. Call on transport disconnect. */
@@ -129,9 +308,11 @@ class WebRTCHttpProxy(
         val snapshot = pendingMutex.withLock {
             val all = pending.values.toList()
             pending.clear()
+            pendingBody = null
+            proxySender = null
             all
         }
-        snapshot.forEach { it.completeExceptionally(cause) }
+        snapshot.forEach { it.deferred.completeExceptionally(cause) }
     }
 
     private fun buildRequest(
@@ -245,6 +426,13 @@ class WebRTCHttpProxy(
         private const val DEFAULT_MAX_CONCURRENT = 6
         private const val DEFAULT_TIMEOUT_MS = 30_000L
         private const val ID_SCAN_WINDOW = 256
+
+        // A binary response header is a few hundred bytes. Anything larger on the dedicated
+        // channel is a hex-in-JSON response, which must not be full-parsed on the listener.
+        private const val PROXY_HEADER_MAX_CHARS = 8 * 1024
+
+        // Upper bound on a single proxied body, mirroring the transport's reassembly guard.
+        private const val MAX_BODY_BYTES = 16 * 1024 * 1024
 
         // Matches both `"id":"..."` and `"id": "..."` (with optional whitespace).
         private val ID_REGEX = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"")
