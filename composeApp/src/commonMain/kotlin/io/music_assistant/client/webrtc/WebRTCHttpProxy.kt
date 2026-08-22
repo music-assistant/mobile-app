@@ -66,13 +66,16 @@ class WebRTCHttpProxy(
         class Binary(val response: ProxyResponse) : Payload
     }
 
+    /** Identifies one lifetime of the dedicated proxy channel. */
+    class ChannelAttachment internal constructor()
+
     /**
-     * @param onProxyChannel whether the request went out on the dedicated channel. Requests
-     *   sent there die with it, unlike those on `ma-api`, which the server still answers.
+     * @param attachment the dedicated channel generation used for this request, or null when
+     *   the request went out on `ma-api`.
      */
     private class Pending(
         val deferred: CompletableDeferred<Payload>,
-        val onProxyChannel: Boolean,
+        val attachment: ChannelAttachment?,
     )
 
     /** A binary reply being reassembled on the dedicated channel: its header, then its body. */
@@ -92,6 +95,7 @@ class WebRTCHttpProxy(
     // `pendingMutex` together with `pending`, so a request cannot register itself as
     // proxy-channel-bound after detachChannel has already failed that generation.
     private var proxySender: (suspend (JsonObject) -> Unit)? = null
+    private var proxyAttachment: ChannelAttachment? = null
 
     // Single slot: the server holds a send lock for header-plus-body on this channel.
     private var pendingBody: PendingBody? = null
@@ -142,7 +146,7 @@ class WebRTCHttpProxy(
             // cannot leave an entry nobody will ever fail waiting out its full timeout.
             val send = pendingMutex.withLock {
                 val proxy = proxySender
-                pending[id] = Pending(deferred, onProxyChannel = proxy != null)
+                pending[id] = Pending(deferred, attachment = proxyAttachment)
                 proxy ?: sender
             }
             logger.d { "GET $path id=$id acquire_wait_ms=$acquireWaitMs" }
@@ -175,20 +179,32 @@ class WebRTCHttpProxy(
      * Routes subsequent requests onto the dedicated image channel. Requests already in
      * flight on `ma-api` stay there — the server answers on the channel a request arrived on.
      */
-    suspend fun attachChannel(send: suspend (JsonObject) -> Unit) {
-        pendingMutex.withLock { proxySender = send }
+    suspend fun attachChannel(send: suspend (JsonObject) -> Unit): ChannelAttachment {
+        val attachment = ChannelAttachment()
+        pendingMutex.withLock {
+            proxySender = send
+            proxyAttachment = attachment
+        }
+        return attachment
     }
 
     /**
      * The dedicated channel is gone. Fails everything that went out on it at once, rather
      * than leaving each caller to wait out its timeout, and drops a half-received body that
      * can never be completed. Requests in flight on `ma-api` are deliberately left alone.
+     *
+     * A stale listener may run after a newer channel has attached. Only clear the shared
+     * sender and reassembly state when [attachment] still owns the current channel.
+     * Requests that were sent through [attachment] are failed in either case.
      */
-    suspend fun detachChannel(cause: Throwable) {
+    suspend fun detachChannel(attachment: ChannelAttachment, cause: Throwable) {
         val doomed = pendingMutex.withLock {
-            proxySender = null
-            pendingBody = null
-            val dead = pending.filterValues { it.onProxyChannel }
+            if (proxyAttachment === attachment) {
+                proxySender = null
+                proxyAttachment = null
+                pendingBody = null
+            }
+            val dead = pending.filterValues { it.attachment === attachment }
             dead.keys.forEach { pending.remove(it) }
             dead.values.toList()
         }
@@ -310,6 +326,7 @@ class WebRTCHttpProxy(
             pending.clear()
             pendingBody = null
             proxySender = null
+            proxyAttachment = null
             all
         }
         snapshot.forEach { it.deferred.completeExceptionally(cause) }

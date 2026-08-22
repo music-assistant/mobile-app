@@ -330,7 +330,7 @@ class WebRTCTransport(
             null
         } ?: return
 
-        httpProxy.attachChannel { json ->
+        val attachment = httpProxy.attachChannel { json ->
             channel.send(myJson.encodeToString(JsonObject.serializer(), json))
         }
         try {
@@ -351,7 +351,7 @@ class WebRTCTransport(
             // The inbound stream ends when the channel dies. Run the detach uncancellable so
             // callers are failed even when this job is torn down mid-collect.
             withContext(NonCancellable) {
-                httpProxy.detachChannel(IllegalStateException("http_proxy channel closed"))
+                httpProxy.detachChannel(attachment, IllegalStateException("http_proxy channel closed"))
             }
         }
     }

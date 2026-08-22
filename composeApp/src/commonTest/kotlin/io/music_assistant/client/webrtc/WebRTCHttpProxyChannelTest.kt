@@ -120,7 +120,7 @@ class WebRTCHttpProxyChannelTest {
     fun failsInFlightProxyChannelRequestsWhenChannelCloses() = runTest {
         val channel = RecordingChannel()
         val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
-        proxy.attachChannel(channel.send)
+        val attachment = proxy.attachChannel(channel.send)
 
         // runCatching inside the async: a bare failing async would propagate into the
         // runTest scope and abort the test before the assertion below could run.
@@ -130,7 +130,7 @@ class WebRTCHttpProxyChannelTest {
         proxy.dispatchProxyChannelText(binaryHeader(id, 8))
         proxy.dispatchProxyChannelBinary(byteArrayOf(1, 2, 3, 4))
 
-        proxy.detachChannel(IllegalStateException("http_proxy channel closed"))
+        proxy.detachChannel(attachment, IllegalStateException("http_proxy channel closed"))
 
         // Fails now rather than sitting out the 30 s request timeout.
         assertTrue(streaming.await().exceptionOrNull() is IllegalStateException)
@@ -145,8 +145,8 @@ class WebRTCHttpProxyChannelTest {
         val viaApi = async { proxy.get("/imageproxy?p=1") }
         val id = apiChannel.awaitFirstRequestId()
 
-        proxy.attachChannel { error("must not be used by an already-sent request") }
-        proxy.detachChannel(IllegalStateException("http_proxy channel closed"))
+        val attachment = proxy.attachChannel { error("must not be used by an already-sent request") }
+        proxy.detachChannel(attachment, IllegalStateException("http_proxy channel closed"))
 
         // The server still answers on the channel the request arrived on.
         proxy.dispatchRawResponse(hexResponse(id, listOf(7, 7)))
@@ -178,14 +178,14 @@ class WebRTCHttpProxyChannelTest {
         val proxyChannel = RecordingChannel()
         val proxy = WebRTCHttpProxy(sender = apiChannel.send)
 
-        proxy.attachChannel(proxyChannel.send)
+        val attachment = proxy.attachChannel(proxyChannel.send)
         val onProxy = async { proxy.get("/imageproxy?p=1") }
         val proxyId = proxyChannel.awaitFirstRequestId()
         proxy.dispatchProxyChannelText(binaryHeader(proxyId, 1))
         proxy.dispatchProxyChannelBinary(byteArrayOf(1))
         onProxy.await()
 
-        proxy.detachChannel(IllegalStateException("closed"))
+        proxy.detachChannel(attachment, IllegalStateException("closed"))
 
         val onApi = async { proxy.get("/imageproxy?p=2") }
         val apiId = apiChannel.awaitFirstRequestId()
@@ -195,5 +195,38 @@ class WebRTCHttpProxyChannelTest {
         assertEquals(1, proxyChannel.sent.size)
         assertEquals(1, apiChannel.sent.size)
         assertTrue(proxyId != apiId)
+    }
+
+    @Test
+    fun staleDetachDoesNotTearDownNewlyAttachedChannel() = runTest {
+        val channelA = RecordingChannel()
+        val channelB = RecordingChannel()
+        val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
+
+        // A reconnect can attach B before the cancelled listener for A reaches its finally block.
+        val attachmentA = proxy.attachChannel(channelA.send)
+        val responseA = async { runCatching { proxy.get("/imageproxy?p=1") } }
+        channelA.awaitFirstRequestId()
+
+        proxy.attachChannel(channelB.send)
+        val responseB = async { runCatching { proxy.get("/imageproxy?p=2") } }
+        val idB = channelB.awaitFirstRequestId()
+
+        // This represents the stale A listener's detach after B has become current.
+        val cause = IllegalStateException("channel A closed")
+        proxy.detachChannel(attachmentA, cause)
+
+        // A's request is failed promptly, while B remains usable.
+        val failureA = responseA.await().exceptionOrNull()
+        assertTrue(failureA is IllegalStateException)
+        assertEquals(cause.message, failureA.message)
+        proxy.dispatchProxyChannelText(binaryHeader(idB, 2))
+        proxy.dispatchProxyChannelBinary(byteArrayOf(8, 9))
+
+        val resultB = responseB.await()
+        assertTrue(resultB.isSuccess, "stale channel A detach failed channel B: ${resultB.exceptionOrNull()}")
+        assertContentEquals(byteArrayOf(8, 9), resultB.getOrThrow().body)
+        assertEquals(1, channelA.sent.size)
+        assertEquals(1, channelB.sent.size)
     }
 }
