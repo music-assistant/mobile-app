@@ -5,8 +5,12 @@ import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.ServerInfo
+import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.AuthProcessState
+import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.WebRTCHttpProxy
@@ -126,6 +130,138 @@ class AuthenticationManagerTest {
             manager.close()
         }
     }
+
+    // --- OAuth deep-link token buffering (issue #901) ---
+
+    @Test
+    fun `a deep-link OAuth token is spent once the transport becomes ready`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            // The deep link arrives while the foreground reconnect is still in flight,
+            // so there is no live socket to send on yet.
+            manager.handleOAuthCallback("oauth-token")
+            runCurrent()
+
+            assertTrue(
+                client.authorizeCalls.isEmpty(),
+                "The token must not be sent while no transport can carry it",
+            )
+
+            client.sessionState.value = awaitingAuth()
+            runCurrent()
+
+            assertEquals(
+                listOf("oauth-token" to false),
+                client.authorizeCalls,
+                "The buffered token must be spent as a user-initiated login once ready",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a deep-link OAuth token survives a reconnect that aborts the first attempt`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            client.sessionState.value = awaitingAuth()
+            manager.handleOAuthCallback("oauth-token")
+            runCurrent()
+            assertEquals(1, client.authorizeCalls.size, "Precondition: the first attempt was made")
+
+            // The transport bounces: authorize resolved to Aborted, nothing settled.
+            client.sessionState.value = SessionState.Reconnecting.Direct(
+                attempt = 1,
+                connectionInfo = CONNECTION,
+            )
+            runCurrent()
+            client.sessionState.value = awaitingAuth()
+            runCurrent()
+
+            assertEquals(
+                listOf("oauth-token" to false, "oauth-token" to false),
+                client.authorizeCalls,
+                "An aborted attempt must not consume the token — the reconnect has to retry it",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a spent OAuth token is not replayed after the session authenticates`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            client.sessionState.value = awaitingAuth()
+            manager.handleOAuthCallback("oauth-token")
+            runCurrent()
+
+            client.sessionState.value = SessionState.Connected.Direct(
+                connectionInfo = CONNECTION,
+                connectionData = ConnectionData(
+                    serverInfo = SERVER_INFO,
+                    user = USER,
+                    token = "oauth-token",
+                ),
+            )
+            runCurrent()
+            client.sessionState.value = awaitingAuth()
+            runCurrent()
+
+            assertEquals(
+                listOf("oauth-token" to false, "oauth-token" to true),
+                client.authorizeCalls,
+                "Once authenticated the token is spent and persisted, so a later AwaitingAuth " +
+                    "must re-auth through the saved-token path (isAutoLogin = true), not replay " +
+                    "the pending one as a fresh user login",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a deep-link OAuth token is spent when a previous attempt already failed`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            // AwaitingAuth(Failed) never emits again on its own, so nothing but the
+            // callback itself can drive the retry.
+            client.sessionState.value = awaitingAuth(AuthProcessState.Failed("earlier failure"))
+            runCurrent()
+
+            manager.handleOAuthCallback("oauth-token")
+            runCurrent()
+
+            assertEquals(
+                listOf("oauth-token" to false),
+                client.authorizeCalls,
+                "A token arriving into a failed auth state must still be spent, not left to " +
+                    "expire on the watchdog",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    private fun awaitingAuth(
+        authProcessState: AuthProcessState = AuthProcessState.NotStarted,
+    ) = SessionState.Connected.Direct(
+        connectionInfo = CONNECTION,
+        connectionData = ConnectionData(
+            serverInfo = SERVER_INFO,
+            authProcessState = authProcessState,
+        ),
+    )
+
+    private companion object {
+        val CONNECTION = ConnectionInfo(host = "ma.local", port = 8095, isTls = false)
+        val SERVER_INFO = ServerInfo(serverId = "server-1")
+        val USER = User(username = "daveb")
+    }
 }
 
 /**
@@ -144,7 +280,11 @@ private class StubServiceClient : ServiceClient {
 
     override suspend fun sendRequest(request: Request): Result<Answer> = awaitCancellation()
     override suspend fun login(username: String, password: String): Unit = awaitCancellation()
-    override suspend fun authorize(token: String, isAutoLogin: Boolean) = Unit
+    val authorizeCalls = mutableListOf<Pair<String, Boolean>>()
+
+    override suspend fun authorize(token: String, isAutoLogin: Boolean) {
+        authorizeCalls += token to isAutoLogin
+    }
     override fun logout() = Unit
     override fun resolveImageUrl(
         path: String,

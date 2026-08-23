@@ -83,6 +83,30 @@ class SilentReauthTest {
     }
 
     @Test
+    fun surfacedMessageDistinguishesAnUnsentRequestFromServerSilence() = runTest {
+        val notSent = engine().resolve(
+            isAutoLogin = false,
+            shouldAttempt = { true },
+            onAttempt = {},
+            send = { Result.failure(IllegalStateException("Not connected")) },
+        )
+        val noReply = engine().resolve(
+            isAutoLogin = false,
+            shouldAttempt = { true },
+            onAttempt = {},
+            send = { awaitCancellation() },
+        )
+
+        assertTrue(notSent is AuthResolution.Surface)
+        assertTrue(noReply is AuthResolution.Surface)
+        assertEquals("No response from server", noReply.message)
+        assertTrue(
+            notSent.message != noReply.message,
+            "A request that never left the device must not be reported as server silence",
+        )
+    }
+
+    @Test
     fun serverRejectionRejectsWithoutRetry() = runTest {
         var calls = 0
 
