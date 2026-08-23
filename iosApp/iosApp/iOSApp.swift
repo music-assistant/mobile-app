@@ -220,6 +220,14 @@ struct iOSApp: App {
         // Second coordinator init phase: the now-playing channel observers
         // need the Kotlin graph, which exists only after bootstrapKmp().
         NowPlayingCoordinator.shared.startObserving()
+
+        // App-wide, so it belongs here for the same reason bootstrapKmp() does:
+        // a CarPlay-only cold launch never connects the WindowGroup, so anything
+        // installed from a SwiftUI callback is unreachable on that path. The
+        // handler opens the OAuth URL through UIApplication and holds no scene
+        // state, so it has nothing to wait for.
+        KmpHelper.shared.authManager.oauthHandler = OAuthHandler()
+
         if UIApplication.shared.applicationState == .active {
             volumeButtonObserver.start()
         }
@@ -257,10 +265,6 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onAppear {
-                    // OAuthHandler presents `ASWebAuthenticationSession`;
-                    // requires a live scene, so can't move to `init()`.
-                    KmpHelper.shared.authManager.oauthHandler = OAuthHandler()
-
                     if let pending = PendingURL.url {
                         PendingURL.url = nil
                         handleIncomingURL(pending)
