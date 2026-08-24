@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
-import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,9 +23,9 @@ import kotlinx.coroutines.launch
  */
 class BrowseViewModel(
     private val path: String?,
-    private val apiClient: ServiceClient,
     private val mainDataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
+    private val playbackCoordinator: BrowsePlaybackCoordinator,
 ) : ViewModel() {
     private val _state = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     val state = _state.asStateFlow()
@@ -47,26 +47,69 @@ class BrowseViewModel(
         }
     }
 
-    // Mirrors ItemListViewModel.onPlayClick — play a browsed item on the selected player.
     fun onPlayClick(
         item: AppMediaItem,
         option: QueueOption,
         radio: Boolean,
     ) {
         viewModelScope.launch {
-            val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
-            item.mediaUri?.let { mediaUri ->
-                Logger.withTag("PlayDispatch")
-                    .i { "BrowseViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
-                apiClient.sendRequest(
-                    Request.Library.play(
-                        media = listOf(mediaUri),
-                        queueOrPlayerId = queueId,
-                        option = option,
-                        radioMode = radio && item !is Genre,
-                    ),
-                )
+            val queueId =
+                mainDataSource.selectedPlayer?.queueOrPlayerId
+                    ?: return@launch
+
+            val mediaUri = item.mediaUri ?: return@launch
+
+            // For a Track tapped inside Browse, play from that track
+            // through the rest of the current folder.
+            val playbackUris =
+                if (item is Track) {
+                    val folderItems =
+                        mediaItemRepository.fetchMediaItems(
+                            Request.Browse.atPath(path),
+                        ).getOrNull().orEmpty()
+
+                    val tracks =
+                        folderItems
+                            .filterIsInstance<Track>()
+                            .filterNot { track ->
+                                val name = track.displayName.trim()
+                                name.equals("(Empty)", ignoreCase = true) ||
+                                    name.equals("Empty", ignoreCase = true)
+                            }
+                            .sortedBy {
+                                it.displayName.lowercase()
+                            }
+                            .mapNotNull { it.mediaUri }
+                            .distinct()
+
+                    val tappedIndex =
+                        tracks.indexOf(mediaUri)
+
+                    if (tappedIndex >= 0) {
+                        tracks.drop(tappedIndex)
+                    } else {
+                        listOf(mediaUri)
+                    }
+                } else {
+                    listOf(mediaUri)
+                }
+
+            if (playbackUris.isEmpty()) return@launch
+
+            Logger.withTag("PlayDispatch").i {
+                "BrowseViewModel: start=$mediaUri " +
+                    "tracks=${playbackUris.size} " +
+                    "option=$option queue=$queueId"
             }
+
+            playbackCoordinator.play(
+                currentPath = path,
+                initialUris = playbackUris,
+                queueOrPlayerId = queueId,
+                option = option,
+                radioMode = radio && item !is Genre,
+                continueIntoFollowingFolders = item is Track && !radio,
+            )
         }
     }
 }

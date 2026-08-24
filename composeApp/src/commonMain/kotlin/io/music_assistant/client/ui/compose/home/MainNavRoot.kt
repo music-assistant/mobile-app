@@ -355,6 +355,15 @@ private fun mainNavEntryProvider(
                 contentPadding = contentPadding,
                 onNavigateClick = { item ->
                     when (item) {
+                        is RecommendationFolder -> {
+                            multiBackStack.add(
+                                MainNav.Browse(
+                                    path = item.path ?: item.uri,
+                                    title = item.displayName,
+                                ),
+                            )
+                        }
+
                         is Artist,
                         is Album,
                         is Playlist,

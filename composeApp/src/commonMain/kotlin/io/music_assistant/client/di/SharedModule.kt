@@ -38,6 +38,7 @@ import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListViewModel
 import io.music_assistant.client.ui.compose.item.ViewModeViewModel
+import io.music_assistant.client.ui.compose.library.BrowsePlaybackCoordinator
 import io.music_assistant.client.ui.compose.library.BrowseViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryListViewModel
@@ -127,6 +128,7 @@ fun sharedModule(
         }
         factory { LibraryCategoriesViewModel(get()) }
         factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get()) }
+        singleOf(::BrowsePlaybackCoordinator)
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(

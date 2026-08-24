@@ -62,6 +62,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.QualityTier
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.data.model.client.presentationChapter
@@ -174,7 +175,7 @@ fun CompactPlayerItem(
                         contentDescription = trackContentDescription
                     },
             ) {
-                Text(
+            Text(
                     modifier = Modifier
                         .fillMaxWidth()
                         .fadingEdges(marqueeFade)
@@ -271,6 +272,30 @@ private fun trackNameAndContentDescription(title: String?): Pair<String, String>
     return Pair(title ?: stringResource(Res.string.players_nothing), playingContentDescription)
 }
 
+internal fun Track.nowPlayingFolderHierarchy(): String? {
+    val mappings = providerMappings.orEmpty()
+    val pathCandidates =
+        mappings
+            .sortedByDescending {
+                it.providerDomain == "filesystem_local" ||
+                    it.providerInstance.startsWith("filesystem_local--")
+            }
+            .map { it.itemId } + listOfNotNull(uri)
+
+    return pathCandidates.firstNotNullOfOrNull { candidate ->
+        val hasScheme = "://" in candidate
+        val path = candidate.substringAfter("://", candidate)
+        val parentPath = path.substringBeforeLast("/", "")
+        val segments = parentPath.split("/").filter { it.isNotBlank() }.toMutableList()
+
+        if (hasScheme && segments.firstOrNull()?.lowercase() in setOf("track", "tracks")) {
+            segments.removeAt(0)
+        }
+
+        segments.joinToString(" › ").takeIf { it.isNotBlank() }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullPlayerItem(
@@ -287,6 +312,18 @@ fun FullPlayerItem(
     chapterProgressEnabled: Boolean = true,
 ) {
     val currentMedia = item.player.currentMedia
+
+    // Folder hierarchy for the full Now Playing screen.
+    //
+    // Library tracks have a normalized URI (for example library://track/13328).
+    // The original filesystem-relative path is retained in the filesystem provider
+    // mapping's itemId.
+    //
+    // Display:
+    // Hungarian › Bon Bon › Album
+    val nowPlayingFolderHierarchy =
+        (item.queueInfo?.currentItem?.track as? Track)?.nowPlayingFolderHierarchy()
+
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
 
@@ -365,6 +402,32 @@ fun FullPlayerItem(
                 .clearAndSetSemantics { contentDescription = trackContentDescription },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (!poweredOff) {
+                nowPlayingFolderHierarchy?.let { folderHierarchy ->
+                    Text(
+                        text = folderHierarchy,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal =
+                                        FULL_PLAYER_HORIZONTAL_PADDING,
+                                ),
+                        style =
+                            MaterialTheme.typography.bodySmall,
+                        color =
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    Spacer(
+                        modifier = Modifier.height(4.dp),
+                    )
+                }
+            }
+
             Text(
                 modifier = Modifier
                     .fillMaxWidth()

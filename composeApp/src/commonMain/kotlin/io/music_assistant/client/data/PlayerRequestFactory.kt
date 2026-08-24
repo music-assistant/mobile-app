@@ -51,7 +51,10 @@ class PlayerRequestFactory(
                 Request.Player.setPower(playerId = data.playerId, powered = action.powered)
 
             is PlayerAction.SeekTo -> {
-                Request.Player.seek(queueId = data.playerId, position = action.position)
+                Request.Player.seek(
+                    queueId = data.queueInfo?.id ?: data.playerId,
+                    position = action.position,
+                )
             }
 
             // Resolved to SeekTo in resolve(); never reaches here.

@@ -1147,6 +1147,7 @@ fun FolderCell(
     item: RecommendationFolder,
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (RecommendationFolder) -> Unit,
+    onLongClick: (RecommendationFolder) -> Unit = {},
 ) {
     when (viewMode) {
         ViewMode.LIST -> RowItem(
@@ -1156,13 +1157,13 @@ fun FolderCell(
             description = contentDescription(item),
             prefixContent = { FolderImage(item) },
             onClick = { onNavigateClick(item) },
-            onLongClick = {},
+            onLongClick = { onLongClick(item) },
         )
 
         ViewMode.GRID -> GridItem(
             description = contentDescription(item),
             onClick = { onNavigateClick(item) },
-            onLongClick = {},
+            onLongClick = { onLongClick(item) },
         ) {
             FolderImage(item)
             Spacer(Modifier.height(4.dp))

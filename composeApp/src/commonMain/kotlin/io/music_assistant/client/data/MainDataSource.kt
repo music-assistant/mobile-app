@@ -61,6 +61,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +78,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.abs
+
+private const val RAPID_SKIP_BATCH_MS = 140L
 
 /** Preserve newer event/optimistic state when a delayed full snapshot arrives. */
 internal fun mergeFullQueueSnapshot(
@@ -131,6 +135,15 @@ class MainDataSource(
 
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
+
+    private data class RapidSkipBatch(
+        var delta: Int,
+        var playerId: String,
+        var job: Job? = null,
+    )
+
+    private val rapidSkipLock = Any()
+    private val rapidSkipBatches = mutableMapOf<String, RapidSkipBatch>()
 
     private val _serverPlayers = MutableStateFlow<DataState<List<Player>>>(DataState.Loading())
     private val _queueInfos = MutableStateFlow<List<QueueInfo>>(emptyList())
@@ -1095,7 +1108,38 @@ class MainDataSource(
             localPlayerController.handleLocalCommand(data, action)
             return
         }
+
+        if (
+            (action == PlayerAction.Next || action == PlayerAction.Previous) &&
+            data.queueInfo?.currentItem?.track !is io.music_assistant.client.data.model.client.items.Audiobook
+        ) {
+            val queueId = data.queueInfo?.id
+            if (queueId != null) {
+                enqueueRapidQueueSkip(
+                    queueId = queueId,
+                    playerId = data.playerId,
+                    delta = if (action == PlayerAction.Next) 1 else -1,
+                )
+                return
+            }
+        }
+
         val resolved = playerRequestFactory.resolve(data, action)
+
+        if (resolved is PlayerAction.SeekTo) {
+            data.queueInfo?.id?.let { queueId ->
+                positionTracker.setRemoteOptimisticSeek(
+                    queueId = queueId,
+                    elapsedSec = resolved.position.toDouble(),
+                    isPlaying = data.player.isPlaying,
+                    durationSec =
+                        data.queueInfo?.currentItem?.track?.duration,
+                    speed =
+                        data.queueInfo?.playbackSpeed ?: 1.0,
+                )
+            }
+        }
+
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
             val result = apiClient.sendRequest(request)
@@ -1105,6 +1149,87 @@ class MainDataSource(
                 ) { "Failed to send player action request for ${data.player.name}: $action" }
             }
         }
+    }
+
+    private fun enqueueRapidQueueSkip(
+        queueId: String,
+        playerId: String,
+        delta: Int,
+    ) {
+        synchronized(rapidSkipLock) {
+            val batch =
+                rapidSkipBatches.getOrPut(queueId) {
+                    RapidSkipBatch(delta = 0, playerId = playerId)
+                }
+            batch.delta += delta
+            batch.playerId = playerId
+            batch.job?.cancel()
+            batch.job = launch {
+                delay(RAPID_SKIP_BATCH_MS)
+                val snapshot = synchronized(rapidSkipLock) {
+                    rapidSkipBatches.remove(queueId)
+                } ?: return@launch
+                dispatchRapidQueueSkip(queueId, snapshot)
+            }
+        }
+    }
+
+    private suspend fun dispatchRapidQueueSkip(
+        queueId: String,
+        batch: RapidSkipBatch,
+    ) {
+        if (batch.delta == 0) return
+
+        if (abs(batch.delta) == 1) {
+            apiClient.sendRequest(
+                Request.Player.simpleCommand(
+                    playerId = batch.playerId,
+                    command = if (batch.delta > 0) "next" else "previous",
+                ),
+            )
+            return
+        }
+
+        val queueItems =
+            apiClient.sendRequest(Request.Queue.items(queueId))
+                .resultAs<List<ServerQueueItem>>()
+        val currentItemId =
+            _queueInfos.value
+                .firstOrNull { it.id == queueId }
+                ?.currentItem
+                ?.id
+        val currentIndex = queueItems?.indexOfFirst { it.queueItemId == currentItemId } ?: -1
+
+        if (queueItems.isNullOrEmpty() || currentIndex < 0) {
+            repeat(abs(batch.delta)) {
+                apiClient.sendRequest(
+                    Request.Player.simpleCommand(
+                        playerId = batch.playerId,
+                        command = if (batch.delta > 0) "next" else "previous",
+                    ),
+                )
+            }
+            return
+        }
+
+        val targetIndex =
+            rapidSkipTargetIndex(
+                currentIndex = currentIndex,
+                itemCount = queueItems.size,
+                delta = batch.delta,
+            )
+
+        log.i {
+            "Rapid skip queue=$queueId taps=${batch.delta} " +
+                "index=$currentIndex->$targetIndex"
+        }
+
+        apiClient.sendRequest(
+            Request.Queue.playIndex(
+                queueId = queueId,
+                queueItemId = queueItems[targetIndex].queueItemId,
+            ),
+        )
     }
 
     fun queueAction(action: QueueAction) {
@@ -1690,4 +1815,13 @@ class MainDataSource(
             return visiblePlayerIds.firstOrNull()
         }
     }
+}
+
+internal fun rapidSkipTargetIndex(
+    currentIndex: Int,
+    itemCount: Int,
+    delta: Int,
+): Int {
+    require(itemCount > 0)
+    return (currentIndex + delta).coerceIn(0, itemCount - 1)
 }

@@ -308,7 +308,20 @@ fun PlayersPager(
                                 sendspinState = state.sendspinState,
                                 onSelectPlayer = onSelectPlayer,
                                 onGroupButton = onGroupButton,
-                                playerAction = playerAction1,
+                                playerAction = { playerData, action ->
+                                    if (
+                                        !homeScreenViewModel
+                                            .handleRandomPlaybackTransport(
+                                                playerData,
+                                                action,
+                                            )
+                                    ) {
+                                        playerAction1(
+                                            playerData,
+                                            action,
+                                        )
+                                    }
+                                },
                             )
                         } else {
                             ExpandedPlayerPage(
@@ -317,7 +330,20 @@ fun PlayersPager(
                                 onSelectPlayer = onSelectPlayer,
                                 onGroupButton = onGroupButton,
                                 onDspButton = onDspButton.takeIf { !player.player.isGroup },
-                                playerAction = playerAction1,
+                                playerAction = { playerData, action ->
+                                    if (
+                                        !homeScreenViewModel
+                                            .handleRandomPlaybackTransport(
+                                                playerData,
+                                                action,
+                                            )
+                                    ) {
+                                        playerAction1(
+                                            playerData,
+                                            action,
+                                        )
+                                    }
+                                },
                                 playlistActions = actionsViewModel,
                                 onFavoriteClick = {
                                     actionsViewModel.onFavoriteClick(it)

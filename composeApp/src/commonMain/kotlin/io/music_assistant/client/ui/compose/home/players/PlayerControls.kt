@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.rounded.Forward30
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material3.CircularProgressIndicator
@@ -15,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,12 +25,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.PauseIcon
@@ -43,6 +48,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 @Composable
 fun PlayerControls(
@@ -55,18 +61,25 @@ fun PlayerControls(
     showSkipBack: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.primary,
 ) {
+    val settingsRepository: SettingsRepository = koinInject()
+    val randomPlaybackMode by
+        settingsRepository.randomPlaybackMode.collectAsStateWithLifecycle()
+
     val player = playerData.player
     val queue = playerData.queueInfo
     val playerEnabled = player.canPlay && !player.isAnnouncing
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
     // Audiobooks / podcast episodes swap shuffle & repeat for skip-back / skip-forward seek.
     val isLongForm = queue?.currentItem?.track.isLongFormSpokenContent
-    val itemsCount = playerData.queueItems?.size ?: 0
-    val skipForwardEnabled = when {
-        queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
-        (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
-        else -> false
-    }
+    // Do not gate Next on playerData.queueItems.
+    // The server queue may contain following items even when the client has
+    // not loaded the full queue-item list yet.
+    val skipForwardEnabled =
+        buttonsEnabled &&
+            (
+                !isLongForm ||
+                    (queue?.currentItem?.track as? Audiobook)?.fullyPlayed == false
+            )
     val smallButtonSize = (mainButtonSize.value * 0.6).dp
     Row(
         modifier = modifier
@@ -85,19 +98,69 @@ fun PlayerControls(
                     ) { playerAction(playerData, PlayerAction.SeekBy(-LongFormSeekDefaults.BACK_SECONDS)) }
                 } else {
                     ActionButton(
-                        icon = if (it.shuffleEnabled) {
-                            ShuffleOnIcon
-                        } else {
-                            ShuffleOffIcon
-                        },
-                        tint = tint,
+                        icon =
+                            when (randomPlaybackMode) {
+                                SettingsRepository.RandomPlaybackMode.OFF ->
+                                    ShuffleOffIcon
+
+                                SettingsRepository.RandomPlaybackMode.RANDOM_SONGS ->
+                                    ShuffleOnIcon
+
+                                SettingsRepository.RandomPlaybackMode.RANDOM_FOLDERS ->
+                                    Icons.Default.Folder
+                            },
+                        tint =
+                            if (
+                                randomPlaybackMode ==
+                                SettingsRepository.RandomPlaybackMode.OFF
+                            ) {
+                                tint.copy(alpha = 0.45f)
+                            } else {
+                                tint
+                            },
                         size = smallButtonSize,
-                        enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
+                        enabled =
+                            playerEnabled &&
+                                buttonsEnabled &&
+                                !it.isDynamicPlaylist,
                     ) {
-                        playerAction(
-                            playerData,
-                            PlayerAction.ToggleShuffle(current = it.shuffleEnabled),
-                        )
+                        settingsRepository.cycleRandomPlaybackMode()
+
+                        // The custom Random Folder system owns randomisation.
+                        // Disable Music Assistant queue shuffle if it happened
+                        // to be enabled, otherwise the two systems would fight.
+                        if (it.shuffleEnabled) {
+                            playerAction(
+                                playerData,
+                                PlayerAction.ToggleShuffle(
+                                    current = true,
+                                ),
+                            )
+                        }
+                    }
+
+                    if (
+                        it.autoPlayEnabled != null &&
+                        !it.isDynamicPlaylist
+                    ) {
+                        ActionButton(
+                            icon = Icons.Default.AllInclusive,
+                            tint =
+                                if (it.autoPlayEnabled == true) {
+                                    tint
+                                } else {
+                                    tint.copy(alpha = 0.45f)
+                                },
+                            size = smallButtonSize,
+                            enabled = playerEnabled && buttonsEnabled,
+                        ) {
+                            playerAction(
+                                playerData,
+                                PlayerAction.ToggleDontStopTheMusic(
+                                    current = it.autoPlayEnabled == true,
+                                ),
+                            )
+                        }
                     }
                 }
             }

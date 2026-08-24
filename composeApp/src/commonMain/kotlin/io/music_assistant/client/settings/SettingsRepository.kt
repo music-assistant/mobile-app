@@ -159,6 +159,134 @@ class SettingsRepository(
         _playersSorting.update { newValue }
     }
 
+    @Serializable
+    data class FavoriteBrowseFolder(
+        val path: String,
+        val itemId: String,
+        val provider: String,
+        val name: String,
+        val uri: String? = null,
+    )
+
+    private val _favoriteBrowseFolders =
+        MutableStateFlow(loadFavoriteBrowseFolders())
+
+    val favoriteBrowseFolders = _favoriteBrowseFolders.asStateFlow()
+
+    private fun loadFavoriteBrowseFolders(): List<FavoriteBrowseFolder> {
+        val raw =
+            settings.getStringOrNull("favorite_browse_folders")
+                ?: return emptyList()
+
+        return runCatching {
+            myJson.decodeFromString<List<FavoriteBrowseFolder>>(raw)
+        }.getOrDefault(emptyList())
+    }
+
+    fun setBrowseFolderFavorite(
+        folder: FavoriteBrowseFolder,
+        favorite: Boolean,
+    ) {
+        val current = _favoriteBrowseFolders.value
+
+        val updated =
+            if (favorite) {
+                (
+                    current.filterNot { it.path == folder.path } +
+                        folder
+                )
+            } else {
+                current.filterNot { it.path == folder.path }
+            }
+
+        settings.putString(
+            "favorite_browse_folders",
+            myJson.encodeToString(updated),
+        )
+
+        _favoriteBrowseFolders.update { updated }
+    }
+
+    fun isBrowseFolderFavorite(path: String): Boolean =
+        _favoriteBrowseFolders.value.any { it.path == path }
+
+    enum class RandomPlaybackMode {
+        OFF,
+        RANDOM_SONGS,
+        RANDOM_FOLDERS,
+        ;
+
+        fun next(): RandomPlaybackMode =
+            when (this) {
+                OFF -> RANDOM_SONGS
+                RANDOM_SONGS -> RANDOM_FOLDERS
+                RANDOM_FOLDERS -> OFF
+            }
+    }
+
+    private val _randomPlaybackMode =
+        MutableStateFlow(
+            runCatching {
+                RandomPlaybackMode.valueOf(
+                    settings.getString(
+                        "random_playback_mode",
+                        RandomPlaybackMode.OFF.name,
+                    ),
+                )
+            }.getOrDefault(RandomPlaybackMode.OFF),
+        )
+
+    val randomPlaybackMode =
+        _randomPlaybackMode.asStateFlow()
+
+    fun cycleRandomPlaybackMode(): RandomPlaybackMode {
+        val next = _randomPlaybackMode.value.next()
+
+        settings.putString(
+            "random_playback_mode",
+            next.name,
+        )
+
+        _randomPlaybackMode.update { next }
+
+        return next
+    }
+
+    @Serializable
+    data class CachedBrowseFolder(
+        val path: String,
+        val itemId: String,
+        val provider: String,
+        val name: String,
+        val uri: String? = null,
+    )
+
+    private val _cachedBrowseFolders =
+        MutableStateFlow(loadCachedBrowseFolders())
+
+    val cachedBrowseFolders = _cachedBrowseFolders.asStateFlow()
+
+    private fun loadCachedBrowseFolders(): List<CachedBrowseFolder> {
+        val raw =
+            settings.getStringOrNull("cached_browse_folders")
+                ?: return emptyList()
+
+        return runCatching {
+            myJson.decodeFromString<List<CachedBrowseFolder>>(raw)
+        }.getOrDefault(emptyList())
+    }
+
+    fun setCachedBrowseFolders(
+        folders: List<CachedBrowseFolder>,
+    ) {
+        settings.putString(
+            "cached_browse_folders",
+            myJson.encodeToString(folders),
+        )
+
+        _cachedBrowseFolders.update { folders }
+    }
+
     // Home-screen rows: visibility + user-defined order in a single ordered list.
     // Order = display sort; enabled=false = hidden. JSON-encoded because folder
     // ids are arbitrary server strings (may contain the delimiters a flat string
@@ -725,6 +853,52 @@ class SettingsRepository(
             }
         }
         return LibraryFilters()
+    }
+
+    private val _browseViewMode = MutableStateFlow(
+        settings.getStringOrNull("view_mode_BROWSE")
+            ?.let { runCatching { ViewMode.valueOf(it) }.getOrNull() }
+            ?: ViewMode.LIST,
+    )
+    val browseViewMode = _browseViewMode.asStateFlow()
+
+    fun setBrowseViewMode(mode: ViewMode) {
+        settings.putString("view_mode_BROWSE", mode.name)
+        _browseViewMode.update { mode }
+    }
+
+    private val _browseSortOption = MutableStateFlow(
+        settings.getStringOrNull("sort_browse")
+            ?.let { parseSortOption(it) }
+            ?: SortOption(SortField.NAME),
+    )
+    val browseSortOption = _browseSortOption.asStateFlow()
+
+    fun setBrowseSortOption(option: SortOption) {
+        settings.putString(
+            "sort_browse",
+            "${option.field.name}:${option.descending}",
+        )
+        _browseSortOption.update { option }
+    }
+
+    private fun librarySortKey(mediaType: MediaType) =
+        "sort_library_${mediaType.name}"
+
+    fun getLibrarySortOption(mediaType: MediaType): SortOption {
+        val raw = settings.getStringOrNull(librarySortKey(mediaType))
+            ?: return SortConfig.defaultFor(mediaType)
+        return parseSortOption(raw) ?: SortConfig.defaultFor(mediaType)
+    }
+
+    fun setLibrarySortOption(
+        mediaType: MediaType,
+        option: SortOption,
+    ) {
+        settings.putString(
+            librarySortKey(mediaType),
+            "${option.field.name}:${option.descending}",
+        )
     }
 
     fun getSortOption(context: SubItemContext): SortOption {

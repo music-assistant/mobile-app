@@ -44,6 +44,7 @@ class PlayerPositionTracker {
         val speed: Double = 1.0,
         /** Hold the optimistic position until Sendspin confirms audio is flowing. */
         val freezeReason: FreezeReason? = null,
+        val ignoreServerAnchorsUntilMs: Long = 0L,
     ) {
         /** Position right now: anchor + speed-scaled wall-time since anchor (capped at duration). */
         fun effectiveNow(): Double {
@@ -75,6 +76,15 @@ class PlayerPositionTracker {
     ) {
         anchors.update { existing ->
             val current = existing[queueId]
+
+            if (
+                current != null &&
+                currentTimeMillis() <
+                    current.ignoreServerAnchorsUntilMs
+            ) {
+                return@update existing
+            }
+
             // Server anchors are noisy during handoff; Sendspin sync is the confirmation.
             if (current?.freezeReason != null) return@update existing
             existing + (
@@ -127,6 +137,33 @@ class PlayerPositionTracker {
                     durationSec = durationSec ?: current?.durationSec,
                     speed = speed ?: current?.speed ?: 1.0,
                     freezeReason = FreezeReason.SEEK,
+                )
+            )
+        }
+    }
+
+    /**
+     * Optimistic seek for remote/server players.
+     * Protects the requested position from MA's short-lived stale zero echo.
+     */
+    fun setRemoteOptimisticSeek(
+        queueId: String,
+        elapsedSec: Double,
+        isPlaying: Boolean,
+        durationSec: Double? = null,
+        speed: Double = 1.0,
+    ) {
+        anchors.update { existing ->
+            existing + (
+                queueId to Anchor(
+                    elapsedSec = elapsedSec,
+                    wallMs = currentTimeMillis(),
+                    isPlaying = isPlaying,
+                    durationSec = durationSec,
+                    speed = speed,
+                    freezeReason = null,
+                    ignoreServerAnchorsUntilMs =
+                        currentTimeMillis() + 3_000L,
                 )
             )
         }

@@ -47,6 +47,7 @@ class LibraryListViewModel(
         State(
             dataState = DataState.Loading(),
             mediaType = mediaType,
+            sortOption = settingsRepository.getLibrarySortOption(mediaType),
         ),
     )
     val state = _state.asStateFlow()
@@ -215,6 +216,7 @@ class LibraryListViewModel(
     }
 
     fun onSortChanged(sortOption: SortOption) {
+        settingsRepository.setLibrarySortOption(mediaType, sortOption)
         _state.update { it.copy(sortOption = sortOption) }
         searchTrigger.tryEmit(Unit)
     }

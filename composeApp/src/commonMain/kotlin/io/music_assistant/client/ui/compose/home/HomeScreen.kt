@@ -20,12 +20,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
@@ -55,6 +57,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.CenteredProgress
@@ -93,13 +96,28 @@ fun HomeScreen(
     state: HomeScreenState,
 ) {
     val homeScreenState by homeScreenViewModel.state.collectAsStateWithLifecycle()
+    var folderForFavoriteMenu by remember { mutableStateOf<RecommendationFolder?>(null) }
 
     // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
     val recommendationsState = homeScreenState.recommendations
     val shortcutsState = homeScreenState.shortcuts
+    val favoritesState = homeScreenState.favorites
+    val randomFoldersState = homeScreenState.randomFolders
     val homeRowsConfig = homeScreenState.homeRowsConfig
-    val working = remember(recommendationsState, shortcutsState, homeRowsConfig) {
-        getCategories(recommendationsState, shortcutsState, homeRowsConfig)
+    val working = remember(
+        recommendationsState,
+        shortcutsState,
+        favoritesState,
+        randomFoldersState,
+        homeRowsConfig,
+    ) {
+        getCategories(
+            recommendationsState,
+            shortcutsState,
+            favoritesState,
+            randomFoldersState,
+            homeRowsConfig,
+        )
     }
 
     // Edit-mode working copy — isolated from external (real-time) updates while editing;
@@ -158,7 +176,17 @@ fun HomeScreen(
                 CategoryRow(
                     data = if (row.loading) DataState.Loading() else DataState.Data(row.category),
                     itemCategoryProvider = { it },
-                    onNavigateClick = onNavigateClick,
+                    onNavigateClick = { item ->
+                        if (
+                            row.category.id == RANDOM_FOLDERS_CATEGORY_ID &&
+                            item is RecommendationFolder
+                        ) {
+                            homeScreenViewModel.playRandomFolder(item)
+                        } else {
+                            onNavigateClick(item)
+                        }
+                    },
+                    onFolderLongClick = { folder -> folderForFavoriteMenu = folder },
                     onPlayClick = { item, option, radio, _ ->
                         homeScreenViewModel.onPlayClick(item, option, radio)
                     },
@@ -240,6 +268,29 @@ fun HomeScreen(
                     }
                 }
             }
+
+            folderForFavoriteMenu?.let { folder ->
+                AlertDialog(
+                    onDismissRequest = { folderForFavoriteMenu = null },
+                    title = { Text(folder.displayName) },
+                    text = { Text("Remove this folder from Favorites?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                homeScreenViewModel.setBrowseFolderFavorite(folder, favorite = false)
+                                folderForFavoriteMenu = null
+                            },
+                        ) {
+                            Text("Unfavorite")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { folderForFavoriteMenu = null }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -261,6 +312,8 @@ internal data class HomeRow(
 internal fun getCategories(
     recommendationsState: DataState<List<RecommendationRowState>>,
     shortcutsState: DataState<List<Shortcut>>,
+    favoritesState: DataState<List<AppMediaItem>> = DataState.NoData(),
+    randomFoldersState: DataState<List<RecommendationFolder>> = DataState.NoData(),
     homeRowsConfig: List<SettingsRepository.HomeRowPref>,
 ): List<Pair<HomeRow, Boolean>> {
     val baseList = if (recommendationsState is DataState.Data) {
@@ -277,7 +330,8 @@ internal fun getCategories(
                             item is Podcast ||
                             item is PodcastEpisode ||
                             item is RadioStation ||
-                            item is Genre
+                            item is Genre ||
+                            item is RecommendationFolder
                 } == true
             }
             .distinctBy { it.folder.lazyListKey() }
@@ -294,7 +348,7 @@ internal fun getCategories(
                 )
             }
 
-        if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
+        val rows = if (shortcutsState is DataState.Data && shortcutsState.data.isNotEmpty()) {
             val shortcuts = shortcutsState.data
             val shortcutsRow = HomeRow(
                 category = ItemCategory(
@@ -311,6 +365,39 @@ internal fun getCategories(
         } else {
             recommendations
         }
+
+        val randomFoldersRow =
+            (randomFoldersState as? DataState.Data)
+                ?.data
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { folders ->
+                    HomeRow(
+                        category = ItemCategory(
+                            id = RANDOM_FOLDERS_CATEGORY_ID,
+                            title = "Random Folders".toDisplayString(),
+                            items = folders,
+                            lazyListKey = RANDOM_FOLDERS_CATEGORY_ID,
+                        ),
+                        loading = false,
+                    )
+                }
+        val favoritesRow =
+            (favoritesState as? DataState.Data)
+                ?.data
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { favorites ->
+                    HomeRow(
+                        category = ItemCategory(
+                            id = FAVORITES_CATEGORY_ID,
+                            title = "Favorites".toDisplayString(),
+                            items = favorites,
+                            lazyListKey = FAVORITES_CATEGORY_ID,
+                        ),
+                        loading = false,
+                    )
+                }
+
+        listOfNotNull(favoritesRow, randomFoldersRow) + rows
     } else {
         emptyList()
     }
@@ -319,6 +406,8 @@ internal fun getCategories(
 }
 
 private const val SHORTCUTS_CATEGORY_ID = "shortcuts"
+private const val FAVORITES_CATEGORY_ID = "favorites"
+private const val RANDOM_FOLDERS_CATEGORY_ID = "random_folders"
 
 @Composable
 private fun LandingPageTopBar(

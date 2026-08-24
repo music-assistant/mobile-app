@@ -58,6 +58,7 @@ fun AdaptiveMediaGrid(
     hasMore: Boolean = true,
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (AppMediaItem) -> Unit,
+    onFolderLongClick: (RecommendationFolder) -> Unit = {},
     onPlayClick: PlayHandler<AppMediaItem>,
     onLoadMore: () -> Unit = {},
     gridState: LazyGridState = rememberLazyGridState(),
@@ -194,6 +195,7 @@ fun AdaptiveMediaGrid(
                     item = item,
                     viewMode = viewMode,
                     onNavigateClick = onNavigateClick,
+                    onLongClick = onFolderLongClick,
                 )
             }
         }

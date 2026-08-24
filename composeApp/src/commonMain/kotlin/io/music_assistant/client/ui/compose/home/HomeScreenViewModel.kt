@@ -10,6 +10,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
@@ -58,6 +59,24 @@ class HomeScreenViewModel(
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
 
+    private var browseFolderCache: List<RecommendationFolder>? =
+        settings.cachedBrowseFolders.value
+            .takeIf { it.isNotEmpty() }
+            ?.map { stored ->
+                RecommendationFolder(
+                    itemId = stored.itemId,
+                    provider = stored.provider,
+                    name = stored.name,
+                    uri = stored.uri,
+                    images = emptyMap(),
+                    path = stored.path,
+                )
+            }
+
+    // A persistent cache means a normal app launch does not need to crawl
+    // the Browse tree again. A manual Home refresh explicitly invalidates it.
+    private var forceBrowseFolderRefresh = false
+
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
 
@@ -97,6 +116,8 @@ class HomeScreenViewModel(
         State(
             shortcuts = DataState.Loading(),
             recommendations = DataState.Loading(),
+            favorites = DataState.Loading(),
+            randomFolders = DataState.Loading(),
             homeRowsConfig = settings.homeRowsConfig.value,
         ),
     )
@@ -105,6 +126,20 @@ class HomeScreenViewModel(
     private val _playersState =
         MutableStateFlow<PlayersState>(PlayersState.Loading)
     val playersState = _playersState.asStateFlow()
+
+    // These fields must be initialized before the collectors started in init;
+    // test dispatchers can run those collectors immediately.
+    private var randomPlaybackSessionUris: List<String> = emptyList()
+    private var randomPlaybackSessionIndex: Int = -1
+    private var randomPlaybackSessionTargetId: String? = null
+    private var randomPlaybackSessionQueueId: String? = null
+    private var randomPlaybackFolderSequence: List<RecommendationFolder> = emptyList()
+    private var randomPlaybackFolderIndex: Int = -1
+    private var randomPlaybackFolderMode = SettingsRepository.RandomPlaybackMode.OFF
+    private var randomPlaybackFolderTransitionInFlight = false
+    private var randomPlaybackWasPlaying = false
+    private var randomPlaybackLastElapsedSec = 0.0
+    private var randomPlaybackAutoAdvanceInFlight = false
 
     init {
         viewModelScope.launch {
@@ -203,24 +238,39 @@ class HomeScreenViewModel(
         // Listen to real-time library changes to refresh tracks already shown
         // in the recommendations grid.
         viewModelScope.launch {
+            settings.favoriteBrowseFolders.collect {
+                loadData()
+            }
+        }
+
+        viewModelScope.launch {
             mediaItemRepository.itemChanges.collect { change ->
                 (change.item as? Track)?.let { updateRecommendationsIfNeeded(it) }
+
+                // Refresh Home so Favorites immediately reflects favorite changes.
+                loadData()
             }
         }
     }
 
-    fun loadData() {
+    fun loadData(refreshBrowseFolders: Boolean = false) {
+        if (refreshBrowseFolders) {
+            forceBrowseFolderRefresh = true
+        }
         loadDataJob?.cancel()
 
         _state.update {
             it.copy(
                 recommendations = DataState.Loading(),
                 shortcuts = DataState.Loading(),
+                favorites = DataState.Loading(),
+                randomFolders = DataState.Loading(),
             )
         }
 
         loadDataJob = viewModelScope.launch {
             launch { loadShortcuts() }
+            launch { loadBrowseFolderRows() }
             loadRecommendations()
         }
     }
@@ -294,6 +344,111 @@ class HomeScreenViewModel(
         }
     }
 
+    private suspend fun loadBrowseFolderRows() {
+        try {
+            val folderPool = if (browseFolderCache.isNullOrEmpty() || forceBrowseFolderRefresh) {
+                val discovered = mutableListOf<RecommendationFolder>()
+
+                suspend fun discover(path: String?, current: RecommendationFolder? = null, depth: Int = 0) {
+                    if (depth > 12) return
+                    val items = mediaItemRepository.fetchMediaItems(Request.Browse.atPath(path)).getOrNull()
+                        ?: return
+                    val tracks = items.filterIsInstance<Track>().filterNot {
+                        it.displayName.trim().equals("(Empty)", true) ||
+                            it.displayName.trim().equals("Empty", true)
+                    }
+                    if (current != null && tracks.isNotEmpty()) discovered += current
+                    items.filterIsInstance<RecommendationFolder>()
+                        .filter { !it.isParentLink && it.path != null }
+                        .forEach { discover(it.path, it, depth + 1) }
+                }
+
+                discover(null)
+                discovered.distinctBy { it.path }.also { folders ->
+                    browseFolderCache = folders
+                    settings.setCachedBrowseFolders(
+                        folders.map { folder ->
+                            SettingsRepository.CachedBrowseFolder(
+                                path = requireNotNull(folder.path),
+                                itemId = folder.itemId,
+                                provider = folder.provider,
+                                name = folder.name,
+                                uri = folder.uri,
+                            )
+                        },
+                    )
+                    forceBrowseFolderRefresh = false
+                }
+            } else {
+                browseFolderCache.orEmpty()
+            }
+
+            val libraryFavorites = buildList<AppMediaItem> {
+                getList<AppMediaItem>(Request.Artist.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.Album.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.Track.list(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.Playlist.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.Audiobook.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.Podcast.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.RadioStation.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+                getList<AppMediaItem>(Request.Genre.listLibrary(favorite = true, limit = 100))?.let(::addAll)
+            }
+            val favoriteFolders = settings.favoriteBrowseFolders.value.map { stored ->
+                RecommendationFolder(
+                    itemId = stored.itemId,
+                    provider = stored.provider,
+                    name = stored.name,
+                    uri = stored.uri,
+                    images = emptyMap(),
+                    path = stored.path,
+                )
+            }
+            val favorites = (favoriteFolders + libraryFavorites).distinctBy { item ->
+                if (item is RecommendationFolder) {
+                    "folder:${item.path}"
+                } else {
+                    "${item.mediaType.serverValue}:${item.itemId}"
+                }
+            }
+            _state.update {
+                it.copy(
+                    favorites = DataState.Data(favorites),
+                    randomFolders = DataState.Data(folderPool.shuffled().take(RANDOM_FOLDER_COUNT)),
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Logger.e("Error loading Home folder rows", error)
+            _state.update {
+                it.copy(favorites = DataState.Error(), randomFolders = DataState.Error())
+            }
+        }
+    }
+
+    fun setBrowseFolderFavorite(folder: RecommendationFolder, favorite: Boolean) {
+        val path = folder.path ?: return
+        settings.setBrowseFolderFavorite(
+            SettingsRepository.FavoriteBrowseFolder(
+                path = path,
+                itemId = folder.itemId,
+                provider = folder.provider,
+                name = folder.displayName,
+                uri = folder.uri,
+            ),
+            favorite = favorite,
+        )
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun <T : AppMediaItem> getList(request: Request): List<T>? =
+        mediaItemRepository.fetchMediaItems(request).let { result ->
+            if (result.isFailure) {
+                Logger.e("Error fetching list for request $request: ${result.exceptionOrNull()}")
+            }
+            result.getOrNull()?.mapNotNull { it as? T }
+        }
+
     fun onPlayClick(
         item: AppMediaItem,
         option: QueueOption,
@@ -314,6 +469,547 @@ class HomeScreenViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Starts randomized playback from a Browse folder.
+     *
+     * The Browse API returns all items at this folder level. Playable items
+     * are sent to Music Assistant as one shuffled REPLACE request.
+     *
+     * Random Folder playback deliberately does not enable Music Assistant's
+     * Don't Stop The Music mode. Folder-to-folder continuation is controlled
+     * separately by the app.
+     */
+    /**
+     * Plays the Random Folders collection as one continuous media sequence.
+     *
+     * Playback starts with the folder the user tapped, then continues through
+     * the remaining folders in the current Random Folders Home-row order,
+     * wrapping around to folders that appeared before the tapped folder.
+     *
+     * Music Assistant receives one complete REPLACE playback request, which
+     * gives normal media-player semantics: automatic track advancement and
+     * working Previous / Next controls without Don't Stop The Music.
+     */
+    /**
+     * Starts continuous playback across the discovered Browse-folder pool.
+     *
+     * OFF:
+     *   selected folder first, then folders alphabetically.
+     *
+     * RANDOM_SONGS:
+     *   first song from the selected folder starts normally; all remaining
+     *   available songs are shuffled globally.
+     *
+     * RANDOM_FOLDERS:
+     *   selected folder plays completely in normal order; remaining folders
+     *   are randomized while preserving normal song order inside each folder.
+     *
+     * The whole sequence is sent in one REPLACE request so normal Previous,
+     * Next and automatic track advancement continue to work.
+     */
+    // App-owned playback sequence for the custom folder playback modes.
+    //
+    // Music Assistant currently exposes this playback to the client as a
+    // one-item queue, so Next / Previous cannot rely on MA queue navigation.
+    // We therefore keep the sequence here and submit one track at a time.
+    /**
+     * Handles Next / Previous for an active custom playback session.
+     *
+     * Returns true when the action was consumed here. All other player
+     * actions must continue through the normal Music Assistant path.
+     */
+    private suspend fun loadRandomPlaybackFolderTracks(
+        folder: RecommendationFolder,
+    ): List<String> {
+        val path = folder.path ?: return emptyList()
+
+        val result =
+            mediaItemRepository.fetchMediaItems(
+                Request.Browse.atPath(path),
+            )
+
+        val items = result.getOrNull()
+
+        if (items == null) {
+            Logger.e(
+                "Failed to load playback folder '${folder.displayName}'",
+                result.exceptionOrNull(),
+            )
+            return emptyList()
+        }
+
+        return items
+            .filterIsInstance<Track>()
+            .filterNot { track ->
+                val name = track.displayName.trim()
+
+                name.equals("(Empty)", ignoreCase = true) ||
+                    name.equals("Empty", ignoreCase = true)
+            }
+            .sortedBy { it.displayName.lowercase() }
+            .mapNotNull { it.mediaUri }
+            .distinct()
+    }
+
+    private fun switchRandomPlaybackFolder(
+        direction: Int,
+    ): Boolean {
+        if (randomPlaybackFolderTransitionInFlight) return true
+
+        val folders = randomPlaybackFolderSequence
+        if (folders.isEmpty()) return false
+
+        randomPlaybackFolderTransitionInFlight = true
+
+        viewModelScope.launch {
+            try {
+                var index = randomPlaybackFolderIndex
+                var attempts = 0
+
+                while (attempts < folders.size) {
+                    index =
+                        (index + direction + folders.size) %
+                            folders.size
+
+                    val folder = folders[index]
+                    val songs =
+                        loadRandomPlaybackFolderTracks(folder)
+
+                    if (songs.isNotEmpty()) {
+                        randomPlaybackFolderIndex = index
+                        randomPlaybackSessionUris = songs
+
+                        val trackIndex =
+                            if (direction >= 0) {
+                                0
+                            } else {
+                                songs.lastIndex
+                            }
+
+                        Logger.withTag("RandomFolderPlay").i {
+                            "FOLDER SWITCH " +
+                                "folder=${folder.displayName} " +
+                                "tracks=${songs.size}"
+                        }
+
+                        playRandomPlaybackSessionIndex(trackIndex)
+                        return@launch
+                    }
+
+                    attempts++
+                }
+
+                Logger.withTag("RandomFolderPlay").i {
+                    "No playable next folder found"
+                }
+            } finally {
+                randomPlaybackFolderTransitionInFlight = false
+            }
+        }
+
+        return true
+    }
+
+    private fun appendAndPlayRandomLibrarySong(): Boolean {
+        if (randomPlaybackFolderTransitionInFlight) return true
+
+        val folders = randomPlaybackFolderSequence
+        if (folders.isEmpty()) return false
+
+        randomPlaybackFolderTransitionInFlight = true
+
+        viewModelScope.launch {
+            try {
+                val candidates = folders.shuffled()
+
+                for (folder in candidates) {
+                    val songs =
+                        loadRandomPlaybackFolderTracks(folder)
+                            .filterNot {
+                                it in randomPlaybackSessionUris
+                            }
+
+                    if (songs.isEmpty()) continue
+
+                    val uri = songs.random()
+
+                    randomPlaybackSessionUris =
+                        randomPlaybackSessionUris + uri
+
+                    Logger.withTag("RandomFolderPlay").i {
+                        "RANDOM GLOBAL uri=$uri"
+                    }
+
+                    playRandomPlaybackSessionIndex(
+                        randomPlaybackSessionUris.lastIndex,
+                    )
+
+                    return@launch
+                }
+
+                // Everything has already been heard: allow a new cycle.
+                randomPlaybackSessionUris =
+                    randomPlaybackSessionUris
+                        .getOrNull(randomPlaybackSessionIndex)
+                        ?.let(::listOf)
+                        .orEmpty()
+
+                appendAndPlayRandomLibrarySong()
+            } finally {
+                randomPlaybackFolderTransitionInFlight = false
+            }
+        }
+
+        return true
+    }
+
+    private fun advanceRandomPlaybackNext(
+        source: String,
+    ): Boolean {
+        val session = randomPlaybackSessionUris
+
+        if (
+            session.isEmpty() ||
+            randomPlaybackSessionIndex !in session.indices
+        ) {
+            return false
+        }
+
+        if (randomPlaybackSessionIndex < session.lastIndex) {
+            val nextIndex = randomPlaybackSessionIndex + 1
+
+            Logger.withTag("RandomFolderPlay").i {
+                "ADVANCE source=$source " +
+                    "$randomPlaybackSessionIndex -> $nextIndex"
+            }
+
+            playRandomPlaybackSessionIndex(nextIndex)
+            return true
+        }
+
+        return when (randomPlaybackFolderMode) {
+            SettingsRepository.RandomPlaybackMode.RANDOM_SONGS ->
+                appendAndPlayRandomLibrarySong()
+
+            SettingsRepository.RandomPlaybackMode.OFF,
+            SettingsRepository.RandomPlaybackMode.RANDOM_FOLDERS,
+            ->
+                switchRandomPlaybackFolder(direction = 1)
+        }
+    }
+
+    private fun advanceRandomPlaybackPrevious(): Boolean {
+        val session = randomPlaybackSessionUris
+
+        if (
+            session.isEmpty() ||
+            randomPlaybackSessionIndex !in session.indices
+        ) {
+            return false
+        }
+
+        if (randomPlaybackSessionIndex > 0) {
+            playRandomPlaybackSessionIndex(
+                randomPlaybackSessionIndex - 1,
+            )
+            return true
+        }
+
+        return when (randomPlaybackFolderMode) {
+            SettingsRepository.RandomPlaybackMode.RANDOM_SONGS ->
+                false
+
+            SettingsRepository.RandomPlaybackMode.OFF,
+            SettingsRepository.RandomPlaybackMode.RANDOM_FOLDERS,
+            ->
+                switchRandomPlaybackFolder(direction = -1)
+        }
+    }
+
+    fun handleRandomPlaybackTransport(
+        playerData: PlayerData,
+        action: PlayerAction,
+    ): Boolean {
+        if (
+            action != PlayerAction.Next &&
+            action != PlayerAction.Previous
+        ) {
+            return false
+        }
+
+        val session = randomPlaybackSessionUris
+
+        if (
+            session.isEmpty() ||
+            randomPlaybackSessionIndex !in session.indices
+        ) {
+            return false
+        }
+
+        val currentQueueId = playerData.queueInfo?.id
+
+        if (
+            randomPlaybackSessionQueueId != null &&
+            currentQueueId != null &&
+            currentQueueId != randomPlaybackSessionQueueId
+        ) {
+            return false
+        }
+
+        return when (action) {
+            PlayerAction.Next ->
+                advanceRandomPlaybackNext("MANUAL_NEXT")
+
+            PlayerAction.Previous ->
+                advanceRandomPlaybackPrevious()
+
+            else ->
+                false
+        }
+    }
+
+    /**
+     * Detects natural completion of the currently playing custom-session track.
+     *
+     * Music Assistant sees each custom-session song as Queue 1/1, so it stops
+     * at the end. When we observe playing -> stopped near the track duration,
+     * advance through the same client-owned sequence used by the Next button.
+     */
+    private fun handleRandomPlaybackNaturalEnd(
+        playerData: PlayerData,
+    ) {
+        val session = randomPlaybackSessionUris
+
+        if (
+            session.isEmpty() ||
+            randomPlaybackSessionIndex !in session.indices
+        ) {
+            randomPlaybackWasPlaying = false
+            randomPlaybackLastElapsedSec = 0.0
+            return
+        }
+
+        val sessionQueueId = randomPlaybackSessionQueueId
+        val currentQueueId = playerData.queueInfo?.id
+
+        if (
+            sessionQueueId != null &&
+            currentQueueId != null &&
+            currentQueueId != sessionQueueId
+        ) {
+            return
+        }
+
+        val queue = playerData.queueInfo ?: return
+        val duration = queue.currentItem?.track?.duration
+        val elapsed =
+            queue.elapsedTime ?: randomPlaybackLastElapsedSec
+        val isPlaying = playerData.player.isPlaying
+
+        if (isPlaying) {
+            randomPlaybackWasPlaying = true
+            randomPlaybackLastElapsedSec = elapsed
+            randomPlaybackAutoAdvanceInFlight = false
+            return
+        }
+
+        val endPosition =
+            maxOf(
+                randomPlaybackLastElapsedSec,
+                elapsed,
+            )
+
+        val endedNaturally =
+            randomPlaybackWasPlaying &&
+                duration != null &&
+                duration > 0.0 &&
+                endPosition >= duration - 3.0
+
+        if (
+            endedNaturally &&
+            !randomPlaybackAutoAdvanceInFlight
+        ) {
+            randomPlaybackAutoAdvanceInFlight = true
+            randomPlaybackWasPlaying = false
+
+            Logger.withTag("RandomFolderPlay").i {
+                "NATURAL END " +
+                    "index=$randomPlaybackSessionIndex " +
+                    "elapsed=$endPosition duration=$duration"
+            }
+
+            advanceRandomPlaybackNext("NATURAL_END")
+        }
+    }
+
+    private fun playRandomPlaybackSessionIndex(
+        index: Int,
+    ) {
+        val session = randomPlaybackSessionUris
+        val targetId = randomPlaybackSessionTargetId ?: return
+
+        if (index !in session.indices) return
+
+        randomPlaybackSessionIndex = index
+        randomPlaybackWasPlaying = false
+        randomPlaybackLastElapsedSec = 0.0
+
+        val uri = session[index]
+
+        Logger.withTag("RandomFolderPlay").i {
+            "session track=${index + 1}/${session.size} uri=$uri"
+        }
+
+        viewModelScope.launch {
+            apiClient.sendRequest(
+                Request.Library.play(
+                    media = listOf(uri),
+                    queueOrPlayerId = targetId,
+                    option = QueueOption.REPLACE,
+                    radioMode = false,
+                ),
+            )
+        }
+    }
+
+    fun playRandomFolder(
+        folder: RecommendationFolder,
+    ) {
+        val selectedPath = folder.path ?: return
+        val selectedPlayer =
+            dataSource.selectedPlayer ?: return
+
+        val playbackTargetId =
+            selectedPlayer.queueOrPlayerId
+
+        val actualQueueId =
+            selectedPlayer.queueInfo?.id
+
+        viewModelScope.launch {
+            val mode = settings.randomPlaybackMode.value
+
+            val allFolders =
+                (
+                    listOf(folder) +
+                        browseFolderCache.orEmpty()
+                )
+                    .filter {
+                        it.path != null &&
+                            !it.isParentLink
+                    }
+                    .distinctBy { it.path }
+
+            val selectedFolder =
+                allFolders.firstOrNull {
+                    it.path == selectedPath
+                } ?: folder
+
+            val alphabetic =
+                allFolders.sortedBy {
+                    it.displayName.lowercase()
+                }
+
+            val selectedAlphabeticIndex =
+                alphabetic.indexOfFirst {
+                    it.path == selectedPath
+                }
+
+            randomPlaybackFolderSequence =
+                when (mode) {
+                    SettingsRepository.RandomPlaybackMode.OFF -> {
+                        if (selectedAlphabeticIndex >= 0) {
+                            alphabetic.drop(selectedAlphabeticIndex) +
+                                alphabetic.take(selectedAlphabeticIndex)
+                        } else {
+                            listOf(selectedFolder) + alphabetic
+                        }
+                    }
+
+                    SettingsRepository.RandomPlaybackMode.RANDOM_FOLDERS ->
+                        listOf(selectedFolder) +
+                            allFolders
+                                .filterNot {
+                                    it.path == selectedPath
+                                }
+                                .shuffled()
+
+                    SettingsRepository.RandomPlaybackMode.RANDOM_SONGS ->
+                        allFolders
+                }
+
+            randomPlaybackFolderIndex =
+                randomPlaybackFolderSequence
+                    .indexOfFirst {
+                        it.path == selectedPath
+                    }
+                    .coerceAtLeast(0)
+
+            randomPlaybackFolderMode = mode
+            randomPlaybackFolderTransitionInFlight = false
+
+            val selectedTracks =
+                loadRandomPlaybackFolderTracks(selectedFolder)
+
+            if (selectedTracks.isEmpty()) {
+                Logger.withTag("RandomFolderPlay").i {
+                    "Selected folder has no playable tracks"
+                }
+                return@launch
+            }
+
+            // RANDOM_SONGS starts with the selected folder's first song.
+            // Every following Next/natural-end chooses globally.
+            randomPlaybackSessionUris =
+                if (
+                    mode ==
+                    SettingsRepository.RandomPlaybackMode.RANDOM_SONGS
+                ) {
+                    listOf(selectedTracks.first())
+                } else {
+                    selectedTracks
+                }
+
+            randomPlaybackSessionIndex = 0
+            randomPlaybackSessionTargetId = playbackTargetId
+            randomPlaybackSessionQueueId = actualQueueId
+            randomPlaybackWasPlaying = false
+            randomPlaybackLastElapsedSec = 0.0
+            randomPlaybackAutoAdvanceInFlight = false
+
+            actualQueueId?.let { queueId ->
+                apiClient.sendRequest(
+                    Request.Queue.setRepeatMode(
+                        queueId = queueId,
+                        repeatMode = RepeatMode.OFF,
+                    ),
+                )
+
+                apiClient.sendRequest(
+                    Request.Queue.setShuffle(
+                        queueId = queueId,
+                        enabled = false,
+                    ),
+                )
+
+                apiClient.sendRequest(
+                    Request.Queue.setDontStopTheMusic(
+                        queueId = queueId,
+                        enabled = false,
+                    ),
+                )
+            }
+
+            Logger.withTag("RandomFolderPlay").i {
+                "START tapped=${folder.displayName} " +
+                    "mode=$mode " +
+                    "tracks=${randomPlaybackSessionUris.size} " +
+                    "folders=${randomPlaybackFolderSequence.size}"
+            }
+
+            playRandomPlaybackSessionIndex(0)
         }
     }
 
@@ -346,6 +1042,23 @@ class HomeScreenViewModel(
         ) { playerData, sendspinState ->
             playerData to sendspinState
         }.collect { (playerData, sendspinState) ->
+            val selectedPlayerIndex =
+                dataSource.selectedPlayerIndex.value
+
+            when (playerData) {
+                is DataState.Data ->
+                    selectedPlayerIndex
+                        ?.let { playerData.data.getOrNull(it) }
+                        ?.let(::handleRandomPlaybackNaturalEnd)
+
+                is DataState.Stale ->
+                    selectedPlayerIndex
+                        ?.let { playerData.data.getOrNull(it) }
+                        ?.let(::handleRandomPlaybackNaturalEnd)
+
+                else -> Unit
+            }
+
             // Update when in Loading or Data state
             // This allows transitioning from Loading to Data and updating existing Data
             // Don't update terminal states (Disconnected, NoAuth, NoServer)
@@ -432,6 +1145,9 @@ class HomeScreenViewModel(
     data class State(
         val shortcuts: DataState<List<Shortcut>>,
         val recommendations: DataState<List<RecommendationRowState>>,
+        val favorites: DataState<List<AppMediaItem>>,
+        val randomFolders: DataState<List<RecommendationFolder>>,
+
         val homeRowsConfig: List<SettingsRepository.HomeRowPref> = emptyList(),
     )
 
@@ -451,6 +1167,7 @@ class HomeScreenViewModel(
 
     private companion object {
         private const val BUFFER_REAL_INTERVAL = 500L
+        private const val RANDOM_FOLDER_COUNT = 10
     }
 }
 

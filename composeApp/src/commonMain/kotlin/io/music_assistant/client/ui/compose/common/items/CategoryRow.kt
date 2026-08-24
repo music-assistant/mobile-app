@@ -51,6 +51,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.DisplayString
@@ -68,6 +69,7 @@ fun <T, U> CategoryRow(
     onNavigateClick: (AppMediaItem) -> Unit,
     onNavigateToList: (String, ItemList) -> Unit = { _, _ -> },
     onOptionSelected: (U) -> Unit = {},
+    onFolderLongClick: (RecommendationFolder) -> Unit = {},
     onPlayClick: PlayHandler<AppMediaItem>,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
@@ -80,6 +82,7 @@ fun <T, U> CategoryRow(
             onNavigateClick = onNavigateClick,
             onNavigateToList = onNavigateToList,
             onOptionSelected = onOptionSelected,
+            onFolderLongClick = onFolderLongClick,
             onPlayClick = onPlayClick,
             playlistActions = playlistActions,
             libraryActions = libraryActions,
@@ -133,6 +136,7 @@ fun <T> CategoryRow(
     onNavigateClick: (AppMediaItem) -> Unit,
     onNavigateToList: (String, ItemList) -> Unit = { _, _ -> },
     onOptionSelected: (T) -> Unit = {},
+    onFolderLongClick: (RecommendationFolder) -> Unit = {},
     onPlayClick: PlayHandler<AppMediaItem>,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
@@ -167,6 +171,7 @@ fun <T> CategoryRow(
             }
         },
         onNavigateClick = onNavigateClick,
+        onFolderLongClick = onFolderLongClick,
         onPlayClick = onPlayClick,
         mediaItems = itemCategory.items,
         playlistActions = playlistActions,
@@ -182,6 +187,7 @@ fun CategoryRow(
     title: String,
     actions: @Composable () -> Unit = {},
     onNavigateClick: (AppMediaItem) -> Unit,
+    onFolderLongClick: (RecommendationFolder) -> Unit = {},
     onPlayClick: PlayHandler<AppMediaItem>,
     mediaItems: List<AppMediaItem>,
     playlistActions: PlaylistActions,
@@ -221,6 +227,7 @@ fun CategoryRow(
                     is PodcastEpisode -> "Episode"
                     is RadioStation -> "RadioStation"
                     is Genre -> "Genre"
+                    is RecommendationFolder -> "RecommendationFolder"
                     else -> "Unknown"
                 }
             },
@@ -300,6 +307,12 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                )
+
+                is RecommendationFolder -> FolderCell(
+                    item = item,
+                    onNavigateClick = { folder -> onNavigateClick(folder) },
+                    onLongClick = onFolderLongClick,
                 )
 
                 else -> {}
