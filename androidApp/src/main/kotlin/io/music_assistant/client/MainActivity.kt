@@ -18,6 +18,7 @@ import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.services.MainMediaPlaybackService
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject
 
@@ -26,18 +27,26 @@ class MainActivity : ComponentActivity() {
     private val authManager: AuthenticationManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
     private val volumeButtonService: VolumeButtonService by inject()
+    private val settings: SettingsRepository by inject()
     private val oauthHandler: OAuthHandler by lazy {
         CustomTabsOAuthHandler(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Lock orientation on compact devices
-        if (this.resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Lock orientation on compact devices, unless the user opted out. The
+        // manifest declares no screenOrientation, so re-applying this live only
+        // triggers a configuration change the activity already handles itself.
+        settings.allowLandscapeOnAllDevices.asLiveData()
+            .observe(this) { allowLandscape ->
+                requestedOrientation = if (!allowLandscape && isCompactDevice()) {
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+            }
 
         // Provide OAuthHandler to AuthenticationManager
         authManager.oauthHandler = oauthHandler
@@ -68,6 +77,9 @@ class MainActivity : ComponentActivity() {
             App()
         }
     }
+
+    private fun isCompactDevice() =
+        resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

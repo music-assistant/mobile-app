@@ -139,6 +139,10 @@ import musicassistantclient.composeapp.generated.resources.queue_transfer
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+// Width split between the player pane and the side queue pane when both are shown.
+private const val PLAYER_PANE_WEIGHT = 2f
+private const val QUEUE_PANE_WEIGHT = 1f
+
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun PlayersPager(
@@ -199,7 +203,7 @@ fun PlayersPager(
                 enabled = dynamicColorsEnabled,
             )
         }
-        val isExpandedScreen = WindowClass.isAtLeastExpanded()
+        val isWideScreen = WindowClass.isWide()
         val modifier = if (!expanded) {
             Modifier
         } else {
@@ -302,7 +306,7 @@ fun PlayersPager(
                         var sheetLyrics by remember(currentTrack) { mutableStateOf<Lyrics?>(null) }
                         if (!expanded) {
                             CollapsedPlayerPage(
-                                isExpandedScreen = isExpandedScreen,
+                                isWideScreen = isWideScreen,
                                 player = player,
                                 colors = colors,
                                 sendspinState = state.sendspinState,
@@ -326,7 +330,7 @@ fun PlayersPager(
                                 queueAction = { homeScreenViewModel.queueAction(it) },
                                 allPlayers = playerDataList,
                                 moveToPlayer = moveToPlayer,
-                                isExpandedScreen = isExpandedScreen,
+                                isWideScreen = isWideScreen,
                                 sendspinState = state.sendspinState,
                                 isQueueExpanded = isQueueExpanded,
                                 onExpandQueue = { isQueueExpanded = it },
@@ -421,7 +425,7 @@ private fun ExpandedPlayerPage(
     queueAction: (QueueAction) -> Unit,
     allPlayers: List<PlayerData>,
     moveToPlayer: (String) -> Unit,
-    isExpandedScreen: Boolean,
+    isWideScreen: Boolean,
     sendspinState: SendspinState?,
     isQueueExpanded: Boolean,
     onExpandQueue: (Boolean) -> Unit,
@@ -434,7 +438,11 @@ private fun ExpandedPlayerPage(
     onLyricsClick: () -> Unit = {},
     chapterProgressEnabled: Boolean = true,
 ) {
-    val isLargeScreen = WindowClass.isAtLeastLarge()
+    // The queue sits beside the player whenever the window is wide (see
+    // [WindowClass.isWide]); otherwise it collapses underneath it. The two panes
+    // then split the width 2:1, so the layout degrades smoothly from a large
+    // tablet down to a phone in landscape.
+    val showSideQueue = WindowClass.isWide()
     val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
     // Minimum gesture speed (px/s) to count as a fling rather than a slow drag.
     val minFlingVelocityPx = with(LocalDensity.current) { 1000.dp.toPx() }
@@ -516,9 +524,9 @@ private fun ExpandedPlayerPage(
                     item = player,
                     colors = colors,
                     playerAction = playerAction,
-                    onSelectPlayer = if (isExpandedScreen && !isQueueExpanded) onSelectPlayer else null,
-                    onGroupButton = if (isExpandedScreen && !isQueueExpanded) onGroupButton else null,
-                    showAdditionalControls = isExpandedScreen,
+                    onSelectPlayer = if (isWideScreen && !isQueueExpanded) onSelectPlayer else null,
+                    onGroupButton = if (isWideScreen && !isQueueExpanded) onGroupButton else null,
+                    showAdditionalControls = isWideScreen,
                     sendSpinState = sendspinState,
                 )
             }
@@ -528,8 +536,9 @@ private fun ExpandedPlayerPage(
             Column(
                 modifier = Modifier
                     .padding(top = 8.dp)
-                    .conditional(isLargeScreen) {
-                        widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp)
+                    .conditional(showSideQueue) {
+                        weight(PLAYER_PANE_WEIGHT)
+                            .widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp)
                     },
             ) {
                 Column(
@@ -551,7 +560,7 @@ private fun ExpandedPlayerPage(
                                 .pointerInput(
                                     onClose,
                                     onExpandQueue,
-                                    isLargeScreen,
+                                    showSideQueue,
                                     dismissThresholdPx,
                                     minFlingVelocityPx,
                                 ) {
@@ -578,7 +587,7 @@ private fun ExpandedPlayerPage(
                                                 velocity > minFlingVelocityPx
                                             ) {
                                                 onClose()
-                                            } else if (!isLargeScreen &&
+                                            } else if (!showSideQueue &&
                                                 totalDrag < -dismissThresholdPx &&
                                                 velocity < -minFlingVelocityPx
                                             ) {
@@ -720,7 +729,7 @@ private fun ExpandedPlayerPage(
 
                 Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
 
-                if (!isLargeScreen) {
+                if (!showSideQueue) {
                     CollapsibleQueue(
                         playlistActions = playlistActions,
                         modifier = Modifier
@@ -752,8 +761,9 @@ private fun ExpandedPlayerPage(
                 }
             }
 
-            if (isLargeScreen && player.queue is DataState.Data) {
+            if (showSideQueue && player.queue is DataState.Data) {
                 Queue(
+                    modifier = Modifier.weight(QUEUE_PANE_WEIGHT),
                     queue = player.queue,
                     onGoToLibrary = onClose,
                     isQueueExpanded = true,
@@ -959,7 +969,7 @@ private fun PlayerOverflowMenu(
 
 @Composable
 private fun CollapsedPlayerPage(
-    isExpandedScreen: Boolean,
+    isWideScreen: Boolean,
     player: PlayerData,
     colors: PlayerColors,
     sendspinState: SendspinState?,
@@ -967,7 +977,7 @@ private fun CollapsedPlayerPage(
     onGroupButton: () -> Unit,
     playerAction: (PlayerData, PlayerAction) -> Unit,
 ) {
-    if (!isExpandedScreen) {
+    if (!isWideScreen) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -987,8 +997,8 @@ private fun CollapsedPlayerPage(
         item = player,
         colors = colors,
         playerAction = playerAction,
-        onSelectPlayer = if (isExpandedScreen) onSelectPlayer else null,
-        onGroupButton = if (isExpandedScreen) onGroupButton else null,
+        onSelectPlayer = if (isWideScreen) onSelectPlayer else null,
+        onGroupButton = if (isWideScreen) onGroupButton else null,
         sendSpinState = sendspinState,
     )
 }
@@ -1017,7 +1027,7 @@ fun ExpandedPlayerPagePreview() {
             queueAction = {},
             allPlayers = listOf(playerData),
             moveToPlayer = {},
-            isExpandedScreen = false,
+            isWideScreen = false,
             sendspinState = null,
             isQueueExpanded = false,
             onExpandQueue = {},
@@ -1053,7 +1063,7 @@ fun ExpandedPlayerPageMediumScreenPreview() {
             queueAction = {},
             allPlayers = listOf(playerData),
             moveToPlayer = {},
-            isExpandedScreen = false,
+            isWideScreen = false,
             sendspinState = null,
             isQueueExpanded = false,
             onExpandQueue = {},
@@ -1089,7 +1099,7 @@ fun ExpandedPlayerPageExpandedScreenPreview() {
             queueAction = {},
             allPlayers = listOf(playerData),
             moveToPlayer = {},
-            isExpandedScreen = true,
+            isWideScreen = true,
             sendspinState = null,
             isQueueExpanded = false,
             onExpandQueue = {},
@@ -1129,7 +1139,44 @@ fun ExpandedPlayerPageExpandedScreenPlusPreview() {
             queueAction = {},
             allPlayers = listOf(playerData),
             moveToPlayer = {},
-            isExpandedScreen = false,
+            isWideScreen = false,
+            sendspinState = null,
+            isQueueExpanded = false,
+            onExpandQueue = {},
+            contentPadding = PaddingValues(),
+            isCurrentPage = true,
+            livePositionFlow = null,
+        )
+    }
+}
+
+/**
+ * A phone in landscape: wide, but very short. This is the tightest window that still
+ * gets the side queue, so it is the one to check when the split changes.
+ */
+@Preview(widthDp = 880, heightDp = 412)
+@Composable
+fun ExpandedPlayerPagePhoneLandscapePreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        val track = AppMediaItemFixtures.track()
+        val playerData = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue(hasRadio = true))
+
+        ExpandedPlayerPage(
+            player = playerData,
+            colors = PlayerColors(
+                MaterialTheme.colorScheme.surface,
+                MaterialTheme.colorScheme.onSurface,
+            ),
+            onSelectPlayer = {},
+            onGroupButton = {},
+            onDspButton = null,
+            playerAction = { _, _ -> },
+            onFavoriteClick = {},
+            onClose = {},
+            queueAction = {},
+            allPlayers = listOf(playerData),
+            moveToPlayer = {},
+            isWideScreen = true,
             sendspinState = null,
             isQueueExpanded = false,
             onExpandQueue = {},
@@ -1165,7 +1212,7 @@ fun ExpandedPlayerPageLargeScreenPreview() {
             queueAction = {},
             allPlayers = listOf(playerData),
             moveToPlayer = {},
-            isExpandedScreen = true,
+            isWideScreen = true,
             sendspinState = null,
             isQueueExpanded = false,
             onExpandQueue = {},

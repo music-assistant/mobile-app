@@ -100,6 +100,8 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
+import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
+import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_connect
@@ -361,7 +363,11 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 // Misc settings - always visible
                 val shareLogsTitle = stringResource(Res.string.settings_share_logs)
                 val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
+                val allowLandscape by viewModel.allowLandscapeOnAllDevices
+                    .collectAsStateWithLifecycle()
                 MiscSection(
+                    allowLandscape = allowLandscape,
+                    onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,
@@ -379,6 +385,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
 @Composable
 private fun MiscSection(
+    allowLandscape: Boolean,
+    onAllowLandscapeChange: (Boolean) -> Unit,
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
     isPreparingShare: Boolean,
@@ -387,6 +395,26 @@ private fun MiscSection(
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = allowLandscape,
+                onCheckedChange = onAllowLandscapeChange,
+            )
+            Text(
+                text = stringResource(Res.string.settings_allow_landscape),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Text(
+            // Aligned under the label: the checkbox occupies a 48.dp touch target.
+            modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
+            text = stringResource(Res.string.settings_allow_landscape_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
             enabled = !isPreparingShare,

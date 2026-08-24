@@ -128,6 +128,59 @@ func handleIncomingURL(_ url: URL) {
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    /// Key written by the shared Kotlin `SettingsRepository`. The general settings
+    /// store is backed by `NSUserDefaults.standard` (see provideSettings.ios.kt),
+    /// so reading it here needs no Kotlin bridge.
+    private static let allowLandscapeKey = "allow_landscape_all_devices"
+
+    private var defaultsObserver: NSObjectProtocol?
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // The setting must apply live. multiplatform-settings writes through
+        // UserDefaults.standard, so its change notification is the signal.
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard,
+            queue: .main
+        ) { _ in
+            AppDelegate.refreshSupportedOrientations()
+        }
+        return true
+    }
+
+    deinit {
+        if let defaultsObserver {
+            NotificationCenter.default.removeObserver(defaultsObserver)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        // Never constrain the CarPlay scene.
+        guard window?.windowScene?.session.role == .windowApplication else { return .all }
+        if UIDevice.current.userInterfaceIdiom != .phone { return .all }
+        return UserDefaults.standard.bool(forKey: AppDelegate.allowLandscapeKey) ? .all : .portrait
+    }
+
+    /// Asks every foreground window to re-read the mask above.
+    private static func refreshSupportedOrientations() {
+        if #available(iOS 16.0, *) {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .filter { $0.session.role == .windowApplication }
+                .flatMap { $0.windows }
+                .compactMap { $0.rootViewController }
+                .forEach { $0.setNeedsUpdateOfSupportedInterfaceOrientations() }
+        } else {
+            UIViewController.attemptRotationToDeviceOrientation()
+        }
+    }
+
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,

@@ -378,6 +378,18 @@ class SettingsRepository(
         _dynamicColors.update { enabled }
     }
 
+    // Opt-in escape hatch from the compact-device portrait lock: when set, the
+    // platform layer stops constraining orientation on any device.
+    private val _allowLandscapeOnAllDevices = MutableStateFlow(
+        settings.getBoolean("allow_landscape_all_devices", false),
+    )
+    val allowLandscapeOnAllDevices = _allowLandscapeOnAllDevices.asStateFlow()
+
+    fun setAllowLandscapeOnAllDevices(enabled: Boolean) {
+        settings.putBoolean("allow_landscape_all_devices", enabled)
+        _allowLandscapeOnAllDevices.update { enabled }
+    }
+
     // Sendspin settings
     private val _sendspinEnabled = MutableStateFlow(
         settings.getBoolean("sendspin_enabled", false),

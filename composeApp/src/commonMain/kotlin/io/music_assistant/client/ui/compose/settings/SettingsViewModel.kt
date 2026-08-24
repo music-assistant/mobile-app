@@ -93,6 +93,12 @@ class SettingsViewModel(
         }
     }
 
+    // Misc settings
+    val allowLandscapeOnAllDevices = settings.allowLandscapeOnAllDevices
+
+    fun setAllowLandscapeOnAllDevices(enabled: Boolean) =
+        settings.setAllowLandscapeOnAllDevices(enabled)
+
     // Sendspin settings
     val sendspinEnabled = settings.sendspinEnabled
     val sendspinRequireEncryption = settings.sendspinRequireEncryption

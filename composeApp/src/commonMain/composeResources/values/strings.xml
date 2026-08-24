@@ -260,6 +260,8 @@
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
+  <string name="settings_allow_landscape">Allow landscape on all devices</string>
+  <string name="settings_allow_landscape_hint">Experimental: some screens can look wrong in landscape. Use at your own risk.</string>
   <string name="settings_buffer_size">Buffer size</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s actions</string>

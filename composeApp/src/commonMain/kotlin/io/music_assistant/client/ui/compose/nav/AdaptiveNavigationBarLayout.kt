@@ -37,8 +37,8 @@ import androidx.window.core.layout.WindowSizeClass
 import io.music_assistant.client.utils.WindowClass
 
 /**
- * Shows a [NavigationBar] based on [navigationItems] on smaller screens and a [NavigationRail]
- * instead on expanded and larger.
+ * Shows a [NavigationBar] based on [navigationItems] on tall, narrow windows and a
+ * [NavigationRail] instead on wide ones (see [WindowClass.isWide]).
  */
 @Composable
 fun AdaptiveNavigationBarLayout(
@@ -48,11 +48,11 @@ fun AdaptiveNavigationBarLayout(
     navigationRailWidth: Dp = 80.dp,
     content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit,
 ) {
-    val isExpandedScreen = WindowClass.isAtLeastExpanded()
+    val isWideScreen = WindowClass.isWide()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        val showRail = showNavigation && isExpandedScreen
-        val showBar = showNavigation && !isExpandedScreen
+        val showRail = showNavigation && isWideScreen
+        val showBar = showNavigation && !isWideScreen
 
         // Reserve the real system navigation-bar inset so the chrome reflows when it is
         // shown/hidden (edge-to-edge). Zero when hidden or on devices without a bottom bar.
