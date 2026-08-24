@@ -256,6 +256,7 @@
   <string name="search_query_label">Search…</string>
   <string name="search_start">Start searching…</string>
   <string name="search_title">Global search</string>
+  <string name="sendspin_encryption_required_unavailable">Encrypted connection required, but this server does not support it. Update Music Assistant or disable the requirement.</string>
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
@@ -287,8 +288,6 @@
   <string name="settings_connection_method">Connection Method</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Custom Sendspin connection</string>
-  <string name="settings_sendspin_require_encryption">Require encrypted connection</string>
-  <string name="sendspin_encryption_required_unavailable">Encrypted connection required, but this server does not support it. Update Music Assistant or disable the requirement.</string>
   <string name="settings_disable_local_player">Disable local player</string>
   <string name="settings_disconnect">Disconnect</string>
   <string name="settings_enable_local_player">Enable local player</string>
@@ -309,6 +308,7 @@
   <string name="settings_remote_id_invalid">Invalid Remote ID format</string>
   <string name="settings_saved_connections">Saved Connections</string>
   <string name="settings_scan_qr">Scan QR code</string>
+  <string name="settings_sendspin_require_encryption">Require encrypted connection</string>
   <string name="settings_server">Server</string>
   <string name="settings_server_host">Server host</string>
   <string name="settings_share_crash_logs">Share crash logs</string>

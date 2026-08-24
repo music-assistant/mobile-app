@@ -256,6 +256,7 @@
   <string name="search_query_label">Suche...</string>
   <string name="search_start">Suche starten</string>
   <string name="search_title">Globale Suche</string>
+  <string name="sendspin_encryption_required_unavailable">Eine verschlüsselte Verbindung ist erforderlich, wird von diesem Server jedoch nicht unterstützt. Aktualisiere Music Assistant oder deaktiviere die entsprechende Einstellung.</string>
   <string name="server_id_mismatch_error">Server ID hat sich geändert. Reauthentifizierung nötig.</string>
   <string name="settings_about_description">Music Assistant ist ein kostenloser und selbst gehosteter open-source Musik Server. Verbinde Dich mit Deinem Server, um Deine Bibliothek zu durchsuchen und die Wiedergabe aller Player im Haus zu steuern.</string>
   <string name="settings_about_learn_more">Mehr Informationen auf music-assistant.io →</string>
@@ -307,6 +308,7 @@
   <string name="settings_remote_id_invalid">Ungültiges Format der Remote ID</string>
   <string name="settings_saved_connections">Gespeicherte Verbindungen</string>
   <string name="settings_scan_qr">QR-Code scannen</string>
+  <string name="settings_sendspin_require_encryption">Verschlüsselte Verbindung benötigt</string>
   <string name="settings_server">Server</string>
   <string name="settings_server_host">Server Host</string>
   <string name="settings_share_crash_logs">Absturzberichte teilen</string>

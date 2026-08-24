@@ -256,6 +256,7 @@
   <string name="search_query_label">Zoekopdracht</string>
   <string name="search_start">Begin met zoeken…</string>
   <string name="search_title">Globaal zoeken</string>
+  <string name="sendspin_encryption_required_unavailable">Er is een versleutelde verbinding vereist, maar deze server ondersteunt dit niet. Werk Music Assistant bij of schakel deze vereiste uit.</string>
   <string name="server_id_mismatch_error">De server-ID is gewijzigd. Je moet je opnieuw authenticeren.</string>
   <string name="settings_about_description">Music Assistant is een gratis, open-source, zelfgehoste muziekserver. Maak hieronder verbinding met jouw server om door je bibliotheek te bladeren en de weergave in je hele huis te bedienen.</string>
   <string name="settings_about_learn_more">Meer informatie op music-assistant.io →</string>
@@ -307,6 +308,7 @@
   <string name="settings_remote_id_invalid">Ongeldig formaat van de Externe ID</string>
   <string name="settings_saved_connections">Opgeslagen verbindingen</string>
   <string name="settings_scan_qr">Scan QR-code</string>
+  <string name="settings_sendspin_require_encryption">Vereis een versleutelde verbinding</string>
   <string name="settings_server">Server</string>
   <string name="settings_server_host">Serverhost</string>
   <string name="settings_share_crash_logs">Crashlogboeken delen</string>

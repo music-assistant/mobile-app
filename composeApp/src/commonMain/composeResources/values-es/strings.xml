@@ -256,6 +256,7 @@
   <string name="search_query_label">Buscar…</string>
   <string name="search_start">Empezar a buscar…</string>
   <string name="search_title">Búsqueda global</string>
+  <string name="sendspin_encryption_required_unavailable">Se requiere una conexión cifrada, pero este servidor no la admite. Actualiza Music Assistant o desactiva este requisito.</string>
   <string name="server_id_mismatch_error">El ID del servidor ha cambiado. Se requiere volver a autenticarse.</string>
   <string name="settings_about_description">Music Assistant es un servidor de música gratuito, de código abierto y autogestionado. Conéctate a tu servidor a continuación para explorar tu biblioteca y controlar la reproducción en toda tu casa.</string>
   <string name="settings_about_learn_more">Más información en music-assistant.io →</string>
@@ -307,6 +308,7 @@
   <string name="settings_remote_id_invalid">Formato de ID remoto no válido</string>
   <string name="settings_saved_connections">Conexiones guardadas</string>
   <string name="settings_scan_qr">Escanear código QR</string>
+  <string name="settings_sendspin_require_encryption">Requerir conexión cifrada</string>
   <string name="settings_server">Servidor</string>
   <string name="settings_server_host">Host del servidor</string>
   <string name="settings_share_crash_logs">Compartir registros de fallos</string>
