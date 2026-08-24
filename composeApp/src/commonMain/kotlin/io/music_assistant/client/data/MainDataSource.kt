@@ -77,6 +77,8 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.abs
 
@@ -142,7 +144,7 @@ class MainDataSource(
         var job: Job? = null,
     )
 
-    private val rapidSkipLock = Any()
+    private val rapidSkipMutex = Mutex()
     private val rapidSkipBatches = mutableMapOf<String, RapidSkipBatch>()
 
     private val _serverPlayers = MutableStateFlow<DataState<List<Player>>>(DataState.Loading())
@@ -1156,20 +1158,22 @@ class MainDataSource(
         playerId: String,
         delta: Int,
     ) {
-        synchronized(rapidSkipLock) {
-            val batch =
-                rapidSkipBatches.getOrPut(queueId) {
-                    RapidSkipBatch(delta = 0, playerId = playerId)
+        launch {
+            rapidSkipMutex.withLock {
+                val batch =
+                    rapidSkipBatches.getOrPut(queueId) {
+                        RapidSkipBatch(delta = 0, playerId = playerId)
+                    }
+                batch.delta += delta
+                batch.playerId = playerId
+                batch.job?.cancel()
+                batch.job = launch {
+                    delay(RAPID_SKIP_BATCH_MS)
+                    val snapshot = rapidSkipMutex.withLock {
+                        rapidSkipBatches.remove(queueId)
+                    } ?: return@launch
+                    dispatchRapidQueueSkip(queueId, snapshot)
                 }
-            batch.delta += delta
-            batch.playerId = playerId
-            batch.job?.cancel()
-            batch.job = launch {
-                delay(RAPID_SKIP_BATCH_MS)
-                val snapshot = synchronized(rapidSkipLock) {
-                    rapidSkipBatches.remove(queueId)
-                } ?: return@launch
-                dispatchRapidQueueSkip(queueId, snapshot)
             }
         }
     }
