@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.browsePlaybackUri
 import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
@@ -550,7 +551,7 @@ class HomeScreenViewModel(
                     name.equals("Empty", ignoreCase = true)
             }
             .sortedBy { it.displayName.lowercase() }
-            .mapNotNull { it.mediaUri }
+            .mapNotNull { it.browsePlaybackUri }
             .distinct()
     }
 

@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.ResolvedChapter
@@ -64,6 +65,7 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.QualityTier
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.canBeFavorited
+import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
@@ -111,6 +113,7 @@ fun CompactPlayerItem(
     sendSpinState: SendspinState?,
 ) {
     val currentMedia = item.player.currentMedia
+    val artworkUrl = item.nowPlayingArtworkUrl()
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
 
     Row(
@@ -142,7 +145,7 @@ fun CompactPlayerItem(
                     AsyncImage(
                         placeholder = placeholder,
                         fallback = placeholder,
-                        model = rememberArtworkRequest(currentMedia.imageUrl),
+                        model = rememberArtworkRequest(artworkUrl),
                         contentDescription = currentMedia.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
@@ -312,6 +315,7 @@ fun FullPlayerItem(
     chapterProgressEnabled: Boolean = true,
 ) {
     val currentMedia = item.player.currentMedia
+    val artworkUrl = item.nowPlayingArtworkUrl()
 
     // Folder hierarchy for the full Now Playing screen.
     //
@@ -342,18 +346,18 @@ fun FullPlayerItem(
                 .background(colors.dominant.alphaOn(currentMedia != null)),
             contentAlignment = Alignment.Center,
         ) {
-            currentMedia?.imageUrl?.let {
+            artworkUrl?.let {
                 val placeholder =
                     rememberPlaceholderPainter(
                         backgroundColor = colors.dominant,
                         iconColor = onPrimaryContainer,
-                        icon = currentMedia.defaultIcon,
+                        icon = currentMedia?.defaultIcon ?: AlbumIcon,
                     )
                 AsyncImage(
                     placeholder = placeholder,
                     fallback = placeholder,
                     model = rememberArtworkRequest(it),
-                    contentDescription = currentMedia.title,
+                    contentDescription = currentMedia?.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -799,6 +803,13 @@ fun FullPlayerItem(
             }
         }
     }
+}
+
+internal fun PlayerData.nowPlayingArtworkUrl(): String? {
+    val currentTrack = queueInfo?.currentItem?.track
+    return player.currentMedia?.imageUrl
+        ?: currentTrack?.image(ImageType.THUMB)?.url
+        ?: (currentTrack as? Track)?.album?.image(ImageType.THUMB)?.url
 }
 
 private val FULL_PLAYER_HORIZONTAL_PADDING = 16.dp

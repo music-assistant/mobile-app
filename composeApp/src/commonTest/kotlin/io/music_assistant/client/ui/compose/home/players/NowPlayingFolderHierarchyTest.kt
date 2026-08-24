@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.browsePlaybackUri
 import io.music_assistant.client.data.model.server.ProviderMapping
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,6 +21,19 @@ class NowPlayingFolderHierarchyTest {
     @Test
     fun `normalized library uri alone does not produce a hierarchy`() {
         assertNull(track(uri = "library://track/13328").nowPlayingFolderHierarchy())
+    }
+
+    @Test
+    fun `browse track without library uri uses its provider mapping`() {
+        val track = track(
+            uri = null,
+            mappingItemId = "Metallica/Album/01 Song.mp3",
+        )
+
+        assertEquals(
+            "filesystem_local--test://track/Metallica/Album/01 Song.mp3",
+            track.browsePlaybackUri,
+        )
     }
 
     private fun track(uri: String?, mappingItemId: String? = null) =

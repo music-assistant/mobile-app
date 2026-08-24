@@ -5,6 +5,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.browsePlaybackUri
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -73,7 +74,7 @@ class BrowsePlaybackCoordinator(
                                 name.equals("Empty", ignoreCase = true)
                         }
                         .sortedBy { it.displayName.lowercase() }
-                        .mapNotNull { it.mediaUri }
+                        .mapNotNull { it.browsePlaybackUri }
                         .distinct()
 
                 if (tracks.isEmpty()) return@forEach
