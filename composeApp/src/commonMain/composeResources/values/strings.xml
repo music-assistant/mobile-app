@@ -278,7 +278,7 @@
   <string name="settings_connect_saved">Connect with saved credentials</string>
   <string name="settings_connect_webrtc">Connect via WebRTC</string>
   <string name="settings_connected">Connected</string>
-  <string name="settings_connected_to">Connected to %1$s:%2$d</string>
+  <string name="settings_connected_to">Connected to %1$s:%2$d%3$s</string>
   <string name="settings_connected_webrtc">Connected via WebRTC</string>
   <string name="settings_connecting">Connecting…</string>
   <string name="settings_connecting_remote">Connecting to remote server…</string>
@@ -311,6 +311,8 @@
   <string name="settings_sendspin_require_encryption">Require encrypted connection</string>
   <string name="settings_server">Server</string>
   <string name="settings_server_host">Server host</string>
+  <string name="settings_server_base_path">Base path (optional)</string>
+  <string name="settings_server_base_path_hint">If you serve the server under a sub-path.</string>
   <string name="settings_share_crash_logs">Share crash logs</string>
   <string name="settings_share_logs">Share logs</string>
   <string name="settings_use_tls">Use TLS (wss://)</string>

@@ -358,7 +358,8 @@ class SendspinClientFactory(
                 bufferCapacityBytes = settings.sendspinBufferCapacityMb.value * SendspinConfig.BYTES_PER_MB,
                 serverHost = serverHost,
                 serverPort = mainConnection.port,
-                serverPath = "/sendspin",
+                // Same reverse proxy as the control socket, so it needs the same base path.
+                serverPath = "${mainConnection.basePath}/sendspin",
                 useTls = mainConnection.isTls,
                 useCustomConnection = false,
                 authToken = authToken,

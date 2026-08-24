@@ -73,6 +73,22 @@ class ExtTest {
     }
 
     @Test
+    fun testValidBasePaths() {
+        val valid = listOf("", "   ", "/", "/ma", "ma", "/ma/", "/a/b", "a/b/c", "/music-assistant", "/v1.0")
+        for (path in valid) {
+            assertTrue(path.isValidBasePath(), "Expected '$path' to be recognised as a valid base path")
+        }
+    }
+
+    @Test
+    fun testInvalidBasePaths() {
+        val invalid = listOf("/ma//b", "/ma?x=1", "http://x/ma", "/ma b", "/ma#frag")
+        for (path in invalid) {
+            assertFalse(path.isValidBasePath(), "Expected '$path' to be recognised as an invalid base path")
+        }
+    }
+
+    @Test
     fun testToMinSec() {
         assertEquals("01:05", 65.seconds.formatDuration())
         assertEquals("00:00", 0.seconds.formatDuration())

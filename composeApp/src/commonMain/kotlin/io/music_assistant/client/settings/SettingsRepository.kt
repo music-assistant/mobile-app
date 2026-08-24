@@ -81,7 +81,13 @@ class SettingsRepository(
     private val _connectionInfo = MutableStateFlow(
         secrets.getStringOrNull("host")?.takeIf { it.isNotBlank() }?.let { host ->
             secrets.getIntOrNull("port")?.takeIf { it > 0 }?.let { port ->
-                ConnectionInfo(host, port, secrets.getBoolean("isTls", false))
+                ConnectionInfo(
+                    host = host,
+                    port = port,
+                    isTls = secrets.getBoolean("isTls", false),
+                    // Absent for every pre-existing install, which is exactly the root-path case.
+                    basePath = secrets.getString("basePath", ""),
+                )
             }
         },
     )
@@ -92,6 +98,7 @@ class SettingsRepository(
             secrets.putString("host", connectionInfo?.host.orEmpty())
             secrets.putInt("port", connectionInfo?.port ?: 0)
             secrets.putBoolean("isTls", connectionInfo?.isTls == true)
+            secrets.putString("basePath", connectionInfo?.basePath.orEmpty())
             _connectionInfo.update { connectionInfo }
         }
     }
@@ -128,8 +135,15 @@ class SettingsRepository(
     /**
      * Get server identifier for Direct connection.
      */
-    fun getDirectServerIdentifier(host: String, port: Int, isTls: Boolean): String {
-        return "direct:${if (isTls) "wss" else "ws"}://$host:$port"
+    fun getDirectServerIdentifier(
+        host: String,
+        port: Int,
+        isTls: Boolean,
+        basePath: String = "",
+    ): String {
+        // An empty base path keeps the key byte-identical to the pre-base-path format, so
+        // tokens and server ids stored by earlier versions stay reachable.
+        return "direct:${if (isTls) "wss" else "ws"}://$host:$port$basePath"
     }
 
     /**

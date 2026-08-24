@@ -82,7 +82,7 @@ class AuthenticationManager(
         val mostRecent = settings.connectionHistory.value.firstOrNull() ?: return@run false
         val identifier = when (mostRecent.type) {
             ConnectionType.DIRECT -> mostRecent.connectionInfo?.let {
-                settings.getDirectServerIdentifier(it.host, it.port, it.isTls)
+                settings.getDirectServerIdentifier(it.host, it.port, it.isTls, it.basePath)
             }
             ConnectionType.WEBRTC -> mostRecent.remoteId?.let {
                 settings.getWebRTCServerIdentifier(it)
@@ -457,6 +457,7 @@ private fun SettingsRepository.getServerIdentifier(sessionState: SessionState.Co
             sessionState.connectionInfo.host,
             sessionState.connectionInfo.port,
             sessionState.connectionInfo.isTls,
+            sessionState.connectionInfo.basePath,
         )
 
         is SessionState.Connected.WebRTC -> this.getWebRTCServerIdentifier(sessionState.remoteId.rawId)

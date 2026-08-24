@@ -452,6 +452,7 @@ class LocalPlayerController(
                         state.connectionInfo.host,
                         state.connectionInfo.port,
                         state.connectionInfo.isTls,
+                        state.connectionInfo.basePath,
                     ),
                 )
 

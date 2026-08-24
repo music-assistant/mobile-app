@@ -6,8 +6,6 @@ import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.ws
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.http.HttpMethod
 import io.ktor.websocket.close
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -108,11 +106,8 @@ class DirectTransport(
                 session = null
             }
         }
-        if (info.isTls) {
-            clientProvider().wss(HttpMethod.Get, info.host, info.port, "/ws", block = block)
-        } else {
-            clientProvider().ws(HttpMethod.Get, info.host, info.port, "/ws", block = block)
-        }
+        // Scheme, host, port and any reverse-proxy base path all live in `wsUrl`.
+        clientProvider().ws(urlString = "${info.wsUrl}/ws", block = block)
     }
 
     private suspend fun startReconnection() {

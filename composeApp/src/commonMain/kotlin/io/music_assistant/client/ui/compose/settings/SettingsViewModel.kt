@@ -64,8 +64,15 @@ class SettingsViewModel(
         _hasCrashLog.value = false
     }
 
-    fun attemptConnection(host: String, port: String, isTls: Boolean) =
-        apiClient.connect(connection = ConnectionInfo(host, port.toInt(), isTls))
+    fun attemptConnection(host: String, port: String, isTls: Boolean, basePath: String) =
+        apiClient.connect(
+            connection = ConnectionInfo(
+                host = host,
+                port = port.toInt(),
+                isTls = isTls,
+                basePath = ConnectionInfo.normalizeBasePath(basePath),
+            ),
+        )
 
     fun disconnect() {
         apiClient.disconnectByUser()
@@ -124,8 +131,10 @@ class SettingsViewModel(
 
     val connectionHistory = settings.connectionHistory
 
-    fun hasCredentialsForDirect(host: String, port: Int, isTls: Boolean): Boolean =
-        settings.getTokenForServer(settings.getDirectServerIdentifier(host, port, isTls)) != null
+    fun hasCredentialsForDirect(host: String, port: Int, isTls: Boolean, basePath: String): Boolean =
+        settings.getTokenForServer(
+            settings.getDirectServerIdentifier(host, port, isTls, ConnectionInfo.normalizeBasePath(basePath)),
+        ) != null
 
     fun hasCredentialsForWebRTC(remoteId: String): Boolean =
         settings.getTokenForServer(settings.getWebRTCServerIdentifier(remoteId)) != null

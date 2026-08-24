@@ -2,6 +2,7 @@ package io.music_assistant.client.utils
 
 import androidx.compose.ui.Modifier
 import io.music_assistant.client.api.Answer
+import io.music_assistant.client.api.ConnectionInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +57,15 @@ fun String.isIpPort(): Boolean {
     val port = this.toIntOrNull()
     return port != null && port in 1..65535
 }
+
+/**
+ * Optional reverse-proxy sub-path, e.g. "/ma". Validates the canonical form, so anything that
+ * normalizes to the root ("", "/", blank) is valid — most servers sit at the root.
+ */
+fun String.isValidBasePath(): Boolean =
+    ConnectionInfo.normalizeBasePath(this).let {
+        it.isEmpty() || Regex("""^(/[A-Za-z0-9._~%-]+)+$""").matches(it)
+    }
 
 fun Modifier.conditional(
     condition: Boolean,

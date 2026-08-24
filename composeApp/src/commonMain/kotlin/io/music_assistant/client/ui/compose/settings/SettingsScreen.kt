@@ -84,6 +84,7 @@ import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
+import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
 import musicassistantclient.composeapp.generated.resources.Res
@@ -137,6 +138,8 @@ import musicassistantclient.composeapp.generated.resources.settings_saved_connec
 import musicassistantclient.composeapp.generated.resources.settings_scan_qr
 import musicassistantclient.composeapp.generated.resources.settings_sendspin_require_encryption
 import musicassistantclient.composeapp.generated.resources.settings_server
+import musicassistantclient.composeapp.generated.resources.settings_server_base_path
+import musicassistantclient.composeapp.generated.resources.settings_server_base_path_hint
 import musicassistantclient.composeapp.generated.resources.settings_server_host
 import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
@@ -192,7 +195,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 navigationIcon = {
                     if (isAuthenticated) {
                         IconButton(onClick = goHome) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                stringResource(Res.string.common_back),
+                            )
                         }
                     }
                 },
@@ -215,12 +221,14 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 var ipAddress by remember { mutableStateOf(Defaults.URI) }
                 var port by remember { mutableStateOf(Defaults.PORT.toString()) }
                 var isTls by remember { mutableStateOf(false) }
+                var basePath by remember { mutableStateOf("") }
 
                 LaunchedEffect(savedConnectionInfo) {
                     savedConnectionInfo?.let {
                         ipAddress = it.host
                         port = it.port.toString()
                         isTls = it.isTls
+                        basePath = it.basePath
                     }
                 }
 
@@ -243,7 +251,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         val userChangedConnectionInfo =
                             ipAddress != connInfo.host ||
                                     port != connInfo.port.toString() ||
-                                    isTls != connInfo.isTls
+                                    isTls != connInfo.isTls ||
+                                    basePath != connInfo.basePath
 
                         if (!userChangedConnectionInfo) {
                             // User is trying to reconnect to same server - auto-retry
@@ -252,6 +261,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 connInfo.host,
                                 connInfo.port.toString(),
                                 connInfo.isTls,
+                                connInfo.basePath,
                             )
                         }
                         // If user changed connection info, don't auto-retry - let them manually retry
@@ -278,14 +288,19 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onIpAddressChange = { ipAddress = it },
                             onPortChange = { port = it },
                             onTlsChange = { isTls = it },
+                            basePath = basePath,
+                            onBasePathChange = { basePath = it },
                             onDirectConnect = {
                                 viewModel.attemptConnection(
                                     ipAddress,
                                     port,
                                     isTls,
+                                    basePath,
                                 )
                             },
-                            directConnectEnabled = ipAddress.isValidHost() && port.isIpPort(),
+                            directConnectEnabled = ipAddress.isValidHost() &&
+                                    port.isIpPort() &&
+                                    basePath.isValidBasePath(),
                             sessionState = sessionState,
                             connectionHistory = connectionHistory,
                         )
@@ -403,7 +418,10 @@ private fun MiscSection(
                     enabled = !isPreparingShare,
                     onClick = onDeleteCrashLog,
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.cd_delete_crash_logs))
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(Res.string.cd_delete_crash_logs),
+                    )
                 }
             }
         }
@@ -485,6 +503,8 @@ private fun ConnectionMethodTabs(
     onIpAddressChange: (String) -> Unit,
     onPortChange: (String) -> Unit,
     onTlsChange: (Boolean) -> Unit,
+    basePath: String,
+    onBasePathChange: (String) -> Unit,
     onDirectConnect: () -> Unit,
     directConnectEnabled: Boolean,
     sessionState: SessionState,
@@ -496,7 +516,7 @@ private fun ConnectionMethodTabs(
     var showHistoryDialog by remember { mutableStateOf(false) }
 
     val directHasToken = port.toIntOrNull()
-        ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls) } ?: false
+        ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls, basePath) } ?: false
     val webrtcHasToken = webrtcRemoteId.isNotBlank() &&
             viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
 
@@ -541,6 +561,8 @@ private fun ConnectionMethodTabs(
                     onIpAddressChange = onIpAddressChange,
                     onPortChange = onPortChange,
                     onTlsChange = onTlsChange,
+                    basePath = basePath,
+                    onBasePathChange = onBasePathChange,
                     onConnect = onDirectConnect,
                     enabled = directConnectEnabled,
                     onShowHistory = { showHistoryDialog = true },
@@ -587,6 +609,7 @@ private fun ConnectionMethodTabs(
                             onIpAddressChange(it.host)
                             onPortChange(it.port.toString())
                             onTlsChange(it.isTls)
+                            onBasePathChange(it.basePath)
                         }
                         viewModel.setPreferredConnectionMethod("direct")
                     }
@@ -613,6 +636,8 @@ private fun DirectConnectionContent(
     onIpAddressChange: (String) -> Unit,
     onPortChange: (String) -> Unit,
     onTlsChange: (Boolean) -> Unit,
+    basePath: String,
+    onBasePathChange: (String) -> Unit,
     onConnect: () -> Unit,
     enabled: Boolean,
     onShowHistory: () -> Unit,
@@ -628,6 +653,28 @@ private fun DirectConnectionContent(
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
         placeholder = { Text("homeassistant.local") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+        ),
+        colors = TextFieldDefaults.colors(
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+        ),
+    )
+
+    // Base path input — for a reverse proxy that serves the server under a sub-path.
+    TextField(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        value = basePath,
+        onValueChange = onBasePathChange,
+        label = { Text(stringResource(Res.string.settings_server_base_path)) },
+        placeholder = { Text("/ma") },
+        supportingText = { Text(stringResource(Res.string.settings_server_base_path_hint)) },
+        isError = !basePath.isValidBasePath(),
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -673,6 +720,16 @@ private fun DirectConnectionContent(
         )
         Text(stringResource(Res.string.settings_use_tls))
     }
+
+    // Live preview of the address the app will actually contact.
+    Text(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        text = ConnectionInfo.previewWsUrl(ipAddress, port, isTls, basePath),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
     // Connect button + history icon
     Row(
@@ -928,7 +985,9 @@ private fun ServerInfoSection(
         val connectionText = if (isWebRTC) {
             stringResource(Res.string.settings_connected_webrtc)
         } else {
-            connectionInfo?.let { stringResource(Res.string.settings_connected_to, it.host, it.port) }
+            connectionInfo?.let {
+                stringResource(Res.string.settings_connected_to, it.host, it.port, it.basePath)
+            }
         }
         connectionText?.let {
             Text(
@@ -1091,7 +1150,7 @@ private fun SendspinSection(
                 onValueChange = { viewModel.setSendspinBufferCapacityMb(it.roundToInt()) },
                 valueRange = SendspinConfig.BUFFER_MB_MIN.toFloat()..SendspinConfig.BUFFER_MB_MAX.toFloat(),
                 steps = (SendspinConfig.BUFFER_MB_MAX - SendspinConfig.BUFFER_MB_MIN) /
-                    SendspinConfig.BUFFER_MB_STEP - 1,
+                        SendspinConfig.BUFFER_MB_STEP - 1,
                 enabled = !sendspinEnabled,
             )
         }
@@ -1274,7 +1333,10 @@ private fun ConnectionHistoryDialog(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(stringResource(Res.string.settings_saved_connections), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(Res.string.settings_saved_connections),
+                style = MaterialTheme.typography.titleMedium,
+            )
             if (history.isEmpty()) {
                 Text(
                     stringResource(Res.string.settings_no_saved_connections),

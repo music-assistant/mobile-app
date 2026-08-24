@@ -6,7 +6,6 @@ import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
-import io.ktor.http.appendPathSegments
 import io.ktor.http.encodeURLPathPart
 import io.ktor.http.encodeURLQueryComponent
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
@@ -233,9 +232,11 @@ class KtorServiceClient(
             else -> buildWebRTCImageProxyUrl(path, provider)
         }
 
+    // `base` is a complete origin plus any reverse-proxy base path, with no trailing slash, so the
+    // endpoint path is appended as a string. Parsing a component-less base and calling
+    // appendPathSegments() would leave the leading slash up to Ktor's normalization.
     private fun buildHttpImageProxyUrl(base: String, path: String, provider: String): String =
-        URLBuilder(base).apply {
-            appendPathSegments("imageproxy")
+        URLBuilder("$base/imageproxy").apply {
             parameters.apply {
                 append("path", path.encodeURLQueryComponent())
                 append("provider", provider)
@@ -244,8 +245,7 @@ class KtorServiceClient(
         }.buildString()
 
     private fun buildHttpOpaqueProxyUrl(base: String, proxyId: String): String =
-        URLBuilder(base).apply {
-            appendPathSegments("imageproxy", proxyId)
+        URLBuilder("$base/imageproxy/${proxyId.encodeURLPathPart()}").apply {
             parameters.apply {
                 append("size", IMAGEPROXY_SIZE.toString())
                 append("checksum", "")
@@ -275,15 +275,22 @@ class KtorServiceClient(
         val path = parsed.encodedPath
         if (!path.contains("imageproxy", ignoreCase = true)) return rawUrl
         val tail = parsed.encodedQuery.let { if (it.isEmpty()) path else "$path?$it" }
-        val base = when (val state = _sessionState.value) {
-            is SessionState.Connected.Direct -> state.connectionInfo.webUrl
-            is SessionState.Reconnecting.Direct -> state.connectionInfo.webUrl
+        val (base, prefix) = when (val state = _sessionState.value) {
+            is SessionState.Connected.Direct -> state.connectionInfo.webUrl to state.connectionInfo.basePath
+            is SessionState.Reconnecting.Direct -> state.connectionInfo.webUrl to state.connectionInfo.basePath
             is SessionState.Connected.WebRTC,
             is SessionState.Reconnecting.WebRTC,
-                -> WEBRTC_PROXY_BASE
+                -> WEBRTC_PROXY_BASE to ""
             else -> return null
         }
-        return base.trimEnd('/') + tail
+        // The base already carries the reverse-proxy prefix. If the server was configured with its
+        // public URL it reports the prefix too, so strip it here instead of emitting "/ma/ma/...".
+        val relative = if (prefix.isNotEmpty() && tail.startsWith("$prefix/")) {
+            tail.removePrefix(prefix)
+        } else {
+            tail
+        }
+        return base.trimEnd('/') + relative
     }
 
     /**
@@ -660,6 +667,7 @@ class KtorServiceClient(
                         host = connection.host,
                         port = connection.port,
                         isTls = connection.isTls,
+                        basePath = connection.basePath,
                     ),
                 )
             },
@@ -1025,6 +1033,7 @@ class KtorServiceClient(
                 state.connectionInfo.host,
                 state.connectionInfo.port,
                 state.connectionInfo.isTls,
+                state.connectionInfo.basePath,
             )
             is SessionState.Connected.WebRTC -> settings.getWebRTCServerIdentifier(state.remoteId.rawId)
         }
