@@ -190,14 +190,14 @@ class AuthenticationManager(
 
         // Recover from an abandoned OAuth flow: if the user backs out of the
         // external browser, no callback arrives and authState is stuck on
-        // Loading.
+        // Loading. Only for handlers that cannot report the cancellation
+        // themselves — an in-app session does, and it never backgrounds the app,
+        // so for it this heuristic could only ever fire spuriously.
         scope.launch {
             serviceClient.foregroundEvents.collect {
-                if (awaitingOAuthCallback && _authState.value is AuthState.Loading) {
-                    awaitingOAuthCallback = false
-                    log.i { "OAuth flow abandoned (foregrounded without callback)" }
-                    _authState.value = AuthState.Idle
-                }
+                if (oauthHandler?.reportsCancellation == true) return@collect
+                if (awaitingOAuthCallback) log.i { "OAuth flow abandoned (foregrounded without callback)" }
+                cancelOAuthFlow(reason = null)
             }
         }
     }
@@ -284,10 +284,11 @@ class AuthenticationManager(
 
         return try {
             _authState.value = AuthState.Loading
-            // Launch OAuth URL in Chrome Custom Tab
-            // Token will be delivered via deep link callback to MainActivity
-            handler.openOAuthUrl(oauthUrl)
+            // Set BEFORE the call, not after: a handler that fails synchronously
+            // reports it through cancelOAuthFlow() from inside openOAuthUrl, and
+            // setting the flag afterwards would resurrect a flow that already ended.
             awaitingOAuthCallback = true
+            handler.openOAuthUrl(oauthUrl)
             Result.success(Unit)
         } catch (e: Exception) {
             awaitingOAuthCallback = false
@@ -296,6 +297,45 @@ class AuthenticationManager(
             Result.failure(e)
         }
     }
+
+    /**
+     * End a pending OAuth flow that produced no token: the user dismissed the auth
+     * session, or presenting it failed.
+     *
+     * Idempotent and a no-op when no flow is pending, so the handler may call it
+     * without tracking whether anything else already settled the flow. [reason] is
+     * shown to the user; a plain dismissal passes null and drops back to [AuthState.Idle]
+     * silently.
+     */
+    fun cancelOAuthFlow(reason: String?) {
+        if (!awaitingOAuthCallback || _authState.value !is AuthState.Loading) return
+        awaitingOAuthCallback = false
+        log.i { "OAuth flow cancelled${reason?.let { ": $it" } ?: ""}" }
+        _authState.value = reason?.let { AuthState.Error(it) } ?: AuthState.Idle
+    }
+
+    /**
+     * Route an incoming URL that may be an OAuth callback. The single entry point for
+     * all three delivery paths: the iOS in-app auth session, the iOS deep-link handler
+     * and Android's launch intent.
+     *
+     * @return true when the URL was an OAuth callback and has been dealt with, so a
+     *   deep-link dispatcher knows not to forward it anywhere else.
+     */
+    fun handleOAuthCallbackUrl(urlString: String): Boolean =
+        when (val result = OAuthCallback.parse(urlString)) {
+            is OAuthCallbackResult.Code -> {
+                handleOAuthCallback(result.token)
+                true
+            }
+
+            is OAuthCallbackResult.Failed -> {
+                cancelOAuthFlow(result.reason)
+                true
+            }
+
+            OAuthCallbackResult.NotOAuth -> false
+        }
 
     fun handleOAuthCallback(token: String) {
         log.d { "OAuth callback received" }

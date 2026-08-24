@@ -13,6 +13,7 @@ import androidx.lifecycle.asLiveData
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.auth.AuthenticationManager
+import io.music_assistant.client.auth.CustomTabsOAuthHandler
 import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.input.VolumeButtonService
@@ -26,7 +27,7 @@ class MainActivity : ComponentActivity() {
     private val deepLinkBus: DeepLinkBus by inject()
     private val volumeButtonService: VolumeButtonService by inject()
     private val oauthHandler: OAuthHandler by lazy {
-        OAuthHandler(this)
+        CustomTabsOAuthHandler(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,16 +98,7 @@ class MainActivity : ComponentActivity() {
         Logger.withTag("MainActivity").d("Deep link received: $data")
 
         // musicassistant://auth/callback?code=...
-        if (data.scheme == "musicassistant" && data.host == "auth" && data.path == "/callback") {
-            val token = data.getQueryParameter("code")
-            Logger.withTag("MainActivity").d("OAuth callback - token: ${token != null}")
-            if (token != null) {
-                authManager.handleOAuthCallback(token)
-            } else {
-                Logger.withTag("MainActivity").e("No token in OAuth callback")
-            }
-            return
-        }
+        if (authManager.handleOAuthCallbackUrl(data.toString())) return
         deepLinkBus.handle(data.toString())
     }
 

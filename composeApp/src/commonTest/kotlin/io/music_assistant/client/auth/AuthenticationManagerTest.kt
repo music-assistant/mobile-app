@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
@@ -247,6 +248,108 @@ class AuthenticationManagerTest {
         }
     }
 
+    // --- OAuth cancellation (issue #901, item 3) ---
+
+    @Test
+    fun `a handler that cannot report cancellation still has abandonment inferred`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.oauthHandler = FakeOAuthHandler(reportsCancellation = false)
+            manager.startOAuthFlow("https://example.test/authorize")
+            runCurrent()
+            assertEquals(AuthState.Loading, manager.authState.value, "Precondition: flow pending")
+
+            client.foregroundEventsFlow.emit(Unit)
+            runCurrent()
+
+            assertEquals(
+                AuthState.Idle,
+                manager.authState.value,
+                "Custom Tabs backgrounds the app and never reports a dismissal, so returning " +
+                    "to the foreground without a callback is the only cancellation signal there is",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a handler that reports cancellation suppresses the foreground heuristic`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.oauthHandler = FakeOAuthHandler(reportsCancellation = true)
+            manager.startOAuthFlow("https://example.test/authorize")
+            runCurrent()
+
+            client.foregroundEventsFlow.emit(Unit)
+            runCurrent()
+
+            assertEquals(
+                AuthState.Loading,
+                manager.authState.value,
+                "An in-app auth session reports its own dismissal, so a foreground event must " +
+                    "not tear down a flow that is still on screen",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `cancelOAuthFlow is a no-op unless a flow is pending`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.cancelOAuthFlow("dismissed")
+            assertEquals(
+                AuthState.Idle,
+                manager.authState.value,
+                "A late or duplicate cancel must not manufacture an error out of nothing",
+            )
+
+            manager.oauthHandler = FakeOAuthHandler(reportsCancellation = true)
+            manager.startOAuthFlow("https://example.test/authorize")
+            runCurrent()
+            manager.cancelOAuthFlow("dismissed")
+            val afterFirst = manager.authState.value
+            manager.cancelOAuthFlow("dismissed again")
+
+            assertTrue(afterFirst is AuthState.Error)
+            assertEquals("dismissed", afterFirst.message)
+            assertEquals(
+                afterFirst,
+                manager.authState.value,
+                "The handler may cancel without knowing whether something else already settled " +
+                    "the flow, so a second call must change nothing",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a dismissal with no reason drops back to the login screen without an error`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.oauthHandler = FakeOAuthHandler(reportsCancellation = true)
+            manager.startOAuthFlow("https://example.test/authorize")
+            runCurrent()
+
+            manager.cancelOAuthFlow(null)
+
+            assertEquals(
+                AuthState.Idle,
+                manager.authState.value,
+                "Backing out of the sheet is a choice, not a failure — no error banner",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
     private fun awaitingAuth(
         authProcessState: AuthProcessState = AuthProcessState.NotStarted,
     ) = SessionState.Connected.Direct(
@@ -276,7 +379,8 @@ private class StubServiceClient : ServiceClient {
     override val webRTCHttpProxy: WebRTCHttpProxy? = null
     override val events: Flow<Event<out Any>> = emptyFlow()
     override val webrtcSendspinChannel: DataChannelWrapper? = null
-    override val foregroundEvents: Flow<Unit> = emptyFlow()
+    val foregroundEventsFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val foregroundEvents: Flow<Unit> = foregroundEventsFlow
 
     override suspend fun sendRequest(request: Request): Result<Answer> = awaitCancellation()
     override suspend fun login(username: String, password: String): Unit = awaitCancellation()
@@ -305,4 +409,12 @@ private class StubServiceClient : ServiceClient {
     override fun onPlaybackInactive() = Unit
     override fun forceDisconnect(reason: Exception) = Unit
     override fun noServer() = Unit
+}
+
+/** Records presentation without doing any. */
+private class FakeOAuthHandler(override val reportsCancellation: Boolean) : OAuthHandler {
+    val openedUrls = mutableListOf<String>()
+    override fun openOAuthUrl(url: String) {
+        openedUrls += url
+    }
 }
