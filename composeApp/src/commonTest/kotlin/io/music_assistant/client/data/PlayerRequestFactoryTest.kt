@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.client.testTrack
 import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -172,6 +173,22 @@ class PlayerRequestFactoryTest {
         )
         assertEquals(PlayerAction.SeekTo(200L), resolveAt(150.0, unsorted, PlayerAction.Next))
         assertEquals(PlayerAction.SeekTo(100L), resolveAt(150.0, unsorted, PlayerAction.Previous))
+    }
+
+    @Test
+    fun crossfadeToggleSendsTheInverseOfTheCurrentState() {
+        // The server command is an absolute setter, so the factory must invert here.
+        // Echoing `current` back would make the badge look inert.
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val data = playerDataWith(testAudiobook())
+
+        val turningOn = factory.buildRequest(data, PlayerAction.ToggleCrossfade(current = false))
+        assertEquals("player_queues/crossfade", turningOn?.command)
+        assertEquals(JsonPrimitive(true), turningOn?.args?.get("crossfade_enabled"))
+        assertEquals(JsonPrimitive(queueId), turningOn?.args?.get("queue_id"))
+
+        val turningOff = factory.buildRequest(data, PlayerAction.ToggleCrossfade(current = true))
+        assertEquals(JsonPrimitive(false), turningOff?.args?.get("crossfade_enabled"))
     }
 
     private fun playerDataWith(item: PlayableItem): PlayerData = PlayerData(

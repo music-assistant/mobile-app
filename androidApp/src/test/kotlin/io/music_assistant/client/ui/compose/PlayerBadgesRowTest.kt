@@ -25,6 +25,8 @@ import io.music_assistant.client.ui.compose.home.players.PlayerBadgesRow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_off
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_on
+import musicassistantclient.composeapp.generated.resources.cd_crossfade_off
+import musicassistantclient.composeapp.generated.resources.cd_crossfade_on
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer_off
 import org.jetbrains.compose.resources.StringResource
@@ -45,17 +47,20 @@ class PlayerBadgesRowTest {
     val composeTestRule = createComposeRule()
 
     private val toggledWith = mutableListOf<Boolean>()
+    private val crossfadeToggledWith = mutableListOf<Boolean>()
 
     private fun playerWith(
         autoPlayEnabled: Boolean?,
         isDynamicPlaylist: Boolean = false,
         emptyQueue: Boolean = false,
         sleepTimer: Boolean = false,
+        crossfadeEnabled: Boolean? = null,
     ): PlayerData {
         val base = PlayerDataFixtures.playerData()
         val queue = (base.queue as DataState.Data<Queue>).data
         val info = queue.info.copy(
             autoPlayEnabled = autoPlayEnabled,
+            crossfadeEnabled = crossfadeEnabled,
             isDynamicPlaylist = isDynamicPlaylist,
             currentItem = if (emptyQueue) null else AppMediaItemFixtures.track().toQueueTrack(),
         )
@@ -78,6 +83,7 @@ class PlayerBadgesRowTest {
                 tint = Color.Red,
                 onSleepTimerClick = {}.takeIf { sleepTimerSupported },
                 onToggleAutoplay = { toggledWith += it },
+                onToggleCrossfade = { crossfadeToggledWith += it },
             )
         }
     }
@@ -124,6 +130,51 @@ class PlayerBadgesRowTest {
         assertEquals(emptyList(), toggledWith)
     }
 
+    // --- crossfade --------------------------------------------------------------
+
+    @Test
+    fun `crossfade badge is absent when the server has no crossfade support`() {
+        show(playerWith(autoPlayEnabled = true, crossfadeEnabled = null))
+        assertFailsWith<AssertionError> { node(Res.string.cd_crossfade_on).assertIsDisplayed() }
+        assertFailsWith<AssertionError> { node(Res.string.cd_crossfade_off).assertIsDisplayed() }
+    }
+
+    @Test
+    fun `crossfade off is shown and turns on when tapped`() {
+        show(playerWith(autoPlayEnabled = true, crossfadeEnabled = false))
+        node(Res.string.cd_crossfade_off).assertIsDisplayed().assertHasClickAction().performClick()
+        assertEquals(listOf(false), crossfadeToggledWith)
+    }
+
+    @Test
+    fun `crossfade on is shown and turns off when tapped`() {
+        show(playerWith(autoPlayEnabled = true, crossfadeEnabled = true))
+        node(Res.string.cd_crossfade_on).assertIsDisplayed().assertHasClickAction().performClick()
+        assertEquals(listOf(true), crossfadeToggledWith)
+    }
+
+    @Test
+    fun `crossfade stays tappable on a dynamic queue`() {
+        // Deliberately unlike autoplay: the server rejects shuffle and repeat on a dynamic
+        // queue but accepts crossfade, so dimming this would forbid a call it allows.
+        show(
+            playerWith(
+                autoPlayEnabled = true,
+                isDynamicPlaylist = true,
+                crossfadeEnabled = false,
+            ),
+        )
+        node(Res.string.cd_crossfade_off).assertIsDisplayed().assertHasClickAction().performClick()
+        assertEquals(listOf(false), crossfadeToggledWith)
+    }
+
+    @Test
+    fun `crossfade is disabled when there is nothing to play`() {
+        show(playerWith(autoPlayEnabled = true, emptyQueue = true, crossfadeEnabled = false))
+        node(Res.string.cd_crossfade_off).assertIsDisplayed().assertHasNoClickAction().performClick()
+        assertEquals(emptyList(), crossfadeToggledWith)
+    }
+
     // --- sleep timer ------------------------------------------------------------
 
     @Test
@@ -157,13 +208,19 @@ class PlayerBadgesRowTest {
                     tint = Color.Red,
                     onSleepTimerClick = null,
                     onToggleAutoplay = {},
+                    onToggleCrossfade = {},
                     modifier = Modifier.testTag("empty"),
                 )
                 PlayerBadgesRow(
-                    player = playerWith(autoPlayEnabled = true, sleepTimer = true),
+                    player = playerWith(
+                        autoPlayEnabled = true,
+                        sleepTimer = true,
+                        crossfadeEnabled = true,
+                    ),
                     tint = Color.Red,
                     onSleepTimerClick = {},
                     onToggleAutoplay = {},
+                    onToggleCrossfade = {},
                     modifier = Modifier.testTag("populated"),
                 )
             }

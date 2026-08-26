@@ -99,6 +99,7 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
 import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
+import io.music_assistant.client.ui.compose.common.icons.CrossfadeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
@@ -135,6 +136,8 @@ import musicassistantclient.composeapp.generated.resources.players_none_availabl
 import musicassistantclient.composeapp.generated.resources.queue_autoplay_disable
 import musicassistantclient.composeapp.generated.resources.queue_autoplay_enable
 import musicassistantclient.composeapp.generated.resources.queue_clear
+import musicassistantclient.composeapp.generated.resources.queue_crossfade_disable
+import musicassistantclient.composeapp.generated.resources.queue_crossfade_enable
 import musicassistantclient.composeapp.generated.resources.queue_no_other_players
 import musicassistantclient.composeapp.generated.resources.queue_transfer
 import org.jetbrains.compose.resources.stringResource
@@ -527,6 +530,9 @@ private fun ExpandedPlayerPage(
             onToggleAutoplay = { current ->
                 playerAction(player, PlayerAction.ToggleDontStopTheMusic(current = current))
             },
+            onToggleCrossfade = { current ->
+                playerAction(player, PlayerAction.ToggleCrossfade(current = current))
+            },
         )
 
         AnimatedVisibility(
@@ -857,6 +863,24 @@ private fun PlayerOverflowMenu(
                                     queueData.data.info.autoPlayEnabled == true,
                                 ),
                             )
+                        },
+                    ),
+                )
+            }
+
+            queueData.data.info.crossfadeEnabled?.let { crossfadeEnabled ->
+                add(
+                    OverflowMenuOption(
+                        title = stringResource(
+                            if (crossfadeEnabled) {
+                                Res.string.queue_crossfade_disable
+                            } else {
+                                Res.string.queue_crossfade_enable
+                            },
+                        ),
+                        icon = CrossfadeIcon,
+                        onClick = {
+                            playerAction(PlayerAction.ToggleCrossfade(crossfadeEnabled))
                         },
                     ),
                 )

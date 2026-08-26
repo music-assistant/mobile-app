@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AllInclusive
@@ -29,10 +30,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.ui.alphaOn
+import io.music_assistant.client.ui.compose.common.icons.CrossfadeIcon
 import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_off
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_on
+import musicassistantclient.composeapp.generated.resources.cd_crossfade_off
+import musicassistantclient.composeapp.generated.resources.cd_crossfade_on
 import org.jetbrains.compose.resources.stringResource
 
 /** Fixed so badges appearing and disappearing never reflow the player below. */
@@ -52,7 +56,7 @@ private val BADGE_PILL_SHAPE = CircleShape
 private const val BADGE_PILL_ALPHA = 0.2f
 
 /**
- * Centered row of player status badges: sleep timer, then autoplay.
+ * Centered row of player status badges: sleep timer, autoplay, then crossfade.
  *
  * Always emitted, never conditionally skipped — the row holds [BADGE_ROW_HEIGHT] even
  * with nothing to show, so a badge switching on does not shift the artwork below it.
@@ -63,6 +67,7 @@ fun PlayerBadgesRow(
     tint: Color,
     onSleepTimerClick: (() -> Unit)?,
     onToggleAutoplay: (current: Boolean) -> Unit,
+    onToggleCrossfade: (current: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -102,12 +107,47 @@ fun PlayerBadgesRow(
                 onClick = { onToggleAutoplay(on) }.takeIf { !isDynamic && hasSomethingToPlay },
             )
         }
+
+        // Null means the server predates the feature. Note there is deliberately no
+        // `isDynamic` gate here: the server rejects shuffle and repeat on a dynamic queue
+        // but accepts crossfade, so dimming it would forbid a call the server allows.
+        val crossfadeEnabled = queueInfo?.crossfadeEnabled
+        if (crossfadeEnabled != null) {
+            CrossfadeBadge(
+                tint = tint,
+                on = crossfadeEnabled,
+                onClick = {
+                    onToggleCrossfade(crossfadeEnabled)
+                }.takeIf { queueInfo.currentItem != null },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CrossfadeBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
+    BadgePill(
+        modifier = Modifier.width(36.dp),
+        contentDescription = stringResource(
+            if (on) Res.string.cd_crossfade_on else Res.string.cd_crossfade_off,
+        ),
+        tint = tint,
+        on = on,
+        onClick = onClick,
+    ) {
+        // Colors come from the pill via LocalContentColor.
+        Icon(
+            imageVector = CrossfadeIcon,
+            contentDescription = null,
+            modifier = Modifier.size(BADGE_ICON_SIZE),
+        )
     }
 }
 
 @Composable
 private fun AutoplayBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
     BadgePill(
+        modifier = Modifier.width(36.dp),
         contentDescription = stringResource(
             if (on) Res.string.cd_autoplay_on else Res.string.cd_autoplay_off,
         ),
@@ -169,7 +209,7 @@ internal fun BadgePill(
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             content()
