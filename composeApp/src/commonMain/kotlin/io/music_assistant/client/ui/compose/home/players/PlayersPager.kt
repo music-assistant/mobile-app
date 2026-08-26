@@ -176,6 +176,10 @@ fun PlayersPager(
         // menu entry and the badge stay hidden entirely.
         val sleepTimerSupported by homeScreenViewModel.sleepTimerSupported
             .collectAsStateWithLifecycle()
+        // Older servers dissolve the group and stop playback when the leader leaves,
+        // so the leave gesture stays hidden below the handoff floor.
+        val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
+            .collectAsStateWithLifecycle()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -254,6 +258,7 @@ fun PlayersPager(
                         onAdjustPlaybackDelay = {
                             homeScreenViewModel.adjustSendspinStaticDelayMs(it)
                         },
+                        canLeaveGroup = leaderLeaveSupported,
                     )
                 }
                 if (showDspDialog) {

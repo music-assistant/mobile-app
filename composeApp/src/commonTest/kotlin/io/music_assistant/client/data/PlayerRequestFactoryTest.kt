@@ -191,6 +191,21 @@ class PlayerRequestFactoryTest {
         assertEquals(JsonPrimitive(false), turningOff?.args?.get("crossfade_enabled"))
     }
 
+    @Test
+    fun leaveGroupSendsUngroupKeyedOnThePlayerNotTheQueue() {
+        // `players/cmd/ungroup` is player-scoped. Sending the queue id would target the
+        // wrong entity, and the server — not the client — picks the successor, so no
+        // member list and no `player_queues/transfer` may appear here.
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val data = playerDataWith(testAudiobook())
+
+        val request = factory.buildRequest(data, PlayerAction.LeaveGroup)
+
+        assertEquals("players/cmd/ungroup", request?.command)
+        assertEquals(JsonPrimitive("player-1"), request?.args?.get("player_id"))
+        assertEquals(1, request?.args?.size)
+    }
+
     private fun playerDataWith(item: PlayableItem): PlayerData = PlayerData(
         player = Player(
             id = "player-1",

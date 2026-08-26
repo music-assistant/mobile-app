@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
+import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
@@ -97,6 +98,15 @@ class HomeScreenViewModel(
     val sleepTimerSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsSleepTimer((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /**
+     * Older servers dissolve the group and stop playback when the leader leaves, so the
+     * leave gesture is hidden below the handoff floor.
+     */
+    val leaderLeaveSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsLeaderLeave((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)

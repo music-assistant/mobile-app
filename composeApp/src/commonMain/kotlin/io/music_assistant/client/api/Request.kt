@@ -161,6 +161,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 }
             },
         )
+
+        /**
+         * Removes [playerId] from whatever group it is in. For an ad-hoc sync leader
+         * the server transfers the queue to a surviving member and resumes there; the
+         * client must not pick the new leader or call `player_queues/transfer` itself.
+         */
+        fun ungroup(playerId: String) = Request(
+            command = APICommands.PLAYERS_CMD_UNGROUP,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+            },
+        )
     }
 
     data object Queue {

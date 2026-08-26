@@ -1090,6 +1090,10 @@ class MainDataSource(
                     ),
                 )
 
+                PlayerAction.LeaveGroup -> apiClient.sendRequest(
+                    Request.Player.ungroup(playerId = playerId),
+                )
+
                 else -> Unit
             }
         }

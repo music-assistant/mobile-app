@@ -122,6 +122,9 @@ class PlayerRequestFactory(
                     playersToAdd = action.toAdd,
                     playersToRemove = action.toRemove,
                 )
+
+            PlayerAction.LeaveGroup ->
+                Request.Player.ungroup(playerId = data.playerId)
         }
     }
 

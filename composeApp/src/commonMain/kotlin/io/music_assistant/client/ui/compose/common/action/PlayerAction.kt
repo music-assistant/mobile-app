@@ -21,6 +21,12 @@ sealed interface PlayerAction {
 
     data class GroupManage(val toAdd: List<String>? = null, val toRemove: List<String>? = null) :
         PlayerAction
+
+    /**
+     * The player leaves its own group. On an ad-hoc sync leader the server hands the
+     * session to a surviving member; the client never picks the successor.
+     */
+    data object LeaveGroup : PlayerAction
     data class ToggleShuffle(val current: Boolean) : PlayerAction
     data class ToggleRepeatMode(val current: RepeatMode) : PlayerAction
 
