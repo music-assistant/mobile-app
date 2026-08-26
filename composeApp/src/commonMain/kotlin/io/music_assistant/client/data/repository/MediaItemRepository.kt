@@ -6,6 +6,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.mediaUri
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
@@ -193,7 +194,7 @@ class MediaItemRepository(
             itemId = fallback.itemId,
             provider = fallback.providerInstance,
             favorite = null,
-            uri = "${fallback.providerInstance}://$mediaType/${fallback.itemId}",
+            uri = fallback.mediaUri(mediaType),
         )
     }
 }

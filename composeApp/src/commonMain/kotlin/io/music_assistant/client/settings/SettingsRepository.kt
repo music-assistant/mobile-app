@@ -259,7 +259,11 @@ class SettingsRepository(
         val provider: String,
         val name: String,
         val uri: String? = null,
-    )
+    ) {
+        fun isLocalFilesystemFolder(): Boolean =
+            !path.endsWith("://") &&
+                (provider.startsWith("filesystem_local") || path.startsWith("filesystem_local"))
+    }
 
     private val _cachedBrowseFolders =
         MutableStateFlow(loadCachedBrowseFolders())
@@ -274,17 +278,19 @@ class SettingsRepository(
         return runCatching {
             myJson.decodeFromString<List<CachedBrowseFolder>>(raw)
         }.getOrDefault(emptyList())
+            .filter(CachedBrowseFolder::isLocalFilesystemFolder)
     }
 
     fun setCachedBrowseFolders(
         folders: List<CachedBrowseFolder>,
     ) {
+        val filesystemFolders = folders.filter(CachedBrowseFolder::isLocalFilesystemFolder)
         settings.putString(
             "cached_browse_folders",
-            myJson.encodeToString(folders),
+            myJson.encodeToString(filesystemFolders),
         )
 
-        _cachedBrowseFolders.update { folders }
+        _cachedBrowseFolders.update { filesystemFolders }
     }
 
     // Home-screen rows: visibility + user-defined order in a single ordered list.

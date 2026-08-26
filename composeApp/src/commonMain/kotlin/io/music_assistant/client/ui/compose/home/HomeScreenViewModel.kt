@@ -358,9 +358,22 @@ class HomeScreenViewModel(
                         it.displayName.trim().equals("(Empty)", true) ||
                             it.displayName.trim().equals("Empty", true)
                     }
-                    if (current != null && tracks.isNotEmpty()) discovered += current
+                    if (
+                        current != null &&
+                        tracks.isNotEmpty() &&
+                        !current.path.orEmpty().endsWith("://")
+                    ) {
+                        discovered += current
+                    }
                     items.filterIsInstance<RecommendationFolder>()
-                        .filter { !it.isParentLink && it.path != null }
+                        .filter {
+                            !it.isParentLink &&
+                                it.path != null &&
+                                (
+                                    it.provider.startsWith("filesystem_local") ||
+                                        it.path.startsWith("filesystem_local")
+                                )
+                        }
                         .forEach { discover(it.path, it, depth + 1) }
                 }
 

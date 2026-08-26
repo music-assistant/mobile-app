@@ -130,13 +130,17 @@ sealed class AppMediaItem {
 /** A quick favorite toggle is possible only when the add path has a [uri] to send. */
 val AppMediaItem.canBeFavorited: Boolean get() = uri != null
 
+/** Builds the normalized URI for an item represented only by its provider mapping. */
+fun ProviderMapping.mediaUri(mediaType: String): String =
+    "$providerInstance://$mediaType/$itemId"
+
 /**
  * Browse responses from filesystem providers can omit the normalized library URI.
  * Reconstruct the provider URI from its mapping so those tracks remain playable.
  */
 val Track.browsePlaybackUri: String?
     get() = mediaUri ?: providerMappings?.firstOrNull()?.let { mapping ->
-        "${mapping.providerInstance}://track/${mapping.itemId}"
+        mapping.mediaUri(MediaType.TRACK.serverValue)
     }
 
 fun PlayableItem.image(type: ImageType): ImageInfo? =

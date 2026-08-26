@@ -53,9 +53,8 @@ class BrowseViewModel(
         radio: Boolean,
     ) {
         viewModelScope.launch {
-            val queueId =
-                mainDataSource.selectedPlayer?.queueOrPlayerId
-                    ?: return@launch
+            val selectedPlayer = mainDataSource.selectedPlayer ?: return@launch
+            val queueOrPlayerId = selectedPlayer.queueOrPlayerId
 
             val mediaUri = item.mediaUri ?: return@launch
 
@@ -97,15 +96,16 @@ class BrowseViewModel(
             if (playbackUris.isEmpty()) return@launch
 
             Logger.withTag("PlayDispatch").i {
-                "BrowseViewModel: start=$mediaUri " +
+                    "BrowseViewModel: start=$mediaUri " +
                     "tracks=${playbackUris.size} " +
-                    "option=$option queue=$queueId"
+                    "option=$option queue=$queueOrPlayerId"
             }
 
             playbackCoordinator.play(
                 currentPath = path,
                 initialUris = playbackUris,
-                queueOrPlayerId = queueId,
+                queueOrPlayerId = queueOrPlayerId,
+                queueId = selectedPlayer.queueInfo?.id,
                 option = option,
                 radioMode = radio && item !is Genre,
                 continueIntoFollowingFolders = item is Track && !radio,

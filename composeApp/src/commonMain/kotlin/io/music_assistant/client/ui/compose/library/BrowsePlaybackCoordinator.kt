@@ -4,7 +4,9 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.browsePlaybackUri
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
@@ -34,12 +36,25 @@ class BrowsePlaybackCoordinator(
         currentPath: String?,
         initialUris: List<String>,
         queueOrPlayerId: String,
+        queueId: String?,
         option: QueueOption,
         radioMode: Boolean,
         continueIntoFollowingFolders: Boolean,
     ) {
         appendJob?.cancelAndJoin()
         appendJob = null
+
+        queueId?.let { id ->
+            apiClient.sendRequest(
+                Request.Queue.setRepeatMode(id, RepeatMode.OFF),
+            )
+            apiClient.sendRequest(
+                Request.Queue.setShuffle(id, enabled = false),
+            )
+            apiClient.sendRequest(
+                Request.Queue.setDontStopTheMusic(id, enabled = false),
+            )
+        }
 
         apiClient.sendRequest(
             Request.Library.play(
@@ -61,42 +76,67 @@ class BrowsePlaybackCoordinator(
         if (followingFolders.isEmpty()) return
 
         appendJob = scope.launch {
-            followingFolders.forEach { folder ->
-                val tracks =
-                    mediaItemRepository
-                        .fetchMediaItems(Request.Browse.atPath(folder.path))
-                        .getOrNull()
-                        .orEmpty()
-                        .filterIsInstance<Track>()
-                        .filterNot { track ->
-                            val name = track.displayName.trim()
-                            name.equals("(Empty)", ignoreCase = true) ||
-                                name.equals("Empty", ignoreCase = true)
-                        }
-                        .sortedBy { it.displayName.lowercase() }
-                        .mapNotNull { it.browsePlaybackUri }
-                        .distinct()
-
-                if (tracks.isEmpty()) return@forEach
-
-                apiClient.sendRequest(
-                    Request.Library.play(
-                        media = tracks,
-                        queueOrPlayerId = queueOrPlayerId,
-                        option = QueueOption.ADD,
-                        radioMode = false,
-                    ),
-                ).onFailure { error ->
-                    Logger.withTag("BrowsePlayback").e(error) {
-                        "Failed to append folder=${folder.name} path=${folder.path}"
-                    }
-                }
+            val continuationUris =
+                followingFolders.flatMap { folder ->
+                    val tracks = collectFolderTrackUris(folder.path)
 
                 Logger.withTag("BrowsePlayback").i {
-                    "APPEND folder=${folder.name} tracks=${tracks.size}"
+                    "COLLECT folder=${folder.name} tracks=${tracks.size}"
+                }
+
+                    tracks
+                }
+
+            if (continuationUris.isEmpty()) return@launch
+
+            apiClient.sendRequest(
+                Request.Library.play(
+                    media = continuationUris,
+                    queueOrPlayerId = queueOrPlayerId,
+                    option = QueueOption.ADD,
+                    radioMode = false,
+                ),
+            ).onFailure { error ->
+                Logger.withTag("BrowsePlayback").e(error) {
+                    "Failed to append Browse continuation"
                 }
             }
+
+            Logger.withTag("BrowsePlayback").i {
+                "APPEND continuation tracks=${continuationUris.size}"
+            }
         }
+    }
+
+    private suspend fun collectFolderTrackUris(path: String, depth: Int = 0): List<String> {
+        if (depth > 12) return emptyList()
+        val items =
+            mediaItemRepository
+                .fetchMediaItems(Request.Browse.atPath(path))
+                .getOrNull()
+                .orEmpty()
+
+        val directTracks =
+            items
+                .filterIsInstance<Track>()
+                .filterNot { track ->
+                    val name = track.displayName.trim()
+                    name.equals("(Empty)", ignoreCase = true) ||
+                        name.equals("Empty", ignoreCase = true)
+                }
+                .sortedBy { it.displayName.lowercase() }
+                .mapNotNull { it.browsePlaybackUri }
+
+        val nestedTracks =
+            items
+                .filterIsInstance<RecommendationFolder>()
+                .filterNot { it.isParentLink }
+                .mapNotNull { it.path }
+                .distinct()
+                .sortedWith(String.CASE_INSENSITIVE_ORDER)
+                .flatMap { collectFolderTrackUris(it, depth + 1) }
+
+        return (directTracks + nestedTracks).distinct()
     }
 }
 
@@ -104,12 +144,55 @@ internal fun orderedBrowseContinuationFolders(
     currentPath: String,
     folders: List<SettingsRepository.CachedBrowseFolder>,
 ): List<SettingsRepository.CachedBrowseFolder> {
-    val ordered =
+    val currentRoot = currentPath.topLevelBrowsePath() ?: return emptyList()
+    val currentProvider = currentPath.browseProviderRoot()
+    val grouped =
         folders
+            .filter { it.path.browseProviderRoot() == currentProvider }
             .distinctBy { it.path }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-    val currentIndex = ordered.indexOfFirst { it.path == currentPath }
-    if (currentIndex < 0 || ordered.size < 2) return emptyList()
+            .mapNotNull { folder -> folder.path.topLevelBrowsePath()?.let { it to folder } }
+            .groupBy({ it.first }, { it.second })
+            .toSortedMap(String.CASE_INSENSITIVE_ORDER)
+    val orderedRoots = grouped.keys.toList()
+    val currentIndex = orderedRoots.indexOf(currentRoot)
+    if (currentIndex < 0 || orderedRoots.size < 2) return emptyList()
 
-    return ordered.drop(currentIndex + 1) + ordered.take(currentIndex)
+    val followingRoots = orderedRoots.drop(currentIndex + 1) + orderedRoots.take(currentIndex)
+    return followingRoots.flatMap { root ->
+        grouped.getValue(root).sortedWith(
+            compareBy(String.CASE_INSENSITIVE_ORDER) { it.path },
+        )
+    }
+}
+
+private fun String.browseProviderRoot(): String? {
+    val schemeIndex = indexOf("://")
+    return if (schemeIndex < 0) null else take(schemeIndex + 3)
+}
+
+private fun String.topLevelBrowsePath(): String? {
+    val normalized = trimEnd('/')
+    val schemeIndex = normalized.indexOf("://")
+    if (schemeIndex < 0) return normalized.substringBefore('/').takeIf { it.isNotEmpty() }
+    val providerRoot = normalized.take(schemeIndex + 3)
+    val firstSegment = normalized.drop(schemeIndex + 3).substringBefore('/')
+    return firstSegment.takeIf { it.isNotEmpty() }?.let { providerRoot + it }
+}
+
+private fun String.parentBrowsePath(): String? {
+    val normalized = trimEnd('/')
+    val schemeIndex = normalized.indexOf("://")
+    if (schemeIndex >= 0) {
+        val providerRoot = normalized.take(schemeIndex + 3)
+        val relativePath = normalized.drop(schemeIndex + 3)
+        val lastSeparator = relativePath.lastIndexOf('/')
+        return if (lastSeparator < 0) {
+            providerRoot
+        } else {
+            providerRoot + relativePath.take(lastSeparator)
+        }
+    }
+
+    val lastSeparator = normalized.lastIndexOf('/')
+    return if (lastSeparator < 0) null else normalized.take(lastSeparator)
 }
