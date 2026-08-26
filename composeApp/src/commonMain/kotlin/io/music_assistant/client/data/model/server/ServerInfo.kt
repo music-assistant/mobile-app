@@ -12,7 +12,12 @@ data class ServerInfo(
     @SerialName("server_version") var serverVersion: String? = null,
     @SerialName("schema_version") var schemaVersion: Int? = null,
     @SerialName("min_supported_schema_version") var minSupportedSchemaVersion: Int? = null,
+    /** Deprecated in favour of [internalUrl]. Old servers send only this field. */
     @SerialName("base_url") var baseUrl: String? = null,
+    @SerialName("name") var name: String? = null,
+    @SerialName("internal_url") var internalUrl: String? = null,
+    @SerialName("external_url") var externalUrl: String? = null,
+    @SerialName("has_remote_access") var hasRemoteAccess: Boolean = false,
     // @SerialName("homeassistant_addon") var homeassistantAddon: Boolean? = null,
     // @SerialName("onboard_done") var onboardDone: Boolean? = null
 )
