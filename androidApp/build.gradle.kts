@@ -16,6 +16,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 13
         versionName = "0.12.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     packaging {
         resources {
@@ -125,4 +126,15 @@ dependencies {
     testImplementation(libs.ktor.client.json)
     testImplementation(libs.koin.test)
     testImplementation(libs.compose.components.resources)
+
+    // Instrumented tests: real device/emulator only, for the class of Window/focus behavior
+    // Robolectric doesn't simulate (see SelectPlayerDialogDpadLeakTest in androidTest).
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.kotlin.test)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.compose.components.resources)
+    androidTestImplementation(libs.material)
 }

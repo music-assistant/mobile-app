@@ -130,6 +130,12 @@
   <string name="common_delete">Delete</string>
   <string name="common_done">Done</string>
   <string name="connection_lost">Disconnected — reconnecting…</string>
+  <string name="connection_error_generic">Connection failed. Check your server settings and try again.</string>
+  <string name="connection_error_lost">The connection to the server was lost and couldn\'t be restored.</string>
+  <string name="connection_error_timeout">Connection timed out. Check that the server is reachable and try again.</string>
+  <string name="connection_error_tls">The secure connection failed. Check the server\'s certificate or the TLS setting.</string>
+  <string name="connection_error_unreachable">Couldn\'t reach the server. Check the address, port, and your connection.</string>
+  <string name="connection_error_webrtc">The WebRTC connection failed. Check the Remote ID and your network connection.</string>
   <string name="default_click_dialog_save">Save</string>
   <string name="default_click_dialog_title">Default click action</string>
   <string name="dialog_remove_from_library_message">Remove "%1$s" from your library?</string>

@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -71,10 +72,13 @@ import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.PlayerColors
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
+import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.theme.favoriteTint
@@ -108,6 +112,7 @@ fun CompactPlayerItem(
     onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
     sendSpinState: SendspinState?,
+    tvFocusFlow: TvFocusFlow? = null,
     // Server preference gate for chapter-based Next enablement.
     chapterProgressEnabled: Boolean = true,
 ) {
@@ -241,6 +246,8 @@ fun CompactPlayerItem(
                 showSkip = true,
                 showSkipBack = onSelectPlayer != null,
                 tint = colors.controlTint,
+                tvFocusFlow = tvFocusFlow,
+                playUpTarget = "playerSelect",
                 chapterProgressEnabled = chapterProgressEnabled,
             )
         }
@@ -286,12 +293,25 @@ fun FullPlayerItem(
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
+    tvFocusFlow: TvFocusFlow? = null,
     // Server preference gate for the chapter-relative timeline.
     chapterProgressEnabled: Boolean = true,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
+
+    // Android TV: explicit D-pad chain for the control cluster (seek slider, transport row,
+    // favorite/lyrics). The transport row declares its own left/right links inside PlayerControls
+    // against the same flow; the slider and side buttons link vertically to the main play/pause.
+    val playerTvFocusFlow = tvFocusFlow ?: rememberTvFocusFlow()
+    val playerFocusLinks = remember {
+        mapOf(
+            "slider" to TvFocusFlow.Links(up = "playerSelect", down = "play"),
+            "favorite" to TvFocusFlow.Links(right = "shuffle", down = "play"),
+            "lyrics" to TvFocusFlow.Links(left = "repeat", down = "play"),
+        )
+    }
 
     // Do not add padding here - title/subtitle should be full width.
     Column(
@@ -469,6 +489,10 @@ fun FullPlayerItem(
                 ?: timelinePosition
         }
 
+        // Android TV: enlarge the thumb while the slider holds D-pad focus so seeking is visibly
+        // armed (Material3 shows no focus change on a slider, so a focused slider reads as inert).
+        var sliderFocused by remember { mutableStateOf(false) }
+
         val progressSliderColors = SliderDefaults.colors().copy(
             thumbColor = controlTint,
             activeTrackColor = controlTint,
@@ -477,30 +501,46 @@ fun FullPlayerItem(
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING),
         ) {
-            Slider(
-                value = sliderPosition,
-                valueRange = timelineDuration?.let { 0f..it } ?: 0f..1f,
-                enabled = displayPosition.takeIf { timelineDuration != null } != null,
-                onValueChange = {
-                    if (userDragPosition == null) dragChapter = currentChapter
-                    userDragPosition = it  // Track drag position locally
+            Box(
+                modifier = Modifier.fillMaxWidth().onFocusChanged { state ->
+                    // The Slider applies its own focusable() outside the passed modifier chain, so a
+                    // focusRequest routed through tvFocus lands on the slider's internal focus node
+                    // rather than on our modifiers — onFocusChanged attached to the Slider never
+                    // fires. Observe the wrapping Box instead: hasFocus is true whenever the focused
+                    // slider is a descendant of this Box.
+                    sliderFocused = state.hasFocus
                 },
-                onValueChangeFinished = {
-                    userDragPosition?.let { seekPos ->
-                        // Convert the latched chapter-relative value to an absolute,
-                        // whole-second target to match server/tracker state.
-                        val seekSeconds = dragChapter.toAbsoluteSeekSeconds(seekPos.toDouble())
-                        releasedSeekPosition = seekSeconds.toFloat()
-                        playerAction(item, PlayerAction.SeekTo(seekSeconds))
-                        userDragPosition = null  // Clear drag state
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                thumb = {
-                    sliderPosition.takeIf { timelineDuration != null }?.let {
+            ) {
+                Slider(
+                    value = sliderPosition,
+                    valueRange = timelineDuration?.let { 0f..it } ?: 0f..1f,
+                    enabled = displayPosition.takeIf { timelineDuration != null } != null,
+                    onValueChange = {
+                        if (userDragPosition == null) dragChapter = currentChapter
+                        userDragPosition = it  // Track drag position locally
+                    },
+                    onValueChangeFinished = {
+                        userDragPosition?.let { seekPos ->
+                            // Convert the latched chapter-relative value to an absolute,
+                            // whole-second target to match server/tracker state.
+                            val seekSeconds = dragChapter.toAbsoluteSeekSeconds(seekPos.toDouble())
+                            releasedSeekPosition = seekSeconds.toFloat()
+                            playerAction(item, PlayerAction.SeekTo(seekSeconds))
+                            userDragPosition = null  // Clear drag state
+                        }
+                    },
+                modifier = Modifier.fillMaxWidth()
+                    .height(26.dp)
+                    .tvFocus(playerTvFocusFlow, playerFocusLinks, "slider"),
+                    thumb = {
+                        sliderPosition.takeIf { timelineDuration != null }?.let {
                         SliderDefaults.Thumb(
                             interactionSource = remember { MutableInteractionSource() },
-                            thumbSize = DpSize(16.dp, 16.dp),
+                            thumbSize = if (sliderFocused) {
+                                DpSize(26.dp, 26.dp)
+                            } else {
+                                DpSize(16.dp, 16.dp)
+                            },
                             colors = progressSliderColors,
                         )
                     }
@@ -568,6 +608,7 @@ fun FullPlayerItem(
                     }
                 },
             )
+            }
 
             // Duration labels
             val currentQueueItem = item.queueInfo?.currentItem
@@ -703,7 +744,9 @@ fun FullPlayerItem(
             if (currentTrack?.canBeFavorited == true) {
                 val isFavorite = currentTrack.favorite == true
                 IconButton(
-                    modifier = Modifier.size(favoriteSlot),
+                    modifier = Modifier
+                        .size(favoriteSlot)
+                        .tvFocus(playerTvFocusFlow, playerFocusLinks, "favorite"),
                     onClick = { onFavoriteClick(currentTrack) },
                 ) {
                     Icon(
@@ -720,13 +763,16 @@ fun FullPlayerItem(
                 playerAction = playerAction,
                 mainButtonSize = 60.dp,
                 tint = controlTint,
+                tvFocusFlow = playerTvFocusFlow,
                 chapterProgressEnabled = chapterProgressEnabled,
             )
             // Mirrors the heart slot: lyrics button when available, else a spacer
             // so the transport controls stay centered.
             if (lyricsAvailable) {
                 IconButton(
-                    modifier = Modifier.size(favoriteSlot),
+                    modifier = Modifier
+                        .size(favoriteSlot)
+                        .tvFocus(playerTvFocusFlow, playerFocusLinks, "lyrics"),
                     onClick = onLyricsClick,
                 ) {
                     Icon(

@@ -28,6 +28,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -87,6 +90,8 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.isTelevisionDevice
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -103,6 +108,18 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+
+// Android TV: a fresh Nav.Main root (cold start, or returning from Settings via the back arrow)
+// doesn't reliably get an initial focus grant once the window already holds focus, leaving the
+// remote dead until a D-pad press. On a cold start the app window can sit unfocused for several
+// seconds (auto-login splash / first-frame cold start), and every requestFocus in that window is
+// a no-op, so retry until the active nav item actually reports focus. While the view is in touch
+// mode (cold start, or after a mouse/touch click) requestFocus is also a no-op, so the loop asks
+// the input mode manager to leave touch mode first. The loop exits on the first success, so once
+// the user can actually interact the requests stop immediately (mirrors the SettingsScreen /
+// PlayersPager cold-start handling).
+private const val HOME_FOCUS_RETRIES = 40
+private const val HOME_FOCUS_RETRY_DELAY = 250L
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -161,6 +178,54 @@ fun MainNavigationRoot(
 
     val onExpandPlayer = remember { { expanded: Boolean -> playerExpanded = expanded } }
 
+    // Queue panel visibility inside the expanded player. Hoisted from PlayersPager so the
+    // "players" deep link (notification / TV now-playing card) can land directly on the
+    // queue with the transport controls visible instead of the collapsed-controls view.
+    var isQueueExpanded by remember { mutableStateOf(false) }
+
+    // TV: the collapsed FloatingBar Surface is the D-pad's entry point to the player.
+    // Expanding removes that focused Surface and the expanded layout grants no focus
+    // (remote goes dead), so restore focus on the bar when collapsing back.
+    val isTv = isTelevisionDevice()
+    val floatingBarFocusRequester = remember { FocusRequester() }
+    var wasPlayerExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(playerExpanded) {
+        if (isTv && !playerExpanded && wasPlayerExpanded) {
+            floatingBarFocusRequester.requestFocus()
+        }
+        wasPlayerExpanded = playerExpanded
+    }
+
+    // TV: land initial focus on the active nav item whenever this root becomes the visible
+    // destination. A fresh Nav.Main (cold start, or returning from Settings via the back arrow)
+    // doesn't reliably get a focus grant once the window already holds focus, leaving the remote
+    // dead until a D-pad press. The Nav.Main entry is torn down and recreated on return from
+    // Settings, so keying the landing on the entry lifecycle (RESUMED = Main is on top again)
+    // re-runs it on every return. The expanded player requests its own focus when shown
+    // (PlayersPager).
+    //
+    // Compose's FocusRequester.requestFocus() is a no-op while the Android view is in touch mode
+    // (a cold start or a mouse/touch click leaves it there): with nothing currently focused the
+    // focus transaction first asks the owner view for focus, and View.requestFocus() declines
+    // while in touch mode, so the request returns false every attempt. requestInputMode(Keyboard)
+    // exits touch mode (requestFocusFromTouch() on Android) so the follow-up request can land.
+    val navEntryLifecycleOwner = LocalLifecycleOwner.current
+    val inputModeManager = LocalInputModeManager.current
+    val selectedNavItemFocusRequester = remember { FocusRequester() }
+    val selectedNavItemFocused = remember { mutableStateOf(false) }
+    LaunchedEffect(navEntryLifecycleOwner) {
+        navEntryLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (!isTv) return@repeatOnLifecycle
+            selectedNavItemFocused.value = false
+            var attempts = 0
+            while (attempts++ < HOME_FOCUS_RETRIES && !playerExpanded && !selectedNavItemFocused.value) {
+                inputModeManager.requestInputMode(InputMode.Keyboard)
+                selectedNavItemFocusRequester.requestFocus()
+                delay(HOME_FOCUS_RETRY_DELAY)
+            }
+        }
+    }
+
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
         rememberMainNavBackStack(MainNav.Library),
@@ -202,8 +267,12 @@ fun MainNavigationRoot(
             DeepLinkDestination.Players -> {
                 // Expand the now-playing layout over the current tab (the
                 // FloatingBar is global, so no tab switch needed). The pager
-                // renders its own empty state if no player is present.
+                // renders its own empty state if no player is present. Open the
+                // queue too: this path is the "return to a playing app" entry
+                // (notification tap / TV now-playing card), where the queue
+                // alongside the transport is the useful landing.
                 playerExpanded = true
+                isQueueExpanded = true
             }
         }
         deepLinkBus.consume(dest)
@@ -264,6 +333,9 @@ fun MainNavigationRoot(
         AdaptiveNavigationBarLayout(
             showNavigation = !playerExpanded,
             navigationItems = navigationItems,
+            selectedItemFocusRequester = selectedNavItemFocusRequester,
+            selectedItemFocused = selectedNavItemFocused,
+            bottomFocusRequester = floatingBarFocusRequester,
         ) { scaffoldContentPadding ->
             FloatingBarLayout(
                 modifier = Modifier.padding(scaffoldContentPadding),
@@ -271,6 +343,8 @@ fun MainNavigationRoot(
                     FloatingBar(
                         expanded = playerExpanded,
                         onExpand = onExpandPlayer,
+                        focusRequester = floatingBarFocusRequester,
+                        upFocusRequester = selectedNavItemFocusRequester,
                         content = { expanded, contentPadding ->
                             PlayersPager(
                                 playerPagerState = playerPagerState,
@@ -281,15 +355,18 @@ fun MainNavigationRoot(
                                 expanded = expanded,
                                 onClose = { playerExpanded = false },
                                 contentPadding = contentPadding,
-                            ) { item ->
-                                multiBackStack.add(
-                                    MainNav.ItemDetails(
-                                        itemId = item.itemId,
-                                        mediaType = item.mediaType,
-                                        providerId = item.provider,
-                                    ),
-                                )
-                            }
+                                isQueueExpanded = isQueueExpanded,
+                                onExpandQueue = { isQueueExpanded = it },
+                                navigateToItem = { item ->
+                                    multiBackStack.add(
+                                        MainNav.ItemDetails(
+                                            itemId = item.itemId,
+                                            mediaType = item.mediaType,
+                                            providerId = item.provider,
+                                        ),
+                                    )
+                                },
+                            )
                         },
                     )
                 },
@@ -317,6 +394,7 @@ fun MainNavigationRoot(
                                 homeScreenState,
                                 libraryScreenState,
                                 searchScreenState,
+                                floatingBarFocusRequester,
                             ),
                         ),
                     ),
@@ -341,6 +419,7 @@ private fun mainNavEntryProvider(
     homeScreenState: MutableState<HomeScreenState?>,
     libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
+    floatingBarFocusRequester: FocusRequester? = null,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -380,6 +459,7 @@ private fun mainNavEntryProvider(
                 },
                 actionsViewModel = actionsViewModel,
                 state = screenState,
+                floatingBarFocusRequester = floatingBarFocusRequester,
             )
         }
 

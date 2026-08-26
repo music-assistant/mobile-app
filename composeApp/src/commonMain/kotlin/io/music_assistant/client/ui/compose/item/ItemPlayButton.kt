@@ -13,12 +13,16 @@ import androidx.compose.material3.SplitButtonDefaults.TrailingButton
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,6 +51,11 @@ fun ItemPlayButton(
     onPlayClick: (QueueOption, Boolean) -> Unit,
     tint: Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier,
+    // Android TV: the detail screen lands initial focus on this button when the page loads; the
+    // requester is attached to the leading "play" part of the split button only, and [focused]
+    // reports whether that part actually holds focus (so the landing can detect success).
+    focusRequester: FocusRequester? = null,
+    focused: MutableState<Boolean>? = null,
 ) {
     if (!item.isPlayable) return
 
@@ -79,7 +88,16 @@ fun ItemPlayButton(
         leadingButton = {
             val label = stringResource(effective.title())
             LeadingButton(
-                modifier = Modifier.semantics { contentDescription = label },
+                modifier = Modifier
+                    .then(
+                        if (focusRequester != null) {
+                            Modifier.focusRequester(focusRequester)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .onFocusChanged { state -> focused?.value = state.isFocused }
+                    .semantics { contentDescription = label },
                 onClick = { runPlayAction(effective) },
                 colors = buttonColors,
             ) {

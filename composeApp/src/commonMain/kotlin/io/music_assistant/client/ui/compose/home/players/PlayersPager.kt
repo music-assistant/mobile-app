@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -54,6 +55,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +64,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -95,6 +98,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuDivider
 import io.music_assistant.client.ui.compose.common.OverflowMenuEntry
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
@@ -108,6 +112,8 @@ import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
+import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
@@ -117,6 +123,7 @@ import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.LrcParser
 import io.music_assistant.client.utils.WindowClass
 import io.music_assistant.client.utils.conditional
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
@@ -159,6 +166,8 @@ fun PlayersPager(
     onClose: () -> Unit,
     contentPadding: PaddingValues,
     navigateToItem: (AppMediaItem) -> Unit,
+    isQueueExpanded: Boolean,
+    onExpandQueue: (Boolean) -> Unit,
 ) {
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         val moveToPlayer: (String) -> Unit = { id: String ->
@@ -188,7 +197,6 @@ fun PlayersPager(
                     action,
                 )
             }
-        var isQueueExpanded by remember { mutableStateOf(false) }
         // Extract playerData list to ensure proper recomposition
         val playerDataList = state.playerData
         // Select-player dialog is hoisted out of the pager so that reordering-induced
@@ -360,7 +368,7 @@ fun PlayersPager(
                                 isWideScreen = isWideScreen,
                                 sendspinState = state.sendspinState,
                                 isQueueExpanded = isQueueExpanded,
-                                onExpandQueue = { isQueueExpanded = it },
+                                onExpandQueue = onExpandQueue,
                                 contentPadding = contentPadding,
                                 isCurrentPage = isCurrentPage,
                                 navigateToItem = navigateToItem,
@@ -474,6 +482,68 @@ private fun ExpandedPlayerPage(
     val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
     // Minimum gesture speed (px/s) to count as a fling rather than a slow drag.
     val minFlingVelocityPx = with(LocalDensity.current) { 1000.dp.toPx() }
+    // TV: expanding the FloatingBar replaces the collapsed (focused) Surface with this layout,
+    // which grants no focus on its own — the remote would go dead. Land initial focus on the
+    // main play/pause control so transport is immediately reachable, re-requesting whenever this
+    // player becomes the current pager page.
+    val playerTvFocusFlow = rememberTvFocusFlow()
+    // With the queue open the full control cluster (FullPlayerItem) is hidden and replaced by
+    // CompactPlayerItem, whose transport row renders against its own flow so the "play" target
+    // always exists in the current layout. Without this the initial focus request no-ops and the
+    // remote goes dead.
+    val compactTvFocusFlow = rememberTvFocusFlow()
+    // The switcher header (collapse / player pill / group icon / overflow) sits above both the
+    // full control cluster (queue collapsed) and the compact row (queue expanded), so its D-pad
+    // chain must live in whichever flow owns the visible transport below it. DOWN lands on the
+    // seek slider in the full layout and on the play/pause button in the compact layout; UP from
+    // the transport (slider -> pill, or compact play -> pill) returns to the switcher.
+    val headerTvFocusFlow = if (isQueueExpanded) compactTvFocusFlow else playerTvFocusFlow
+    val hasGroupChildren = player.childrenBinds.isNotEmpty()
+    val headerFocusLinks = remember(isQueueExpanded, hasGroupChildren) {
+        val downTarget = if (isQueueExpanded) "play" else "slider"
+        val pillLinks = if (hasGroupChildren) {
+            mapOf(
+                "playerSelect" to TvFocusFlow.Links(
+                    left = "collapse",
+                    right = "groupButton",
+                    down = downTarget,
+                ),
+                "groupButton" to TvFocusFlow.Links(
+                    left = "playerSelect",
+                    right = "more",
+                    down = downTarget,
+                ),
+                "more" to TvFocusFlow.Links(left = "groupButton", down = downTarget),
+            )
+        } else {
+            mapOf(
+                "playerSelect" to TvFocusFlow.Links(
+                    left = "collapse",
+                    right = "more",
+                    down = downTarget,
+                ),
+                "more" to TvFocusFlow.Links(left = "playerSelect", down = downTarget),
+            )
+        }
+        mapOf(
+            "collapse" to TvFocusFlow.Links(right = "playerSelect", down = downTarget),
+        ) + pillLinks
+    }
+    LaunchedEffect(isCurrentPage, isQueueExpanded) {
+        if (isCurrentPage) {
+            val flow = if (isQueueExpanded) compactTvFocusFlow else playerTvFocusFlow
+            // The visible control cluster swaps with the queue toggle, so the previous layout's
+            // "play" node is gone. On a cold start the window may also not hold focus when this
+            // first runs, and a single requestFocus can no-op and leave the remote dead. Retry
+            // until focus actually lands on the play/pause control.
+            flow.focusedTarget = null
+            var attempts = 0
+            while (attempts++ < 30 && flow.focusedTarget == null) {
+                flow.requestFocus("play")
+                delay(100)
+            }
+        }
+    }
     val queueCollapseNestedScroll = remember(onExpandQueue, minFlingVelocityPx) {
         object : NestedScrollConnection {
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
@@ -491,7 +561,10 @@ private fun ExpandedPlayerPage(
         CenteredThreeSlotRow(
             modifier = Modifier.fillMaxWidth(),
             start = {
-                IconButton(onClick = onClose) {
+                IconButton(
+                    modifier = Modifier.tvFocus(headerTvFocusFlow, headerFocusLinks, "collapse"),
+                    onClick = onClose,
+                ) {
                     Icon(
                         Icons.Default.ExpandMore,
                         "Collapse",
@@ -506,23 +579,41 @@ private fun ExpandedPlayerPage(
                     sendSpinState = sendspinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroupButton = onGroupButton,
+                    tvFocusFlow = headerTvFocusFlow,
+                    tvFocusLinks = headerFocusLinks,
                 )
             },
             end = {
-                PlayerOverflowMenu(
-                    currentPlayer = player,
-                    allPlayers = allPlayers,
-                    playerAction = { playerAction(player, it) },
-                    queueAction = queueAction,
-                    navigateToItem = {
-                        navigateToItem(it)
-                        onClose()
-                    },
-                    onPlayerSelected = { moveToPlayer(it) },
-                    onOpenDsp = onDspButton,
-                    onOpenSleepTimer = onSleepTimerButton,
-                    playlistActions = playlistActions,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // isRadioOn (radioSource.isNotEmpty()) was removed upstream: radioSource is
+                    // always empty on servers from 2.10 on, since radio mode now expresses as
+                    // sources + isDynamicPlaylist instead (see QueueInfo.kt). isDynamicPlaylist is
+                    // the modern equivalent signal for this indicator.
+                    if (player.queueInfo?.isDynamicPlaylist == true) {
+                        Icon(
+                            imageVector = Icons.Default.CellTower,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = colors.controlTint,
+                        )
+                    }
+                    PlayerOverflowMenu(
+                        currentPlayer = player,
+                        allPlayers = allPlayers,
+                        playerAction = { playerAction(player, it) },
+                        queueAction = queueAction,
+                        navigateToItem = {
+                            navigateToItem(it)
+                            onClose()
+                        },
+                        onPlayerSelected = { moveToPlayer(it) },
+                        onOpenDsp = onDspButton,
+                        onOpenSleepTimer = onSleepTimerButton,
+                        playlistActions = playlistActions,
+                        tvFocusFlow = headerTvFocusFlow,
+                        tvFocusLinks = headerFocusLinks,
+                    )
+                }
             },
         )
 
@@ -562,6 +653,7 @@ private fun ExpandedPlayerPage(
                     onGroupButton = if (isWideScreen && !isQueueExpanded) onGroupButton else null,
                     showAdditionalControls = isWideScreen,
                     sendSpinState = sendspinState,
+                    tvFocusFlow = compactTvFocusFlow,
                     chapterProgressEnabled = chapterProgressEnabled,
                 )
             }
@@ -639,6 +731,7 @@ private fun ExpandedPlayerPage(
                             lyricsAvailable = lyricsAvailable,
                             onLyricsClick = onLyricsClick,
                             livePositionFlow = livePositionFlow,
+                            tvFocusFlow = playerTvFocusFlow,
                             bufferedAheadSecFlow = bufferedAheadSecFlow,
                             chapterProgressEnabled = chapterProgressEnabled,
                         )
@@ -652,6 +745,10 @@ private fun ExpandedPlayerPage(
                         var currentVolume by remember(player.player.currentVolume) {
                             mutableStateOf(player.player.currentVolume)
                         }
+                        // Android TV: enlarge the thumb while the slider holds D-pad focus so
+                        // adjusting volume is visibly armed (Material3 shows no focus change on a
+                        // slider, so a focused slider reads as inert).
+                        var volumeSliderFocused by remember { mutableStateOf(false) }
                         val controlTint = colors.controlTint
                         val volumeSliderColors = SliderDefaults.colors().copy(
                             thumbColor = controlTint,
@@ -718,7 +815,11 @@ private fun ExpandedPlayerPage(
                                 },
                             ) {
                                 Slider(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onFocusChanged { state ->
+                                            volumeSliderFocused = state.isFocused
+                                        },
                                     value = currentVolume,
                                     valueRange = 0f..100f,
                                     onValueChange = {
@@ -737,7 +838,11 @@ private fun ExpandedPlayerPage(
                                     thumb = {
                                         SliderDefaults.Thumb(
                                             interactionSource = remember { MutableInteractionSource() },
-                                            thumbSize = DpSize(16.dp, 16.dp),
+                                            thumbSize = if (volumeSliderFocused) {
+                                                DpSize(26.dp, 26.dp)
+                                            } else {
+                                                DpSize(16.dp, 16.dp)
+                                            },
                                             colors = volumeSliderColors,
                                         )
                                     },
@@ -827,6 +932,8 @@ private fun PlayerOverflowMenu(
     onOpenDsp: (() -> Unit)?,
     onOpenSleepTimer: (() -> Unit)?,
     playlistActions: PlaylistActions? = null,
+    tvFocusFlow: TvFocusFlow? = null,
+    tvFocusLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
     val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
@@ -1012,7 +1119,10 @@ private fun PlayerOverflowMenu(
             modifier = Modifier,
             options = menuOptions,
         ) { onClick ->
-            IconButton(onClick = onClick) {
+            IconButton(
+                modifier = Modifier.tvFocus(tvFocusFlow, tvFocusLinks, "more"),
+                onClick = onClick,
+            ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = stringResource(Res.string.cd_more),
