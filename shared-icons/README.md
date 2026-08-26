@@ -13,3 +13,4 @@ to Vector Assets for use with `SharedIcons`. To do the latter (as of Android Stu
 2. Choose "Local file" and then select the SVG file for the new/updated icon and create the XML
 3. Correct any problems with the generated XML so that the preview looks correct
    - Some Vector Assets end up referencing `currentColor` for the fill or stroke color. This should usually be changed to `#ffffffff`.
+   - `DrawableColorsTest` fails the build on any color value that is not a hex literal.
