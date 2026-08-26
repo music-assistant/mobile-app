@@ -13,9 +13,8 @@ import kotlin.test.assertTrue
  * failure. See the shared-icons README for the import procedure.
  */
 class DrawableColorsTest {
-
     @Test
-    fun `every drawable color is a hex literal`() {
+    fun everyDrawableColorIsHexLiteral() {
         val files = drawableDir().listFiles { file -> file.extension == "xml" }?.sorted().orEmpty()
         assertTrue(files.isNotEmpty(), "No drawables found in ${drawableDir().absolutePath}")
 
