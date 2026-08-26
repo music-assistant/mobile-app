@@ -24,6 +24,10 @@ data class SendspinConfig(
     // Auth settings (for proxy mode)
     val authToken: String? = null,
     val mainConnectionPort: Int? = null,
+
+    // Protocol selection; resolved by the factory from the authenticated MA
+    // session's schema version plus the require-encryption setting.
+    val encryptionMode: SendspinEncryptionMode = SendspinEncryptionMode.LEGACY,
 ) {
     fun buildServerUrl(): String {
         return if (serverHost.isNotEmpty()) {

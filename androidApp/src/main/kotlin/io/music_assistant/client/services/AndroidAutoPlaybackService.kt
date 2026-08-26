@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -55,18 +56,45 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         androidAutoLog.i { "onCreate — acquiring shared session" }
         sessionToken = sharedSession.acquire()
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
-        observeLibraryTabsConfig()
+        observeCarTabsConfig()
+        observeLocalPlayerEnabled()
         ensureNotificationService()
     }
 
     // Phone-side Customize Tabs changes must propagate to AA without requiring
     // a reconnect. Drop the initial value so we don't notify on cold start.
-    private fun observeLibraryTabsConfig() {
+    // This is carTabsConfig, the store rootChildren() actually reads — not the
+    // phone-side libraryCategoryConfig.
+    private fun observeCarTabsConfig() {
         scope.launch {
-            settingsRepository.libraryCategoryConfig
+            settingsRepository.carTabsConfig
                 .drop(1)
                 .collect { notifyChildrenChanged(MediaIds.ROOT) }
         }
+    }
+
+    // The browse tree is either the library or a single "local player is not enabled" row.
+    // Toggling the setting must swap the two live, without reconnecting the car.
+    private fun observeLocalPlayerEnabled() {
+        scope.launch {
+            settingsRepository.sendspinEnabled
+                .drop(1)
+                .distinctUntilChanged()
+                .collect {
+                    library.invalidateCache()
+                    notifyBrowseTreeChanged()
+                }
+        }
+    }
+
+    private fun notifyBrowseTreeChanged() {
+        notifyChildrenChanged(MediaIds.ROOT)
+        notifyChildrenChanged(MediaIds.TAB_ARTISTS)
+        notifyChildrenChanged(MediaIds.TAB_ALBUMS)
+        notifyChildrenChanged(MediaIds.TAB_PLAYLISTS)
+        notifyChildrenChanged(MediaIds.TAB_PODCASTS)
+        notifyChildrenChanged(MediaIds.TAB_RADIO)
+        notifyChildrenChanged(MediaIds.TAB_AUDIOBOOKS)
     }
 
     /**
@@ -100,6 +128,10 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                 androidAutoLog.w { "Blank query AND null extras — nothing to act on, no-op." }
                 return
             }
+            if (!settingsRepository.sendspinEnabled.value) {
+                androidAutoLog.w { "Local player disabled — dropping voice play." }
+                return
+            }
             // Cold-start case (phone-side voice dispatch via MediaBrowser bind):
             // the service was just created, so the local player may still be null
             // while auth + local-player initialization complete. Wait up to 10s.
@@ -121,16 +153,12 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
-    override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot? {
+    // Always grant a root. Denying it does not hide the app — it is declared as a media app,
+    // so the host keeps it listed and shows a loading screen forever. When the local player
+    // is off, AutoLibrary serves a single explanatory row instead of the library, and
+    // SharedMediaSessionManager deactivates the session so no card is offered to the car.
+    override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
         androidAutoLog.i { "onGetRoot from package=$packageName uid=$uID" }
-        // Local player off → MA must be invisible to real AA/media hosts (they discover
-        // media apps via this browser service). Deny before promoting so no host binds and
-        // no session is offered to the car. SystemUI still gets a valid root, so the phone
-        // notification for remote players is untouched (the session stays active).
-        if (!settingsRepository.sendspinEnabled.value && packageName != SYSTEMUI_PACKAGE) {
-            androidAutoLog.i { "Local player disabled — denying AA host '$packageName'" }
-            return null
-        }
         promoteIfRealHost(packageName)
         val extras = Bundle().apply {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
@@ -175,13 +203,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
                                 // Drop stale cached lists from a prior server session before
                                 // AA re-pulls. One-shot, not cyclic.
                                 library.invalidateCache()
-                                notifyChildrenChanged(MediaIds.ROOT)
-                                notifyChildrenChanged(MediaIds.TAB_ARTISTS)
-                                notifyChildrenChanged(MediaIds.TAB_ALBUMS)
-                                notifyChildrenChanged(MediaIds.TAB_PLAYLISTS)
-                                notifyChildrenChanged(MediaIds.TAB_PODCASTS)
-                                notifyChildrenChanged(MediaIds.TAB_RADIO)
-                                notifyChildrenChanged(MediaIds.TAB_AUDIOBOOKS)
+                                notifyBrowseTreeChanged()
                             }
                         }
                     }

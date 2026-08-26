@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added - 2026-08-18
+
+#### Encrypted Sendspin connections
+
+The built-in local player now uses the Sendspin protocol's end-to-end
+encryption (Noise `KKpsk2`, `25519_ChaChaPoly_SHA256`) when the connected
+Music Assistant server supports it (schema ≥ 45). Older servers keep the
+legacy cleartext protocol, byte-identical to previous releases.
+
+- Pairing is silent: on first encrypted connection the app pairs itself
+  through the authenticated MA API — no PIN, no user interaction.
+- New "Require encrypted connection" setting in Local Player settings: when
+  enabled and the server is too old, the local player stays unavailable with
+  an explanation instead of falling back to cleartext.
+- **One-time player identity change**: on encrypted connections the player's
+  identity is a device keypair (persisted in the app's settings storage,
+  alongside the rest of the app state), so the server sees the local player
+  as a new device the first time it connects encrypted. Queue
+  assignments/settings bound to the old player id need to be redone once.
+  Clearing the app's data resets this identity.
+
 ### Changed - 2026-01-08
 
 #### Settings Screen Refactoring

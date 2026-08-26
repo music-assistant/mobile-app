@@ -1,6 +1,7 @@
 package io.music_assistant.client.data
 
 import io.music_assistant.client.data.model.client.Chapter
+import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerType
@@ -10,9 +11,12 @@ import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.testAudiobook
+import io.music_assistant.client.data.model.client.testPodcastEpisode
 import io.music_assistant.client.data.model.client.testTrack
+import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -37,11 +41,19 @@ class PlayerRequestFactoryTest {
     )
 
     /** Resolve [action] with the shared tracker parked (paused) at [positionSec]. */
-    private fun resolveAt(positionSec: Double, item: PlayableItem, action: PlayerAction): PlayerAction {
+    private fun resolveAt(
+        positionSec: Double,
+        item: PlayableItem,
+        action: PlayerAction,
+        chapterProgressEnabled: Boolean = true,
+    ): PlayerAction {
         val tracker = PlayerPositionTracker()
         // Paused anchor → effectiveSec returns exactly positionSec (no wall-clock drift).
         tracker.setAnchor(queueId = queueId, elapsedSec = positionSec, isPlaying = false)
-        return PlayerRequestFactory(tracker).resolve(playerDataWith(item), action)
+        val preferences = UserPreferences().apply {
+            update(ServerUserPreferences(audiobookChapterProgress = chapterProgressEnabled))
+        }
+        return PlayerRequestFactory(tracker, preferences).resolve(playerDataWith(item), action)
     }
 
     @Test
@@ -77,6 +89,121 @@ class PlayerRequestFactoryTest {
     @Test
     fun previousOnNonAudiobookFallsThroughToPreviousCommand() {
         assertEquals(PlayerAction.Previous, resolveAt(150.0, testTrack(), PlayerAction.Previous))
+    }
+
+    @Test
+    fun previousInFirstChapterSeeksToMediaStartNeverPlainPrevious() {
+        // Deep into chapter 1 → restart it (0); within the 5 s grace there is no
+        // prior chapter, so clamp to media start. Neither falls through to a plain
+        // `previous`, which would jump to the prior queue item.
+        assertEquals(PlayerAction.SeekTo(0L), resolveAt(50.0, audiobookWithChapters(), PlayerAction.Previous))
+        assertEquals(PlayerAction.SeekTo(0L), resolveAt(2.0, audiobookWithChapters(), PlayerAction.Previous))
+    }
+
+    // Podcast episodes carry chapters in metadata, not a dedicated field; chapter
+    // navigation covers them too (matching the web frontend's useChapterNavigation).
+    private fun podcastEpisodeWithChapters(): PlayableItem = testPodcastEpisode().copy(
+        metadata = Metadata(
+            explicit = false,
+            images = emptyList(),
+            releaseDate = null,
+            chapters = listOf(
+                Chapter(position = 0, name = "Ch1", start = 0.0, end = 100.0),
+                Chapter(position = 1, name = "Ch2", start = 100.0, end = 200.0),
+                Chapter(position = 2, name = "Ch3", start = 200.0, end = 300.0),
+            ),
+            lyrics = null,
+            lrcLyrics = null,
+        ),
+    )
+
+    @Test
+    fun nextOnPodcastEpisodeSeeksToNextChapterStart() {
+        assertEquals(
+            PlayerAction.SeekTo(200L),
+            resolveAt(150.0, podcastEpisodeWithChapters(), PlayerAction.Next),
+        )
+    }
+
+    @Test
+    fun previousOnPodcastEpisodeRestartsCurrentChapter() {
+        assertEquals(
+            PlayerAction.SeekTo(100L),
+            resolveAt(150.0, podcastEpisodeWithChapters(), PlayerAction.Previous),
+        )
+    }
+
+    @Test
+    fun chapterNavigationDisabledByPreferenceFallsThroughToPlainCommands() {
+        assertEquals(
+            PlayerAction.Next,
+            resolveAt(150.0, audiobookWithChapters(), PlayerAction.Next, chapterProgressEnabled = false),
+        )
+        assertEquals(
+            PlayerAction.Previous,
+            resolveAt(150.0, audiobookWithChapters(), PlayerAction.Previous, chapterProgressEnabled = false),
+        )
+    }
+
+    @Test
+    fun fractionalChapterStartsRoundUpSoSeeksLandInsideTheChapter() {
+        // A truncated fractional start would sit a fraction of a second BEFORE the
+        // chapter boundary, presenting the end of the prior chapter until audio flows.
+        val fractional = testAudiobook().copy(
+            chapters = listOf(
+                Chapter(position = 0, name = "Ch1", start = 0.0, end = 100.5),
+                Chapter(position = 1, name = "Ch2", start = 100.5, end = 200.5),
+                Chapter(position = 2, name = "Ch3", start = 200.5, end = 300.0),
+            ),
+        )
+        // Next from inside Ch2 → ceil(200.5) = 201, inside Ch3.
+        assertEquals(PlayerAction.SeekTo(201L), resolveAt(150.0, fractional, PlayerAction.Next))
+        // Previous deep into Ch2 restarts it → ceil(100.5) = 101, inside Ch2.
+        assertEquals(PlayerAction.SeekTo(101L), resolveAt(150.0, fractional, PlayerAction.Previous))
+    }
+
+    @Test
+    fun chapterNavigationToleratesUnsortedChapterMetadata() {
+        val unsorted = testAudiobook().copy(
+            chapters = listOf(
+                Chapter(position = 2, name = "Ch3", start = 200.0, end = 300.0),
+                Chapter(position = 0, name = "Ch1", start = 0.0, end = 100.0),
+                Chapter(position = 1, name = "Ch2", start = 100.0, end = 200.0),
+            ),
+        )
+        assertEquals(PlayerAction.SeekTo(200L), resolveAt(150.0, unsorted, PlayerAction.Next))
+        assertEquals(PlayerAction.SeekTo(100L), resolveAt(150.0, unsorted, PlayerAction.Previous))
+    }
+
+    @Test
+    fun crossfadeToggleSendsTheInverseOfTheCurrentState() {
+        // The server command is an absolute setter, so the factory must invert here.
+        // Echoing `current` back would make the badge look inert.
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val data = playerDataWith(testAudiobook())
+
+        val turningOn = factory.buildRequest(data, PlayerAction.ToggleCrossfade(current = false))
+        assertEquals("player_queues/crossfade", turningOn?.command)
+        assertEquals(JsonPrimitive(true), turningOn?.args?.get("crossfade_enabled"))
+        assertEquals(JsonPrimitive(queueId), turningOn?.args?.get("queue_id"))
+
+        val turningOff = factory.buildRequest(data, PlayerAction.ToggleCrossfade(current = true))
+        assertEquals(JsonPrimitive(false), turningOff?.args?.get("crossfade_enabled"))
+    }
+
+    @Test
+    fun leaveGroupSendsUngroupKeyedOnThePlayerNotTheQueue() {
+        // `players/cmd/ungroup` is player-scoped. Sending the queue id would target the
+        // wrong entity, and the server — not the client — picks the successor, so no
+        // member list and no `player_queues/transfer` may appear here.
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val data = playerDataWith(testAudiobook())
+
+        val request = factory.buildRequest(data, PlayerAction.LeaveGroup)
+
+        assertEquals("players/cmd/ungroup", request?.command)
+        assertEquals(JsonPrimitive("player-1"), request?.args?.get("player_id"))
+        assertEquals(1, request?.args?.size)
     }
 
     private fun playerDataWith(item: PlayableItem): PlayerData = PlayerData(

@@ -97,6 +97,7 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.hasCamera
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isTelevisionDevice
+import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.delay
@@ -119,6 +120,8 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
+import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
+import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_connect
@@ -155,7 +158,10 @@ import musicassistantclient.composeapp.generated.resources.settings_remote_id_hi
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_invalid
 import musicassistantclient.composeapp.generated.resources.settings_saved_connections
 import musicassistantclient.composeapp.generated.resources.settings_scan_qr
+import musicassistantclient.composeapp.generated.resources.settings_sendspin_require_encryption
 import musicassistantclient.composeapp.generated.resources.settings_server
+import musicassistantclient.composeapp.generated.resources.settings_server_base_path
+import musicassistantclient.composeapp.generated.resources.settings_server_base_path_hint
 import musicassistantclient.composeapp.generated.resources.settings_server_host
 import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
@@ -276,7 +282,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 navigationIcon = {
                     if (isAuthenticated) {
                         IconButton(onClick = goHome) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                stringResource(Res.string.common_back),
+                            )
                         }
                     }
                 },
@@ -322,12 +331,14 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 var ipAddress by remember { mutableStateOf(if (isTv) "" else Defaults.URI) }
                 var port by remember { mutableStateOf(if (isTv) "" else Defaults.PORT.toString()) }
                 var isTls by remember { mutableStateOf(false) }
+                var basePath by remember { mutableStateOf("") }
 
                 LaunchedEffect(savedConnectionInfo) {
                     savedConnectionInfo?.let {
                         ipAddress = it.host
                         port = it.port.toString()
                         isTls = it.isTls
+                        basePath = it.basePath
                     }
                 }
 
@@ -349,7 +360,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         val userChangedConnectionInfo =
                             ipAddress != connInfo.host ||
                                     port != connInfo.port.toString() ||
-                                    isTls != connInfo.isTls
+                                    isTls != connInfo.isTls ||
+                                    basePath != connInfo.basePath
 
                         if (!userChangedConnectionInfo) {
                             // User is trying to reconnect to same server - auto-retry
@@ -358,6 +370,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 connInfo.host,
                                 connInfo.port.toString(),
                                 connInfo.isTls,
+                                connInfo.basePath,
                             )
                         }
                         // If user changed connection info, don't auto-retry - let them manually retry
@@ -399,14 +412,19 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onIpAddressChange = { ipAddress = it },
                             onPortChange = { port = it },
                             onTlsChange = { isTls = it },
+                            basePath = basePath,
+                            onBasePathChange = { basePath = it },
                             onDirectConnect = {
                                 viewModel.attemptConnection(
                                     ipAddress,
                                     port,
                                     isTls,
+                                    basePath,
                                 )
                             },
-                            directConnectEnabled = ipAddress.isValidHost() && port.isIpPort(),
+                            directConnectEnabled = ipAddress.isValidHost() &&
+                                    port.isIpPort() &&
+                                    basePath.isValidBasePath(),
                             sessionState = sessionState,
                             connectionHistory = connectionHistory,
                         )
@@ -475,7 +493,11 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 // Misc settings - always visible
                 val shareLogsTitle = stringResource(Res.string.settings_share_logs)
                 val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
+                val allowLandscape by viewModel.allowLandscapeOnAllDevices
+                    .collectAsStateWithLifecycle()
                 MiscSection(
+                    allowLandscape = allowLandscape,
+                    onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,
@@ -495,6 +517,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
 @Composable
 private fun MiscSection(
+    allowLandscape: Boolean,
+    onAllowLandscapeChange: (Boolean) -> Unit,
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
     isPreparingShare: Boolean,
@@ -505,6 +529,26 @@ private fun MiscSection(
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = allowLandscape,
+                onCheckedChange = onAllowLandscapeChange,
+            )
+            Text(
+                text = stringResource(Res.string.settings_allow_landscape),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Text(
+            // Aligned under the label: the checkbox occupies a 48.dp touch target.
+            modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
+            text = stringResource(Res.string.settings_allow_landscape_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         OutlinedButton(
             modifier = Modifier
                 .fillMaxWidth()
@@ -541,7 +585,10 @@ private fun MiscSection(
                     enabled = !isPreparingShare,
                     onClick = onDeleteCrashLog,
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.cd_delete_crash_logs))
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(Res.string.cd_delete_crash_logs),
+                    )
                 }
             }
         }
@@ -628,6 +675,8 @@ private fun ConnectionMethodTabs(
     onIpAddressChange: (String) -> Unit,
     onPortChange: (String) -> Unit,
     onTlsChange: (Boolean) -> Unit,
+    basePath: String,
+    onBasePathChange: (String) -> Unit,
     onDirectConnect: () -> Unit,
     directConnectEnabled: Boolean,
     sessionState: SessionState,
@@ -638,7 +687,7 @@ private fun ConnectionMethodTabs(
     var showHistoryDialog by remember { mutableStateOf(false) }
 
     val directHasToken = port.toIntOrNull()
-        ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls) } ?: false
+        ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls, basePath) } ?: false
     val webrtcHasToken = webrtcRemoteId.isNotBlank() &&
             viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
 
@@ -691,6 +740,8 @@ private fun ConnectionMethodTabs(
                     onIpAddressChange = onIpAddressChange,
                     onPortChange = onPortChange,
                     onTlsChange = onTlsChange,
+                    basePath = basePath,
+                    onBasePathChange = onBasePathChange,
                     onConnect = onDirectConnect,
                     enabled = directConnectEnabled,
                     onShowHistory = { showHistoryDialog = true },
@@ -740,6 +791,7 @@ private fun ConnectionMethodTabs(
                             onIpAddressChange(it.host)
                             onPortChange(it.port.toString())
                             onTlsChange(it.isTls)
+                            onBasePathChange(it.basePath)
                         }
                         viewModel.setPreferredConnectionMethod("direct")
                     }
@@ -797,6 +849,8 @@ fun DirectConnectionContent(
     onIpAddressChange: (String) -> Unit,
     onPortChange: (String) -> Unit,
     onTlsChange: (Boolean) -> Unit,
+    basePath: String,
+    onBasePathChange: (String) -> Unit,
     onConnect: () -> Unit,
     enabled: Boolean,
     onShowHistory: () -> Unit,
@@ -831,6 +885,28 @@ fun DirectConnectionContent(
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
         placeholder = { Text(Defaults.URI) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+        ),
+        colors = TextFieldDefaults.colors(
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+        ),
+    )
+
+    // Base path input — for a reverse proxy that serves the server under a sub-path.
+    TextField(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        value = basePath,
+        onValueChange = onBasePathChange,
+        label = { Text(stringResource(Res.string.settings_server_base_path)) },
+        placeholder = { Text("/ma") },
+        supportingText = { Text(stringResource(Res.string.settings_server_base_path_hint)) },
+        isError = !basePath.isValidBasePath(),
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -879,6 +955,16 @@ fun DirectConnectionContent(
         )
         Text(stringResource(Res.string.settings_use_tls))
     }
+
+    // Live preview of the address the app will actually contact.
+    Text(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        text = ConnectionInfo.previewWsUrl(ipAddress, port, isTls, basePath),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
     // Connect button + history icon
     Row(
@@ -1166,7 +1252,9 @@ private fun ServerInfoSection(
         val connectionText = if (isWebRTC) {
             stringResource(Res.string.settings_connected_webrtc)
         } else {
-            connectionInfo?.let { stringResource(Res.string.settings_connected_to, it.host, it.port) }
+            connectionInfo?.let {
+                stringResource(Res.string.settings_connected_to, it.host, it.port, it.basePath)
+            }
         }
         connectionText?.let { text ->
             if (isTelevisionDevice()) {
@@ -1403,6 +1491,32 @@ private fun SendspinSection(
                 )
             }
 
+            // Require-encryption toggle: refuse the legacy cleartext protocol
+            // when the server is too old for encrypted Sendspin.
+            val sendspinRequireEncryption by viewModel.sendspinRequireEncryption
+                .collectAsStateWithLifecycle()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = sendspinRequireEncryption,
+                    onCheckedChange = { viewModel.setSendspinRequireEncryption(it) },
+                    enabled = !sendspinEnabled,
+                    modifier = Modifier.tvFocus(authFlow, authLinks, "requireEncryption"),
+                )
+                Text(
+                    text = stringResource(Res.string.settings_sendspin_require_encryption),
+                    color = if (sendspinEnabled) {
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onBackground
+                    },
+                )
+            }
+
             // Connection fields (only shown when using custom connection)
             if (sendspinUseCustomConnection) {
                 val sendspinHost by viewModel.sendspinHost.collectAsStateWithLifecycle()
@@ -1543,7 +1657,10 @@ private fun ConnectionHistoryDialog(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(stringResource(Res.string.settings_saved_connections), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(Res.string.settings_saved_connections),
+                style = MaterialTheme.typography.titleMedium,
+            )
             if (history.isEmpty()) {
                 Text(
                     stringResource(Res.string.settings_no_saved_connections),

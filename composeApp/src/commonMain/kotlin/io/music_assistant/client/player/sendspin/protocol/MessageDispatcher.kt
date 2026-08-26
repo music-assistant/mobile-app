@@ -1,15 +1,9 @@
-// Log-payload truncation length is a debugging aid, not a protocol value.
-@file:Suppress("MagicNumber")
-
 package io.music_assistant.client.player.sendspin.protocol
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.player.sendspin.ClockSynchronizer
-import io.music_assistant.client.player.sendspin.model.ClientAuthMessage
 import io.music_assistant.client.player.sendspin.model.ClientCommandMessage
 import io.music_assistant.client.player.sendspin.model.ClientGoodbyeMessage
-import io.music_assistant.client.player.sendspin.model.ClientHelloMessage
-import io.music_assistant.client.player.sendspin.model.ClientHelloPayload
 import io.music_assistant.client.player.sendspin.model.ClientStateMessage
 import io.music_assistant.client.player.sendspin.model.ClientStatePayload
 import io.music_assistant.client.player.sendspin.model.ClientTimeMessage
@@ -30,7 +24,7 @@ import io.music_assistant.client.player.sendspin.model.SessionUpdateMessage
 import io.music_assistant.client.player.sendspin.model.StreamMetadataMessage
 import io.music_assistant.client.player.sendspin.model.StreamMetadataPayload
 import io.music_assistant.client.player.sendspin.model.StreamStartMessage
-import io.music_assistant.client.player.sendspin.transport.SendspinTransport
+import io.music_assistant.client.player.sendspin.session.SendspinOutboundSender
 import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -63,16 +57,21 @@ sealed interface StreamLifecycleEvent {
     data object Clear : StreamLifecycleEvent
 }
 
+/**
+ * Parses and routes application-level protocol messages over the session's
+ * ordered pump and serialized sender. Logs only message types and lengths —
+ * never raw JSON, which can carry secrets on the encrypted protocol.
+ *
+ * @param deferServerHelloSideEffects encrypted protocol: the initial
+ * `client/state` and clock sync move from `server/hello` handling to
+ * [startActivatedReporting], since nothing may be sent pre-activation.
+ */
 class MessageDispatcher(
-    private val transport: SendspinTransport,
+    private val inbound: Flow<String>,
+    private val sender: SendspinOutboundSender,
     private val clockSynchronizer: ClockSynchronizer,
-    private val config: MessageDispatcherConfig,
+    private val deferServerHelloSideEffects: Boolean = false,
 ) : CoroutineScope {
-    // Convenience accessors for config properties
-    private val clientCapabilities: ClientHelloPayload get() = config.clientCapabilities
-    private val authToken: String? get() = config.authToken
-    private val requiresAuth: Boolean get() = config.requiresAuth
-
     private val logger = Logger.withTag("MessageDispatcher")
     private val supervisorJob = SupervisorJob()
 
@@ -94,10 +93,8 @@ class MessageDispatcher(
     private val _streamMetadata = MutableStateFlow<StreamMetadataPayload?>(null)
     val streamMetadata: StateFlow<StreamMetadataPayload?> = _streamMetadata.asStateFlow()
 
-    // Single ordered lifecycle flow: start/end/clear share one channel so their relative
-    // order (which three separate flows destroyed) is preserved. Downstream collectLatest
-    // coalesces rapid skips by cancelling stale streams — see SendspinClient. Capacity 64
-    // is headroom so a skip burst never stalls the single text-message loop.
+    // start/end/clear share one flow so their relative order is preserved; capacity 64
+    // is headroom so a skip burst never stalls the single message loop.
     private val _streamLifecycleEvent =
         MutableSharedFlow<StreamLifecycleEvent>(extraBufferCapacity = 64)
     val streamLifecycleEvent: Flow<StreamLifecycleEvent> = _streamLifecycleEvent.asSharedFlow()
@@ -122,11 +119,11 @@ class MessageDispatcher(
         messageListenerJob?.cancel()
         messageListenerJob = launch {
             try {
-                transport.textMessages.collect { text ->
+                inbound.collect { text ->
                     try {
                         handleTextMessage(text)
                     } catch (e: Exception) {
-                        logger.e(e) { "Error handling text message: $text" }
+                        logger.e(e) { "Error handling message (${text.length} chars)" }
                     }
                 }
             } catch (e: CancellationException) {
@@ -142,18 +139,13 @@ class MessageDispatcher(
     }
 
     private suspend fun handleTextMessage(text: String) {
-        logger.d { "Handling message: ${text.take(200)}" }
-
         try {
             val json = myJson.parseToJsonElement(text).jsonObject
             val type = json["type"]?.jsonPrimitive?.contentOrNull
                 ?: throw IllegalArgumentException("Message missing or null 'type' field")
+            logger.d { "Handling message: $type (${text.length} chars)" }
 
             when (type) {
-                "auth_ok" -> {
-                    handleAuthOk()
-                }
-
                 "server/hello" -> {
                     val message = myJson.decodeFromJsonElement<ServerHelloMessage>(json)
                     handleServerHello(message)
@@ -207,44 +199,18 @@ class MessageDispatcher(
                 }
             }
         } catch (e: Exception) {
-            logger.e(e) { "Failed to parse message: $text" }
+            logger.e(e) { "Failed to parse message (${text.length} chars)" }
         }
     }
 
     // Outgoing messages
-
-    suspend fun sendAuth() {
-        val token = authToken
-        if (!requiresAuth || token == null) {
-            logger.w { "sendAuth called but auth not required or token missing" }
-            return
-        }
-
-        logger.i { "Sending auth message (proxy mode)" }
-
-        val message = ClientAuthMessage(
-            token = token,
-            clientId = clientCapabilities.clientId,
-        )
-        val json = myJson.encodeToString(message)
-        transport.sendText(json)
-    }
-
-    suspend fun sendHello() {
-        logger.i { "Sending client/hello" }
-
-        val message = ClientHelloMessage(payload = clientCapabilities)
-        val json = myJson.encodeToString(message)
-        transport.sendText(json)
-    }
 
     suspend fun sendTime() {
         val clientTransmitted = getCurrentTimeMicros()
         val message = ClientTimeMessage(
             payload = ClientTimePayload(clientTransmitted = clientTransmitted),
         )
-        val json = myJson.encodeToString(message)
-        transport.sendText(json)
+        sender.sendJson(myJson.encodeToString(message))
     }
 
     suspend fun sendState(state: PlayerStateObject) {
@@ -256,7 +222,7 @@ class MessageDispatcher(
             logger.i { "Sending client/state: ${state.state}" }
             lastLoggedState = state.state
         }
-        transport.sendText(json)
+        sender.sendJson(json)
     }
 
     suspend fun sendGoodbye(reason: GoodbyeReason) {
@@ -264,8 +230,7 @@ class MessageDispatcher(
         val message = ClientGoodbyeMessage(
             payload = GoodbyePayload(reason = reason.wire),
         )
-        val json = myJson.encodeToString(message)
-        transport.sendText(json)
+        sender.sendJson(myJson.encodeToString(message))
     }
 
     suspend fun sendCommand(command: String, value: CommandValue?) {
@@ -273,27 +238,35 @@ class MessageDispatcher(
         val message = ClientCommandMessage(
             payload = CommandPayload(command = command, value = value),
         )
-        val json = myJson.encodeToString(message)
-        transport.sendText(json)
+        sender.sendJson(myJson.encodeToString(message))
+    }
+
+    /** Initial `client/state` + clock sync, allowed only post-activation on the
+     *  encrypted protocol. Safe to call again after a re-handshake's activation. */
+    fun startActivatedReporting() {
+        launch {
+            try {
+                sendInitialState()
+            } catch (e: Exception) {
+                logger.w { "Failed to send initial state: ${e.message}" }
+            }
+            startClockSync()
+        }
     }
 
     // Message handlers
-
-    private suspend fun handleAuthOk() {
-        logger.i { "Received auth_ok - authentication successful" }
-        // Auth successful, now send hello
-        sendHello()
-    }
 
     private suspend fun handleServerHello(message: ServerHelloMessage) {
         logger.i { "Received server/hello from ${message.payload.name}" }
         _serverInfo.value = message.payload
 
-        // Send initial state (required by spec)
-        sendInitialState()
+        if (!deferServerHelloSideEffects) {
+            // Send initial state (required by the legacy flow)
+            sendInitialState()
 
-        // Start clock synchronization
-        startClockSync()
+            // Start clock synchronization
+            startClockSync()
+        }
 
         // Emit event so the state machine can transition to Ready
         _serverHelloEvent.emit(message.payload)
@@ -312,9 +285,9 @@ class MessageDispatcher(
                 try {
                     sendTime()
                     delay(1.seconds)
-                } catch (_: IllegalStateException) {
-                    // Transport not connected, stop clock sync
-                    logger.w { "Clock sync stopped: Transport not connected" }
+                } catch (e: IllegalStateException) {
+                    // Sender unavailable (transport down or session gate failed).
+                    logger.w { "Clock sync stopped: ${e.message}" }
                     break
                 } catch (e: Exception) {
                     logger.e(e) { "Error in clock sync" }
@@ -383,7 +356,7 @@ class MessageDispatcher(
     }
 
     private fun handleServerState(message: ServerStateMessage) {
-        logger.d { "Received server/state: ${message.payload}" }
+        logger.d { "Received server/state" }
 
         // Extract metadata from server/state payload if present
         // Note: duration/elapsed come from MainDataSource via regular API

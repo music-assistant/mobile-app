@@ -1,13 +1,9 @@
 package io.music_assistant.client.player.sendspin
 
 import app.cash.turbine.test
-import io.music_assistant.client.player.sendspin.model.ClientHelloPayload
 import io.music_assistant.client.player.sendspin.protocol.MessageDispatcher
-import io.music_assistant.client.player.sendspin.protocol.MessageDispatcherConfig
 import io.music_assistant.client.player.sendspin.protocol.StreamLifecycleEvent
-import io.music_assistant.client.player.sendspin.transport.SendspinTransport
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import io.music_assistant.client.player.sendspin.session.SendspinOutboundSender
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -22,27 +18,9 @@ import kotlin.test.assertIs
  * either order, which is what allowed stale streams to slip past a rapid-skip coalescer.
  */
 class MessageDispatcherOrderingTest {
-    private class FakeTransport(private val texts: List<String>) : SendspinTransport {
-        override val connectionState: Flow<WebSocketState> = MutableSharedFlow()
-        override val textMessages: Flow<String> = texts.asFlow()
-        override val binaryMessages: Flow<ByteArray> = MutableSharedFlow()
-        override suspend fun connect() = Unit
-        override suspend fun sendText(message: String) = Unit
-        override suspend fun sendBinary(data: ByteArray) = Unit
-        override suspend fun disconnect() = Unit
-        override fun close() = Unit
+    private object DiscardingSender : SendspinOutboundSender {
+        override suspend fun sendJson(json: String) = Unit
     }
-
-    private val config = MessageDispatcherConfig(
-        clientCapabilities = ClientHelloPayload(
-            clientId = "test",
-            name = "Test",
-            deviceInfo = null,
-            version = 1,
-            supportedRoles = emptyList(),
-            playerV1Support = null,
-        ),
-    )
 
     private fun startJson(header: String) =
         """{"type":"stream/start","payload":{"player":{"codec":"flac",""" +
@@ -69,7 +47,7 @@ class MessageDispatcherOrderingTest {
             startJson("c"),
             clearJson,
         )
-        val d = MessageDispatcher(FakeTransport(texts), ClockSynchronizer(), config)
+        val d = MessageDispatcher(texts.asFlow(), DiscardingSender, ClockSynchronizer())
         dispatcher = d
 
         d.streamLifecycleEvent.test {

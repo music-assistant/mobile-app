@@ -1,6 +1,5 @@
 package io.music_assistant.client.player.sendspin.transport
 
-import io.music_assistant.client.player.sendspin.WebSocketState
 import io.music_assistant.client.player.sendspin.connection.SendspinWsHandler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,14 +16,8 @@ class WebSocketSendspinTransport(
         networkAvailable: StateFlow<Boolean>? = null,
     ) : this(SendspinWsHandler(serverUrl, networkAvailable))
 
-    override val connectionState: Flow<WebSocketState>
-        get() = sendspinWsHandler.connectionState
-
-    override val textMessages: Flow<String>
-        get() = sendspinWsHandler.textMessages
-
-    override val binaryMessages: Flow<ByteArray>
-        get() = sendspinWsHandler.binaryMessages
+    override val events: Flow<InboundTransportEvent>
+        get() = sendspinWsHandler.events
 
     override suspend fun connect() {
         sendspinWsHandler.connect()

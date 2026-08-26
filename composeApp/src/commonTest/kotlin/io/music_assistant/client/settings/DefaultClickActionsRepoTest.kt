@@ -9,13 +9,13 @@ import kotlin.test.assertEquals
 class DefaultClickActionsRepoTest {
     @Test
     fun `defaults to empty when nothing stored`() {
-        val repo = SettingsRepository(MapSettings())
+        val repo = SettingsRepository(MapSettings(), MapSettings())
         assertEquals(emptyMap(), repo.defaultClickActions.value)
     }
 
     @Test
     fun `set then read back the per-context table for a kind`() {
-        val repo = SettingsRepository(MapSettings())
+        val repo = SettingsRepository(MapSettings(), MapSettings())
         repo.setDefaultClickActions(
             ItemKind.TRACK,
             mapOf(ClickContext.SEARCH to DefaultClickOption.ADD_TO_QUEUE),
@@ -28,7 +28,7 @@ class DefaultClickActionsRepoTest {
 
     @Test
     fun `saving one kind preserves the others`() {
-        val repo = SettingsRepository(MapSettings())
+        val repo = SettingsRepository(MapSettings(), MapSettings())
         repo.setDefaultClickActions(ItemKind.TRACK, mapOf(ClickContext.SEARCH to DefaultClickOption.INSERT_NEXT))
         repo.setDefaultClickActions(ItemKind.ALBUM, mapOf(ClickContext.DETAIL to DefaultClickOption.ADD_TO_QUEUE))
 
@@ -45,11 +45,11 @@ class DefaultClickActionsRepoTest {
     @Test
     fun `survives a fresh repository over the same storage`() {
         val settings = MapSettings()
-        SettingsRepository(settings).setDefaultClickActions(
+        SettingsRepository(settings, MapSettings()).setDefaultClickActions(
             ItemKind.RADIO,
             mapOf(ClickContext.HOME to DefaultClickOption.INSERT_NEXT_AND_PLAY),
         )
-        val reopened = SettingsRepository(settings)
+        val reopened = SettingsRepository(settings, MapSettings())
         assertEquals(
             DefaultClickOption.INSERT_NEXT_AND_PLAY,
             reopened.defaultClickActions.value[ItemKind.RADIO]?.get(ClickContext.HOME),
@@ -59,6 +59,6 @@ class DefaultClickActionsRepoTest {
     @Test
     fun `malformed stored json degrades to empty`() {
         val settings = MapSettings().apply { putString("default_click_actions", "{not valid json") }
-        assertEquals(emptyMap(), SettingsRepository(settings).defaultClickActions.value)
+        assertEquals(emptyMap(), SettingsRepository(settings, MapSettings()).defaultClickActions.value)
     }
 }

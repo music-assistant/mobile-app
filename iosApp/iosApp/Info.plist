@@ -32,7 +32,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>47</string>
+	<string>49</string>
 	<key>INIntentsSupported</key>
 	<array>
 		<string>INPlayMediaIntent</string>
@@ -51,7 +51,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Music Assistant does not access the camera. This description is required because an included framework (WebRTC) references camera APIs that this app does not use.</string>
+	<string>Music Assistant can optionally use the camera to scan a QR code when you set up a remote connection. You can also enter the connection details manually instead.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Music Assistant connects to your Music Assistant server on your local network to browse and play your music library.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -96,6 +96,8 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

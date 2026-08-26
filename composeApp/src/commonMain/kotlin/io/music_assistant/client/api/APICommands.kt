@@ -11,6 +11,9 @@ object APICommands {
     const val PLAYERS_CMD_GROUP_VOLUME = "$PLAYERS_CMD/group_volume"
     const val PLAYERS_CMD_GROUP_VOLUME_MUTE = "$PLAYERS_CMD/group_volume_mute"
     const val PLAYERS_CMD_SET_MEMBERS = "$PLAYERS_CMD/set_members"
+    const val PLAYERS_CMD_UNGROUP = "$PLAYERS_CMD/ungroup"
+    const val PLAYERS_SLEEP_TIMER_SET = "players/sleep_timer/set"
+    const val PLAYERS_SLEEP_TIMER_CLEAR = "players/sleep_timer/clear"
 
     // Player Queue commands
     const val PLAYER_QUEUES_ALL = "player_queues/all"
@@ -24,6 +27,7 @@ object APICommands {
     const val PLAYER_QUEUES_SHUFFLE = "player_queues/shuffle"
     const val PLAYER_QUEUES_PLAY_MEDIA = "player_queues/play_media"
     const val PLAYER_QUEUES_DONT_STOP_THE_MUSIC = "player_queues/dont_stop_the_music"
+    const val PLAYER_QUEUES_CROSSFADE = "player_queues/crossfade"
     const val PLAYER_QUEUES_SET_PLAYBACK_SPEED = "player_queues/set_playback_speed"
 
     // Playlist commands
@@ -105,6 +109,7 @@ object APICommands {
     // DSP commands
     const val CONFIG_PLAYERS_DSP_GET = "config/players/dsp/get"
     const val CONFIG_PLAYERS_DSP_SAVE = "config/players/dsp/save"
+    const val CONFIG_PLAYERS_DSP_APPLY_PRESET = "config/players/dsp/apply_preset"
     const val CONFIG_DSP_PRESETS_GET = "config/dsp_presets/get"
 
     // Media type kinds

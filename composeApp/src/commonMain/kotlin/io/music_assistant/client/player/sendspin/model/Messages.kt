@@ -348,6 +348,150 @@ object CommandValueSerializer : KSerializer<CommandValue> {
     }
 }
 
+// MARK: - Encrypted-connection handshake messages
+//
+// These exist only on the Noise-encrypted protocol path; the legacy
+// (unencrypted) message models above are frozen and must stay byte-identical
+// on the wire.
+
+@Serializable
+data class ClientInitMessage(
+    override val type: String = "client/init",
+    val payload: ClientInitPayload,
+) : SendspinMessage
+
+@Serializable
+data class ClientInitPayload(
+    @SerialName("client_id") val clientId: String,
+    val version: Int = 1,
+    val suite: String,
+)
+
+@Serializable
+data class ServerInitMessage(
+    override val type: String = "server/init",
+    val payload: ServerInitPayload,
+) : SendspinMessage
+
+@Serializable
+data class ServerInitPayload(
+    @SerialName("server_id") val serverId: String,
+    val version: Int,
+)
+
+@Serializable
+data class NoiseHandshakeMessage(
+    override val type: String = "noise/handshake",
+    val payload: NoiseHandshakePayload,
+) : SendspinMessage
+
+@Serializable
+data class NoiseHandshakePayload(
+    /** base64url-encoded (no padding) Noise handshake message bytes. */
+    val data: String,
+)
+
+/** Encrypted-mode `server/hello`: carries only the server's friendly name. */
+@Serializable
+data class EncryptedServerHelloMessage(
+    override val type: String = "server/hello",
+    val payload: EncryptedServerHelloPayload,
+) : SendspinMessage
+
+@Serializable
+data class EncryptedServerHelloPayload(
+    val name: String,
+)
+
+/**
+ * Encrypted-mode `client/hello`: unlike the legacy shape it omits `client_id`
+ * and the core `version` (both carried by `client/init`) and adds trust and
+ * pairing advertisement fields.
+ */
+@Serializable
+data class EncryptedClientHelloMessage(
+    override val type: String = "client/hello",
+    val payload: EncryptedClientHelloPayload,
+) : SendspinMessage
+
+@Serializable
+data class EncryptedClientHelloPayload(
+    val name: String,
+    @SerialName("device_info") val deviceInfo: EncryptedDeviceInfo? = null,
+    @SerialName("trust_level") val trustLevel: String,
+    @SerialName("supported_roles") val supportedRoles: List<VersionedRole>,
+    @SerialName("player@v1_support") val playerV1Support: PlayerSupport? = null,
+    @SerialName("supported_pair_methods") val supportedPairMethods: List<PairMethodDescriptor>,
+    @SerialName("unpaired_access") val unpairedAccess: UnpairedAccess,
+)
+
+@Serializable
+data class EncryptedDeviceInfo(
+    @SerialName("product_name") val productName: String? = null,
+    val manufacturer: String? = null,
+    @SerialName("software_version") val softwareVersion: String? = null,
+)
+
+@Serializable
+data class PairMethodDescriptor(
+    val method: String,
+)
+
+@Serializable
+data class UnpairedAccess(
+    val enabled: Boolean,
+)
+
+@Serializable
+data class ServerActivateMessage(
+    override val type: String = "server/activate",
+    val payload: ServerActivatePayload,
+) : SendspinMessage
+
+@Serializable
+data class ServerActivatePayload(
+    val activities: List<String>,
+    /**
+     * Required on the first activation; persists across later activations
+     * that omit it.
+     */
+    @SerialName("active_roles") val activeRoles: List<String>? = null,
+    val pairing: ActivatePairing? = null,
+)
+
+@Serializable
+data class ActivatePairing(
+    val method: String,
+    @SerialName("pin_length") val pinLength: Int? = null,
+    val languages: List<String>? = null,
+)
+
+/**
+ * Delivers the long-term PSK for this (client, server) pair. In the Pairing
+ * PSK flow it starts the pairing attempt and carries the PSK directly.
+ */
+@Serializable
+data class ClientPairFinalizeMessage(
+    override val type: String = "client/pair-finalize",
+    val payload: ClientPairFinalizePayload,
+) : SendspinMessage
+
+@Serializable
+data class ClientPairFinalizePayload(
+    @SerialName("long_term_psk") val longTermPsk: String,
+)
+
+@Serializable
+data class PairAbortMessage(
+    override val type: String = "pair/abort",
+    val payload: PairAbortPayload,
+) : SendspinMessage
+
+@Serializable
+data class PairAbortPayload(
+    val reason: String,
+)
+
 // MARK: - Goodbye Messages
 
 @Serializable

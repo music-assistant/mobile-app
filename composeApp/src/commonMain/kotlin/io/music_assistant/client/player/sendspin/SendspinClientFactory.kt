@@ -9,14 +9,24 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.audio.AudioStreamManager
+import io.music_assistant.client.player.sendspin.identity.SendspinKeyStore
+import io.music_assistant.client.player.sendspin.identity.SendspinTrustStore
+import io.music_assistant.client.player.sendspin.model.GoodbyeReason
+import io.music_assistant.client.player.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
+import io.music_assistant.client.player.sendspin.pairing.SilentPairingCoordinator
+import io.music_assistant.client.player.sendspin.session.SessionOutcome
 import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTransport
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 /**
@@ -40,25 +50,39 @@ class SendspinClientFactory(
     private val mediaPlayerController: MediaPlayerController,
     private val serviceClient: ServiceClient,
     private val networkMonitor: NetworkMonitor,
+    private val keyStore: SendspinKeyStore,
 ) {
     private val log = Logger.withTag("SendspinClientFactory")
+
+    private val noiseCrypto = CryptographyKotlinNoiseCrypto()
+
+    private fun resolveEncryptionMode(): SendspinEncryptionMode {
+        val schemaVersion = (serviceClient.sessionState.value as? HasConnectionData)
+            ?.serverInfo?.schemaVersion
+        return SendspinEncryptionMode.resolve(
+            schemaVersion = schemaVersion,
+            requireEncryption = settings.sendspinRequireEncryption.value,
+        )
+    }
 
     // Long-lived scope for hot-tunable settings observers. Cancelled only when the
     // shared pipeline is destroyed (user logout / permanent error).
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // One load, shared by every client: the identity must be stable across reconnects.
+    private val trustStoreDeferred: Deferred<SendspinTrustStore> =
+        scope.async(start = CoroutineStart.LAZY) {
+            SendspinTrustStore.load(keyStore, noiseCrypto)
+        }
 
     // Shared audio pipeline — persists across SendspinClient reconnections
     private var sharedClockSynchronizer: ClockSynchronizer? = null
     private var sharedPipeline: AudioStreamManager? = null
     private var delayCollectorJob: Job? = null
 
-    // The WebRTC sendspin channel is single-use: after we send client/goodbye,
-    // the server tears down its handler for that channel even though it remains
-    // Open at the WebRTC layer. The DataChannelWrapper instance is the canonical
-    // "channel freshness" identity — a brand-new instance is created only when
-    // WebRTCConnectionManager negotiates a new peer connection.
-    private var lastObservedChannel: DataChannelWrapper? = null
-    private var webrtcSendspinUsed = false
+    // The WebRTC sendspin channel is single-use: once a session has run on it, the
+    // server side is gone even though the channel stays Open at the WebRTC layer.
+    private val channelGate = WebRTCChannelGate()
 
     /**
      * Returns the shared pipeline (and its clock synchronizer), creating them if needed.
@@ -94,17 +118,9 @@ class SendspinClientFactory(
         sharedPipeline?.close()
         sharedPipeline = null
         sharedClockSynchronizer = null
-        // Channel-freshness state (`lastObservedChannel`, `webrtcSendspinUsed`)
-        // is intentionally NOT reset here. Tearing down the audio pipeline does
-        // not un-send the `client/goodbye` we shipped on the existing sendspin
-        // channel — the server-side handler is gone. If the same wrapper comes
-        // back on the next attempt (e.g. user disables-then-re-enables sendspin
-        // without a WebRTC reconnect), we need the identity check to still
-        // report `webrtcSendspinUsed=true` so the caller forces a real WebRTC
-        // reconnect. Resetting alongside the pipeline would let a zombie
-        // channel be reused and silently corrupt audio. The flags are
-        // implicitly reset when a new peer connection produces a new wrapper
-        // instance — that's the only correct trigger.
+        // The channel gate is deliberately NOT reset: tearing down the pipeline
+        // doesn't revive the used sendspin channel. Only a new peer connection
+        // (a new wrapper instance) makes a channel fresh again.
     }
 
     /**
@@ -132,6 +148,22 @@ class SendspinClientFactory(
             )
         }
 
+        // Resolving the protocol gate from a transient session state could
+        // silently downgrade an encrypted player to cleartext; fail retryably
+        // instead of guessing.
+        if (serviceClient.sessionState.value !is HasConnectionData) {
+            return Result.failure(
+                IllegalStateException("MA session not established — deferring Sendspin start"),
+            )
+        }
+
+        // Refuse before constructing any transport.
+        val encryptionMode = resolveEncryptionMode()
+        if (encryptionMode == SendspinEncryptionMode.ENCRYPTED_REQUIRED) {
+            log.w { "Encryption required but the server does not support it — not connecting" }
+            return Result.failure(EncryptionRequiredUnavailable())
+        }
+
         // Detect connection type: WebRTC or WebSocket
         val webrtcChannel = serviceClient.webrtcSendspinChannel
 
@@ -140,9 +172,9 @@ class SendspinClientFactory(
 
         return try {
             if (webrtcChannel != null) {
-                createWebRTCClient(webrtcChannel, pipeline, clockSync)
+                createWebRTCClient(webrtcChannel, pipeline, clockSync, encryptionMode)
             } else {
-                createWebSocketClient(mainConnection, authToken, pipeline, clockSync)
+                createWebSocketClient(mainConnection, authToken, pipeline, clockSync, encryptionMode)
             }
         } catch (e: Exception) {
             log.e(e) { "Failed to create and start Sendspin client" }
@@ -150,26 +182,55 @@ class SendspinClientFactory(
         }
     }
 
+    private suspend fun newClient(
+        config: SendspinConfig,
+        pipeline: AudioStreamManager,
+        clockSync: ClockSynchronizer,
+    ): SendspinClient {
+        val encrypted = config.encryptionMode == SendspinEncryptionMode.ENCRYPTED
+        val store = if (encrypted) trustStoreDeferred.await() else null
+        // The server registers the player under the encrypted client_id (device
+        // public key) on encrypted connections, and under the legacy UUID otherwise.
+        settings.setSendspinEffectivePlayerId(store?.clientId ?: config.clientId)
+        val client = SendspinClient(
+            config = config,
+            mediaPlayerController = mediaPlayerController,
+            audioPipeline = pipeline,
+            clockSynchronizer = clockSync,
+            networkAvailable = networkMonitor.isAvailable,
+            trustStore = store,
+            noiseCrypto = if (encrypted) noiseCrypto else null,
+        )
+        if (encrypted && store != null) {
+            val coordinator = SilentPairingCoordinator(
+                sendRequest = serviceClient::sendRequest,
+                pairingToken = store::pairingToken,
+                scope = scope,
+            )
+            client.sessionEventListener = coordinator::onSessionEvent
+        }
+        return client
+    }
+
     private suspend fun createWebRTCClient(
         webrtcChannel: DataChannelWrapper,
         pipeline: AudioStreamManager,
         clockSync: ClockSynchronizer,
+        encryptionMode: SendspinEncryptionMode,
     ): Result<SendspinClient> {
-        // Identity-based freshness check: a different DataChannelWrapper instance means
-        // WebRTCConnectionManager negotiated a new peer connection, so this channel has
-        // never sent goodbye and is safe to use. Reusing the same instance after goodbye
-        // hits a zombie channel (Open client-side, dead server-side) — refuse and let the
-        // caller force a real WebRTC reconnect.
-        if (lastObservedChannel !== webrtcChannel) {
-            webrtcSendspinUsed = false
-            lastObservedChannel = webrtcChannel
-        }
-        if (webrtcSendspinUsed) {
+        // A new wrapper instance means a new peer connection; reusing an exhausted
+        // one hits a zombie channel (Open client-side, dead server-side).
+        if (!channelGate.isFresh(webrtcChannel)) {
             log.i { "Sendspin channel exhausted — need WebRTC reconnect" }
             return Result.failure(WebRTCSendspinChannelExhausted())
         }
 
         log.i { "Creating Sendspin client over WebRTC data channel" }
+
+        // Reserve the channel before attaching: from the first outbound frame it
+        // is no longer safe to reuse, and a cancellation mid-attach must not
+        // leave it reported fresh.
+        channelGate.markUsed(webrtcChannel)
 
         // WebRTC SCTP can deliver out-of-order — reorder buffer covers it.
         // 8 frames (~160 ms) is plenty for LAN-class SCTP; the previous 32 added ~640 ms-
@@ -186,25 +247,30 @@ class SendspinClientFactory(
             serverPort = 0,
             mainConnectionPort = null,
             authToken = null,
+            encryptionMode = encryptionMode,
         )
 
-        val client = SendspinClient(
-            config = config,
-            mediaPlayerController = mediaPlayerController,
-            audioPipeline = pipeline,
-            clockSynchronizer = clockSync,
-            networkAvailable = networkMonitor.isAvailable,
-        )
+        val client = newClient(config, pipeline, clockSync)
         val transport = WebRTCDataChannelTransport(webrtcChannel)
         client.connectWithTransport(transport)
-        // Mark used only AFTER `connectWithTransport` succeeds: a thrown attach
-        // hasn't sent `client/goodbye`, so the channel is still virgin and the
-        // caller can retry without forcing a (slow) WebRTC peer reconnect. The
-        // exhaustion guard applies to attach-success-then-goodbye, which is the
-        // actual zombie-channel condition.
-        webrtcSendspinUsed = true
-        log.i { "Sendspin client connected via WebRTC (auth inherited, direct hello, shared pipeline)" }
-        return Result.success(client)
+
+        // `connectWithTransport` returning proves nothing about whether the channel
+        // usably carried a handshake; only the initial outcome does.
+        return when (val outcome = client.awaitInitialOutcome()) {
+            is SessionOutcome.Ready -> {
+                log.i { "Sendspin client ready via WebRTC (auth inherited, shared pipeline)" }
+                Result.success(client)
+            }
+
+            is SessionOutcome.Failed -> {
+                log.w(outcome.cause) { "Sendspin WebRTC attach failed — channel exhausted" }
+                // Full teardown so a late-completing handshake can't leave a zombie
+                // session buffering inbound frames.
+                client.stop(GoodbyeReason.Shutdown)
+                client.close()
+                Result.failure(WebRTCSendspinChannelExhausted())
+            }
+        }
     }
 
     private suspend fun createWebSocketClient(
@@ -212,6 +278,7 @@ class SendspinClientFactory(
         authToken: String?,
         pipeline: AudioStreamManager,
         clockSync: ClockSynchronizer,
+        encryptionMode: SendspinEncryptionMode,
     ): Result<SendspinClient> {
         if (mainConnection == null) {
             return Result.failure(
@@ -237,6 +304,7 @@ class SendspinClientFactory(
             serverHost = serverHost,
             mainConnection = mainConnection,
             authToken = authToken,
+            encryptionMode = encryptionMode,
         )
 
         // WebSocket over TCP is ordered — minimal reorder buffer, just scheduling jitter
@@ -245,13 +313,7 @@ class SendspinClientFactory(
         log.i {
             "Creating Sendspin client over WebSocket (${if (config.requiresAuth) "proxy" else "custom"} mode, shared pipeline)"
         }
-        val client = SendspinClient(
-            config = config,
-            mediaPlayerController = mediaPlayerController,
-            audioPipeline = pipeline,
-            clockSynchronizer = clockSync,
-            networkAvailable = networkMonitor.isAvailable,
-        )
+        val client = newClient(config, pipeline, clockSync)
         client.start()
         log.i { "Sendspin client started via WebSocket" }
         return Result.success(client)
@@ -265,6 +327,7 @@ class SendspinClientFactory(
         serverHost: String,
         mainConnection: ConnectionInfo,
         authToken: String,
+        encryptionMode: SendspinEncryptionMode,
     ): SendspinConfig {
         val useCustomConnection = settings.sendspinUseCustomConnection.value
 
@@ -283,6 +346,7 @@ class SendspinClientFactory(
                 useCustomConnection = true,
                 authToken = authToken,
                 mainConnectionPort = mainConnection.port,
+                encryptionMode = encryptionMode,
             )
         } else {
             // Proxy mode: use main connection settings with /sendspin path
@@ -294,11 +358,13 @@ class SendspinClientFactory(
                 bufferCapacityBytes = settings.sendspinBufferCapacityMb.value * SendspinConfig.BYTES_PER_MB,
                 serverHost = serverHost,
                 serverPort = mainConnection.port,
-                serverPath = "/sendspin",
+                // Same reverse proxy as the control socket, so it needs the same base path.
+                serverPath = "${mainConnection.basePath}/sendspin",
                 useTls = mainConnection.isTls,
                 useCustomConnection = false,
                 authToken = authToken,
                 mainConnectionPort = mainConnection.port,
+                encryptionMode = encryptionMode,
             )
         }
     }

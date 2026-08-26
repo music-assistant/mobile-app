@@ -6,6 +6,8 @@ import platform.Foundation.NSDateFormatter
 import platform.Foundation.NSDateFormatterMediumStyle
 import platform.Foundation.NSDateFormatterNoStyle
 import platform.Foundation.NSISO8601DateFormatter
+import platform.Foundation.NSLocale
+import platform.Foundation.preferredLanguages
 import platform.Foundation.timeIntervalSince1970
 import platform.posix.CLOCK_MONOTONIC
 import platform.posix.clock_gettime_nsec_np
@@ -33,3 +35,6 @@ actual fun formatIsoDate(isoDate: String): String {
     }
     return formatter.stringFromDate(date)
 }
+
+actual fun platformLocale(): String =
+    (NSLocale.preferredLanguages.firstOrNull() as? String).orEmpty()

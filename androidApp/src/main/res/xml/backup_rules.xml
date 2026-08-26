@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup exclusions for API 28-30 (`android:fullBackupContent`).
+  API 31+ uses `data_extraction_rules.xml` instead — keep the two in sync.
+
+  `AppSecrets.xml` holds access tokens, server addresses, and connection
+  history. It must never leave the device. Everything else in
+  `AppPreferences.xml` (theme, tabs, sort orders, car actions) is safe to
+  restore, so it stays backed up.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="AppSecrets.xml" />
+</full-backup-content>

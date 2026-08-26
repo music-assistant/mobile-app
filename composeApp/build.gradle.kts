@@ -85,11 +85,16 @@ kotlin {
             implementation(libs.androidx.media)
             implementation(libs.androidx.browser)
 
+            // Noise primitives backend (JCA crypto via the JDK provider).
+            implementation(libs.cryptography.provider.jdk)
+
             implementation(libs.coil)
             implementation(libs.concentus)
         }
 
         commonMain.dependencies {
+            implementation(project(":shared-icons"))
+
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.ui)
@@ -136,6 +141,9 @@ kotlin {
             implementation(libs.ktor.client.webrtc)
 
             implementation(libs.easyqrscan)
+
+            // Crypto primitives for the Sendspin Noise (encrypted) protocol.
+            implementation(libs.cryptography.core)
         }
 
         commonTest.dependencies {
@@ -147,6 +155,9 @@ kotlin {
 
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+
+            // Noise primitives backend (CryptoKit: X25519, ChaCha20-Poly1305).
+            implementation(libs.cryptography.provider.cryptokit)
         }
     }
 }

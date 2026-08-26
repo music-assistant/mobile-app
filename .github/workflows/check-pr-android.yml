@@ -43,7 +43,7 @@ jobs:
 
       - name: Run tests
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
-        run: ./gradlew :androidApp:testDebug :composeApp:testAndroidHostTest
+        run: ./gradlew :androidApp:testDebug testAndroidHostTest
 
       - name: Run lint
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}

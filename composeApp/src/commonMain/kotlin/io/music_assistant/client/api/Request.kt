@@ -64,6 +64,26 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        fun setSleepTimer(
+            playerId: String,
+            seconds: Int,
+        ) = Request(
+            command = APICommands.PLAYERS_SLEEP_TIMER_SET,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("seconds", JsonPrimitive(seconds))
+            },
+        )
+
+        fun clearSleepTimer(
+            playerId: String,
+        ) = Request(
+            command = APICommands.PLAYERS_SLEEP_TIMER_CLEAR,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+            },
+        )
+
         fun seek(
             queueId: String,
             position: Long,
@@ -139,6 +159,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                         myJson.decodeFromString<JsonArray>(myJson.encodeToString(it)),
                     )
                 }
+            },
+        )
+
+        /**
+         * Removes [playerId] from whatever group it is in. For an ad-hoc sync leader
+         * the server transfers the queue to a surviving member and resumes there; the
+         * client must not pick the new leader or call `player_queues/transfer` itself.
+         */
+        fun ungroup(playerId: String) = Request(
+            command = APICommands.PLAYERS_CMD_UNGROUP,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
             },
         )
     }
@@ -238,6 +270,12 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        /**
+         * Deliberately still the legacy command. `player_queues/dont_stop_the_music` is a
+         * live server-side alias that delegates to `set_autoplay`, so it works on old AND
+         * new servers, whereas `player_queues/autoplay` does not exist before 2.10. Do not
+         * "modernize" this to match the read path — that would break older servers.
+         */
         fun setDontStopTheMusic(
             queueId: String,
             enabled: Boolean,
@@ -246,6 +284,22 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("queue_id", JsonPrimitive(queueId))
                 put("dont_stop_the_music_enabled", JsonPrimitive(enabled))
+            },
+        )
+
+        /**
+         * Absolute setter, not a toggle: the server applies the value it is given.
+         * Unlike autoplay this command was never renamed, so there is no legacy alias
+         * to prefer — see `ServerQueue.crossfadeEnabled`.
+         */
+        fun setCrossfade(
+            queueId: String,
+            enabled: Boolean,
+        ) = Request(
+            command = APICommands.PLAYER_QUEUES_CROSSFADE,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+                put("crossfade_enabled", JsonPrimitive(enabled))
             },
         )
 
@@ -783,11 +837,16 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
 
         fun logout() = Request(command = APICommands.AUTH_LOGOUT)
 
-        fun authorize(token: String, deviceName: String) = Request(
+        fun authorize(
+            token: String,
+            deviceName: String,
+            locale: String? = null,
+        ) = Request(
             command = APICommands.AUTH,
             args = buildJsonObject {
                 put("token", JsonPrimitive(token))
                 put("device_name", JsonPrimitive(deviceName))
+                locale?.let { put("locale", JsonPrimitive(it)) }
             },
         )
     }
@@ -805,6 +864,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("config", myJson.encodeToJsonElement(DspConfig.serializer(), config))
+            },
+        )
+
+        fun applyPreset(playerId: String, presetId: String) = Request(
+            command = APICommands.CONFIG_PLAYERS_DSP_APPLY_PRESET,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("preset_id", JsonPrimitive(presetId))
             },
         )
 

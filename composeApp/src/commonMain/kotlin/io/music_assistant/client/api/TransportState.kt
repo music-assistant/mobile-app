@@ -19,13 +19,6 @@ interface Transport {
     fun connect()
     fun disconnect()
 
-    /**
-     * Probe connection liveness. Sends a WebSocket ping; if no activity within
-     * [timeoutMs], transitions to [TransportState.Reconnecting] and reconnects.
-     * Default no-op for transports with built-in keepalive (e.g. WebRTC ICE).
-     */
-    fun verifyConnection(timeoutMs: Long = 1000, probeReason: String = "unknown_caller") {}
-
-    /** Release the transport's coroutine scope. Call [disconnect] first; unusable after. */
+    /** Call [disconnect] first; unusable after. */
     fun close() {}
 }

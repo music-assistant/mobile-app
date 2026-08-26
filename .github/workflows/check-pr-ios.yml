@@ -78,7 +78,7 @@ jobs:
       # commonTest/iosTest failures, including Kotlin/Native-only test-name errors.
       - name: Run iOS Kotlin/Native tests
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
-        run: ./gradlew :composeApp:iosSimulatorArm64Test
+        run: ./gradlew iosSimulatorArm64Test
 
       # Simulator destination + signing disabled gives us a compile-only pass:
       # Kotlin framework compilation runs via the Xcode build phase script, and

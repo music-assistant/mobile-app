@@ -10,3 +10,6 @@ expect fun currentTimeMillis(): Long
 expect fun monotonicMs(): Long
 
 expect fun formatIsoDate(isoDate: String): String
+
+/** Current device locale in a form accepted by the Music Assistant API. */
+expect fun platformLocale(): String

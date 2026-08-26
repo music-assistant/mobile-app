@@ -110,26 +110,77 @@ enum PendingURL {
 }
 
 /// Single dispatch point for incoming deep links — mirrors Android's
-/// MainActivity.handleIncomingUri. Two entry forms reach here:
+/// MainActivity.handleIncomingUri. Three entry forms reach here:
 ///   - custom scheme  musicassistant://auth/callback   → OAuth (peeled off)
 ///   - custom scheme  musicassistant://app/<page>       → DeepLinkBus
 ///   - Universal Link https://…music-assistant.io/app/<page> → DeepLinkBus
-/// The OAuth callback is handled explicitly; everything else is forwarded to
-/// the shared DeepLinkBus, which self-filters and ignores anything it doesn't
-/// recognize.
+/// The OAuth callback is peeled off by shared Kotlin so this path and the in-app
+/// auth session agree on what a callback is; everything else is forwarded to the
+/// shared DeepLinkBus, which self-filters and ignores anything it doesn't recognize.
+///
+/// Note this is NOT a fallback for the in-app session: while a session is active the
+/// system delivers the custom-scheme redirect only to that session's completion
+/// handler, so `.onOpenURL` does not fire. This path serves cold launches and any
+/// callback that arrives without a live session.
 func handleIncomingURL(_ url: URL) {
-    if url.scheme == "musicassistant", url.host == "auth" {
-        guard url.path == "/callback",
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let code = components.queryItems?.first(where: { $0.name == "code" })?.value
-        else { return }
-        KmpHelper.shared.authManager.handleOAuthCallback(token: code)
-        return
-    }
+    if KmpHelper.shared.authManager.handleOAuthCallbackUrl(urlString: url.absoluteString) { return }
     KmpHelper.shared.handleDeepLink(urlString: url.absoluteString)
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    /// Key written by the shared Kotlin `SettingsRepository`. The general settings
+    /// store is backed by `NSUserDefaults.standard` (see provideSettings.ios.kt),
+    /// so reading it here needs no Kotlin bridge.
+    private static let allowLandscapeKey = "allow_landscape_all_devices"
+
+    private var defaultsObserver: NSObjectProtocol?
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // The setting must apply live. multiplatform-settings writes through
+        // UserDefaults.standard, so its change notification is the signal.
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard,
+            queue: .main
+        ) { _ in
+            AppDelegate.refreshSupportedOrientations()
+        }
+        return true
+    }
+
+    deinit {
+        if let defaultsObserver {
+            NotificationCenter.default.removeObserver(defaultsObserver)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        // Never constrain the CarPlay scene.
+        guard window?.windowScene?.session.role == .windowApplication else { return .all }
+        if UIDevice.current.userInterfaceIdiom != .phone { return .all }
+        return UserDefaults.standard.bool(forKey: AppDelegate.allowLandscapeKey) ? .all : .portrait
+    }
+
+    /// Asks every foreground window to re-read the mask above.
+    private static func refreshSupportedOrientations() {
+        if #available(iOS 16.0, *) {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .filter { $0.session.role == .windowApplication }
+                .flatMap { $0.windows }
+                .compactMap { $0.rootViewController }
+                .forEach { $0.setNeedsUpdateOfSupportedInterfaceOrientations() }
+        } else {
+            UIViewController.attemptRotationToDeviceOrientation()
+        }
+    }
+
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
@@ -191,6 +242,9 @@ struct iOSApp: App {
     // Using NativeAudioController with swift-opus and libFLAC for decoding
     private let player = NativeAudioController()
     private let volumeButtonObserver = SystemVolumeButtonObserver()
+    // Strong ref: ASWebAuthenticationSession cancels itself when its owner deallocates,
+    // so the handler must outlive every login attempt.
+    private let oauthWebSession = OAuthWebSession()
 
     init() {
         // Register the Swift audio player with Kotlin before KMP services are created.
@@ -220,6 +274,14 @@ struct iOSApp: App {
         // Second coordinator init phase: the now-playing channel observers
         // need the Kotlin graph, which exists only after bootstrapKmp().
         NowPlayingCoordinator.shared.startObserving()
+
+        // App-wide, so it belongs here for the same reason bootstrapKmp() does:
+        // a CarPlay-only cold launch never connects the WindowGroup, so anything
+        // installed from a SwiftUI callback is unreachable on that path. The handler
+        // resolves its presentation window lazily, at present time, so it has nothing
+        // to wait for here.
+        KmpHelper.shared.authManager.oauthHandler = oauthWebSession
+
         if UIApplication.shared.applicationState == .active {
             volumeButtonObserver.start()
         }
@@ -257,10 +319,6 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onAppear {
-                    // OAuthHandler presents `ASWebAuthenticationSession`;
-                    // requires a live scene, so can't move to `init()`.
-                    KmpHelper.shared.authManager.oauthHandler = OAuthHandler()
-
                     if let pending = PendingURL.url {
                         PendingURL.url = nil
                         handleIncomingURL(pending)

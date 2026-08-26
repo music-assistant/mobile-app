@@ -45,6 +45,12 @@ enum class EventType {
     @SerialName("player_settings_updated")
     PLAYER_SETTINGS_UPDATED,
 
+    // Redundant for state: the server also calls `update_state()` on every timer
+    // change, so `PLAYER_UPDATED` carries `sleep_timer_expires_at`. Listed only so
+    // the event decoder ignores it quietly instead of logging an unknown type.
+    @SerialName("player_sleep_timer_updated")
+    PLAYER_SLEEP_TIMER_UPDATED,
+
     @SerialName("queue_added")
     QUEUE_ADDED,
 

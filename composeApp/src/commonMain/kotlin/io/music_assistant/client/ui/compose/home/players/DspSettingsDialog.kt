@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.server.DspConfigPreset
-import io.music_assistant.client.ui.alphaOn
 import musicassistantclient.composeapp.generated.resources.*
 import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
@@ -141,10 +140,7 @@ private fun DspContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .alphaOn(state.config.enabled)
-                            .clickable(enabled = state.config.enabled) {
-                                onApplyPreset(preset)
-                            }
+                            .clickable { onApplyPreset(preset) }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

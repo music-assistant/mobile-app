@@ -50,6 +50,9 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.media_error_local_player_off
+import org.jetbrains.compose.resources.getString
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -78,7 +81,17 @@ class AutoLibrary(
     private val itemCache = ConcurrentHashMap<String, CacheEntry>()
     private val cacheTtlMs = 5 * 60_000L
 
+    // getItems() is synchronous, so the disabled-state label is resolved once up front,
+    // mirroring how SharedMediaSessionManager preloads MediaSessionStrings. Seeded with the
+    // source-language text so a host that browses before the load lands never sees a blank
+    // row (the tab titles in this file are hardcoded for the same reason).
+    @Volatile
+    private var localPlayerOffLabel: String = "Local player is not enabled"
+
     init {
+        scope.launch {
+            localPlayerOffLabel = getString(Res.string.media_error_local_player_off)
+        }
         scope.launch {
             searchFlow
                 .filterNotNull()
@@ -111,6 +124,14 @@ class AutoLibrary(
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
         androidAutoLog.i { "Items for $id" }
+        // No local player means nothing in the tree is playable. Serve one explanatory row
+        // at the root and nothing anywhere else, instead of a library full of dead ends.
+        if (!settingsRepository.sendspinEnabled.value) {
+            result.sendResult(
+                if (id == MediaIds.ROOT) listOf(localPlayerOffItem()) else emptyList(),
+            )
+            return
+        }
         when {
             id == MediaIds.ROOT -> result.sendResult(rootChildren())
             MediaIds.parseSubListId(id) != null -> handleSubList(id, result)
@@ -122,6 +143,16 @@ class AutoLibrary(
     fun invalidateCache() {
         itemCache.clear()
     }
+
+    // Neither browsable nor playable: the host draws it as an inert row.
+    private fun localPlayerOffItem(): MediaItem = MediaItem(
+        MediaDescriptionCompat.Builder()
+            .setMediaId(MediaIds.LOCAL_PLAYER_OFF)
+            .setTitle(localPlayerOffLabel)
+            .setIconUri(defaultIconUri)
+            .build(),
+        0,
+    )
 
     // Default order/visibility when the user hasn't customized the Auto tabs
     // (Settings → Car → Tabs). Tracks/Genres are intentionally not exposed in AA.
@@ -375,12 +406,20 @@ class AutoLibrary(
         query: String,
         result: MediaBrowserServiceCompat.Result<List<MediaItem>>,
     ) {
+        if (!settingsRepository.sendspinEnabled.value) {
+            result.sendResult(emptyList())
+            return
+        }
         result.detach()
         // converting to flow for filtering and debouncing
         searchFlow.update { Pair(query, result) }
     }
 
     fun searchAndPlay(query: String, extras: Bundle?) {
+        if (!settingsRepository.sendspinEnabled.value) {
+            androidAutoLog.w { "Local player disabled — ignoring searchAndPlay." }
+            return
+        }
         scope.launch {
             // Readiness/recovery is driven at the request choke point: every play* path
             // below issues `apiClient.sendRequest`, which gates on `ensureReadyForCommands`
@@ -738,6 +777,10 @@ class AutoLibrary(
         )
 
     fun play(id: String, extras: Bundle?) {
+        if (!settingsRepository.sendspinEnabled.value) {
+            androidAutoLog.w { "Local player disabled — ignoring play($id)." }
+            return
+        }
         val parts = id.split("__")
         val uri = parts.getOrNull(1) ?: return
         // A bulk button carries its action in extras; a plain item tap resolves the per-kind
@@ -816,6 +859,9 @@ private const val PARENT_REF_PROVIDER_PARAM_INDEX = 3
 
 internal object MediaIds {
     const val ROOT = "auto_lib_root"
+
+    // Inert row shown at the root while the local player is disabled.
+    const val LOCAL_PLAYER_OFF = "auto_lib_local_player_off"
     const val TAB_ARTISTS = "auto_lib_artists"
     const val TAB_ALBUMS = "auto_lib_albums"
     const val TAB_PLAYLISTS = "auto_lib_playlists"

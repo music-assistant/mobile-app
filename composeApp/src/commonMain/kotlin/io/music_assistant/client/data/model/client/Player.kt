@@ -26,11 +26,25 @@ data class Player(
     val groupVolume: Float?,
     val groupVolumeMuted: Boolean,
     val currentMedia: PlayerMedia?,
+    /** Unix (UTC) timestamp in seconds at which the sleep timer stops playback. */
+    val sleepTimerExpiresAt: Double? = null,
 ) {
     val isPoweredOff: Boolean get() = canPower && !isPowered
 
     val isGroup = type == PlayerType.GROUP
     val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true
+
+    /**
+     * True when this player leads an ad-hoc sync group, so ungrouping it hands the
+     * session to a surviving member. [PlayerType.GROUP] players are excluded: for them
+     * the server's `ungroup` releases the whole session instead of transferring it.
+     * A leader has no parent of its own, and a permanent member is never removable.
+     */
+    val canLeaveOwnGroup: Boolean
+        get() = isGrouped &&
+            activeGroup == null &&
+            syncedTo == null &&
+            staticGroupMembers?.contains(id) != true
 
     val suffix = when {
         isGroup -> " (${groupMembers?.size ?: 0})"

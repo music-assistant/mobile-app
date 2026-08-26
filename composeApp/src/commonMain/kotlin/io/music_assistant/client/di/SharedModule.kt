@@ -12,6 +12,7 @@ import io.music_assistant.client.data.LocalPlayerController
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.PlayerPositionTracker
 import io.music_assistant.client.data.PlayerRequestFactory
+import io.music_assistant.client.data.UserPreferences
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
@@ -21,7 +22,10 @@ import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.SendspinClientFactory
+import io.music_assistant.client.player.sendspin.identity.SendspinKeyStore
+import io.music_assistant.client.player.sendspin.identity.SettingsSendspinKeyStore
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.provideSecretSettings
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.SchemaVersionWarningViewModel
@@ -47,14 +51,26 @@ import io.music_assistant.client.utils.NetworkMonitor
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+
+/**
+ * Qualifier for the secrets store. Its backing file is excluded from the
+ * Android backup, so put a value here only when it authenticates to the
+ * user's server or identifies it.
+ */
+const val SECRETS = "secrets"
 
 fun sharedModule(
     serviceClientConstructor: (SettingsRepository, ErrorMessageBus) -> ServiceClient = ::KtorServiceClient,
 ) =
     module {
+        // The general store stays unqualified so that any consumer resolving
+        // `Settings` by type keeps the backed-up store. Only the secrets store
+        // is qualified — ask for it on purpose.
         single { provideSettings() }
-        singleOf(::SettingsRepository)
+        single(named(SECRETS)) { provideSecretSettings() }
+        single { SettingsRepository(get(), get(named(SECRETS))) }
         singleOf(::NetworkMonitor)
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)
@@ -78,7 +94,11 @@ fun sharedModule(
         single<AuthCoordinator> { get<AuthenticationManager>() }
         singleOf(::MediaPlayerController)  // Used by the local (Sendspin) player sink
         singleOf(::SendspinClientFactory)   // Factory for creating Sendspin clients
+        // Sendspin encrypted-protocol identity/trust persistence — the same
+        // app settings storage as everything else.
+        single<SendspinKeyStore> { SettingsSendspinKeyStore(get()) }
         single { PlayerPositionTracker() }  // Shared live-position source of truth
+        single { UserPreferences() }        // Server-synced `auth/me` preferences
         singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
         singleOf(::LocalPlayerController)    // Local player: lifecycle + state + commands
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper

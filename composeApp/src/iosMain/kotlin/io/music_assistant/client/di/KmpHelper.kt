@@ -11,6 +11,7 @@ import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
+import io.music_assistant.client.auth.OAuthCallback
 import io.music_assistant.client.carplay.CarPlayStrings
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.NowPlayingModes
@@ -103,6 +104,13 @@ object KmpHelper : KoinComponent {
      * silently ignored.
      */
     fun handleDeepLink(urlString: String) = deepLinkBus.handle(urlString)
+
+    /**
+     * Callback scheme for `ASWebAuthenticationSession`, so Swift does not hold its own
+     * copy that could drift from the redirect URL the server is given. Bare scheme, not
+     * a URL: the session matches on the scheme alone.
+     */
+    fun oauthCallbackScheme(): String = OAuthCallback.SCHEME
 
     fun onPlatformVolumeButtonPressed() {
         volumeButtonService.onPlatformVolumeButtonPressed()

@@ -1,5 +1,4 @@
-package io.music_assistant.client.ui.compose.home.players
-
+package io.music_assistant.client.data.model.client
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -27,5 +26,22 @@ class ChapterSeekSecondsTest {
     @Test
     fun zeroStartStaysZero() {
         assertEquals(0L, chapterSeekSeconds(0.0))
+    }
+
+    @Test
+    fun timelineValueWithoutChapterKeepsTheAbsoluteTruncatingTarget() {
+        // No chapter: the timeline is already absolute and must keep the
+        // truncating target the server and the position tracker agree on.
+        assertEquals(100L, (null as ResolvedChapter?).toAbsoluteSeekSeconds(100.9))
+    }
+
+    @Test
+    fun timelineValueWithChapterMapsBackToAbsoluteAndRoundsUp() {
+        val chapter = ResolvedChapter(
+            chapter = Chapter(position = 1, name = "Ch2", start = 100.5, end = 200.5),
+            start = 100.5,
+            end = 200.5,
+        )
+        assertEquals(151L, chapter.toAbsoluteSeekSeconds(50.0))
     }
 }

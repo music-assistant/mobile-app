@@ -112,6 +112,40 @@ class AuthRoundTripTest {
         assertEquals(payload, result.answer)
     }
 
+    @Test
+    fun sendFailureIsClassifiedAsNotSent() {
+        val result = classifyAuthRoundTrip(
+            response = failed(),
+            isAutoLogin = false,
+            priorSilentFailures = 0,
+            maxSilentFailures = 3,
+        )
+
+        assertTrue(result is AuthRoundTrip.NoResponse)
+        assertEquals(
+            AuthFailureCause.NOT_SENT,
+            result.cause,
+            "A failed send means the server never saw the request — it must not read as server silence",
+        )
+    }
+
+    @Test
+    fun roundTripTimeoutIsClassifiedAsNoReply() {
+        val result = classifyAuthRoundTrip(
+            response = Result.failure(AuthRoundTripTimeout(5_000)),
+            isAutoLogin = false,
+            priorSilentFailures = 0,
+            maxSilentFailures = 3,
+        )
+
+        assertTrue(result is AuthRoundTrip.NoResponse)
+        assertEquals(
+            AuthFailureCause.NO_REPLY,
+            result.cause,
+            "A request that went out and got no answer is the one true server-silence case",
+        )
+    }
+
     // --- authRoundTrip (timeout helper) ---
 
     @Test

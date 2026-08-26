@@ -17,13 +17,21 @@ data class QueueInfo(
      */
     val elapsedTimeLastUpdated: Double?,
     val currentItem: QueueTrack?,
+    /**
+     * Legacy `radio_source`. Servers from 2.10 on always serialize this as an empty list
+     * (radio mode became `sources` + `is_dynamic`), so it is NOT a usable signal — do not
+     * derive "radio is on" from it.
+     */
     val radioSource: List<AppMediaItem>,
+    /**
+     * Crossfade on the queue, or null when the server does not support the feature.
+     * Nullability is the gate for the badge and the menu entry.
+     */
+    val crossfadeEnabled: Boolean? = null,
     /** Server-derived: the active source is a dynamic/smart playlist (rule-generated). */
     val isDynamicPlaylist: Boolean = false,
     val playbackSpeed: Double? = null,
-) {
-    val isRadioOn: Boolean = radioSource.isNotEmpty()
-}
+)
 
 /** Strict-older-than on [QueueInfo.elapsedTimeLastUpdated]. Callers match ids first. */
 fun QueueInfo.isBefore(other: QueueInfo): Boolean {

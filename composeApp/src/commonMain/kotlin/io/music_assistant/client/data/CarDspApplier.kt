@@ -2,9 +2,11 @@ package io.music_assistant.client.data
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.supportsDspApplyPreset
 import io.music_assistant.client.settings.CarDspAction
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.settings.matches
+import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,7 +65,7 @@ class CarDspApplier(
             logger.i { "$edge: not ready within ${READY_TIMEOUT_MS}ms, skipping DSP apply" }
             return
         }
-        val playerId = settings.sendspinClientId.value
+        val playerId = settings.sendspinEffectivePlayerId.value
         when (action) {
             is CarDspAction.Disable -> {
                 val config = dataSource.getDspConfig(playerId) ?: return
@@ -78,7 +80,18 @@ class CarDspApplier(
                     logger.i { "$edge: preset '${action.name}' not found on server, skipping" }
                     return
                 }
-                dataSource.saveDspConfig(playerId, preset.config.copy(enabled = true))
+                val schemaVersion = (serviceClient.sessionState.value as? HasConnectionData)
+                    ?.serverInfo?.schemaVersion
+                val presetId = preset.presetId
+                val applied = if (presetId != null && supportsDspApplyPreset(schemaVersion)) {
+                    dataSource.applyDspPreset(playerId, presetId)
+                } else {
+                    dataSource.saveDspConfig(playerId, preset.config.copy(enabled = true))
+                }
+                if (applied == null) {
+                    logger.w { "$edge: failed to apply DSP preset '${preset.name}'" }
+                    return
+                }
                 logger.i { "$edge: applied DSP preset '${preset.name}'" }
             }
 

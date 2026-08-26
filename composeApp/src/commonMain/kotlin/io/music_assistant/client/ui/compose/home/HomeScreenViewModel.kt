@@ -16,6 +16,8 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
+import io.music_assistant.client.data.model.server.supportsLeaderLeave
+import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
@@ -24,6 +26,7 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CancellationException
@@ -32,11 +35,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -61,7 +68,7 @@ class HomeScreenViewModel(
     // Local (Sendspin) player identity — used by the group dialog to decide
     // whether to show the playback-delay adjuster.
     val localPlayerId: String
-        get() = settings.sendspinClientId.value
+        get() = settings.sendspinEffectivePlayerId.value
 
     fun adjustSendspinStaticDelayMs(deltaMs: Int) {
         settings.setSendspinStaticDelayMs(settings.sendspinStaticDelayMs.value + deltaMs)
@@ -71,6 +78,14 @@ class HomeScreenViewModel(
     fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
 
     /**
+     * Server-synced `audiobook_chapter_progress` gate for the chapter-relative timeline.
+     * The web frontend owns the toggle; this client refreshes it on connect.
+     */
+    val chapterProgressEnabled: StateFlow<Boolean> =
+        dataSource.userPreferences.chapterProgressEnabled
+            .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    /**
      * Seconds of audio buffered ahead of the local playhead, sampled to ~2 Hz so the buffered
      * segment on the slider tracks the position tick without spamming recomposition.
      */
@@ -78,6 +93,21 @@ class HomeScreenViewModel(
 
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization
+
+    /** Server-side sleep timers exist from schema 35 on; hide the whole feature below that. */
+    val sleepTimerSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsSleepTimer((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /**
+     * Older servers dissolve the group and stop playback when the leader leaves, so the
+     * leave gesture is hidden below the handoff floor.
+     */
+    val leaderLeaveSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsLeaderLeave((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     val connectionState = _connectionState.asStateFlow()
@@ -380,6 +410,11 @@ class HomeScreenViewModel(
 
     fun playerAction(data: PlayerData, action: PlayerAction) = dataSource.playerAction(data, action)
     fun queueAction(action: QueueAction) = dataSource.queueAction(action)
+    fun setSleepTimer(playerId: String, seconds: Int) =
+        dataSource.setSleepTimer(playerId, seconds)
+
+    fun clearSleepTimer(playerId: String) = dataSource.clearSleepTimer(playerId)
+
     fun onPlayersSortChanged(newSort: List<String>) = dataSource.onPlayersSortChanged(newSort)
     fun openPlayerSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
         onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id")
@@ -396,6 +431,7 @@ class HomeScreenViewModel(
                     state.connectionInfo.host,
                     state.connectionInfo.port,
                     state.connectionInfo.isTls,
+                    state.connectionInfo.basePath,
                 ),
             )
 

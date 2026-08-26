@@ -14,10 +14,12 @@ import androidx.lifecycle.asLiveData
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.auth.AuthenticationManager
+import io.music_assistant.client.auth.CustomTabsOAuthHandler
 import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.services.MainMediaPlaybackService
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject
 
@@ -26,8 +28,9 @@ class MainActivity : ComponentActivity() {
     private val authManager: AuthenticationManager by inject()
     private val deepLinkBus: DeepLinkBus by inject()
     private val volumeButtonService: VolumeButtonService by inject()
+    private val settings: SettingsRepository by inject()
     private val oauthHandler: OAuthHandler by lazy {
-        OAuthHandler(this)
+        CustomTabsOAuthHandler(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +38,18 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Lock orientation on compact devices, unless the user opted out. The
+        // manifest declares no screenOrientation, so re-applying this live only
+        // triggers a configuration change the activity already handles itself.
+        settings.allowLandscapeOnAllDevices.asLiveData()
+            .observe(this) { allowLandscape ->
+                requestedOrientation = if (!allowLandscape && isCompactDevice()) {
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+            }
 
         // Provide OAuthHandler to AuthenticationManager
         authManager.oauthHandler = oauthHandler
@@ -66,6 +81,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun isCompactDevice() =
+        resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // singleTask reuses this instance, so this path is now live (it was dead
@@ -95,16 +113,7 @@ class MainActivity : ComponentActivity() {
         Logger.withTag("MainActivity").d("Deep link received: $data")
 
         // musicassistant://auth/callback?code=...
-        if (data.scheme == "musicassistant" && data.host == "auth" && data.path == "/callback") {
-            val token = data.getQueryParameter("code")
-            Logger.withTag("MainActivity").d("OAuth callback - token: ${token != null}")
-            if (token != null) {
-                authManager.handleOAuthCallback(token)
-            } else {
-                Logger.withTag("MainActivity").e("No token in OAuth callback")
-            }
-            return
-        }
+        if (authManager.handleOAuthCallbackUrl(data.toString())) return
         deepLinkBus.handle(data.toString())
     }
 

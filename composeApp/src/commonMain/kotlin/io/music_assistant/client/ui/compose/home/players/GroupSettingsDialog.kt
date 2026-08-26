@@ -54,12 +54,14 @@ import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_add_to_group
+import musicassistantclient.composeapp.generated.resources.cd_leave_group
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_remove_from_group
 import musicassistantclient.composeapp.generated.resources.cd_unmute
 import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_group_volume
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -70,6 +72,7 @@ fun GroupSettingsDialog(
     groupAction: (String, PlayerAction) -> Unit = { _, _ -> },
     localPlayerId: String? = null,
     onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
+    canLeaveGroup: Boolean = false,
 ) {
     // TODO generalize Dialogs across the app
     Dialog(onDismissRequest = onDismissRequest) {
@@ -91,6 +94,7 @@ fun GroupSettingsDialog(
                         playerAction = groupAction,
                         localPlayerId = localPlayerId,
                         onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                        canLeaveGroup = canLeaveGroup,
                     )
                 }
             }
@@ -105,6 +109,7 @@ private fun GroupSettings(
     playerAction: (String, PlayerAction) -> Unit,
     localPlayerId: String? = null,
     onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
+    canLeaveGroup: Boolean = false,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -153,8 +158,17 @@ private fun GroupSettings(
                     GroupItemTitle(
                         isEnabled = true,
                         name = item.player.name,
-                        childBindItem = null,
-                        onGroupActionClick = null,
+                        // The leader leaves via `ungroup`, not `set_members`: the server
+                        // owns the choice of successor and moves the queue there.
+                        toggle = GroupToggle(
+                            isBound = true,
+                            isManageable = true,
+                            contentDescription = Res.string.cd_leave_group,
+                            onClick = {
+                                playerAction(item.player.id, PlayerAction.LeaveGroup)
+                                onDismiss()
+                            },
+                        ).takeIf { canLeaveGroup && item.player.canLeaveOwnGroup },
                     )
                     if (item.player.isGroup) {
                         item.player.groupVolume?.let { playerVolumeLevel ->
@@ -212,17 +226,25 @@ private fun GroupSettings(
                     GroupItemTitle(
                         isEnabled = bindInfo.isBound,
                         name = bindInfo.name,
-                        childBindItem = bindInfo,
-                        onGroupActionClick = {
-                            val playerIdList = listOf(bindInfo.id)
-                            playerAction(
-                                bindInfo.parentId,
-                                PlayerAction.GroupManage(
-                                    toAdd = playerIdList.takeIf { !bindInfo.isBound },
-                                    toRemove = playerIdList.takeIf { bindInfo.isBound },
-                                ),
-                            )
-                        },
+                        toggle = GroupToggle(
+                            isBound = bindInfo.isBound,
+                            isManageable = bindInfo.isManageable,
+                            contentDescription = if (bindInfo.isBound) {
+                                Res.string.cd_remove_from_group
+                            } else {
+                                Res.string.cd_add_to_group
+                            },
+                            onClick = {
+                                val playerIdList = listOf(bindInfo.id)
+                                playerAction(
+                                    bindInfo.parentId,
+                                    PlayerAction.GroupManage(
+                                        toAdd = playerIdList.takeIf { !bindInfo.isBound },
+                                        toRemove = playerIdList.takeIf { bindInfo.isBound },
+                                    ),
+                                )
+                            },
+                        ),
                     )
 
                     if (bindInfo.id == localPlayerId) {
@@ -290,12 +312,23 @@ private fun GroupPlayerItemCard(
     }
 }
 
+/**
+ * The join/leave affordance of one row, decoupled from [PlayerData.ChildBind] so the
+ * pivot player can carry one too — its button leaves its own group rather than
+ * adding or removing a member.
+ */
+private data class GroupToggle(
+    val isBound: Boolean,
+    val isManageable: Boolean,
+    val contentDescription: StringResource,
+    val onClick: () -> Unit,
+)
+
 @Composable
 private fun GroupItemTitle(
     isEnabled: Boolean,
     name: String,
-    childBindItem: PlayerData.ChildBind? = null,
-    onGroupActionClick: (() -> Unit)? = null,
+    toggle: GroupToggle? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -314,30 +347,22 @@ private fun GroupItemTitle(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        // Join/leave button is only shown for child-bind rows.
-        childBindItem?.let { item ->
-            onGroupActionClick?.let { action ->
-                IconButton(
-                    enabled = item.isManageable,
-                    onClick = { action() },
-                ) {
-                    Icon(
-                        modifier = Modifier.alphaOn(item.isManageable),
-                        imageVector = if (item.isBound) Icons.Default.Remove else Icons.Default.Add,
-                        contentDescription = if (item.isBound) {
-                            stringResource(
-                                Res.string.cd_remove_from_group,
-                            )
-                        } else {
-                            stringResource(Res.string.cd_add_to_group)
-                        },
-                        tint = if (item.isBound) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                    )
-                }
+        // Rows with no grouping gesture (a pivot that cannot leave) show no button.
+        toggle?.let { item ->
+            IconButton(
+                enabled = item.isManageable,
+                onClick = item.onClick,
+            ) {
+                Icon(
+                    modifier = Modifier.alphaOn(item.isManageable),
+                    imageVector = if (item.isBound) Icons.Default.Remove else Icons.Default.Add,
+                    contentDescription = stringResource(item.contentDescription),
+                    tint = if (item.isBound) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                )
             }
         }
     }
@@ -465,6 +490,22 @@ private fun PreviewGroupSettingDialog() {
     GroupSettingsDialog(
         player = selectedPlayer,
         onDismissRequest = {},
+    )
+}
+
+/** The sync leader's own card carries a leave button once the server supports handoff. */
+@Preview
+@Composable
+private fun PreviewGroupSettingDialogLeaderCanLeave() {
+    val leader = PlayerDataFixtures.playerData(
+        groupChildren = List(2) { PlayerDataFixtures.bind().copy(isBound = true) },
+    )
+    GroupSettingsDialog(
+        player = leader.copy(
+            player = leader.player.copy(groupMembers = setOf("member-a", "member-b")),
+        ),
+        onDismissRequest = {},
+        canLeaveGroup = true,
     )
 }
 

@@ -19,9 +19,12 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Manages WebRTC connection lifecycle and orchestrates signaling + peer connection.
@@ -77,6 +80,7 @@ class WebRTCConnectionManager(
     private var peerConnection: PeerConnectionWrapper? = null
     private var dataChannel: DataChannelWrapper? = null
     private var sendspinDataChannelInternal: DataChannelWrapper? = null
+    private var httpProxyDataChannelInternal: DataChannelWrapper? = null
     private var signalingMessageListenerJob: Job? = null
     private var iceCandidateJob: Job? = null
     private var dataChannelListenerJob: Job? = null
@@ -102,6 +106,37 @@ class WebRTCConnectionManager(
      */
     val sendspinDataChannel: DataChannelWrapper?
         get() = sendspinDataChannelInternal
+
+    /**
+     * Opens the dedicated image channel, on which the server answers proxied HTTP requests
+     * (album art, previews) so they stop queueing ahead of API traffic on `ma-api`.
+     *
+     * Opened on demand rather than before the offer, because a server older than schema 49
+     * mistakes an unknown channel label for the API channel and drops the whole remote
+     * session. Callers must therefore gate on the schema version first. No SDP
+     * renegotiation is involved: `m=application` already exists from `ma-api`, so the new
+     * channel is signalled in-band.
+     *
+     * Idempotent — returns the live channel if one is already open, null if it cannot be
+     * opened (the `ma-api` proxy path remains a working fallback).
+     */
+    suspend fun openHttpProxyChannel(): DataChannelWrapper? {
+        httpProxyDataChannelInternal?.let { return it }
+        val pc = peerConnection ?: return null
+        val channel = pc.createDataChannel(label = HTTP_PROXY_CHANNEL_LABEL, ordered = true)
+        httpProxyDataChannelInternal = channel
+        val opened = withTimeoutOrNull(CHANNEL_OPEN_TIMEOUT_MS) {
+            channel.state.first { it == DataChannelState.Open }
+        }
+        if (opened == null) {
+            logger.w { "http_proxy channel did not open within ${CHANNEL_OPEN_TIMEOUT_MS}ms" }
+            channel.close()
+            httpProxyDataChannelInternal = null
+            return null
+        }
+        logger.i { "http_proxy data channel ready for use" }
+        return channel
+    }
 
     /**
      * Connect to Music Assistant server via WebRTC.
@@ -481,9 +516,11 @@ class WebRTCConnectionManager(
         // Collect incoming messages from the flow
         messageListenerJob = scope.launch {
             try {
-                channel.messages.collect { msg ->
-                    _incomingMessages.emit(msg)
-                }
+                // Sole collector of the ma-api channel's ordered inbound
+                // stream; this channel carries text RPC frames only.
+                channel.inbound
+                    .filterIsInstance<DataChannelInbound.Text>()
+                    .collect { _incomingMessages.emit(it.text) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -577,6 +614,9 @@ class WebRTCConnectionManager(
         sendspinDataChannelInternal?.close()
         sendspinDataChannelInternal = null
 
+        httpProxyDataChannelInternal?.close()
+        httpProxyDataChannelInternal = null
+
         peerConnection?.close()
         peerConnection = null
 
@@ -590,5 +630,11 @@ class WebRTCConnectionManager(
         // that genuinely-dead links don't feel sticky. See the DISCONNECTED branch in the
         // connection-state collector for rationale.
         private const val ICE_DISCONNECT_GRACE_MS = 4_000L
+
+        // Label the server routes proxied HTTP requests on (schema 49+).
+        private const val HTTP_PROXY_CHANNEL_LABEL = "http_proxy"
+
+        // Matches the web frontend's own wait for a late-opened data channel.
+        private const val CHANNEL_OPEN_TIMEOUT_MS = 10_000L
     }
 }

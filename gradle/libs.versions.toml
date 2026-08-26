@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.1"
+agp = "9.3.2"
 android-compileSdk = "37"
 android-minSdk = "28"
 android-targetSdk = "36"
@@ -45,6 +45,9 @@ androidx-compose-ui-test = "1.11.4"
 robolectric = "4.16.1"
 detekt = "1.23.8"
 turbine = "1.2.1"
+# Pre-1.0 crypto primitives library; pinned deliberately. Wraps OS-native
+# crypto (JDK provider on Android, CryptoKit on iOS) behind one commonMain API.
+cryptographyKotlin = "0.6.0"
 
 
 [libraries]
@@ -126,6 +129,12 @@ compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.r
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose-multiplatform" }
 
 detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
+
+cryptography-core = { module = "dev.whyoleg.cryptography:cryptography-core", version.ref = "cryptographyKotlin" }
+cryptography-provider-jdk = { module = "dev.whyoleg.cryptography:cryptography-provider-jdk", version.ref = "cryptographyKotlin" }
+# The CryptoKit provider (not "apple"/CommonCrypto) is required on iOS: it is
+# the one registering XDH (X25519) and ChaCha20-Poly1305.
+cryptography-provider-cryptokit = { module = "dev.whyoleg.cryptography:cryptography-provider-cryptokit", version.ref = "cryptographyKotlin" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

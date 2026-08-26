@@ -13,24 +13,32 @@ import io.ktor.websocket.readReason
 import io.ktor.websocket.readText
 import io.music_assistant.client.api.DEFAULT_MAX_RECONNECT_ATTEMPTS
 import io.music_assistant.client.api.runReconnectionLoop
-import io.music_assistant.client.player.sendspin.WebSocketState
+import io.music_assistant.client.player.sendspin.transport.InboundTransportEvent
 import io.music_assistant.client.utils.createPlatformHttpClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * WebSocket connection for the Sendspin protocol with automatic reconnect.
+ *
+ * Inbound frames and connection lifecycle share one lossless, source-ordered
+ * [events] stream (see [InboundTransportEvent]): each (re)connection starts a
+ * new epoch whose `Connected` event is published before any frame the epoch's
+ * listener emits, and events ride an unbounded channel so nothing is dropped
+ * under backpressure.
+ */
 class SendspinWsHandler(
     private val serverUrl: String,
     private val networkAvailable: StateFlow<Boolean>? = null,
@@ -53,50 +61,52 @@ class SendspinWsHandler(
 
     // Auto-reconnect state
     private var explicitDisconnect = false
-    private var reconnectAttempts = 0
+    private var connecting = false
     private var reconnectJob: Job? = null
 
-    // Callback invoked after a successful automatic reconnect
-    var onReconnected: (() -> Unit)? = null
+    // Monotonic connection-epoch counter; each successful (re)connect bumps it.
+    private var epoch = 0
 
-    private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 50)
-    val textMessages: Flow<String> = _textMessages.asSharedFlow()
+    // Unbounded so emitters never drop: a lost control frame would strand the
+    // consumer's protocol state machine.
+    private val eventsChannel = Channel<InboundTransportEvent>(Channel.UNLIMITED)
 
-    private val _binaryMessages = MutableSharedFlow<ByteArray>(extraBufferCapacity = 100)
-    val binaryMessages: Flow<ByteArray> = _binaryMessages.asSharedFlow()
+    /** Single-collector ordered inbound stream. */
+    val events: Flow<InboundTransportEvent> = eventsChannel.receiveAsFlow()
 
-    private val _connectionState = MutableStateFlow<WebSocketState>(WebSocketState.Disconnected)
-    val connectionState: StateFlow<WebSocketState> = _connectionState.asStateFlow()
+    private fun emitEvent(event: InboundTransportEvent) {
+        eventsChannel.trySend(event)
+    }
 
     suspend fun connect() {
-        if (_connectionState.value is WebSocketState.Connected ||
-            _connectionState.value is WebSocketState.Connecting
-        ) {
+        if (connecting || session != null) {
             logger.w { "Already connected or connecting" }
             return
         }
-
-        _connectionState.value = WebSocketState.Connecting
+        connecting = true
         logger.i { "Connecting to server" }
 
         try {
             val wsSession = client.webSocketSession(serverUrl)
             session = wsSession
 
-            // Reset auto-reconnect state on successful connection
-            reconnectAttempts = 0
             explicitDisconnect = false
             reconnectJob?.cancel()
             reconnectJob = null
 
-            _connectionState.value = WebSocketState.Connected
-            logger.i { "Connected to server" }
-
-            startListening(wsSession)
+            epoch += 1
+            logger.i { "Connected to server (epoch $epoch)" }
+            // Epoch begins strictly before any of its frames.
+            emitEvent(InboundTransportEvent.Connected(epoch, isReconnect = false))
+            startListening(wsSession, epoch)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logger.e(e) { "Failed to connect to server" }
-            _connectionState.value = WebSocketState.Error(e)
+            emitEvent(InboundTransportEvent.Error(epoch, e, permanent = false))
             session = null
+        } finally {
+            connecting = false
         }
     }
 
@@ -105,27 +115,34 @@ class SendspinWsHandler(
     // resolve Frame to a concrete sealed and flag the `else` as redundant.
     // Suppress that warning here so both compiles stay clean.
     @Suppress("REDUNDANT_ELSE_IN_WHEN")
-    private fun startListening(wsSession: DefaultClientWebSocketSession) {
+    private fun startListening(wsSession: DefaultClientWebSocketSession, listenerEpoch: Int) {
         listenerJob?.cancel()
         listenerJob = launch {
+            var reconnecting = false
+            var disconnectEmitted = false
             try {
                 for (frame in wsSession.incoming) {
                     when (frame) {
                         is Frame.Text -> {
                             val text = frame.readText()
                             logger.d { "Received text message, length: ${text.length}" }
-                            _textMessages.emit(text)
+                            emitEvent(InboundTransportEvent.Text(listenerEpoch, text))
                         }
 
                         is Frame.Binary -> {
                             val data = frame.readBytes()
                             logger.d { "Received binary message: ${data.size} bytes" }
-                            _binaryMessages.emit(data)
+                            emitEvent(InboundTransportEvent.Binary(listenerEpoch, data))
                         }
 
                         is Frame.Close -> {
                             logger.i { "WebSocket closed: ${frame.readReason()}" }
-                            handleDisconnection()
+                            // The incoming loop also ends after a Close frame;
+                            // emit the epoch's Disconnected exactly once.
+                            if (!disconnectEmitted) {
+                                disconnectEmitted = true
+                                handleDisconnection(listenerEpoch)
+                            }
                         }
 
                         is Frame.Ping, is Frame.Pong -> {
@@ -138,21 +155,21 @@ class SendspinWsHandler(
             } catch (e: Exception) {
                 if (explicitDisconnect) {
                     logger.i { "Explicit disconnect, not reconnecting" }
-                    handleDisconnection()
+                    if (!disconnectEmitted) {
+                        disconnectEmitted = true
+                        handleDisconnection(listenerEpoch)
+                    }
                     return@launch
                 }
 
                 // Network error - auto-reconnect!
                 logger.e(e) { "WS error - will auto-reconnect" }
-                _connectionState.value = WebSocketState.Reconnecting(reconnectAttempts)
-
-                attemptReconnect()
+                reconnecting = true
+                emitEvent(InboundTransportEvent.Reconnecting(listenerEpoch, 0))
+                attemptReconnect(listenerEpoch)
             } finally {
-                if (!explicitDisconnect) {
-                    // Only handle disconnection if not already reconnecting
-                    if (_connectionState.value !is WebSocketState.Reconnecting) {
-                        handleDisconnection()
-                    }
+                if (!explicitDisconnect && !reconnecting && !disconnectEmitted) {
+                    handleDisconnection(listenerEpoch)
                 }
             }
         }
@@ -200,18 +217,16 @@ class SendspinWsHandler(
         session?.close(CloseReason(CloseReason.Codes.NORMAL, "Client disconnect"))
         session = null
 
-        _connectionState.value = WebSocketState.Disconnected
+        emitEvent(InboundTransportEvent.Disconnected(epoch))
     }
 
-    private fun handleDisconnection() {
-        if (_connectionState.value !is WebSocketState.Disconnected) {
-            logger.i { "WebSocket disconnected" }
-            _connectionState.value = WebSocketState.Disconnected
-        }
+    private fun handleDisconnection(listenerEpoch: Int) {
+        logger.i { "WebSocket disconnected" }
         session = null
+        emitEvent(InboundTransportEvent.Disconnected(listenerEpoch))
     }
 
-    private fun attemptReconnect() {
+    private fun attemptReconnect(previousEpoch: Int) {
         reconnectJob?.cancel()
         reconnectJob = launch {
             val attemptsLabel = if (maxAttempts < 0) "∞" else maxAttempts.toString()
@@ -219,20 +234,22 @@ class SendspinWsHandler(
                 maxAttempts = maxAttempts,
                 networkAvailable = networkAvailable,
                 onAttemptStarting = { attempt ->
-                    reconnectAttempts = attempt
                     logger.i { "Reconnect attempt $attempt/$attemptsLabel" }
-                    _connectionState.value = WebSocketState.Reconnecting(attempt)
+                    emitEvent(InboundTransportEvent.Reconnecting(previousEpoch, attempt))
                 },
                 tryConnect = { attempt ->
                     try {
                         val wsSession = client.webSocketSession(serverUrl)
                         session = wsSession
                         logger.i { "Reconnected successfully after $attempt attempts" }
-                        reconnectAttempts = 0
-                        _connectionState.value = WebSocketState.Connected
-                        startListening(wsSession)
-                        onReconnected?.invoke()
+                        epoch += 1
+                        // The new epoch's Connected event must precede its
+                        // first frame, so publish before the listener starts.
+                        emitEvent(InboundTransportEvent.Connected(epoch, isReconnect = true))
+                        startListening(wsSession, epoch)
                         true
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         logger.w(e) { "Reconnect attempt $attempt failed" }
                         false
@@ -242,8 +259,12 @@ class SendspinWsHandler(
             if (!reconnected) {
                 logger.e { "Max reconnect attempts ($maxAttempts) reached, giving up" }
                 session = null
-                _connectionState.value = WebSocketState.Error(
-                    Exception("Failed to reconnect after $maxAttempts attempts"),
+                emitEvent(
+                    InboundTransportEvent.Error(
+                        previousEpoch,
+                        Exception("Failed to reconnect after $maxAttempts attempts"),
+                        permanent = true,
+                    ),
                 )
             }
         }

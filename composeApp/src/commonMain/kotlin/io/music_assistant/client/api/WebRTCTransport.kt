@@ -6,6 +6,7 @@ package io.music_assistant.client.api
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.music_assistant.client.utils.myJson
+import io.music_assistant.client.webrtc.DataChannelInbound
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.SignalingClient
 import io.music_assistant.client.webrtc.WebRTCConnectionManager
@@ -15,6 +16,7 @@ import io.music_assistant.client.webrtc.model.WebRTCConnectionState
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -35,6 +38,10 @@ private const val HTTP_PROXY_TYPE_SCAN_WINDOW = 256
 private const val HTTP_PROXY_TYPE_TOKEN = "\"type\":\"http-proxy-response\""
 private const val CHUNK_TYPE_TOKEN = "\"__chunk__\""
 private const val MAX_CHUNK_COUNT = 256
+
+// Server API schema that introduced label-based data-channel routing and the dedicated
+// `http_proxy` channel (music-assistant/server#5635, MA 2.10).
+private const val HTTP_PROXY_CHANNEL_SCHEMA = 49
 internal const val MAX_PENDING_CHUNK_GROUPS = 16
 private const val MAX_REASSEMBLED_BYTES = 16 * 1024 * 1024
 
@@ -164,6 +171,10 @@ class WebRTCTransport(
     private var stateMonitorJob: Job? = null
     private var reconnectionJob: Job? = null
     private var networkWatchJob: Job? = null
+    private var httpProxyChannelJob: Job? = null
+
+    // Feature detection runs once per connection; cleared with the manager it belongs to.
+    private var httpProxyChannelRequested = false
 
     val sendspinDataChannel: DataChannelWrapper?
         get() = manager?.sendspinDataChannel
@@ -275,6 +286,7 @@ class WebRTCTransport(
                             httpProxy.dispatchRawResponse(jsonString)
                         } else {
                             val jsonObject = myJson.decodeFromString<JsonObject>(jsonString)
+                            maybeOpenHttpProxyChannel(mgr, jsonObject)
                             _messages.emit(jsonObject)
                         }
                     } catch (e: Exception) {
@@ -286,6 +298,60 @@ class WebRTCTransport(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 logger.d { "WebRTC message listener ended: ${e.message}" }
+            }
+        }
+    }
+
+    /**
+     * Opens the dedicated image channel once per connection, as soon as the server proves it
+     * can route the label. `server_info` is the first frame on `ma-api` and carries the
+     * schema version; a server below [HTTP_PROXY_CHANNEL_SCHEMA] mistakes an unknown label
+     * for the API channel and drops the whole session, so this must never be speculative.
+     */
+    private fun maybeOpenHttpProxyChannel(mgr: WebRTCConnectionManager, message: JsonObject) {
+        if (httpProxyChannelRequested) return
+        val schema = (message["schema_version"] as? JsonPrimitive)?.intOrNull ?: return
+        if (schema < HTTP_PROXY_CHANNEL_SCHEMA) {
+            logger.i { "Server schema $schema predates the image channel — proxying over ma-api" }
+            httpProxyChannelRequested = true
+            return
+        }
+        httpProxyChannelRequested = true
+        httpProxyChannelJob = scope.launch { serveHttpProxyChannel(mgr) }
+    }
+
+    private suspend fun serveHttpProxyChannel(mgr: WebRTCConnectionManager) {
+        val channel = try {
+            mgr.openHttpProxyChannel()
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            // Proxying over the API channel remains a working fallback.
+            logger.w(e) { "http_proxy channel unavailable — images stay on ma-api" }
+            null
+        } ?: return
+
+        val attachment = httpProxy.attachChannel { json ->
+            channel.send(myJson.encodeToString(JsonObject.serializer(), json))
+        }
+        try {
+            // Listener-local, like the ma-api reassembler: a schema-49 server that predates
+            // the binary framing still answers here in hex, chunked when oversized.
+            val chunkReassembler = WebRTCChunkReassembler()
+            channel.inbound.collect { inbound ->
+                when (inbound) {
+                    is DataChannelInbound.Text ->
+                        chunkReassembler.accept(inbound.text)
+                            ?.let { httpProxy.dispatchProxyChannelText(it) }
+
+                    is DataChannelInbound.Binary ->
+                        httpProxy.dispatchProxyChannelBinary(inbound.bytes)
+                }
+            }
+        } finally {
+            // The inbound stream ends when the channel dies. Run the detach uncancellable so
+            // callers are failed even when this job is torn down mid-collect.
+            withContext(NonCancellable) {
+                httpProxy.detachChannel(attachment, IllegalStateException("http_proxy channel closed"))
             }
         }
     }
@@ -351,6 +417,9 @@ class WebRTCTransport(
         stateMonitorJob = null
         networkWatchJob?.cancel()
         networkWatchJob = null
+        httpProxyChannelJob?.cancel()
+        httpProxyChannelJob = null
+        httpProxyChannelRequested = false
         val mgr = manager
         manager = null
         if (mgr != null) {
@@ -372,6 +441,9 @@ class WebRTCTransport(
         messageListenerJob = null
         stateMonitorJob?.cancel()
         stateMonitorJob = null
+        httpProxyChannelJob?.cancel()
+        httpProxyChannelJob = null
+        httpProxyChannelRequested = false
         manager?.disconnect()
         manager = null
         httpProxy.cancelAll(IllegalStateException("WebRTC transport cleanup"))

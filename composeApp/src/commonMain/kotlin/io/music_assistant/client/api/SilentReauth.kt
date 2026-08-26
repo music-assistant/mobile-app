@@ -70,8 +70,12 @@ internal class SilentReauth(private val policy: ReauthPolicy) {
                 )
             ) {
                 is AuthRoundTrip.NoResponse -> {
-                    log.e { "re-auth round-trip failed: ${response.exceptionOrNull()}" }
-                    if (outcome.surfaceAsFailure) return AuthResolution.Surface("No response from server")
+                    log.e {
+                        "re-auth round-trip failed (${outcome.cause}): ${response.exceptionOrNull()}"
+                    }
+                    if (outcome.surfaceAsFailure) {
+                        return AuthResolution.Surface(surfaceMessage(outcome.cause))
+                    }
                     consecutiveSilentFailures.incrementAndGet()
                     delay(policy.retryDelayMs)
                 }
@@ -85,5 +89,15 @@ internal class SilentReauth(private val policy: ReauthPolicy) {
             }
         }
         return AuthResolution.Aborted
+    }
+
+    /**
+     * Message for a round-trip that got no response. The two causes must read
+     * differently: blaming the server for a request that never left the device sends
+     * the user to check the wrong thing.
+     */
+    private fun surfaceMessage(cause: AuthFailureCause): String = when (cause) {
+        AuthFailureCause.NOT_SENT -> "Connection lost before the request was sent"
+        AuthFailureCause.NO_REPLY -> "No response from server"
     }
 }

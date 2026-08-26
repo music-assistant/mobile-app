@@ -46,6 +46,7 @@ You can create a temporary group on the fly directly from the compacted or expan
 - Tap the **link icon** next to the player name to open Group Settings.
 - Tap **+** next to a player to add it to the group.
 - Tap **−** next to a player to remove it from the group.
+- Tap **−** next to the group leader to remove the leader. The server then moves the queue to a different member. Playback continues from the same position. If no other member stays, the group dissolves and playback stops. The button shows only if the server is new enough.
 - Volume controls work the same as permanent groups — adjust the master or per-member volume from the same sheet.
 
 ## Gestures

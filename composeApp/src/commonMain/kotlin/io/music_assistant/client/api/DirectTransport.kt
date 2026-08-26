@@ -6,9 +6,6 @@ import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.receiveDeserialized
 import io.ktor.client.plugins.websocket.sendSerialized
 import io.ktor.client.plugins.websocket.ws
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.http.HttpMethod
-import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +13,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +33,7 @@ class DirectTransport(
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         logger.e(throwable) { "Uncaught exception in DirectTransport scope" }
         when (_state.value) {
-            TransportState.Connected -> verifyConnection(probeReason = "direct_transport_scope_exception")
+            TransportState.Connected -> disconnect()
             TransportState.Connecting, is TransportState.Reconnecting ->
                 _state.value = TransportState.Failed(
                     Exception("Recovery machinery died: ${throwable.message}", throwable),
@@ -66,9 +62,6 @@ class DirectTransport(
 
     @Volatile
     private var messageCounter = 0L
-
-    private fun Job?.lifecycleLabel(): String =
-        this?.let { "active=${it.isActive},cancelled=${it.isCancelled},completed=${it.isCompleted}" } ?: "none"
 
     override fun connect() {
         connectionJob?.cancel()
@@ -113,11 +106,8 @@ class DirectTransport(
                 session = null
             }
         }
-        if (info.isTls) {
-            clientProvider().wss(HttpMethod.Get, info.host, info.port, "/ws", block = block)
-        } else {
-            clientProvider().ws(HttpMethod.Get, info.host, info.port, "/ws", block = block)
-        }
+        // Scheme, host, port and any reverse-proxy base path all live in `wsUrl`.
+        clientProvider().ws(urlString = "${info.wsUrl}/ws", block = block)
     }
 
     private suspend fun startReconnection() {
@@ -150,42 +140,6 @@ class DirectTransport(
         }
     }
 
-    override fun verifyConnection(timeoutMs: Long, probeReason: String) {
-        val s = session ?: return
-        val countBefore = messageCounter
-        scope.launch {
-            val sendOk = try {
-                s.send(Frame.Ping(byteArrayOf()))
-                true
-            } catch (e: Exception) {
-                logger.i {
-                    "Direct connection probe failed immediately: probeReason=$probeReason " +
-                        "state=${_state.value} messageCounterBefore=$countBefore " +
-                        "error=${e.message ?: "no-message"}"
-                }
-                false
-            }
-
-            if (!sendOk) {
-                initiateReconnect("probe_ping_failed:$probeReason")
-                return@launch
-            }
-
-            delay(timeoutMs)
-
-            // If no messages arrived and session unchanged — connection is dead
-            val countAfter = messageCounter
-            if (countAfter == countBefore && session === s && _state.value == TransportState.Connected) {
-                logger.i {
-                    "Direct connection probe timed out: probeReason=$probeReason timeoutMs=$timeoutMs " +
-                        "messageCounterBefore=$countBefore messageCounterAfter=$countAfter " +
-                        "state=${_state.value}"
-                }
-                initiateReconnect("probe_timeout:$probeReason")
-            }
-        }
-    }
-
     override suspend fun send(message: JsonObject) {
         val s = session ?: error("Not connected")
         s.sendSerialized(message)
@@ -204,27 +158,5 @@ class DirectTransport(
 
     override fun close() {
         scope.cancel()
-    }
-
-    /**
-     * Transition to Reconnecting BEFORE nulling the session, so any concurrent
-     * sendRequest sees a non-Connected transport state and skips disconnect(Error).
-     */
-    private fun initiateReconnect(reason: String) {
-        logger.i {
-            "Direct reconnect initiated: reason=$reason state=${_state.value} " +
-                "connectionJob=${connectionJob.lifecycleLabel()} sessionPresent=${session != null} " +
-                "messageCounter=$messageCounter"
-        }
-        _state.value = TransportState.Reconnecting(0)
-        connectionJob?.cancel()
-        val s = session
-        session = null
-        if (s != null) {
-            scope.launch { s.close() }
-        }
-        connectionJob = scope.launch {
-            startReconnection()
-        }
     }
 }

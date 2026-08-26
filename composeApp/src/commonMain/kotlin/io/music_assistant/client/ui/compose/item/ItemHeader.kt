@@ -130,7 +130,7 @@ fun ItemHeader(
             )
         }
 
-        if (WindowClass.isAtLeastExpanded()) {
+        if (WindowClass.isWide()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,

@@ -12,12 +12,32 @@ import kotlinx.serialization.json.jsonPrimitive
  * connectivity failure, not a rejection: the token is still valid, so treating it
  * as one would bounce the user to login for no reason.
  */
+/**
+ * Why an auth round-trip produced no server response.
+ *
+ * The distinction is not cosmetic: [NOT_SENT] means the server never saw the request,
+ * so a report of "the server did not answer" sends the user (and the maintainer)
+ * hunting the wrong side of the wire.
+ */
+internal enum class AuthFailureCause {
+    /** The send itself failed — no transport, or the socket died before the write. */
+    NOT_SENT,
+
+    /** The request went out, but no reply arrived within the timeout. */
+    NO_REPLY,
+}
+
 internal sealed interface AuthRoundTrip {
     /**
-     * No server response (send failed / socket died) — connectivity, not rejection.
+     * No server response — connectivity, not rejection.
      * [surfaceAsFailure] is true when the caller should drop to the login screen.
+     * [cause] separates "the request never left the device" from "the server stayed
+     * silent", which are different faults with different user-facing advice.
      */
-    data class NoResponse(val surfaceAsFailure: Boolean) : AuthRoundTrip
+    data class NoResponse(
+        val surfaceAsFailure: Boolean,
+        val cause: AuthFailureCause,
+    ) : AuthRoundTrip
 
     /** Server returned an `error_code` — the token/credentials were rejected. */
     data class Rejected(val message: String) : AuthRoundTrip
@@ -66,8 +86,14 @@ internal fun classifyAuthRoundTrip(
             AuthRoundTrip.Responded(answer)
         }
     },
-    onFailure = {
+    onFailure = { error ->
         val budgetReached = priorSilentFailures + 1 >= maxSilentFailures
-        AuthRoundTrip.NoResponse(surfaceAsFailure = !isAutoLogin || budgetReached)
+        AuthRoundTrip.NoResponse(
+            surfaceAsFailure = !isAutoLogin || budgetReached,
+            cause = when (error) {
+                is AuthRoundTripTimeout -> AuthFailureCause.NO_REPLY
+                else -> AuthFailureCause.NOT_SENT
+            },
+        )
     },
 )

@@ -448,6 +448,27 @@ class FakeServiceClient : ServiceClient {
                 Result.success(Answer(JsonObject(emptyMap())))
             }
 
+            APICommands.PLAYERS_SLEEP_TIMER_SET -> {
+                val playerId = request.getArg("player_id")
+                val seconds = request.getArg("seconds").toInt()
+                val expiresAt = System.currentTimeMillis() / 1000.0 + seconds
+                updatePlayer({ it.playerId == playerId }) {
+                    it.copy(sleepTimerExpiresAt = expiresAt)
+                }
+
+                // The client fires and forgets; the confirming PLAYER_UPDATED above is the contract.
+                Result.success(Answer(JsonObject(emptyMap())))
+            }
+
+            APICommands.PLAYERS_SLEEP_TIMER_CLEAR -> {
+                val playerId = request.getArg("player_id")
+                updatePlayer({ it.playerId == playerId }) {
+                    it.copy(sleepTimerExpiresAt = null)
+                }
+
+                Result.success(Answer(JsonObject(emptyMap())))
+            }
+
             APICommands.PLAYER_QUEUES_TRANSFER -> {
                 val queueId = request.getArg("source_queue_id")
                 val targetQueueId = request.getArg("target_queue_id")

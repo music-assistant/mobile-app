@@ -4,6 +4,7 @@ import android.os.SystemClock
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 
@@ -27,3 +28,5 @@ actual fun formatIsoDate(isoDate: String): String = try {
 } catch (_: Exception) {
     isoDate
 }
+
+actual fun platformLocale(): String = Locale.getDefault().toLanguageTag()

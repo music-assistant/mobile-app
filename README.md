@@ -46,9 +46,14 @@ The goal of this app is to provide an iOS and Android native feeling experience 
 
 Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you can enjoy your music easily and safely through your car’s infotainment system. These in-car experiences are dedicated exclusively to the local player; managing external players is out of scope.
 
+In addition, there's some general design directions that are being observed:
+
+- Optimize for searching/filtering/drilling-down to smaller lists of items over large list navigation
+- Keep customization settings as close to the place they affect over maintaining a "centralized" or "global" set of customization settings
+
 ## Want to try it?
 
-Android users can join [the Play Store testing program](https://play.google.com/apps/testing/io.music_assistant.client).
+Android users can download the APK [for the latest release](https://github.com/music-assistant/mobile-app/releases).
 
 iOS users can join [TestFlight](https://testflight.apple.com/join/AkvSDf2z).
 

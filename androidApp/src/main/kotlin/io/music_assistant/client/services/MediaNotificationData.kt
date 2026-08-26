@@ -4,6 +4,7 @@ import android.os.SystemClock
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.ResolvedChapter
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
@@ -23,11 +24,14 @@ data class MediaNotificationData(
     val shuffleEnabled: Boolean?,
     // Audiobook / podcast episode: notification swaps shuffle & repeat for seek controls.
     val isLongFormContent: Boolean,
-    // Current item is a favoritable track: the repeat slot shows a favorite toggle instead.
+    // Current item is a favoritable track: a favorite toggle competes for a slot
+    // (see sessionActions for the slot rule).
     val isFavoritableTrack: Boolean,
     val isFavorite: Boolean,
     val isPlaying: Boolean,
     val imageUrl: String?,
+    // Active audiobook chapter; elapsed/duration are chapter-relative and album carries its name.
+    val chapterName: String?,
     val elapsedTime: Long?,
     // SystemClock.elapsedRealtime() captured when [elapsedTime] was sampled.
     // Paired with elapsedTime when writing PlaybackStateCompat so Android's
@@ -46,11 +50,15 @@ data class MediaNotificationData(
          * only refreshed on `QueueAdded/UpdatedEvent` — not on the more
          * frequent `QueueTimeUpdatedEvent` — and would freeze the AA /
          * notification progress bar at a stale anchor on pause.
+         *
+         * [currentChapter] maps this snapshot's position/duration to chapter space;
+         * the domain remains absolute.
          */
         fun from(
             playerData: PlayerData,
             multiplePlayers: Boolean,
             effectiveElapsedSec: Double?,
+            currentChapter: ResolvedChapter? = null,
         ) = run {
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
             MediaNotificationData(
@@ -69,11 +77,14 @@ data class MediaNotificationData(
             isFavorite = currentTrack?.favorite == true,
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
-            elapsedTime = effectiveElapsedSec?.toLong()?.let { it * 1000 },
+            chapterName = currentChapter?.displayName,
+            elapsedTime = effectiveElapsedSec
+                ?.let { currentChapter?.relativeSec(it) ?: it }
+                ?.toLong()?.let { it * 1000 },
             elapsedUpdateTimeMs = effectiveElapsedSec?.let { SystemClock.elapsedRealtime() },
             playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
-            duration = playerData.player.currentMedia?.duration?.toLong()
-                ?.let { it * 1000 },
+            duration = (currentChapter?.duration ?: playerData.player.currentMedia?.duration)
+                ?.toLong()?.let { it * 1000 },
             )
         }
 

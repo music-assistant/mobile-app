@@ -68,6 +68,7 @@ data class Event(
             EventType.PLAYER_DSP_CONFIG_UPDATED,
             EventType.PLAYER_OPTIONS_UPDATED,
             EventType.PLAYER_SETTINGS_UPDATED,
+            EventType.PLAYER_SLEEP_TIMER_UPDATED,
             EventType.PROVIDERS_UPDATED,
             EventType.QUEUE_SETTINGS_UPDATED,
             EventType.SHUTDOWN,

@@ -5,6 +5,7 @@ package io.music_assistant.client.data
 
 import androidx.compose.ui.graphics.Color
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
@@ -27,6 +28,7 @@ import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemPlayedEvent
@@ -105,6 +107,8 @@ class MainDataSource(
      * [PlayerRequestFactory] (and [LocalPlayerController] through it) via DI.
      */
     val positionTracker: PlayerPositionTracker,
+    /** Server-synced user preferences, refreshed from `auth/me` and shared by all surfaces. */
+    val userPreferences: UserPreferences,
     private val mediaItemFactory: MediaItemFactory,
     private val playerFactory: PlayerFactory,
     private val queueFactory: QueueFactory,
@@ -195,24 +199,39 @@ class MainDataSource(
             data?.let { applyFavoriteOverride(it, overrides) }
         }.stateIn(this, SharingStarted.Eagerly, null)
 
-    /** Track metadata for the local player's system-media presentation. */
+    /** Local player paired with the chapter every system-media channel presents. */
+    private val localPlayerPresentation =
+        localPlayer.withPresentationChapter(userPreferences, positionTracker) { it }
+
+    /**
+     * Local system-media metadata; chapter presentation re-emits at boundaries
+     * because no server event announces the duration/album change.
+     */
     val nowPlayingTrack: StateFlow<NowPlayingTrack?> =
-        localPlayer
-            .map(::buildNowPlayingTrack)
+        localPlayerPresentation
+            .map {
+                buildNowPlayingTrack(
+                    playerData = it.value,
+                    currentChapter = it.chapter,
+                    chapterNavigationEnabled = userPreferences.isChapterProgressEnabled,
+                )
+            }
             .distinctUntilChanged()
             .stateIn(this, SharingStarted.Eagerly, null)
 
     /**
-     * Transport anchors for the local player's system-media presentation.
-     * Each anchor carries its content identity: the dedup keys on it (a new
-     * track always emits a fresh anchor) and the Swift consumer uses it to
-     * correlate anchors with the track it is presenting, since the track and
-     * transport channels have no cross-channel ordering guarantee. No-track
-     * states remain explicit nulls.
+     * Local transport anchors carry content identity for cross-channel correlation.
+     * Track and transport have no ordering guarantee; no-track states remain null.
      */
     val nowPlayingTransport: StateFlow<NowPlayingTransport?> =
-        localPlayer
-            .map { buildNowPlayingTransport(it, positionTracker) }
+        localPlayerPresentation
+            .map {
+                buildNowPlayingTransport(
+                    playerData = it.value,
+                    positionTracker = positionTracker,
+                    currentChapter = it.chapter,
+                )
+            }
             .distinctUntilChanged(NowPlayingChannelChangeDetection::sameTransport)
             .stateIn(this, SharingStarted.Eagerly, null)
 
@@ -374,32 +393,22 @@ class MainDataSource(
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { input ->
-                    _playersData.update { oldValues ->
-                        when (input.players) {
-                            is DataState.Error -> DataState.Error()
-                            is DataState.Loading -> DataState.Loading()
-                            is DataState.NoData -> DataState.NoData()
-                            is DataState.Data -> DataState.Data(
-                                buildPlayerDataList(
-                                    input.players.data,
-                                    input.queues,
-                                    input.localData,
-                                    input.favoriteOverrides,
-                                    oldValues,
-                                ),
-                            )
-
-                            is DataState.Stale -> DataState.Stale(
-                                data = buildPlayerDataList(
-                                    input.players.data,
-                                    input.queues,
-                                    input.localData,
-                                    input.favoriteOverrides,
-                                    oldValues,
-                                ),
-                                disconnectedAt = input.players.disconnectedAt,
-                                reason = input.players.reason,
-                            )
+                    if (input.players !is DataState.Stale) {
+                        _playersData.update { oldValues ->
+                            when (input.players) {
+                                is DataState.Error -> DataState.Error()
+                                is DataState.Loading -> DataState.Loading()
+                                is DataState.NoData -> DataState.NoData()
+                                is DataState.Data -> DataState.Data(
+                                    buildPlayerDataList(
+                                        input.players.data,
+                                        input.queues,
+                                        input.localData,
+                                        input.favoriteOverrides,
+                                        oldValues,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }
@@ -453,6 +462,7 @@ class MainDataSource(
                                                 DataState.Data(currentState.data)
                                             }
                                             updateProvidersManifests()
+                                            updateUserPreferences()
                                             localPlayerController.start()
                                             updatePlayersAndQueues()
                                             localPlayerController.drainCommandQueue()
@@ -464,6 +474,7 @@ class MainDataSource(
                                     // Already have data (shouldn't happen, but handle gracefully)
                                     log.w { "Connected while already in Data state - refreshing anyway" }
                                     updateProvidersManifests()
+                                    updateUserPreferences()
                                     updatePlayersAndQueues()
                                     refreshSelectedPlayerQueueItems()
                                     // Safety net: reinit Sendspin if it's not already connected.
@@ -476,6 +487,7 @@ class MainDataSource(
                                     // Fresh connection or error recovery - show loading
                                     _serverPlayers.update { DataState.Loading() }
                                     updateProvidersManifests()
+                                    updateUserPreferences()
                                     localPlayerController.start()
                                     updatePlayersAndQueues()
                                 }
@@ -744,7 +756,7 @@ class MainDataSource(
         favoriteOverrides: Map<String, Boolean>,
         oldValues: DataState<List<PlayerData>>,
     ): List<PlayerData> {
-        val localPlayerId = settings.sendspinClientId.value
+        val localPlayerId = settings.sendspinEffectivePlayerId.value
         val playerDataList = allPlayers
             .map { player ->
                 val isLocal = player.id == localPlayerId
@@ -910,6 +922,8 @@ class MainDataSource(
         _serverPlayers.update { DataState.NoData() }
         _queueInfos.update { emptyList() }
         positionTracker.clear()
+        // Server-scoped: another server must not inherit this one's preferences.
+        userPreferences.clear()
         localPlayerController.clearState()
         // Note: _providersIcons deliberately NOT cleared (static data)
     }
@@ -922,6 +936,10 @@ class MainDataSource(
         return apiClient.sendRequest(Request.Dsp.savePlayerConfig(playerId, config))
             .getOrNull()?.resultAs<DspConfig>()
     }
+
+    suspend fun applyDspPreset(playerId: String, presetId: String): DspConfig? =
+        apiClient.sendRequest(Request.Dsp.applyPreset(playerId, presetId))
+            .getOrNull()?.resultAs<DspConfig>()
 
     suspend fun getDspPresets(): List<DspConfigPreset> =
         apiClient.sendRequest(Request.Dsp.getPresets())
@@ -955,7 +973,7 @@ class MainDataSource(
 
     fun playerAction(playerId: String, action: PlayerAction) {
         // Delegate to data-based overload for local player (handles optimistic + routing)
-        if (playerId == settings.sendspinClientId.value) {
+        if (playerId == settings.sendspinEffectivePlayerId.value) {
             localPlayerController.localPlayerData.value?.let { localData ->
                 playerAction(localData, action)
                 return
@@ -1072,6 +1090,10 @@ class MainDataSource(
                     ),
                 )
 
+                PlayerAction.LeaveGroup -> apiClient.sendRequest(
+                    Request.Player.ungroup(playerId = playerId),
+                )
+
                 else -> Unit
             }
         }
@@ -1092,6 +1114,30 @@ class MainDataSource(
                     result.exceptionOrNull(),
                 ) { "Failed to send player action request for ${data.player.name}: $action" }
             }
+        }
+    }
+
+    /**
+     * Starts a server-side sleep timer of [seconds] on [playerId].
+     *
+     * Deliberately not a [PlayerAction]: the timer lives on the server for every player,
+     * the local (Sendspin) one included — the server stops it over the normal protocol —
+     * so this must never take the local branch of [playerAction]. No optimistic state:
+     * the server calls `update_state()`, so the confirming `PlayerUpdatedEvent` carries
+     * the new expiry back within the same round trip.
+     */
+    fun setSleepTimer(playerId: String, seconds: Int) {
+        launch {
+            apiClient.sendRequest(Request.Player.setSleepTimer(playerId, seconds))
+                .onFailure { log.e(it) { "Failed to set sleep timer for $playerId" } }
+        }
+    }
+
+    /** Clears the server-side sleep timer on [playerId]. See [setSleepTimer]. */
+    fun clearSleepTimer(playerId: String) {
+        launch {
+            apiClient.sendRequest(Request.Player.clearSleepTimer(playerId))
+                .onFailure { log.e(it) { "Failed to clear sleep timer for $playerId" } }
         }
     }
 
@@ -1205,7 +1251,7 @@ class MainDataSource(
                         is PlayerUpdatedEvent -> {
                             val data = playerFactory.create(event.data)
                             // Forward to local player repository if this is the local player
-                            if (data.id == settings.sendspinClientId.value) {
+                            if (data.id == settings.sendspinEffectivePlayerId.value) {
                                 localPlayerController.onServerPlayerUpdate(data)
                             }
                             _serverPlayers.update { oldState ->
@@ -1236,7 +1282,7 @@ class MainDataSource(
                             val data = queueFactory.create(event.data).takeIfNotStale("QueueAdded")
                                 ?: return@collect
 
-                            val localPlayerId = settings.sendspinClientId.value
+                            val localPlayerId = settings.sendspinEffectivePlayerId.value
                             if (data.id == localPlayerId ||
                                 (_serverPlayers.value as? DataState.Data)?.data
                                     ?.find { it.id == localPlayerId }?.queueId == data.id
@@ -1271,7 +1317,7 @@ class MainDataSource(
                                     ?: return@collect
 
                             // Forward to local player repository if this is the local player's queue
-                            val localPlayerId = settings.sendspinClientId.value
+                            val localPlayerId = settings.sendspinEffectivePlayerId.value
                             if (data.id == localPlayerId ||
                                 (_serverPlayers.value as? DataState.Data)?.data
                                     ?.find { it.id == localPlayerId }?.queueId == data.id
@@ -1477,7 +1523,7 @@ class MainDataSource(
                         DataState.Data(visiblePlayers)
                     }
                     // Forward to repository: real player if found, synthetic if not
-                    val localPlayerId = settings.sendspinClientId.value
+                    val localPlayerId = settings.sendspinEffectivePlayerId.value
                     val localServerPlayer = visiblePlayers.find { it.id == localPlayerId }
                     localPlayerController.onInitialPlayersReceived(
                         hasLocalPlayer = localServerPlayer != null,
@@ -1509,7 +1555,7 @@ class MainDataSource(
                     }
 
                     // Forward local player's queue to repository
-                    val localPlayerId = settings.sendspinClientId.value
+                    val localPlayerId = settings.sendspinEffectivePlayerId.value
                     val localQueueId = (_serverPlayers.value as? DataState.Data)?.data
                         ?.find { it.id == localPlayerId }?.queueId
                     mergedSnapshot.find { it.id == localPlayerId || it.id == localQueueId }
@@ -1525,6 +1571,15 @@ class MainDataSource(
                 state is DataState.Data && state.data.any { it.queueInfo != null }
             }
             refreshAllPlayersQueueItems()
+        }
+    }
+
+    /** Refreshes preferences from `auth/me`; a failed fetch keeps the current values. */
+    private fun updateUserPreferences() {
+        launch {
+            apiClient.sendRequest(Request(APICommands.AUTH_ME))
+                .resultAs<ServerUser>()
+                ?.let { userPreferences.update(it.preferences) }
         }
     }
 

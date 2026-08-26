@@ -11,5 +11,5 @@ Closes #
 
 ## Before submitting this PR, make sure you have:
 - [ ] Given this PR a readable name that can be used in the app's changelog
-- [ ] Made sure checks pass by running `./gradlew detektAll :composeApp:testAndroidHostTest :androidApp:testDebug`
+- [ ] Made sure checks pass by running `./gradlew detektAll testAndroidHostTest :androidApp:testDebug`
 

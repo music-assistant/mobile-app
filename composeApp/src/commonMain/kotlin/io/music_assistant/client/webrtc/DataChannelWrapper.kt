@@ -8,37 +8,46 @@ import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * WebRTC data channel wrapper backed by `io.ktor:ktor-client-webrtc`.
- *
- * Internals:
- *  - Outgoing messages flow through an unbounded Channel + drain coroutine because
- *    Ktor's `send` is suspending while our public API is not.
- *  - Incoming messages are pulled via `dataChannel.receive()` in a launched loop and
- *    discriminated as [WebRtc.DataChannel.Message.Text] / [WebRtc.DataChannel.Message.Binary]
- *    — no first-byte sniffing.
- *  - State propagation is event-driven via the parent connection's [DataChannelEvent]
- *    flow, filtered by channel identity. A poll-based version of this caused a ~50 ms
- *    detection lag that confused the auth handshake on first connect; do not reintroduce.
+ * WebRTC data channel wrapper backed by `io.ktor:ktor-client-webrtc`. Text and
+ * binary share one ordered, unbounded [inbound] stream (single collector per
+ * instance); a drop policy would strand the consumer's protocol state machine.
+ * State propagation is event-driven — a poll-based version caused a ~50 ms lag
+ * that broke the auth handshake on first connect; do not reintroduce.
  */
 @OptIn(ExperimentalKtorApi::class)
-class DataChannelWrapper(
-    private val dataChannel: WebRtcDataChannel,
-    private val connectionEvents: SharedFlow<DataChannelEvent>,
+class DataChannelWrapper internal constructor(
+    private val dataChannel: WebRtcDataChannel?,
+    connectionEvents: SharedFlow<DataChannelEvent>?,
+    receiveSource: DataChannelReceiveSource,
+    initialState: DataChannelState,
+    val label: String,
 ) {
+    constructor(
+        dataChannel: WebRtcDataChannel,
+        connectionEvents: SharedFlow<DataChannelEvent>,
+    ) : this(
+        dataChannel = dataChannel,
+        connectionEvents = connectionEvents,
+        receiveSource = KtorDataChannelReceiveSource(dataChannel),
+        initialState = dataChannel.state.toCommon(),
+        label = dataChannel.label,
+    )
+
     private val logger = Logger.withTag("DataChannelWrapper")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -47,21 +56,13 @@ class DataChannelWrapper(
     // Worst-case races (send() after close()) surface as a logged Ktor exception.
     private var closed = false
 
-    val label: String
-        get() = dataChannel.label
-
-    private val _state = MutableStateFlow(dataChannel.state.toCommon())
+    private val _state = MutableStateFlow(initialState)
     val state: StateFlow<DataChannelState> = _state.asStateFlow()
 
-    // Shared `ma-api` channel carries both control-plane RPCs and http-proxy responses.
-    // Buffer sized to absorb image-burst responses without dropping control frames.
-    private val _textMessages = MutableSharedFlow<String>(extraBufferCapacity = 200)
-    val messages: Flow<String> = _textMessages.asSharedFlow()
+    private val inboundChannel = Channel<DataChannelInbound>(Channel.UNLIMITED)
 
-    // Binary messages (audio chunks on `sendspin`) arrive at ~50–100/sec. Large buffer
-    // prevents backpressure stalling the receive coroutine during consumer lag.
-    private val _binaryMessages = MutableSharedFlow<ByteArray>(extraBufferCapacity = 2000)
-    val binaryMessages: Flow<ByteArray> = _binaryMessages.asSharedFlow()
+    /** The single ordered inbound stream (one collector only). */
+    val inbound: Flow<DataChannelInbound> = inboundChannel.receiveAsFlow()
 
     private sealed interface Outgoing {
         data class Text(val data: String) : Outgoing
@@ -82,55 +83,54 @@ class DataChannelWrapper(
 
     private val outgoing = Channel<Outgoing>(capacity = Channel.UNLIMITED)
 
+    private val drainJob: Job
+
     init {
         // Drain outgoing messages — exits naturally when `outgoing` is closed by close().
-        scope.launch {
+        drainJob = scope.launch {
             for (msg in outgoing) {
                 runCatchingNonCancellation("send failed on channel $label") {
                     when (msg) {
-                        is Outgoing.Text -> dataChannel.send(msg.data)
-                        is Outgoing.Binary -> dataChannel.send(msg.data)
+                        is Outgoing.Text -> dataChannel?.send(msg.data)
+                        is Outgoing.Binary -> dataChannel?.send(msg.data)
                     }
                 }
             }
         }
 
-        // Receive loop — exits when `dataChannel.receive()` throws (channel closed) or
-        // when scope is cancelled.
+        // Receive loop — the only producer of `inbound`, so source order is preserved
+        // by construction; closed on exit so a collector doesn't hang on a dead feed.
         scope.launch {
-            runCatchingNonCancellation("receive loop failed on channel $label") {
-                while (true) {
-                    when (val msg = dataChannel.receive()) {
-                        is WebRtc.DataChannel.Message.Text ->
-                            if (!_textMessages.tryEmit(msg.data)) {
-                                logger.w { "Text message buffer full on $label, dropping" }
-                            }
-                        is WebRtc.DataChannel.Message.Binary ->
-                            if (!_binaryMessages.tryEmit(msg.data)) {
-                                logger.w { "Binary message buffer full on $label, dropping chunk" }
-                            }
+            try {
+                runCatchingNonCancellation("receive loop failed on channel $label") {
+                    while (true) {
+                        inboundChannel.send(receiveSource.receive())
                     }
                 }
+            } finally {
+                inboundChannel.close()
             }
         }
 
         // State propagation — filtered by channel identity so siblings on the same
         // peer connection don't bleed into our state.
-        scope.launch {
-            runCatchingNonCancellation("state event collector failed on channel $label") {
-                connectionEvents.collect { event ->
-                    if (event.channel !== dataChannel) return@collect
-                    val mapped = when (event) {
-                        is DataChannelEvent.Open -> DataChannelState.Open
-                        is DataChannelEvent.Closing -> DataChannelState.Closing
-                        is DataChannelEvent.Closed -> DataChannelState.Closed
-                        is DataChannelEvent.Error -> {
-                            logger.e { "Data channel $label error: ${event.reason}" }
-                            DataChannelState.Closed
+        if (connectionEvents != null && dataChannel != null) {
+            scope.launch {
+                runCatchingNonCancellation("state event collector failed on channel $label") {
+                    connectionEvents.collect { event ->
+                        if (event.channel !== dataChannel) return@collect
+                        val mapped = when (event) {
+                            is DataChannelEvent.Open -> DataChannelState.Open
+                            is DataChannelEvent.Closing -> DataChannelState.Closing
+                            is DataChannelEvent.Closed -> DataChannelState.Closed
+                            is DataChannelEvent.Error -> {
+                                logger.e { "Data channel $label error: ${event.reason}" }
+                                DataChannelState.Closed
+                            }
+                            is DataChannelEvent.BufferedAmountLow -> return@collect
                         }
-                        is DataChannelEvent.BufferedAmountLow -> return@collect
+                        _state.update { mapped }
                     }
-                    _state.update { mapped }
                 }
             }
         }
@@ -170,17 +170,33 @@ class DataChannelWrapper(
         if (closed) return
         closed = true
         logger.i { "Closing data channel $label" }
-        // Close the outgoing Channel first so the drain coroutine exits naturally after
-        // flushing any queued sends. Then cancel scope (cancels receive + state collector)
-        // and close the underlying Ktor channel. The state event collector won't deliver
-        // the resulting Closed event since scope is gone, so push it manually.
+        // Close the outgoing Channel, then give the drain a bounded chance to
+        // flush queued sends before the scope is cancelled out from under it.
+        // The state event collector won't deliver the resulting Closed event
+        // since the scope is gone, so push it manually.
         outgoing.close()
+        withTimeoutOrNull(CLOSE_FLUSH_TIMEOUT_MILLIS) { drainJob.join() }
         scope.cancel()
-        dataChannel.close()
+        dataChannel?.close()
         _state.update { DataChannelState.Closed }
     }
 }
 
+private const val CLOSE_FLUSH_TIMEOUT_MILLIS = 500L
+
+/** Production receive source: pulls from the Ktor WebRTC channel. */
+@OptIn(ExperimentalKtorApi::class)
+private class KtorDataChannelReceiveSource(
+    private val dataChannel: WebRtcDataChannel,
+) : DataChannelReceiveSource {
+    override suspend fun receive(): DataChannelInbound =
+        when (val msg = dataChannel.receive()) {
+            is WebRtc.DataChannel.Message.Text -> DataChannelInbound.Text(msg.data)
+            is WebRtc.DataChannel.Message.Binary -> DataChannelInbound.Binary(msg.data)
+        }
+}
+
+@OptIn(ExperimentalKtorApi::class)
 private fun WebRtc.DataChannel.State.toCommon(): DataChannelState = when (this) {
     WebRtc.DataChannel.State.CONNECTING -> DataChannelState.Connecting
     WebRtc.DataChannel.State.OPEN -> DataChannelState.Open
