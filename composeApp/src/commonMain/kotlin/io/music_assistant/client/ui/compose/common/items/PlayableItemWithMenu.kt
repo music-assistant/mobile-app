@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +46,7 @@ fun TrackWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -55,6 +58,7 @@ fun TrackWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
         itemComposable = { mod, onClick, onLongClick ->
             when (viewMode) {
                 ViewMode.LIST -> TrackRowItem(
@@ -131,6 +135,7 @@ fun RadioWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit)?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -142,6 +147,7 @@ fun RadioWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
         itemComposable = { mod, onClick, onLongClick ->
             when (viewMode) {
                 ViewMode.LIST -> RadioRowItem(
@@ -176,6 +182,10 @@ private fun <T> PlayableItemWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
+    // Android TV: attached to the actual focusable leaf built by itemComposable, not the outer
+    // wrapper Box above -- that Box isn't focusable itself, so a requester there can't be used to
+    // requestFocus() into this item (verified live: it silently does nothing). See CategoryRow.kt.
+    firstItemFocusRequester: FocusRequester? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -222,7 +232,14 @@ private fun <T> PlayableItemWithMenu(
     Box(modifier = modifier.tvFocusRing(trackDescendants = true)) {
         itemComposable(
             Modifier.align(Alignment.Center)
-                .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA)),
+                .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))
+                .then(
+                    if (firstItemFocusRequester != null) {
+                        Modifier.focusRequester(firstItemFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                ),
             { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
             { expandedItemId = item.itemId },
         )

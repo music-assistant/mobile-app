@@ -204,6 +204,10 @@ fun CategoryRow(
     // row's LazyRow to a fixed element below the scrolling content (e.g. the persistent
     // mini-player), since that element isn't a normal sibling default focus search can reach.
     bottomFocusRequester: FocusRequester? = null,
+    // Android TV: set by a caller that needs to land D-pad focus on this row's first item
+    // programmatically (e.g. once async search results appear, when nothing upstream is a
+    // reliable relative-focus anchor -- see SearchScreen.kt). Only applied to the first item.
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val modifier = if (rowTag != null) {
         Modifier.testTag(rowTag)
@@ -240,7 +244,8 @@ fun CategoryRow(
                     else -> "Unknown"
                 }
             },
-        ) { _, item ->
+        ) { index, item ->
+            val itemFocusRequester = if (index == 0) firstItemFocusRequester else null
             when (item) {
                 is Artist -> ArtistWithMenu(
                     item = item,
@@ -248,6 +253,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Album -> AlbumWithMenu(
@@ -257,6 +263,7 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Playlist -> PlaylistWithMenu(
@@ -265,6 +272,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Podcast -> PodcastWithMenu(
@@ -273,6 +281,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Track -> TrackWithMenu(
@@ -281,6 +290,7 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is PodcastEpisode -> PodcastEpisodeWithMenu(
@@ -300,6 +310,7 @@ fun CategoryRow(
                     libraryActions = libraryActions,
                     progressActions = progressActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is RadioStation -> RadioWithMenu(
@@ -308,6 +319,7 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Genre -> GenreWithMenu(
@@ -316,6 +328,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 else -> {}
