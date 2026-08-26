@@ -75,6 +75,8 @@
   <string name="cd_add_to_group">Add to group</string>
   <string name="cd_album_item">Album "%1$s" from %2$s</string>
   <string name="cd_applied">Applied</string>
+  <string name="cd_autoplay_off">Autoplay off</string>
+  <string name="cd_autoplay_on">Autoplay on</string>
   <string name="cd_close">Close</string>
   <string name="cd_connection_history">Connection history</string>
   <string name="cd_current_player">Current player: %1$s</string>
@@ -98,6 +100,8 @@
   <string name="cd_remove_from_group">Remove from group</string>
   <string name="cd_scan_qr_code">Scan QR code</string>
   <string name="cd_select_codec">Select codec</string>
+  <string name="cd_sleep_timer">Sleep timer active</string>
+  <string name="cd_sleep_timer_off">Sleep timer off</string>
   <string name="cd_sort_direction">Sort direction</string>
   <string name="cd_toggle_queue">Toggle Queue</string>
   <string name="cd_toggle_view_mode">Toggle view mode</string>
@@ -210,6 +214,7 @@
   <string name="player_power_on">Power on</string>
   <string name="player_powered_off">Powered off</string>
   <string name="player_show_buffer_indicator">Show buffer indicator</string>
+  <string name="player_sleep_timer">Sleep timer</string>
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
@@ -323,6 +328,11 @@
   <string name="settings_webrtc_description">Connect from anywhere without port forwarding</string>
   <string name="settings_webrtc_disclaimer">WebRTC connection can be slower and less reliable than direct or proxied connection to your server.</string>
   <string name="settings_webrtc_info">WebRTC uses cloud signalling with end-to-end encryption. Works through most firewalls and NATs.</string>
+  <string name="sleep_timer_clear">Clear timer</string>
+  <string name="sleep_timer_hour">1 hour</string>
+  <string name="sleep_timer_hours">%1$d hours</string>
+  <string name="sleep_timer_minutes">%1$d minutes</string>
+  <string name="sleep_timer_stops_in">Stops in %1$s</string>
   <string name="sort_artist">Artist</string>
   <string name="sort_date_added">Date added</string>
   <string name="sort_date_modified">Date modified</string>

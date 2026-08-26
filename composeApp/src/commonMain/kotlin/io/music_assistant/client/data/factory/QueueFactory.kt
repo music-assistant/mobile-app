@@ -28,7 +28,7 @@ class QueueFactory(
             currentIndex = currentIndex,
             shuffleEnabled = shuffleEnabled,
             repeatMode = RepeatMode.fromServer(repeatMode) ?: RepeatMode.OFF,
-            autoPlayEnabled = dontStopTheMusicEnabled,
+            autoPlayEnabled = autoplayEnabled ?: dontStopTheMusicEnabled,
             elapsedTime = elapsedTime,
             elapsedTimeLastUpdated = elapsedTimeLastUpdated,
             currentItem = currentItem?.let(::createTrack),

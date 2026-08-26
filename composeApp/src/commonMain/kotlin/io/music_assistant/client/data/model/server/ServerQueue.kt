@@ -18,7 +18,13 @@ data class ServerQueue(
     // @SerialName("items") val items: Int,
     @SerialName("shuffle_enabled") val shuffleEnabled: Boolean = false,
     @SerialName("repeat_mode") val repeatMode: String? = null,
-    // TODO replace with "auto_play" when available. This one is deprecated.
+    /**
+     * Autoplay, across the 2.10 rename. Servers from 2.10 on send [autoplayEnabled]; older
+     * ones only the deprecated [dontStopTheMusicEnabled]. Null on both means the server has
+     * no autoplay support at all, which is what gates the UI. Read modern-first; note the
+     * write path deliberately still uses the old command (see `Request.Queue`).
+     */
+    @SerialName("autoplay_enabled") val autoplayEnabled: Boolean? = null,
     @SerialName("dont_stop_the_music_enabled") val dontStopTheMusicEnabled: Boolean? = null,
     @SerialName("is_dynamic") val isDynamic: Boolean = false,
     @SerialName("current_index") val currentIndex: Int? = null,

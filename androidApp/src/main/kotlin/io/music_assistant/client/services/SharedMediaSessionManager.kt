@@ -487,72 +487,7 @@ class SharedMediaSessionManager(
                 data.longItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong(),
             )
             .also { builder ->
-                if (data.isLongFormContent) {
-                    // Audiobooks / podcasts: seek controls in place of shuffle & repeat.
-                    builder.addCustomAction(
-                        PlaybackStateCompat.CustomAction.Builder(
-                            "ACTION_SEEK_BACK",
-                            strings?.rewind ?: "",
-                            R.drawable.baseline_replay_10_24,
-                        ).build(),
-                    )
-                    if (data.multiplePlayers) {
-                        builder.addCustomAction(
-                            PlaybackStateCompat.CustomAction.Builder(
-                                "ACTION_SWITCH_PLAYER",
-                                strings?.nextPlayer ?: "",
-                                R.drawable.ic_speaker,
-                            ).build(),
-                        )
-                    } else {
-                        builder.addCustomAction(
-                            PlaybackStateCompat.CustomAction.Builder(
-                                "ACTION_SEEK_FORWARD",
-                                strings?.forward ?: "",
-                                R.drawable.baseline_forward_30_24,
-                            ).build(),
-                        )
-                    }
-                } else {
-                    data.shuffleEnabled?.let { shuffle ->
-                        builder.addCustomAction(
-                            PlaybackStateCompat.CustomAction.Builder(
-                                "ACTION_TOGGLE_SHUFFLE",
-                                strings?.shuffle ?: "",
-                                getShuffleModeIcon(shuffle),
-                            ).build(),
-                        )
-                    }
-                    if (data.multiplePlayers) {
-                        builder.addCustomAction(
-                            PlaybackStateCompat.CustomAction.Builder(
-                                "ACTION_SWITCH_PLAYER",
-                                strings?.nextPlayer ?: "",
-                                R.drawable.ic_speaker,
-                            ).build(),
-                        )
-                    } else if (data.isFavoritableTrack) {
-                        // Only 2 custom-action slots exist; on a favoritable track the
-                        // favorite toggle takes the repeat slot (see plan / issue).
-                        builder.addCustomAction(
-                            PlaybackStateCompat.CustomAction.Builder(
-                                "ACTION_TOGGLE_FAVORITE",
-                                strings?.favorite ?: "",
-                                getFavoriteIcon(data.isFavorite),
-                            ).build(),
-                        )
-                    } else {
-                        data.repeatMode?.let { repeatMode ->
-                            builder.addCustomAction(
-                                PlaybackStateCompat.CustomAction.Builder(
-                                    "ACTION_TOGGLE_REPEAT",
-                                    strings?.repeat ?: "",
-                                    getRepeatModeIcon(repeatMode),
-                                ).build(),
-                            )
-                        }
-                    }
-                }
+                sessionActions(data).forEach { builder.addCustomAction(customAction(it, data)) }
             }
             .build()
         session.setPlaybackState(playbackState)
@@ -634,6 +569,56 @@ class SharedMediaSessionManager(
             .build()
         session.setPlaybackState(playbackState)
     }
+
+    /**
+     * Maps a picked [SessionAction] to its published action. The action ids are part of
+     * the contract with [createCallback]; [sessionActions] owns which ones appear and in
+     * which order. A toggle is only picked when its value is present, so the fallbacks
+     * below are unreachable.
+     */
+    private fun customAction(
+        action: SessionAction,
+        data: MediaNotificationData,
+    ): PlaybackStateCompat.CustomAction = when (action) {
+        SessionAction.SWITCH_PLAYER -> customAction(
+            "ACTION_SWITCH_PLAYER",
+            strings?.nextPlayer,
+            R.drawable.ic_speaker,
+        )
+
+        SessionAction.FAVORITE -> customAction(
+            "ACTION_TOGGLE_FAVORITE",
+            strings?.favorite,
+            getFavoriteIcon(data.isFavorite),
+        )
+
+        SessionAction.SHUFFLE -> customAction(
+            "ACTION_TOGGLE_SHUFFLE",
+            strings?.shuffle,
+            getShuffleModeIcon(data.shuffleEnabled == true),
+        )
+
+        SessionAction.REPEAT -> customAction(
+            "ACTION_TOGGLE_REPEAT",
+            strings?.repeat,
+            getRepeatModeIcon(data.repeatMode ?: RepeatMode.OFF),
+        )
+
+        SessionAction.SEEK_BACK -> customAction(
+            "ACTION_SEEK_BACK",
+            strings?.rewind,
+            R.drawable.baseline_replay_10_24,
+        )
+
+        SessionAction.SEEK_FORWARD -> customAction(
+            "ACTION_SEEK_FORWARD",
+            strings?.forward,
+            R.drawable.baseline_forward_30_24,
+        )
+    }
+
+    private fun customAction(id: String, label: String?, icon: Int) =
+        PlaybackStateCompat.CustomAction.Builder(id, label ?: "", icon).build()
 
     private fun getRepeatModeIcon(repeatMode: RepeatMode): Int = when (repeatMode) {
         RepeatMode.ALL -> R.drawable.baseline_repeat_24

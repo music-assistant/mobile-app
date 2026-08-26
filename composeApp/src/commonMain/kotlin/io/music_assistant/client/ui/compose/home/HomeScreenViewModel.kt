@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
+import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.settings.SettingsRepository
@@ -24,6 +25,7 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CancellationException
@@ -38,6 +40,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -89,6 +92,12 @@ class HomeScreenViewModel(
 
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization
+
+    /** Server-side sleep timers exist from schema 35 on; hide the whole feature below that. */
+    val sleepTimerSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsSleepTimer((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     val connectionState = _connectionState.asStateFlow()
@@ -391,6 +400,11 @@ class HomeScreenViewModel(
 
     fun playerAction(data: PlayerData, action: PlayerAction) = dataSource.playerAction(data, action)
     fun queueAction(action: QueueAction) = dataSource.queueAction(action)
+    fun setSleepTimer(playerId: String, seconds: Int) =
+        dataSource.setSleepTimer(playerId, seconds)
+
+    fun clearSleepTimer(playerId: String) = dataSource.clearSleepTimer(playerId)
+
     fun onPlayersSortChanged(newSort: List<String>) = dataSource.onPlayersSortChanged(newSort)
     fun openPlayerSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
         onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id")

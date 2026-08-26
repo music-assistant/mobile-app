@@ -24,7 +24,8 @@ data class MediaNotificationData(
     val shuffleEnabled: Boolean?,
     // Audiobook / podcast episode: notification swaps shuffle & repeat for seek controls.
     val isLongFormContent: Boolean,
-    // Current item is a favoritable track: the repeat slot shows a favorite toggle instead.
+    // Current item is a favoritable track: a favorite toggle competes for a slot
+    // (see sessionActions for the slot rule).
     val isFavoritableTrack: Boolean,
     val isFavorite: Boolean,
     val isPlaying: Boolean,

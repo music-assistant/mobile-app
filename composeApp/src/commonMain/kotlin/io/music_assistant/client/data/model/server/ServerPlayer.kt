@@ -58,6 +58,8 @@ data class ServerPlayer(
     // @SerialName("poll_interval") val pollInterval: Int? = null,
     // @SerialName("extra_data") val extraData: Map<String, String>? = null,
     @SerialName("announcement_in_progress") val announcementInProgress: Boolean? = null,
+    /** Unix (UTC) timestamp in seconds at which the sleep timer stops playback. */
+    @SerialName("sleep_timer_expires_at") val sleepTimerExpiresAt: Double? = null,
 )
 
 // @Serializable

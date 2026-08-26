@@ -26,6 +26,8 @@ data class Player(
     val groupVolume: Float?,
     val groupVolumeMuted: Boolean,
     val currentMedia: PlayerMedia?,
+    /** Unix (UTC) timestamp in seconds at which the sleep timer stops playback. */
+    val sleepTimerExpiresAt: Double? = null,
 ) {
     val isPoweredOff: Boolean get() = canPower && !isPowered
 

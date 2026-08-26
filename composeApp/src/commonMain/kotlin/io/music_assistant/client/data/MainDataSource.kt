@@ -1107,6 +1107,30 @@ class MainDataSource(
         }
     }
 
+    /**
+     * Starts a server-side sleep timer of [seconds] on [playerId].
+     *
+     * Deliberately not a [PlayerAction]: the timer lives on the server for every player,
+     * the local (Sendspin) one included — the server stops it over the normal protocol —
+     * so this must never take the local branch of [playerAction]. No optimistic state:
+     * the server calls `update_state()`, so the confirming `PlayerUpdatedEvent` carries
+     * the new expiry back within the same round trip.
+     */
+    fun setSleepTimer(playerId: String, seconds: Int) {
+        launch {
+            apiClient.sendRequest(Request.Player.setSleepTimer(playerId, seconds))
+                .onFailure { log.e(it) { "Failed to set sleep timer for $playerId" } }
+        }
+    }
+
+    /** Clears the server-side sleep timer on [playerId]. See [setSleepTimer]. */
+    fun clearSleepTimer(playerId: String) {
+        launch {
+            apiClient.sendRequest(Request.Player.clearSleepTimer(playerId))
+                .onFailure { log.e(it) { "Failed to clear sleep timer for $playerId" } }
+        }
+    }
+
     fun queueAction(action: QueueAction) {
         launch {
             when (action) {
