@@ -31,10 +31,11 @@ fun PlayerIcon(
         fallback = {
             val iconId = if (isLocal) SharedIcons.SMARTPHONE else player.icon
             val iconRes = SharedIcons.getResource(iconId)
+            // Fills MdiIcon's container, which already carries `modifier`; re-applying
+            // it here would double-apply non-size modifiers.
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                modifier = modifier,
                 tint = tint,
             )
         },

@@ -60,21 +60,29 @@ fun codePointToString(codePoint: Int): String =
  * table and draws the glyph as a font character sized to the layout constraints, so it
  * honors a caller-supplied size [modifier] like a regular `Icon`.
  *
- * Shows [fallback] when [name] is null/unknown or until the table has loaded (default:
- * draws nothing). Callers wanting a guaranteed glyph pass a fallback to render in that
- * window. Accepting a nullable [name] keeps absent-icon handling out of every call site.
+ * Shows [fallback] when [name] is null/unknown or until the table has loaded. Callers
+ * wanting a guaranteed glyph pass a fallback to render in that window. Accepting a
+ * nullable [name] keeps absent-icon handling out of every call site.
+ *
+ * Structural contract: with a non-null [fallback] the emitted group structure is
+ * constant — a `BoxWithConstraints` root whose content switches between the glyph and
+ * the fallback, never an early return. Keyed lazy content (the players pager, the
+ * select-player dialog) relies on this: its compositions are reused and reordered while
+ * glyph resolution flips. A null [fallback] keeps the legacy glyph-or-nothing shape for
+ * surfaces where an unknown name must not occupy layout space (provider icons); do not
+ * use that mode inside keyed lazy content that gets reused or reordered.
  */
 @Composable
 fun MdiIcon(
     name: String?,
     modifier: Modifier = Modifier,
     tint: Color = Color.White,
-    fallback: @Composable () -> Unit = {},
+    fallback: (@Composable () -> Unit)? = null,
 ) {
     val table by koinInject<MdiCodepoints>().table.collectAsStateWithLifecycle()
     val codePoint = name?.let { table[normalizeMdiName(it)] }
-    if (codePoint == null) {
-        fallback()
+    if (codePoint == null && fallback == null) {
+        // Legacy glyph-or-nothing shape; see KDoc before using this mode in lazy content.
         return
     }
 
@@ -86,14 +94,18 @@ fun MdiIcon(
             else -> minOf(maxWidth, maxHeight)
         }
         val sizeSp = with(LocalDensity.current) { side.toSp() }
-        Text(
-            text = codePointToString(codePoint),
-            fontFamily = mdiFontFamily(),
-            color = tint,
-            fontSize = sizeSp,
-            lineHeight = sizeSp,
-            maxLines = 1,
-        )
+        if (codePoint == null) {
+            fallback?.invoke()
+        } else {
+            Text(
+                text = codePointToString(codePoint),
+                fontFamily = mdiFontFamily(),
+                color = tint,
+                fontSize = sizeSp,
+                lineHeight = sizeSp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
