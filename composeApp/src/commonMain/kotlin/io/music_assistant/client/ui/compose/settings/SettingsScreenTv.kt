@@ -62,6 +62,7 @@ import musicassistantclient.composeapp.generated.resources.settings_player_name
 import musicassistantclient.composeapp.generated.resources.settings_port
 import musicassistantclient.composeapp.generated.resources.settings_remote_id
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_invalid
+import musicassistantclient.composeapp.generated.resources.settings_sendspin_require_encryption
 import musicassistantclient.composeapp.generated.resources.settings_server_host
 import musicassistantclient.composeapp.generated.resources.settings_use_tls
 import musicassistantclient.composeapp.generated.resources.settings_use_tls_wss
@@ -354,6 +355,7 @@ internal fun SendspinSectionTv(
 ) {
     val sendspinHost by viewModel.sendspinHost.collectAsStateWithLifecycle()
     val sendspinUseTls by viewModel.sendspinUseTls.collectAsStateWithLifecycle()
+    val sendspinRequireEncryption by viewModel.sendspinRequireEncryption.collectAsStateWithLifecycle()
 
     var editing by remember { mutableStateOf<String?>(null) }
     var returnTo by remember { mutableStateOf("playerName") }
@@ -487,6 +489,30 @@ internal fun SendspinSectionTv(
         )
         Text(
             text = stringResource(Res.string.settings_custom_sendspin),
+            color = if (sendspinEnabled) {
+                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            } else {
+                MaterialTheme.colorScheme.onBackground
+            },
+        )
+    }
+
+    // Require-encryption toggle: refuse the legacy cleartext protocol
+    // when the server is too old for encrypted Sendspin.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = sendspinRequireEncryption,
+            onCheckedChange = { viewModel.setSendspinRequireEncryption(it) },
+            enabled = !sendspinEnabled,
+            modifier = Modifier.tvFocus(authFlow, authLinks, "requireEncryption"),
+        )
+        Text(
+            text = stringResource(Res.string.settings_sendspin_require_encryption),
             color = if (sendspinEnabled) {
                 MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             } else {

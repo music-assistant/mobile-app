@@ -81,8 +81,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // TVs are landscape hardware regardless of smallestScreenWidthDp (this Google TV emulator's
+    // 1920x1080 @ 320dpi display is 540dp smallest-width, under COMPACT_DEVICE_WIDTH) -- without
+    // this guard the portrait lock below fights resolveOrientationLock's TV landscape lock and
+    // wins (it re-applies on every allowLandscapeOnAllDevices emission, after onCreate's initial
+    // lock), letterboxing the whole app into a portrait sliver on the TV screen. Verified live.
     private fun isCompactDevice() =
-        resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH
+        !resources.configuration.isTelevision() &&
+            resources.configuration.smallestScreenWidthDp <= COMPACT_DEVICE_WIDTH
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
