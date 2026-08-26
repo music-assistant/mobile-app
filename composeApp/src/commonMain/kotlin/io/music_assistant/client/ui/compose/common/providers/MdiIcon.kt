@@ -66,11 +66,11 @@ fun codePointToString(codePoint: Int): String =
  *
  * Structural contract: with a non-null [fallback] the emitted group structure is
  * constant — a `BoxWithConstraints` root whose content switches between the glyph and
- * the fallback, never an early return. Keyed lazy content (the players pager, the
- * select-player dialog) relies on this: its compositions are reused and reordered while
- * glyph resolution flips. A null [fallback] keeps the legacy glyph-or-nothing shape for
- * surfaces where an unknown name must not occupy layout space (provider icons); do not
- * use that mode inside keyed lazy content that gets reused or reordered.
+ * the fallback. Keyed lazy content (the players pager, the select-player dialog)
+ * relies on this: its compositions are reused and reordered while glyph resolution
+ * flips. A null [fallback] renders nothing when no glyph resolves, for surfaces where
+ * an unknown name must not occupy layout space (provider icons); do not use that mode
+ * inside keyed lazy content that gets reused or reordered.
  */
 @Composable
 fun MdiIcon(
@@ -81,30 +81,27 @@ fun MdiIcon(
 ) {
     val table by koinInject<MdiCodepoints>().table.collectAsStateWithLifecycle()
     val codePoint = name?.let { table[normalizeMdiName(it)] }
-    if (codePoint == null && fallback == null) {
-        // Legacy glyph-or-nothing shape; see KDoc before using this mode in lazy content.
-        return
-    }
-
-    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        val side: Dp = when {
-            maxWidth == Dp.Infinity && maxHeight == Dp.Infinity -> DefaultMdiSize
-            maxWidth == Dp.Infinity -> maxHeight
-            maxHeight == Dp.Infinity -> maxWidth
-            else -> minOf(maxWidth, maxHeight)
-        }
-        val sizeSp = with(LocalDensity.current) { side.toSp() }
-        if (codePoint == null) {
-            fallback?.invoke()
-        } else {
-            Text(
-                text = codePointToString(codePoint),
-                fontFamily = mdiFontFamily(),
-                color = tint,
-                fontSize = sizeSp,
-                lineHeight = sizeSp,
-                maxLines = 1,
-            )
+    if (codePoint != null || fallback != null) {
+        BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+            val side: Dp = when {
+                maxWidth == Dp.Infinity && maxHeight == Dp.Infinity -> DefaultMdiSize
+                maxWidth == Dp.Infinity -> maxHeight
+                maxHeight == Dp.Infinity -> maxWidth
+                else -> minOf(maxWidth, maxHeight)
+            }
+            val sizeSp = with(LocalDensity.current) { side.toSp() }
+            if (codePoint == null) {
+                fallback?.invoke()
+            } else {
+                Text(
+                    text = codePointToString(codePoint),
+                    fontFamily = mdiFontFamily(),
+                    color = tint,
+                    fontSize = sizeSp,
+                    lineHeight = sizeSp,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
