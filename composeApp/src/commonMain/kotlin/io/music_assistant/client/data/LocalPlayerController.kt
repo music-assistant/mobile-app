@@ -449,22 +449,8 @@ class LocalPlayerController(
      */
     suspend fun start() = sendspinMutex.withLock {
         // Get prerequisites
-        val authToken = when (val state = apiClient.sessionState.value) {
-            is SessionState.Connected.Direct ->
-                settings.getTokenForServer(
-                    settings.getDirectServerIdentifier(
-                        state.connectionInfo.host,
-                        state.connectionInfo.port,
-                        state.connectionInfo.isTls,
-                        state.connectionInfo.basePath,
-                    ),
-                )
-
-            is SessionState.Connected.WebRTC ->
-                settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
-
-            else -> null
-        }
+        val authToken = (apiClient.sessionState.value as? SessionState.Connected)
+            ?.serverInfo?.serverId?.let { settings.getTokenForServer(it) }
 
         // Stop existing client if any (but preserve if it's actively connected, connecting, or reconnecting)
         sendspinClient?.let { existing ->

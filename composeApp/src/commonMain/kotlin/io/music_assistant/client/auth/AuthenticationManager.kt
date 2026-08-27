@@ -6,7 +6,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.OauthUrl
 import io.music_assistant.client.data.model.server.User
-import io.music_assistant.client.settings.ConnectionType
+import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
@@ -75,21 +75,11 @@ class AuthenticationManager(
 
     /**
      * Snapshot at construction: will the cold-launch auto-connect produce a silent auto-login?
-     * True iff the most-recent saved server has a saved token. Mirrors the identifier resolution
-     * used by the [init] block below and by `KtorServiceClient.init`'s auto-connect path.
+     * True iff the most-recent saved server has a saved token.
      */
-    val willAutoLoginOnLaunch: Boolean = run {
-        val mostRecent = settings.connectionHistory.value.firstOrNull() ?: return@run false
-        val identifier = when (mostRecent.type) {
-            ConnectionType.DIRECT -> mostRecent.connectionInfo?.let {
-                settings.getDirectServerIdentifier(it.host, it.port, it.isTls, it.basePath)
-            }
-            ConnectionType.WEBRTC -> mostRecent.remoteId?.let {
-                settings.getWebRTCServerIdentifier(it)
-            }
-        } ?: return@run false
-        settings.getTokenForServer(identifier) != null
-    }
+    val willAutoLoginOnLaunch: Boolean =
+        settings.connectionHistory.value.firstOrNull()
+            ?.serverId?.let { settings.getTokenForServer(it) } != null
 
     init {
         // Monitor session state to update auth UI state
@@ -110,24 +100,16 @@ class AuthenticationManager(
                                     } else if (isLoggingOut) {
                                         log.i { "AwaitingAuth(NotStarted) — skipping auto-login (logging out)" }
                                     } else {
-                                        val serverIdentifier = settings.getServerIdentifier(state)
-                                        val token = settings.getTokenForServer(serverIdentifier)
+                                        // Keyed by server id, so a different server at the
+                                        // same address simply has no token here: the login
+                                        // fields unblock instead of the flow dying.
+                                        val serverId = dataConnectionState.serverInfo.serverId
+                                        val token = settings.getTokenForServer(serverId)
                                         if (token == null) {
                                             log.i { "AwaitingAuth(NotStarted) — no saved token for server" }
                                         } else {
                                             log.i { "AwaitingAuth(NotStarted) — auto-login with saved token" }
-
-                                            val currentServerId =
-                                                dataConnectionState.serverInfo.serverId
-                                            val previousServerId =
-                                                settings.getIdForServer(serverIdentifier)
-                                            if (previousServerId == null || currentServerId == previousServerId) {
-                                                authorizeWithSavedToken(token)
-                                            } else {
-                                                serviceClient.forceDisconnect(
-                                                    ServerIdMismatchException(),
-                                                )
-                                            }
+                                            authorizeWithSavedToken(token)
                                         }
                                     }
                                 }
@@ -139,8 +121,10 @@ class AuthenticationManager(
 
                                 is AuthProcessState.Failed -> {
                                     clearPendingOAuthToken()
-                                    val serverIdentifier = settings.getServerIdentifier(state)
-                                    settings.setTokenForServer(serverIdentifier, null)
+                                    settings.setTokenForServer(
+                                        dataConnectionState.serverInfo.serverId,
+                                        null,
+                                    )
                                     log.i { "Cleared token for server due to auth failure" }
 
                                     log.i {
@@ -153,8 +137,10 @@ class AuthenticationManager(
 
                                 AuthProcessState.LoggedOut -> {
                                     clearPendingOAuthToken()
-                                    val serverIdentifier = settings.getServerIdentifier(state)
-                                    settings.setTokenForServer(serverIdentifier, null)
+                                    settings.setTokenForServer(
+                                        dataConnectionState.serverInfo.serverId,
+                                        null,
+                                    )
                                     log.d { "Cleared token for server" }
 
                                     log.i { "AwaitingAuth(LoggedOut)" }
@@ -169,12 +155,15 @@ class AuthenticationManager(
                                 log.i { "Authenticated" }
                                 _authState.value = AuthState.Authenticated(user)
 
-                                val serverIdentifier = settings.getServerIdentifier(state)
-                                val serverId = dataConnectionState.serverInfo.serverId
-                                settings.setIdForServer(serverIdentifier, serverId)
+                                val serverInfo = dataConnectionState.serverInfo
                                 settings.setTokenForServer(
-                                    serverIdentifier,
+                                    serverInfo.serverId,
                                     dataConnectionState.token,
+                                )
+                                // The one point where the connection is proven to work and
+                                // the server has named itself, so the only place to save it.
+                                settings.addOrUpdateHistoryEntry(
+                                    ConnectionHistoryEntry.from(state, serverInfo),
                                 )
                             }
                         }
@@ -413,9 +402,8 @@ class AuthenticationManager(
             _isLoggingOut.value = true
             clearPendingOAuthToken()
             val currentState = serviceClient.sessionState.value
-            val serverIdentifier = settings.getServerIdentifier(currentState)
-            if (serverIdentifier != null) {
-                settings.setTokenForServer(serverIdentifier, null)
+            (currentState as? SessionState.Connected)?.serverInfo?.serverId?.let {
+                settings.setTokenForServer(it, null)
             }
 
             serviceClient.logout()
@@ -439,27 +427,5 @@ class AuthenticationManager(
          * foreground reconnect, including its backoff, not just a readiness check.
          */
         const val OAUTH_TOKEN_WAIT_MS = 20_000L
-    }
-}
-
-class ServerIdMismatchException : Exception()
-
-private fun SettingsRepository.getServerIdentifier(sessionState: SessionState): String? {
-    return when (sessionState) {
-        is SessionState.Connected -> getServerIdentifier(sessionState)
-        else -> null
-    }
-}
-
-private fun SettingsRepository.getServerIdentifier(sessionState: SessionState.Connected): String {
-    return when (sessionState) {
-        is SessionState.Connected.Direct -> this.getDirectServerIdentifier(
-            sessionState.connectionInfo.host,
-            sessionState.connectionInfo.port,
-            sessionState.connectionInfo.isTls,
-            sessionState.connectionInfo.basePath,
-        )
-
-        is SessionState.Connected.WebRTC -> this.getWebRTCServerIdentifier(sessionState.remoteId.rawId)
     }
 }

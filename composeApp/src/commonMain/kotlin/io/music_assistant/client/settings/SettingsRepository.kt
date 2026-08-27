@@ -37,12 +37,33 @@ class SettingsRepository(
      * secret that a platform backup restored from a version before the split.
      */
     init {
+        purgeLegacyAddressKeyedSecrets()
         settings.keys
-            .filter { it.startsWith(TOKEN_PREFIX) || it.startsWith(SERVER_ID_PREFIX) }
+            .filter { it.startsWith(TOKEN_PREFIX) }
             .forEach { moveString(it) }
         SECRET_STRING_KEYS.forEach { moveString(it) }
         moveInt("port")
         moveBoolean("isTls")
+    }
+
+    /**
+     * Drop credentials that earlier versions keyed by address.
+     *
+     * A legacy token cannot be re-keyed, because nothing records which server issued it.
+     * So delete it: the user logs in once more. The rule matches only the old key shapes,
+     * so it is idempotent and it never touches a server-id key.
+     */
+    private fun purgeLegacyAddressKeyedSecrets() {
+        val isLegacy = { key: String ->
+            key.startsWith(SERVER_ID_PREFIX) ||
+                key.removePrefix(TOKEN_PREFIX).let { rest ->
+                    rest != key && (rest.startsWith("direct:") || rest.startsWith("webrtc:"))
+                }
+        }
+        (settings.keys + secrets.keys).filter(isLegacy).forEach { key ->
+            settings.remove(key)
+            secrets.remove(key)
+        }
     }
 
     private fun moveString(key: String) {
@@ -104,53 +125,43 @@ class SettingsRepository(
     }
 
     /**
-     * Get authentication token for a specific server.
-     * @param serverIdentifier "direct:ws://host:port" / "direct:wss://host:port" or "webrtc:remoteId"
+     * Get the authentication token of a specific server.
+     *
+     * The key is the server's own `server_id`, not its address. One address can host
+     * different servers over time, so an address key can hand a token to the wrong server.
+     *
+     * @param serverId `ServerInfo.serverId` of the server.
      */
-    fun getTokenForServer(serverIdentifier: String): String? {
-        return secrets.getStringOrNull("$TOKEN_PREFIX$serverIdentifier")?.takeIf { it.isNotBlank() }
+    fun getTokenForServer(serverId: String): String? {
+        return secrets.getStringOrNull("$TOKEN_PREFIX$serverId")?.takeIf { it.isNotBlank() }
     }
 
     /**
-     * Save authentication token for a specific server.
-     * @param serverIdentifier "direct:ws://host:port" / "direct:wss://host:port" or "webrtc:remoteId"
+     * Save the authentication token of a specific server.
+     * @param serverId `ServerInfo.serverId` of the server.
      * @param token Authentication token (null to clear)
      */
-    fun setTokenForServer(serverIdentifier: String, token: String?) {
+    fun setTokenForServer(serverId: String, token: String?) {
         if (token.isNullOrBlank()) {
-            secrets.remove("$TOKEN_PREFIX$serverIdentifier")
+            secrets.remove("$TOKEN_PREFIX$serverId")
         } else {
-            secrets.putString("$TOKEN_PREFIX$serverIdentifier", token)
+            secrets.putString("$TOKEN_PREFIX$serverId", token)
         }
     }
 
-    fun getIdForServer(serverIdentifier: String): String? {
-        return secrets.getStringOrNull("$SERVER_ID_PREFIX$serverIdentifier")
-    }
-
-    fun setIdForServer(serverIdentifier: String, id: String) {
-        secrets.putString("$SERVER_ID_PREFIX$serverIdentifier", id)
-    }
-
     /**
-     * Get server identifier for Direct connection.
+     * Is there a usable token for any server last seen at this address?
+     *
+     * The address alone cannot identify a server, so this asks the history: it is true only
+     * if some entry for this address names a server whose token is still saved.
+     *
+     * @param serverIdentifier `ConnectionHistoryEntry.serverIdentifier` of the address.
      */
-    fun getDirectServerIdentifier(
-        host: String,
-        port: Int,
-        isTls: Boolean,
-        basePath: String = "",
-    ): String {
-        // An empty base path keeps the key byte-identical to the pre-base-path format, so
-        // tokens and server ids stored by earlier versions stay reachable.
-        return "direct:${if (isTls) "wss" else "ws"}://$host:$port$basePath"
-    }
-
-    /**
-     * Get server identifier for WebRTC connection.
-     */
-    fun getWebRTCServerIdentifier(remoteId: String): String {
-        return "webrtc:$remoteId"
+    fun hasCredentialsForAddress(serverIdentifier: String): Boolean {
+        return _connectionHistory.value.any { entry ->
+            entry.serverIdentifier == serverIdentifier &&
+                entry.serverId?.let { getTokenForServer(it) } != null
+        }
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -664,15 +675,20 @@ class SettingsRepository(
 
     fun addOrUpdateHistoryEntry(entry: ConnectionHistoryEntry) {
         val updated = _connectionHistory.value
-            .filter { it.serverIdentifier != entry.serverIdentifier }
+            .filter {
+                // Replace the same server at the same address, and absorb any entry that
+                // predates server ids. Keep a different server on the same address.
+                it.historyKey != entry.historyKey &&
+                    !(it.serverIdentifier == entry.serverIdentifier && it.serverId == null)
+            }
             .let { listOf(entry) + it }
             .take(10)
         secrets.putString("connection_history", myJson.encodeToString(updated))
         _connectionHistory.update { updated }
     }
 
-    fun removeHistoryEntry(serverIdentifier: String) {
-        val updated = _connectionHistory.value.filter { it.serverIdentifier != serverIdentifier }
+    fun removeHistoryEntry(historyKey: String) {
+        val updated = _connectionHistory.value.filter { it.historyKey != historyKey }
         secrets.putString("connection_history", myJson.encodeToString(updated))
         _connectionHistory.update { updated }
     }

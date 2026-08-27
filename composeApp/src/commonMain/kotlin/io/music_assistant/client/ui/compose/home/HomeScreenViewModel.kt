@@ -424,22 +424,9 @@ class HomeScreenViewModel(
         onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id/dsp")
     }
 
-    private fun currentServerToken(): String? = when (val state = apiClient.sessionState.value) {
-        is SessionState.Connected.Direct ->
-            settings.getTokenForServer(
-                settings.getDirectServerIdentifier(
-                    state.connectionInfo.host,
-                    state.connectionInfo.port,
-                    state.connectionInfo.isTls,
-                    state.connectionInfo.basePath,
-                ),
-            )
-
-        is SessionState.Connected.WebRTC ->
-            settings.getTokenForServer(settings.getWebRTCServerIdentifier(state.remoteId.rawId))
-
-        else -> null
-    }
+    private fun currentServerToken(): String? =
+        (apiClient.sessionState.value as? SessionState.Connected)
+            ?.serverInfo?.serverId?.let { settings.getTokenForServer(it) }
 
     private fun onOpenExternalLink(url: String) = viewModelScope.launch { _links.emit(url) }
 

@@ -16,7 +16,6 @@ import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
-import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
@@ -662,16 +661,8 @@ class KtorServiceClient(
             },
             backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
             onFreshConnect = {
+                // History is written by AuthenticationManager, which knows the server id.
                 settings.setLastConnectionMode("direct")
-                settings.addOrUpdateHistoryEntry(
-                    ConnectionHistoryEntry(
-                        type = ConnectionType.DIRECT,
-                        host = connection.host,
-                        port = connection.port,
-                        isTls = connection.isTls,
-                        basePath = connection.basePath,
-                    ),
-                )
             },
             onReconnected = {
                 // Re-auth is owned by AuthenticationManager (driven by the
@@ -717,13 +708,8 @@ class KtorServiceClient(
             },
             backgroundInfo = { BackgroundedConnectionInfo.WebRTC(remoteId) },
             onFreshConnect = {
+                // History is written by AuthenticationManager, which knows the server id.
                 settings.setLastConnectionMode("webrtc")
-                settings.addOrUpdateHistoryEntry(
-                    ConnectionHistoryEntry(
-                        type = ConnectionType.WEBRTC,
-                        remoteId = remoteId.rawId,
-                    ),
-                )
             },
             onReconnected = {
                 // Re-auth is owned by AuthenticationManager (driven by the
@@ -1052,16 +1038,8 @@ class KtorServiceClient(
     }
 
     private fun savedTokenForState(state: SessionState.Connected): String? {
-        val id = when (state) {
-            is SessionState.Connected.Direct -> settings.getDirectServerIdentifier(
-                state.connectionInfo.host,
-                state.connectionInfo.port,
-                state.connectionInfo.isTls,
-                state.connectionInfo.basePath,
-            )
-            is SessionState.Connected.WebRTC -> settings.getWebRTCServerIdentifier(state.remoteId.rawId)
-        }
-        return settings.getTokenForServer(id)
+        // Null until `server/hello` lands: without the server id there is no token to find.
+        return state.serverInfo?.serverId?.let { settings.getTokenForServer(it) }
     }
 
     override suspend fun sendRequest(request: Request): Result<Answer> {

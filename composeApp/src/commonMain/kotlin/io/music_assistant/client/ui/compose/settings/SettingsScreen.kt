@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Defaults
-import io.music_assistant.client.auth.ServerIdMismatchException
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.player.sendspin.SendspinConfig
@@ -97,7 +96,6 @@ import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.nav_settings
-import musicassistantclient.composeapp.generated.resources.server_id_mismatch_error
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
@@ -612,10 +610,7 @@ private fun ConnectionMethodTabs(
 
         val error = (sessionState as? SessionState.Disconnected.Error)?.reason
         if (error != null) {
-            val errorMessage = when (error) {
-                is ServerIdMismatchException -> Res.string.server_id_mismatch_error.toDisplayString()
-                else -> error.message?.toDisplayString()
-            }
+            val errorMessage = error.message?.toDisplayString()
 
             if (errorMessage != null) {
                 Text(
@@ -1010,6 +1005,18 @@ private fun ServerInfoSection(
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_server))
 
+        // Older servers send no name, so the address line stays the headline for them.
+        serverInfo?.name?.takeIf { it.isNotBlank() }?.let { name ->
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(bottom = 2.dp),
+            )
+        }
+
         val connectionText = if (isWebRTC) {
             stringResource(Res.string.settings_connected_webrtc)
         } else {
@@ -1017,11 +1024,22 @@ private fun ServerInfoSection(
                 stringResource(Res.string.settings_connected_to, it.host, it.port, it.basePath)
             }
         }
+        val externalUrl = serverInfo?.externalUrl?.takeIf { it.isNotBlank() }
         connectionText?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = if (externalUrl != null) 2.dp else 8.dp),
+            )
+        }
+        externalUrl?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
@@ -1390,18 +1408,32 @@ private fun ConnectionHistoryDialog(
                                     .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
                             ) {
                                 Text(
-                                    text = entry.displayAddress,
+                                    text = entry.serverName ?: entry.displayAddress,
                                     style = MaterialTheme.typography.bodyLarge,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                // Only when a name took the primary line, or this repeats it.
+                                entry.serverName?.let {
+                                    Text(
+                                        text = entry.displayAddress,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                val typeLabel = when (entry.type) {
+                                    ConnectionType.DIRECT -> stringResource(Res.string.settings_history_direct)
+                                    ConnectionType.WEBRTC -> stringResource(Res.string.settings_history_webrtc)
+                                }
                                 Text(
-                                    text = when (entry.type) {
-                                        ConnectionType.DIRECT -> stringResource(Res.string.settings_history_direct)
-                                        ConnectionType.WEBRTC -> stringResource(Res.string.settings_history_webrtc)
-                                    },
+                                    text = entry.shortServerId
+                                        ?.let { "$typeLabel \u00B7 $it" } ?: typeLabel,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                             IconButton(onClick = { onDelete(entry) }) {
