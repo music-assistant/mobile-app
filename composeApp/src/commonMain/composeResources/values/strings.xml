@@ -257,9 +257,6 @@
   <string name="schema_incompatible_dialog_exit">Exit</string>
   <string name="schema_incompatible_dialog_message">This app is too old to connect to this server. Please update the app to continue.</string>
   <string name="schema_incompatible_dialog_title">Update required</string>
-  <string name="schema_version_dialog_confirm">OK</string>
-  <string name="schema_version_dialog_message">This server uses newer data format version than this app. Some features may not work correctly. Consider updating the app.</string>
-  <string name="schema_version_dialog_title">App update advised</string>
   <string name="search_error">Error loading search results</string>
   <string name="search_in_library_only">In library only</string>
   <string name="search_no_results">No results found</string>

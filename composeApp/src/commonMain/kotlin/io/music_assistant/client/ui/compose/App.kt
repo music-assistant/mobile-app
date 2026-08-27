@@ -46,9 +46,6 @@ import musicassistantclient.composeapp.generated.resources.background_usage_dial
 import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_exit
 import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_message
 import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_title
-import musicassistantclient.composeapp.generated.resources.schema_version_dialog_confirm
-import musicassistantclient.composeapp.generated.resources.schema_version_dialog_message
-import musicassistantclient.composeapp.generated.resources.schema_version_dialog_title
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -171,19 +168,7 @@ private fun SchemaVersionWarningDialog() {
                 },
             )
 
-        SchemaWarning.SERVER_AHEAD ->
-            if (!hidden) {
-                AlertDialog(
-                    onDismissRequest = { hidden = true },
-                    title = { Text(stringResource(Res.string.schema_version_dialog_title)) },
-                    text = { Text(stringResource(Res.string.schema_version_dialog_message)) },
-                    confirmButton = {
-                        TextButton(onClick = { hidden = true }) {
-                            Text(stringResource(Res.string.schema_version_dialog_confirm))
-                        }
-                    },
-                )
-            }
+        SchemaWarning.SERVER_AHEAD -> Unit
     }
 }
 
