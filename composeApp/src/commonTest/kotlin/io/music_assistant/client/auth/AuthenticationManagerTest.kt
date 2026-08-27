@@ -350,6 +350,68 @@ class AuthenticationManagerTest {
         }
     }
 
+    @Test
+    fun `a token saved for this server drives a silent auto-login`() = runTest {
+        val client = StubServiceClient()
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        settings.setTokenForServer(SERVER_INFO.serverId, "saved-token")
+        val manager = AuthenticationManager(client, settings)
+        try {
+            client.sessionState.value = awaitingAuth()
+            runCurrent()
+
+            assertEquals(
+                listOf("saved-token" to true),
+                client.authorizeCalls,
+                "The saved token must be spent as an auto-login",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a token saved for another server is never offered to this one`() = runTest {
+        val client = StubServiceClient()
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        // The same address now hosts a different server, for example a beta build.
+        settings.setTokenForServer("another-server", "saved-token")
+        val manager = AuthenticationManager(client, settings)
+        try {
+            client.sessionState.value = awaitingAuth()
+            runCurrent()
+
+            assertTrue(client.authorizeCalls.isEmpty(), "No token belongs to this server")
+            assertTrue(
+                client.forceDisconnectCalls.isEmpty(),
+                "An unknown server must present the login form, not kill the connection",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `authenticating saves the token under the id the auto-login reads back`() = runTest {
+        val client = StubServiceClient()
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        val manager = AuthenticationManager(client, settings)
+        try {
+            client.sessionState.value = authenticated("fresh-token")
+            runCurrent()
+
+            assertEquals("fresh-token", settings.getTokenForServer(SERVER_INFO.serverId))
+            val entry = settings.connectionHistory.value.single()
+            assertEquals(SERVER_INFO.serverId, entry.serverId)
+            assertTrue(
+                settings.hasCredentialsForAddress(entry.serverIdentifier),
+                "The saved-credentials button must light up for this address",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
     private fun awaitingAuth(
         authProcessState: AuthProcessState = AuthProcessState.NotStarted,
     ) = SessionState.Connected.Direct(
@@ -357,6 +419,15 @@ class AuthenticationManagerTest {
         connectionData = ConnectionData(
             serverInfo = SERVER_INFO,
             authProcessState = authProcessState,
+        ),
+    )
+
+    private fun authenticated(token: String) = SessionState.Connected.Direct(
+        connectionInfo = CONNECTION,
+        connectionData = ConnectionData(
+            serverInfo = SERVER_INFO,
+            user = USER,
+            token = token,
         ),
     )
 
@@ -407,7 +478,11 @@ private class StubServiceClient : ServiceClient {
     override fun onPlaybackActive() = Unit
     override fun onExternalConsumerInactive() = Unit
     override fun onPlaybackInactive() = Unit
-    override fun forceDisconnect(reason: Exception) = Unit
+    val forceDisconnectCalls = mutableListOf<Exception>()
+
+    override fun forceDisconnect(reason: Exception) {
+        forceDisconnectCalls += reason
+    }
     override fun noServer() = Unit
 }
 

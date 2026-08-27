@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
+import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
@@ -661,8 +662,19 @@ class KtorServiceClient(
             },
             backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
             onFreshConnect = {
-                // History is written by AuthenticationManager, which knows the server id.
                 settings.setLastConnectionMode("direct")
+                // Provisional: the server has not named itself yet, so this row has no id.
+                // It keeps JIT reconnect able to recover a login that did not finish, and
+                // AuthenticationManager absorbs it once the server identifies itself.
+                settings.addOrUpdateHistoryEntry(
+                    ConnectionHistoryEntry(
+                        type = ConnectionType.DIRECT,
+                        host = connection.host,
+                        port = connection.port,
+                        isTls = connection.isTls,
+                        basePath = connection.basePath,
+                    ),
+                )
             },
             onReconnected = {
                 // Re-auth is owned by AuthenticationManager (driven by the
@@ -708,8 +720,14 @@ class KtorServiceClient(
             },
             backgroundInfo = { BackgroundedConnectionInfo.WebRTC(remoteId) },
             onFreshConnect = {
-                // History is written by AuthenticationManager, which knows the server id.
                 settings.setLastConnectionMode("webrtc")
+                // Provisional — see the Direct path above.
+                settings.addOrUpdateHistoryEntry(
+                    ConnectionHistoryEntry(
+                        type = ConnectionType.WEBRTC,
+                        remoteId = remoteId.rawId,
+                    ),
+                )
             },
             onReconnected = {
                 // Re-auth is owned by AuthenticationManager (driven by the
