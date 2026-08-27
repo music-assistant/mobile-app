@@ -30,7 +30,7 @@ data class Event(
     val json: JsonObject,
 ) {
     private val type: EventType? = runCatching {
-        parseEventType(myJson.decodeFromJsonElement<GenericEvent>(json).eventType)
+        myJson.decodeFromJsonElement<GenericEvent>(json).eventType
     }.getOrElse { e ->
         logger.w(e) { "Failed to decode event envelope: ${json.toString().take(500)}" }
         null
@@ -91,7 +91,4 @@ data class Event(
         }
         null
     }
-
-    private fun parseEventType(value: String): EventType? =
-        EventType.entries.find { it.name.equals(value, ignoreCase = true) }
 }

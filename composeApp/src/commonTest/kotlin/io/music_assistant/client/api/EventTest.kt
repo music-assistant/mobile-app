@@ -1,9 +1,12 @@
 package io.music_assistant.client.api
 
+import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
+import io.music_assistant.client.data.model.server.events.GenericEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueAddedEvent
+import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
@@ -204,5 +207,30 @@ class EventTest {
         }"""
 
         assertNull(parse(raw).event())
+    }
+
+    @Test
+    fun everyEventTypeDecodesFromItsWireValue() {
+        // The envelope's event kind must be resolved through the serializer, so
+        // a constant whose @SerialName differs from its Kotlin name (SHUTDOWN,
+        // ALL) still resolves. Round-trip through the same Json instance the
+        // decoder uses, so a future name/@SerialName divergence fails here.
+        EventType.entries.forEach { type ->
+            val wire = myJson.encodeToString(EventType.serializer(), type)
+            val decoded = myJson.decodeFromString<GenericEvent>("""{"event": $wire}""")
+
+            assertEquals(type, decoded.eventType, "wire value $wire")
+        }
+    }
+
+    @Test
+    fun resolvesApplicationShutdownWireValue() {
+        // Confirmed regression: SHUTDOWN is @SerialName("application_shutdown"),
+        // so constant-name matching resolved it to null.
+        val decoded = myJson.decodeFromString<GenericEvent>(
+            """{"event": "application_shutdown"}""",
+        )
+
+        assertEquals(EventType.SHUTDOWN, decoded.eventType)
     }
 }
