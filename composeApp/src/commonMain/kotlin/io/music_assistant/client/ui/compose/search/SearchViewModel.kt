@@ -193,7 +193,7 @@ class SearchViewModel(
                     Request.Library.search(
                         query = searchState.query,
                         mediaTypes = searchState.selectedMediaTypes,
-                        limit = 200,
+                        limit = searchLimitFor(searchState.selectedMediaTypes.size),
                         libraryOnly = searchState.libraryOnly,
                     ),
                 )
@@ -263,5 +263,22 @@ class SearchViewModel(
             val mediaTypeName: StringResource,
             val items: List<AppMediaItem>,
         )
+    }
+
+    internal companion object {
+        // music/search applies `limit` PER MEDIA TYPE, and streaming providers page it in
+        // chunks of 10 behind a rate limiter (~1.0-1.5s per page). The server abandons a
+        // provider that takes longer than its soft timeout (8s) and reports it as empty,
+        // so ceil(limit / 10) pages must stay well inside that budget. See #929.
+
+        /** Multi-type results render as carousels; a shallow list per type is enough. */
+        const val SEARCH_LIMIT_OVERVIEW = 10
+
+        /** A single selected type renders as a full list, so fetch deeper. */
+        const val SEARCH_LIMIT_FOCUSED = 30
+
+        /** Pick the limit from the number of selected filter chips (0 = all types). */
+        fun searchLimitFor(selectedMediaTypeCount: Int) =
+            if (selectedMediaTypeCount == 1) SEARCH_LIMIT_FOCUSED else SEARCH_LIMIT_OVERVIEW
     }
 }
