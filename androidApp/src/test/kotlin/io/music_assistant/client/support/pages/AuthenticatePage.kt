@@ -9,7 +9,7 @@ import androidx.compose.ui.test.performTextInput
 class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
     override fun assert() {
         composeTestRule.onNodeWithText("Server").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Connected to homeassistant.local:8095").assertIsDisplayed()
+        composeTestRule.onNodeWithText("homeassistant.local:8095").assertIsDisplayed()
         composeTestRule.onNodeWithText("Authentication").assertIsDisplayed()
     }
 

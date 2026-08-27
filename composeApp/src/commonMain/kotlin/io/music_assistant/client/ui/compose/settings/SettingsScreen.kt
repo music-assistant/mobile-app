@@ -106,7 +106,6 @@ import musicassistantclient.composeapp.generated.resources.settings_connect
 import musicassistantclient.composeapp.generated.resources.settings_connect_saved
 import musicassistantclient.composeapp.generated.resources.settings_connect_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_connected
-import musicassistantclient.composeapp.generated.resources.settings_connected_to
 import musicassistantclient.composeapp.generated.resources.settings_connected_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_connecting
 import musicassistantclient.composeapp.generated.resources.settings_connecting_remote
@@ -1020,16 +1019,18 @@ private fun ServerInfoSection(
         val connectionText = if (isWebRTC) {
             stringResource(Res.string.settings_connected_webrtc)
         } else {
-            connectionInfo?.let {
-                stringResource(Res.string.settings_connected_to, it.host, it.port, it.basePath)
-            }
+            connectionInfo?.let { "${it.host}:${it.port}${it.basePath}" }
         }
-        val externalUrl = serverInfo?.externalUrl?.takeIf { it.isNotBlank() }
+        val externalUrl = serverInfo?.externalUrl
+            ?.takeIf {
+                it.isNotBlank() &&
+                        connectionInfo?.host?.let { host -> !it.contains(host) } ?: true
+            }
         connectionText?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 modifier = Modifier.padding(bottom = if (externalUrl != null) 2.dp else 8.dp),
             )
         }

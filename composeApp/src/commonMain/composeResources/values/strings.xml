@@ -287,7 +287,6 @@
   <string name="settings_connect_saved">Connect with saved credentials</string>
   <string name="settings_connect_webrtc">Connect via WebRTC</string>
   <string name="settings_connected">Connected</string>
-  <string name="settings_connected_to">Connected to %1$s:%2$d%3$s</string>
   <string name="settings_connected_webrtc">Connected via WebRTC</string>
   <string name="settings_connecting">Connecting…</string>
   <string name="settings_connecting_remote">Connecting to remote server…</string>
