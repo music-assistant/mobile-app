@@ -38,6 +38,24 @@ data class ConnectionData(
 }
 
 /**
+ * Apply a live server-info refresh (a `core_state_updated` push). The payload is the full
+ * `server/hello` shape, so it replaces the cached [ServerInfo] wholesale.
+ *
+ * Returns `this` unchanged unless a server info is already cached *for the same server*:
+ *
+ *  - it must never satisfy [DataConnectionState.AwaitingServerInfo] — WebRTC clears
+ *    `serverInfo` on reconnect on purpose, to hold `authorize` until the fresh `server/hello`
+ *    lands (see `KtorServiceClient.observeTransport`),
+ *  - a payload for another server is not ours to trust.
+ *
+ * Auth fields are carried through by [copy], so no refresh can disturb the session.
+ */
+fun ConnectionData.withRefreshedServerInfo(incoming: ServerInfo): ConnectionData =
+    takeIf { it.serverInfo?.serverId == incoming.serverId }
+        ?.copy(serverInfo = incoming)
+        ?: this
+
+/**
  * Interface for SessionState variants that carry connection data.
  * Implemented by Connected and Reconnecting.
  */

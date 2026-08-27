@@ -12,6 +12,7 @@ import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.music_assistant.client.data.model.server.AuthorizationResponse
 import io.music_assistant.client.data.model.server.LoginResponse
 import io.music_assistant.client.data.model.server.ServerInfo
+import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
@@ -30,6 +31,7 @@ import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.platformLocale
 import io.music_assistant.client.utils.serverLocalizationLocale
 import io.music_assistant.client.utils.update
+import io.music_assistant.client.utils.withRefreshedServerInfo
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -936,10 +938,32 @@ class KtorServiceClient(
             }
 
             message.containsKey("event") -> {
-                Event(message).event()?.let { _eventsFlow.emit(it) }
+                Event(message).event()?.let { event ->
+                    (event as? CoreStateUpdatedEvent)?.let { refreshServerInfo(it.data) }
+                    _eventsFlow.emit(event)
+                }
             }
 
             else -> logger.i { "Unknown message: $message" }
+        }
+    }
+
+    /**
+     * Live refresh of the cached [ServerInfo] from a `core_state_updated` push.
+     *
+     * The guard itself lives in [withRefreshedServerInfo] and runs inside the state update, so a
+     * concurrent auth write cannot be clobbered. The pre-check here only buys an early log of the
+     * ignored case.
+     */
+    private fun refreshServerInfo(incoming: ServerInfo) {
+        val cachedId = (_sessionState.value as? SessionState.Connected)?.serverInfo?.serverId
+        if (cachedId != incoming.serverId) {
+            logger.d { "Ignoring core_state_updated for ${incoming.serverId} (cached server: $cachedId)" }
+            return
+        }
+        _sessionState.update { state ->
+            val connected = state as? SessionState.Connected ?: return@update state
+            connected.update(connectionData = connected.connectionData.withRefreshedServerInfo(incoming))
         }
     }
 

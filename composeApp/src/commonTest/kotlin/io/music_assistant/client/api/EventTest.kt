@@ -1,5 +1,6 @@
 package io.music_assistant.client.api
 
+import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueAddedEvent
@@ -147,6 +148,58 @@ class EventTest {
         val raw = """{
             "event": "player_updated",
             "object_id": "pl1",
+            "data": "not an object"
+        }"""
+
+        assertNull(parse(raw).event())
+    }
+
+    @Test
+    fun decodesCoreStateUpdatedEvent() {
+        // `data` is the full `server/hello` payload plus a `status` (CoreState) field the
+        // client does not model yet — it must be dropped, not fail the decode.
+        val raw = """{
+            "event": "core_state_updated",
+            "object_id": null,
+            "data": {
+                "server_id": "srv1",
+                "server_version": "2.6.0",
+                "schema_version": 59,
+                "min_supported_schema_version": 40,
+                "name": "Music Assistant",
+                "internal_url": "http://ma.local:8095",
+                "external_url": "https://ma.example.com",
+                "has_remote_access": true,
+                "status": "running"
+            }
+        }"""
+
+        val decoded = parse(raw).event()
+
+        assertNotNull(decoded)
+        assertTrue(decoded is CoreStateUpdatedEvent)
+        assertEquals("srv1", decoded.data.serverId)
+        assertEquals(59, decoded.data.schemaVersion)
+        assertEquals("https://ma.example.com", decoded.data.externalUrl)
+        assertTrue(decoded.data.hasRemoteAccess)
+    }
+
+    @Test
+    fun returnsNullWhenCoreStateUpdatedPayloadHasNoServerId() {
+        // `server_id` is the only required ServerInfo field and the identity the merge guard
+        // keys on. Without it there is nothing to trust, so the event must be dropped quietly.
+        val raw = """{
+            "event": "core_state_updated",
+            "data": {"server_version": "2.6.0"}
+        }"""
+
+        assertNull(parse(raw).event())
+    }
+
+    @Test
+    fun returnsNullWhenCoreStateUpdatedPayloadIsNotAnObject() {
+        val raw = """{
+            "event": "core_state_updated",
             "data": "not an object"
         }"""
 
