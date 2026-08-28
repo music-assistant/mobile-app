@@ -304,7 +304,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 expandedItemId = null
                 when (action) {
                     is ItemAction.Play -> onPlayOption(item, action.queueOption, false, false)
-                    ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, false)
+                    ItemAction.StartEndlessMix -> onPlayOption(item, QueueOption.REPLACE, true, false)
                     ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)
                     ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
                     ItemAction.Favorite,

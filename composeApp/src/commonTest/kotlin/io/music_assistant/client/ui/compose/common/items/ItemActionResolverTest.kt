@@ -64,13 +64,13 @@ class ItemActionResolverTest {
         val actions = resolvePlayButtonActions(testTrack(), default = ItemAction.Play(QueueOption.REPLACE))
         assertFalse(ItemAction.Play(QueueOption.REPLACE) in actions, "leading default must be excluded")
         assertTrue(ItemAction.Play(QueueOption.PLAY) in actions)
-        assertTrue(ItemAction.StartRadio in actions, "tracks can start radio")
+        assertTrue(ItemAction.StartEndlessMix in actions, "tracks can start endless mix")
     }
 
     @Test
-    fun `play-button overflow drops start radio when unavailable`() {
+    fun `play-button overflow drops start endless mix when unavailable`() {
         val actions = resolvePlayButtonActions(testPodcastEpisode(), default = ItemAction.Play(QueueOption.REPLACE))
-        assertFalse(ItemAction.StartRadio in actions)
+        assertFalse(ItemAction.StartEndlessMix in actions)
         assertEquals(
             listOf(
                 ItemAction.Play(QueueOption.PLAY),

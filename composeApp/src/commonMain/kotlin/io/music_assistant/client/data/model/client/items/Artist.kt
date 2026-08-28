@@ -18,5 +18,5 @@ data class Artist(
     override val images: Map<ImageType, ImageInfo>,
 ) : AppMediaItem() {
     override val mediaType: MediaType = MediaType.ARTIST
-    override val canStartRadio: Boolean = true
+    override val canStartEndlessMix: Boolean = true
 }

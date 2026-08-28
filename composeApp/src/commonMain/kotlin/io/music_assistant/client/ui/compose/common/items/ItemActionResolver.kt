@@ -16,7 +16,7 @@ val AppMediaItem.supportsAddToPlaylist: Boolean
 
 /**
  * Long-click menu shows the union: playback block (Play Now / Insert Next & Play / Insert Next /
- * Add to Bottom / Start Radio) followed by library, favorite, playlist and progress entries.
+ * Add to Bottom / Start endless mix) followed by library, favorite, playlist and progress entries.
  */
 fun resolveLongClickActions(
     item: AppMediaItem,
@@ -80,7 +80,7 @@ private fun MutableList<ItemAction>.addPlaybackActions(
         add(ItemAction.PlayFromHere)
     }
 
-    if (item.canStartRadio) add(ItemAction.StartRadio)
+    if (item.canStartEndlessMix) add(ItemAction.StartEndlessMix)
 }
 
 /**

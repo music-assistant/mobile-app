@@ -71,7 +71,7 @@ class CarActionPrefsTest {
             assertEquals(listOf(parentUri), dispatch?.mediaUris)
             assertEquals("track-7", dispatch?.startItem)
             assertEquals(QueueOption.REPLACE, dispatch?.option)
-            assertFalse(dispatch?.radioMode ?: true)
+            assertFalse(dispatch?.endlessMixMode ?: true)
         }
     }
 
@@ -87,7 +87,7 @@ class CarActionPrefsTest {
         assertEquals(listOf("library://track/7"), dispatch?.mediaUris)
         assertEquals(null, dispatch?.startItem)
         assertEquals(QueueOption.REPLACE, dispatch?.option)
-        assertFalse(dispatch?.radioMode ?: true)
+        assertFalse(dispatch?.endlessMixMode ?: true)
     }
 
     @Test
@@ -102,7 +102,7 @@ class CarActionPrefsTest {
         assertEquals(listOf("library://track/7"), dispatch?.mediaUris)
         assertEquals(null, dispatch?.startItem)
         assertEquals(QueueOption.REPLACE, dispatch?.option)
-        assertFalse(dispatch?.radioMode ?: true)
+        assertFalse(dispatch?.endlessMixMode ?: true)
     }
 
     @Test
@@ -129,7 +129,7 @@ class CarActionPrefsTest {
     @Test
     fun toCarDispatchMapsPlainOptions() {
         assertEquals(QueueOption.REPLACE, DefaultClickOption.PLAY_NOW.toCarDispatch().option)
-        assertFalse(DefaultClickOption.PLAY_NOW.toCarDispatch().radioMode)
-        assertTrue(DefaultClickOption.START_RADIO.toCarDispatch().radioMode)
+        assertFalse(DefaultClickOption.PLAY_NOW.toCarDispatch().endlessMixMode)
+        assertTrue(DefaultClickOption.START_ENDLESS_MIX.toCarDispatch().endlessMixMode)
     }
 }

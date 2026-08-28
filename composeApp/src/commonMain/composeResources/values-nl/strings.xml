@@ -26,7 +26,6 @@
   <string name="action_remove_from_library">Verwijder uit bibliotheek</string>
   <string name="action_remove_from_playlist">Uit afspeellijst verwijderen</string>
   <string name="action_similar_artists">Vergelijkbare artiesten</string>
-  <string name="action_start_radio">Radio starten</string>
   <string name="action_unfavorite">Verwijder favoriet</string>
   <string name="album_disc_header">Schijf %1$d</string>
   <string name="album_type_album">Album</string>

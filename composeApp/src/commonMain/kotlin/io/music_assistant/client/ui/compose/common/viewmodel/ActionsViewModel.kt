@@ -176,7 +176,7 @@ class ActionsViewModel(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && item !is Genre,
+                        endlessMixMode = radio && item !is Genre,
                     ),
                 )
             }

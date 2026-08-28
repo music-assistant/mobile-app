@@ -712,14 +712,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             media: List<String>,
             queueOrPlayerId: String,
             option: QueueOption,
-            radioMode: Boolean,
+            endlessMixMode: Boolean,
             startItem: String? = null,
         ) = Request(
             command = APICommands.PLAYER_QUEUES_PLAY_MEDIA,
             args = buildJsonObject {
                 put("media", JsonArray(media.map { JsonPrimitive(it) }))
                 put("option", JsonPrimitive(option.serverValue))
-                put("radio_mode", JsonPrimitive(radioMode))
+                put("radio_mode", JsonPrimitive(endlessMixMode))
                 put("queue_id", JsonPrimitive(queueOrPlayerId))
                 startItem?.let { put("start_item", JsonPrimitive(it)) }
             },

@@ -206,7 +206,7 @@ private fun <T> PlayableItemWithMenu(
     val runPlayAction: (ItemAction) -> Unit = { action ->
         when (action) {
             is ItemAction.Play -> onPlayOption(item, action.queueOption, false, false)
-            ItemAction.StartRadio -> onPlayOption(item, QueueOption.REPLACE, true, false)
+            ItemAction.StartEndlessMix -> onPlayOption(item, QueueOption.REPLACE, true, false)
             is ItemAction.PlayFromHere -> onPlayOption(item, QueueOption.REPLACE, false, true)
             else -> Unit
         }
@@ -233,7 +233,7 @@ private fun <T> PlayableItemWithMenu(
                 expandedItemId = null
                 when (action) {
                     is ItemAction.Play,
-                    ItemAction.StartRadio,
+                    ItemAction.StartEndlessMix,
                     is ItemAction.PlayFromHere,
                     -> runPlayAction(action)
                     ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)

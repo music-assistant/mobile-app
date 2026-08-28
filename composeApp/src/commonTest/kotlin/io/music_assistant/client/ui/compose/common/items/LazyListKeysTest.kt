@@ -227,7 +227,7 @@ class LazyListKeysTest {
         override val provider: String = provider
         override val isInLibrary: Boolean = provider == "library"
         override val favorite: Boolean? = null
-        override val canStartRadio: Boolean = false
+        override val canStartEndlessMix: Boolean = false
         override val isPlayable: Boolean = true
         override fun withFavorite(favorite: Boolean?): PlayableItem = this
     }

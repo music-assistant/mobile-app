@@ -25,7 +25,7 @@ class ItemPlayButtonTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun `clicking 'Start radio' triggers radio`() {
+    fun `clicking 'Start endless mix' triggers endless mix`() {
         val item = AppMediaItemFixtures.artist()
         val onPlayClick = MockFunction2<QueueOption, Boolean>()
 
@@ -34,13 +34,13 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Start radio").performClick()
+        composeTestRule.onNodeWithText("Start endless mix").performClick()
         assertEquals(onPlayClick.arg1, QueueOption.REPLACE)
         assertEquals(onPlayClick.arg2, true)
     }
 
     @Test
-    fun `does not show 'Start radio' for item that doesn't support it`() {
+    fun `does not show 'Start endless mix' for item that doesn't support it`() {
         val item = AppMediaItemFixtures.podcast()
 
         composeTestRule.setContent {
@@ -48,7 +48,7 @@ class ItemPlayButtonTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
-        composeTestRule.onNodeWithText("Start radio").assertIsNotDisplayed()
+        composeTestRule.onNodeWithText("Start endless mix").assertIsNotDisplayed()
     }
 
     @Test

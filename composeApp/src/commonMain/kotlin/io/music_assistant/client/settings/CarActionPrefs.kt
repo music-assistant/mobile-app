@@ -73,7 +73,7 @@ fun Map<ItemKind, List<DefaultClickOption>>.carBulkActions(
 data class CarItemDispatch(
     val mediaUris: List<String>,
     val option: QueueOption,
-    val radioMode: Boolean,
+    val endlessMixMode: Boolean,
     val startItem: String? = null,
 )
 
@@ -94,7 +94,7 @@ fun planCarItemDispatch(
                 return CarItemDispatch(
                     mediaUris = listOf(containerUri),
                     option = QueueOption.REPLACE,
-                    radioMode = false,
+                    endlessMixMode = false,
                     startItem = startItem,
                 )
             }
@@ -104,7 +104,7 @@ fun planCarItemDispatch(
         return CarItemDispatch(
             mediaUris = listOf(mediaUri),
             option = QueueOption.REPLACE,
-            radioMode = false,
+            endlessMixMode = false,
         )
     }
 
@@ -113,20 +113,20 @@ fun planCarItemDispatch(
     return CarItemDispatch(
         mediaUris = listOf(mediaUri),
         option = dispatch.option,
-        radioMode = dispatch.radioMode,
+        endlessMixMode = dispatch.endlessMixMode,
     )
 }
 
 /** How a [DefaultClickOption] is dispatched to a player: queue option + radio-mode flag. */
-data class CarDispatch(val option: QueueOption, val radioMode: Boolean)
+data class CarDispatch(val option: QueueOption, val endlessMixMode: Boolean)
 
 /** The single source for turning a chosen action into a play_media dispatch (AA and CarPlay share it). */
 fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
-    DefaultClickOption.PLAY_NOW -> CarDispatch(QueueOption.REPLACE, radioMode = false)
-    DefaultClickOption.INSERT_NEXT_AND_PLAY -> CarDispatch(QueueOption.PLAY, radioMode = false)
-    DefaultClickOption.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, radioMode = false)
-    DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, radioMode = false)
-    DefaultClickOption.START_RADIO -> CarDispatch(QueueOption.REPLACE, radioMode = true)
+    DefaultClickOption.PLAY_NOW -> CarDispatch(QueueOption.REPLACE, endlessMixMode = false)
+    DefaultClickOption.INSERT_NEXT_AND_PLAY -> CarDispatch(QueueOption.PLAY, endlessMixMode = false)
+    DefaultClickOption.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, endlessMixMode = false)
+    DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, endlessMixMode = false)
+    DefaultClickOption.START_ENDLESS_MIX -> CarDispatch(QueueOption.REPLACE, endlessMixMode = true)
     // PLAY_FROM_HERE isn't a plain queue-option dispatch — it needs a parent URI + start item,
     // so Android Auto and CarPlay resolve it through their parent-aware call sites, never here.
     DefaultClickOption.PLAY_FROM_HERE ->

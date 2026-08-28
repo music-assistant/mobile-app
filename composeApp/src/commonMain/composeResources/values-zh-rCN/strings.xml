@@ -26,7 +26,6 @@
   <string name="action_remove_from_library">从媒体库中移除</string>
   <string name="action_remove_from_playlist">从播放列表中移除</string>
   <string name="action_similar_artists">相似歌手</string>
-  <string name="action_start_radio">启动电台</string>
   <string name="action_unfavorite">从收藏夹中移除</string>
   <string name="album_disc_header">唱片 %1$d</string>
   <string name="album_type_album">专辑</string>

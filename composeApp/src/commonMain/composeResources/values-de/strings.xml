@@ -26,7 +26,6 @@
   <string name="action_remove_from_library">Aus Bibliothek entfernen</string>
   <string name="action_remove_from_playlist">Aus Wiedergabeliste entfernen</string>
   <string name="action_similar_artists">Ähnliche Künstler</string>
-  <string name="action_start_radio">Radio starten</string>
   <string name="action_unfavorite">Aus Favoriten entfernen</string>
   <string name="album_disc_header">Disc %1$d</string>
   <string name="album_type_album">Album</string>

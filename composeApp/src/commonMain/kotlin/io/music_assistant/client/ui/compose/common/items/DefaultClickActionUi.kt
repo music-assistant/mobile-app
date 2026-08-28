@@ -69,20 +69,20 @@ fun DefaultClickOption.toItemAction(): ItemAction = when (this) {
     DefaultClickOption.INSERT_NEXT_AND_PLAY -> ItemAction.Play(QueueOption.PLAY)
     DefaultClickOption.INSERT_NEXT -> ItemAction.Play(QueueOption.NEXT)
     DefaultClickOption.ADD_TO_QUEUE -> ItemAction.Play(QueueOption.ADD)
-    DefaultClickOption.START_RADIO -> ItemAction.StartRadio
+    DefaultClickOption.START_ENDLESS_MIX -> ItemAction.StartEndlessMix
     DefaultClickOption.PLAY_FROM_HERE -> ItemAction.PlayFromHere
 }
 
 /**
  * The action a click actually performs for a concrete item, or null when the item
- * isn't playable (click should open the menu instead). START_RADIO falls back to
- * Play Now when the item can't start a radio.
+ * isn't playable (click should open the menu instead). START_ENDLESS_MIX falls back to
+ * Play Now when the item can't start an endless mix.
  */
 fun DefaultClickOption.effectiveFor(item: AppMediaItem): ItemAction? {
     if (!item.isPlayable) return null
     return when (this) {
-        DefaultClickOption.START_RADIO ->
-            if (item.canStartRadio) ItemAction.StartRadio else ItemAction.Play(QueueOption.REPLACE)
+        DefaultClickOption.START_ENDLESS_MIX ->
+            if (item.canStartEndlessMix) ItemAction.StartEndlessMix else ItemAction.Play(QueueOption.REPLACE)
         DefaultClickOption.PLAY_FROM_HERE ->
             if (item is Track) ItemAction.PlayFromHere else ItemAction.Play(QueueOption.REPLACE)
         else -> toItemAction()

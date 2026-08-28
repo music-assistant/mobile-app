@@ -21,7 +21,7 @@ data class Album(
     val artists: List<Artist>,
 ) : AppMediaItem() {
     override val mediaType: MediaType = MediaType.ALBUM
-    override val canStartRadio: Boolean = true
+    override val canStartEndlessMix: Boolean = true
     override val displayName =
         "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}"
     override val subtitle = artists.joinToString(separator = ", ") { it.displayName }

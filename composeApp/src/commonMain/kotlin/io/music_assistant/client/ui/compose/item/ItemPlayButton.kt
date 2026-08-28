@@ -69,7 +69,7 @@ fun ItemPlayButton(
     val runPlayAction: (ItemAction) -> Unit = { action ->
         when (action) {
             is ItemAction.Play -> onPlayClick(action.queueOption, false)
-            ItemAction.StartRadio -> onPlayClick(QueueOption.REPLACE, true)
+            ItemAction.StartEndlessMix -> onPlayClick(QueueOption.REPLACE, true)
             else -> Unit
         }
     }

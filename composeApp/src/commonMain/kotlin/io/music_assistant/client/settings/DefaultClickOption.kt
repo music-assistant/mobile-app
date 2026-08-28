@@ -13,13 +13,13 @@ enum class DefaultClickOption {
     INSERT_NEXT_AND_PLAY,
     INSERT_NEXT,
     ADD_TO_QUEUE,
-    START_RADIO,
+    START_ENDLESS_MIX,
     PLAY_FROM_HERE,
     ;
 
     /** Whether this action is ever meaningful for [kind] — gates the matrix ROW. */
     fun appliesTo(kind: ItemKind): Boolean = when (this) {
-        START_RADIO -> kind in setOf(
+        START_ENDLESS_MIX -> kind in setOf(
             ItemKind.TRACK,
             ItemKind.ALBUM,
             ItemKind.ARTIST,

@@ -388,7 +388,7 @@ class AutoLibrary(
         DefaultClickOption.INSERT_NEXT_AND_PLAY -> "Play all next"
         DefaultClickOption.INSERT_NEXT -> "Add all next"
         DefaultClickOption.ADD_TO_QUEUE -> "Add all to queue"
-        DefaultClickOption.START_RADIO -> "Start radio"
+        DefaultClickOption.START_ENDLESS_MIX -> "Start endless mix"
         else -> throw IllegalArgumentException("$name not supported by Android Auto!")
     }
 
@@ -398,7 +398,7 @@ class AutoLibrary(
             android.R.drawable.ic_media_play
         DefaultClickOption.INSERT_NEXT, DefaultClickOption.ADD_TO_QUEUE ->
             android.R.drawable.ic_menu_add
-        DefaultClickOption.START_RADIO -> android.R.drawable.ic_menu_compass
+        DefaultClickOption.START_ENDLESS_MIX -> android.R.drawable.ic_menu_compass
         else -> throw IllegalArgumentException("$name not supported by Android Auto!")
     }
 
@@ -731,7 +731,7 @@ class AutoLibrary(
     private suspend fun dispatchToLocalPlayer(
         uris: List<String>,
         option: QueueOption,
-        radioMode: Boolean = false,
+        endlessMixMode: Boolean = false,
         startItem: String? = null,
     ) {
         val player = mainDataSource.localPlayer.value?.player
@@ -740,7 +740,7 @@ class AutoLibrary(
             localPlayerSyncedTo = player?.syncedTo,
             mediaUris = uris,
             option = option,
-            radioMode = radioMode,
+            endlessMixMode = endlessMixMode,
             startItem = startItem,
         )
         if (plan == null) {
@@ -811,7 +811,7 @@ class AutoLibrary(
         }
 
         val dispatch = action.toCarDispatch()
-        scope.launch { dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.radioMode) }
+        scope.launch { dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.endlessMixMode) }
     }
 
     private fun rootTabItem(tabName: String, tabId: String): MediaItem =

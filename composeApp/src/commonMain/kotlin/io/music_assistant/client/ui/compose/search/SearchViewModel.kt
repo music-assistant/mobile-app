@@ -164,7 +164,7 @@ class SearchViewModel(
                             media = listOf(mediaUri),
                             queueOrPlayerId = queueId,
                             option = option,
-                            radioMode = radio && track !is Genre,
+                            endlessMixMode = radio && track !is Genre,
                         ),
                     )
                 }

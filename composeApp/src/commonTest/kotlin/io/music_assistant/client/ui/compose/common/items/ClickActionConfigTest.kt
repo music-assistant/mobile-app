@@ -39,7 +39,7 @@ class ClickActionConfigTest {
     fun `effectiveActionFor applies the radio fallback`() {
         val config = ClickActionConfig(
             context = ClickContext.DETAIL,
-            prefs = mapOf(ItemKind.PLAYLIST to mapOf(ClickContext.DETAIL to DefaultClickOption.START_RADIO)),
+            prefs = mapOf(ItemKind.PLAYLIST to mapOf(ClickContext.DETAIL to DefaultClickOption.START_ENDLESS_MIX)),
         )
         assertEquals(ItemAction.Play(QueueOption.REPLACE), config.effectiveActionFor(testPlaylist(isDynamic = true)))
     }

@@ -17,7 +17,7 @@ data class LocalPlayerDispatchPlan(
     val mediaUris: List<String>,
     val detachFrom: String?,
     val option: QueueOption,
-    val radioMode: Boolean = false,
+    val endlessMixMode: Boolean = false,
     /** Server-side "start playback from this item id within [mediaUris]" (play-from-here). */
     val startItem: String? = null,
 )
@@ -28,7 +28,7 @@ fun planLocalPlayerDispatch(
     localPlayerSyncedTo: String?,
     mediaUris: List<String>,
     option: QueueOption,
-    radioMode: Boolean = false,
+    endlessMixMode: Boolean = false,
     startItem: String? = null,
 ): LocalPlayerDispatchPlan? {
     if (localPlayerId == null || mediaUris.isEmpty()) return null
@@ -37,7 +37,7 @@ fun planLocalPlayerDispatch(
         mediaUris = mediaUris,
         detachFrom = localPlayerSyncedTo,
         option = option,
-        radioMode = radioMode,
+        endlessMixMode = endlessMixMode,
         startItem = startItem,
     )
 }
@@ -71,7 +71,7 @@ suspend fun executeLocalPlayerDispatch(
             media = plan.mediaUris,
             queueOrPlayerId = plan.playerId,
             option = plan.option,
-            radioMode = plan.radioMode,
+            endlessMixMode = plan.endlessMixMode,
             startItem = plan.startItem,
         ),
     ).onFailure { onRpcFailure("play(${plan.option})", it) }

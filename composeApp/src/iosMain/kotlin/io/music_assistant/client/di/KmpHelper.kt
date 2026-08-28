@@ -444,20 +444,20 @@ object KmpHelper : KoinComponent {
      * Siri donation and respond with `.failure`.
      */
     fun playOnLocalPlayer(item: AppMediaItem, option: QueueOption): Boolean =
-        dispatchLocal(item, option, radioMode = false)
+        dispatchLocal(item, option, endlessMixMode = false)
 
-    private fun dispatchLocal(item: AppMediaItem, option: QueueOption, radioMode: Boolean): Boolean {
+    private fun dispatchLocal(item: AppMediaItem, option: QueueOption, endlessMixMode: Boolean): Boolean {
         return dispatchLocal(
             mediaUris = listOfNotNull(item.mediaUri),
             option = option,
-            radioMode = radioMode,
+            endlessMixMode = endlessMixMode,
         )
     }
 
     private fun dispatchLocal(
         mediaUris: List<String>,
         option: QueueOption,
-        radioMode: Boolean,
+        endlessMixMode: Boolean,
         startItem: String? = null,
     ): Boolean {
         val player = mainDataSource.localPlayer.value?.player
@@ -466,11 +466,11 @@ object KmpHelper : KoinComponent {
             localPlayerSyncedTo = player?.syncedTo,
             mediaUris = mediaUris,
             option = option,
-            radioMode = radioMode,
+            endlessMixMode = endlessMixMode,
             startItem = startItem,
         ) ?: return false
         plan.detachFrom?.let { syncedToId ->
-            log.i { "dispatchLocal($option, radio=$radioMode): detaching ${plan.playerId} from $syncedToId" }
+            log.i { "dispatchLocal($option, endlessMix=$endlessMixMode): detaching ${plan.playerId} from $syncedToId" }
         }
         mainScope.launch {
             executeLocalPlayerDispatch(serviceClient, plan) { label, error ->
@@ -498,7 +498,7 @@ object KmpHelper : KoinComponent {
     fun playCarAction(item: AppMediaItem, actionName: String): Boolean {
         val action = runCatching { DefaultClickOption.valueOf(actionName) }.getOrNull() ?: return false
         val dispatch = action.toCarDispatch()
-        return dispatchLocal(item, dispatch.option, dispatch.radioMode)
+        return dispatchLocal(item, dispatch.option, dispatch.endlessMixMode)
     }
 
     /**
@@ -520,7 +520,7 @@ object KmpHelper : KoinComponent {
             dispatchLocal(
                 mediaUris = dispatch.mediaUris,
                 option = dispatch.option,
-                radioMode = dispatch.radioMode,
+                endlessMixMode = dispatch.endlessMixMode,
                 startItem = dispatch.startItem,
             )
         ) {

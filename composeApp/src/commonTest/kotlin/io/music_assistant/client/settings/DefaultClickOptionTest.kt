@@ -17,20 +17,20 @@ import kotlin.test.assertTrue
 
 class DefaultClickOptionTest {
     @Test
-    fun `start radio applies only to radio-capable kinds`() {
-        val radioCapable = setOf(ItemKind.TRACK, ItemKind.ALBUM, ItemKind.ARTIST, ItemKind.PLAYLIST)
+    fun `start endless mix applies only to capable kinds`() {
+        val mixCapable = setOf(ItemKind.TRACK, ItemKind.ALBUM, ItemKind.ARTIST, ItemKind.PLAYLIST)
         ItemKind.entries.forEach { kind ->
             assertEquals(
-                kind in radioCapable,
-                DefaultClickOption.START_RADIO.appliesTo(kind),
-                "START_RADIO.appliesTo($kind)",
+                kind in mixCapable,
+                DefaultClickOption.START_ENDLESS_MIX.appliesTo(kind),
+                "START_ENDLESS_MIX.appliesTo($kind)",
             )
         }
     }
 
     @Test
     fun `queue actions apply to every kind`() {
-        val queueActions = DefaultClickOption.entries - DefaultClickOption.START_RADIO
+        val queueActions = DefaultClickOption.entries - DefaultClickOption.START_ENDLESS_MIX
         queueActions.forEach { action ->
             ItemKind.entries.forEach { kind ->
                 assertEquals(true, action.appliesTo(kind), "$action.appliesTo($kind)")
@@ -98,7 +98,7 @@ class DefaultClickOptionTest {
             ItemAction.Play(QueueOption.ADD),
             DefaultClickOption.ADD_TO_QUEUE.toItemAction(),
         )
-        assertEquals(ItemAction.StartRadio, DefaultClickOption.START_RADIO.toItemAction())
+        assertEquals(ItemAction.StartEndlessMix, DefaultClickOption.START_ENDLESS_MIX.toItemAction())
     }
 
     @Test
@@ -107,10 +107,10 @@ class DefaultClickOptionTest {
     }
 
     @Test
-    fun `effectiveFor keeps start radio when the item can start one`() {
+    fun `effectiveFor keeps start endless mix when the item can start one`() {
         assertEquals(
-            ItemAction.StartRadio,
-            DefaultClickOption.START_RADIO.effectiveFor(testTrack()),
+            ItemAction.StartEndlessMix,
+            DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testTrack()),
         )
     }
 
@@ -119,8 +119,8 @@ class DefaultClickOptionTest {
         val playNow = ItemAction.Play(QueueOption.REPLACE)
         assertEquals(
             playNow,
-            DefaultClickOption.START_RADIO.effectiveFor(testPlaylist(isDynamic = true)),
+            DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testPlaylist(isDynamic = true)),
         )
-        assertEquals(playNow, DefaultClickOption.START_RADIO.effectiveFor(testPodcastEpisode()))
+        assertEquals(playNow, DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testPodcastEpisode()))
     }
 }

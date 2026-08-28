@@ -597,7 +597,7 @@ class ItemDetailsViewModel(
     fun onPlayClick(
         item: AppMediaItem,
         option: QueueOption,
-        radio: Boolean,
+        endlessMix: Boolean,
         fromHereInParent: Boolean,
     ) {
         val parent = (_state.value.itemState as? DataState.Data)?.data
@@ -612,14 +612,14 @@ class ItemDetailsViewModel(
             mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
                 Logger.withTag("PlayDispatch").i {
                     "ItemDetailsViewModel.onPlayClick: uri=$mediaUri option=$option " +
-                            "radio=$radio startItem=${startItem?.itemId} queue=$queueId"
+                            "endlessMix=$endlessMix startItem=${startItem?.itemId} queue=$queueId"
                 }
                 apiClient.sendRequest(
                     Request.Library.play(
                         media = listOf(mediaUri),
                         queueOrPlayerId = queueId,
                         option = option,
-                        radioMode = radio && item !is Genre,
+                        endlessMixMode = endlessMix && item !is Genre,
                         startItem = startItem?.itemId,
                     ),
                 )
@@ -641,7 +641,7 @@ class ItemDetailsViewModel(
                                 media = listOf(uri),
                                 queueOrPlayerId = queueId,
                                 option = QueueOption.REPLACE,
-                                radioMode = false,
+                                endlessMixMode = false,
                                 startItem = chapterPosition.toString(),
                             ),
                         )

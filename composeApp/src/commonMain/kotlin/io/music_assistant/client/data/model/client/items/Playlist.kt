@@ -20,5 +20,5 @@ data class Playlist(
     val isDynamic: Boolean,
 ) : AppMediaItem() {
     override val mediaType: MediaType = MediaType.PLAYLIST
-    override val canStartRadio: Boolean get() = !isDynamic
+    override val canStartEndlessMix: Boolean get() = !isDynamic
 }

@@ -13,7 +13,7 @@ Tap the **dropdown arrow** next to **Play now** to reveal additional playback op
 - **Add next and play** — Insert the item next in the queue and start playing it immediately.
 - **Add next** — Insert the item next in the queue without interrupting playback.
 - **Add to queue** — Append the item to the end of the current queue.
-- **Start radio** — Start a radio based on the item.
+- **Start endless mix** — Start an endless mix based on the item.
 - **Customize...** — Configure the default click action for this item type (see [Customizing the Default Click Action](#customizing-the-default-click-action) below).
 
 ![Playback Options](screenshots/item-details/playback-options.jpeg)
@@ -42,6 +42,6 @@ Use the **grid icon** next to the sort order button to toggle between list and g
 
 The default action when tapping an item can be customized per item type. Tap the **dropdown arrow** next to **Play now** and select **Customize...** to open the **Default click action** settings.
 
-From here you can choose a different default action — such as **Play now**, **Add next and play**, **Add next**, **Add to queue**, or **Start radio** — that will apply whenever you tap an item of that type. Available options vary by content type.
+From here you can choose a different default action — such as **Play now**, **Add next and play**, **Add next**, **Add to queue**, or **Start endless mix** — that will apply whenever you tap an item of that type. Available options vary by content type.
 
 ![Default Click Action](screenshots/item-details/default-click-action.jpeg)
