@@ -34,10 +34,7 @@ interface MediaItemRepository {
     val itemChanges: SharedFlow<MediaItemChange>
     suspend fun search(request: Request): Result<SearchResultData>
     suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?>
-    suspend fun fetchRecommendationRowItems(folder: RecommendationFolder): List<AppMediaItem>?
     fun supportsRecommendationRowItems(): Boolean
-    suspend fun fetchRecommendationRows(): Result<List<RecommendationFolder>>
-    suspend fun fetchRecommendationFolders(): Result<List<RecommendationFolder>>
     fun publishLocalChange(change: MediaItemChange)
 }
 
@@ -71,16 +68,6 @@ class ServiceClientMediaItemRepository(
         }
 
     /**
-     * The home-page recommendation rows as the server returned them, with or
-     * without embedded items (see [supportsRecommendationRowItems]).
-     */
-    override suspend fun fetchRecommendationRows(): Result<List<RecommendationFolder>> =
-        withContext(Dispatchers.IO) {
-            fetchMediaItems(Request.Library.recommendations())
-                .map { items -> items.filterIsInstance<RecommendationFolder>() }
-        }
-
-    /**
      * Whether the connected server strips the items from `music/recommendations`
      * rows and serves each row's contents via `music/recommendations/items`
      * instead. This can be simplified once v2.10 is our minimum supported server
@@ -89,44 +76,6 @@ class ServiceClientMediaItemRepository(
     override fun supportsRecommendationRowItems(): Boolean =
         (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
             ?.let { it >= RECOMMENDATION_ITEMS_SCHEMA } == true
-
-    /**
-     * One-shot, fully-resolved recommendation rows for consumers without a
-     * progressive UI (e.g. CarPlay lists).
-     */
-    override suspend fun fetchRecommendationFolders(): Result<List<RecommendationFolder>> {
-        val folders = fetchRecommendationRows().getOrElse { error ->
-            if (error is CancellationException) throw error
-            return Result.failure(error)
-        }
-        if (!supportsRecommendationRowItems()) return Result.success(folders)
-
-        return Result.success(
-            coroutineScope {
-                folders.map { folder ->
-                    async {
-                        folder.copy(items = fetchRecommendationRowItems(folder).orEmpty())
-                    }
-                }.awaitAll()
-            },
-        )
-    }
-
-    /** Items of one recommendation row, or null when the fetch failed (logged). */
-    override suspend fun fetchRecommendationRowItems(
-        folder: RecommendationFolder,
-    ): List<AppMediaItem>? = withContext(Dispatchers.IO) {
-        fetchMediaItems(
-            Request.Library.recommendationItems(folder.provider, folder.itemId),
-        ).getOrElse { error ->
-            if (error is CancellationException) throw error
-            Logger.w(
-                "Failed fetching recommendation items for " +
-                        "${folder.provider}/${folder.itemId}: $error",
-            )
-            null
-        }
-    }
 
     /**
      * Issue [request] and decode its payload as a single client media item.
@@ -196,6 +145,54 @@ class ServiceClientMediaItemRepository(
             uri = "${fallback.providerInstance}://$mediaType/${fallback.itemId}",
         )
     }
+}
+
+/**
+ * The home-page recommendation rows as the server returned them, with or
+ * without embedded items (see [MediaItemRepository.supportsRecommendationRowItems]).
+ */
+suspend fun MediaItemRepository.fetchRecommendationRows(): Result<List<RecommendationFolder>> =
+    withContext(Dispatchers.IO) {
+        fetchMediaItems(Request.Library.recommendations())
+            .map { items -> items.filterIsInstance<RecommendationFolder>() }
+    }
+
+/** Items of one recommendation row, or null when the fetch failed (logged). */
+suspend fun MediaItemRepository.fetchRecommendationRowItems(
+    folder: RecommendationFolder,
+): List<AppMediaItem>? = withContext(Dispatchers.IO) {
+    fetchMediaItems(
+        Request.Library.recommendationItems(folder.provider, folder.itemId),
+    ).getOrElse { error ->
+        if (error is CancellationException) throw error
+        Logger.w(
+            "Failed fetching recommendation items for " +
+                    "${folder.provider}/${folder.itemId}: $error",
+        )
+        null
+    }
+}
+
+/**
+ * One-shot, fully-resolved recommendation rows for consumers without a
+ * progressive UI (e.g. CarPlay lists).
+ */
+suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<RecommendationFolder>> {
+    val folders = fetchRecommendationRows().getOrElse { error ->
+        if (error is CancellationException) throw error
+        return Result.failure(error)
+    }
+    if (!supportsRecommendationRowItems()) return Result.success(folders)
+
+    return Result.success(
+        coroutineScope {
+            folders.map { folder ->
+                async {
+                    folder.copy(items = fetchRecommendationRowItems(folder).orEmpty())
+                }
+            }.awaitAll()
+        },
+    )
 }
 
 suspend fun MediaItemRepository.fetchMediaItems(request: Request, observer: (List<AppMediaItem>) -> Unit) {
