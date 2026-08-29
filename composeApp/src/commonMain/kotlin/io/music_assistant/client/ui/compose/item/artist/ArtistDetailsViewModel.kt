@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.fetchMediaItems
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.item.FetchArtistItemsUseCase
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel.Companion.ARTIST_SECTION_LIMIT
@@ -36,22 +37,34 @@ class ArtistDetailsViewModel(
     private fun loadSections(artist: Artist) {
         viewModelScope.launch {
             try {
-                val library = if (artist.isInLibrary) {
-                    fetchArtistItems(Request.Artist.getAlbums(artist.itemId, artist.provider))
-                        .filterIsInstance<Album>()
+                if (artist.isInLibrary) {
+                    mediaItemRepository.fetchMediaItems(
+                        Request.Artist.getAlbums(artist.itemId, artist.provider)
+                    ) { library ->
+                        _state.update {
+                            it.copy(
+                                library = DataState.Data(
+                                    Section(
+                                        items = library
+                                            .filterIsInstance<Album>()
+                                            .take(ARTIST_SECTION_LIMIT),
+                                        itemList = ItemList.ArtistLibrary(artist.itemId),
+                                    ),
+                                ),
+                            )
+                        }
+                    }
                 } else {
-                    emptyList()
-                }
-
-                _state.update {
-                    it.copy(
-                        library = DataState.Data(
-                            Section(
-                                items = library.take(ARTIST_SECTION_LIMIT),
-                                itemList = ItemList.ArtistLibrary(artist.itemId),
+                    _state.update {
+                        it.copy(
+                            library = DataState.Data(
+                                Section(
+                                    items = emptyList(),
+                                    itemList = ItemList.ArtistLibrary(artist.itemId),
+                                ),
                             ),
-                        ),
-                    )
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Logger.e("Failed to load artist album sections", e)
