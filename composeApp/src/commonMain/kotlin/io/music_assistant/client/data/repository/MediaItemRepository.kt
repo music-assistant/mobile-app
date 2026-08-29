@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -20,15 +21,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 interface MediaItemRepository {
@@ -151,7 +153,7 @@ class ServiceClientMediaItemRepository(
 
 /**
  * The home-page recommendation rows as the server returned them, with or
- * without embedded items (see [MediaItemRepository.supportsRecommendationRowItems]).
+ * without embedded items (see [supportsRecommendationRowItems]).
  */
 suspend fun MediaItemRepository.fetchRecommendationRows(): Result<List<RecommendationFolder>> =
     withContext(Dispatchers.IO) {
@@ -197,19 +199,21 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
-suspend fun <T> MutableStateFlow<T>.updateItems(
-    mediaItemRepository: MediaItemRepository,
-    items: List<AppMediaItem>,
-    update: (T, List<AppMediaItem>) -> T,
-) {
-    val observer = { items: List<AppMediaItem> ->
-        update { value -> update(value, items) }
-    }
+fun Flow<DataState<List<AppMediaItem>>>.updateFrom(mediaItemRepository: MediaItemRepository): Flow<DataState<List<AppMediaItem>>> {
+    val nullableItemChanges: Flow<MediaItemChange?> = mediaItemRepository.itemChanges.map { it }
+    val itemChangesWithDefault = nullableItemChanges.onStart { emit(null) }
 
-    observer(items)
-    mediaItemRepository.itemChanges
-        .scan(items) { items, change -> items.replacing(change.item) }
-        .collect { observer(it) }
+    return this.combine(itemChangesWithDefault) { data, change ->
+        if (change != null) {
+            when (data) {
+                is DataState.Data -> data.copy(data = data.data.replacing(change.item))
+                is DataState.Stale -> data.copy(data = data.data.replacing(change.item))
+                else -> data
+            }
+        } else {
+            data
+        }
+    }
 }
 
 private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =

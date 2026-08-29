@@ -560,9 +560,3 @@ private fun DataState<out List<*>>.hasItems(): Boolean = when (this) {
     is DataState.Stale -> data.isNotEmpty()
     else -> false
 }
-
-data class Section<T : AppMediaItem>(
-    val items: List<T>,
-    val itemList: ItemList? = null,
-    val providerDomain: String? = null,
-)

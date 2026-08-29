@@ -97,6 +97,7 @@ import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel
+import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel.Section
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
@@ -907,7 +908,9 @@ private fun ArtistContent(
     heroSlot: @Composable () -> Unit,
 ) {
     val artistDetailsViewModel = koinViewModel<ArtistDetailsViewModel> { parametersOf(artist) }
-    val sections by artistDetailsViewModel.state.collectAsStateWithLifecycle()
+    val librarySection by artistDetailsViewModel.library.collectAsStateWithLifecycle()
+    val allSection by artistDetailsViewModel.all.collectAsStateWithLifecycle()
+    val topTracksSection by artistDetailsViewModel.topTracks.collectAsStateWithLifecycle()
 
     NoOverscroll {
         LazyColumn(
@@ -918,7 +921,7 @@ private fun ArtistContent(
             item {
                 SectionRow(
                     artist = artist,
-                    sectionData = sections.library,
+                    sectionData = librarySection,
                     id = "library",
                     title = Res.string.artist_section_in_library.toDisplayString(),
                     onNavigateClick = onNavigateClick,
@@ -933,7 +936,7 @@ private fun ArtistContent(
             item {
                 SectionRow(
                     artist = artist,
-                    sectionData = sections.all,
+                    sectionData = allSection,
                     id = "all",
                     title = Res.string.artist_section_all.toDisplayString(),
                     onNavigateClick = onNavigateClick,
@@ -949,7 +952,7 @@ private fun ArtistContent(
             item {
                 SectionRow(
                     artist = artist,
-                    sectionData = sections.topTracks,
+                    sectionData = topTracksSection,
                     id = "topTracks",
                     title = stringResource(Res.string.artist_section_top).toDisplayString(),
                     onNavigateClick = onNavigateClick,
