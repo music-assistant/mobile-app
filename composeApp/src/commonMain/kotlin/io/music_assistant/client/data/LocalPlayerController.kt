@@ -54,6 +54,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import musicassistantclient.composeapp.generated.resources.Res
@@ -135,12 +138,33 @@ class LocalPlayerController(
     private val _needsServerRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val needsServerRefresh: SharedFlow<Unit> = _needsServerRefresh.asSharedFlow()
 
+    private val commandSendMutex = Mutex()
     private val commandQueueMutex = Mutex()
     private val commandQueue = mutableListOf<QueuedEntry>()
+    private val interruptionEvents = Channel<InterruptionEvent>(Channel.UNLIMITED)
+    private val interruptionResumeLock = SynchronizedObject()
+    private val interruptionEpoch = atomic(0L)
+    private var interruptionState: InterruptionState = InterruptionState.Idle
 
     private data class QueuedEntry(val action: PlayerAction, val request: Request)
-
+    private sealed interface InterruptionEvent {
+        data class Began(val token: Long) : InterruptionEvent
+        data class Ended(val resumeAllowed: Boolean) : InterruptionEvent
+        data object Cancelled : InterruptionEvent
+    }
     init {
+        mediaPlayerController.setInterruptionCallbacks(
+            onBegan = {
+                val token = interruptionEpoch.incrementAndGet()
+                interruptionEvents.trySend(InterruptionEvent.Began(token))
+            },
+            onEnded = { resumeAllowed ->
+                interruptionEvents.trySend(InterruptionEvent.Ended(resumeAllowed))
+            },
+        )
+        launch {
+            for (event in interruptionEvents) processInterruptionEvent(event)
+        }
         // Reset clock sync on foreground unless playback held CPU awake through
         // the background — otherwise doze-paused CLOCK_MONOTONIC strands the offset.
         launch {
@@ -166,6 +190,7 @@ class LocalPlayerController(
      * request. Routes uniformly through the MA REST API (no transport split).
      */
     fun handleLocalCommand(data: PlayerData, action: PlayerAction) {
+        cancelAutomaticResume()
         val resolved = playerRequestFactory.resolve(data, action)
         applyOptimisticUpdate(data, resolved)
         launch {
@@ -183,6 +208,54 @@ class LocalPlayerController(
             }
             sendOrQueue(resolved, request)
         }
+    }
+
+    private fun cancelAutomaticResume() {
+        synchronized(interruptionResumeLock) { interruptionEpoch.incrementAndGet() }
+        interruptionEvents.trySend(InterruptionEvent.Cancelled)
+    }
+
+    private suspend fun processInterruptionEvent(event: InterruptionEvent) {
+        when (event) {
+            is InterruptionEvent.Began -> {
+                if (interruptionState != InterruptionState.Idle) return
+                val data = _localPlayerData.value ?: return
+                val request = playerRequestFactory.buildRequest(data, PlayerAction.Pause) ?: return
+                cancelPendingPlayTimeout()
+                _localPlayerData.update { current ->
+                    current?.copy(player = current.player.copy(isPlaying = false), pendingPlay = false)
+                }
+                val sent = sendOrQueue(
+                    PlayerAction.Pause,
+                    request,
+                    interruptionToken = event.token,
+                )
+                interruptionState = interruptionState.began(event.token, sent)
+            }
+            is InterruptionEvent.Ended -> {
+                val ended = interruptionState.ended(event.resumeAllowed, interruptionEpoch.value)
+                interruptionState = ended.state
+                if (!ended.shouldResume) return
+                val data = _localPlayerData.value ?: return
+                processInterruptionPlay(data, ended.token)
+            }
+            InterruptionEvent.Cancelled -> interruptionState = InterruptionState.Idle
+        }
+    }
+
+    private suspend fun processInterruptionPlay(data: PlayerData, token: Long) {
+        val request = playerRequestFactory.buildRequest(data, PlayerAction.Play) ?: return
+        if (!sendOrQueue(PlayerAction.Play, request, interruptionToken = token)) return
+        val resumed = synchronized(interruptionResumeLock) {
+            if (interruptionEpoch.value != token) false
+            else {
+                mediaPlayerController.resumeSink()
+                true
+            }
+        }
+        if (!resumed) return
+        _localPlayerData.update { current -> current?.copy(pendingPlay = true) }
+        armPendingPlayTimeout()
     }
 
     // --- Optimistic UI updates ---
@@ -308,16 +381,27 @@ class LocalPlayerController(
 
     // --- Command queue (online: send immediately, offline: queue with dedup) ---
 
-    private suspend fun sendOrQueue(action: PlayerAction, request: Request) {
+    private suspend fun sendOrQueue(
+        action: PlayerAction,
+        request: Request,
+        interruptionToken: Long? = null,
+    ): Boolean = commandSendMutex.withLock {
+        if (interruptionToken != null && interruptionEpoch.value != interruptionToken) return@withLock false
         // Fast-path queue when known-offline avoids burning the gate's 10s timeout
         // on actions the user already perceives as "do this when we're back."
         // The Result.isFailure fallback closes the TOCTOU window where the state
         // flips between the check and the send.
         if (!apiClient.isReadyForCommands.value) {
             enqueue(action, request)
-            return
+            return@withLock false
         }
-        if (apiClient.sendRequest(request).isFailure) enqueue(action, request)
+        if (apiClient.sendRequest(request).isFailure) {
+            if (interruptionToken == null || interruptionEpoch.value == interruptionToken) {
+                enqueue(action, request)
+            }
+            return@withLock false
+        }
+        interruptionToken == null || interruptionEpoch.value == interruptionToken
     }
 
     fun drainCommandQueue() {
@@ -328,7 +412,7 @@ class LocalPlayerController(
                 commandQueue.toList().also { commandQueue.clear() }
             }
             entries.forEach { entry ->
-                apiClient.sendRequest(entry.request)
+                commandSendMutex.withLock { apiClient.sendRequest(entry.request) }
                 delay(100)
             }
         }
@@ -710,10 +794,12 @@ class LocalPlayerController(
      * Stop the Sendspin client if running.
      * Destroys the shared audio pipeline so the AudioTrack is fully released.
      */
-    suspend fun stop(reason: GoodbyeReason) = sendspinMutex.withLock {
-        // Cancel monitor jobs FIRST to prevent old state transitions from leaking
-        cancelSendspinMonitorJobs()
-        sendspinRetryCount = 0
+    suspend fun stop(reason: GoodbyeReason) {
+        cancelAutomaticResume()
+        sendspinMutex.withLock {
+            // Cancel monitor jobs FIRST to prevent old state transitions from leaking
+            cancelSendspinMonitorJobs()
+            sendspinRetryCount = 0
         sendspinClient?.let { client ->
             try {
                 client.stop(reason)
@@ -726,25 +812,26 @@ class LocalPlayerController(
         _sendspinState.value = null
         // Deliberately preserve local-player state and the offline command queue:
         // most callers (background, reconnect, persistent error) are transient and
-        // rely on drainCommandQueue() replaying queued intent — e.g. a post-
-        // interruption resume — once the transport returns. Genuine resets clear
-        // them explicitly (clearAllData / Sendspin-disabled).
+        // rely on drainCommandQueue() replaying ordinary queued user intent once the
+        // transport returns. Genuine resets clear it explicitly (clearAllData /
+        // Sendspin-disabled). Automatic interruption resume is never queued.
         //
         // The shared audio pipeline (buffer + consumer + AudioTrack) is decoupled from
         // transport churn: only a genuine reset destroys it. On a transient Restart we keep
         // it alive and draining so buffered audio survives the reconnect — the next start()
         // reuses it via the factory.
-        if (reason != GoodbyeReason.Restart) {
-            sendspinClientFactory.destroyPipeline()
+            if (reason != GoodbyeReason.Restart) {
+                sendspinClientFactory.destroyPipeline()
+            }
         }
     }
 
     /** Full local-player reset: drop the optimistic UI state and any pending offline
      *  commands. Called only on a genuine session reset (logout, terminal auth failure,
      *  Sendspin disabled). NOT called on transient teardown — [stop] deliberately
-     *  preserves both so [drainCommandQueue] can replay a queued resume once the
-     *  transport returns. */
+     *  preserves ordinary queued user intent for [drainCommandQueue]. */
     fun clearState() {
+        cancelAutomaticResume()
         _localPlayerData.update { null }
         launch { commandQueueMutex.withLock { commandQueue.clear() } }
     }

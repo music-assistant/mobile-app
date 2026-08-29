@@ -31,13 +31,15 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     private var codecHeader: Data?
 
     // MARK: - State
+    private let stateLock = NSLock()
+    private var interruptionDepth = 0
+    private var interruptionWasForwarded = false
+    private var preparationPending = false
+    private var pcmGeneration: UInt64 = 0
+    private var interruptionHandler: InterruptionHandler?
+
     /// True while local playback owns or is claiming the shared audio session.
     var isRenderingAudio: Bool { queueLifecycle.isRenderingAudio }
-    // True only while we hold a server pause issued in response to an audio-session
-    // interruption (phone call, Siri). On .ended we auto-resume the server only if
-    // this is set — so we never spontaneously start playback that the user didn't
-    // have running before the interruption.
-    private var pausedByInterruption = false
 
     // MARK: - Logging
     // Routes through Kermit (NativeLog) so these reach the shareable in-memory buffer
@@ -78,29 +80,33 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
         switch type {
         case .began:
-            // System auto-pauses AudioQueue. Tell the server to pause too so playback
-            // resumes from the same position afterwards instead of skipping ahead while
-            // the call held the audio session.
             logInfo("Audio session interrupted")
-            if queueLifecycle.isPlaying {
-                pausedByInterruption = true
-                logInfo("Pausing server playback due to interruption")
-                remoteCommandHandler?.onCommand(command: "pause", source: "interruption")
+            let transition = stateLock.withLock { () -> (AudioQueueRef?, InterruptionHandler?) in
+                interruptionDepth += 1
+                guard interruptionDepth == 1 else { return (nil, nil) }
+                pcmGeneration &+= 1
+                let detached = queueLifecycle.detachQueue(allowFutureStart: false)
+                bufferLock.withLock { pcmBuffer.removeAll() }
+                interruptionWasForwarded = detached.wasRendering
+                return (detached.queue, interruptionWasForwarded ? interruptionHandler : nil)
             }
+            disposeQueue(transition.0)
+            transition.1?.onBegan()
         case .ended:
-            guard pausedByInterruption else { break }
-            pausedByInterruption = false
-            // We deliberately do not use .shouldResume here as it is not guaranteed
-            // to be set even in cases it should be. As per Apple, it's a hint not
-            // a contract. Instead we track for ourselves if we were interrupted,
-            // and once control is handed back, if another app is now using the
-            // audio device exclusively.
-            if !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint {
-                logInfo("Resuming server playback after interruption")
-                remoteCommandHandler?.onCommand(command: "play", source: "interruption")
-            } else {
-                logInfo("Another app holds audio — staying paused")
+            let handler = stateLock.withLock { () -> InterruptionHandler? in
+                guard interruptionDepth > 0 else { return nil }
+                interruptionDepth -= 1
+                guard interruptionDepth == 0 else { return nil }
+                if preparationPending {
+                    preparationPending = false
+                    queueLifecycle.prepareToPlay()
+                }
+                guard interruptionWasForwarded else { return nil }
+                interruptionWasForwarded = false
+                return interruptionHandler
             }
+            let resumeAllowed = !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint
+            handler?.onEnded(resumeAllowed: resumeAllowed)
         @unknown default:
             break
         }
@@ -159,13 +165,16 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         }
 
         // Keep late packets gated until the new decoder configuration is ready.
-        stopAudioQueue(allowFutureStart: false)
-        queueLifecycle.prepareToPlay()
-
-        // Clear buffers
-        bufferLock.lock()
-        pcmBuffer.removeAll()
-        bufferLock.unlock()
+        // An active interruption owns the gate; preparation cannot reopen it.
+        let oldQueue = stateLock.withLock { () -> AudioQueueRef? in
+            pcmGeneration &+= 1
+            let detached = queueLifecycle.detachQueue(allowFutureStart: false)
+            bufferLock.withLock { pcmBuffer.removeAll() }
+            preparationPending = interruptionDepth > 0
+            if !preparationPending { queueLifecycle.prepareToPlay() }
+            return detached.queue
+        }
+        disposeQueue(oldQueue)
 
         // Create decoder for codec
         do {
@@ -206,10 +215,13 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     }
 
     private func processAudioData(_ swiftData: Data) {
-        // Suspended (paused / interrupted): drop in-flight audio rather than
-        // restart the queue, so a packet still in the consumer pipeline can't
-        // undo the pause before the server stops streaming.
-        guard queueLifecycle.acceptsAudio() else { return }
+        // Snapshot the producer generation before decoding. Teardown increments it;
+        // the append-side recheck below drops work that crossed that boundary.
+        let generation = stateLock.withLock { () -> UInt64? in
+            guard interruptionDepth == 0, queueLifecycle.acceptsAudio() else { return nil }
+            return pcmGeneration
+        }
+        guard let generation else { return }
 
         // Start audio queue on first data. The token is invalidated by any
         // concurrent pause/stop while queue construction is in progress.
@@ -229,9 +241,12 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
         do {
             let pcmData = try decoder.decode(swiftData)
-            bufferLock.lock()
-            pcmBuffer.append(pcmData)
-            bufferLock.unlock()
+            stateLock.withLock {
+                guard interruptionDepth == 0,
+                      pcmGeneration == generation,
+                      queueLifecycle.acceptsAudio() else { return }
+                bufferLock.withLock { pcmBuffer.append(pcmData) }
+            }
         } catch {
             logDebug("Decode error: \(error)")
         }
@@ -259,10 +274,13 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     /// Re-open the write gate; the queue rebuilds on the next audio packet.
     func resumeSink() {
         logInfo("resumeSink")
-        NowPlayingCoordinator.shared.activatePlayback()
-        queueLifecycle.resume { queue in
-            AudioQueueStart(queue, nil) == noErr
+        let resumed = stateLock.withLock { () -> Bool in
+            guard interruptionDepth == 0 else { return false }
+            preparationPending = false
+            queueLifecycle.resume { queue in AudioQueueStart(queue, nil) == noErr }
+            return true
         }
+        if resumed { NowPlayingCoordinator.shared.activatePlayback() }
     }
 
     /// Drop buffered PCM (track transition / playback-delay re-phase).
@@ -373,15 +391,24 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     private func stopAudioQueue(allowFutureStart: Bool = true) {
         tearDownQueue(allowFutureStart: allowFutureStart)
-        pausedByInterruption = false // Stream stopped — no auto-resume on .ended.
     }
 
     /// `AudioQueueStop(_, true)` discards enqueued hardware buffers, so a rebuilt
-    /// queue never replays stale audio. Leaves `pausedByInterruption` untouched —
-    /// a pause issued during `.began` must still auto-resume on `.ended`.
-    private func tearDownQueue(allowFutureStart: Bool) {
-        guard let queue = queueLifecycle.detachQueue(allowFutureStart: allowFutureStart) else { return }
+    /// queue never replays stale audio.
+    @discardableResult
+    private func tearDownQueue(allowFutureStart: Bool) -> Bool {
+        let detached = stateLock.withLock {
+            pcmGeneration &+= 1
+            return queueLifecycle.detachQueue(
+                allowFutureStart: allowFutureStart && interruptionDepth == 0
+            )
+        }
+        disposeQueue(detached.queue)
+        return detached.wasRendering
+    }
 
+    private func disposeQueue(_ queue: AudioQueueRef?) {
+        guard let queue else { return }
         AudioQueueStop(queue, true)
         AudioQueueDispose(queue, true)
         logInfo("AudioQueue stopped")
@@ -413,6 +440,10 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     // MARK: - Now Playing (Control Center / Lock Screen)
 
     private var remoteCommandHandler: RemoteCommandHandler?
+
+    func setInterruptionHandler(handler: InterruptionHandler?) {
+        stateLock.withLock { interruptionHandler = handler }
+    }
 
     func setLongFormSeekIntervals(backSeconds: Int64, forwardSeconds: Int64) {
         NowPlayingCoordinator.shared.setLongFormSeekIntervals(

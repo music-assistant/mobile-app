@@ -12,7 +12,7 @@ final class AudioQueueLifecycleTests: XCTestCase {
         let token = try XCTUnwrap(lifecycle.beginStartIfNeeded())
         let fakeQueue = try XCTUnwrap(AudioQueueRef(bitPattern: 1))
 
-        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false))
+        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false).queue)
 
         var startCalled = false
         let installed = lifecycle.installIfCurrent(fakeQueue, token: token) { _ in
@@ -29,7 +29,7 @@ final class AudioQueueLifecycleTests: XCTestCase {
     func testPreparationKeepsLatePacketsGatedUntilReady() throws {
         let lifecycle = AudioQueueLifecycle()
 
-        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false))
+        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false).queue)
         XCTAssertNil(lifecycle.beginStartIfNeeded())
 
         lifecycle.prepareToPlay()
@@ -53,8 +53,12 @@ final class AudioQueueLifecycleTests: XCTestCase {
 
         XCTAssertTrue(lifecycle.installIfCurrent(fakeQueue, token: token) { _ in true })
         XCTAssertTrue(lifecycle.isPlaying)
-        XCTAssertEqual(lifecycle.detachQueue(allowFutureStart: false), fakeQueue)
-        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false))
+        let firstDetach = lifecycle.detachQueue(allowFutureStart: false)
+        XCTAssertEqual(firstDetach.queue, fakeQueue)
+        XCTAssertTrue(firstDetach.wasRendering)
+        let secondDetach = lifecycle.detachQueue(allowFutureStart: false)
+        XCTAssertNil(secondDetach.queue)
+        XCTAssertFalse(secondDetach.wasRendering)
     }
 }
 

@@ -25,6 +25,7 @@ import io.music_assistant.client.player.sendspin.model.AudioCodec
 actual class MediaPlayerController actual constructor(platformContext: PlatformContext) {
     // Callback for remote commands - currently unused on Android (handled via different mechanism if needed)
     actual var onRemoteCommand: ((String) -> Unit)? = null
+    actual fun setInterruptionCallbacks(onBegan: () -> Unit, onEnded: (Boolean) -> Unit) = Unit
     private val logger = Logger.withTag("MediaPlayerController")
     private val context: Context = platformContext.applicationContext
     private val audioManager: AudioManager =

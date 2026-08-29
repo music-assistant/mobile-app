@@ -100,14 +100,15 @@ final class AudioQueueLifecycle {
 
     /// Detaches under the lock but disposes afterward, avoiding lock inversion
     /// with an AudioQueue callback being drained by synchronous disposal.
-    func detachQueue(allowFutureStart: Bool) -> AudioQueueRef? {
+    func detachQueue(allowFutureStart: Bool) -> (queue: AudioQueueRef?, wasRendering: Bool) {
         lock.withLock {
+            let wasRendering = streamStarted || playing
             generation &+= 1
             shouldPlay = allowFutureStart
             streamStarted = false
             playing = false
             defer { queue = nil }
-            return queue
+            return (queue, wasRendering)
         }
     }
 }

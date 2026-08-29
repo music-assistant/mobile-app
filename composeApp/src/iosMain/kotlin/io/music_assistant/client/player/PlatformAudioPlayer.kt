@@ -41,6 +41,7 @@ interface PlatformAudioPlayer {
 
     // Remote command handler (set by Kotlin to receive play/pause/next/prev events)
     fun setRemoteCommandHandler(handler: RemoteCommandHandler?)
+    fun setInterruptionHandler(handler: InterruptionHandler?)
 }
 
 /**
@@ -54,6 +55,11 @@ interface PlatformAudioPlayer {
  */
 interface RemoteCommandHandler {
     fun onCommand(command: String, source: String)
+}
+
+interface InterruptionHandler {
+    fun onBegan()
+    fun onEnded(resumeAllowed: Boolean)
 }
 
 /**

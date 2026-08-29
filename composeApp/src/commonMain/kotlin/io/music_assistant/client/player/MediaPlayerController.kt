@@ -14,6 +14,7 @@ expect class MediaPlayerController(platformContext: PlatformContext) {
     // Callback for remote commands (e.g. from iOS Control Center)
     // Common code can set this to receive commands like "play", "pause", "next", "previous"
     var onRemoteCommand: ((String) -> Unit)?
+    fun setInterruptionCallbacks(onBegan: () -> Unit, onEnded: (Boolean) -> Unit)
 
     // Sendspin streaming
     fun prepareStream(

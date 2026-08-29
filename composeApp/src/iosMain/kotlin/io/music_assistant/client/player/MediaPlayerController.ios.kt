@@ -17,6 +17,12 @@ actual class MediaPlayerController actual constructor(platformContext: PlatformC
 
     // Callback for remote commands from Control Center
     actual var onRemoteCommand: ((String) -> Unit)? = null
+    actual fun setInterruptionCallbacks(onBegan: () -> Unit, onEnded: (Boolean) -> Unit) {
+        PlatformPlayerProvider.player?.setInterruptionHandler(object : InterruptionHandler {
+            override fun onBegan() = onBegan()
+            override fun onEnded(resumeAllowed: Boolean) = onEnded(resumeAllowed)
+        })
+    }
 
     // Sendspin streaming methods
     actual fun prepareStream(
