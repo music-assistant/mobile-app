@@ -10,7 +10,7 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.data.repository.withUpdatesFrom
+import io.music_assistant.client.data.repository.updateItems
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.ui.compose.item.FetchArtistItemsUseCase
@@ -42,19 +42,18 @@ class ArtistDetailsViewModel(
                     val result = mediaItemRepository.fetchMediaItems(
                         Request.Artist.getAlbums(artist.itemId, artist.provider),
                     )
-                    result.getOrEmptyList().withUpdatesFrom(mediaItemRepository) { items ->
-                        _state.update {
-                            it.copy(
-                                library = DataState.Data(
-                                    Section(
-                                        items = items
-                                            .filterIsInstance<Album>()
-                                            .take(ARTIST_SECTION_LIMIT),
-                                        itemList = ItemList.ArtistLibrary(artist.itemId),
-                                    ),
+
+                    _state.updateItems(mediaItemRepository, result.getOrEmptyList()) { value, items ->
+                        value.copy(
+                            library = DataState.Data(
+                                Section(
+                                    items = items
+                                        .filterIsInstance<Album>()
+                                        .take(ARTIST_SECTION_LIMIT),
+                                    itemList = ItemList.ArtistLibrary(artist.itemId),
                                 ),
-                            )
-                        }
+                            ),
+                        )
                     }
                 } else {
                     _state.update {
@@ -78,21 +77,19 @@ class ArtistDetailsViewModel(
             )
 
             if (itemsWithMappings != null) {
-                itemsWithMappings.items.withUpdatesFrom(mediaItemRepository) { items ->
-                    _state.update {
-                        it.copy(
-                            all = DataState.Data(
-                                Section(
-                                    items.filterIsInstance<Album>().take(ARTIST_SECTION_LIMIT),
-                                    providerDomain = itemsWithMappings.mapping.providerDomain,
-                                    itemList = ItemList.ArtistAlbums(
-                                        itemsWithMappings.mapping.providerInstance,
-                                        itemsWithMappings.mapping.itemId,
-                                    ),
+                _state.updateItems(mediaItemRepository, itemsWithMappings.items) { value, items ->
+                    value.copy(
+                        all = DataState.Data(
+                            Section(
+                                items.filterIsInstance<Album>().take(ARTIST_SECTION_LIMIT),
+                                providerDomain = itemsWithMappings.mapping.providerDomain,
+                                itemList = ItemList.ArtistAlbums(
+                                    itemsWithMappings.mapping.providerInstance,
+                                    itemsWithMappings.mapping.itemId,
                                 ),
                             ),
-                        )
-                    }
+                        ),
+                    )
                 }
             } else {
                 _state.update {
@@ -110,21 +107,19 @@ class ArtistDetailsViewModel(
             )
 
             if (itemsWithMappings != null) {
-                itemsWithMappings.items.withUpdatesFrom(mediaItemRepository) { items ->
-                    _state.update {
-                        it.copy(
-                            topTracks = DataState.Data(
-                                Section(
-                                    items.filterIsInstance<Track>().take(ARTIST_SECTION_LIMIT),
-                                    providerDomain = itemsWithMappings.mapping.providerDomain,
-                                    itemList = ItemList.ArtistTopTracks(
-                                        itemsWithMappings.mapping.providerInstance,
-                                        itemsWithMappings.mapping.itemId,
-                                    ),
+                _state.updateItems(mediaItemRepository, itemsWithMappings.items) { value, items ->
+                    value.copy(
+                        topTracks = DataState.Data(
+                            Section(
+                                items.filterIsInstance<Track>().take(ARTIST_SECTION_LIMIT),
+                                providerDomain = itemsWithMappings.mapping.providerDomain,
+                                itemList = ItemList.ArtistTopTracks(
+                                    itemsWithMappings.mapping.providerInstance,
+                                    itemsWithMappings.mapping.itemId,
                                 ),
                             ),
-                        )
-                    }
+                        ),
+                    )
                 }
             } else {
                 _state.update {

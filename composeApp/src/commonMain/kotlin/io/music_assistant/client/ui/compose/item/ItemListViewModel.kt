@@ -10,8 +10,9 @@ import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.data.repository.fetchMediaItems
+import io.music_assistant.client.data.repository.updateItems
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.combineAsStateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -50,9 +51,8 @@ class ItemListViewModel(
                 )
             }
 
-            mediaItemRepository.fetchMediaItems(request) {
-                items.value = it
-            }
+            val result = mediaItemRepository.fetchMediaItems(request)
+            items.updateItems(mediaItemRepository, result.getOrEmptyList()) { _, items -> items }
         }
     }
 

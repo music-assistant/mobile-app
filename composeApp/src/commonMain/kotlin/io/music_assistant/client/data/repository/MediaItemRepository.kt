@@ -11,7 +11,6 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
-import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -22,12 +21,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 interface MediaItemRepository {
@@ -196,21 +197,18 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
-suspend fun MediaItemRepository.fetchMediaItems(
-    request: Request,
-    observer: (List<AppMediaItem>) -> Unit,
-) {
-    val result = fetchMediaItems(request)
-    result.getOrEmptyList().withUpdatesFrom(this, observer)
-}
-
-suspend fun List<AppMediaItem>.withUpdatesFrom(
+suspend fun <T> MutableStateFlow<T>.updateItems(
     mediaItemRepository: MediaItemRepository,
-    observer: (List<AppMediaItem>) -> Unit,
+    items: List<AppMediaItem>,
+    update: (T, List<AppMediaItem>) -> T,
 ) {
-    observer(this)
+    val observer = { items: List<AppMediaItem> ->
+        update { value -> update(value, items) }
+    }
+
+    observer(items)
     mediaItemRepository.itemChanges
-        .scan(this) { items, change -> items.replacing(change.item) }
+        .scan(items) { items, change -> items.replacing(change.item) }
         .collect { observer(it) }
 }
 
