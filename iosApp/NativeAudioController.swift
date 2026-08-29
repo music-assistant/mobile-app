@@ -8,7 +8,7 @@ import ComposeApp
 class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     // MARK: - AudioQueue
-    private var audioQueue: AudioQueueRef?
+    private let queueLifecycle = AudioQueueLifecycle()
     private var audioFormat: AudioStreamBasicDescription = AudioStreamBasicDescription()
 
     // MARK: - Audio Buffer
@@ -31,14 +31,8 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     private var codecHeader: Data?
 
     // MARK: - State
-    private var isPlaying = false
     /// True while local playback owns or is claiming the shared audio session.
-    var isRenderingAudio: Bool { streamStarted || isPlaying }
-    private var streamStarted = false
-    // Play-intent gate (mirrors Android's shouldPlayAudio). While false — paused or
-    // interrupted — incoming audio is dropped instead of (re)starting the queue, so
-    // a packet still in the consumer pipeline can't undo an optimistic pause.
-    private var shouldPlay = true
+    var isRenderingAudio: Bool { queueLifecycle.isRenderingAudio }
     // True only while we hold a server pause issued in response to an audio-session
     // interruption (phone call, Siri). On .ended we auto-resume the server only if
     // this is set — so we never spontaneously start playback that the user didn't
@@ -88,7 +82,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             // resumes from the same position afterwards instead of skipping ahead while
             // the call held the audio session.
             logInfo("Audio session interrupted")
-            if isPlaying {
+            if queueLifecycle.isPlaying {
                 pausedByInterruption = true
                 logInfo("Pausing server playback due to interruption")
                 remoteCommandHandler?.onCommand(command: "pause", source: "interruption")
@@ -135,12 +129,10 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     /// (AirPods already send their own `pause` remote command on removal; the
     /// `streamStarted` guard makes this a no-op once that has shut the gate.)
     private func handleOldDeviceUnavailable(previousRoute: AVAudioSessionRouteDescription?) {
-        guard streamStarted else { return }
+        guard queueLifecycle.hasStartedStream else { return }
         let prev = previousRoute?.outputs.first?.portType.rawValue ?? "unknown"
         logInfo("\(prev) disappeared — pausing playback")
-        shouldPlay = false
-        streamStarted = false
-        stopAudioQueue()
+        stopAudioQueue(allowFutureStart: false)
         bufferLock.lock()
         pcmBuffer.removeAll()
         bufferLock.unlock()
@@ -157,8 +149,6 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         self.currentSampleRate = sampleRate
         self.currentChannels = channels
         self.currentBitDepth = bitDepth
-        self.streamStarted = false
-        self.shouldPlay = true
 
         // Decode codec header if present
         if let headerBase64 = codecHeader, let headerData = Data(base64Encoded: headerBase64) {
@@ -168,8 +158,9 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             self.codecHeader = nil
         }
 
-        // Stop any existing playback
-        stopAudioQueue()
+        // Keep late packets gated until the new decoder configuration is ready.
+        stopAudioQueue(allowFutureStart: false)
+        queueLifecycle.prepareToPlay()
 
         // Clear buffers
         bufferLock.lock()
@@ -218,14 +209,14 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         // Suspended (paused / interrupted): drop in-flight audio rather than
         // restart the queue, so a packet still in the consumer pipeline can't
         // undo the pause before the server stops streaming.
-        guard shouldPlay else { return }
+        guard queueLifecycle.acceptsAudio() else { return }
 
-        // Start audio queue on first data
-        if !streamStarted {
-            streamStarted = true
+        // Start audio queue on first data. The token is invalidated by any
+        // concurrent pause/stop while queue construction is in progress.
+        if let startToken = queueLifecycle.beginStartIfNeeded() {
             logDebug("First data received (\(swiftData.count) bytes)")
             NowPlayingCoordinator.shared.activatePlayback()
-            startAudioQueue()
+            startAudioQueue(token: startToken)
         }
 
         decoderLock.lock()
@@ -248,9 +239,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     func stopRawPcmStream() {
         logInfo("Stopping stream")
-        shouldPlay = false
-        streamStarted = false
-        stopAudioQueue()
+        stopAudioQueue(allowFutureStart: false)
 
         bufferLock.lock()
         pcmBuffer.removeAll()
@@ -263,21 +252,16 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     /// resume then rebuilds clean on the next packet, like a cold start.
     func pauseSink() {
         logInfo("pauseSink")
-        shouldPlay = false
-        streamStarted = false
-        tearDownQueue()
+        tearDownQueue(allowFutureStart: false)
     }
 
     /// Reactivating the session reclaims audio from another app that grabbed it.
-    /// `shouldPlay = true` re-opens the write gate; the queue rebuilds on the next
-    /// audio packet, or is started here if one still exists (gapless restart).
+    /// Re-open the write gate; the queue rebuilds on the next audio packet.
     func resumeSink() {
         logInfo("resumeSink")
-        shouldPlay = true
         NowPlayingCoordinator.shared.activatePlayback()
-        isPlaying = true
-        if let queue = audioQueue {
-            AudioQueueStart(queue, nil)
+        queueLifecycle.resume { queue in
+            AudioQueueStart(queue, nil) == noErr
         }
     }
 
@@ -289,20 +273,22 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     }
 
     func setVolume(volume: Int32) {
-        guard let queue = audioQueue else { return }
         let floatVolume = Float(volume) / 100.0
-        AudioQueueSetParameter(queue, kAudioQueueParam_Volume, floatVolume)
+        queueLifecycle.withQueue { queue in
+            AudioQueueSetParameter(queue, kAudioQueueParam_Volume, floatVolume)
+        }
     }
 
     func setMuted(muted: Bool) {
-        guard let queue = audioQueue else { return }
-        AudioQueueSetParameter(queue, kAudioQueueParam_Volume, muted ? 0.0 : 1.0)
+        queueLifecycle.withQueue { queue in
+            AudioQueueSetParameter(queue, kAudioQueueParam_Volume, muted ? 0.0 : 1.0)
+        }
     }
 
     func dispose() {
         // The Now Playing surface is cleared by the track channel going null
         // (pipeline teardown removes the current item); no direct clear here.
-        stopAudioQueue()
+        stopAudioQueue(allowFutureStart: false)
         decoderLock.lock()
         decoder = nil
         decoderLock.unlock()
@@ -310,7 +296,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     // MARK: - AudioQueue Management
 
-    private func startAudioQueue() {
+    private func startAudioQueue(token: AudioQueueLifecycle.StartToken) {
         // Configure audio format (always output PCM)
         audioFormat.mSampleRate = Float64(currentSampleRate)
         audioFormat.mFormatID = kAudioFormatLinearPCM
@@ -350,13 +336,13 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         )
 
         guard status == noErr, let queue = queue else {
+            queueLifecycle.cancelStart(token)
             logError("Failed to create AudioQueue: \(status)")
             return
         }
 
-        audioQueue = queue
-
-        // Allocate and prime buffers
+        // Allocate and prime buffers before publishing the handle. A concurrent
+        // pause may invalidate `token` while this work is in progress.
         for _ in 0..<kNumberOfBuffers {
             var buffer: AudioQueueBufferRef?
             let allocStatus = AudioQueueAllocateBuffer(queue, kBufferSize, &buffer)
@@ -366,32 +352,38 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             }
         }
 
-        // Start playback
-        let startStatus = AudioQueueStart(queue, nil)
-        if startStatus == noErr {
-            isPlaying = true
-            logInfo("AudioQueue started")
-        } else {
-            logError("Failed to start AudioQueue: \(startStatus)")
+        var startStatus: OSStatus = noErr
+        let installed = queueLifecycle.installIfCurrent(queue, token: token) { queue in
+            startStatus = AudioQueueStart(queue, nil)
+            return startStatus == noErr
         }
+        guard installed else {
+            // A pause/stop won while this queue was being constructed, or start
+            // failed. It was never published, so this thread owns disposal.
+            AudioQueueDispose(queue, true)
+            if startStatus != noErr {
+                logError("Failed to start AudioQueue: \(startStatus)")
+            } else {
+                logInfo("Discarded AudioQueue created during concurrent teardown")
+            }
+            return
+        }
+        logInfo("AudioQueue started")
     }
 
-    private func stopAudioQueue() {
-        tearDownQueue()
+    private func stopAudioQueue(allowFutureStart: Bool = true) {
+        tearDownQueue(allowFutureStart: allowFutureStart)
         pausedByInterruption = false // Stream stopped — no auto-resume on .ended.
     }
 
     /// `AudioQueueStop(_, true)` discards enqueued hardware buffers, so a rebuilt
     /// queue never replays stale audio. Leaves `pausedByInterruption` untouched —
     /// a pause issued during `.began` must still auto-resume on `.ended`.
-    private func tearDownQueue() {
-        guard let queue = audioQueue else { return }
+    private func tearDownQueue(allowFutureStart: Bool) {
+        guard let queue = queueLifecycle.detachQueue(allowFutureStart: allowFutureStart) else { return }
 
         AudioQueueStop(queue, true)
         AudioQueueDispose(queue, true)
-
-        audioQueue = nil
-        isPlaying = false
         logInfo("AudioQueue stopped")
     }
 

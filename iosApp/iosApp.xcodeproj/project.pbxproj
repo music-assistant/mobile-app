@@ -10,6 +10,8 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		06FCDF5F9AC6BE4A12AA70C9 /* NowPlayingInfoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E184B96B79725950AACD5BE7 /* NowPlayingInfoStore.swift */; };
+		AQL000012F30000000000001 /* AudioQueueLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AQL000032F30000000000003 /* AudioQueueLifecycle.swift */; };
+		AQL000022F30000000000002 /* AudioQueueLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AQL000032F30000000000003 /* AudioQueueLifecycle.swift */; };
 		0B4C257E50350DDBF95D87D5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA991F8C8A0917FDD5510709 /* Foundation.framework */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		6CF3E16270B477C8D3CDB192 /* NowPlayingInfoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E184B96B79725950AACD5BE7 /* NowPlayingInfoStore.swift */; };
@@ -49,6 +51,7 @@
 		C8FCC1982F17E001005E8312 /* AudioDecoders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoders.swift; sourceTree = "<group>"; };
 		C8SI00022F1B000000000001 /* SiriIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriIntentHandler.swift; sourceTree = "<group>"; };
 		E184B96B79725950AACD5BE7 /* NowPlayingInfoStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NowPlayingInfoStore.swift; sourceTree = "<group>"; };
+		AQL000032F30000000000003 /* AudioQueueLifecycle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioQueueLifecycle.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				C8FCC1912F17C6A9005E8312 /* NowPlayingCoordinator.swift */,
+				AQL000032F30000000000003 /* AudioQueueLifecycle.swift */,
 				C8FCC1962F17E001005E8312 /* NativeAudioController.swift */,
 				C8OA00012F1B000000000001 /* OAuthWebSession.swift */,
 				C8FCC1982F17E001005E8312 /* AudioDecoders.swift */,
@@ -295,6 +299,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C29F123E61DAA17B671EC955 /* NowPlayingInfoStoreTests.swift in Sources */,
+				AQL000022F30000000000002 /* AudioQueueLifecycle.swift in Sources */,
 				6CF3E16270B477C8D3CDB192 /* NowPlayingInfoStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -306,6 +311,7 @@
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
 				C8FCC1922F17C6A9005E8312 /* NowPlayingCoordinator.swift in Sources */,
+				AQL000012F30000000000001 /* AudioQueueLifecycle.swift in Sources */,
 				C8FCC1952F17E001005E8312 /* NativeAudioController.swift in Sources */,
 				C8OA00022F1B000000000002 /* OAuthWebSession.swift in Sources */,
 				C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */,

@@ -1,5 +1,62 @@
 import XCTest
 import MediaPlayer
+import AudioToolbox
+
+final class AudioQueueLifecycleTests: XCTestCase {
+
+    /// Simulates the Siri interruption race: pause invalidates the generation
+    /// while queue creation is in flight, so the stale queue must never be
+    /// installed or started.
+    func testPauseInvalidatesQueueBeingCreated() throws {
+        let lifecycle = AudioQueueLifecycle()
+        let token = try XCTUnwrap(lifecycle.beginStartIfNeeded())
+        let fakeQueue = try XCTUnwrap(AudioQueueRef(bitPattern: 1))
+
+        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false))
+
+        var startCalled = false
+        let installed = lifecycle.installIfCurrent(fakeQueue, token: token) { _ in
+            startCalled = true
+            return true
+        }
+
+        XCTAssertFalse(installed)
+        XCTAssertFalse(startCalled)
+        XCTAssertFalse(lifecycle.isRenderingAudio)
+        XCTAssertFalse(lifecycle.acceptsAudio())
+    }
+
+    func testPreparationKeepsLatePacketsGatedUntilReady() throws {
+        let lifecycle = AudioQueueLifecycle()
+
+        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false))
+        XCTAssertNil(lifecycle.beginStartIfNeeded())
+
+        lifecycle.prepareToPlay()
+        XCTAssertNotNil(lifecycle.beginStartIfNeeded())
+    }
+
+    func testFailedStartCanBeRetriedByNextPacket() throws {
+        let lifecycle = AudioQueueLifecycle()
+        let firstToken = try XCTUnwrap(lifecycle.beginStartIfNeeded())
+        let fakeQueue = try XCTUnwrap(AudioQueueRef(bitPattern: 1))
+
+        XCTAssertFalse(lifecycle.installIfCurrent(fakeQueue, token: firstToken) { _ in false })
+        XCTAssertNotNil(lifecycle.beginStartIfNeeded())
+        XCTAssertFalse(lifecycle.isPlaying)
+    }
+
+    func testCurrentQueueIsInstalledAndDetachedExactlyOnce() throws {
+        let lifecycle = AudioQueueLifecycle()
+        let token = try XCTUnwrap(lifecycle.beginStartIfNeeded())
+        let fakeQueue = try XCTUnwrap(AudioQueueRef(bitPattern: 1))
+
+        XCTAssertTrue(lifecycle.installIfCurrent(fakeQueue, token: token) { _ in true })
+        XCTAssertTrue(lifecycle.isPlaying)
+        XCTAssertEqual(lifecycle.detachQueue(allowFutureStart: false), fakeQueue)
+        XCTAssertNil(lifecycle.detachQueue(allowFutureStart: false))
+    }
+}
 
 /// Exercises `NowPlayingInfoStore` with an injected clock, flush scheduler, and dict
 /// sink so coalescing and anchor projection are fully deterministic.
