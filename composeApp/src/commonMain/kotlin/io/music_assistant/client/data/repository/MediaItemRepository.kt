@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -195,16 +196,22 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
-suspend fun MediaItemRepository.fetchMediaItems(request: Request, observer: (List<AppMediaItem>) -> Unit) {
+suspend fun MediaItemRepository.fetchMediaItems(
+    request: Request,
+    observer: (List<AppMediaItem>) -> Unit,
+) {
     val result = fetchMediaItems(request)
-    val items = result.getOrNull()
+    result.getOrEmptyList().withUpdatesFrom(this, observer)
+}
 
-    if (items != null) {
-        observer(items)
-        itemChanges
-            .scan(items) { items, change -> items.replacing(change.item) }
-            .collect { observer(it) }
-    }
+suspend fun List<AppMediaItem>.withUpdatesFrom(
+    mediaItemRepository: MediaItemRepository,
+    observer: (List<AppMediaItem>) -> Unit,
+) {
+    observer(this)
+    mediaItemRepository.itemChanges
+        .scan(this) { items, change -> items.replacing(change.item) }
+        .collect { observer(it) }
 }
 
 private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =

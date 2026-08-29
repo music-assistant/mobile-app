@@ -10,8 +10,9 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.data.repository.fetchMediaItems
+import io.music_assistant.client.data.repository.withUpdatesFrom
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.ui.compose.item.FetchArtistItemsUseCase
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel.Companion.ARTIST_SECTION_LIMIT
 import io.music_assistant.client.ui.compose.item.ItemList
@@ -38,14 +39,15 @@ class ArtistDetailsViewModel(
         viewModelScope.launch {
             try {
                 if (artist.isInLibrary) {
-                    mediaItemRepository.fetchMediaItems(
-                        Request.Artist.getAlbums(artist.itemId, artist.provider)
-                    ) { library ->
+                    val result = mediaItemRepository.fetchMediaItems(
+                        Request.Artist.getAlbums(artist.itemId, artist.provider),
+                    )
+                    result.getOrEmptyList().withUpdatesFrom(mediaItemRepository) { items ->
                         _state.update {
                             it.copy(
                                 library = DataState.Data(
                                     Section(
-                                        items = library
+                                        items = items
                                             .filterIsInstance<Album>()
                                             .take(ARTIST_SECTION_LIMIT),
                                         itemList = ItemList.ArtistLibrary(artist.itemId),
@@ -56,14 +58,7 @@ class ArtistDetailsViewModel(
                     }
                 } else {
                     _state.update {
-                        it.copy(
-                            library = DataState.Data(
-                                Section(
-                                    items = emptyList(),
-                                    itemList = ItemList.ArtistLibrary(artist.itemId),
-                                ),
-                            ),
-                        )
+                        it.copy(library = DataState.NoData())
                     }
                 }
             } catch (e: Exception) {
@@ -77,26 +72,27 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val list = fetchArtistItemsUseCase.run(
+            val itemsWithMappings = fetchArtistItemsUseCase.run(
                 artist,
                 Request.Artist::getAlbums,
-                Album::class,
             )
 
-            if (list != null) {
-                _state.update {
-                    it.copy(
-                        all = DataState.Data(
-                            Section(
-                                list.items.take(ARTIST_SECTION_LIMIT),
-                                providerDomain = list.mapping.providerDomain,
-                                itemList = ItemList.ArtistAlbums(
-                                    list.mapping.providerInstance,
-                                    list.mapping.itemId,
+            if (itemsWithMappings != null) {
+                itemsWithMappings.items.withUpdatesFrom(mediaItemRepository) { items ->
+                    _state.update {
+                        it.copy(
+                            all = DataState.Data(
+                                Section(
+                                    items.filterIsInstance<Album>().take(ARTIST_SECTION_LIMIT),
+                                    providerDomain = itemsWithMappings.mapping.providerDomain,
+                                    itemList = ItemList.ArtistAlbums(
+                                        itemsWithMappings.mapping.providerInstance,
+                                        itemsWithMappings.mapping.itemId,
+                                    ),
                                 ),
                             ),
-                        ),
-                    )
+                        )
+                    }
                 }
             } else {
                 _state.update {
@@ -108,26 +104,27 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val list = fetchArtistItemsUseCase.run(
+            val itemsWithMappings = fetchArtistItemsUseCase.run(
                 artist,
                 Request.Artist::getTopTracks,
-                Track::class,
             )
 
-            if (list != null) {
-                _state.update {
-                    it.copy(
-                        topTracks = DataState.Data(
-                            Section(
-                                list.items.take(ARTIST_SECTION_LIMIT),
-                                providerDomain = list.mapping.providerDomain,
-                                itemList = ItemList.ArtistTopTracks(
-                                    list.mapping.providerInstance,
-                                    list.mapping.itemId,
+            if (itemsWithMappings != null) {
+                itemsWithMappings.items.withUpdatesFrom(mediaItemRepository) { items ->
+                    _state.update {
+                        it.copy(
+                            topTracks = DataState.Data(
+                                Section(
+                                    items.filterIsInstance<Track>().take(ARTIST_SECTION_LIMIT),
+                                    providerDomain = itemsWithMappings.mapping.providerDomain,
+                                    itemList = ItemList.ArtistTopTracks(
+                                        itemsWithMappings.mapping.providerInstance,
+                                        itemsWithMappings.mapping.itemId,
+                                    ),
                                 ),
                             ),
-                        ),
-                    )
+                        )
+                    }
                 }
             } else {
                 _state.update {
