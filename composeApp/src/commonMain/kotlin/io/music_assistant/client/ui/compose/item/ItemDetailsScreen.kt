@@ -96,6 +96,7 @@ import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
@@ -114,6 +115,8 @@ import musicassistantclient.composeapp.generated.resources.media_type_chapters
 import musicassistantclient.composeapp.generated.resources.media_type_episodes
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
 fun ItemDetailsScreen(
@@ -157,8 +160,6 @@ fun ItemDetailsScreen(
         onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
         onTabSelected = itemDetailsViewModel::onTabSelected,
         onLoadSimilarArtists = itemDetailsViewModel::loadSimilarArtists,
-        onAlbumMappingChanged = itemDetailsViewModel::loadAlbumsForProvider,
-        onTrackMappingChanged = itemDetailsViewModel::loadTopTracksForProvider,
         onRefreshPlaylist = itemDetailsViewModel::refreshPlaylistTracks,
     )
 }
@@ -188,8 +189,6 @@ fun ItemDetails(
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onTabSelected: (ItemDetailsTab) -> Unit = {},
     onLoadSimilarArtists: () -> Unit = {},
-    onAlbumMappingChanged: (ProviderMapping) -> Unit = { },
-    onTrackMappingChanged: (ProviderMapping) -> Unit = { },
     onRefreshPlaylist: () -> Unit = {},
 ) {
     val playlistActions = object : PlaylistActions {
@@ -279,8 +278,6 @@ fun ItemDetails(
                     contentPadding = contentPadding,
                     onTabSelected = onTabSelected,
                     onLoadSimilarArtists = onLoadSimilarArtists,
-                    onAlbumMappingChanged = onAlbumMappingChanged,
-                    onTrackMappingChanged = onTrackMappingChanged,
                     onRefreshPlaylist = onRefreshPlaylist,
                 )
             }
@@ -319,8 +316,6 @@ private fun ItemContent(
     contentPadding: PaddingValues,
     onTabSelected: (ItemDetailsTab) -> Unit,
     onLoadSimilarArtists: () -> Unit,
-    onAlbumMappingChanged: (ProviderMapping) -> Unit,
-    onTrackMappingChanged: (ProviderMapping) -> Unit,
     onRefreshPlaylist: () -> Unit,
 ) {
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
@@ -391,7 +386,6 @@ private fun ItemContent(
                 ProvideClickActions(ClickContext.ARTIST) {
                     ArtistContent(
                         artist = item,
-                        sections = state.artistSections,
                         onNavigateClick = onNavigateClick,
                         onNavigateToList = { title, itemList ->
                             onNavigateToList(title, itemList, ClickContext.ARTIST)
@@ -402,8 +396,6 @@ private fun ItemContent(
                         providerIconFetcher = providerIconFetcher,
                         contentPadding = contentPadding,
                         heroSlot = heroSlot,
-                        onAlbumMappingChanged = onAlbumMappingChanged,
-                        onTrackMappingChanged = onTrackMappingChanged,
                     )
                 }
             } else if (tabs.isEmpty()) {
@@ -905,7 +897,6 @@ private fun DiscHeader(disc: Int) {
 @Composable
 private fun ArtistContent(
     artist: Artist,
-    sections: ArtistSections,
     onNavigateClick: (AppMediaItem) -> Unit,
     onNavigateToList: (String, ItemList) -> Unit,
     onPlayChildClick: PlayHandler<AppMediaItem>,
@@ -914,9 +905,10 @@ private fun ArtistContent(
     providerIconFetcher: @Composable (Modifier, String) -> Unit,
     contentPadding: PaddingValues,
     heroSlot: @Composable () -> Unit,
-    onAlbumMappingChanged: (ProviderMapping) -> Unit,
-    onTrackMappingChanged: (ProviderMapping) -> Unit,
 ) {
+    val artistDetailsViewModel = koinViewModel<ArtistDetailsViewModel> { parametersOf(artist) }
+    val sections by artistDetailsViewModel.state.collectAsStateWithLifecycle()
+
     NoOverscroll {
         LazyColumn(
             modifier = Modifier.testTag(ItemDetailsScreenSemantics.LIST_TAG),
@@ -946,7 +938,7 @@ private fun ArtistContent(
                     title = Res.string.artist_section_all.toDisplayString(),
                     onNavigateClick = onNavigateClick,
                     onNavigateToList = onNavigateToList,
-                    onFilterSelected = onAlbumMappingChanged,
+                    onFilterSelected = artistDetailsViewModel::loadAlbumsForProvider,
                     onPlayChildClick = onPlayChildClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
@@ -962,7 +954,7 @@ private fun ArtistContent(
                     title = stringResource(Res.string.artist_section_top).toDisplayString(),
                     onNavigateClick = onNavigateClick,
                     onNavigateToList = onNavigateToList,
-                    onFilterSelected = onTrackMappingChanged,
+                    onFilterSelected = artistDetailsViewModel::loadTopTracksForProvider,
                     onPlayChildClick = onPlayChildClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,

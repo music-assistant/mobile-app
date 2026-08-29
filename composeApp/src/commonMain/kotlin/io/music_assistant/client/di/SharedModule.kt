@@ -40,6 +40,7 @@ import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListViewModel
 import io.music_assistant.client.ui.compose.item.ViewModeViewModel
+import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel
 import io.music_assistant.client.ui.compose.library.AiRadioViewModel
 import io.music_assistant.client.ui.compose.library.BrowseViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
@@ -143,6 +144,9 @@ fun sharedModule(
                 params[1],
                 params[2],
             )
+        }
+        factory { params ->
+            ArtistDetailsViewModel(params[0], get())
         }
         factory { ViewModeViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get()) }
