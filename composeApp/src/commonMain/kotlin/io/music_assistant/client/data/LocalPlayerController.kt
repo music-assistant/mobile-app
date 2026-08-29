@@ -29,6 +29,7 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.utils.SessionState
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -140,6 +141,8 @@ class LocalPlayerController(
 
     private data class QueuedEntry(val action: PlayerAction, val request: Request)
 
+    private val deferredPausedSeek = atomic<DeferredPausedSeek?>(null)
+
     init {
         // Reset clock sync on foreground unless playback held CPU awake through
         // the background — otherwise doze-paused CLOCK_MONOTONIC strands the offset.
@@ -167,6 +170,39 @@ class LocalPlayerController(
      */
     fun handleLocalCommand(data: PlayerData, action: PlayerAction) {
         val resolved = playerRequestFactory.resolve(data, action)
+        val commandReady = apiClient.isReadyForCommands.value
+
+        if (resolved is PlayerAction.SeekTo && !data.player.isPlaying) {
+            deferPausedSeek(data, resolved)
+            return
+        }
+        if (!shouldSendLocalActionImmediately(resolved, data.player.isPlaying, commandReady)) {
+            log.w { "Ignoring live seek while command transport is unavailable" }
+            return
+        }
+        if (resolved is PlayerAction.SeekTo) {
+            deferredPausedSeek.value = null
+        } else {
+            invalidateDeferredPausedSeekUnless(data.queueInfo)
+        }
+
+        val resumesPausedPlayback = resolved == PlayerAction.Play ||
+            (resolved == PlayerAction.TogglePlayPause && !data.player.isPlaying)
+        val deferredSeek = deferredPausedSeek.value?.takeIf { it.matches(data) }
+        if (resumesPausedPlayback && deferredSeek != null) {
+            if (deferredSeek.consuming) return
+            if (!commandReady || _sendspinState.value == null) {
+                log.i { "Deferring play until the selected paused position can be sent safely" }
+                if (_sendspinState.value == null && settings.sendspinEnabled.value) launch { start() }
+                return
+            }
+            val consumed = consumeDeferredPausedSeek(data) ?: return
+            applyOptimisticUpdate(data, resolved)
+            applyOptimisticUpdate(data, PlayerAction.SeekTo(consumed.position))
+            launch { sendDeferredSeekAsPlay(data, consumed) }
+            return
+        }
+
         applyOptimisticUpdate(data, resolved)
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
@@ -206,6 +242,67 @@ class LocalPlayerController(
     private fun cancelPendingPlayTimeout() {
         pendingPlayTimeoutJob?.cancel()
         pendingPlayTimeoutJob = null
+    }
+
+    private fun deferPausedSeek(data: PlayerData, action: PlayerAction.SeekTo) {
+        val queueInfo = data.queueInfo ?: return
+        val currentItem = queueInfo.currentItem ?: return
+        deferredPausedSeek.value = DeferredPausedSeek(queueInfo.id, currentItem.id, action.position)
+        updateOptimisticQueueInfo { it.copy(elapsedTime = action.position.toDouble()) }
+        positionTracker.setPausedPosition(
+            queueId = queueInfo.id,
+            elapsedSec = action.position.toDouble(),
+            durationSec = currentItem.track.duration,
+            speed = queueInfo.playbackSpeed,
+        )
+    }
+
+    private fun consumeDeferredPausedSeek(data: PlayerData): DeferredPausedSeek? {
+        while (true) {
+            val pending = deferredPausedSeek.value ?: return null
+            if (!pending.matches(data)) {
+                if (deferredPausedSeek.compareAndSet(pending, null)) return null
+                continue
+            }
+            if (pending.consuming) return null
+            val consuming = pending.copy(consuming = true)
+            if (deferredPausedSeek.compareAndSet(pending, consuming)) return consuming
+        }
+    }
+
+    private fun invalidateDeferredPausedSeekUnless(queueInfo: QueueInfo?) {
+        val pending = deferredPausedSeek.value ?: return
+        if (pending.queueId != queueInfo?.id || pending.queueItemId != queueInfo.currentItem?.id) {
+            deferredPausedSeek.compareAndSet(pending, null)
+        }
+    }
+
+    private suspend fun sendDeferredSeekAsPlay(data: PlayerData, consumed: DeferredPausedSeek) {
+        val request = playerRequestFactory.buildRequest(
+            data,
+            PlayerAction.SeekTo(consumed.position),
+        ) ?: run {
+            deferredPausedSeek.compareAndSet(consumed, consumed.copy(consuming = false))
+            return
+        }
+        if (apiClient.sendRequest(request).isSuccess) {
+            deferredPausedSeek.compareAndSet(consumed, null)
+            return
+        }
+
+        // The command was never accepted: retain the user's media-scoped target for a retry,
+        // and roll the local sink/UI back to paused rather than pretending playback started.
+        if (consumed.matches(localPlayerData.value ?: data) &&
+            deferredPausedSeek.compareAndSet(consumed, consumed.copy(consuming = false))
+        ) {
+            cancelPendingPlayTimeout()
+            mediaPlayerController.pauseSink()
+            _localPlayerData.update { current -> current?.copy(pendingPlay = false) }
+            positionTracker.setPausedPosition(
+                queueId = consumed.queueId,
+                elapsedSec = consumed.position.toDouble(),
+            )
+        }
     }
 
     private fun applyOptimisticUpdate(data: PlayerData, action: PlayerAction) {
@@ -290,6 +387,7 @@ class LocalPlayerController(
             PlayerAction.Next,
             PlayerAction.Previous,
             -> {
+                deferredPausedSeek.value = null
                 // Queue events for the next track can arrive before its audio; keep the
                 // boundary frozen until Sendspin confirms the new stream.
                 data.queueInfo?.id?.let { queueId ->
@@ -314,10 +412,12 @@ class LocalPlayerController(
         // The Result.isFailure fallback closes the TOCTOU window where the state
         // flips between the check and the send.
         if (!apiClient.isReadyForCommands.value) {
-            enqueue(action, request)
+            if (shouldQueueLocalAction(action)) enqueue(action, request)
             return
         }
-        if (apiClient.sendRequest(request).isFailure) enqueue(action, request)
+        if (apiClient.sendRequest(request).isFailure && shouldQueueLocalAction(action)) {
+            enqueue(action, request)
+        }
     }
 
     fun drainCommandQueue() {
@@ -337,7 +437,10 @@ class LocalPlayerController(
     // --- Server event reconciliation ---
 
     fun onServerPlayerUpdate(player: Player) {
-        if (player.isPlaying) cancelPendingPlayTimeout()
+        if (player.isPlaying) {
+            cancelPendingPlayTimeout()
+            deferredPausedSeek.value = null
+        }
         _localPlayerData.update { current ->
             if (current == null) {
                 if (!settings.sendspinEnabled.value) return@update null
@@ -366,6 +469,7 @@ class LocalPlayerController(
     }
 
     fun onServerQueueUpdate(queueInfo: QueueInfo) {
+        invalidateDeferredPausedSeekUnless(queueInfo)
         // Staleness gating happens upstream in [MainDataSource.gateOrSkip]
         // before we're called, so this just absorbs the admitted event.
         _localPlayerData.update { current ->
@@ -382,6 +486,7 @@ class LocalPlayerController(
     }
 
     fun onQueueItemsLoaded(queueInfo: QueueInfo, items: List<QueueTrack>) {
+        invalidateDeferredPausedSeekUnless(queueInfo)
         _localPlayerData.update { current ->
             current?.let {
                 // Preserve the authoritative `info` (shuffle/repeat/elapsed are
@@ -745,6 +850,7 @@ class LocalPlayerController(
      *  preserves both so [drainCommandQueue] can replay a queued resume once the
      *  transport returns. */
     fun clearState() {
+        deferredPausedSeek.value = null
         _localPlayerData.update { null }
         launch { commandQueueMutex.withLock { commandQueue.clear() } }
     }
@@ -835,9 +941,7 @@ class LocalPlayerController(
                 }
 
                 is PlayerAction.SeekTo -> {
-                    Logger.e("SeekTo: ${action.position}")
-                    commandQueue.removeAll { it.action is PlayerAction.SeekTo }
-                    commandQueue.add(entry)
+                    log.w { "Dropping seek instead of replaying it after reconnect" }
                 }
 
                 else -> commandQueue.add(entry)
@@ -878,6 +982,27 @@ class LocalPlayerController(
  * from [queueInfo], defaulting to off when no queue exists. Returns null for
  * unrecognized commands and malformed seek payloads.
  */
+internal data class DeferredPausedSeek(
+    val queueId: String,
+    val queueItemId: String,
+    val position: Long,
+    val consuming: Boolean = false,
+) {
+    fun matches(data: PlayerData): Boolean {
+        val queueInfo = data.queueInfo ?: return false
+        return queueId == queueInfo.id && queueItemId == queueInfo.currentItem?.id
+    }
+}
+
+internal fun shouldSendLocalActionImmediately(
+    action: PlayerAction,
+    isPlaying: Boolean,
+    commandReady: Boolean,
+): Boolean = action !is PlayerAction.SeekTo || (isPlaying && commandReady)
+
+/** Absolute seek starts a paused MA queue, so stale seek intent must never survive offline. */
+internal fun shouldQueueLocalAction(action: PlayerAction): Boolean = action !is PlayerAction.SeekTo
+
 internal fun remoteCommandToPlayerAction(command: String, queueInfo: QueueInfo?): PlayerAction? = when {
     command == "play" -> PlayerAction.Play
     command == "pause" -> PlayerAction.Pause

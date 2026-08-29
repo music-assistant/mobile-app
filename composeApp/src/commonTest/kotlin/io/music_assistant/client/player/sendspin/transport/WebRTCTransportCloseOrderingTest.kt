@@ -1,5 +1,6 @@
 package io.music_assistant.client.player.sendspin.transport
 
+import io.music_assistant.client.player.sendspin.connection.shouldReconnectAfterListenerExit
 import io.music_assistant.client.webrtc.DataChannelInbound
 import io.music_assistant.client.webrtc.DataChannelReceiveSource
 import io.music_assistant.client.webrtc.DataChannelState
@@ -14,7 +15,9 @@ import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 /**
  * The channel-closed signal must be produced by the same coroutine that pumps
@@ -28,6 +31,28 @@ class WebRTCTransportCloseOrderingTest {
 
         override suspend fun receive(): DataChannelInbound =
             script.receiveCatching().getOrNull() ?: throw CancellationException("source closed")
+    }
+
+    @Test
+    fun onlyUnexpectedExitFromTheCurrentListenerReconnects() {
+        assertTrue(
+            shouldReconnectAfterListenerExit(
+                explicitDisconnect = false,
+                listenerIsCurrent = true,
+            ),
+        )
+        assertFalse(
+            shouldReconnectAfterListenerExit(
+                explicitDisconnect = true,
+                listenerIsCurrent = true,
+            ),
+        )
+        assertFalse(
+            shouldReconnectAfterListenerExit(
+                explicitDisconnect = false,
+                listenerIsCurrent = false,
+            ),
+        )
     }
 
     @Test

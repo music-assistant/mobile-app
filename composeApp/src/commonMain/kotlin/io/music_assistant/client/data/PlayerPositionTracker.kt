@@ -42,7 +42,7 @@ class PlayerPositionTracker {
          * interpolated delta to match, or the slider drifts then snaps each anchor.
          */
         val speed: Double = 1.0,
-        /** Hold the optimistic position until Sendspin confirms audio is flowing. */
+        /** Hold local user intent against stale server echoes until it is consumed/confirmed. */
         val freezeReason: FreezeReason? = null,
     ) {
         /** Position right now: anchor + speed-scaled wall-time since anchor (capped at duration). */
@@ -57,7 +57,7 @@ class PlayerPositionTracker {
      * Optimistic anchors wait for [confirmPlaying], not server queue echoes: MA can
      * report the seek target or next-track position before Sendspin has audio.
      */
-    enum class FreezeReason { SEEK, TRACK_CHANGE }
+    enum class FreezeReason { PAUSED_SEEK, SEEK, TRACK_CHANGE }
 
     private val anchors = MutableStateFlow<Map<String, Anchor>>(emptyMap())
 
@@ -105,6 +105,28 @@ class PlayerPositionTracker {
                     elapsedSec = current.effectiveNow(),
                     wallMs = currentTimeMillis(),
                     isPlaying = isPlaying,
+                )
+            )
+        }
+    }
+
+    /** Sets a paused position without implying a server seek; Play later promotes it to a seek. */
+    fun setPausedPosition(
+        queueId: String,
+        elapsedSec: Double,
+        durationSec: Double? = null,
+        speed: Double? = null,
+    ) {
+        anchors.update { existing ->
+            val current = existing[queueId]
+            existing + (
+                queueId to Anchor(
+                    elapsedSec = elapsedSec,
+                    wallMs = currentTimeMillis(),
+                    isPlaying = false,
+                    durationSec = durationSec ?: current?.durationSec,
+                    speed = speed ?: current?.speed ?: 1.0,
+                    freezeReason = FreezeReason.PAUSED_SEEK,
                 )
             )
         }
@@ -173,7 +195,7 @@ class PlayerPositionTracker {
     /** O(1) read of latest interpolated position. */
     fun effectiveSec(queueId: String): Double? = anchors.value[queueId]?.effectiveNow()
 
-    /** True while an optimistic seek or track-change is waiting for confirmation. */
+    /** True while paused seek intent or an optimistic playback handoff is protected. */
     fun isFrozenUntilConfirmed(queueId: String): Boolean =
         anchors.value[queueId]?.freezeReason != null
 

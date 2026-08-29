@@ -1,11 +1,17 @@
 package io.music_assistant.client.data
 
+import io.music_assistant.client.data.model.client.AppMediaItemFixtures.track
+import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueue
 import io.music_assistant.client.data.model.client.QueueInfo
+import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Pins the remote-command-string contract shared by the lock screen, Control
@@ -77,6 +83,57 @@ class RemoteCommandMappingTest {
         assertEquals(PlayerAction.SeekBy(30), remoteCommandToPlayerAction("seek_by:30", null))
         assertNull(remoteCommandToPlayerAction("seek:not-a-number", null))
         assertNull(remoteCommandToPlayerAction("seek_by:not-a-number", null))
+    }
+
+    @Test
+    fun seekIsSentImmediatelyOnlyDuringActiveOnlinePlayback() {
+        val seek = PlayerAction.SeekTo(42)
+
+        assertTrue(shouldSendLocalActionImmediately(seek, isPlaying = true, commandReady = true))
+        assertFalse(shouldSendLocalActionImmediately(seek, isPlaying = false, commandReady = true))
+        assertFalse(shouldSendLocalActionImmediately(seek, isPlaying = true, commandReady = false))
+        assertFalse(shouldSendLocalActionImmediately(seek, isPlaying = false, commandReady = false))
+    }
+
+    @Test
+    fun deferredPausedSeekIsScopedToItsExactQueueItem() {
+        val first = QueueTrack(
+            id = "item-1",
+            track = track(),
+            isPlayable = true,
+            format = null,
+            dsp = null,
+            provider = null,
+        )
+        val second = first.copy(id = "item-2")
+        val firstData = PlayerDataFixtures.playerData(listOf(first).toQueue())
+        val firstQueue = (firstData.queue as io.music_assistant.client.ui.compose.common.DataState.Data).data
+        val sameQueueOtherItem = firstData.copy(
+            queue = io.music_assistant.client.ui.compose.common.DataState.Data(
+                firstQueue.copy(info = firstQueue.info.copy(currentItem = second)),
+            ),
+        )
+        val pending = DeferredPausedSeek(firstData.queueInfo!!.id, first.id, position = 42)
+
+        assertTrue(pending.matches(firstData))
+        assertFalse(pending.matches(sameQueueOtherItem))
+    }
+
+    @Test
+    fun absoluteSeekIsNeverPreservedForReplay() {
+        assertFalse(shouldQueueLocalAction(PlayerAction.SeekTo(42)))
+        assertTrue(shouldQueueLocalAction(PlayerAction.Play))
+    }
+
+    @Test
+    fun nonSeekActionsKeepTheirExistingOfflineDispatchBehavior() {
+        assertTrue(
+            shouldSendLocalActionImmediately(
+                PlayerAction.Play,
+                isPlaying = false,
+                commandReady = false,
+            ),
+        )
     }
 
     @Test

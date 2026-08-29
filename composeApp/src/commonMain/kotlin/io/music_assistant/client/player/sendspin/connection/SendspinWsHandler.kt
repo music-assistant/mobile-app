@@ -118,8 +118,6 @@ class SendspinWsHandler(
     private fun startListening(wsSession: DefaultClientWebSocketSession, listenerEpoch: Int) {
         listenerJob?.cancel()
         listenerJob = launch {
-            var reconnecting = false
-            var disconnectEmitted = false
             try {
                 for (frame in wsSession.incoming) {
                     when (frame) {
@@ -137,12 +135,6 @@ class SendspinWsHandler(
 
                         is Frame.Close -> {
                             logger.i { "WebSocket closed: ${frame.readReason()}" }
-                            // The incoming loop also ends after a Close frame;
-                            // emit the epoch's Disconnected exactly once.
-                            if (!disconnectEmitted) {
-                                disconnectEmitted = true
-                                handleDisconnection(listenerEpoch)
-                            }
                         }
 
                         is Frame.Ping, is Frame.Pong -> {
@@ -155,21 +147,22 @@ class SendspinWsHandler(
             } catch (e: Exception) {
                 if (explicitDisconnect) {
                     logger.i { "Explicit disconnect, not reconnecting" }
-                    if (!disconnectEmitted) {
-                        disconnectEmitted = true
-                        handleDisconnection(listenerEpoch)
-                    }
-                    return@launch
+                } else {
+                    logger.e(e) { "WS error - will auto-reconnect" }
                 }
-
-                // Network error - auto-reconnect!
-                logger.e(e) { "WS error - will auto-reconnect" }
-                reconnecting = true
-                emitEvent(InboundTransportEvent.Reconnecting(listenerEpoch, 0))
-                attemptReconnect(listenerEpoch)
             } finally {
-                if (!explicitDisconnect && !reconnecting && !disconnectEmitted) {
-                    handleDisconnection(listenerEpoch)
+                if (
+                    shouldReconnectAfterListenerExit(
+                        explicitDisconnect = explicitDisconnect,
+                        listenerIsCurrent = listenerEpoch == epoch,
+                    )
+                ) {
+                    // Close frames, exceptions, and a normally exhausted incoming channel all
+                    // converge here so exactly one reconnect loop can be launched per listener.
+                    // A listener cancelled after its replacement advanced the epoch is stale.
+                    logger.w { "WebSocket listener ended unexpectedly — reconnecting" }
+                    emitEvent(InboundTransportEvent.Reconnecting(listenerEpoch, 0))
+                    attemptReconnect(listenerEpoch)
                 }
             }
         }
@@ -218,12 +211,6 @@ class SendspinWsHandler(
         session = null
 
         emitEvent(InboundTransportEvent.Disconnected(epoch))
-    }
-
-    private fun handleDisconnection(listenerEpoch: Int) {
-        logger.i { "WebSocket disconnected" }
-        session = null
-        emitEvent(InboundTransportEvent.Disconnected(listenerEpoch))
     }
 
     private fun attemptReconnect(previousEpoch: Int) {
@@ -278,3 +265,8 @@ class SendspinWsHandler(
         client.close()
     }
 }
+
+internal fun shouldReconnectAfterListenerExit(
+    explicitDisconnect: Boolean,
+    listenerIsCurrent: Boolean,
+): Boolean = !explicitDisconnect && listenerIsCurrent

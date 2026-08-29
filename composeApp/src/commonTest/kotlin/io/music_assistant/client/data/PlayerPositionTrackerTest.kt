@@ -6,6 +6,23 @@ import kotlin.test.assertTrue
 
 class PlayerPositionTrackerTest {
     @Test
+    fun pausedPositionRemainsFixedAndRejectsStaleServerEchoes() {
+        val tracker = PlayerPositionTracker()
+        val queueId = "queue"
+
+        tracker.setAnchor(queueId = queueId, elapsedSec = 25.0, isPlaying = false)
+        tracker.setPausedPosition(queueId = queueId, elapsedSec = 90.0)
+
+        assertEquals(90.0, tracker.effectiveSec(queueId))
+        assertTrue(tracker.isFrozenUntilConfirmed(queueId))
+
+        tracker.setAnchor(queueId = queueId, elapsedSec = 25.5, isPlaying = false)
+
+        assertEquals(90.0, tracker.effectiveSec(queueId))
+        assertTrue(tracker.isFrozenUntilConfirmed(queueId))
+    }
+
+    @Test
     fun optimisticSeekIgnoresStaleServerAnchorFarFromSeekTarget() {
         val tracker = PlayerPositionTracker()
         val queueId = "queue"
