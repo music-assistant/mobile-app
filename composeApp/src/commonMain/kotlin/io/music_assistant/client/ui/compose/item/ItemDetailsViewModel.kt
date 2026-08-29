@@ -95,6 +95,8 @@ class ItemDetailsViewModel(
     )
     val state = _state.asStateFlow()
 
+    private val fetchArtistItemsUseCase = FetchArtistItemsUseCase(mediaItemRepository)
+
     init {
         // Listen to library changes; refresh the open item + its sub-lists.
         // The repository already handles the library-fallback re-keying that
@@ -277,15 +279,11 @@ class ItemDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val list = ItemUseCases.fetchArtistItemsAcrossProviders<Album>(
-                mediaItemRepository,
+            val list = fetchArtistItemsUseCase.run(
                 artist,
-            ) { itemId, providerInstance ->
-                Request.Artist.getAlbums(
-                    itemId,
-                    providerInstance,
-                )
-            }
+                Request.Artist::getAlbums,
+                Album::class,
+            )
 
             if (list != null) {
                 _state.update {
@@ -316,15 +314,11 @@ class ItemDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val list = ItemUseCases.fetchArtistItemsAcrossProviders<Track>(
-                mediaItemRepository,
+            val list = fetchArtistItemsUseCase.run(
                 artist,
-            ) { itemId, providerInstance ->
-                Request.Artist.getTopTracks(
-                    itemId,
-                    providerInstance,
-                )
-            }
+                Request.Artist::getTopTracks,
+                Track::class,
+            )
 
             if (list != null) {
                 _state.update {
