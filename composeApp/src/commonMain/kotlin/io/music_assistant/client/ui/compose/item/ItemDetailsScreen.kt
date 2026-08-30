@@ -991,10 +991,10 @@ private fun <T : AppMediaItem> SectionRow(
                 title = title,
                 items = section.items,
                 list = section.itemList,
-                filter = if (section.providerDomain != null && artist.providerMappings != null) {
+                filter = if (section.providerFilter != null && artist.providerMappings != null) {
                     ItemCategory.Filter(
-                        label = section.providerDomain.toDisplayString(),
-                        options = artist.providerMappings,
+                        label = section.providerFilter.current.providerDomain.toDisplayString(),
+                        options = section.providerFilter.options,
                         labelTransform = { it.providerDomain.toDisplayString() },
                         contentDescription = Res.string.cd_provider_filter,
                     )

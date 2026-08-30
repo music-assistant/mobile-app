@@ -46,18 +46,21 @@ class ArtistDetailsViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
     private val allItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
-    private val allProviderInfo = MutableStateFlow<Pair<String, ItemList>?>(null)
+    private val allProviderFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val all = allItems
         .updateFrom(mediaItemRepository)
-        .combine(allProviderInfo) { items, providerInfo ->
-            if (providerInfo != null) {
+        .combine(allProviderFilter) { items, providerFilter ->
+            if (providerFilter != null) {
                 items.map {
                     Section(
                         items = it
                             .filterIsInstance<Album>()
                             .take(ARTIST_SECTION_LIMIT),
-                        itemList = providerInfo.second,
-                        providerDomain = providerInfo.first,
+                        itemList = ItemList.ArtistAlbums(
+                            providerFilter.current.providerInstance,
+                            providerFilter.current.itemId,
+                        ),
+                        providerFilter = providerFilter,
                     )
                 }
             } else {
@@ -67,18 +70,21 @@ class ArtistDetailsViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
     private val topTrackItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
-    private val topTracksProviderInfo = MutableStateFlow<Pair<String, ItemList>?>(null)
+    private val topTracksProviderInfo = MutableStateFlow<Section.ProviderFilter?>(null)
     val topTracks = topTrackItems
         .updateFrom(mediaItemRepository)
-        .combine(topTracksProviderInfo) { items, providerInfo ->
-            if (providerInfo != null) {
+        .combine(topTracksProviderInfo) { items, providerFilter ->
+            if (providerFilter != null) {
                 items.map {
                     Section(
                         items = it
                             .filterIsInstance<Track>()
                             .take(ARTIST_SECTION_LIMIT),
-                        itemList = providerInfo.second,
-                        providerDomain = providerInfo.first,
+                        itemList = ItemList.ArtistTopTracks(
+                            providerFilter.current.providerInstance,
+                            providerFilter.current.itemId,
+                        ),
+                        providerFilter = providerFilter,
                     )
                 }
             } else {
@@ -117,12 +123,9 @@ class ArtistDetailsViewModel(
 
             if (itemsWithMappings != null) {
                 allItems.value = DataState.Data(itemsWithMappings.items)
-                allProviderInfo.value = Pair(
-                    itemsWithMappings.mapping.providerDomain,
-                    ItemList.ArtistAlbums(
-                        itemsWithMappings.mapping.providerInstance,
-                        itemsWithMappings.mapping.itemId,
-                    ),
+                allProviderFilter.value = Section.ProviderFilter(
+                    itemsWithMappings.mapping,
+                    artist.providerMappings ?: emptyList(),
                 )
             } else {
                 allItems.value = DataState.Error()
@@ -137,12 +140,9 @@ class ArtistDetailsViewModel(
 
             if (itemsWithMappings != null) {
                 topTrackItems.value = DataState.Data(itemsWithMappings.items)
-                topTracksProviderInfo.value = Pair(
-                    itemsWithMappings.mapping.providerDomain,
-                    ItemList.ArtistTopTracks(
-                        itemsWithMappings.mapping.providerInstance,
-                        itemsWithMappings.mapping.itemId,
-                    ),
+                topTracksProviderInfo.value = Section.ProviderFilter(
+                    itemsWithMappings.mapping,
+                    artist.providerMappings ?: emptyList(),
                 )
             } else {
                 topTrackItems.value = DataState.Error()
@@ -152,9 +152,9 @@ class ArtistDetailsViewModel(
 
     fun loadAlbumsForProvider(mapping: ProviderMapping) {
         allItems.value = DataState.Loading()
-        allProviderInfo.value = Pair(
-            mapping.providerDomain,
-            ItemList.ArtistAlbums(mapping.providerInstance, mapping.itemId),
+        allProviderFilter.value = Section.ProviderFilter(
+            mapping,
+            artist.providerMappings ?: emptyList(),
         )
 
         viewModelScope.launch {
@@ -171,9 +171,9 @@ class ArtistDetailsViewModel(
 
     fun loadTopTracksForProvider(mapping: ProviderMapping) {
         topTrackItems.value = DataState.Loading()
-        topTracksProviderInfo.value = Pair(
-            mapping.providerDomain,
-            ItemList.ArtistTopTracks(mapping.providerInstance, mapping.itemId),
+        topTracksProviderInfo.value = Section.ProviderFilter(
+            mapping,
+            artist.providerMappings ?: emptyList(),
         )
 
         viewModelScope.launch {
@@ -190,7 +190,12 @@ class ArtistDetailsViewModel(
 
     data class Section<T : AppMediaItem>(
         val items: List<T>,
-        val itemList: ItemList? = null,
-        val providerDomain: String? = null,
-    )
+        val itemList: ItemList,
+        val providerFilter: ProviderFilter? = null,
+    ) {
+        data class ProviderFilter(
+            val current: ProviderMapping,
+            val options: List<ProviderMapping>,
+        )
+    }
 }
