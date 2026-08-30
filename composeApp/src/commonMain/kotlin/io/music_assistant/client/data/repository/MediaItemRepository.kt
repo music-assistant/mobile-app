@@ -199,7 +199,18 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
+/**
+ * Keeps a [Flow] of [DataState] holding a list of [AppMediaItem] up to date with changes from the
+ * server so that changing favorites etc. will get updated immediately.
+ *
+ */
 fun Flow<DataState<List<AppMediaItem>>>.updateFrom(mediaItemRepository: MediaItemRepository): Flow<DataState<List<AppMediaItem>>> {
+    /**
+     * Create a nullable default version of [MediaItemRepository.itemChanges] so that the result of
+     * `combine` doesn't wait for a change to emit. There isn't currently a [Flow] transformation
+     * that behaves like this: `zip` emits new pairs (it "buffers" one side until the other emits
+     * a corresponding value) and `combine` only emits once both [Flow] instances have emitted.
+     */
     val nullableItemChanges: Flow<MediaItemChange?> = mediaItemRepository.itemChanges.map { it }
     val itemChangesWithDefault = nullableItemChanges.onStart { emit(null) }
 
