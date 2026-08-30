@@ -14,6 +14,7 @@ import io.music_assistant.client.data.repository.updateFrom
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.ui.compose.common.map
+import io.music_assistant.client.ui.compose.common.mapData
 import io.music_assistant.client.ui.compose.item.FetchArtistItemsUseCase
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel.Companion.ARTIST_SECTION_LIMIT
 import io.music_assistant.client.ui.compose.item.ItemList
@@ -33,15 +34,13 @@ class ArtistDetailsViewModel(
     private val libraryItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     val library = libraryItems
         .updateFrom(mediaItemRepository)
-        .map { data ->
-            data.map {
-                Section(
-                    items = it
-                        .filterIsInstance<Album>()
-                        .take(ARTIST_SECTION_LIMIT),
-                    itemList = ItemList.ArtistLibrary(artist.itemId),
-                )
-            }
+        .mapData {
+            Section(
+                items = it
+                    .filterIsInstance<Album>()
+                    .take(ARTIST_SECTION_LIMIT),
+                itemList = ItemList.ArtistLibrary(artist.itemId),
+            )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
