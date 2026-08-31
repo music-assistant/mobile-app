@@ -9,6 +9,7 @@
   <string name="action_play_playlist_from_here">Пусти плејлисту одавде</string>
   <string name="albums_by_artist">Албуми од %1$s</string>
   <string name="browse_subtitle">Извођачи, албуми, нумере и још много тога</string>
+  <string name="cd_genre_filter">Жанровски филтери</string>
   <string name="clickctx_browse">Претражи</string>
   <string name="genre_filter_empty_all">Сви</string>
   <string name="genre_filter_empty_default">Подразумевано</string>
@@ -38,6 +39,8 @@
   <string name="not_connected_retry">Нисте повезани — покушајте поново када се успостави веза</string>
   <string name="playback_speed_dialog_title">Брзина репродукције</string>
   <string name="playlist_add_button">Додај плејлисту</string>
+  <string name="queue_autoplay_disable">Онемогући аутоматску репродукцију</string>
+  <string name="queue_autoplay_enable">Омогући аутоматску репродукцију</string>
   <string name="settings_car_bulk_for">%1$s акције</string>
   <string name="settings_car_item_actions">Акције ставке</string>
   <string name="settings_car_tabs">Картице</string>
