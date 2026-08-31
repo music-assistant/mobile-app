@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -152,6 +153,17 @@ class MediaItemFactory(
                 version = version,
                 isPlayable = isPlayable == true,
                 isDynamic = isDynamic == true,
+            )
+
+            MediaType.SOUND_EFFECT -> SoundEffect(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                sortName = sortName,
+                images = resolveImageInfo(image, metadata),
+                duration = duration,
             )
 
             MediaType.AUDIOBOOK -> Audiobook(

@@ -23,6 +23,7 @@ enum class MediaType(val serverValue: String) {
     FOLDER("folder"),
     FLOW_STREAM("flow_stream"),
     ANNOUNCEMENT("announcement"),
+    SOUND_EFFECT("sound_effect"),
     UNKNOWN("unknown"),
     ;
 

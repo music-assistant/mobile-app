@@ -30,6 +30,10 @@
   <string name="action_start_endless_mix">Start endless mix</string>
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
+  <string name="ai_radio_empty">No AI stations yet. Create one in the Music Assistant web app.</string>
+  <string name="ai_radio_load_failed">Could not load AI stations</string>
+  <string name="ai_radio_stop">Stop</string>
+  <string name="ai_radio_title">AI Radio</string>
   <string name="album_disc_header">Disc %1$d</string>
   <string name="album_type_album">Album</string>
   <string name="album_type_compilation">Compilation</string>
@@ -165,6 +169,7 @@
   <string name="item_subtitle_playlist_dynamic">Dynamic playlist</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_sound_effect">AI host</string>
   <string name="item_subtitle_unknown">Unknown</string>
   <string name="kind_album">Albums</string>
   <string name="kind_artist">Artists</string>

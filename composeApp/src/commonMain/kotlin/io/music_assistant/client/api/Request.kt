@@ -877,4 +877,36 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
 
         fun getPresets() = Request(command = APICommands.CONFIG_DSP_PRESETS_GET)
     }
+
+    /**
+     * The optional `ai_radio` plugin provider. Every one of these fails on a server without
+     * the plugin, so gate the call sites on the availability flow rather than calling blind.
+     */
+    data object AiRadio {
+        fun stations() = Request(command = APICommands.AI_RADIO_STATIONS_LIST)
+
+        /**
+         * Starts [stationId] on [playerId].
+         *
+         * The server resolves the override through `players.get_player`, so this must be a
+         * PLAYER id — not the queue id that most other commands take.
+         */
+        fun start(stationId: String, playerId: String) = Request(
+            command = APICommands.AI_RADIO_START,
+            args = buildJsonObject {
+                put("station_id", JsonPrimitive(stationId))
+                put("player_id_override", JsonPrimitive(playerId))
+            },
+        )
+
+        fun stop(sessionId: String) = Request(
+            command = APICommands.AI_RADIO_STOP,
+            args = buildJsonObject {
+                put("session_id", JsonPrimitive(sessionId))
+            },
+        )
+
+        /** All sessions, newest first. The provider emits no events, so this is poll-only. */
+        fun status() = Request(command = APICommands.AI_RADIO_STATUS)
+    }
 }

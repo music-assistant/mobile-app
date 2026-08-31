@@ -6,12 +6,14 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.SoundEffect
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.item_subtitle_genre
 import musicassistantclient.composeapp.generated.resources.item_subtitle_playlist
 import musicassistantclient.composeapp.generated.resources.item_subtitle_playlist_dynamic
 import musicassistantclient.composeapp.generated.resources.item_subtitle_podcast
 import musicassistantclient.composeapp.generated.resources.item_subtitle_radio
+import musicassistantclient.composeapp.generated.resources.item_subtitle_sound_effect
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -24,5 +26,6 @@ fun AppMediaItem.localizedSubtitle(): String? = subtitle ?: when (this) {
     is Genre -> stringResource(Res.string.item_subtitle_genre)
     is Podcast -> stringResource(Res.string.item_subtitle_podcast)
     is RadioStation -> stringResource(Res.string.item_subtitle_radio)
+    is SoundEffect -> stringResource(Res.string.item_subtitle_sound_effect)
     else -> null
 }

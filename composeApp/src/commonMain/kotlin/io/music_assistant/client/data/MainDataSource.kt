@@ -22,10 +22,13 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
+import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
+import io.music_assistant.client.data.model.server.AI_RADIO_REQUIRED_SCOPE
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.ServerPlayer
+import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.ServerUser
@@ -40,6 +43,7 @@ import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
+import io.music_assistant.client.data.model.server.grantsScope
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.model.GoodbyeReason
 import io.music_assistant.client.settings.SettingsRepository
@@ -52,6 +56,7 @@ import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconModel
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.resultAs
@@ -135,6 +140,15 @@ class MainDataSource(
     private val _serverPlayers = MutableStateFlow<DataState<List<Player>>>(DataState.Loading())
     private val _queueInfos = MutableStateFlow<List<QueueInfo>>(emptyList())
     private val _providersIcons = MutableStateFlow<Map<String, ProviderIconModel>>(emptyMap())
+
+    /**
+     * Whether the AI Radio UI may be offered: the optional `ai_radio` plugin is loaded AND
+     * the signed-in user's role grants the scope its start/stop commands demand. Both halves
+     * matter — a `user` role can list stations but cannot play any, so gating on the plugin
+     * alone would render a picker where every tap fails.
+     */
+    private val _aiRadioAvailable = MutableStateFlow(false)
+    val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()
 
     /**
      * Authoritative favorite state per track, keyed by [favKey]. The server's
@@ -463,6 +477,7 @@ class MainDataSource(
                                             }
                                             updateProvidersManifests()
                                             updateUserPreferences()
+                                            updateAiRadioAvailability()
                                             localPlayerController.start()
                                             updatePlayersAndQueues()
                                             localPlayerController.drainCommandQueue()
@@ -475,6 +490,7 @@ class MainDataSource(
                                     log.w { "Connected while already in Data state - refreshing anyway" }
                                     updateProvidersManifests()
                                     updateUserPreferences()
+                                    updateAiRadioAvailability()
                                     updatePlayersAndQueues()
                                     refreshSelectedPlayerQueueItems()
                                     // Safety net: reinit Sendspin if it's not already connected.
@@ -488,6 +504,7 @@ class MainDataSource(
                                     _serverPlayers.update { DataState.Loading() }
                                     updateProvidersManifests()
                                     updateUserPreferences()
+                                    updateAiRadioAvailability()
                                     localPlayerController.start()
                                     updatePlayersAndQueues()
                                 }
@@ -925,6 +942,9 @@ class MainDataSource(
         // Server-scoped: another server must not inherit this one's preferences.
         userPreferences.clear()
         localPlayerController.clearState()
+        // Server-scoped: the plugin set and the user's role both belong to the old
+        // connection, so another server must not inherit this one's gate.
+        _aiRadioAvailable.value = false
         // Note: _providersIcons deliberately NOT cleared (static data)
     }
 
@@ -1580,6 +1600,27 @@ class MainDataSource(
             apiClient.sendRequest(Request(APICommands.AUTH_ME))
                 .resultAs<ServerUser>()
                 ?.let { userPreferences.update(it.preferences) }
+        }
+    }
+
+    /**
+     * Resolves the AI Radio gate. Fails closed: any missing piece — plugin absent, role
+     * unknown, either fetch failing — leaves the feature hidden rather than half-offered.
+     */
+    private fun updateAiRadioAvailability() {
+        launch {
+            val pluginLoaded = apiClient.sendRequest(Request.Library.providers())
+                .resultAs<List<ServerProviderInstance>>()
+                ?.any { it.domain == AI_RADIO_DOMAIN && it.available } == true
+            if (!pluginLoaded) {
+                _aiRadioAvailable.value = false
+                return@launch
+            }
+            val roleScopes = apiClient.sendRequest(Request(APICommands.AUTH_SCOPES))
+                .resultAs<Map<String, List<String>>>()
+                .orEmpty()
+            val role = (apiClient.sessionState.value as? HasConnectionData)?.user?.role
+            _aiRadioAvailable.value = grantsScope(roleScopes, role, AI_RADIO_REQUIRED_SCOPE)
         }
     }
 

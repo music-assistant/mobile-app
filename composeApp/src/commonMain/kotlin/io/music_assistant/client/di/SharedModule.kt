@@ -16,6 +16,7 @@ import io.music_assistant.client.data.UserPreferences
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
+import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.input.VolumeButtonService
@@ -34,6 +35,7 @@ import io.music_assistant.client.ui.compose.common.DominantColorViewModel
 import io.music_assistant.client.ui.compose.common.providers.MdiCodepoints
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
+import io.music_assistant.client.ui.compose.home.players.AiRadioViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListViewModel
@@ -105,6 +107,7 @@ fun sharedModule(
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)
         singleOf(::MediaItemRepository)     // Server DTO/event → client model boundary for UI
+        singleOf(::AiRadioRepository)       // Optional ai_radio plugin: list and run stations
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch
             CarDspApplier(get(), get(), get(), get())
@@ -119,6 +122,7 @@ fun sharedModule(
         factory { DefaultClickActionsViewModel(get()) }
         factory { CarActionsViewModel(get()) }
         factory { CarDspViewModel(get(), get()) }
+        factory { AiRadioViewModel(get()) }
         factory {
             AuthenticationViewModel(
                 auth = get(),

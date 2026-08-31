@@ -31,6 +31,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
@@ -195,6 +196,11 @@ fun AdaptiveMediaGrid(
                     viewMode = viewMode,
                     onNavigateClick = onNavigateClick,
                 )
+
+                // Reaches the client only as a queue item (an AI Radio host clip), never
+                // through a library list, a search result or a browse folder. Named rather
+                // than folded into an `else` so a genuinely new media type still fails here.
+                is SoundEffect -> Unit
             }
         }
 

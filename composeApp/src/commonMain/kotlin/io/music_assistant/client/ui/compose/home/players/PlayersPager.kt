@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -117,6 +118,7 @@ import io.music_assistant.client.utils.conditional
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
+import musicassistantclient.composeapp.generated.resources.ai_radio_title
 import musicassistantclient.composeapp.generated.resources.bound_player_joined_to
 import musicassistantclient.composeapp.generated.resources.bound_player_part_of_group
 import musicassistantclient.composeapp.generated.resources.bound_player_playing_with
@@ -167,6 +169,9 @@ fun PlayersPager(
         // Sleep timers are a server-side feature from schema 35 on; below that the
         // menu entry and the badge stay hidden entirely.
         val sleepTimerSupported by homeScreenViewModel.sleepTimerSupported
+            .collectAsStateWithLifecycle()
+        // Optional ai_radio plugin + a role allowed to run it; hides the whole feature.
+        val aiRadioAvailable by homeScreenViewModel.aiRadioAvailable
             .collectAsStateWithLifecycle()
         // Older servers dissolve the group and stop playback when the leader leaves,
         // so the leave gesture stays hidden below the handoff floor.
@@ -361,6 +366,7 @@ fun PlayersPager(
                                 lyricsAvailable = isCurrentPage && lyrics != null,
                                 onLyricsClick = { sheetLyrics = lyrics },
                                 chapterProgressEnabled = chapterProgressEnabled,
+                                aiRadioAvailable = aiRadioAvailable,
                             )
                         }
                         sheetLyrics?.let { shown ->
@@ -457,6 +463,7 @@ private fun ExpandedPlayerPage(
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
     chapterProgressEnabled: Boolean = true,
+    aiRadioAvailable: Boolean = false,
 ) {
     // The queue sits beside the player whenever the window is wide (see
     // [WindowClass.isWide]); otherwise it collapses underneath it. The two panes
@@ -513,6 +520,7 @@ private fun ExpandedPlayerPage(
                     onPlayerSelected = { moveToPlayer(it) },
                     onOpenDsp = onDspButton,
                     playlistActions = playlistActions,
+                    aiRadioAvailable = aiRadioAvailable,
                 )
             },
         )
@@ -817,10 +825,12 @@ private fun PlayerOverflowMenu(
     onPlayerSelected: (String) -> Unit,
     onOpenDsp: (() -> Unit)?,
     playlistActions: PlaylistActions? = null,
+    aiRadioAvailable: Boolean = false,
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
     val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
     var showAddToPlaylist by remember { mutableStateOf(false) }
+    var showAiRadio by remember { mutableStateOf(false) }
 
     val queueData = currentPlayer.queue as? DataState.Data
     val queueInfo = queueData?.data?.info
@@ -920,7 +930,18 @@ private fun PlayerOverflowMenu(
             add(bufferIndicatorMenuOption())
         }
     }
-    val playerActions = powerOption + queueOptions + displayOptions
+    val aiRadioOptions = if (aiRadioAvailable) {
+        listOf(
+            OverflowMenuOption(
+                title = stringResource(Res.string.ai_radio_title),
+                icon = Icons.Default.SmartToy,
+                onClick = { showAiRadio = true },
+            ),
+        )
+    } else {
+        emptyList()
+    }
+    val playerActions = powerOption + queueOptions + aiRadioOptions + displayOptions
 
     // Track actions (bottom group): add-to-playlist + navigation (go to artist/album).
     val navigationOptions =
@@ -968,6 +989,15 @@ private fun PlayerOverflowMenu(
             item = currentTrack,
             playlistActions = playlistActions,
             onDismiss = { showAddToPlaylist = false },
+        )
+    }
+
+    if (showAiRadio) {
+        // The server resolves this through players.get_player, so it wants the player id
+        // and not the queue id the surrounding queue actions use.
+        AiRadioSheet(
+            playerId = currentPlayer.player.id,
+            onDismiss = { showAiRadio = false },
         )
     }
 }
