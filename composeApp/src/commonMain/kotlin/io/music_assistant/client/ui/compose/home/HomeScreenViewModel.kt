@@ -101,13 +101,6 @@ class HomeScreenViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     /**
-     * The optional AI Radio plugin is loaded AND this user's role may run its stations.
-     * Both halves matter: a non-admin can list stations but not play one, so the picker
-     * stays hidden rather than offering rows that every tap would fail on.
-     */
-    val aiRadioAvailable: StateFlow<Boolean> = dataSource.aiRadioAvailable
-
-    /**
      * Older servers dissolve the group and stop playback when the leader leaves, so the
      * leave gesture is hidden below the handoff floor.
      */

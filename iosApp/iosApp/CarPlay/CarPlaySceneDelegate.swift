@@ -570,11 +570,20 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         ]
 
         // Apply the user's Car Tabs ordering and visibility (Settings → Car → Tabs).
-        // Falls back to the full default set when no config is stored.
+        // Falls back to the full default set when no config is stored. AI_RADIO is absent
+        // from that list unless its plugin is loaded and the user holds its scope.
         let configuredNames = manager.carBrowseCategories()
-        let categories: [CategoryEntry] = configuredNames.compactMap { allCategories[$0] }
 
-        let buttons = categories.map { category -> CPGridButton in
+        let buttons: [CPGridButton] = configuredNames.compactMap { name in
+            // AI Radio is not in allCategories: its rows are plugin stations, not AppMediaItem,
+            // so attachHandlers would drop every tap. It gets its own template instead.
+            if name == "AI_RADIO" {
+                let image = Self.dynamicCategoryImage(symbol: "sparkles", size: imageSize)
+                return CPGridButton(titleVariants: [strings.aiRadio], image: image) { [weak self] _ in
+                    self?.pushAiRadioTemplate()
+                }
+            }
+            guard let category = allCategories[name] else { return nil }
             let image = Self.dynamicCategoryImage(symbol: category.symbol, size: imageSize)
             return CPGridButton(titleVariants: [category.title], image: image) { [weak self] _ in
                 self?.pushCategoryTemplate(title: category.title, fetcher: category.fetcher)
@@ -582,6 +591,42 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         }
         let gridTemplate = CPGridTemplate(title: strings.browse, gridButtons: buttons)
         self.safePushTemplate(gridTemplate, animated: true)
+    }
+
+    /// Stations of the optional `ai_radio` plugin. Mirrors `pushCategoryTemplate`, but each row
+    /// carries its own handler because a station is not an `AppMediaItem`.
+    private func pushAiRadioTemplate() {
+        guard isReady else { showOfflineAlert(); return }
+        guard let strings = strings else { return }
+        let template = CPListTemplate(title: strings.aiRadio, sections: [])
+        template.updateSections([CPListSection(items: [CPListItem(text: strings.loading, detailText: nil)])])
+
+        self.safePushTemplate(template, animated: true)
+
+        CarPlayContentManager.shared.fetchAiRadioStations { [weak self] stations in
+            guard let self = self else { return }
+            guard let stations = stations else {
+                template.updateSections([CPListSection(items: [self.disconnectedRow(strings)])])
+                return
+            }
+            if stations.isEmpty {
+                template.updateSections([self.emptyStateSection(text: strings.aiRadioEmpty)])
+                return
+            }
+            let items = stations.map { station -> CPListItem in
+                let item = CPListItem(text: station.name, detailText: nil)
+                item.handler = { [weak self] _, completion in
+                    guard let self = self else { completion(); return }
+                    guard self.isReady else { self.showOfflineAlert(); completion(); return }
+                    if CarPlayContentManager.shared.startAiRadio(station.id) {
+                        self.pushNowPlayingTemplate(animated: true)
+                    }
+                    completion()
+                }
+                return item
+            }
+            template.updateSections([CPListSection(items: items)])
+        }
     }
 
     /// Mirrors `pushDrilldown`'s shape but targets the simpler

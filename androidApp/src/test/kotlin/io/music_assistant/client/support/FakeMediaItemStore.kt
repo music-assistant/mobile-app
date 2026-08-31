@@ -105,6 +105,7 @@ internal class FakeMediaItemStore {
             MediaType.FOLDER -> Unit
             MediaType.FLOW_STREAM -> Unit
             MediaType.ANNOUNCEMENT -> Unit
+            MediaType.SOUND_EFFECT -> Unit
             MediaType.UNKNOWN -> Unit
             null -> Unit
         }

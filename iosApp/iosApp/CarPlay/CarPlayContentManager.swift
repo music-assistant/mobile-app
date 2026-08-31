@@ -165,6 +165,20 @@ class CarPlayContentManager {
         KmpHelper.shared.carBrowseCategories()
     }
 
+    /// Returns nil on timeout. Empty array means "server answered, no stations authored yet."
+    func fetchAiRadioStations(completion: @escaping ([ServerAiRadioStation]?) -> Void) {
+        KmpHelper.shared.fetchAiRadioStations { stations in
+            guard let stations = stations else { completion(nil); return }
+            completion(Array(stations))
+        }
+    }
+
+    /// Start an AI Radio station on the local player. False when there is no local player.
+    @discardableResult
+    func startAiRadio(_ stationId: String) -> Bool {
+        KmpHelper.shared.startAiRadioStation(stationId: stationId)
+    }
+
     /// Ordered, CarPlay-supported bulk-action names configured for a browsable container's kind.
     func bulkActionNames(for item: AppMediaItem) -> [String] {
         KmpHelper.shared.carBulkActionNames(item: item)

@@ -9,6 +9,8 @@ import musicassistantclient.composeapp.generated.resources.action_insert_next_an
 import musicassistantclient.composeapp.generated.resources.action_ok
 import musicassistantclient.composeapp.generated.resources.action_play_all
 import musicassistantclient.composeapp.generated.resources.action_start_endless_mix
+import musicassistantclient.composeapp.generated.resources.ai_radio_empty
+import musicassistantclient.composeapp.generated.resources.ai_radio_title
 import musicassistantclient.composeapp.generated.resources.albums_by_artist
 import musicassistantclient.composeapp.generated.resources.browse_subtitle
 import musicassistantclient.composeapp.generated.resources.connection_lost
@@ -51,6 +53,8 @@ class CarPlayStrings internal constructor(
     val audiobooks: String,
     val podcasts: String,
     val radio: String,
+    val aiRadio: String,
+    val aiRadioEmpty: String,
     private val albumsByArtistTemplate: String,
     private val bulkActionTitlesByName: Map<String, String>,
 ) {
@@ -80,6 +84,8 @@ class CarPlayStrings internal constructor(
             audiobooks = getString(Res.string.media_type_audiobooks),
             podcasts = getString(Res.string.media_type_podcasts),
             radio = getString(Res.string.media_type_radio),
+            aiRadio = getString(Res.string.ai_radio_title),
+            aiRadioEmpty = getString(Res.string.ai_radio_empty),
             albumsByArtistTemplate = getString(Res.string.albums_by_artist),
             bulkActionTitlesByName = mapOf(
                 DefaultClickOption.PLAY_NOW.name to getString(Res.string.action_play_all),

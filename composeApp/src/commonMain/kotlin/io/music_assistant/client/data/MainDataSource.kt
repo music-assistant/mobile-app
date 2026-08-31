@@ -145,7 +145,7 @@ class MainDataSource(
      * Whether the AI Radio UI may be offered: the optional `ai_radio` plugin is loaded AND
      * the signed-in user's role grants the scope its start/stop commands demand. Both halves
      * matter — a `user` role can list stations but cannot play any, so gating on the plugin
-     * alone would render a picker where every tap fails.
+     * alone would render a Library section where every tap fails.
      */
     private val _aiRadioAvailable = MutableStateFlow(false)
     val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()

@@ -8,7 +8,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 fun appModule() = module {
-    single { AutoLibrary(androidContext(), get(), get(), get(), get()) }
+    single { AutoLibrary(androidContext(), get(), get(), get(), get(), get()) }
     single { SharedMediaSessionManager(androidContext(), get(), get()) }
     single<CarConnectionMonitor> { AndroidCarConnectionMonitor(androidContext()) }
 }

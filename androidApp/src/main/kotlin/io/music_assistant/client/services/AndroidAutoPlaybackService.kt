@@ -58,6 +58,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
         observeCarTabsConfig()
         observeLocalPlayerEnabled()
+        observeAiRadioAvailability()
         ensureNotificationService()
     }
 
@@ -87,6 +88,22 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
+    // The AI Radio tab exists only while the plugin is loaded and the user holds its scope,
+    // both of which change on connect, disconnect and role change. Swap the tab in and out
+    // live rather than leaving a stale tab whose every tap fails.
+    private fun observeAiRadioAvailability() {
+        scope.launch {
+            dataSource.aiRadioAvailable
+                .drop(1)
+                .distinctUntilChanged()
+                .collect {
+                    library.invalidateCache()
+                    notifyChildrenChanged(MediaIds.ROOT)
+                    notifyChildrenChanged(MediaIds.TAB_AI_RADIO)
+                }
+        }
+    }
+
     private fun notifyBrowseTreeChanged() {
         notifyChildrenChanged(MediaIds.ROOT)
         notifyChildrenChanged(MediaIds.TAB_ARTISTS)
@@ -95,6 +112,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         notifyChildrenChanged(MediaIds.TAB_PODCASTS)
         notifyChildrenChanged(MediaIds.TAB_RADIO)
         notifyChildrenChanged(MediaIds.TAB_AUDIOBOOKS)
+        notifyChildrenChanged(MediaIds.TAB_AI_RADIO)
     }
 
     /**

@@ -2,20 +2,27 @@ package io.music_assistant.client.ui.compose.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.library.LibraryCategory
-import io.music_assistant.client.ui.compose.library.carTabCategories
+import io.music_assistant.client.ui.compose.library.mergeHiddenCategories
+import io.music_assistant.client.ui.compose.library.reconcileCarTabs
+import io.music_assistant.client.ui.compose.library.visibleCategories
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 /** Backs Settings → Car: per-kind enqueue action, per-kind bulk lists, and the Auto tabs config. */
 class CarActionsViewModel(
     private val settingsRepository: SettingsRepository,
+    private val dataSource: MainDataSource,
 ) : ViewModel() {
+    /** Last reconciled config including the hidden categories, so [saveTabs] can merge them back. */
+    private var reconciled: List<Pair<LibraryCategory, Boolean>> = emptyList()
+
     val playableClickActions = settingsRepository.carPlayableClickActions
     val browsableBulkActions = settingsRepository.carBrowsableBulkActions
 
@@ -27,30 +34,31 @@ class CarActionsViewModel(
 
     // Auto tabs reconciled against the AA-supported universe (mirrors LibraryCategoriesViewModel).
     val tabsConfig: StateFlow<List<Pair<LibraryCategory, Boolean>>> =
-        settingsRepository.carTabsConfig
-            .map { reconcileTabs(it) }
+        combine(
+            settingsRepository.carTabsConfig,
+            dataSource.aiRadioAvailable,
+        ) { stored, aiRadioAvailable -> visibleTabs(stored, aiRadioAvailable) }
             .stateIn(
                 viewModelScope,
                 SharingStarted.Eagerly,
-                reconcileTabs(settingsRepository.carTabsConfig.value),
+                visibleTabs(
+                    settingsRepository.carTabsConfig.value,
+                    dataSource.aiRadioAvailable.value,
+                ),
             )
 
     fun saveTabs(config: List<Pair<LibraryCategory, Boolean>>) =
         settingsRepository.setCarTabsConfig(
-            config.map { (cat, enabled) -> SettingsRepository.LibraryCategoryPref(cat.name, enabled) },
+            mergeHiddenCategories(config, reconciled).map { (cat, enabled) ->
+                SettingsRepository.LibraryCategoryPref(cat.name, enabled)
+            },
         )
 
-    private fun reconcileTabs(
+    private fun visibleTabs(
         stored: List<SettingsRepository.LibraryCategoryPref>?,
+        aiRadioAvailable: Boolean,
     ): List<Pair<LibraryCategory, Boolean>> {
-        if (stored == null) return carTabCategories.map { it to true }
-        val parsed = stored.mapNotNull { pref ->
-            runCatching { LibraryCategory.valueOf(pref.name) }.getOrNull()
-                ?.takeIf { it in carTabCategories }
-                ?.let { it to pref.enabled }
-        }
-        val present = parsed.map { it.first }.toSet()
-        val missing = carTabCategories.filter { it !in present }.map { it to true }
-        return parsed + missing
+        reconciled = reconcileCarTabs(stored)
+        return visibleCategories(reconciled, aiRadioAvailable)
     }
 }

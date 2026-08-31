@@ -32,6 +32,7 @@ import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.planLocalPlayerDispatch
+import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.settings.CarPlatform
 import io.music_assistant.client.settings.DefaultClickOption
 import io.music_assistant.client.settings.SettingsRepository
@@ -40,6 +41,8 @@ import io.music_assistant.client.settings.carTapAction
 import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.library.LibraryCategory
+import io.music_assistant.client.ui.compose.library.reconcileCarTabs
+import io.music_assistant.client.ui.compose.library.visibleCategories
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +71,7 @@ class AutoLibrary(
     private val settingsRepository: SettingsRepository,
     private val mediaItemFactory: MediaItemFactory,
     private val mainDataSource: MainDataSource,
+    private val aiRadioRepository: AiRadioRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
@@ -134,6 +138,7 @@ class AutoLibrary(
         }
         when {
             id == MediaIds.ROOT -> result.sendResult(rootChildren())
+            id == MediaIds.TAB_AI_RADIO -> handleAiRadioStations(result)
             MediaIds.parseSubListId(id) != null -> handleSubList(id, result)
             MediaIds.tabMediaTypeOf(id) != null -> handleTabContent(id, result)
             else -> handleDrillDown(id, result)
@@ -156,27 +161,57 @@ class AutoLibrary(
 
     // Default order/visibility when the user hasn't customized the Auto tabs
     // (Settings → Car → Tabs). Tracks/Genres are intentionally not exposed in AA.
-    private val defaultAutoTabs: List<Pair<MediaType, String>> = listOf(
-        MediaType.ARTIST to "Artists",
-        MediaType.ALBUM to "Albums",
-        MediaType.PLAYLIST to "Playlists",
-        MediaType.PODCAST to "Podcasts",
-        MediaType.RADIO to "Radio",
-        MediaType.AUDIOBOOK to "Audiobooks",
+    // Keyed by LibraryCategory rather than MediaType: AI Radio has no MediaType, so a
+    // MediaType-keyed map would silently drop it.
+    private val defaultAutoTabs: List<Pair<LibraryCategory, String>> = listOf(
+        LibraryCategory.ARTISTS to "Artists",
+        LibraryCategory.ALBUMS to "Albums",
+        LibraryCategory.PLAYLISTS to "Playlists",
+        LibraryCategory.PODCASTS to "Podcasts",
+        LibraryCategory.RADIOS to "Radio",
+        LibraryCategory.AUDIOBOOKS to "Audiobooks",
+        LibraryCategory.AI_RADIO to "AI Radio",
     )
 
     private fun rootChildren(): List<MediaItem> {
         val titles = defaultAutoTabs.toMap()
-        val supportedTypes = titles.keys
-        val stored = settingsRepository.carTabsConfig.value
-        val ordered: List<MediaType> = stored?.mapNotNull { pref ->
-            if (!pref.enabled) return@mapNotNull null
-            val libraryCategory = runCatching { LibraryCategory.valueOf(pref.name) }.getOrNull()
-                ?: return@mapNotNull null
-            libraryCategory.mediaType.takeIf { it in supportedTypes }
+        val ordered = visibleCategories(
+            reconcileCarTabs(settingsRepository.carTabsConfig.value),
+            mainDataSource.aiRadioAvailable.value,
+        ).filter { (category, enabled) -> enabled && category in titles }
+        return ordered.map { (category, _) ->
+            rootTabItem(titles.getValue(category), MediaIds.tabIdOf(category))
         }
-            ?: defaultAutoTabs.map { it.first }
-        return ordered.map { type -> rootTabItem(titles.getValue(type), MediaIds.tabIdOf(type)) }
+    }
+
+    /**
+     * Stations of the optional `ai_radio` plugin, as playable rows. They carry no URI, so
+     * [play] routes them by their id prefix instead of through the normal queue dispatch.
+     */
+    private fun handleAiRadioStations(result: MediaBrowserServiceCompat.Result<List<MediaItem>>) {
+        if (!mainDataSource.aiRadioAvailable.value) {
+            result.sendResult(emptyList())
+            return
+        }
+        result.detach()
+        scope.launch {
+            val items = cachedOrFetch(MediaIds.TAB_AI_RADIO) {
+                aiRadioRepository.stations()
+                    .onFailure { androidAutoLog.w(it) { "AI Radio: station list failed" } }
+                    .getOrNull()
+                    ?.map { station ->
+                        MediaItem(
+                            MediaDescriptionCompat.Builder()
+                                .setMediaId(MediaIds.aiRadioStationIdOf(station.id))
+                                .setTitle(station.name)
+                                .setIconUri(defaultIconUri)
+                                .build(),
+                            MediaItem.FLAG_PLAYABLE,
+                        )
+                    }
+            }
+            result.sendResult(items)
+        }
     }
 
     // Populates AA's "For You" surface. Without this, AA scrapes the top of the
@@ -724,6 +759,20 @@ class AutoLibrary(
     }
 
     /**
+     * Starts an AI Radio station on the local Sendspin player. The server resolves the target
+     * through `players.get_player`, so it wants the player id and not a queue id.
+     */
+    private suspend fun startAiRadioOnLocalPlayer(stationId: String) {
+        val playerId = mainDataSource.localPlayer.value?.player?.id ?: run {
+            androidAutoLog.w { "AI Radio: no local player — ignoring station $stationId" }
+            return
+        }
+        androidAutoLog.i { "AI Radio: starting station=$stationId on player=$playerId" }
+        aiRadioRepository.start(stationId, playerId)
+            .onFailure { androidAutoLog.w(it) { "AI Radio: start failed for $stationId" } }
+    }
+
+    /**
      * Dispatches [uris] to the local Sendspin player with [option], force-detaching
      * from any sync group. AA users want audio out of the head unit they're sitting
      * in, never mirrored to a house player.
@@ -779,6 +828,12 @@ class AutoLibrary(
     fun play(id: String, extras: Bundle?) {
         if (!settingsRepository.sendspinEnabled.value) {
             androidAutoLog.w { "Local player disabled — ignoring play($id)." }
+            return
+        }
+        // AI Radio stations have no URI, so they must be routed before the ParentRef parse
+        // below would drop them on its `uri` lookup.
+        MediaIds.aiRadioStationOf(id)?.let { stationId ->
+            scope.launch { startAiRadioOnLocalPlayer(stationId) }
             return
         }
         val parts = id.split("__")
@@ -868,6 +923,7 @@ internal object MediaIds {
     const val TAB_PODCASTS = "auto_lib_podcasts"
     const val TAB_RADIO = "auto_lib_radio"
     const val TAB_AUDIOBOOKS = "auto_lib_audiobooks"
+    const val TAB_AI_RADIO = "auto_lib_ai_radio"
 
     // Bulk-button extras carry the chosen DefaultClickAction.name so play() dispatches the
     // exact action the user configured (queue option or start-radio) rather than guessing.
@@ -893,8 +949,25 @@ internal object MediaIds {
     )
     private val typeToTab = tabToType.entries.associate { (k, v) -> v to k }
 
+    // A station id shares the sub-list separator on purpose: `parseSubListId` demands a known
+    // tab id before the separator, so `auto_ai_station|<id>` can never be mistaken for one.
+    private const val AI_STATION_PREFIX = "auto_ai_station$SUBLIST_SEP"
+
     fun tabMediaTypeOf(id: String): MediaType? = tabToType[id]
     fun tabIdOf(type: MediaType): String = typeToTab.getValue(type)
+
+    /** AI Radio has no [MediaType], so the category is the only key that covers every tab. */
+    fun tabIdOf(category: LibraryCategory): String =
+        if (category == LibraryCategory.AI_RADIO) {
+            TAB_AI_RADIO
+        } else {
+            tabIdOf(checkNotNull(category.mediaType))
+        }
+
+    fun aiRadioStationIdOf(stationId: String): String = AI_STATION_PREFIX + stationId
+
+    fun aiRadioStationOf(id: String): String? =
+        id.removePrefix(AI_STATION_PREFIX).takeIf { it != id }
 
     fun subListIdOf(type: MediaType, key: AutoSubList): String =
         "${tabIdOf(type)}$SUBLIST_SEP${key.name}"
