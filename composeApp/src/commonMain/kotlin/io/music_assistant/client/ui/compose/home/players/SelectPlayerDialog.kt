@@ -46,6 +46,7 @@ import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
+import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.players_title
@@ -168,16 +169,20 @@ private fun PlayerSelection(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // A dormant player stays selectable: pinning the selection to the
+                    // speaker the user wants keeps it there when the speaker wakes up.
+                    val dormant = item.player.isPoweredOff
                     PlayerIcon(
                         player = item.player,
                         isLocal = item.isLocal,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(20.dp).alphaOn(!dormant),
                     )
                     Text(
                         text = item.player.name,
                         modifier = Modifier
                             .padding(start = 8.dp)
-                            .weight(1f),
+                            .weight(1f)
+                            .alphaOn(!dormant),
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

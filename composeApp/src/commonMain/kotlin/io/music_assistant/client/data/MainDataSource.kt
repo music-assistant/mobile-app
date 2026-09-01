@@ -298,12 +298,11 @@ class MainDataSource(
     // --- Canonical media-session "now playing" source ---
     // Single source of truth for what the MediaSession / notification presents,
     // consumed by the Android SharedMediaSessionManager (the sole session writer)
-    // and its transport callback. Players eligible for the session are those that
-    // can play and have a current queue item.
+    // and its transport callback. See [isSessionEligible] for who qualifies.
     private val sessionPlayers: StateFlow<List<PlayerData>> =
         playersData
             .mapNotNull { (it as? DataState.Data)?.data }
-            .map { list -> list.filter { it.player.canPlay && it.queueInfo?.currentItem != null } }
+            .map { list -> list.filter(::isSessionEligible) }
             .stateIn(this, SharingStarted.Eagerly, emptyList())
 
     val sessionMultiplePlayers: StateFlow<Boolean> =
@@ -769,7 +768,10 @@ class MainDataSource(
                     if (isLocal || parent != null) {
                         emptyList()
                     } else {
-                        allPlayers.mapNotNull { it.asChildBindFor(player) }
+                        // Grouping is a command, so an unreachable player is no candidate:
+                        // the server would drop the set_members call for it.
+                        allPlayers.filter { it.isAvailable }
+                            .mapNotNull { it.asChildBindFor(player) }
                     }
                 if (isLocal && localData != null) {
                     // Repository is source of truth for the local player; surface the
@@ -1208,7 +1210,7 @@ class MainDataSource(
                     when (event) {
                         is PlayerAddedEvent -> {
                             playerFactory.create(event.data)
-                                .takeIf { it.shouldBeShown }
+                                .takeIf { it.isListed }
                                 ?.let { newPlayer ->
                                     _serverPlayers.update { oldState ->
                                         when (oldState) {
@@ -1259,7 +1261,7 @@ class MainDataSource(
                                     is DataState.Data -> {
                                         val players = oldState.data
                                         DataState.Data(
-                                            if (data.shouldBeShown) {
+                                            if (data.isListed) {
                                                 if (players.any { it.id == data.id }) {
                                                     players.map { if (it.id == data.id) data else it }
                                                 } else {
@@ -1518,13 +1520,16 @@ class MainDataSource(
             apiClient.sendRequest(Request.Player.all())
                 .resultAs<List<ServerPlayer>>()?.let { playerFactory.createList(it) }
                 ?.let { list ->
-                    val visiblePlayers = list.filter { it.shouldBeShown }
+                    val visiblePlayers = list.filter { it.isListed }
                     _serverPlayers.update {
                         DataState.Data(visiblePlayers)
                     }
                     // Forward to repository: real player if found, synthetic if not
                     val localPlayerId = settings.sendspinEffectivePlayerId.value
-                    val localServerPlayer = visiblePlayers.find { it.id == localPlayerId }
+                    // An unreachable Sendspin player still counts as absent: the synthetic
+                    // local player must take over, or Android Auto is left without one.
+                    val localServerPlayer =
+                        visiblePlayers.find { it.id == localPlayerId && it.isAvailable }
                     localPlayerController.onInitialPlayersReceived(
                         hasLocalPlayer = localServerPlayer != null,
                     )
@@ -1716,6 +1721,18 @@ class MainDataSource(
          *     the user's choice is offline.
          *  3. `null` when [visiblePlayerIds] is empty.
          */
+        /**
+         * True when the player may back the media session / notification.
+         *
+         * A player the server cannot reach is excluded even though it stays listed in the
+         * app: it accepts no commands, so a notification pointing at it would only offer
+         * dead transport buttons.
+         */
+        internal fun isSessionEligible(data: PlayerData): Boolean =
+            data.player.isAvailable &&
+                data.player.canPlay &&
+                data.queueInfo?.currentItem != null
+
         internal fun resolveSelectedPlayerId(
             visiblePlayerIds: List<String>,
             userChoice: String?,

@@ -7,7 +7,12 @@ data class Player(
     val type: PlayerType,
     /** Server-provided Material Design Icons name (e.g. "speaker"); null when absent. */
     val icon: String? = null,
-    val shouldBeShown: Boolean,
+    /** The player passes the user-facing visibility filters: enabled, not hidden. */
+    val isListed: Boolean,
+    /** The server can currently reach the device. It drops every command while this is false. */
+    val isAvailable: Boolean,
+    /** The player waits for an interactive setup step. No power command can help it. */
+    val needsSetup: Boolean,
     val canSetVolume: Boolean,
     val canPower: Boolean,
     val isPowered: Boolean,
@@ -29,7 +34,13 @@ data class Player(
     /** Unix (UTC) timestamp in seconds at which the sleep timer stops playback. */
     val sleepTimerExpiresAt: Double? = null,
 ) {
-    val isPoweredOff: Boolean get() = canPower && !isPowered
+    /**
+     * The player is there but asleep. Two server states look identical to the user — a
+     * device that is switched off, and one the server cannot reach any more (a speaker that
+     * dropped off the network in stand-by) — so both get the same dimmed card and the same
+     * power button.
+     */
+    val isPoweredOff: Boolean get() = !isAvailable || (canPower && !isPowered)
 
     val isGroup = type == PlayerType.GROUP
     val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true

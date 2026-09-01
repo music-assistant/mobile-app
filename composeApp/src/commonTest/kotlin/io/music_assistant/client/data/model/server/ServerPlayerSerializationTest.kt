@@ -37,6 +37,7 @@ class ServerPlayerSerializationTest {
         assertEquals("", player.provider)
         assertNull(player.type)
         assertEquals(false, player.available)
+        assertNull(player.needsSetup)
         assertTrue(player.supportedFeatures.isEmpty())
         assertEquals(true, player.enabled)
         assertEquals("", player.displayName)

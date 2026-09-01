@@ -216,11 +216,13 @@
   <string name="player_autoplay">Autoplay</string>
   <string name="player_crossfade">Crossfade</string>
   <string name="player_dynamic_colors">Dynamic colors</string>
+  <string name="player_needs_setup">Setup required</string>
   <string name="player_power_off">Power off</string>
   <string name="player_power_on">Power on</string>
   <string name="player_powered_off">Powered off</string>
   <string name="player_show_buffer_indicator">Show buffer indicator</string>
   <string name="player_sleep_timer">Sleep timer</string>
+  <string name="player_standby">Player is in stand-by mode. Tap to wake.</string>
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>

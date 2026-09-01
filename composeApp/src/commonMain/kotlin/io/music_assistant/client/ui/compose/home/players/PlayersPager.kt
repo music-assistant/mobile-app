@@ -888,7 +888,9 @@ private fun PlayerOverflowMenu(
 
     // Power sits at the very top of the menu, ahead of queue/player/navigation options.
     val powerOption = if (currentPlayer.player.canPower) {
-        val isPowered = currentPlayer.player.isPowered
+        // Reads the dormant state, not the raw flag: an unreachable player reports itself
+        // powered, and offering "Power off" for a sleeping speaker reads as nonsense.
+        val isPowered = !currentPlayer.player.isPoweredOff
         listOf(
             OverflowMenuOption(
                 title = stringResource(

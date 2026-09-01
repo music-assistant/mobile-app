@@ -28,7 +28,9 @@ class PlayerFactory(
             // for a group. If the server adds a genuinely new group-like type we
             // can surface it explicitly once the mobile app learns about it.
             type = PlayerType.fromServer(type) ?: PlayerType.PLAYER,
-            shouldBeShown = available && enabled && (hidden != true) && (hideInUi != true),
+            isListed = enabled && (hidden != true) && (hideInUi != true),
+            isAvailable = available,
+            needsSetup = needsSetup == true,
             canSetVolume = supportedFeatures.contains(PlayerFeature.VOLUME_SET),
             canPower = supportedFeatures.contains(PlayerFeature.POWER) && powerControl != null && powerControl != PLAYER_CONTROL_NONE,
             isPowered = powered == true,

@@ -24,6 +24,12 @@ data class ServerPlayer(
     @SerialName("type") val type: String? = null,
     // @SerialName("name") val name: String,
     @SerialName("available") val available: Boolean = false,
+    /**
+     * True while the player waits for an interactive setup step (pairing, password).
+     * The server serializes such a player with `available = false` too, so this is the
+     * only way to tell "asleep" from "not set up yet".
+     */
+    @SerialName("needs_setup") val needsSetup: Boolean? = null,
     // @SerialName("device_info") val deviceInfo: DeviceInfo,
     @SerialName("supported_features") val supportedFeatures: List<String> = emptyList(),
     @SerialName("can_group_with") val canGroupWith: List<String>? = null,
