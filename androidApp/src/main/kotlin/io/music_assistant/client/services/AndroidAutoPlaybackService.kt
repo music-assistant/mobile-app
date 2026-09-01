@@ -13,6 +13,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.utils.MediaConstants
 import io.music_assistant.client.R
+import io.music_assistant.client.auto.AndroidAutoArtwork
 import io.music_assistant.client.auto.AutoLibrary
 import io.music_assistant.client.auto.MediaIds
 import io.music_assistant.client.auto.androidAutoLog
@@ -50,6 +51,9 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     // Promoted only once a real media host (not SystemUI's notification rendering) binds.
     // Until then this service is a passive browse/lifetime holder of the shared session.
     private var promotedToHost = false
+
+    // Hosts holding a prefix grant on the artwork provider, revoked when this service goes away.
+    private val artworkClients = mutableSetOf<String>()
 
     override fun onCreate() {
         super.onCreate()
@@ -177,6 +181,14 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
     // SharedMediaSessionManager deactivates the session so no card is offered to the car.
     override fun onGetRoot(packageName: String, uID: Int, hints: Bundle?): BrowserRoot {
         androidAutoLog.i { "onGetRoot from package=$packageName uid=$uID" }
+        // Browse rows carry content:// artwork URIs, so the host needs a read grant. A refusal is
+        // never fatal: the host just falls back to the default icon, and onGetRoot must still
+        // return a root or the app hangs on a loading screen forever.
+        if (AndroidAutoArtwork.grantReadAccess(this, packageName, uID)) {
+            artworkClients += packageName
+        } else {
+            androidAutoLog.w { "Rejected artwork URI grant for package=$packageName uid=$uID" }
+        }
         promoteIfRealHost(packageName)
         val extras = Bundle().apply {
             putBoolean(MediaConstants.BROWSER_SERVICE_EXTRAS_KEY_SEARCH_SUPPORTED, true)
@@ -288,6 +300,8 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             sharedSession.unbindAutoHost()
         }
         sharedSession.release()
+        artworkClients.forEach { AndroidAutoArtwork.revokeReadAccess(this, it) }
+        artworkClients.clear()
         scope.cancel()
         super.onDestroy()
     }

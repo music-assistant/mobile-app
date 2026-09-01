@@ -210,7 +210,8 @@ class AutoLibrary(
                             .setMediaId(MediaIds.aiRadioStationIdOf(station.id))
                             .setTitle(station.name)
                             .setIconUri(
-                                artwork[station.id]?.let { Uri.parse(it) } ?: defaultIconUri,
+                                artwork[station.id]?.let(AndroidAutoArtwork::uriFor)
+                                    ?: defaultIconUri,
                             )
                             .build(),
                         MediaItem.FLAG_PLAYABLE,
@@ -1071,10 +1072,14 @@ fun @receiver:DrawableRes Int.toUri(context: Context): Uri = Uri.parse(
             '/' + context.resources.getResourceEntryName(this),
 )
 
+// [artworkUri] maps a server artwork URL onto a local content:// URI this process serves. A media
+// host fetches icon URIs itself, in its own UID, so a raw server URL is unreachable to it whenever
+// the app has routing the host does not. Injectable only so tests can assert the substitution.
 fun AppMediaItem.toMediaDescription(
     defaultIconUri: Uri,
     category: String? = null,
     parentUri: String? = null,
+    artworkUri: (String) -> Uri? = AndroidAutoArtwork::uriFor,
 ): MediaDescriptionCompat {
     return MediaDescriptionCompat.Builder()
         .setMediaId("${itemId}__${uri}__${mediaType}__$provider")
@@ -1082,7 +1087,7 @@ fun AppMediaItem.toMediaDescription(
         .setSubtitle(subtitle)
         .setMediaUri(uri?.let { Uri.parse(it) })
         .setIconUri(
-            image(ImageType.THUMB)?.url?.let { Uri.parse(it) }
+            image(ImageType.THUMB)?.url?.let(artworkUri)
             ?: defaultIconUri,
         )
         .setExtras(
