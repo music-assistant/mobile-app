@@ -29,7 +29,7 @@ class ItemNavigationOptionsTest {
     fun `AppMediaItem#navigationOptions does not include go to artist for track without artists`() {
         val track = AppMediaItemFixtures.track(artists = emptyList())
         composeTestRule.setContent {
-            val navigationOptions = track.navigationOptions { }
+            val navigationOptions = track.navigationOptions(navigateToItem = { })
             OverflowMenu(
                 expanded = true,
                 options = navigationOptions,
@@ -43,7 +43,7 @@ class ItemNavigationOptionsTest {
     fun `AppMediaItem#navigationOptions does not include go to album for track without album`() {
         val track = AppMediaItemFixtures.track(album = null)
         composeTestRule.setContent {
-            val navigationOptions = track.navigationOptions { }
+            val navigationOptions = track.navigationOptions(navigateToItem = { })
             OverflowMenu(
                 expanded = true,
                 options = navigationOptions,
@@ -59,7 +59,7 @@ class ItemNavigationOptionsTest {
         val track = AppMediaItemFixtures.track(artists = listOf(artist))
         var navigatedTo: AppMediaItem? = null
         composeTestRule.setContent {
-            val navigationOptions = track.navigationOptions { navigatedTo = it }
+            val navigationOptions = track.navigationOptions(navigateToItem = { navigatedTo = it })
             OverflowMenu(
                 expanded = true,
                 options = navigationOptions,
@@ -73,13 +73,66 @@ class ItemNavigationOptionsTest {
     }
 
     @Test
+    fun `go to album is hidden for a track listed inside its own album`() {
+        val album = AppMediaItemFixtures.album()
+        val track = AppMediaItemFixtures.track(album = album)
+        composeTestRule.setContent {
+            OverflowMenu(
+                expanded = true,
+                options = track.navigationOptions(navigateToItem = { }, containerItem = album),
+            )
+        }
+
+        composeTestRule.onNodeWithText(Res.string.action_go_to_album.get()).assertIsNotDisplayed()
+        // The artist entry is unrelated to the container, so it stays.
+        composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).assertIsDisplayed()
+    }
+
+    @Test
+    fun `go to artist is hidden for an album listed inside its only artist`() {
+        val artist = AppMediaItemFixtures.artist(name = "Solo")
+        val album = AppMediaItemFixtures.album(artist = artist)
+        composeTestRule.setContent {
+            OverflowMenu(
+                expanded = true,
+                options = album.navigationOptions(navigateToItem = { }, containerItem = artist),
+            )
+        }
+
+        composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).assertIsNotDisplayed()
+    }
+
+    @Test
+    fun `inside one artist a multi-artist track navigates straight to the other artist`() {
+        val container = AppMediaItemFixtures.artist(name = "Container")
+        val other = AppMediaItemFixtures.artist(name = "Other")
+        val track = AppMediaItemFixtures.track(artists = listOf(container, other))
+        var navigatedTo: AppMediaItem? = null
+        composeTestRule.setContent {
+            OverflowMenu(
+                expanded = true,
+                options = track.navigationOptions(
+                    navigateToItem = { navigatedTo = it },
+                    containerItem = container,
+                ),
+            )
+        }
+
+        composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
+
+        // Only one candidate is left, so the chooser is skipped.
+        composeTestRule.onNodeWithText(Res.string.action_choose_artist.get()).assertIsNotDisplayed()
+        assertEquals(other, navigatedTo)
+    }
+
+    @Test
     fun `multi-artist track opens the choose-artist dialog and navigates to the picked artist`() {
         val first = AppMediaItemFixtures.artist(name = "First")
         val second = AppMediaItemFixtures.artist(name = "Second")
         val track = AppMediaItemFixtures.track(artists = listOf(first, second))
         var navigatedTo: AppMediaItem? = null
         composeTestRule.setContent {
-            val navigationOptions = track.navigationOptions { navigatedTo = it }
+            val navigationOptions = track.navigationOptions(navigateToItem = { navigatedTo = it })
             OverflowMenu(
                 expanded = true,
                 options = navigationOptions,

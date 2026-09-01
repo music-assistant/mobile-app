@@ -18,8 +18,17 @@ import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * "Go to album" / "Go to artist" entries for [this] item.
+ *
+ * @param containerItem the item whose screen this list belongs to. Its own entry is dropped,
+ * because navigating there would push a duplicate of the screen the user already sees.
+ */
 @Composable
-fun AppMediaItem.navigationOptions(navigateToItem: (AppMediaItem) -> Unit): List<OverflowMenuOption> {
+fun AppMediaItem.navigationOptions(
+    navigateToItem: (AppMediaItem) -> Unit,
+    containerItem: AppMediaItem? = null,
+): List<OverflowMenuOption> {
     val item = this
     // When an item has multiple artists we can't pick for the user; hold the candidates
     // here so the shared "Choose artist" dialog (emitted below) can resolve the choice.
@@ -27,7 +36,7 @@ fun AppMediaItem.navigationOptions(navigateToItem: (AppMediaItem) -> Unit): List
     val options = buildList {
         when (item) {
             is Track -> {
-                if (item.album != null) {
+                if (item.album != null && !item.album.isSameItemAs(containerItem)) {
                     add(
                         OverflowMenuOption(
                             title = stringResource(Res.string.action_go_to_album),
@@ -39,14 +48,16 @@ fun AppMediaItem.navigationOptions(navigateToItem: (AppMediaItem) -> Unit): List
                     )
                 }
 
-                if (item.artists.isNotEmpty()) {
-                    add(goToArtist(item.artists, navigateToItem, onChoose = { artistChoices = it }))
+                val artists = item.artists.otherThan(containerItem)
+                if (artists.isNotEmpty()) {
+                    add(goToArtist(artists, navigateToItem, onChoose = { artistChoices = it }))
                 }
             }
 
             is Album -> {
-                if (item.artists.isNotEmpty()) {
-                    add(goToArtist(item.artists, navigateToItem, onChoose = { artistChoices = it }))
+                val artists = item.artists.otherThan(containerItem)
+                if (artists.isNotEmpty()) {
+                    add(goToArtist(artists, navigateToItem, onChoose = { artistChoices = it }))
                 }
             }
 
@@ -68,6 +79,8 @@ fun AppMediaItem.navigationOptions(navigateToItem: (AppMediaItem) -> Unit): List
     return options
 }
 
+// Returns a value on purpose: a Unit-returning @Composable gets its own restart scope, and
+// recomposing it alone would mutate an already-frozen buildList builder.
 @Composable
 private fun goToArtist(
     artists: List<Artist>,
@@ -83,3 +96,11 @@ private fun goToArtist(
         },
     )
 }
+
+/** Drops the artist whose screen the list belongs to; navigating there would go nowhere. */
+private fun List<Artist>.otherThan(containerItem: AppMediaItem?): List<Artist> =
+    filterNot { it.isSameItemAs(containerItem) }
+
+/** The same library entry, regardless of which provider mapping it arrived through. */
+private fun AppMediaItem.isSameItemAs(other: AppMediaItem?): Boolean =
+    other != null && itemId == other.itemId && mediaType == other.mediaType

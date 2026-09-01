@@ -21,6 +21,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 
 @Composable
@@ -28,6 +29,8 @@ fun AlbumWithMenu(
     item: Album,
     viewMode: ViewMode = ViewMode.GRID,
     onNavigateClick: (Album) -> Unit,
+    navigateToItem: (AppMediaItem) -> Unit,
+    containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<Album>,
     playlistActions: PlaylistActions? = null,
     libraryActions: LibraryActions,
@@ -40,6 +43,8 @@ fun AlbumWithMenu(
         },
         item = item,
         onNavigateClick = onNavigateClick,
+        navigateToItem = navigateToItem,
+        containerItem = containerItem,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
@@ -262,6 +267,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     modifier: Modifier = Modifier,
     item: T,
     onNavigateClick: (T) -> Unit,
+    navigateToItem: ((AppMediaItem) -> Unit)? = null,
+    containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<T>,
     playlistActions: PlaylistActions? = null,
     libraryActions: LibraryActions,
@@ -286,6 +293,11 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         progressSupported = progressActions != null && item is Audiobook,
         customizationAllowed = false,
     )
+
+    // Built outside the DropdownMenu so the multi-artist chooser dialog survives its dismissal.
+    val navOptions = navigateToItem
+        ?.let { item.navigationOptions(it, containerItem) }
+        ?: emptyList()
 
     Box(modifier = modifier) {
         // Browsable items stay navigable even when non-playable; dim + drop playback actions.
@@ -319,6 +331,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     else -> Unit
                 }
             }
+            navOptions.forEach { it.MenuItem(onClose = { expandedItemId = null }) }
         }
 
         if (showPlaylistDialog && playlistActions != null) {

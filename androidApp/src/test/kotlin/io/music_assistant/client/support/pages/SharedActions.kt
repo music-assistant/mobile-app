@@ -58,6 +58,22 @@ fun <T : ComposePage> T.clickItemOption(serverMediaItem: ServerMediaItem, action
     return this
 }
 
+/** Long-clicks [serverMediaItem], picks the [action] navigation entry, and lands on [target]. */
+fun ComposePage.clickItemNavigationOption(
+    serverMediaItem: ServerMediaItem,
+    action: String,
+    target: ServerMediaItem,
+    navigationItem: String,
+    withinTag: String? = null,
+): ItemPage {
+    composeTestRule.onNode(mediaItemMatcher(serverMediaItem, withinTag))
+        .performTouchInput { longClick() }
+    composeTestRule.onNodeWithText(action).performClick()
+
+    val type = MediaType.fromServer(target.mediaType) ?: MediaType.UNKNOWN
+    return ItemPage(target.name, type, navigationItem, composeTestRule).assertOnPage()
+}
+
 fun ComposePage.assertNavBar(items: List<String>, selected: String) {
     items.forEach {
         if (it == selected) {

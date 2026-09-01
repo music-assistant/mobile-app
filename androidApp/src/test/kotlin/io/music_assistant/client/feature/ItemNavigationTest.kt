@@ -7,10 +7,16 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
+import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.clickItemNavigationOption
 import io.music_assistant.client.support.pages.expandPlayer
 import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_go_to_album
+import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.nav_home
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,6 +43,36 @@ class ItemNavigationTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(album)
             .clickGoToArtist(artist.name)
+    }
+
+    @Test
+    fun `can navigate from an album long-click menu to its artist`() {
+        val artist = ServerMediaItemFixtures.artist()
+        val album = ServerMediaItemFixtures.album(artist = artist)
+        serviceClient.addItems(album)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickItemNavigationOption(
+                serverMediaItem = album,
+                action = Res.string.action_go_to_artist.get(),
+                target = artist,
+                navigationItem = Res.string.nav_home.get(),
+            )
+    }
+
+    @Test
+    fun `can navigate from a track long-click menu to its album`() {
+        val album = ServerMediaItemFixtures.album()
+        val track = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addItems(track)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickItemNavigationOption(
+                serverMediaItem = track,
+                action = Res.string.action_go_to_album.get(),
+                target = album,
+                navigationItem = Res.string.nav_home.get(),
+            )
     }
 
     @Test

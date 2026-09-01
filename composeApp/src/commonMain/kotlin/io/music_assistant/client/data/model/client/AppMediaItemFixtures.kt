@@ -37,9 +37,12 @@ object AppMediaItemFixtures {
         )
     }
 
-    fun artist(name: String = "Artist ${uniqueIdGenerator.nextInt()}"): Artist {
+    fun artist(
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Artist $itemId",
+    ): Artist {
         return Artist(
-            itemId = "blah",
+            itemId = itemId,
             provider = "blah",
             name = name,
             providerMappings = emptyList(),

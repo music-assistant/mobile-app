@@ -66,6 +66,7 @@ fun <T, U> CategoryRow(
     data: DataState<T>,
     itemCategoryProvider: (T) -> ItemCategory<U>,
     onNavigateClick: (AppMediaItem) -> Unit,
+    containerItem: AppMediaItem? = null,
     onNavigateToList: (String, ItemList) -> Unit = { _, _ -> },
     onOptionSelected: (U) -> Unit = {},
     onPlayClick: PlayHandler<AppMediaItem>,
@@ -78,6 +79,7 @@ fun <T, U> CategoryRow(
         CategoryRow(
             itemCategory = itemCategoryProvider(data.data),
             onNavigateClick = onNavigateClick,
+            containerItem = containerItem,
             onNavigateToList = onNavigateToList,
             onOptionSelected = onOptionSelected,
             onPlayClick = onPlayClick,
@@ -131,6 +133,7 @@ fun <T, U> CategoryRow(
 fun <T> CategoryRow(
     itemCategory: ItemCategory<T>,
     onNavigateClick: (AppMediaItem) -> Unit,
+    containerItem: AppMediaItem? = null,
     onNavigateToList: (String, ItemList) -> Unit = { _, _ -> },
     onOptionSelected: (T) -> Unit = {},
     onPlayClick: PlayHandler<AppMediaItem>,
@@ -167,6 +170,7 @@ fun <T> CategoryRow(
             }
         },
         onNavigateClick = onNavigateClick,
+        containerItem = containerItem,
         onPlayClick = onPlayClick,
         mediaItems = itemCategory.items,
         playlistActions = playlistActions,
@@ -182,6 +186,7 @@ fun CategoryRow(
     title: String,
     actions: @Composable () -> Unit = {},
     onNavigateClick: (AppMediaItem) -> Unit,
+    containerItem: AppMediaItem? = null,
     onPlayClick: PlayHandler<AppMediaItem>,
     mediaItems: List<AppMediaItem>,
     playlistActions: PlaylistActions,
@@ -237,6 +242,8 @@ fun CategoryRow(
                 is Album -> AlbumWithMenu(
                     item = item,
                     onNavigateClick = onNavigateClick,
+                    navigateToItem = onNavigateClick,
+                    containerItem = containerItem,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
@@ -261,6 +268,8 @@ fun CategoryRow(
 
                 is Track -> TrackWithMenu(
                     item = item,
+                    navigateToItem = onNavigateClick,
+                    containerItem = containerItem,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,

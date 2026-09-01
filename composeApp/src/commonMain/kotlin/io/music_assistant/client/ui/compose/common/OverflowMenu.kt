@@ -45,7 +45,7 @@ fun OverflowMenu(expanded: Boolean, onClose: () -> Unit = {}, options: List<Over
     ) {
         options.forEach { entry ->
             when (entry) {
-                is OverflowMenuOption -> entry.DropdownMenuItem(onClose)
+                is OverflowMenuOption -> entry.MenuItem(onClose)
                 OverflowMenuDivider -> HorizontalDivider()
             }
         }
@@ -68,8 +68,9 @@ data class OverflowMenuOption(
     val onClick: () -> Unit,
 ) : OverflowMenuEntry
 
+/** Renders this option as a menu row. Must be called inside a Material 3 menu container. */
 @Composable
-private fun OverflowMenuOption.DropdownMenuItem(onClose: () -> Unit) {
+fun OverflowMenuOption.MenuItem(onClose: () -> Unit) {
     DropdownMenuItem(
         onClick = {
             onClick()

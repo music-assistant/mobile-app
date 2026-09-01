@@ -119,6 +119,7 @@ fun AdaptiveMediaGrid(
                     item = item,
                     viewMode = viewMode,
                     onNavigateClick = onNavigateClick,
+                    navigateToItem = onNavigateClick,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
@@ -146,6 +147,7 @@ fun AdaptiveMediaGrid(
                 is Track -> TrackWithMenu(
                     item = item,
                     viewMode = viewMode,
+                    navigateToItem = onNavigateClick,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
