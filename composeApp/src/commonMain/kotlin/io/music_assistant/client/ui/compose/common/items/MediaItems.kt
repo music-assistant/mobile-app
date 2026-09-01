@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -1240,7 +1241,7 @@ private const val SUBTITLE_ALPHA = 0.6f
  * distinct color, keeping the hierarchy sleek and consistent app-wide.
  */
 @Composable
-private fun MediaItemLabels(
+internal fun MediaItemLabels(
     title: String,
     subtitle: String?,
     textAlign: TextAlign? = null,
@@ -1269,8 +1270,19 @@ private fun MediaItemLabels(
     }
 }
 
+/**
+ * The shared library row: leading image slot, title/subtitle, optional trailing slot.
+ *
+ * Takes strings and slots rather than an [AppMediaItem], so a row that is not a media item —
+ * an AI Radio station, say — can reuse the exact same metrics and typography.
+ *
+ * @param enabled false makes the row inert, ripple included. For a row that carries its action
+ *   in [suffixContent] instead, so a tap on the body is not answered with a ripple.
+ * @param suffixContent trailing slot, rendered after the weighted label column. When present it
+ *   may hold a control of its own, so the row's description is scoped to the labels — see below.
+ */
 @Composable
-private fun RowItem(
+internal fun RowItem(
     modifier: Modifier = Modifier,
     name: String,
     subtitle: String?,
@@ -1278,16 +1290,22 @@ private fun RowItem(
     prefixContent: @Composable (BoxScope.() -> Unit)?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    enabled: Boolean = true,
+    suffixContent: @Composable (RowScope.() -> Unit)? = null,
 ) {
+    // clearAndSetSemantics wipes every descendant's semantics too. On a whole-row tap target
+    // that is what we want — one node, one description. But a trailing control would be made
+    // invisible and unreachable to accessibility services by it, so a row that has one scopes
+    // the description to its labels and lets that control keep its own.
+    val describe = Modifier.clearAndSetSemantics { contentDescription = description }
+    val describesWholeRow = suffixContent == null
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clearAndSetSemantics {
-                contentDescription = description
-            },
+            .then(if (describesWholeRow) describe else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         prefixContent?.let {
@@ -1295,7 +1313,9 @@ private fun RowItem(
             Spacer(Modifier.width(12.dp))
         }
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(if (describesWholeRow) Modifier else describe),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             MediaItemLabels(
@@ -1304,6 +1324,7 @@ private fun RowItem(
                 titleMaxLines = 2,
             )
         }
+        suffixContent?.invoke(this)
     }
 }
 

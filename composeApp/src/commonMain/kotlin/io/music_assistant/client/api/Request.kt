@@ -899,10 +899,22 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
-        fun stop(sessionId: String) = Request(
+        /**
+         * Stops whatever run [stationId] currently has on air.
+         *
+         * Deliberately by station and not by session id. The server ignores `station_id`
+         * whenever a `session_id` is present, and a session id can only come from an earlier
+         * poll — by the time the user presses Stop that run may have ended on its own, and the
+         * stale id is answered with "Session X is not running (status=finished)". Asking by
+         * station instead lets the server pick the run that is actually live, and its "no
+         * active run found for station" is at least true when there is none.
+         *
+         * Safe because the provider caps concurrent runs at one, so a station has at most one.
+         */
+        fun stop(stationId: String) = Request(
             command = APICommands.AI_RADIO_STOP,
             args = buildJsonObject {
-                put("session_id", JsonPrimitive(sessionId))
+                put("station_id", JsonPrimitive(stationId))
             },
         )
 

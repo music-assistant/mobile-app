@@ -186,7 +186,8 @@ class AutoLibrary(
 
     /**
      * Stations of the optional `ai_radio` plugin, as playable rows. They carry no URI, so
-     * [play] routes them by their id prefix instead of through the normal queue dispatch.
+     * [play] routes them by their id prefix instead of through the normal queue dispatch, and
+     * no artwork, so each row borrows the cover of the playlist its station plays from.
      */
     private fun handleAiRadioStations(result: MediaBrowserServiceCompat.Result<List<MediaItem>>) {
         if (!mainDataSource.aiRadioAvailable.value) {
@@ -196,19 +197,25 @@ class AutoLibrary(
         result.detach()
         scope.launch {
             val items = cachedOrFetch(MediaIds.TAB_AI_RADIO) {
-                aiRadioRepository.stations()
+                val stations = aiRadioRepository.stations()
                     .onFailure { androidAutoLog.w(it) { "AI Radio: station list failed" } }
-                    .getOrNull()
-                    ?.map { station ->
-                        MediaItem(
-                            MediaDescriptionCompat.Builder()
-                                .setMediaId(MediaIds.aiRadioStationIdOf(station.id))
-                                .setTitle(station.name)
-                                .setIconUri(defaultIconUri)
-                                .build(),
-                            MediaItem.FLAG_PLAYABLE,
-                        )
-                    }
+                    .getOrNull() ?: return@cachedOrFetch null
+                // Awaited rather than filled in later: the browse tree has no per-item update.
+                // Each lookup is bounded inside the repository, and the result lands in the
+                // item cache, so the cost is paid once per cache window.
+                val artwork = aiRadioRepository.artworkUrls(stations)
+                stations.map { station ->
+                    MediaItem(
+                        MediaDescriptionCompat.Builder()
+                            .setMediaId(MediaIds.aiRadioStationIdOf(station.id))
+                            .setTitle(station.name)
+                            .setIconUri(
+                                artwork[station.id]?.let { Uri.parse(it) } ?: defaultIconUri,
+                            )
+                            .build(),
+                        MediaItem.FLAG_PLAYABLE,
+                    )
+                }
             }
             result.sendResult(items)
         }
