@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,9 +46,12 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.ui.inactive
+import io.music_assistant.client.utils.KeepScreenOn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_keep_screen_on_disable
+import musicassistantclient.composeapp.generated.resources.cd_keep_screen_on_enable
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_close
 import org.jetbrains.compose.resources.stringResource
 
@@ -65,6 +70,7 @@ fun LyricsSheet(
     onDismiss: () -> Unit,
 ) {
     var offsetSec by remember(lyrics) { mutableStateOf(0f) }
+    var keepScreenOn by remember { mutableStateOf(false) }
     val isSynced = lyrics is Lyrics.Synced
 
     ModalBottomSheet(
@@ -82,6 +88,9 @@ fun LyricsSheet(
                 .fillMaxHeight(LYRICS_BOTTOM_SHEET_HEIGHT)
                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
         ) {
+            // Scoped to the sheet: leaving the composition releases the screen lock,
+            // whichever way the sheet was closed.
+            KeepScreenOn(enabled = keepScreenOn)
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.End,
@@ -131,6 +140,27 @@ fun LyricsSheet(
                     },
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(onClick = { keepScreenOn = !keepScreenOn }) {
+                    Icon(
+                        imageVector = if (keepScreenOn) {
+                            Icons.Filled.Lightbulb
+                        } else {
+                            Icons.Outlined.Lightbulb
+                        },
+                        contentDescription = stringResource(
+                            if (keepScreenOn) {
+                                Res.string.cd_keep_screen_on_disable
+                            } else {
+                                Res.string.cd_keep_screen_on_enable
+                            },
+                        ),
+                        tint = if (keepScreenOn) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.inactive()
+                        },
+                    )
+                }
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Default.Close,
