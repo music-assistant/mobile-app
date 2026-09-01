@@ -1,7 +1,5 @@
 package io.music_assistant.client.data.repository
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
@@ -23,10 +21,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
@@ -200,20 +200,35 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
-fun ViewModel.updateItems(mediaItemRepository: MediaItemRepository, vararg stateFlows: MutableStateFlow<DataState<List<AppMediaItem>>>) {
-    stateFlows.forEach { stateFlow ->
-        viewModelScope.launch {
-            mediaItemRepository.itemChanges.collect { change ->
-                stateFlow.update { data ->
-                    when (data) {
-                        is DataState.Data -> data.copy(data = data.data.replacing(change.item))
-                        is DataState.Stale -> data.copy(data = data.data.replacing(change.item))
-                        else -> data
-                    }
+/**
+ * Creates a new [Flow] that applies live item updates from [MediaItemRepository.itemChanges] to the
+ * source [StateFlow].
+ */
+fun StateFlow<DataState<List<AppMediaItem>>>.withItemUpdates(
+    mediaItemRepository: MediaItemRepository,
+    scope: CoroutineScope,
+): Flow<DataState<List<AppMediaItem>>> {
+    val updatedFlow = MutableStateFlow(value)
+
+    scope.launch {
+        collect { dataState ->
+            updatedFlow.value = dataState
+        }
+    }
+
+    scope.launch {
+        mediaItemRepository.itemChanges.collect { change ->
+            updatedFlow.update { dataState ->
+                when (dataState) {
+                    is DataState.Data -> dataState.copy(data = dataState.data.replacing(change.item))
+                    is DataState.Stale -> dataState.copy(data = dataState.data.replacing(change.item))
+                    else -> dataState
                 }
             }
         }
     }
+
+    return updatedFlow
 }
 
 private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =

@@ -10,7 +10,7 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.data.repository.updateItems
+import io.music_assistant.client.data.repository.withItemUpdates
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.ui.compose.common.map
@@ -32,6 +32,7 @@ class ArtistDetailsViewModel(
 
     private val libraryItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     val library = libraryItems
+        .withItemUpdates(mediaItemRepository, viewModelScope)
         .mapData {
             Section(
                 items = it
@@ -45,6 +46,7 @@ class ArtistDetailsViewModel(
     private val allItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     private val allProviderFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val all = allItems
+        .withItemUpdates(mediaItemRepository, viewModelScope)
         .combine(allProviderFilter) { items, providerFilter ->
             if (providerFilter != null) {
                 items.map {
@@ -68,6 +70,7 @@ class ArtistDetailsViewModel(
     private val topTrackItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     private val topTracksProviderInfo = MutableStateFlow<Section.ProviderFilter?>(null)
     val topTracks = topTrackItems
+        .withItemUpdates(mediaItemRepository, viewModelScope)
         .combine(topTracksProviderInfo) { items, providerFilter ->
             if (providerFilter != null) {
                 items.map {
@@ -90,7 +93,6 @@ class ArtistDetailsViewModel(
 
     init {
         loadSections(artist)
-        updateItems(mediaItemRepository, libraryItems, allItems, topTrackItems)
     }
 
     private fun loadSections(artist: Artist) {
