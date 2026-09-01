@@ -13,6 +13,8 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.util.Base64
+import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 import androidx.media.MediaSessionManager
 import coil3.BitmapImage
 import coil3.Image
@@ -33,8 +35,6 @@ import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import androidx.core.net.toUri
-import androidx.core.graphics.createBitmap
 
 private const val JPEG_QUALITY = 88
 private const val MAX_CONCURRENT_FETCHES = 4
