@@ -1,5 +1,7 @@
 package io.music_assistant.client.data.repository
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
@@ -21,16 +23,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 interface MediaItemRepository {
@@ -199,30 +200,18 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
-/**
- * Keeps a [Flow] of [DataState] holding a list of [AppMediaItem] up to date with changes from the
- * server so that changing favorites etc. will get updated immediately.
- *
- */
-fun Flow<DataState<List<AppMediaItem>>>.updateFrom(mediaItemRepository: MediaItemRepository): Flow<DataState<List<AppMediaItem>>> {
-    /**
-     * Create a nullable default version of [MediaItemRepository.itemChanges] so that the result of
-     * `combine` doesn't wait for a change to emit. There isn't currently a [Flow] transformation
-     * that behaves like this: `zip` emits new pairs (it "buffers" one side until the other emits
-     * a corresponding value) and `combine` only emits once both [Flow] instances have emitted.
-     */
-    val nullableItemChanges: Flow<MediaItemChange?> = mediaItemRepository.itemChanges.map { it }
-    val itemChangesWithDefault = nullableItemChanges.onStart { emit(null) }
-
-    return this.combine(itemChangesWithDefault) { data, change ->
-        if (change != null) {
-            when (data) {
-                is DataState.Data -> data.copy(data = data.data.replacing(change.item))
-                is DataState.Stale -> data.copy(data = data.data.replacing(change.item))
-                else -> data
+fun ViewModel.updateItems(mediaItemRepository: MediaItemRepository, vararg stateFlows: MutableStateFlow<DataState<List<AppMediaItem>>>) {
+    stateFlows.forEach { stateFlow ->
+        viewModelScope.launch {
+            mediaItemRepository.itemChanges.collect { change ->
+                stateFlow.update { data ->
+                    when (data) {
+                        is DataState.Data -> data.copy(data = data.data.replacing(change.item))
+                        is DataState.Stale -> data.copy(data = data.data.replacing(change.item))
+                        else -> data
+                    }
+                }
             }
-        } else {
-            data
         }
     }
 }

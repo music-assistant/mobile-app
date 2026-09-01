@@ -10,7 +10,7 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.data.repository.updateFrom
+import io.music_assistant.client.data.repository.updateItems
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.ui.compose.common.map
@@ -21,7 +21,6 @@ import io.music_assistant.client.ui.compose.item.ItemList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -33,7 +32,6 @@ class ArtistDetailsViewModel(
 
     private val libraryItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     val library = libraryItems
-        .updateFrom(mediaItemRepository)
         .mapData {
             Section(
                 items = it
@@ -47,7 +45,6 @@ class ArtistDetailsViewModel(
     private val allItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     private val allProviderFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val all = allItems
-        .updateFrom(mediaItemRepository)
         .combine(allProviderFilter) { items, providerFilter ->
             if (providerFilter != null) {
                 items.map {
@@ -71,7 +68,6 @@ class ArtistDetailsViewModel(
     private val topTrackItems = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
     private val topTracksProviderInfo = MutableStateFlow<Section.ProviderFilter?>(null)
     val topTracks = topTrackItems
-        .updateFrom(mediaItemRepository)
         .combine(topTracksProviderInfo) { items, providerFilter ->
             if (providerFilter != null) {
                 items.map {
@@ -94,6 +90,7 @@ class ArtistDetailsViewModel(
 
     init {
         loadSections(artist)
+        updateItems(mediaItemRepository, libraryItems, allItems, topTrackItems)
     }
 
     private fun loadSections(artist: Artist) {
