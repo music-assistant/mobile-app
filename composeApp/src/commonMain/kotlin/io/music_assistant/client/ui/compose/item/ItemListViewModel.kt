@@ -9,10 +9,9 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.repository.MediaItemListMediator
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.data.repository.withItemUpdates
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,12 +22,12 @@ import kotlinx.serialization.Serializable
 
 class ItemListViewModel(
     private val itemList: ItemList,
-    private val mediaItemRepository: MediaItemRepository,
+    mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
-    private val items = MutableStateFlow<DataState<List<AppMediaItem>>>(DataState.Loading())
+    private val items = MediaItemListMediator(DataState.Loading(), mediaItemRepository)
+        .updateOn(viewModelScope)
     private var sortOption = MutableStateFlow(SortConfig.defaultFor(itemList.mediaType))
-    val state = items
-        .withItemUpdates(mediaItemRepository, viewModelScope)
+    val state = items.asFlow()
         .combine(sortOption) { items, sortOption ->
             State(items = items.map { it.clientSorted(sortOption) }, sortOption = sortOption)
         }.stateIn(
@@ -56,8 +55,7 @@ class ItemListViewModel(
                 )
             }
 
-            val result = mediaItemRepository.fetchMediaItems(request)
-            items.value = DataState.Data(result.getOrEmptyList())
+            items.set(request)
         }
     }
 

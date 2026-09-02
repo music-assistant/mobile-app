@@ -12,6 +12,7 @@ import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
@@ -200,35 +200,76 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
     )
 }
 
-/**
- * Creates a new [Flow] that applies live item updates from [MediaItemRepository.itemChanges] to the
- * source [StateFlow].
- */
-fun StateFlow<DataState<List<AppMediaItem>>>.withItemUpdates(
-    mediaItemRepository: MediaItemRepository,
-    scope: CoroutineScope,
-): Flow<DataState<List<AppMediaItem>>> {
-    val updatedFlow = MutableStateFlow(value)
+class MediaItemListMediator(
+    initial: DataState<List<AppMediaItem>>,
+    private val mediaItemRepository: MediaItemRepository,
+) {
+    private val stateFlow = MutableStateFlow(initial)
+    private var request: Request? = null
 
-    scope.launch {
-        collect { dataState ->
-            updatedFlow.value = dataState
-        }
+    suspend fun set(request: Request) {
+        this.request = request
+        reload()
     }
 
-    scope.launch {
-        mediaItemRepository.itemChanges.collect { change ->
-            updatedFlow.update { dataState ->
-                when (dataState) {
-                    is DataState.Data -> dataState.copy(data = dataState.data.replacing(change.item))
-                    is DataState.Stale -> dataState.copy(data = dataState.data.replacing(change.item))
-                    else -> dataState
+    fun set(items: List<AppMediaItem>, request: Request) {
+        this.request = request
+        stateFlow.value = DataState.Data(items)
+    }
+
+    fun setError() {
+        stateFlow.value = DataState.Error()
+    }
+
+    fun setEmpty() {
+        stateFlow.value = DataState.Data(emptyList())
+    }
+
+    fun updateOn(coroutineScope: CoroutineScope): MediaItemListMediator {
+        coroutineScope.launch {
+            mediaItemRepository.itemChanges.collect { change ->
+                when (change) {
+                    is MediaItemChange.Added -> reload()
+                    is MediaItemChange.Deleted -> reload()
+                    is MediaItemChange.Updated -> stateFlow.update { dataState ->
+                        when (dataState) {
+                            is DataState.Data -> dataState.copy(
+                                data = dataState.data.replacing(
+                                    change.item,
+                                ),
+                            )
+
+                            is DataState.Stale -> dataState.copy(
+                                data = dataState.data.replacing(
+                                    change.item,
+                                ),
+                            )
+
+                            else -> dataState
+                        }
+                    }
                 }
             }
         }
+
+        return this
     }
 
-    return updatedFlow
+    fun asFlow(): Flow<DataState<List<AppMediaItem>>> {
+        return stateFlow
+    }
+
+    private suspend fun reload() {
+        request?.let {
+            stateFlow.value = DataState.Loading()
+            try {
+                stateFlow.value =
+                    DataState.Data(mediaItemRepository.fetchMediaItems(it).getOrEmptyList())
+            } catch (_: Exception) {
+                stateFlow.value = DataState.Error()
+            }
+        }
+    }
 }
 
 private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =
