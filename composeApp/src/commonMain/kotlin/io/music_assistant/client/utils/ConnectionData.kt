@@ -75,3 +75,14 @@ sealed interface HasConnectionData {
     val wasAutoLogin: Boolean get() = connectionData.wasAutoLogin
     val dataConnectionState: DataConnectionState get() = connectionData.dataConnectionState
 }
+
+/**
+ * The proven auth token of the current session, or null when the session is not authenticated.
+ *
+ * Read this instead of `SettingsRepository.getTokenForServer`: the settings copy is written by a
+ * separate `sessionState` collector on another dispatcher, so a reader that reacts to the same
+ * emission can observe it empty.
+ */
+fun SessionState.authenticatedToken(): String? =
+    ((this as? SessionState.Connected)?.dataConnectionState as? DataConnectionState.Authenticated)
+        ?.token

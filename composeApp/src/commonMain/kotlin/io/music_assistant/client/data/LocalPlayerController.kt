@@ -28,7 +28,7 @@ import io.music_assistant.client.player.sendspin.model.GoodbyeReason
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.utils.SessionState
+import io.music_assistant.client.utils.authenticatedToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -450,9 +450,11 @@ class LocalPlayerController(
      * Safe for background: this controller is a singleton held by the foreground service.
      */
     suspend fun start() = sendspinMutex.withLock {
-        // Get prerequisites
-        val authToken = (apiClient.sessionState.value as? SessionState.Connected)
-            ?.serverInfo?.serverId?.let { settings.getTokenForServer(it) }
+        // Get prerequisites. The token comes from the live session state, not from settings:
+        // the settings copy is written by AuthenticationManager's own sessionState collector on
+        // the main dispatcher, so reading it here (IO, same emission) can observe it empty and
+        // dead-end the whole start — no client, no state, no dot.
+        val authToken = apiClient.sessionState.value.authenticatedToken()
 
         // Stop existing client if any (but preserve if it's actively connected, connecting, or reconnecting)
         sendspinClient?.let { existing ->
