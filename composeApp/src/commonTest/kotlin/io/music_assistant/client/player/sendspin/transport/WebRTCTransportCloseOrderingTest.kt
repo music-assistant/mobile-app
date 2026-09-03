@@ -15,6 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 /**
  * The channel-closed signal must be produced by the same coroutine that pumps
@@ -28,6 +29,28 @@ class WebRTCTransportCloseOrderingTest {
 
         override suspend fun receive(): DataChannelInbound =
             script.receiveCatching().getOrNull() ?: throw CancellationException("source closed")
+    }
+
+    @Test
+    fun sendingAfterTheDataChannelClosesDoesNotThrow() = runTest {
+        withContext(Dispatchers.Default) {
+            val source = ScriptedReceiveSource()
+            val wrapper = DataChannelWrapper(
+                dataChannel = null,
+                connectionEvents = null,
+                receiveSource = source,
+                initialState = DataChannelState.Closed,
+                label = "sendspin",
+            )
+            val transport = WebRTCDataChannelTransport(wrapper)
+
+            val result = runCatching {
+                transport.sendBinary(byteArrayOf(4, 1, 2, 3))
+            }
+
+            assertTrue(result.isSuccess)
+            transport.close()
+        }
     }
 
     @Test

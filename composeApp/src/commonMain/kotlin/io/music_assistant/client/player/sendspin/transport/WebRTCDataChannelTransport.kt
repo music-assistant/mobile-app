@@ -79,8 +79,11 @@ class WebRTCDataChannelTransport(
     override suspend fun sendText(message: String) {
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
-            logger.w { "Attempted to send text while channel not open (state: $currentState)" }
-            error("Channel not open (state: $currentState)")
+            // Closing can race with state reporting and queued protocol sends. The wrapper is
+            // best-effort after close, so dropping this frame avoids turning normal teardown
+            // into an uncaught coroutine exception.
+            logger.w { "Dropping text send while channel is not open (state: $currentState)" }
+            return
         }
 
         dataChannelWrapper.send(message)
@@ -89,8 +92,11 @@ class WebRTCDataChannelTransport(
     override suspend fun sendBinary(data: ByteArray) {
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
-            logger.w { "Attempted to send binary while channel not open (state: $currentState)" }
-            error("Channel not open (state: $currentState)")
+            // Closing can race with state reporting and queued protocol sends. The wrapper is
+            // best-effort after close, so dropping this frame avoids turning normal teardown
+            // into an uncaught coroutine exception.
+            logger.w { "Dropping binary send while channel is not open (state: $currentState)" }
+            return
         }
 
         dataChannelWrapper.sendBinary(data)
