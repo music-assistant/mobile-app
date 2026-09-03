@@ -9,6 +9,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
+import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.clientSorted
@@ -426,14 +427,11 @@ class ItemDetailsViewModel(
                     ?: emptyList()
 
                 rawPlayableItems = tracks
-                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(
-                    SubItemContext.ALBUM_TRACKS,
-                )
                 _state.update {
                     it.copy(
                         playableItemsState = DataState.Data(
                             tracks.clientSorted(
-                                sort,
+                                SortOption(SortField.ORIGINAL),
                                 SubItemContext.ALBUM_TRACKS,
                             ),
                         ),
@@ -462,14 +460,11 @@ class ItemDetailsViewModel(
                     ?: emptyList()
 
                 rawPlayableItems = tracks
-                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(
-                    SubItemContext.PLAYLIST_ITEMS,
-                )
                 _state.update {
                     it.copy(
                         playableItemsState = DataState.Data(
                             tracks.clientSorted(
-                                sort,
+                                SortOption(SortField.ORIGINAL),
                                 SubItemContext.PLAYLIST_ITEMS,
                             ),
                         ),
