@@ -52,6 +52,47 @@ class LibrarySortPersistenceTest {
     }
 
     @Test
+    fun `a stale playlist sort is ignored`() {
+        // Written by a build before the playlist sort options were removed.
+        val settings = MapSettings("sort_sub_PLAYLIST_ITEMS" to "ARTIST_NAME:false")
+        val repo = SettingsRepository(settings, MapSettings())
+        assertEquals(
+            SortConfig.defaultFor(SubItemContext.PLAYLIST_ITEMS),
+            repo.getSortOption(SubItemContext.PLAYLIST_ITEMS),
+        )
+    }
+
+    @Test
+    fun `a stale descending original sort is ignored`() {
+        // ORIGINAL is still a legal field, so only the fixed-order guard catches the direction.
+        val settings = MapSettings("sort_sub_PLAYLIST_ITEMS" to "ORIGINAL:true")
+        val repo = SettingsRepository(settings, MapSettings())
+        assertEquals(
+            SortOption(SortField.ORIGINAL),
+            repo.getSortOption(SubItemContext.PLAYLIST_ITEMS),
+        )
+    }
+
+    @Test
+    fun `a stale album track sort is ignored`() {
+        // A non-ORIGINAL field here also suppresses the multi-disc headers on the album page.
+        val settings = MapSettings("sort_sub_ALBUM_TRACKS" to "NAME:false")
+        val repo = SettingsRepository(settings, MapSettings())
+        assertEquals(
+            SortConfig.defaultFor(SubItemContext.ALBUM_TRACKS),
+            repo.getSortOption(SubItemContext.ALBUM_TRACKS),
+        )
+    }
+
+    @Test
+    fun `a sortable sub item context still round trips`() {
+        val repo = SettingsRepository(MapSettings(), MapSettings())
+        val option = SortOption(SortField.DURATION, descending = true)
+        repo.setSortOption(SubItemContext.PODCAST_EPISODES, option)
+        assertEquals(option, repo.getSortOption(SubItemContext.PODCAST_EPISODES))
+    }
+
+    @Test
     fun `library sort and detail sort do not share a key`() {
         val repo = SettingsRepository(MapSettings(), MapSettings())
         repo.setSortOption(MediaType.ALBUM, SortOption(SortField.YEAR, descending = true))

@@ -16,8 +16,8 @@ fun ItemSortChip(sortOption: SortOption, mediaType: MediaType, onSortChanged: (S
 
 @Composable
 fun ItemSortChip(sortOption: SortOption, sortContext: SubItemContext, onSortChanged: (SortOption) -> Unit) {
-    val availableFields = SortConfig.fieldsFor(sortContext)
-    ItemSortChip(sortOption, availableFields, onSortChanged)
+    if (!SortConfig.isUserSortable(sortContext)) return
+    ItemSortChip(sortOption, SortConfig.fieldsFor(sortContext), onSortChanged)
 }
 
 @Composable

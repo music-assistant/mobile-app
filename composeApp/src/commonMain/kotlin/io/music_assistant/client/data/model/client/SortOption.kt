@@ -78,6 +78,12 @@ object SortConfig {
         SubItemContext.PODCAST_EPISODES -> listOf(SortField.NAME, SortField.RELEASE_DATE, SortField.DURATION)
     }
 
+    /**
+     * True when the user can actually change the sort for [context]. A single-field context shows
+     * no chip (see ItemSortChip), so its order is fixed and must not be read from settings.
+     */
+    fun isUserSortable(context: SubItemContext): Boolean = fieldsFor(context).size > 1
+
     fun defaultFor(context: SubItemContext): SortOption = when (context) {
         SubItemContext.ARTIST_ALBUMS -> SortOption(SortField.YEAR, descending = true)
         SubItemContext.ALBUM_TRACKS -> SortOption(SortField.ORIGINAL)

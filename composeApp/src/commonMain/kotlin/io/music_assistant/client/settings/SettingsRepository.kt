@@ -785,9 +785,12 @@ class SettingsRepository(
     private fun librarySortKey(mediaType: MediaType) = "library_sort_${mediaType.name}"
 
     fun getSortOption(context: SubItemContext): SortOption {
-        val raw = settings.getStringOrNull("sort_sub_${context.name}")
-            ?: return SortConfig.defaultFor(context)
-        return parseSortOption(raw) ?: SortConfig.defaultFor(context)
+        // A fixed-order context has no chip, so a value persisted by an older app version could
+        // never be changed back — including a stale descending flag on ORIGINAL. Ignore it outright.
+        if (!SortConfig.isUserSortable(context)) return SortConfig.defaultFor(context)
+        val stored = settings.getStringOrNull("sort_sub_${context.name}")?.let { parseSortOption(it) }
+        return stored?.takeIf { it.field in SortConfig.fieldsFor(context) }
+            ?: SortConfig.defaultFor(context)
     }
 
     fun setSortOption(context: SubItemContext, option: SortOption) {
