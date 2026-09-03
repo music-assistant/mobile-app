@@ -32,23 +32,37 @@ class WebRTCTransportCloseOrderingTest {
     }
 
     @Test
-    fun sendingAfterTheDataChannelClosesDoesNotThrow() = runTest {
+    fun sendingAfterTheDataChannelClosesDoesNotThrowAndReportsTerminalFailure() = runTest {
         withContext(Dispatchers.Default) {
             val source = ScriptedReceiveSource()
             val wrapper = DataChannelWrapper(
                 dataChannel = null,
                 connectionEvents = null,
                 receiveSource = source,
-                initialState = DataChannelState.Closed,
+                initialState = DataChannelState.Open,
                 label = "sendspin",
             )
             val transport = WebRTCDataChannelTransport(wrapper)
+            val events = transport.events.produceIn(this)
+            transport.connect()
+            assertIs<InboundTransportEvent.Connected>(withTimeout(5_000) { events.receive() })
+            source.script.trySend(DataChannelInbound.Text("pump-ready"))
+            assertEquals(
+                "pump-ready",
+                assertIs<InboundTransportEvent.Text>(withTimeout(5_000) { events.receive() }).text,
+            )
 
+            wrapper.close()
             val result = runCatching {
                 transport.sendBinary(byteArrayOf(4, 1, 2, 3))
+                transport.sendText("after-close")
             }
 
             assertTrue(result.isSuccess)
+            val failure = assertIs<InboundTransportEvent.Error>(withTimeout(5_000) { events.receive() })
+            assertTrue(failure.permanent)
+            assertTrue(failure.cause.message.orEmpty().contains("closed"))
+            events.cancel()
             transport.close()
         }
     }

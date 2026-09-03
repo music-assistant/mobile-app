@@ -69,9 +69,25 @@ class WebRTCDataChannelTransport(
                     eventsChannel.send(event)
                 }
             } finally {
-                // Single producer: the closed signal follows every buffered frame
-                // instead of racing past them on a separate coroutine.
-                eventsChannel.trySend(InboundTransportEvent.Disconnected(EPOCH))
+                // A normal transport disconnect leaves the wrapper open because the channel is
+                // owned by WebRTCConnectionManager. A channel that is already closing/closed is
+                // terminal for this single-use Sendspin transport and needs a fresh negotiation.
+                val state = dataChannelWrapper.state.value
+                if (state == DataChannelState.Open) {
+                    // Single producer: the closed signal follows every buffered frame instead of
+                    // racing past them on a separate coroutine.
+                    eventsChannel.trySend(InboundTransportEvent.Disconnected(EPOCH))
+                } else {
+                    eventsChannel.trySend(
+                        InboundTransportEvent.Error(
+                            epoch = EPOCH,
+                            cause = IllegalStateException(
+                                "WebRTC Sendspin data channel closed (state: $state)",
+                            ),
+                            permanent = true,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -81,8 +97,10 @@ class WebRTCDataChannelTransport(
         if (currentState != DataChannelState.Open) {
             // Closing can race with state reporting and queued protocol sends. The wrapper is
             // best-effort after close, so dropping this frame avoids turning normal teardown
-            // into an uncaught coroutine exception.
+            // into an uncaught coroutine exception. Disconnect the transport as well so the
+            // protocol session observes the dead channel promptly.
             logger.w { "Dropping text send while channel is not open (state: $currentState)" }
+            disconnect()
             return
         }
 
@@ -94,8 +112,10 @@ class WebRTCDataChannelTransport(
         if (currentState != DataChannelState.Open) {
             // Closing can race with state reporting and queued protocol sends. The wrapper is
             // best-effort after close, so dropping this frame avoids turning normal teardown
-            // into an uncaught coroutine exception.
+            // into an uncaught coroutine exception. Disconnect the transport as well so the
+            // protocol session observes the dead channel promptly.
             logger.w { "Dropping binary send while channel is not open (state: $currentState)" }
+            disconnect()
             return
         }
 
