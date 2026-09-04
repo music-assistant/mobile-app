@@ -8,8 +8,8 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.MediaItemDataMediator
 import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.repository.MediaItemDataMediator
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map

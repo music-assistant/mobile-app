@@ -6,9 +6,9 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.MediaItemDataMediator
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
-import io.music_assistant.client.data.repository.MediaItemDataMediator
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map

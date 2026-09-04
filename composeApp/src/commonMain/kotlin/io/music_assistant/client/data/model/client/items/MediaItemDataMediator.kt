@@ -1,12 +1,13 @@
-package io.music_assistant.client.data.repository
+package io.music_assistant.client.data.model.client.items
 
 import io.music_assistant.client.api.Request
-import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.repository.MediaItemChange
+import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -77,7 +78,7 @@ class MediaItemDataMediator(
         return this
     }
 
-    fun asFlow(): Flow<DataState<List<AppMediaItem>>> {
+    fun asFlow(): StateFlow<DataState<List<AppMediaItem>>> {
         return stateFlow
     }
 
