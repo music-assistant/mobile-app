@@ -1,5 +1,7 @@
 package io.music_assistant.client.data.model.client.items
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -10,6 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+fun ViewModel.itemList(mediaItemRepository: MediaItemRepository): MediaItemDataMediator {
+    return MediaItemDataMediator(DataState.Loading(), mediaItemRepository).updateOn(viewModelScope)
+}
 
 /**
  * Mediator for storing and managing a [DataState] of a [AppMediaItem] list retrieved from a

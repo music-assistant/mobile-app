@@ -6,8 +6,8 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
-import io.music_assistant.client.data.model.client.items.MediaItemDataMediator
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.itemList
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -28,8 +28,7 @@ class ArtistDetailsViewModel(
 ) : ViewModel() {
     private val fetchArtistItemsUseCase = FetchArtistItemsUseCase(mediaItemRepository)
 
-    private val libraryItems = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
-        .updateOn(viewModelScope)
+    private val libraryItems = itemList(mediaItemRepository)
     val library = libraryItems.asFlow()
         .mapData {
             Section(
@@ -41,8 +40,7 @@ class ArtistDetailsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
-    private val allItems = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
-        .updateOn(viewModelScope)
+    private val allItems = itemList(mediaItemRepository)
     private val allProviderFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val all = allItems.asFlow()
         .combine(allProviderFilter) { items, providerFilter ->
@@ -65,8 +63,7 @@ class ArtistDetailsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
-    private val topTrackItems = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
-        .updateOn(viewModelScope)
+    private val topTrackItems = itemList(mediaItemRepository)
     private val topTracksProviderInfo = MutableStateFlow<Section.ProviderFilter?>(null)
     val topTracks = topTrackItems.asFlow()
         .combine(topTracksProviderInfo) { items, providerFilter ->
