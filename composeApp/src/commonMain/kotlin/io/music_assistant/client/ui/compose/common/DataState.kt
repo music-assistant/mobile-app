@@ -4,7 +4,7 @@ import io.music_assistant.client.utils.AppError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-sealed class DataState<T> {
+sealed class DataState<out T> {
     class Loading<T> : DataState<T>()
     data class Error<T>(val error: AppError? = null) : DataState<T>()
     class NoData<T> : DataState<T>()

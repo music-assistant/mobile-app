@@ -34,7 +34,7 @@ class MediaItemDataMediatorTest {
     @Test
     fun `set retrieves and stores items`() = runTest {
         val request = Request.Album.listLibrary()
-        val items = listOf<AppMediaItem>(AppMediaItemFixtures.album())
+        val items = listOf(AppMediaItemFixtures.album())
         mediaItemRepository.setItemsResult(
             request,
             Result.success(items),
@@ -48,7 +48,7 @@ class MediaItemDataMediatorTest {
     @Test
     fun `set with items stores items`() = runTest {
         val request = Request.Album.listLibrary()
-        val items = listOf<AppMediaItem>(AppMediaItemFixtures.album())
+        val items = listOf(AppMediaItemFixtures.album())
 
         val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
         mediator.set(items, request)
@@ -58,7 +58,7 @@ class MediaItemDataMediatorTest {
     @Test
     fun `setStale sets data to stale`() {
         val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
-        val items = listOf<AppMediaItem>(AppMediaItemFixtures.album())
+        val items = listOf(AppMediaItemFixtures.album())
         mediator.set(items, Request.Album.listLibrary())
 
         mediator.setStale(0L, StaleReason.RECONNECTING)
@@ -76,7 +76,7 @@ class MediaItemDataMediatorTest {
     fun `updateOn updates stored items when Updated happens`() = runTest {
         val request = Request.Album.listLibrary()
         val item = AppMediaItemFixtures.album()
-        val items = listOf<AppMediaItem>(item)
+        val items = listOf(item)
 
         val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
             .updateOn(unconfinedScope)
@@ -85,14 +85,14 @@ class MediaItemDataMediatorTest {
 
         val updatedItem = item.copy(name = "changed!")
         mediaItemRepository.fireChange(MediaItemChange.Updated(updatedItem))
-        assertEquals(DataState.Data(listOf<AppMediaItem>(updatedItem)), mediator.asFlow().value)
+        assertEquals(DataState.Data(listOf(updatedItem)), mediator.asFlow().value)
     }
 
     @Test
     fun `updateOn updates stale stored items when Updated happens`() = runTest {
         val request = Request.Album.listLibrary()
         val item = AppMediaItemFixtures.album()
-        val items = listOf<AppMediaItem>(item)
+        val items = listOf(item)
 
         val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
             .updateOn(unconfinedScope)
@@ -103,7 +103,7 @@ class MediaItemDataMediatorTest {
         val updatedItem = item.copy(name = "changed!")
         mediaItemRepository.fireChange(MediaItemChange.Updated(updatedItem))
         assertEquals(
-            DataState.Stale(listOf<AppMediaItem>(updatedItem), 0L, StaleReason.RECONNECTING),
+            DataState.Stale(listOf(updatedItem), 0L, StaleReason.RECONNECTING),
             mediator.asFlow().value,
         )
     }
@@ -112,7 +112,7 @@ class MediaItemDataMediatorTest {
     fun `updateOn reloads items when Added happens`() = runTest {
         val request = Request.Album.listLibrary()
         val item = AppMediaItemFixtures.album(itemId = "1", name = "Original Album")
-        val items = listOf<AppMediaItem>(item)
+        val items = listOf(item)
 
         val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
             .updateOn(unconfinedScope)
@@ -121,7 +121,7 @@ class MediaItemDataMediatorTest {
 
         val newItem = AppMediaItemFixtures.album(itemId = "2", name = "New Album")
         // Add extra item to ensure we're reloading from MediaItemRepository
-        val updatedItems = listOf<AppMediaItem>(item, newItem, AppMediaItemFixtures.album())
+        val updatedItems = listOf(item, newItem, AppMediaItemFixtures.album())
         mediaItemRepository.setItemsResult(request, Result.success(updatedItems))
 
         mediaItemRepository.fireChange(MediaItemChange.Added(newItem))
@@ -133,7 +133,7 @@ class MediaItemDataMediatorTest {
         val request = Request.Album.listLibrary()
         val item1 = AppMediaItemFixtures.album()
         val item2 = AppMediaItemFixtures.album()
-        val items = listOf<AppMediaItem>(item1, item2)
+        val items = listOf(item1, item2)
 
         val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
             .updateOn(unconfinedScope)
@@ -141,7 +141,7 @@ class MediaItemDataMediatorTest {
         mediator.set(items, request)
 
         // Add extra item to ensure we're reloading from MediaItemRepository
-        val remainingItems = listOf<AppMediaItem>(item1, AppMediaItemFixtures.album())
+        val remainingItems = listOf(item1, AppMediaItemFixtures.album())
         mediaItemRepository.setItemsResult(request, Result.success(remainingItems))
 
         mediaItemRepository.fireChange(MediaItemChange.Deleted(item2))
