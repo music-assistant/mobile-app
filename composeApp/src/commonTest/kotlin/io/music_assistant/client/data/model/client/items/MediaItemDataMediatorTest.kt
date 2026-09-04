@@ -6,6 +6,7 @@ import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.SearchResultData
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.StaleReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -16,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class MediaItemDataMediatorTest {
     private val mediaItemRepository = StubMediaItemRepository()
@@ -54,6 +56,23 @@ class MediaItemDataMediatorTest {
     }
 
     @Test
+    fun `setStale sets data to stale`() {
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+        val items = listOf<AppMediaItem>(AppMediaItemFixtures.album())
+        mediator.set(items, Request.Album.listLibrary())
+
+        mediator.setStale(0L, StaleReason.RECONNECTING)
+        assertEquals(DataState.Stale(items, 0L, StaleReason.RECONNECTING), mediator.asFlow().value)
+    }
+
+    @Test
+    fun `setStale does not change data when it is still loading`() {
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+        mediator.setStale(0L, StaleReason.RECONNECTING)
+        assertIs<DataState.Loading<List<AppMediaItem>>>(mediator.asFlow().value)
+    }
+
+    @Test
     fun `updateOn updates stored items when Updated happens`() = runTest {
         val request = Request.Album.listLibrary()
         val item = AppMediaItemFixtures.album()
@@ -67,6 +86,26 @@ class MediaItemDataMediatorTest {
         val updatedItem = item.copy(name = "changed!")
         mediaItemRepository.fireChange(MediaItemChange.Updated(updatedItem))
         assertEquals(DataState.Data(listOf<AppMediaItem>(updatedItem)), mediator.asFlow().value)
+    }
+
+    @Test
+    fun `updateOn updates stale stored items when Updated happens`() = runTest {
+        val request = Request.Album.listLibrary()
+        val item = AppMediaItemFixtures.album()
+        val items = listOf<AppMediaItem>(item)
+
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+            .updateOn(unconfinedScope)
+
+        mediator.set(items, request)
+        mediator.setStale(0L, StaleReason.RECONNECTING)
+
+        val updatedItem = item.copy(name = "changed!")
+        mediaItemRepository.fireChange(MediaItemChange.Updated(updatedItem))
+        assertEquals(
+            DataState.Stale(listOf<AppMediaItem>(updatedItem), 0L, StaleReason.RECONNECTING),
+            mediator.asFlow().value,
+        )
     }
 
     @Test

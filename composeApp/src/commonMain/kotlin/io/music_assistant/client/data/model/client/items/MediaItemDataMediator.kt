@@ -6,6 +6,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.StaleReason
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,15 @@ class MediaItemDataMediator(
 
     fun setEmpty() {
         stateFlow.value = DataState.Data(emptyList())
+    }
+
+    fun setStale(disconnectedAt: Long, reason: StaleReason) {
+        stateFlow.update {
+            when (it) {
+                is DataState.Data -> DataState.Stale(it.data, disconnectedAt, reason)
+                else -> it
+            }
+        }
     }
 
     fun updateOn(coroutineScope: CoroutineScope): MediaItemDataMediator {
