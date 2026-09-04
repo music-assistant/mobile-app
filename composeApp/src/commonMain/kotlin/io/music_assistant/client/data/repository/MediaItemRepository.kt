@@ -11,8 +11,6 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
-import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -22,16 +20,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 interface MediaItemRepository {
@@ -199,81 +193,6 @@ suspend fun MediaItemRepository.fetchRecommendationFolders(): Result<List<Recomm
         },
     )
 }
-
-class MediaItemListMediator(
-    initial: DataState<List<AppMediaItem>>,
-    private val mediaItemRepository: MediaItemRepository,
-) {
-    private val stateFlow = MutableStateFlow(initial)
-    private var request: Request? = null
-
-    suspend fun set(request: Request) {
-        this.request = request
-        reload()
-    }
-
-    fun set(items: List<AppMediaItem>, request: Request) {
-        this.request = request
-        stateFlow.value = DataState.Data(items)
-    }
-
-    fun setError() {
-        stateFlow.value = DataState.Error()
-    }
-
-    fun setEmpty() {
-        stateFlow.value = DataState.Data(emptyList())
-    }
-
-    fun updateOn(coroutineScope: CoroutineScope): MediaItemListMediator {
-        coroutineScope.launch {
-            mediaItemRepository.itemChanges.collect { change ->
-                when (change) {
-                    is MediaItemChange.Added -> reload()
-                    is MediaItemChange.Deleted -> reload()
-                    is MediaItemChange.Updated -> stateFlow.update { dataState ->
-                        when (dataState) {
-                            is DataState.Data -> dataState.copy(
-                                data = dataState.data.replacing(
-                                    change.item,
-                                ),
-                            )
-
-                            is DataState.Stale -> dataState.copy(
-                                data = dataState.data.replacing(
-                                    change.item,
-                                ),
-                            )
-
-                            else -> dataState
-                        }
-                    }
-                }
-            }
-        }
-
-        return this
-    }
-
-    fun asFlow(): Flow<DataState<List<AppMediaItem>>> {
-        return stateFlow
-    }
-
-    private suspend fun reload() {
-        request?.let {
-            stateFlow.value = DataState.Loading()
-            try {
-                stateFlow.value =
-                    DataState.Data(mediaItemRepository.fetchMediaItems(it).getOrEmptyList())
-            } catch (_: Exception) {
-                stateFlow.value = DataState.Error()
-            }
-        }
-    }
-}
-
-private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =
-    map { if (it.itemId == changed.itemId) changed else it }
 
 /** Server schema version that split `music/recommendations` into rows + per-row items. */
 private const val RECOMMENDATION_ITEMS_SCHEMA = 39

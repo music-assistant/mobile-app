@@ -9,7 +9,7 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.repository.MediaItemListMediator
+import io.music_assistant.client.data.repository.MediaItemDataMediator
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
@@ -24,7 +24,7 @@ class ItemListViewModel(
     private val itemList: ItemList,
     mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
-    private val items = MediaItemListMediator(DataState.Loading(), mediaItemRepository)
+    private val items = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
         .updateOn(viewModelScope)
     private var sortOption = MutableStateFlow(SortConfig.defaultFor(itemList.mediaType))
     val state = items.asFlow()

@@ -8,7 +8,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ProviderMapping
-import io.music_assistant.client.data.repository.MediaItemListMediator
+import io.music_assistant.client.data.repository.MediaItemDataMediator
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
@@ -28,7 +28,7 @@ class ArtistDetailsViewModel(
 ) : ViewModel() {
     private val fetchArtistItemsUseCase = FetchArtistItemsUseCase(mediaItemRepository)
 
-    private val libraryItems = MediaItemListMediator(DataState.Loading(), mediaItemRepository)
+    private val libraryItems = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
         .updateOn(viewModelScope)
     val library = libraryItems.asFlow()
         .mapData {
@@ -41,7 +41,7 @@ class ArtistDetailsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
-    private val allItems = MediaItemListMediator(DataState.Loading(), mediaItemRepository)
+    private val allItems = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
         .updateOn(viewModelScope)
     private val allProviderFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val all = allItems.asFlow()
@@ -65,7 +65,7 @@ class ArtistDetailsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
-    private val topTrackItems = MediaItemListMediator(DataState.Loading(), mediaItemRepository)
+    private val topTrackItems = MediaItemDataMediator(DataState.Loading(), mediaItemRepository)
         .updateOn(viewModelScope)
     private val topTracksProviderInfo = MutableStateFlow<Section.ProviderFilter?>(null)
     val topTracks = topTrackItems.asFlow()
