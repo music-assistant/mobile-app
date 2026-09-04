@@ -1206,7 +1206,7 @@ private fun PreviewPlaylist(isRowMode: Boolean = true) {
     AppTheme(darkTheme = false) {
         ItemDetails(
             state = ItemDetailsViewModel.State(
-                DataState.Data(AppMediaItemFixtures.playlist("Title")),
+                DataState.Data(AppMediaItemFixtures.playlist("Title", "blah")),
                 DataState.NoData(),
                 DataState.Data(AppMediaItemFixtures.tracks(listOf("Track 1", "Track 2"))),
             ),
@@ -1258,8 +1258,8 @@ private fun PreviewAudiobook(isRowMode: Boolean = true) {
             state = ItemDetailsViewModel.State(
                 DataState.Data(
                     AppMediaItemFixtures.audiobook(
-                        "Title",
-                        listOf("Chapter 1", "Chapter 2"),
+                        name = "Title",
+                        chapters = listOf("Chapter 1", "Chapter 2"),
                     ),
                 ),
                 DataState.NoData(),

@@ -57,15 +57,11 @@ class MediaItemDataMediator(
                     is MediaItemChange.Updated -> stateFlow.update { dataState ->
                         when (dataState) {
                             is DataState.Data -> dataState.copy(
-                                data = dataState.data.replacing(
-                                    change.item,
-                                ),
+                                data = dataState.data.replacing(change.item),
                             )
 
                             is DataState.Stale -> dataState.copy(
-                                data = dataState.data.replacing(
-                                    change.item,
-                                ),
+                                data = dataState.data.replacing(change.item),
                             )
 
                             else -> dataState
@@ -96,4 +92,4 @@ class MediaItemDataMediator(
 }
 
 private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =
-    map { if (it.itemId == changed.itemId) changed else it }
+    map { if (it.hasAnyMappingFrom(changed)) changed else it }
