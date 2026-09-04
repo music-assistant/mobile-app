@@ -159,6 +159,7 @@ fun ItemDetailsScreen(
         onLoadSimilarArtists = itemDetailsViewModel::loadSimilarArtists,
         onAlbumMappingChanged = itemDetailsViewModel::loadAlbumsForProvider,
         onTrackMappingChanged = itemDetailsViewModel::loadTopTracksForProvider,
+        onRefreshPlaylist = itemDetailsViewModel::refreshPlaylistTracks,
     )
 }
 
@@ -189,6 +190,7 @@ fun ItemDetails(
     onLoadSimilarArtists: () -> Unit = {},
     onAlbumMappingChanged: (ProviderMapping) -> Unit = { },
     onTrackMappingChanged: (ProviderMapping) -> Unit = { },
+    onRefreshPlaylist: () -> Unit = {},
 ) {
     val playlistActions = object : PlaylistActions {
         override suspend fun getEditablePlaylists(): List<Playlist> {
@@ -279,6 +281,7 @@ fun ItemDetails(
                     onLoadSimilarArtists = onLoadSimilarArtists,
                     onAlbumMappingChanged = onAlbumMappingChanged,
                     onTrackMappingChanged = onTrackMappingChanged,
+                    onRefreshPlaylist = onRefreshPlaylist,
                 )
             }
 
@@ -318,6 +321,7 @@ private fun ItemContent(
     onLoadSimilarArtists: () -> Unit,
     onAlbumMappingChanged: (ProviderMapping) -> Unit,
     onTrackMappingChanged: (ProviderMapping) -> Unit,
+    onRefreshPlaylist: () -> Unit,
 ) {
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
     val tabs = state.tabs
@@ -371,6 +375,9 @@ private fun ItemContent(
                 playlistActions = playlistActions.takeIf { item.supportsAddToPlaylist },
                 navigateToItem = onNavigateClick,
                 onSimilarArtistsClick = { showSimilarArtists = true },
+                // force_refresh is a playlist-tracks-only server argument, so no other
+                // media type gets the action.
+                onRefresh = onRefreshPlaylist.takeIf { item is Playlist },
             )
         },
     ) {

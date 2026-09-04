@@ -446,7 +446,11 @@ class ItemDetailsViewModel(
         }
     }
 
-    private fun loadPlaylistTracks(itemId: String, provider: String) {
+    private fun loadPlaylistTracks(
+        itemId: String,
+        provider: String,
+        forceRefresh: Boolean = false,
+    ) {
         viewModelScope.launch {
             _state.update { it.copy(playableItemsState = DataState.Loading()) }
 
@@ -455,7 +459,7 @@ class ItemDetailsViewModel(
                     Request.Playlist.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
-                        forceRefresh = null,
+                        forceRefresh = forceRefresh.takeIf { it },
                     ),
                 ).getOrNull()
                     ?.filterIsInstance<PlayableItem>()
@@ -664,6 +668,14 @@ class ItemDetailsViewModel(
                 ),
             )
         }
+    }
+
+    // Bypasses the server's playlist-tracks cache, which is the only way to make a
+    // provider playlist (e.g. "Random Album") produce a new selection on demand.
+    fun refreshPlaylistTracks() {
+        if (_state.value.playableItemsState is DataState.Loading) return
+        val playlist = (state.value.itemState as? DataState.Data)?.data as? Playlist ?: return
+        loadPlaylistTracks(playlist.itemId, playlist.provider, forceRefresh = true)
     }
 
     fun reload() {

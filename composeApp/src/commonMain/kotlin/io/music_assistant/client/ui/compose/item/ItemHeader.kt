@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -81,6 +82,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_similar_artists
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.common_back
+import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -157,6 +159,7 @@ internal fun ItemTopBar(
     playlistActions: PlaylistActions?,
     navigateToItem: (AppMediaItem) -> Unit,
     onSimilarArtistsClick: () -> Unit,
+    onRefresh: (() -> Unit)? = null,
 ) {
     // Flat fill equal to the header gradient's top color, so the bar reads as one
     // continuous wash with the header below it. Back/overflow icons are NOT control-tinted
@@ -187,6 +190,14 @@ internal fun ItemTopBar(
                 }
             },
             actions = {
+                onRefresh?.let { refresh ->
+                    IconButton(onClick = refresh) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            stringResource(Res.string.refresh),
+                        )
+                    }
+                }
                 ItemOverflow(
                     item = item,
                     libraryActions = libraryActions,
