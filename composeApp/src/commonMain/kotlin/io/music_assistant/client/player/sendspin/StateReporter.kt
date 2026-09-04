@@ -80,10 +80,20 @@ class StateReporter(
     /**
      * Send immediate state report to server (event-driven).
      * Used for volume/mute changes or initial sync.
+     *
+     * Best-effort, like the periodic path above: a report racing a transport that is
+     * going down must not escape into the caller's collector, which typically runs in
+     * a supervised scope with no exception handler.
      */
     suspend fun reportNow(state: PlayerStateValue) {
         logger.d { "Reporting state: state=$state" }
-        messageDispatcher.sendState(PlayerStateObject(state = state))
+        try {
+            messageDispatcher.sendState(PlayerStateObject(state = state))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.w { "Dropped state report ($state): ${e.message}" }
+        }
     }
 
     /**

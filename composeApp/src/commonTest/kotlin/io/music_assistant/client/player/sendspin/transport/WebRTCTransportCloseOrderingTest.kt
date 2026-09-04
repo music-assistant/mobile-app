@@ -14,6 +14,7 @@ import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -31,8 +32,13 @@ class WebRTCTransportCloseOrderingTest {
             script.receiveCatching().getOrNull() ?: throw CancellationException("source closed")
     }
 
+    /**
+     * Both transports report a send on a dead connection the same way: they throw.
+     * A silent drop would be worse than a throw on the encrypted protocol, where the
+     * Noise nonce is already spent on the frame before the transport ever sees it.
+     */
     @Test
-    fun sendingAfterTheDataChannelClosesDoesNotThrowAndReportsTerminalFailure() = runTest {
+    fun sendingAfterTheDataChannelClosesThrows() = runTest {
         withContext(Dispatchers.Default) {
             val source = ScriptedReceiveSource()
             val wrapper = DataChannelWrapper(
@@ -46,22 +52,12 @@ class WebRTCTransportCloseOrderingTest {
             val events = transport.events.produceIn(this)
             transport.connect()
             assertIs<InboundTransportEvent.Connected>(withTimeout(5_000) { events.receive() })
-            source.script.trySend(DataChannelInbound.Text("pump-ready"))
-            assertEquals(
-                "pump-ready",
-                assertIs<InboundTransportEvent.Text>(withTimeout(5_000) { events.receive() }).text,
-            )
 
             wrapper.close()
-            val result = runCatching {
-                transport.sendBinary(byteArrayOf(4, 1, 2, 3))
-                transport.sendText("after-close")
-            }
 
-            assertTrue(result.isSuccess)
-            val failure = assertIs<InboundTransportEvent.Error>(withTimeout(5_000) { events.receive() })
-            assertTrue(failure.permanent)
-            assertTrue(failure.cause.message.orEmpty().contains("closed"))
+            assertFailsWith<IllegalStateException> { transport.sendText("after-close") }
+            assertFailsWith<IllegalStateException> { transport.sendBinary(byteArrayOf(4, 1, 2, 3)) }
+            assertTrue(transport.isSingleUse)
             events.cancel()
             transport.close()
         }

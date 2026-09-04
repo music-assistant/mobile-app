@@ -29,6 +29,8 @@ class WebRTCDataChannelTransport(
     private val eventsChannel = Channel<InboundTransportEvent>(Channel.UNLIMITED)
     override val events: Flow<InboundTransportEvent> = eventsChannel.receiveAsFlow()
 
+    override val isSingleUse: Boolean = true
+
     private var pumping = false
 
     init {
@@ -69,25 +71,11 @@ class WebRTCDataChannelTransport(
                     eventsChannel.send(event)
                 }
             } finally {
-                // A normal transport disconnect leaves the wrapper open because the channel is
-                // owned by WebRTCConnectionManager. A channel that is already closing/closed is
-                // terminal for this single-use Sendspin transport and needs a fresh negotiation.
-                val state = dataChannelWrapper.state.value
-                if (state == DataChannelState.Open) {
-                    // Single producer: the closed signal follows every buffered frame instead of
-                    // racing past them on a separate coroutine.
-                    eventsChannel.trySend(InboundTransportEvent.Disconnected(EPOCH))
-                } else {
-                    eventsChannel.trySend(
-                        InboundTransportEvent.Error(
-                            epoch = EPOCH,
-                            cause = IllegalStateException(
-                                "WebRTC Sendspin data channel closed (state: $state)",
-                            ),
-                            permanent = true,
-                        ),
-                    )
-                }
+                // Single producer: the closed signal follows every buffered frame
+                // instead of racing past them on a separate coroutine. Whether that
+                // disconnect is terminal is [isSingleUse], not a state peek here —
+                // the wrapper's Closed state is published after the inbound feed ends.
+                eventsChannel.trySend(InboundTransportEvent.Disconnected(EPOCH))
             }
         }
     }
@@ -95,13 +83,8 @@ class WebRTCDataChannelTransport(
     override suspend fun sendText(message: String) {
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
-            // Closing can race with state reporting and queued protocol sends. The wrapper is
-            // best-effort after close, so dropping this frame avoids turning normal teardown
-            // into an uncaught coroutine exception. Disconnect the transport as well so the
-            // protocol session observes the dead channel promptly.
-            logger.w { "Dropping text send while channel is not open (state: $currentState)" }
-            disconnect()
-            return
+            logger.w { "Attempted to send text while channel not open (state: $currentState)" }
+            error("Channel not open (state: $currentState)")
         }
 
         dataChannelWrapper.send(message)
@@ -110,13 +93,8 @@ class WebRTCDataChannelTransport(
     override suspend fun sendBinary(data: ByteArray) {
         val currentState = dataChannelWrapper.state.value
         if (currentState != DataChannelState.Open) {
-            // Closing can race with state reporting and queued protocol sends. The wrapper is
-            // best-effort after close, so dropping this frame avoids turning normal teardown
-            // into an uncaught coroutine exception. Disconnect the transport as well so the
-            // protocol session observes the dead channel promptly.
-            logger.w { "Dropping binary send while channel is not open (state: $currentState)" }
-            disconnect()
-            return
+            logger.w { "Attempted to send binary while channel not open (state: $currentState)" }
+            error("Channel not open (state: $currentState)")
         }
 
         dataChannelWrapper.sendBinary(data)

@@ -19,6 +19,8 @@ class WebSocketSendspinTransport(
     override val events: Flow<InboundTransportEvent>
         get() = sendspinWsHandler.events
 
+    override val isSingleUse: Boolean = false
+
     override suspend fun connect() {
         sendspinWsHandler.connect()
     }

@@ -23,7 +23,6 @@ import io.music_assistant.client.player.sendspin.session.SendspinProtocolSession
 import io.music_assistant.client.player.sendspin.session.SessionEvent
 import io.music_assistant.client.player.sendspin.session.SessionOutcome
 import io.music_assistant.client.player.sendspin.transport.SendspinTransport
-import io.music_assistant.client.player.sendspin.transport.WebRTCDataChannelTransport
 import io.music_assistant.client.player.sendspin.transport.WebSocketSendspinTransport
 import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.CancellationException
@@ -153,7 +152,7 @@ class SendspinClient(
             currentVolume = mediaPlayerController.getCurrentSystemVolume()
             logger.i { "Initializing with system volume: $currentVolume%" }
 
-            terminalTransport = sendspinTransport is WebRTCDataChannelTransport
+            terminalTransport = sendspinTransport.isSingleUse
             val protocolSession = createSession(sendspinTransport)
             session = protocolSession
 
@@ -368,8 +367,12 @@ class SendspinClient(
 
             SessionEvent.Disconnected -> {
                 val current = _state.value
-                if (current !is SendspinState.Reconnecting) {
-                    _state.update { SendspinState.Idle }
+                when {
+                    // A single-use transport never opens a second epoch, so a
+                    // disconnect IS exhaustion — Idle would strand the player with
+                    // nobody to renegotiate the channel.
+                    terminalTransport -> enterChannelExhausted()
+                    current !is SendspinState.Reconnecting -> _state.update { SendspinState.Idle }
                 }
             }
 
@@ -379,17 +382,8 @@ class SendspinClient(
 
             is SessionEvent.Failed -> {
                 if (terminalTransport) {
-                    // Surface as exhaustion so the controller negotiates a fresh channel.
                     logger.w(event.cause) { "Session failed on terminal transport — channel exhausted" }
-                    stateReporter?.stop()
-                    _state.update {
-                        SendspinState.Error(
-                            SendspinError.Permanent(
-                                cause = WebRTCSendspinChannelExhausted(),
-                                userAction = "Reconnecting remote channel",
-                            ),
-                        )
-                    }
+                    enterChannelExhausted()
                 } else if (event.permanent) {
                     // Keep the pipeline draining its buffer; a quick reconnect resumes into it.
                     stateReporter?.stop()
@@ -412,6 +406,22 @@ class SendspinClient(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * The single-use transport is spent: surface it as a permanent error so
+     * [io.music_assistant.client.data.LocalPlayerController] negotiates a fresh channel.
+     */
+    private fun enterChannelExhausted() {
+        stateReporter?.stop()
+        _state.update {
+            SendspinState.Error(
+                SendspinError.Permanent(
+                    cause = WebRTCSendspinChannelExhausted(),
+                    userAction = "Reconnecting remote channel",
+                ),
+            )
         }
     }
 

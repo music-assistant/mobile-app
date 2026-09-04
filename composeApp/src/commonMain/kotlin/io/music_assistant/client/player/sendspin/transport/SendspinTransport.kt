@@ -57,6 +57,13 @@ interface SendspinTransport {
     /** The single ordered inbound event stream. */
     val events: Flow<InboundTransportEvent>
 
+    /**
+     * True when this transport opens exactly one epoch: any [InboundTransportEvent.Disconnected]
+     * is terminal and recovery needs a fresh transport instance. False when the transport
+     * reconnects itself and a disconnect may be followed by another `Connected`.
+     */
+    val isSingleUse: Boolean
+
     suspend fun connect()
 
     suspend fun sendText(message: String)

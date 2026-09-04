@@ -16,6 +16,8 @@ class FakeSendspinTransport : SendspinTransport {
     private val eventsChannel = Channel<InboundTransportEvent>(Channel.UNLIMITED)
     override val events: Flow<InboundTransportEvent> = eventsChannel.receiveAsFlow()
 
+    override var isSingleUse: Boolean = false
+
     val textOut = Channel<String>(Channel.UNLIMITED)
     val binaryOut = Channel<ByteArray>(Channel.UNLIMITED)
 
