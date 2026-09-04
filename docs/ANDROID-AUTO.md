@@ -4,9 +4,11 @@ Music Assistant exposes one `MediaBrowserService` (`AndroidAutoPlaybackService`)
 
 1. **Android Auto** — the in-car experience (DHU or a real head unit).
 2. **Phone media notification** — the persistent notification with playback controls.
-3. **Voice playback** — Google Assistant *and* Gemini, both in the car and on the phone.
+3. **Voice playback** — in the car, and on the phone with the classic Google Assistant.
 
 This document covers what each surface does, how the voice routing works, and the limits of each.
+
+> **Gemini cannot start playback from voice on the phone.** Gemini replaced the classic Google Assistant and does not use the App Actions mechanism this app declares. The app cannot change that. Read Section 4 before you open a bug report about it.
 
 ---
 
@@ -22,7 +24,7 @@ Production / Play Store builds work out of the box. For debug or self-signed APK
 
 Changing the phone's *Customize Tabs* setting takes effect on the next browse refresh — no reconnect required.
 
-> **The Local Player must be enabled for MA to appear in Android Auto.** Android Auto is scoped entirely to the local on-device player, so with it disabled the browser service denies real media hosts — `onGetRoot` returns `null` for every non-SystemUI caller. MA then stays out of the car's media-app list and never seizes the now-playing slot from another app. The phone media notification for *remote* MA players is unaffected (SystemUI still gets a valid root and the `MediaSession` stays active). Enabling the local player while already connected to AA takes effect on the next AA reconnect.
+> **Enable the Local Player before you use Android Auto.** Android Auto is scoped to the local on-device player. `onGetRoot` always returns a valid root — a refusal does not hide the app, because the app is declared as a media app, so the car keeps it listed and shows a loading screen forever. With the local player disabled, `AutoLibrary` serves one explanatory row instead of the library, and `SharedMediaSessionManager` deactivates the session. The car then shows the app but offers no content and no now-playing card, so the app cannot seize the media slot on behalf of a remote player. The phone media notification for *remote* players is unaffected. Enable the local player while the car is connected, and the change takes effect on the next Android Auto reconnect.
 
 ---
 
@@ -51,7 +53,8 @@ Both the in-car AA voice path and the phone-side App Actions path terminate at *
 
 ```
                        In-car AA voice               Phone-side voice
-                       (DHU / real head unit)        (Gemini, Google Assistant)
+                       (DHU / real head unit)        (classic Google Assistant;
+                                                      NOT Gemini — see Section 4)
                               │                              │
                               │             ┌────────────────┴────────────────┐
                               │             │  shortcuts.xml capability:      │
@@ -117,18 +120,32 @@ When the Assistant doesn't tag a focus type, the app cascades **Track → Artist
 
 ---
 
-## 4. Phone-side voice — App Actions
+## 4. Phone-side voice — App Actions, and the Gemini limit
 
-Phone-side voice routing is wired via the **App Actions** framework. The capability declaration in `androidApp/src/main/res/xml/shortcuts.xml` registers `actions.intent.PLAY_MEDIA` with seven `<intent>` clauses (one per schema.org media type plus an unstructured fallback). The Assistant NLU matches the spoken phrase, picks the clause whose `media.@type` slot fits, projects the recognised slots into `MEDIA_PLAY_FROM_SEARCH` extras, and fires the intent at `VoicePlayDispatchActivity`.
+Phone-side voice routing uses the **App Actions** framework. The capability declaration in `androidApp/src/main/res/xml/shortcuts.xml` registers `actions.intent.PLAY_MEDIA` with seven `<intent>` clauses. There is one clause per schema.org media type, plus an unstructured fallback. The Assistant NLU matches the spoken phrase. It picks the clause that fits the `media.@type` slot, projects the recognised slots into `MEDIA_PLAY_FROM_SEARCH` extras, and sends the intent to `VoicePlayDispatchActivity`.
 
-### User-side enablement (one-time per Assistant)
+App Actions is the **classic Google Assistant** mechanism.
 
-Even with the capability declared, both Assistants require a one-time opt-in:
+### Gemini does not use App Actions
 
-- **Google Assistant** — open *Google app → profile → Settings → Google Assistant → Music* and either select Music Assistant as default or pick *No default provider* so the "on Music Assistant" suffix is honored. If MA isn't in the music-provider list, open the app once after install so the system can register the App Actions metadata.
-- **Gemini** — open *Gemini → profile → Apps / Extensions / Connected apps* and toggle Music Assistant on. The capability declaration is what makes MA appear in this list.
+Gemini replaced the classic Google Assistant on Android in September 2026. Gemini does not read App Actions built-in intents. Ask Gemini to "play <something> on Music Assistant" and it answers that the app is not supported by its tools. No `VoiceDispatch` log line appears, because the intent never leaves Google.
 
-App Actions registration is best-effort on Google's side; in some cases it takes a few minutes (or a phone reboot) for the NLU index to refresh after install.
+**This app cannot fix that.** Gemini routes media to a Google-side partner list of connected apps. At the time of writing that list holds iHeartRadio, Pandora and Spotify. The successor developer API, AppFunctions, is in a private preview for trusted testers. No manifest entry, capability declaration or session flag adds an app to the list. Do not accept a bug report that says the app must declare something to appear there.
+
+Keep the App Actions declaration. It costs nothing, it still works on a device where the classic Assistant survives, and it is the entry point for the `adb` tests in Section 5.
+
+### What still works
+
+| Surface | Command | Status |
+|---|---|---|
+| Android Auto (car or DHU) | "play Radiohead" | Works. Uses the browser service and the media session, not App Actions. |
+| Gemini or Assistant, transport control | "pause", "next", "resume" | Works while the app has a session. The session advertises `ACTION_PLAY_FROM_SEARCH` and the other transport actions in every state, including the idle state. |
+| Gemini, phone | "play X on Music Assistant" | Refused by Gemini. Not fixable in the app. |
+| Classic Google Assistant, phone | "play X on Music Assistant" | Works where the classic Assistant is still installed. |
+
+### User-side enablement for the classic Assistant
+
+Open *Google app → profile → Settings → Google Assistant → Music*. Select Music Assistant as the default provider, or select *No default provider* so the "on Music Assistant" suffix is honored. If the app is not in the music-provider list, open the app one time after install so the system can register the App Actions metadata. Registration is best-effort on Google's side. It can need a few minutes, or a phone restart, before the NLU index refreshes.
 
 ### Architecture notes
 
@@ -197,31 +214,31 @@ For Assistant-side validation without speaking, install Google's [App Actions Te
 ### Logcat trace
 
 ```bash
-adb logcat -v time \
-  VoiceDispatch:V AAService:V SharedSession:V \
-  AAPlayFromSearch:V AAVoice:V '*:S'
+adb logcat -v time VoiceDispatch:V AndroidAuto:V SharedSession:V '*:S'
 ```
+
+The app emits three tags: `VoiceDispatch`, `AndroidAuto` (the browse library and the playback service share it) and `SharedSession`. Earlier versions of this document named `AAService`, `AAPlayFromSearch` and `AAVoice`. Those tags do not exist. Do not use them, or you capture an empty log.
 
 A successful voice command produces this sequence:
 
 1. `VoiceDispatch: Received voice intent …` *(phone-side only)*
 2. `VoiceDispatch: Bound session token acquired — sending playFromSearch …` *(phone-side only)*
-3. `AAService: onCreate …` and `AAService: onGetRoot from package=…`
-4. `SharedSession: acquire(auto=true) — AA callback now active`
-5. `AAPlayFromSearch: onPlayFromSearch query="…" extras={…}`
-6. `AAPlayFromSearch: Dispatching to AutoLibrary with queueId=… (local player)`
-7. `AAVoice: searchAndPlay focus=… query="…"`
-8. `AAVoice:   → … found: N` and `→ matched … uri=…`
-9. `AAVoice: Library.play REPLACE queueId=… items=… first=…`
+3. `AndroidAuto: onGetRoot from package=…`
+4. `AndroidAuto: Real media host '…' — promoting to AA owner (projection=…)`
+5. `SharedSession: acquire — refCount=…`
+6. `AndroidAuto: onPlayFromSearch query="…" extras={…}`
+7. `AndroidAuto: Dispatching to AutoLibrary (local player ready)`
+8. `AndroidAuto: searchAndPlay focus=… query="…"`
+9. `AndroidAuto: Library.play REPLACE queueId=… items=… first=…`
 
-Where each "missing step" points the finger:
+Each missing step points the finger:
 
 | Missing | Cause | Fix |
 |---|---|---|
-| No `VoiceDispatch` | Assistant didn't route to us (Connected apps / default-provider problem) | Enable MA in Assistant settings; see Section 4 |
-| `VoiceDispatch` present but no `AAPlayFromSearch` | Local player disabled (`onGetRoot` denies the host by design), or `MediaBrowser` bind failed (rare) | Enable the Local Player; otherwise check that the AA service isn't crashing |
-| `AAPlayFromSearch` present but no `AAVoice` | Local player did not initialize within 10s | Open the app once to bootstrap auth + local player |
-| `AAVoice` zero-hit warning | Query returned no matches against your library | Verify the query exists in MA |
+| No `VoiceDispatch` | The assistant did not route to the app. With Gemini this is expected and permanent — see Section 4. | Check that you use the classic Assistant, and see the enablement steps in Section 4. |
+| `VoiceDispatch` present, but no `onPlayFromSearch` | The `MediaBrowser` bind failed. Rare. | Check that the playback service does not crash. |
+| `onPlayFromSearch` present, but no `searchAndPlay` | The local player is disabled, or it did not start in 10 seconds. | Enable the Local Player. Open the app one time to start authentication and the local player. |
+| `searchAndPlay` present, but a zero-hit warning | The query matched nothing in the library. | Check that the query exists in Music Assistant. |
 
 ---
 
@@ -230,7 +247,8 @@ Where each "missing step" points the finger:
 - **Local player required**: the whole Android Auto surface (browsing, voice, now-playing) is gated on the local on-device player being enabled. With it disabled, MA is deliberately invisible to AA (see Section 1) so it can never take over the car's media slot on behalf of a remote player. There is intentionally no "not enabled" placeholder in the car — MA simply doesn't appear.
 - **Player target**: voice playback always goes to the **local on-device player** (the phone speakers or whatever the phone's audio output is routed to). Voice control of remote MA players (a Sonos in the kitchen, a Squeezebox in the office) is not supported — voice integration is scoped to the local player only.
 - **Android Auto voice routing when another app is playing**: the AA Assistant frequently ignores the "on Music Assistant" suffix when another media app currently owns the active `MediaSession`. Workaround: focus Music Assistant in the AA media-app picker first, or pause the other app. This is documented Google behavior, not something we can override from the app side.
-- **Phone Assistant routing to default provider**: with Spotify (or another partner-certified app) configured as the default music provider, both Gemini and Google Assistant may pre-empt the routing decision before our App Actions capability fires. Set the default provider to MA — or to "none" — to avoid this.
+- **Gemini does not play from voice on the phone**: Gemini ignores App Actions and routes media only to apps on a Google-side partner list. The app cannot join that list. See Section 4. Android Auto voice and Gemini transport control ("pause", "next") are unaffected.
+- **Phone Assistant routing to default provider**: with Spotify (or another partner-certified app) set as the default music provider, the classic Google Assistant can decide the routing before the App Actions capability fires. Set the default provider to Music Assistant, or to "none", to avoid this.
 - **Podcast freshness**: "latest episode" is picked by `release_date` (lexicographic max). Providers that emit non-ISO-8601 release-date strings may yield a wrong pick.
 - **Genre voice intent**: there is no curated "genre radio" — the genre name is just passed as a query string to the track search. Quality depends entirely on how providers tag their genres.
 - **App label**: Assistant matches the app by its launcher label ("Music Assistant"). If your launcher renames or hides the app, voice routing can fail — restore the default label.
@@ -244,9 +262,11 @@ Where each "missing step" points the finger:
 When voice routing misbehaves, capture:
 
 1. The exact phrase you spoke.
-2. The `AAPlayFromSearch` and `AAVoice` log lines (use the filter in Section 5).
-3. Which surface — phone Assistant / Gemini / DHU mic / "Hey Google" in real car.
-4. What you expected vs. what played.
+2. The `VoiceDispatch` and `AndroidAuto` log lines. Use the filter in Section 5.
+3. The surface: classic Assistant on the phone, Gemini, the DHU microphone, or "Hey Google" in a real car.
+4. What you expected, and what played.
+
+Read Section 4 first. If the surface is Gemini on the phone, and the log holds no `VoiceDispatch` line, then Gemini refused the request before it reached the app. That is a Google limit, not an app defect.
 
 Open an issue at [music-assistant/mobile-app](https://github.com/music-assistant/mobile-app/issues) with that information. The `focus` + `query` pair is the single most useful debugging signal.
 

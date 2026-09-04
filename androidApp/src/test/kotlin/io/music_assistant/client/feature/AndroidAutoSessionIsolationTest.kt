@@ -42,7 +42,7 @@ class AndroidAutoSessionIsolationTest {
 
     @Test
     fun `binding a car host with no local player blocks the session`() {
-        sharedSession.bindAutoHost(noOpHandler)
+        sharedSession.bindAutoHost(noOpHandler, isProjectionHost = true)
         assertTrue(sharedSession.autoHostActive.value)
 
         awaitBlocked(expected = true)
@@ -50,6 +50,23 @@ class AndroidAutoSessionIsolationTest {
         sharedSession.unbindAutoHost()
         assertFalse(sharedSession.autoHostActive.value)
         awaitBlocked(expected = false)
+    }
+
+    /**
+     * A generic media binder — Assistant, Gemini, Wear, or the app's own
+     * VoicePlayDispatchActivity — registers a play handler but must never isolate the session.
+     * It used to, which deactivated the session and blanked the phone notification for a remote
+     * player on every voice attempt.
+     */
+    @Test
+    fun `binding a non-projection host never isolates or blocks the session`() {
+        sharedSession.bindAutoHost(noOpHandler, isProjectionHost = false)
+        assertFalse(sharedSession.autoHostActive.value)
+
+        awaitBlocked(expected = false)
+
+        sharedSession.unbindAutoHost()
+        assertFalse(sharedSession.autoHostActive.value)
     }
 
     // The blocked flow is debounced to ride out Sendspin bootstrap, so poll rather than

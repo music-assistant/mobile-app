@@ -2,6 +2,12 @@
 <!--
   Google App Actions capability map for voice playback.
 
+  LEGACY PATH. App Actions is the classic Google Assistant mechanism. Gemini,
+  which replaced it, does not read built-in intents — its media routing is a
+  Google-side partner list this app cannot join. Kept because it still works
+  where the classic Assistant survives, and because it is the adb entry point
+  for voice testing. See docs/ANDROID-AUTO.md section 4.
+
   Each <intent> clause within actions.intent.PLAY_MEDIA is selected by the
   Assistant NLU based on the recognised media.@type slot. Slots are projected
   into the same extra keys our AutoLibrary.searchAndPlay pipeline already

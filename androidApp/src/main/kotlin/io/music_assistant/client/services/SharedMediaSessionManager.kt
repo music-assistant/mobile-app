@@ -56,6 +56,31 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
+ * Transport actions advertised on EVERY PlaybackState this manager publishes.
+ *
+ * Voice hosts (Android Auto search, Assistant/Gemini, Wear, AVRCP) read this bitmask to decide
+ * whether the app can be driven at all, so a state written without it makes the app look
+ * incapable at exactly the moment the user speaks. That includes the idle and error states —
+ * "play X" and a voice retry both arrive when nothing is playing.
+ *
+ * Every bit here MUST have a matching override in [SharedMediaSessionManager.createCallback].
+ * Deliberately absent: ACTION_STOP, ACTION_SET_SHUFFLE_MODE and ACTION_SET_REPEAT_MODE have no
+ * override (shuffle and repeat are custom actions here), and advertising them gives hosts dead
+ * buttons. PREPARE_FROM_* are absent because there is no prepare pipeline — see the "no
+ * onPrepareFromSearch" note in docs/ANDROID-AUTO.md.
+ */
+private val SESSION_TRANSPORT_ACTIONS: Long =
+    PlaybackStateCompat.ACTION_PLAY or
+        PlaybackStateCompat.ACTION_PAUSE or
+        PlaybackStateCompat.ACTION_PLAY_PAUSE or
+        PlaybackStateCompat.ACTION_SEEK_TO or
+        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+        PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM or
+        PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
+        PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+
+/**
  * Single source of truth for the app's MediaSession **and** its sole writer.
  *
  * Both AndroidAutoPlaybackService and MainMediaPlaybackService share this instance
@@ -197,10 +222,19 @@ class SharedMediaSessionManager(
         }
     }
 
-    /** A real AA host connected: isolate the session to the local player + accept browse/voice play. */
-    fun bindAutoHost(handler: AutoPlayHandler) {
+    /**
+     * A media host connected: accept browse/voice play from it.
+     *
+     * [isProjectionHost] separates two facts that used to be conflated. Every host needs the
+     * handler registered — that is just "where does a play request go". Only a projection host
+     * (the car) may additionally isolate the session to the local player, because that isolation
+     * deactivates the session when no local player exists. Passing true for a generic media
+     * binder (Assistant, Gemini, Wear, or our own VoicePlayDispatchActivity) blanks the phone
+     * notification for a remote player.
+     */
+    fun bindAutoHost(handler: AutoPlayHandler, isProjectionHost: Boolean) {
         autoPlayHandler = handler
-        _hostBound.value = true
+        _hostBound.value = isProjectionHost
         recomputeAutoHost()
     }
 
@@ -222,6 +256,10 @@ class SharedMediaSessionManager(
             setFlags(MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS)
             setPlaybackToLocal(AudioManager.STREAM_MUSIC)
             setCallback(createCallback())
+            // Publish the action mask before activating: the playback writer only runs once a
+            // player emits, so without this a cold process would present an active session that
+            // advertises nothing — and "play X on Music Assistant" arrives exactly then.
+            setPlaybackState(idlePlaybackState())
             isActive = true
         }
         mediaSession = session
@@ -470,13 +508,7 @@ class SharedMediaSessionManager(
             PlaybackStateCompat.STATE_PAUSED
         }
         val playbackState = PlaybackStateCompat.Builder()
-            .setActions(
-                PlaybackStateCompat.ACTION_PLAY or
-                        PlaybackStateCompat.ACTION_SEEK_TO or
-                        PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS,
-            )
+            .setActions(SESSION_TRANSPORT_ACTIONS)
             .setState(
                 state,
                 data.elapsedTime ?: PlaybackState.PLAYBACK_POSITION_UNKNOWN,
@@ -528,12 +560,21 @@ class SharedMediaSessionManager(
      * Present nothing: deactivate the session so no host draws a card for it, and drop the
      * metadata and queue left behind by the previously presented player.
      */
+    /**
+     * Idle but capable: no playback to report, yet still advertising what the app can do.
+     * STATE_NONE rather than STATE_PAUSED — a paused baseline draws a phantom empty card in the
+     * shade and the output picker, while hosts read the action mask from either.
+     */
+    private fun idlePlaybackState(): PlaybackStateCompat =
+        PlaybackStateCompat.Builder()
+            .setActions(SESSION_TRANSPORT_ACTIONS)
+            .setState(PlaybackStateCompat.STATE_NONE, 0, 0f)
+            .build()
+
     @Synchronized
     private fun writeBlockToSession() {
         val session = mediaSession ?: return
-        session.setPlaybackState(
-            PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_NONE, 0, 0f).build(),
-        )
+        session.setPlaybackState(idlePlaybackState())
         session.setMetadata(MediaMetadataCompat.Builder().build())
         session.setQueue(emptyList())
         session.isActive = false
@@ -563,6 +604,9 @@ class SharedMediaSessionManager(
             }
         }
         val playbackState = PlaybackStateCompat.Builder()
+            // Keep the mask on an error state too: "reconnecting" is precisely when a user
+            // retries by voice, and a host that sees no actions will not route the retry.
+            .setActions(SESSION_TRANSPORT_ACTIONS)
             .setState(PlaybackStateCompat.STATE_ERROR, 0, 0f)
             .setErrorMessage(error.code, error.message)
             .also { builder -> extras?.let { builder.setExtras(it) } }

@@ -125,12 +125,19 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
      * probing/reconnecting the transport) is what zombified the notification on remote
      * players (issue #519). Promote to a real AA host — register the browse/voice play
      * handler and signal an external consumer — only for non-SystemUI binders.
+     *
+     * Session isolation is a narrower question than promotion, so it is decided separately:
+     * only a projection host may isolate the session to the local player. See
+     * [PROJECTION_HOST_PACKAGES].
      */
     private fun promoteIfRealHost(packageName: String) {
         if (promotedToHost || packageName == SYSTEMUI_PACKAGE) return
         promotedToHost = true
-        androidAutoLog.i { "Real media host '$packageName' — promoting to AA owner" }
-        sharedSession.bindAutoHost(autoPlayHandler)
+        val isProjectionHost = packageName in PROJECTION_HOST_PACKAGES
+        androidAutoLog.i {
+            "Real media host '$packageName' — promoting to AA owner (projection=$isProjectionHost)"
+        }
+        sharedSession.bindAutoHost(autoPlayHandler, isProjectionHost = isProjectionHost)
         dataSource.apiClient.onExternalConsumerActive()
         observeSessionState()
     }
@@ -310,6 +317,18 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         // SystemUI renders the media-control notification by binding this browser service;
         // it must not be mistaken for a real Android Auto / media host.
         const val SYSTEMUI_PACKAGE = "com.android.systemui"
+
+        // Only a real projection host may isolate the session to the local player, because that
+        // isolation deactivates the session when no local player exists. Our own package is
+        // deliberately absent: VoicePlayDispatchActivity binds this service from inside the app,
+        // so promoting it to a projection host blanked the phone notification for a remote
+        // player on every voice attempt. Assistant, Gemini and Wear are absent for the same
+        // reason. CarConnectionMonitor still covers a real head unit that is missing here, so
+        // this set is a fast path, not the only signal. Do not re-broaden it.
+        val PROJECTION_HOST_PACKAGES = setOf(
+            "com.google.android.projection.gearhead", // Android Auto phone host + DHU
+            "com.google.android.gms.car", // legacy Android Auto host
+        )
 
         // Cold-start window: voice intent may arrive before auth + local player
         // bootstrap finish. After this many ms we give up and log a warning.
