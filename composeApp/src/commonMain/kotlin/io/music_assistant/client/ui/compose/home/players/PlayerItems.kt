@@ -286,6 +286,10 @@ fun FullPlayerItem(
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
+    // The quality pill and the speed pill only ask for their dialog; the dialogs themselves
+    // live outside the pager so a page change cannot tear them down mid-gesture.
+    onAudioChainClick: () -> Unit = {},
+    onPlaybackSpeedClick: () -> Unit = {},
     // Server preference gate for the chapter-relative timeline.
     chapterProgressEnabled: Boolean = true,
 ) {
@@ -571,8 +575,6 @@ fun FullPlayerItem(
             val currentQueueItem = item.queueInfo?.currentItem
             val tier = currentQueueItem?.qualityTier
             val isLq = tier == QualityTier.LQ
-            var showChainDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
-            var showSpeedDialog by remember(currentQueueItem?.id) { mutableStateOf(false) }
 
             // Variable speed: server-supported only for audiobooks/podcasts, and only
             // when the queue payload carries `playback_speed` (feature-detect gate).
@@ -580,22 +582,6 @@ fun FullPlayerItem(
             val isSpokenContent = currentQueueItem?.track is Audiobook ||
                     currentQueueItem?.track is PodcastEpisode
             val showSpeed = isSpokenContent && playbackSpeed != null && !poweredOff
-
-            if (showChainDialog && currentQueueItem != null) {
-                AudioChainDialog(
-                    queueTrack = currentQueueItem,
-                    player = item,
-                    onDismissRequest = { showChainDialog = false },
-                )
-            }
-
-            if (showSpeedDialog && playbackSpeed != null) {
-                PlaybackSpeedDialog(
-                    currentSpeed = playbackSpeed,
-                    onConfirm = { playerAction(item, PlayerAction.SetPlaybackSpeed(it)) },
-                    onDismissRequest = { showSpeedDialog = false },
-                )
-            }
 
             CenteredThreeSlotRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -614,7 +600,7 @@ fun FullPlayerItem(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(colors.controlTint)
-                                .clickable { showSpeedDialog = true }
+                                .clickable(onClick = onPlaybackSpeedClick)
                                 .padding(horizontal = 8.dp, vertical = 2.dp),
                         ) {
                             Text(
@@ -640,7 +626,7 @@ fun FullPlayerItem(
                                         colors.controlTint
                                     },
                                 )
-                                .clickable(enabled = tier != null) { showChainDialog = true }
+                                .clickable(enabled = tier != null, onClick = onAudioChainClick)
                                 .padding(horizontal = 8.dp, vertical = 2.dp),
                         ) {
                             Text(

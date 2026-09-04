@@ -71,3 +71,5 @@ data class PlayerData(
         val isGroup: Boolean,
     )
 }
+
+fun List<PlayerData>.byId(id: String): PlayerData? = firstOrNull { it.playerId == id }

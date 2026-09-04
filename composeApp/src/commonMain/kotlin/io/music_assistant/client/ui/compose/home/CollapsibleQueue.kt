@@ -70,9 +70,7 @@ import io.music_assistant.client.ui.compose.common.NoOverscroll
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
-import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.DISABLED_ITEM_ALPHA
-import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.contentColorByLuminance
@@ -110,7 +108,7 @@ fun CollapsibleQueue(
     tint: Color,
     isCurrentPage: Boolean = true,
     contentPadding: PaddingValues,
-    playlistActions: PlaylistActions? = null,
+    onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     onChapterClick: (Chapter) -> Unit = {},
     livePositionFlow: Flow<Double>? = null,
 ) {
@@ -172,7 +170,7 @@ fun CollapsibleQueue(
                 isCurrentPage = isCurrentPage,
                 contentPadding = contentPadding,
                 queueAction = queueAction,
-                playlistActions = playlistActions,
+                onAddToPlaylist = onAddToPlaylist,
                 onChapterClick = onChapterClick,
                 livePositionFlow = livePositionFlow,
             )
@@ -190,7 +188,7 @@ fun Queue(
     isCurrentPage: Boolean,
     contentPadding: PaddingValues,
     queueAction: (QueueAction) -> Unit,
-    playlistActions: PlaylistActions? = null,
+    onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     onChapterClick: (Chapter) -> Unit = {},
     livePositionFlow: Flow<Double>? = null,
 ) {
@@ -269,7 +267,6 @@ fun Queue(
                     var dragStartIndex by remember { mutableStateOf<Int?>(null) }
                     var dragEndIndex by remember { mutableStateOf<Int?>(null) }
                     var menuItemId by remember { mutableStateOf<String?>(null) }
-                    var addToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
                     val listState = rememberLazyListState()
 
                     // Flattened rows: real queue items, plus chapter rows under the
@@ -531,7 +528,7 @@ fun Queue(
                                         onDismissRequest = { menuItemId = null },
                                     ) {
                                         val track = item.track as? Track
-                                        if (track != null && playlistActions != null) {
+                                        if (track != null && onAddToPlaylist != null) {
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(stringResource(Res.string.action_add_to_playlist))
@@ -543,7 +540,7 @@ fun Queue(
                                                     )
                                                 },
                                                 onClick = {
-                                                    addToPlaylistTrack = track
+                                                    onAddToPlaylist(track)
                                                     menuItemId = null
                                                 },
                                             )
@@ -569,16 +566,6 @@ fun Queue(
                                     }
                                 }
                             }
-                        }
-                    }
-
-                    addToPlaylistTrack?.let { track ->
-                        if (playlistActions != null) {
-                            AddToPlaylistDialog(
-                                item = track,
-                                playlistActions = playlistActions,
-                                onDismiss = { addToPlaylistTrack = null },
-                            )
                         }
                     }
                 }
