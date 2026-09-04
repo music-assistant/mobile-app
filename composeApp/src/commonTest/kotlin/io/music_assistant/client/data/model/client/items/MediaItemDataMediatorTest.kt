@@ -66,8 +66,47 @@ class MediaItemDataMediatorTest {
 
         val updatedItem = item.copy(name = "changed!")
         mediaItemRepository.fireChange(MediaItemChange.Updated(updatedItem))
-
         assertEquals(DataState.Data(listOf<AppMediaItem>(updatedItem)), mediator.asFlow().value)
+    }
+
+    @Test
+    fun `updateOn reloads items when Added happens`() = runTest {
+        val request = Request.Album.listLibrary()
+        val item = AppMediaItemFixtures.album(itemId = "1", name = "Original Album")
+        val items = listOf<AppMediaItem>(item)
+
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+            .updateOn(unconfinedScope)
+
+        mediator.set(items, request)
+
+        val newItem = AppMediaItemFixtures.album(itemId = "2", name = "New Album")
+        // Add extra item to ensure we're reloading from MediaItemRepository
+        val updatedItems = listOf<AppMediaItem>(item, newItem, AppMediaItemFixtures.album())
+        mediaItemRepository.setItemsResult(request, Result.success(updatedItems))
+
+        mediaItemRepository.fireChange(MediaItemChange.Added(newItem))
+        assertEquals(DataState.Data(updatedItems), mediator.asFlow().value)
+    }
+
+    @Test
+    fun `updateOn reloads items when Deleted happens`() = runTest {
+        val request = Request.Album.listLibrary()
+        val item1 = AppMediaItemFixtures.album()
+        val item2 = AppMediaItemFixtures.album()
+        val items = listOf<AppMediaItem>(item1, item2)
+
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+            .updateOn(unconfinedScope)
+
+        mediator.set(items, request)
+
+        // Add extra item to ensure we're reloading from MediaItemRepository
+        val remainingItems = listOf<AppMediaItem>(item1, AppMediaItemFixtures.album())
+        mediaItemRepository.setItemsResult(request, Result.success(remainingItems))
+
+        mediaItemRepository.fireChange(MediaItemChange.Deleted(item2))
+        assertEquals(DataState.Data(remainingItems), mediator.asFlow().value)
     }
 }
 
