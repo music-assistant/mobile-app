@@ -109,6 +109,21 @@ class AudioStreamManager(
     private var streamConfig: StreamStartPlayer? = null
     private var isStreaming = false
 
+    // Admission gate, deliberately separate from [isStreaming].
+    //
+    // The server front-loads a new stream at roughly 25x realtime against the advertised
+    // buffer_capacity. Gating admission on [isStreaming] meant every chunk that landed during
+    // the decoder rebuild and AudioTrack setup was discarded — measured at ~4.9s of audio for
+    // 186ms of cold-start setup. Those chunks carry *future* timestamps, so the wall-clock gate
+    // would have played them on time; they were simply thrown away before they could be queued.
+    //
+    // So admission opens as soon as the queue is reset, before the sink exists. The consumer
+    // still waits for [isStreaming], and the wall-clock gate still decides when each frame
+    // plays. Queue growth stays bounded by the server honouring buffer_capacity, exactly as
+    // before — this changes what we keep, not how much the server sends.
+    @Volatile
+    private var isAccepting = false
+
     // Shared sorted queue between producer (processBinaryMessage) and consumer (playback thread).
     // ArrayDeque so the consumer's head removal is O(1) instead of an O(n) array shift per frame
     // (the buffer holds up to 30s of compressed frames). Reorder inserts are still indexed, but
@@ -128,6 +143,44 @@ class AudioStreamManager(
     // Signal from producer to consumer: "new frame available". Channel(1) with DROP_OLDEST
     // coalesces multiple signals into one wakeup — consumer drains all ready frames per wakeup.
     private val frameSignal = Channel<Unit>(Channel.CONFLATED)
+
+    // --- Head-loss diagnostics (SSHEAD) ------------------------------------------------
+    // Field instrumentation for "the local player skips the first seconds of a track".
+    // Two uncapped drop paths can eat the head of a stream: chunks discarded while the sink
+    // is still being built (producer), and chunks discarded by the wall-clock gate as late
+    // (consumer). Counting both, plus the server-timeline span actually lost, tells the two
+    // apart from a log. Counts only — a burst is thousands of chunks, so never log per chunk.
+    //
+    // Threading: the producer coroutine owns the pre* fields, the consumer coroutine owns the
+    // late* fields and emits the summary. The sets are disjoint, so no lock is needed; only
+    // the fields that cross the boundary are @Volatile.
+    private class HeadLossStats {
+        var startRequestedUs = 0L
+
+        @Volatile
+        var streamingAtUs = 0L
+
+        @Volatile
+        var preDropped = 0
+
+        @Volatile
+        var preBytes = 0
+
+        @Volatile
+        var preFirstTs = Long.MIN_VALUE
+
+        @Volatile
+        var firstQueuedTs = Long.MIN_VALUE
+        var lateDropped = 0
+        var lateFirstMs = 0L
+        var lateLastMs = 0L
+        var reported = false
+    }
+
+    private val trace = Logger.withTag("SSHEAD")
+
+    @Volatile
+    private var headLoss = HeadLossStats()
 
     /**
      * Minimum queue depth before consumer starts draining.
@@ -179,8 +232,23 @@ class AudioStreamManager(
             return@withLock
         }
 
+        // Arm a fresh measurement for this stream. After the resume fast-path, so a
+        // same-format reconnect does not wipe a live one.
+        headLoss = HeadLossStats().apply {
+            startRequestedUs = clockSynchronizer.getCurrentTimeMicros()
+        }
+
         try {
             stopPlaybackThread()
+
+            // Reset the queue and open admission *before* the expensive rebuild below, so the
+            // server's front-load burst is captured instead of discarded. stopPlaybackThread
+            // joined the old consumer, so nothing is draining while we clear.
+            queueLock.withLock {
+                queue.clear()
+                lastConsumedTs = Long.MIN_VALUE
+            }
+            isAccepting = true
 
             streamConfig = config
             // Create and configure decoder atomically under lock
@@ -241,10 +309,7 @@ class AudioStreamManager(
             }
 
             isStreaming = true
-            queueLock.withLock {
-                queue.clear()
-                lastConsumedTs = Long.MIN_VALUE
-            }
+            headLoss.streamingAtUs = clockSynchronizer.getCurrentTimeMicros()
             _isStarved.value = false
 
             // Don't start a consumer for a track that's already been skipped past.
@@ -255,6 +320,9 @@ class AudioStreamManager(
             // is forced into a clean rebuild rather than the resume fast-path — otherwise an
             // armed guard with no running consumer would leave us silent. Also stop any consumer
             // this call managed to launch on the detached playback scope.
+            // Close admission too: without a consumer, an open gate would accumulate frames for
+            // a stream that will never play. The next startStream re-opens it.
+            isAccepting = false
             streamConfig = null
             stopPlaybackThread(join = false)
             throw e
@@ -271,8 +339,18 @@ class AudioStreamManager(
      * Producer: parse binary message, sorted-insert raw frame into shared queue.
      */
     override suspend fun processBinaryMessage(data: ByteArray) {
-        if (!isStreaming) {
-            logger.d { "Received audio chunk but not streaming (ignoring)" }
+        if (!isAccepting) {
+            // Chunks arriving outside an armed stream. This used to also catch the whole
+            // front-load burst during sink setup — the head-loss bug. It should now only fire
+            // between streams; the counter stays so a regression is visible in the log.
+            val stats = headLoss
+            BinaryMessage.decode(data)
+                ?.takeIf { it.type == BinaryMessageType.AUDIO_CHUNK }
+                ?.let { chunk ->
+                    stats.preDropped++
+                    stats.preBytes += data.size
+                    if (stats.preFirstTs == Long.MIN_VALUE) stats.preFirstTs = chunk.timestamp
+                }
             return
         }
 
@@ -299,7 +377,11 @@ class AudioStreamManager(
             updateBufferedDurationLocked()
             true
         }
-        if (inserted) frameSignal.trySend(Unit)
+        if (inserted) {
+            val stats = headLoss
+            if (stats.firstQueuedTs == Long.MIN_VALUE) stats.firstQueuedTs = ts
+            frameSignal.trySend(Unit)
+        }
     }
 
     /**
@@ -314,6 +396,51 @@ class AudioStreamManager(
             playbackJob?.cancel()
         }
         playbackJob = null
+    }
+
+    /**
+     * One-shot head-loss alarm, evaluated on the first chunk that reaches the sink.
+     *
+     * Silent on a healthy stream. It logs only when audio was actually lost, so a regression
+     * of the admission gate shows up in a user-shared log without costing a line per track.
+     * [headLossMs] is the span of the server timeline between the earliest chunk this stream
+     * saw and the first one it played — exactly the audio the user does not hear.
+     */
+    private fun reportHeadLoss(firstPlayedTs: Long) {
+        val stats = headLoss
+        if (stats.reported) return
+        stats.reported = true
+        if (stats.preDropped == 0 && stats.lateDropped == 0) return
+
+        // Prefer the earliest chunk dropped before the sink existed; fall back to the first
+        // one that made it into the queue when nothing was dropped that early.
+        val headTs = stats.preFirstTs.takeIf { it != Long.MIN_VALUE }
+            ?: stats.firstQueuedTs.takeIf { it != Long.MIN_VALUE }
+        val headLossMs = headTs?.let { (firstPlayedTs - it) / 1000 } ?: -1L
+        val clock = clockSynchronizer.getStats()
+
+        trace.w {
+            "SSHEAD head-loss headLossMs=$headLossMs " +
+                    "setupMs=${(stats.streamingAtUs - stats.startRequestedUs) / 1000} " +
+                    "preDropped=${stats.preDropped} preBytes=${stats.preBytes} " +
+                    "lateDropped=${stats.lateDropped} " +
+                    "lateMs=${stats.lateFirstMs}..${stats.lateLastMs} " +
+                    "clock=off=${clock.offsetMs}ms rtt=${clock.rttMs}ms ${clock.quality} " +
+                    "samples=${clockSynchronizer.currentSampleCount}"
+        }
+    }
+
+    /**
+     * Mid-stream drift alarm. The head-loss line is emitted at first play, so it cannot see
+     * chunks the wall-clock gate drops later. Silent unless the gate actually dropped some.
+     */
+    private fun reportStreamEnd(reason: String) {
+        val stats = headLoss
+        if (stats.lateDropped == 0) return
+        trace.w {
+            "SSHEAD stream-end reason=$reason lateDroppedTotal=${stats.lateDropped} " +
+                    "lateMs=${stats.lateFirstMs}..${stats.lateLastMs}"
+        }
     }
 
     private fun startPlaybackThread() {
@@ -376,7 +503,13 @@ class AudioStreamManager(
                                     true
                                 }
                                 waitUs < -100_000 -> {
-                                    logger.d { "Dropped late chunk: lateBy=${-waitUs / 1000}ms" }
+                                    // Head-loss path 2: uncapped fast-forward to the wall
+                                    // clock. Count it; a per-chunk log here would flood.
+                                    val lateMs = -waitUs / 1000
+                                    val stats = headLoss
+                                    if (stats.lateDropped == 0) stats.lateFirstMs = lateMs
+                                    stats.lateLastMs = lateMs
+                                    stats.lateDropped++
                                     false
                                 }
                                 else -> true
@@ -389,6 +522,7 @@ class AudioStreamManager(
                             audioDecoder?.decode(frame.data) ?: continue
                         }
                         if (shouldPlay) {
+                            reportHeadLoss(frame.timestamp)
                             mediaPlayerController.writeRawPcm(pcmData)
                         }
                     }
@@ -413,6 +547,7 @@ class AudioStreamManager(
 
     override suspend fun clearStream() {
         logger.i { "Clearing stream" }
+        reportStreamEnd("clear")
         queueLock.withLock {
             queue.clear()
             lastConsumedTs = Long.MIN_VALUE
@@ -439,6 +574,8 @@ class AudioStreamManager(
 
     override suspend fun stopStream() = streamLifecycleLock.withLock {
         logger.i { "Stopping stream" }
+        reportStreamEnd("stop")
+        isAccepting = false
         _isStarved.value = false
         stopPlaybackThread()
 
@@ -459,6 +596,7 @@ class AudioStreamManager(
 
     override fun close() {
         logger.i { "Closing AudioStreamManager" }
+        isAccepting = false
         playbackJob?.cancel()
         // Full HW release now that we're done with this pipeline.
         mediaPlayerController.stopRawPcmStream()

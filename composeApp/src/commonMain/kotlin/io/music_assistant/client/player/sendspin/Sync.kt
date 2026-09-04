@@ -63,6 +63,11 @@ class ClockSynchronizer {
     val currentOffset: Long get() = offset
     val currentQuality: SyncQuality get() = quality
 
+    // Diagnostics only: how many valid samples the filter has folded in. A live wall-clock
+    // gate standing on 1-2 samples has no drift estimate yet, which distinguishes a bad
+    // offset from a slow sink when reading a head-loss report.
+    val currentSampleCount: Int get() = sampleCount
+
     fun getStats() = ClockStats(offset, rtt, quality)
 
     fun processServerTime(
