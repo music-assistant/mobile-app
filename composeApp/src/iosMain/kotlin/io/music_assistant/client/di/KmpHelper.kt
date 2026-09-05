@@ -47,6 +47,7 @@ import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.compose.library.reconcileCarTabs
 import io.music_assistant.client.ui.compose.library.visibleCategories
 import io.music_assistant.client.utils.HasConnectionData
+import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -85,6 +86,12 @@ object KmpHelper : KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val volumeButtonService: VolumeButtonService by inject()
     private val artworkHttpClient: HttpClient by inject(named("webrtcHttpClient"))
+
+    /**
+     * Local Network permission gate; iOS replaces the default prober at bootstrap
+     * with the Swift NWBrowser probe (see `LocalNetworkProbe.swift`).
+     */
+    val localNetworkPermissionGate: LocalNetworkPermissionGate by inject()
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)

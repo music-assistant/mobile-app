@@ -83,8 +83,10 @@ import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
+import io.music_assistant.client.utils.isLikelyLocalNetworkBlocked
 import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
+import io.music_assistant.client.utils.localNetworkPermissionGateExists
 import io.music_assistant.client.webrtc.model.RemoteId
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_title
@@ -95,6 +97,7 @@ import musicassistantclient.composeapp.generated.resources.cd_select_codec
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
+import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
@@ -118,10 +121,14 @@ import musicassistantclient.composeapp.generated.resources.settings_custom_sends
 import musicassistantclient.composeapp.generated.resources.settings_disable_local_player
 import musicassistantclient.composeapp.generated.resources.settings_disconnect
 import musicassistantclient.composeapp.generated.resources.settings_enable_local_player
+import musicassistantclient.composeapp.generated.resources.settings_error_local_network
+import musicassistantclient.composeapp.generated.resources.settings_error_offline
 import musicassistantclient.composeapp.generated.resources.settings_exit_app
 import musicassistantclient.composeapp.generated.resources.settings_history_direct
 import musicassistantclient.composeapp.generated.resources.settings_history_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_host
+import musicassistantclient.composeapp.generated.resources.settings_local_network_onboarding_body
+import musicassistantclient.composeapp.generated.resources.settings_local_network_onboarding_title
 import musicassistantclient.composeapp.generated.resources.settings_local_player_disabled
 import musicassistantclient.composeapp.generated.resources.settings_local_player_enabled
 import musicassistantclient.composeapp.generated.resources.settings_misc
@@ -169,6 +176,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
+    val localNetworkOnboardingShown by viewModel.localNetworkOnboardingShown
+        .collectAsStateWithLifecycle()
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
@@ -232,6 +241,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 }
 
                 // Track if we've already attempted auto-reconnect
+                // Sticky for the screen's lifetime: once the iOS permission is determined,
+                // retries no longer wait on the prompt, so suppressing repeats is intended.
                 var autoReconnectAttempted by remember { mutableStateOf(false) }
 
                 // Auto-reconnect on error ONLY if user hasn't changed the connection info
@@ -239,31 +250,43 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
                 val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
                 LaunchedEffect(sessionState) {
+                    val errorState = sessionState as? SessionState.Disconnected.Error
                     val connInfo = savedConnectionInfo
-                    if (sessionState is SessionState.Disconnected.Error &&
-                        connInfo != null &&
+                    if (errorState != null &&
                         !autoReconnectAttempted &&
                         preferredMethod != "webrtc"
                     ) {
-                        // Only auto-reconnect if text fields match saved connection info
-                        // (i.e., user hasn't changed anything)
-                        val userChangedConnectionInfo =
-                            ipAddress != connInfo.host ||
-                                    port != connInfo.port.toString() ||
-                                    isTls != connInfo.isTls ||
-                                    basePath != connInfo.basePath
+                        // A Local Network permission failure retries through attemptConnection,
+                        // whose probe deterministically waits out the iOS prompt.
+                        val blockedByLocalNetworkPermission =
+                            errorState.reason?.isLikelyLocalNetworkBlocked() == true
 
-                        if (!userChangedConnectionInfo) {
-                            // User is trying to reconnect to same server - auto-retry
+                        if (connInfo != null) {
+                            // Only auto-reconnect if text fields match saved connection info
+                            // (i.e., user hasn't changed anything)
+                            val userChangedConnectionInfo =
+                                ipAddress != connInfo.host ||
+                                        port != connInfo.port.toString() ||
+                                        isTls != connInfo.isTls ||
+                                        basePath != connInfo.basePath
+
+                            if (!userChangedConnectionInfo) {
+                                // User is trying to reconnect to same server - auto-retry
+                                autoReconnectAttempted = true
+                                viewModel.attemptConnection(
+                                    connInfo.host,
+                                    connInfo.port.toString(),
+                                    connInfo.isTls,
+                                    connInfo.basePath,
+                                )
+                            }
+                            // If user changed connection info, don't auto-retry - let them manually retry
+                        } else if (blockedByLocalNetworkPermission) {
+                            // Fresh install (no saved connection): retry once — the first
+                            // attempt is consumed by the iOS permission prompt.
                             autoReconnectAttempted = true
-                            viewModel.attemptConnection(
-                                connInfo.host,
-                                connInfo.port.toString(),
-                                connInfo.isTls,
-                                connInfo.basePath,
-                            )
+                            viewModel.attemptConnection(ipAddress, port, isTls, basePath)
                         }
-                        // If user changed connection info, don't auto-retry - let them manually retry
                     }
                 }
 
@@ -276,9 +299,18 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
+                val connectAttemptInFlight by viewModel.connectAttemptInFlight
+                    .collectAsStateWithLifecycle()
+
                 when (sessionState) {
                     is SessionState.Disconnected -> {
                         AboutSection()
+                        LocalNetworkOnboardingCard(
+                            visible = localNetworkPermissionGateExists &&
+                                connectionHistory.isEmpty() &&
+                                !localNetworkOnboardingShown,
+                            onGotIt = viewModel::dismissLocalNetworkOnboarding,
+                        )
                         ConnectionMethodTabs(
                             viewModel = viewModel,
                             ipAddress = ipAddress,
@@ -299,7 +331,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             },
                             directConnectEnabled = ipAddress.isValidHost() &&
                                     port.isIpPort() &&
-                                    basePath.isValidBasePath(),
+                                    basePath.isValidBasePath() &&
+                                    !connectAttemptInFlight,
                             sessionState = sessionState,
                             connectionHistory = connectionHistory,
                         )
@@ -503,6 +536,23 @@ private fun AboutSection() {
 }
 
 @Composable
+private fun LocalNetworkOnboardingCard(visible: Boolean, onGotIt: () -> Unit) {
+    if (!visible) return
+    SectionCard {
+        SectionTitle(stringResource(Res.string.settings_local_network_onboarding_title))
+        Text(
+            text = stringResource(Res.string.settings_local_network_onboarding_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        OutlinedButton(onClick = onGotIt, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(Res.string.common_done))
+        }
+    }
+}
+
+@Composable
 private fun ExperimentalPill() {
     Box(
         modifier = Modifier
@@ -608,16 +658,31 @@ private fun ConnectionMethodTabs(
         }
 
         val error = (sessionState as? SessionState.Disconnected.Error)?.reason
-        if (error != null) {
-            val errorMessage = error.message?.toDisplayString()
+        val localNetworkBlocked by viewModel.localNetworkBlocked.collectAsStateWithLifecycle()
+        val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
+        // Gate classifier branches on the platform: Android errors never carry the Darwin
+        // signature, but don't show iOS guidance even if one somehow does.
+        val permissionSignature = localNetworkPermissionGateExists &&
+            error?.isLikelyLocalNetworkBlocked() == true
+        val errorMessage = when {
+            localNetworkBlocked -> Res.string.settings_error_local_network.toDisplayString()
 
-            if (errorMessage != null) {
-                Text(
-                    errorMessage.string(),
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+            permissionSignature && probeGranted != true ->
+                Res.string.settings_error_local_network.toDisplayString()
+
+            permissionSignature ->
+                // Permission confirmed granted, so -1009 means genuinely unreachable.
+                Res.string.settings_error_offline.toDisplayString()
+
+            else -> error?.message?.toDisplayString()
+        }
+
+        if (errorMessage != null) {
+            Text(
+                errorMessage.string(),
+                modifier = Modifier.padding(top = 8.dp),
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 

@@ -245,6 +245,9 @@ struct iOSApp: App {
     // Strong ref: ASWebAuthenticationSession cancels itself when its owner deallocates,
     // so the handler must outlive every login attempt.
     private let oauthWebSession = OAuthWebSession()
+    // Strong ref keeps the Swift probe alive for the app's lifetime (same pattern as
+    // oauthWebSession).
+    private let localNetworkProbe = LocalNetworkProbe()
 
     init() {
         // Register the Swift audio player with Kotlin before KMP services are created.
@@ -281,6 +284,11 @@ struct iOSApp: App {
         // resolves its presentation window lazily, at present time, so it has nothing
         // to wait for here.
         KmpHelper.shared.authManager.oauthHandler = oauthWebSession
+
+        // Local Network permission probe: raises the iOS permission prompt in a controlled
+        // context and reports denied distinctly from "offline".
+        KmpHelper.shared.localNetworkPermissionGate.prober = localNetworkProbe
+        NativeLog.shared.debug(tag: "LocalNetworkProbe", message: "registered on gate")
 
         if UIApplication.shared.applicationState == .active {
             volumeButtonObserver.start()

@@ -10,16 +10,24 @@ import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.LocalNetworkPermissionGate
+import io.music_assistant.client.utils.localNetworkPermissionGateExists
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+// Grants/denials resolve immediately; users reading the prompt and mDNS-blocked
+// networks are the contenders to actually hit this
+private const val CONNECT_PROBE_TIMEOUT_MS = 15_000L
+
 class SettingsViewModel(
     private val apiClient: ServiceClient,
     private val settings: SettingsRepository,
     private val logSharer: LogSharer,
+    private val localNetworkPermissionGate: LocalNetworkPermissionGate,
 ) : ViewModel() {
     val savedConnectionInfo = settings.connectionInfo
     val sessionState = apiClient.sessionState
@@ -29,6 +37,20 @@ class SettingsViewModel(
 
     private val _isPreparingShare = MutableStateFlow(false)
     val isPreparingShare: StateFlow<Boolean> = _isPreparingShare
+
+    // Local Network preflight: true when the last probe reported the permission denied.
+    private val _localNetworkBlocked = MutableStateFlow(false)
+    val localNetworkBlocked: StateFlow<Boolean> = _localNetworkBlocked
+
+    // Outcome of the last preflight probe; null when it never ran or was inconclusive.
+    private val _lastLocalNetworkProbeGranted = MutableStateFlow<Boolean?>(null)
+    val lastLocalNetworkProbeGranted: StateFlow<Boolean?> = _lastLocalNetworkProbeGranted
+
+    private var attemptJob: Job? = null
+
+    // True while a connect attempt (probe + connect) is in flight; gates the Connect button.
+    private val _connectAttemptInFlight = MutableStateFlow(false)
+    val connectAttemptInFlight: StateFlow<Boolean> = _connectAttemptInFlight
 
     fun shareLogs(chooserTitle: String) {
         if (_isPreparingShare.value) return
@@ -65,21 +87,56 @@ class SettingsViewModel(
         _hasCrashLog.value = false
     }
 
-    fun attemptConnection(host: String, port: String, isTls: Boolean, basePath: String) =
-        apiClient.connect(
-            connection = ConnectionInfo(
-                host = host,
-                port = port.toInt(),
-                isTls = isTls,
-                basePath = ConnectionInfo.normalizeBasePath(basePath),
-            ),
-        )
+    fun attemptConnection(host: String, port: String, isTls: Boolean, basePath: String) {
+        // Single-flight: a second tap (or the auto-retry) cancels any in-flight probe
+        // instead of racing it for the blocked/granted state flows.
+        attemptJob?.cancel()
+        attemptJob = viewModelScope.launch {
+            _connectAttemptInFlight.value = true
+            try {
+                _localNetworkBlocked.value = false
+                _lastLocalNetworkProbeGranted.value = null
+                val portNum = port.toIntOrNull() ?: return@launch
+                // Credentials for this address prove a prior direct connect succeeded, which
+                // requires the permission — probe only when they are absent.
+                val knownServer = hasCredentialsForDirect(host, portNum, isTls, basePath)
+                if (localNetworkPermissionGateExists && !knownServer) {
+                    // Raises the permission prompt when not yet determined and waits out
+                    // the answer; denied is reported distinctly from "offline".
+                    val granted = localNetworkPermissionGate.probe(CONNECT_PROBE_TIMEOUT_MS)
+                    _lastLocalNetworkProbeGranted.value = granted
+                    if (granted == false) {
+                        _localNetworkBlocked.value = true
+                        return@launch
+                    }
+                } else if (knownServer) {
+                    _lastLocalNetworkProbeGranted.value = true
+                }
+                apiClient.connect(
+                    connection = ConnectionInfo(
+                        host = host,
+                        port = portNum,
+                        isTls = isTls,
+                        basePath = ConnectionInfo.normalizeBasePath(basePath),
+                    ),
+                )
+            } finally {
+                _connectAttemptInFlight.value = false
+            }
+        }
+    }
 
     fun disconnect() {
+        attemptJob?.cancel()
+        attemptJob = null
         apiClient.disconnectByUser()
     }
 
     fun attemptWebRTCConnection(remoteId: String) {
+        // Clear direct-connect probe state so a stale blocked message can't render
+        // under a WebRTC failure.
+        _localNetworkBlocked.value = false
+        _lastLocalNetworkProbeGranted.value = null
         val parsed = io.music_assistant.client.webrtc.model.RemoteId.parse(remoteId)
         if (parsed != null) {
             apiClient.connectWebRTC(parsed)
@@ -158,4 +215,9 @@ class SettingsViewModel(
         settings.removeHistoryEntry(entry.historyKey)
         entry.serverId?.let { settings.setTokenForServer(it, null) }
     }
+
+    // Local Network onboarding
+    val localNetworkOnboardingShown = settings.localNetworkOnboardingShown
+
+    fun dismissLocalNetworkOnboarding() = settings.setLocalNetworkOnboardingShown()
 }
