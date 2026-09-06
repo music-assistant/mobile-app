@@ -10,14 +10,15 @@ import io.music_assistant.client.player.sendspin.audio.Codec
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
-import io.music_assistant.client.utils.localNetworkPermissionGateExists
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.StringResource
 
 // Grants/denials resolve immediately; users reading the prompt and mDNS-blocked
 // networks are the contenders to actually hit this
@@ -31,6 +32,8 @@ class SettingsViewModel(
 ) : ViewModel() {
     val savedConnectionInfo = settings.connectionInfo
     val sessionState = apiClient.sessionState
+    val localNetworkOnboardingResources: LocalNetworkOnboardingResources? =
+        localNetworkPermissionGate.onboardingResources
 
     private val _hasCrashLog = MutableStateFlow(logSharer.hasCrashLog())
     val hasCrashLog: StateFlow<Boolean> = _hasCrashLog
@@ -100,7 +103,7 @@ class SettingsViewModel(
                 // Credentials for this address prove a prior direct connect succeeded, which
                 // requires the permission — probe only when they are absent.
                 val knownServer = hasCredentialsForDirect(host, portNum, isTls, basePath)
-                if (localNetworkPermissionGateExists && !knownServer) {
+                if (localNetworkPermissionGate.isAvailable && !knownServer) {
                     // Raises the permission prompt when not yet determined and waits out
                     // the answer; denied is reported distinctly from "offline".
                     val granted = localNetworkPermissionGate.probe(CONNECT_PROBE_TIMEOUT_MS)
@@ -131,6 +134,19 @@ class SettingsViewModel(
         attemptJob = null
         apiClient.disconnectByUser()
     }
+
+    fun isLikelyLocalNetworkBlocked(error: Throwable): Boolean =
+        localNetworkPermissionGate.isLikelyLocalNetworkBlocked(error)
+
+    fun localNetworkErrorGuidance(
+        error: Throwable?,
+        probeGranted: Boolean?,
+        locallyBlocked: Boolean,
+    ): StringResource? = localNetworkPermissionGate.guidanceFor(
+        error = error,
+        probeGranted = probeGranted,
+        locallyBlocked = locallyBlocked,
+    )
 
     fun attemptWebRTCConnection(remoteId: String) {
         // Clear direct-connect probe state so a stale blocked message can't render

@@ -1,5 +1,18 @@
 package io.music_assistant.client.utils
 
-// Flips to true when targeting SDK 37: Android 17 gates local networks behind
-// ACCESS_LOCAL_NETWORK, and the probe becomes a runtime permission check.
-actual val localNetworkPermissionGateExists: Boolean = false
+import org.jetbrains.compose.resources.StringResource
+
+actual class LocalNetworkPermissionGate actual constructor() {
+    actual val isAvailable: Boolean = false
+    actual val onboardingResources: LocalNetworkOnboardingResources? = null
+
+    actual suspend fun probe(timeoutMs: Long): Boolean? = true
+
+    actual fun isLikelyLocalNetworkBlocked(error: Throwable): Boolean = false
+
+    actual fun guidanceFor(
+        error: Throwable?,
+        probeGranted: Boolean?,
+        locallyBlocked: Boolean,
+    ): StringResource? = null
+}

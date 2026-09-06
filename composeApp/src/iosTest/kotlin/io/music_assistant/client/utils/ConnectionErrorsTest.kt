@@ -1,6 +1,10 @@
 package io.music_assistant.client.utils
 
 import kotlin.test.Test
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.settings_error_local_network_ios
+import musicassistantclient.composeapp.generated.resources.settings_error_offline_ios
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -16,7 +20,7 @@ class ConnectionErrorsTest {
                 "\"The internet connection appears to be offline.\"",
         )
 
-        assertTrue(error.isLikelyLocalNetworkBlocked())
+        assertTrue(LocalNetworkPermissionGate().isLikelyLocalNetworkBlocked(error))
     }
 
     @Test
@@ -26,7 +30,7 @@ class ConnectionErrorsTest {
                 "\"The internet connection appears to be offline.\"",
         )
 
-        assertTrue(error.isLikelyLocalNetworkBlocked())
+        assertTrue(LocalNetworkPermissionGate().isLikelyLocalNetworkBlocked(error))
     }
 
     @Test
@@ -38,14 +42,14 @@ class ConnectionErrorsTest {
         )
         val wrapped = Exception("Recovery machinery died: something broke", darwinError)
 
-        assertTrue(wrapped.isLikelyLocalNetworkBlocked())
+        assertTrue(LocalNetworkPermissionGate().isLikelyLocalNetworkBlocked(wrapped))
     }
 
     @Test
     fun matchesDescriptionOnlyFallback() {
         val error = Exception("The internet connection appears to be offline.")
 
-        assertTrue(error.isLikelyLocalNetworkBlocked())
+        assertTrue(LocalNetworkPermissionGate().isLikelyLocalNetworkBlocked(error))
     }
 
     @Test
@@ -59,8 +63,9 @@ class ConnectionErrorsTest {
                 "\"A server with the specified hostname could not be found.\"",
         )
 
-        assertFalse(cannotConnect.isLikelyLocalNetworkBlocked())
-        assertFalse(cannotFindHost.isLikelyLocalNetworkBlocked())
+        val gate = LocalNetworkPermissionGate()
+        assertFalse(gate.isLikelyLocalNetworkBlocked(cannotConnect))
+        assertFalse(gate.isLikelyLocalNetworkBlocked(cannotFindHost))
     }
 
     @Test
@@ -68,13 +73,28 @@ class ConnectionErrorsTest {
         // Typical Android connect failure.
         val androidError = Exception("Failed to connect to /192.168.1.10:8095")
 
-        assertFalse(androidError.isLikelyLocalNetworkBlocked())
+        assertFalse(LocalNetworkPermissionGate().isLikelyLocalNetworkBlocked(androidError))
     }
 
     @Test
     fun rejectsNullMessage() {
         val error = Exception(null as String?)
 
-        assertFalse(error.isLikelyLocalNetworkBlocked())
+        assertFalse(LocalNetworkPermissionGate().isLikelyLocalNetworkBlocked(error))
+    }
+
+    @Test
+    fun selectsPermissionGuidanceUntilProbeConfirmsAccess() {
+        val error = Exception("Error Domain=NSURLErrorDomain Code=-1009")
+        val gate = LocalNetworkPermissionGate()
+
+        assertEquals(
+            Res.string.settings_error_local_network_ios,
+            gate.guidanceFor(error, probeGranted = null, locallyBlocked = false),
+        )
+        assertEquals(
+            Res.string.settings_error_offline_ios,
+            gate.guidanceFor(error, probeGranted = true, locallyBlocked = false),
+        )
     }
 }

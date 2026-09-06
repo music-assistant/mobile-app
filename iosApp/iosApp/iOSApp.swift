@@ -287,7 +287,7 @@ struct iOSApp: App {
 
         // Local Network permission probe: raises the iOS permission prompt in a controlled
         // context and reports denied distinctly from "offline".
-        KmpHelper.shared.localNetworkPermissionGate.prober = localNetworkProbe
+        KmpHelper.shared.setLocalNetworkPermissionProber(prober: localNetworkProbe)
         NativeLog.shared.debug(tag: "LocalNetworkProbe", message: "registered on gate")
 
         if UIApplication.shared.applicationState == .active {

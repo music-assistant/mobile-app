@@ -81,12 +81,11 @@ import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
-import io.music_assistant.client.utils.isLikelyLocalNetworkBlocked
 import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
-import io.music_assistant.client.utils.localNetworkPermissionGateExists
 import io.music_assistant.client.webrtc.model.RemoteId
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_title
@@ -121,14 +120,10 @@ import musicassistantclient.composeapp.generated.resources.settings_custom_sends
 import musicassistantclient.composeapp.generated.resources.settings_disable_local_player
 import musicassistantclient.composeapp.generated.resources.settings_disconnect
 import musicassistantclient.composeapp.generated.resources.settings_enable_local_player
-import musicassistantclient.composeapp.generated.resources.settings_error_local_network
-import musicassistantclient.composeapp.generated.resources.settings_error_offline
 import musicassistantclient.composeapp.generated.resources.settings_exit_app
 import musicassistantclient.composeapp.generated.resources.settings_history_direct
 import musicassistantclient.composeapp.generated.resources.settings_history_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_host
-import musicassistantclient.composeapp.generated.resources.settings_local_network_onboarding_body
-import musicassistantclient.composeapp.generated.resources.settings_local_network_onboarding_title
 import musicassistantclient.composeapp.generated.resources.settings_local_player_disabled
 import musicassistantclient.composeapp.generated.resources.settings_local_player_enabled
 import musicassistantclient.composeapp.generated.resources.settings_misc
@@ -178,6 +173,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
     val localNetworkOnboardingShown by viewModel.localNetworkOnboardingShown
         .collectAsStateWithLifecycle()
+    val localNetworkBlocked by viewModel.localNetworkBlocked.collectAsStateWithLifecycle()
+    val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
@@ -256,11 +253,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         !autoReconnectAttempted &&
                         preferredMethod != "webrtc"
                     ) {
-                        // A Local Network permission failure retries through attemptConnection,
-                        // whose probe deterministically waits out the iOS prompt.
-                        val blockedByLocalNetworkPermission =
-                            errorState.reason?.isLikelyLocalNetworkBlocked() == true
-
                         if (connInfo != null) {
                             // Only auto-reconnect if text fields match saved connection info
                             // (i.e., user hasn't changed anything)
@@ -281,9 +273,9 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 )
                             }
                             // If user changed connection info, don't auto-retry - let them manually retry
-                        } else if (blockedByLocalNetworkPermission) {
+                        } else if (errorState.reason?.let(viewModel::isLikelyLocalNetworkBlocked) == true) {
                             // Fresh install (no saved connection): retry once — the first
-                            // attempt is consumed by the iOS permission prompt.
+                            // attempt is consumed by the platform permission prompt.
                             autoReconnectAttempted = true
                             viewModel.attemptConnection(ipAddress, port, isTls, basePath)
                         }
@@ -306,8 +298,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     is SessionState.Disconnected -> {
                         AboutSection()
                         LocalNetworkOnboardingCard(
-                            visible = localNetworkPermissionGateExists &&
-                                connectionHistory.isEmpty() &&
+                            resources = viewModel.localNetworkOnboardingResources,
+                            visible = connectionHistory.isEmpty() &&
                                 !localNetworkOnboardingShown,
                             onGotIt = viewModel::dismissLocalNetworkOnboarding,
                         )
@@ -335,6 +327,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                     !connectAttemptInFlight,
                             sessionState = sessionState,
                             connectionHistory = connectionHistory,
+                            localNetworkBlocked = localNetworkBlocked,
+                            probeGranted = probeGranted,
                         )
                     }
 
@@ -536,12 +530,16 @@ private fun AboutSection() {
 }
 
 @Composable
-private fun LocalNetworkOnboardingCard(visible: Boolean, onGotIt: () -> Unit) {
-    if (!visible) return
+private fun LocalNetworkOnboardingCard(
+    resources: LocalNetworkOnboardingResources?,
+    visible: Boolean,
+    onGotIt: () -> Unit,
+) {
+    if (!visible || resources == null) return
     SectionCard {
-        SectionTitle(stringResource(Res.string.settings_local_network_onboarding_title))
+        SectionTitle(stringResource(resources.title))
         Text(
-            text = stringResource(Res.string.settings_local_network_onboarding_body),
+            text = stringResource(resources.body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -584,6 +582,8 @@ private fun ConnectionMethodTabs(
     directConnectEnabled: Boolean,
     sessionState: SessionState,
     connectionHistory: List<ConnectionHistoryEntry>,
+    localNetworkBlocked: Boolean,
+    probeGranted: Boolean?,
 ) {
     val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
     val selectedTab = if (preferredMethod == "webrtc") 1 else 0
@@ -658,24 +658,11 @@ private fun ConnectionMethodTabs(
         }
 
         val error = (sessionState as? SessionState.Disconnected.Error)?.reason
-        val localNetworkBlocked by viewModel.localNetworkBlocked.collectAsStateWithLifecycle()
-        val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
-        // Gate classifier branches on the platform: Android errors never carry the Darwin
-        // signature, but don't show iOS guidance even if one somehow does.
-        val permissionSignature = localNetworkPermissionGateExists &&
-            error?.isLikelyLocalNetworkBlocked() == true
-        val errorMessage = when {
-            localNetworkBlocked -> Res.string.settings_error_local_network.toDisplayString()
-
-            permissionSignature && probeGranted != true ->
-                Res.string.settings_error_local_network.toDisplayString()
-
-            permissionSignature ->
-                // Permission confirmed granted, so -1009 means genuinely unreachable.
-                Res.string.settings_error_offline.toDisplayString()
-
-            else -> error?.message?.toDisplayString()
-        }
+        val errorMessage = viewModel.localNetworkErrorGuidance(
+            error = error,
+            probeGranted = probeGranted,
+            locallyBlocked = localNetworkBlocked,
+        )?.toDisplayString() ?: error?.message?.toDisplayString()
 
         if (errorMessage != null) {
             Text(

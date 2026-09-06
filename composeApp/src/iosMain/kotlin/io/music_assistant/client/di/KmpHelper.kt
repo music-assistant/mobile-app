@@ -48,6 +48,7 @@ import io.music_assistant.client.ui.compose.library.reconcileCarTabs
 import io.music_assistant.client.ui.compose.library.visibleCategories
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
+import io.music_assistant.client.utils.LocalNetworkPermissionProber
 import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -92,6 +93,10 @@ object KmpHelper : KoinComponent {
      * with the Swift NWBrowser probe (see `LocalNetworkProbe.swift`).
      */
     val localNetworkPermissionGate: LocalNetworkPermissionGate by inject()
+
+    fun setLocalNetworkPermissionProber(prober: LocalNetworkPermissionProber) {
+        localNetworkPermissionGate.setProber(prober)
+    }
 
     // Provide a scope for Swift to launch coroutines if needed
     val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
