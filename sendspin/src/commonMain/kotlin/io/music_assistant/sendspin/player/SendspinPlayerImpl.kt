@@ -66,7 +66,10 @@ internal class SendspinPlayerImpl(
 ) : SendspinPlayer {
     private val logger = Logger.withTag("SendspinPlayer")
     private val _state = MutableStateFlow<PlayerState>(PlayerState.Disabled)
-    private val _events = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val _events = MutableSharedFlow<PlayerEvent>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
 
     override val state: StateFlow<PlayerState> = _state
     override val events: Flow<PlayerEvent> = _events
@@ -84,7 +87,13 @@ internal class SendspinPlayerImpl(
     private suspend fun runEnabled() = coroutineScope {
         val trustStore = SendspinTrustStore.load(deps.keyStore, deps.crypto)
         val clockSync = ClockSync(deps.clock)
-        val pipeline = AudioPipeline(deps.sink, deps.decoders, clockSync, deps.clock, config.value?.bufferCapacityBytes ?: 0)
+        val pipeline = AudioPipeline(
+            deps.sink,
+            deps.decoders,
+            clockSync,
+            deps.clock,
+            config.value?.bufferCapacityBytes ?: 0,
+        )
         val supervisor = ConnectionSupervisor(
             connector = TransportConnector.ktor(deps.httpClient),
             trustStore = trustStore,
@@ -95,7 +104,12 @@ internal class SendspinPlayerImpl(
         )
         val session = Session(pipeline, clockSync, trustStore, supervisor)
         launch(deps.audioDispatcher) { pipeline.run() }
-        launch { config.filterNotNull().collect { pipeline.userDelayMicros = it.userDelayMs * 1_000L; pipeline.capacityBytes = it.bufferCapacityBytes } }
+        launch {
+            config.filterNotNull().collect {
+                pipeline.userDelayMicros = it.userDelayMs * 1_000L
+                pipeline.capacityBytes = it.bufferCapacityBytes
+            }
+        }
         launch { session.publishState() }
         launch { session.forwardAudioEvents() }
         launch { session.watchStarvation() }
@@ -113,7 +127,11 @@ internal class SendspinPlayerImpl(
                     )
                 }
         } finally {
-            if (pipeline.status.value.phase == AudioPhase.Playing) _events.tryEmit(PlayerEvent.PlaybackStopped(StopCause.Disabled))
+            if (pipeline.status.value.phase == AudioPhase.Playing) {
+                _events.tryEmit(
+                    PlayerEvent.PlaybackStopped(StopCause.Disabled),
+                )
+            }
             _state.value = PlayerState.Disabled
         }
     }
@@ -156,7 +174,9 @@ internal class SendspinPlayerImpl(
             when (message) {
                 is ServerMessage.Time -> clockSync.onReply(message.payload)
                 is ServerMessage.StreamStart -> message.player?.let { format ->
-                    pipeline.apply(StreamLifecycle.onStart(pipeline.phase, pipeline.stream.value.format, format, newConnection))
+                    pipeline.apply(
+                        StreamLifecycle.onStart(pipeline.phase, pipeline.stream.value.format, format, newConnection),
+                    )
                     newConnection = false
                 }
 
@@ -176,7 +196,9 @@ internal class SendspinPlayerImpl(
 
         private suspend fun reportState(session: NoiseSession) {
             val json = WireCodec.encode(
-                ClientStateMessage(payload = ClientStatePayload(PlayerStateObject(PlayerStateValue.SYNCHRONIZED), available = true)),
+                ClientStateMessage(
+                    payload = ClientStatePayload(PlayerStateObject(PlayerStateValue.SYNCHRONIZED), available = true),
+                ),
             )
             var degradedSince: Long? = null
             session.send(json) // first send waits for activation
@@ -202,7 +224,11 @@ internal class SendspinPlayerImpl(
                     ConnectionState.Idle -> PlayerState.Connecting(0)
                     is ConnectionState.Connecting -> PlayerState.Connecting(connection.attempt)
                     is ConnectionState.Active -> PlayerState.Connected(playerId, serverName, clockSync.quality(), audio)
-                    is ConnectionState.Backoff -> PlayerState.Reconnecting(connection.attempt, connection.retryAtMicros / 1_000, audio)
+                    is ConnectionState.Backoff -> PlayerState.Reconnecting(
+                        connection.attempt,
+                        connection.retryAtMicros / 1_000,
+                        audio,
+                    )
                     is ConnectionState.WaitingForNetwork -> PlayerState.Reconnecting(connection.attempt, null, audio)
                     is ConnectionState.Failed -> PlayerState.Failed(connection.cause)
                 }

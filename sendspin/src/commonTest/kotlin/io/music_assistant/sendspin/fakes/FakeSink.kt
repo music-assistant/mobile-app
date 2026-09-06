@@ -1,8 +1,8 @@
 package io.music_assistant.sendspin.fakes
 
 import io.music_assistant.sendspin.api.AudioSink
-import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkEvent
+import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkHandle
 import io.music_assistant.sendspin.api.SinkPosition
 import kotlinx.coroutines.flow.Flow

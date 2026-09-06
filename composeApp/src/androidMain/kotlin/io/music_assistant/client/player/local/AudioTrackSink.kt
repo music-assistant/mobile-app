@@ -49,7 +49,9 @@ class AudioTrackSink(
             format.bitDepth == 16 -> AudioFormat.ENCODING_PCM_16BIT
             format.bitDepth == 24 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> AudioFormat.ENCODING_PCM_24BIT_PACKED
             format.bitDepth == 32 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> AudioFormat.ENCODING_PCM_32BIT
-            else -> throw IllegalArgumentException("unsupported bit depth ${format.bitDepth} on API ${Build.VERSION.SDK_INT}")
+            else -> throw IllegalArgumentException(
+                "unsupported bit depth ${format.bitDepth} on API ${Build.VERSION.SDK_INT}",
+            )
         }
         val minBuffer = AudioTrack.getMinBufferSize(format.sampleRate, channelMask, encoding)
         check(minBuffer > 0) { "audio configuration not supported by the device ($minBuffer)" }
@@ -70,14 +72,16 @@ class AudioTrackSink(
             .build()
         if (track.state != AudioTrack.STATE_INITIALIZED) {
             track.release()
-            throw IllegalStateException("AudioTrack failed to initialize")
+            error("AudioTrack failed to initialize")
         }
         // The default start threshold is the whole buffer: hundreds of ms of pure latency.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             runCatching { track.setStartThresholdInFrames(1) }
         }
         track.play()
-        logger.i { "AudioTrack opened: ${format.sampleRate}Hz ${format.channels}ch ${format.bitDepth}bit, buffer ${minBuffer * BUFFER_MULTIPLIER}" }
+        logger.i {
+            "AudioTrack opened: ${format.sampleRate}Hz ${format.channels}ch ${format.bitDepth}bit, buffer ${minBuffer * BUFFER_MULTIPLIER}"
+        }
         return Handle(track, format)
     }
 
@@ -119,7 +123,11 @@ class AudioTrackSink(
         // Some Bluetooth and Android Auto routings deliver no focus loss on a call.
         private val modeListener = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             AudioManager.OnModeChangedListener { mode ->
-                if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION) interrupt(resumable = true)
+                if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION) {
+                    interrupt(
+                        resumable = true,
+                    )
+                }
             }
         } else {
             null

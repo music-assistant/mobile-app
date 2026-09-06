@@ -42,7 +42,7 @@ internal class SilentPairing(
                 withTimeout(RPC_TIMEOUT_MILLIS) { pairWebPlayer(pairingToken()) }
                 logger.i { "Silent pairing request accepted" }
             } catch (e: TimeoutCancellationException) {
-                logger.w { "Silent pairing request timed out" }
+                logger.w(e) { "Silent pairing request timed out" }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

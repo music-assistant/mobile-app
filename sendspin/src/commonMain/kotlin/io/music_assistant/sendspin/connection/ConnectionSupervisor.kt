@@ -14,13 +14,11 @@ import io.music_assistant.sendspin.session.SessionRejected
 import io.music_assistant.sendspin.session.TransportLost
 import io.music_assistant.sendspin.transport.TransportConnector
 import io.music_assistant.sendspin.wire.AudioChunk
+import io.music_assistant.sendspin.wire.GoodbyeReason
 import io.music_assistant.sendspin.wire.ServerMessage
 import kotlinx.coroutines.CancellationException
-import io.music_assistant.sendspin.wire.GoodbyeReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -28,6 +26,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.random.Random
 
 /**
@@ -87,7 +87,15 @@ internal class ConnectionSupervisor(
                 if (stableMicros >= ReconnectPolicy.STABLE_ACTIVE_MILLIS * 1_000) attempt = 0
                 consecutiveRejections = if (reason is DropReason.Rejected) consecutiveRejections + 1 else 0
 
-                when (val decision = ReconnectPolicy.next(attempt, reason, online.value, consecutiveRejections, random)) {
+                when (
+                    val decision = ReconnectPolicy.next(
+                    attempt,
+                    reason,
+                    online.value,
+                    consecutiveRejections,
+                    random,
+                )
+                ) {
                     is ReconnectPolicy.Decision.Retry -> {
                         _state.value = ConnectionState.Backoff(
                             attempt,
@@ -162,6 +170,7 @@ internal class ConnectionSupervisor(
         } catch (e: TransportLost) {
             DropReason.Lost(e.cause)
         } catch (e: ServerSilentException) {
+            logger.i { e.message.orEmpty() }
             DropReason.Silent
         } catch (e: Throwable) {
             DropReason.Protocol(e)

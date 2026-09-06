@@ -47,7 +47,10 @@ class ClockFilterTest {
     fun rejectsOutliersThenReseedsAfterThreeInARow() {
         val filter = ClockFilter()
         var now = 0L
-        repeat(5) { now += 2_000_000L; exact(filter, now) }
+        repeat(5) {
+            now += 2_000_000L
+            exact(filter, now)
+        }
         val before = assertNotNull(filter.estimate()).offsetMicros
 
         // One wildly wrong sample (server clock appears 5 s further ahead) is rejected.

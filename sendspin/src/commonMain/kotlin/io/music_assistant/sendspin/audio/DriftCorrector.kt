@@ -34,7 +34,7 @@ internal class DriftCorrector(
         if (driftMicros == 0L && carry == null) return pcm
         val frames = pcm.size / frameBytes
         if (frames == 0) return pcm
-        val maxFraction = maxCorrectionPpm / 1_000_000.0
+        val maxFraction = maxCorrectionPpm / PPM
         val step = 1.0 + (driftMicros.toDouble() / blockMicros).coerceIn(-maxFraction, maxFraction)
 
         val lastFrame = frames - 1
@@ -48,10 +48,10 @@ internal class DriftCorrector(
             for (ch in 0 until channels) {
                 val a = sampleAt(pcm, idx, ch)
                 val b = sampleAt(pcm, idx + 1, ch)
-                val v = (a + (b - a) * frac).toInt().coerceIn(-32768, 32767)
+                val v = (a + (b - a) * frac).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 val at = o * frameBytes + ch * 2
                 out[at] = v.toByte()
-                out[at + 1] = (v shr 8).toByte()
+                out[at + 1] = (v shr BITS_PER_BYTE).toByte()
             }
             pos += step
             o++
@@ -66,9 +66,15 @@ internal class DriftCorrector(
         carry = null
     }
 
+    private companion object {
+        const val PPM = 1_000_000.0
+        const val BYTE_MASK = 0xFF
+        const val BITS_PER_BYTE = 8
+    }
+
     private fun sampleAt(pcm: ByteArray, frame: Int, channel: Int): Int {
         val source = if (frame < 0) carry ?: pcm else pcm
         val at = (if (frame < 0) 0 else frame * frameBytes) + channel * 2
-        return (source[at].toInt() and 0xFF) or (source[at + 1].toInt() shl 8)
+        return (source[at].toInt() and BYTE_MASK) or (source[at + 1].toInt() shl BITS_PER_BYTE)
     }
 }

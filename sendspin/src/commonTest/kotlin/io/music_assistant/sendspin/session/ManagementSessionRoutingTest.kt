@@ -66,11 +66,17 @@ internal class ManagementSessionRoutingTest : NoiseSessionTestHarness() {
         assertIs<Event.Activated>(f.nextEvent())
 
         server.sendJson("""{"type":"management/list-records","payload":{}}""")
-        assertEquals("ok", result(server.receiveJson()).getValue("payload").jsonObject.getValue("result").jsonPrimitive.content)
+        assertEquals(
+            "ok",
+            result(server.receiveJson()).getValue("payload").jsonObject.getValue("result").jsonPrimitive.content,
+        )
 
         val ownPskId = f.trustStore.pskIdOf(longTermPsk)
         server.sendJson("""{"type":"management/remove-record","payload":{"psk_id":"$ownPskId"}}""")
-        assertEquals("ok", result(server.receiveJson()).getValue("payload").jsonObject.getValue("result").jsonPrimitive.content)
+        assertEquals(
+            "ok",
+            result(server.receiveJson()).getValue("payload").jsonObject.getValue("result").jsonPrimitive.content,
+        )
         val goodbye = result(server.receiveJson())
         assertEquals("client/goodbye", goodbye.getValue("type").jsonPrimitive.content)
         assertEquals("unauthorized", goodbye.getValue("payload").jsonObject.getValue("reason").jsonPrimitive.content)

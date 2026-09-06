@@ -29,13 +29,14 @@ object BinaryFrames {
     const val TIMESTAMP_BYTES = 8
     private const val TYPE_AUDIO_CHUNK = 4
     private const val BYTE_MASK = 0xFFL
+    private const val BITS_PER_BYTE = 8
 
     fun parse(type: Int, body: ByteArray): BinaryFrame {
         if (type != TYPE_AUDIO_CHUNK) return BinaryFrame.Other(type)
         if (body.size < TIMESTAMP_BYTES) return BinaryFrame.Malformed
         var timestamp = 0L
         for (i in 0 until TIMESTAMP_BYTES) {
-            timestamp = (timestamp shl 8) or (body[i].toLong() and BYTE_MASK)
+            timestamp = (timestamp shl BITS_PER_BYTE) or (body[i].toLong() and BYTE_MASK)
         }
         if (timestamp < 0) return BinaryFrame.Malformed
         return BinaryFrame.Audio(AudioChunk(timestamp, body, TIMESTAMP_BYTES))

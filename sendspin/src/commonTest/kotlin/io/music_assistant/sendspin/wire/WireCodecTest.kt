@@ -38,7 +38,8 @@ class WireCodecTest {
         assertEquals(
             ServerMessage.StreamStart(StreamStartPlayer("flac", 48000, 2, 16, "aGVhZGVy")),
             WireCodec.parse(
-                """{"type":"stream/start","payload":{"player":{"codec":"flac","sample_rate":48000,"channels":2,"bit_depth":16,"codec_header":"aGVhZGVy"},"artwork":{}}}""",
+                """{"type":"stream/start","payload":{"player":{"codec":"flac","sample_rate":48000,""" +
+                    """"channels":2,"bit_depth":16,"codec_header":"aGVhZGVy"},"artwork":{}}}""",
             ),
         )
         assertIs<ServerMessage.StreamEnd>(WireCodec.parse("""{"type":"stream/end"}"""))
@@ -141,7 +142,12 @@ class WireCodecTest {
             ),
         )
         assertEquals(
-            """{"type":"client/hello","payload":{"name":"Phone","device_info":{"product_name":"App","manufacturer":"MA","software_version":"1"},"trust_level":"user","supported_roles":["player@v1"],"player@v1_support":{"supported_formats":[{"codec":"flac","channels":2,"sample_rate":48000,"bit_depth":16}],"buffer_capacity":15000000,"supported_commands":["volume"]},"supported_pair_methods":[{"method":"psk"}],"unpaired_access":{"enabled":false}}}""",
+            """{"type":"client/hello","payload":{"name":"Phone",""" +
+                """"device_info":{"product_name":"App","manufacturer":"MA","software_version":"1"},""" +
+                """"trust_level":"user","supported_roles":["player@v1"],""" +
+                """"player@v1_support":{"supported_formats":[{"codec":"flac","channels":2,"sample_rate":48000,"bit_depth":16}],""" +
+                """"buffer_capacity":15000000,"supported_commands":["volume"]},""" +
+                """"supported_pair_methods":[{"method":"psk"}],"unpaired_access":{"enabled":false}}}""",
             WireCodec.encode(hello),
         )
     }

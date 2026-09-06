@@ -6,11 +6,11 @@ import io.ktor.utils.io.ExperimentalKtorApi
 import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.player.local.AndroidDecoderFactory
 import io.music_assistant.client.player.local.AudioTrackSink
+import io.music_assistant.client.utils.AndroidBackgroundUsageGuard
+import io.music_assistant.client.utils.BackgroundUsageGuard
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.SystemMonotonicClock
-import io.music_assistant.client.utils.AndroidBackgroundUsageGuard
-import io.music_assistant.client.utils.BackgroundUsageGuard
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 

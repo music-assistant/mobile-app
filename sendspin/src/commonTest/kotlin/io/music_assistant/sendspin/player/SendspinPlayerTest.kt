@@ -47,9 +47,20 @@ class SendspinPlayerTest {
         val sink = FakeSink { clock.nowMicros() }
         val transports = Channel<FakeTransport>(Channel.UNLIMITED)
         val handedOut = mutableListOf<FakeTransport>()
-        val endpoint = Endpoint.WebRtc { FakeTransport().also { handedOut += it; transports.trySend(it) } }
+        val endpoint = Endpoint.WebRtc {
+            FakeTransport().also {
+            handedOut += it
+        transports.trySend(it)
+        }
+        }
         val config = MutableStateFlow<LocalPlayerConfig?>(
-            LocalPlayerConfig(endpoint, "Device", listOf(AudioCodec.FLAC), bufferCapacityBytes = 10_000_000, userDelayMs = 0),
+            LocalPlayerConfig(
+                endpoint,
+                "Device",
+                listOf(AudioCodec.FLAC),
+                bufferCapacityBytes = 10_000_000,
+                userDelayMs = 0,
+            ),
         )
         val events = Channel<PlayerEvent>(Channel.UNLIMITED)
         var pairCalls = 0
@@ -131,7 +142,9 @@ class SendspinPlayerTest {
 
         // Connection drops: reconnecting, pipeline untouched.
         h.dropConnection()
-        val reconnecting = withTimeout(5_000) { h.player.state.first { it is PlayerState.Reconnecting } } as PlayerState.Reconnecting
+        val reconnecting = withTimeout(5_000) {
+            h.player.state.first { it is PlayerState.Reconnecting }
+        } as PlayerState.Reconnecting
         assertEquals(0, reconnecting.attempt)
         val server2 = h.connectServer()
         h.awaitConnected()

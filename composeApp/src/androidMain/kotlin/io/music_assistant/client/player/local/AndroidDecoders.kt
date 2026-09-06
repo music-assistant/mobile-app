@@ -62,7 +62,11 @@ internal class FlacDecoder : AudioDecoder {
         release()
         require(format.channels in 1..8) { "FLAC supports 1-8 channels, got ${format.channels}" }
         outputBitDepth = format.bitDepth
-        val mediaFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_FLAC, format.sampleRate, format.channels).apply {
+        val mediaFormat = MediaFormat.createAudioFormat(
+            MediaFormat.MIMETYPE_AUDIO_FLAC,
+            format.sampleRate,
+            format.channels,
+        ).apply {
             setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, MAX_INPUT_SIZE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setInteger(
@@ -156,12 +160,20 @@ internal class FlacDecoder : AudioDecoder {
             current.flush()
         } catch (e: IllegalStateException) {
             logger.w(e) { "FLAC flush failed; restarting the codec" }
-            runCatching { current.stop(); current.start() }.onFailure { release() }
+            runCatching {
+                current.stop()
+                current.start()
+            }.onFailure { release() }
         }
     }
 
     override fun release() {
-        codec?.let { runCatching { it.stop(); it.release() } }
+        codec?.let {
+            runCatching {
+                it.stop()
+                it.release()
+            }
+        }
         codec = null
     }
 

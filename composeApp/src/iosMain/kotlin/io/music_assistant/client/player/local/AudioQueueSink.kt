@@ -36,7 +36,7 @@ class AudioQueueSink(private val onRemoteCommand: (command: String) -> Unit) : A
     private val logger = Logger.withTag("AudioQueueSink")
 
     override fun open(format: SinkFormat): SinkHandle {
-        val player = PlatformPlayerProvider.player ?: throw IllegalStateException("no PlatformAudioPlayer registered")
+        val player = PlatformPlayerProvider.player ?: error("no PlatformAudioPlayer registered")
         return Handle(player, format)
     }
 

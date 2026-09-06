@@ -30,7 +30,8 @@ internal class ClockSync(private val clock: MonotonicClock) {
 
     /** A `server/time` reply; timestamped on arrival. */
     fun onReply(payload: ServerTimePayload) {
-        val sample = Sample(payload.clientTransmitted, payload.serverReceived, payload.serverTransmitted, clock.nowMicros())
+        val sample =
+            Sample(payload.clientTransmitted, payload.serverReceived, payload.serverTransmitted, clock.nowMicros())
         synchronized(lock) { burst += sample }
     }
 

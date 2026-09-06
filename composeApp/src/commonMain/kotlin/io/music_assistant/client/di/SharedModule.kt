@@ -23,9 +23,8 @@ import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaSessionBridge
-import io.music_assistant.sendspin.identity.SendspinKeyStore
-import io.music_assistant.client.settings.SettingsSendspinKeyStore
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.SettingsSendspinKeyStore
 import io.music_assistant.client.settings.provideSecretSettings
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
@@ -50,13 +49,14 @@ import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewMode
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.NetworkMonitor
+import io.music_assistant.sendspin.identity.SendspinKeyStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import org.koin.dsl.module
 
 /**

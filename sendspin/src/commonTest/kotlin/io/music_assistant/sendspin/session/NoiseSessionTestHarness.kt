@@ -93,7 +93,9 @@ internal abstract class NoiseSessionTestHarness {
             }
 
             override fun onAudio(chunk: AudioChunk) {
-                events.trySend(Event.Audio(chunk.timestampMicros, chunk.body.copyOfRange(chunk.offset, chunk.body.size)))
+                events.trySend(
+                    Event.Audio(chunk.timestampMicros, chunk.body.copyOfRange(chunk.offset, chunk.body.size)),
+                )
             }
         }
         val run = async { runCatching { session.run(handler) } }

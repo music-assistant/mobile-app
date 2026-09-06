@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerType
-import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.client.ui.contentColorByLuminance
+import io.music_assistant.sendspin.api.PlayerState
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_current_player
 import org.jetbrains.compose.resources.stringResource

@@ -10,14 +10,29 @@ class StreamLifecycleTest {
 
     @Test
     fun startTable() {
-        assertEquals(StreamAction.StartFresh(flac), StreamLifecycle.onStart(StreamPhase.Idle, null, flac, newConnection = false))
-        assertEquals(StreamAction.StartFresh(flac), StreamLifecycle.onStart(StreamPhase.Ended, flac, flac, newConnection = true))
+        assertEquals(
+            StreamAction.StartFresh(flac),
+            StreamLifecycle.onStart(StreamPhase.Idle, null, flac, newConnection = false),
+        )
+        assertEquals(
+            StreamAction.StartFresh(flac),
+            StreamLifecycle.onStart(StreamPhase.Ended, flac, flac, newConnection = true),
+        )
         // Same format on the same connection while playing is a seek or skip.
-        assertEquals(StreamAction.StartFresh(flac), StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = false))
+        assertEquals(
+            StreamAction.StartFresh(flac),
+            StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = false),
+        )
         // Same format on a new connection while playing is a reconnect resume.
-        assertEquals(StreamAction.ResumeKeepBuffer, StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = true))
+        assertEquals(
+            StreamAction.ResumeKeepBuffer,
+            StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = true),
+        )
         // A format change is always fresh.
-        assertEquals(StreamAction.StartFresh(opus), StreamLifecycle.onStart(StreamPhase.Playing, flac, opus, newConnection = true))
+        assertEquals(
+            StreamAction.StartFresh(opus),
+            StreamLifecycle.onStart(StreamPhase.Playing, flac, opus, newConnection = true),
+        )
     }
 
     @Test

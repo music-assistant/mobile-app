@@ -25,7 +25,6 @@ import io.music_assistant.client.utils.audioDispatcher
 import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.sendspin.SendspinPlayer
 import io.music_assistant.sendspin.api.AudioSink
-import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.PlayerEvent
@@ -61,6 +60,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_playback_stopped_connection_lost
 import org.jetbrains.compose.resources.getString
 import kotlin.coroutines.CoroutineContext
+import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
 
 /**
  * App side of the local (Sendspin) player. Owns the [SendspinPlayer] through
@@ -290,7 +290,11 @@ class LocalPlayerAdapter(
                 updateOptimisticQueueInfo { it.copy(repeatMode = nextMode) }
             }
 
-            is PlayerAction.ToggleDontStopTheMusic -> updateOptimisticQueueInfo { it.copy(autoPlayEnabled = !action.current) }
+            is PlayerAction.ToggleDontStopTheMusic -> updateOptimisticQueueInfo {
+                it.copy(
+                autoPlayEnabled = !action.current,
+            )
+            }
             is PlayerAction.ToggleCrossfade -> updateOptimisticQueueInfo { it.copy(crossfadeEnabled = !action.current) }
 
             is PlayerAction.SeekTo -> {
@@ -577,7 +581,9 @@ internal fun remoteCommandToPlayerAction(command: String, queueInfo: QueueInfo?)
     command == "previous" -> PlayerAction.Previous
     command == "toggle_shuffle" -> PlayerAction.ToggleShuffle(current = queueInfo?.shuffleEnabled == true)
     command == "toggle_repeat" -> PlayerAction.ToggleRepeatMode(current = queueInfo?.repeatMode ?: RepeatMode.OFF)
-    command.startsWith("seek:") -> command.removePrefix("seek:").toDoubleOrNull()?.let { PlayerAction.SeekTo(it.toLong()) }
+    command.startsWith(
+        "seek:",
+    ) -> command.removePrefix("seek:").toDoubleOrNull()?.let { PlayerAction.SeekTo(it.toLong()) }
     command.startsWith("seek_by:") -> command.removePrefix("seek_by:").toLongOrNull()?.let { PlayerAction.SeekBy(it) }
     else -> null
 }

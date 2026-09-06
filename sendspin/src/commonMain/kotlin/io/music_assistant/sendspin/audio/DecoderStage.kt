@@ -47,5 +47,7 @@ internal class DecoderStage(private val factory: DecoderFactory) {
 
     fun supports(codecName: String): Boolean = codecOf(codecName)?.let(factory::supports) == true
 
-    private fun codecOf(name: String): AudioCodec? = AudioCodec.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
+    private fun codecOf(name: String): AudioCodec? = AudioCodec.entries.firstOrNull {
+        it.name.equals(name, ignoreCase = true)
+    }
 }

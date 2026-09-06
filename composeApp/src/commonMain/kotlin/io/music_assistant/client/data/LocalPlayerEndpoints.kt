@@ -103,7 +103,9 @@ class LocalPlayerEndpoints(
             log.i { "Sendspin data channel spent; renegotiating WebRTC" }
             apiClient.forceWebRTCReconnect()
             withTimeout(CHANNEL_TIMEOUT_MILLIS) {
-                apiClient.sessionState.first { it is SessionState.Connected.WebRTC && apiClient.webrtcSendspinChannel.let { c -> c != null && c !== current } }
+                apiClient.sessionState.first {
+                    it is SessionState.Connected.WebRTC && apiClient.webrtcSendspinChannel.let { c -> c != null && c !== current }
+                }
             }
             checkNotNull(apiClient.webrtcSendspinChannel)
         }

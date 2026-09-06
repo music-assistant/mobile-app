@@ -74,14 +74,23 @@ class ConnectionSupervisorTest {
         val connector = TransportConnector { _ -> connect(attempts++).also { transports += it } }
         val clock = MonotonicClock { testScheduler.currentTime * 1_000 }
         val supervisor = ConnectionSupervisor(
-            connector, trustStore, crypto, online, clock,
+            connector,
+            trustStore,
+            crypto,
+            online,
+            clock,
             pairWebPlayer = { pairCalls++ },
             random = Random(42),
         )
         val states = mutableListOf<Pair<ConnectionState, Long>>()
         val job = launch {
             launch { supervisor.state.collect { states += it to testScheduler.currentTime } }
-            supervisor.run(endpoint ?: Endpoint.WebRtc { connect(attempts++).also { transports += it } }, sessionConfig, noopHandler, companion = companion)
+            supervisor.run(
+                endpoint ?: Endpoint.WebRtc { connect(attempts++).also { transports += it } },
+                sessionConfig,
+                noopHandler,
+                companion = companion,
+            )
         }
         runCurrent()
         return Harness(trustStore, crypto.generateX25519KeyPair(), supervisor, transports, states, job)
@@ -92,7 +101,7 @@ class ConnectionSupervisorTest {
 
     @Test
     fun connectFailuresBackOffExponentiallyAndCap() = runTest {
-        val h = harness(connect = { throw IllegalStateException("refused") })
+        val h = harness(connect = { error("refused") })
         advanceTimeBy(200_000)
         h.job.cancel()
 
@@ -112,7 +121,10 @@ class ConnectionSupervisorTest {
     @Test
     fun offlineWaitsForNetworkThenRetriesAtOnce() = runTest {
         var attempts = 0
-        val h = harness(connect = { attempts++; throw IllegalStateException("refused") })
+        val h = harness(connect = {
+            attempts++
+        error("refused")
+        })
         online.value = false
         advanceTimeBy(5_000)
         assertIs<ConnectionState.WaitingForNetwork>(h.supervisor.state.value)
@@ -129,7 +141,7 @@ class ConnectionSupervisorTest {
     @Test
     fun stableActiveSessionResetsTheAttemptCounter() = runTest {
         var attempt = 0
-        val h = harness(connect = { if (attempt++ < 3) throw IllegalStateException("refused") else FakeTransport() })
+        val h = harness(connect = { if (attempt++ < 3) error("refused") else FakeTransport() })
         // Never advanceUntilIdle() against the supervisor: it always schedules the next retry.
         h.supervisor.state.first { it is ConnectionState.Connecting && it.attempt == 3 }
         runCurrent()
@@ -174,7 +186,10 @@ class ConnectionSupervisorTest {
     @Test
     fun webRtcEndpointOpensAFreshChannelPerAttempt() = runTest {
         var opened = 0
-        val endpoint = Endpoint.WebRtc { opened++; FakeTransport().also { it.serverDrops() } }
+        val endpoint = Endpoint.WebRtc {
+            opened++
+        FakeTransport().also { it.serverDrops() }
+        }
         val h = harness(endpoint = endpoint)
         advanceTimeBy(20_000)
         h.job.cancel()
@@ -184,7 +199,10 @@ class ConnectionSupervisorTest {
 
     @Test
     fun companionFailureEndsTheAttemptAndClosesTheTransport() = runTest {
-        val h = harness(companion = { delay(500); throw ServerSilentException() })
+        val h = harness(companion = {
+            delay(500)
+        throw ServerSilentException()
+        })
         runCurrent()
         val transport = h.transports.single()
         advanceTimeBy(600)

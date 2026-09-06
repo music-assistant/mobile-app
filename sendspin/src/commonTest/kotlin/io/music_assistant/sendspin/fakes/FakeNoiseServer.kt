@@ -63,7 +63,9 @@ class FakeNoiseServer(
         val pskId = pskIdOverride ?: SendspinPsk.pskId(crypto, psk)
         val message1 = handshake.writeMessage("""{"psk_id":"$pskId"}""".encodeToByteArray())
         transport.serverSends(
-            SendspinJson.encodeToString(NoiseHandshakeMessage(payload = NoiseHandshakePayload(SendspinBase64.encode(message1)))),
+            SendspinJson.encodeToString(
+                NoiseHandshakeMessage(payload = NoiseHandshakePayload(SendspinBase64.encode(message1))),
+            ),
         )
         val message2 = SendspinJson.decodeFromString<NoiseHandshakeMessage>(clientText()).payload.data
         handshake.readMessage(SendspinBase64.decode(message2))
@@ -80,9 +82,9 @@ class FakeNoiseServer(
 
     /** Sends one player-role message: `[8-byte timestamp][data]`. */
     suspend fun sendAudio(type: Int, timestamp: Long, data: ByteArray) {
-        val body = ByteArray(8 + data.size)
-        for (i in 0 until 8) body[i] = (timestamp shr (8 * (7 - i))).toByte()
-        data.copyInto(body, 8)
+        val body = ByteArray(TIMESTAMP_BYTES + data.size)
+        for (i in 0 until TIMESTAMP_BYTES) body[i] = (timestamp shr (Byte.SIZE_BITS * (TIMESTAMP_BYTES - 1 - i))).toByte()
+        data.copyInto(body, TIMESTAMP_BYTES)
         NoiseFraming.encode(type, body).forEach { transport.serverSends(noise.encrypt(it)) }
     }
 
@@ -112,7 +114,11 @@ class FakeNoiseServer(
         )
         val pskId = SendspinPsk.pskId(crypto, newPsk)
         val message1 = handshake.writeMessage("""{"psk_id":"$pskId"}""".encodeToByteArray())
-        sendJson(SendspinJson.encodeToString(NoiseHandshakeMessage(payload = NoiseHandshakePayload(SendspinBase64.encode(message1)))))
+        sendJson(
+            SendspinJson.encodeToString(
+                NoiseHandshakeMessage(payload = NoiseHandshakePayload(SendspinBase64.encode(message1))),
+            ),
+        )
         // Message 2 arrives under the old transport keys.
         val message2 = SendspinJson.decodeFromString<NoiseHandshakeMessage>(receiveJson()).payload.data
         handshake.readMessage(SendspinBase64.decode(message2))
@@ -161,7 +167,9 @@ class FakeNoiseServer(
             val type = root.getValue("type").jsonPrimitive.content
             if (type == "client/time") {
                 val t1 = root.getValue("payload").jsonObject.getValue("client_transmitted").jsonPrimitive.long
-                sendJson("""{"type":"server/time","payload":{"client_transmitted":$t1,"server_received":$t1,"server_transmitted":$t1}}""")
+                sendJson(
+                    """{"type":"server/time","payload":{"client_transmitted":$t1,"server_received":$t1,"server_transmitted":$t1}}""",
+                )
             } else {
                 clientMessageTypes += type
             }
@@ -170,10 +178,13 @@ class FakeNoiseServer(
 
     /** Sends a `stream/start` for [codec] at 48 kHz stereo 16-bit. */
     suspend fun startStream(codec: String = "flac") {
-        sendJson("""{"type":"stream/start","payload":{"player":{"codec":"$codec","sample_rate":48000,"channels":2,"bit_depth":16}}}""")
+        sendJson(
+            """{"type":"stream/start","payload":{"player":{"codec":"$codec","sample_rate":48000,"channels":2,"bit_depth":16}}}""",
+        )
     }
 
     private companion object {
         const val AWAIT_MILLIS = 5_000L
+        const val TIMESTAMP_BYTES = 8
     }
 }

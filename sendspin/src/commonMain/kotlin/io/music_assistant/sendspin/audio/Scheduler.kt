@@ -5,8 +5,8 @@ import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.AudioStatus
 import io.music_assistant.sendspin.api.MonotonicClock
-import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkEvent
+import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkHandle
 import io.music_assistant.sendspin.clock.ClockSync
 import io.music_assistant.sendspin.wire.AudioChunk
@@ -58,7 +58,7 @@ internal class Scheduler(
         try {
             while (true) step(this)
             @Suppress("UNREACHABLE_CODE")
-            throw IllegalStateException()
+            error("unreachable")
         } finally {
             closeSink()
             decoder.close()
@@ -123,7 +123,7 @@ internal class Scheduler(
         }
         handle = opened
         format = pcmFormat
-        corrector = if (pcmFormat.isPcm) DriftCorrector(pcmFormat.channels, pcmFormat.bitDepth / 8) else null
+        corrector = if (pcmFormat.isPcm) DriftCorrector(pcmFormat.channels, pcmFormat.bitDepth / BITS_PER_BYTE) else null
         openGeneration = state.generation
         framesWritten = 0
         played = false
@@ -208,7 +208,7 @@ internal class Scheduler(
 
     /** Waits up to [micros], but wakes early on any stream change or new chunk. */
     private suspend fun waitOrWake(micros: Long) {
-        withTimeoutOrNull((micros / 1_000).coerceAtLeast(1)) { pipeline.wakeups.receive() }
+        withTimeoutOrNull((micros / MICROS_PER_MILLI).coerceAtLeast(1)) { pipeline.wakeups.receive() }
     }
 
     private fun write(out: SinkHandle, pcm: ByteArray, offset: Int = 0, length: Int = pcm.size): Boolean {
@@ -238,7 +238,7 @@ internal class Scheduler(
     }
 
     private fun publish(phase: AudioPhase, starved: Boolean) {
-        val bufferedMs = (pipeline.buffer.spanMicros / 1_000).toInt()
+        val bufferedMs = (pipeline.buffer.spanMicros / MICROS_PER_MILLI).toInt()
         _status.update { AudioStatus(phase, bufferedMs, starved) }
     }
 
@@ -252,13 +252,13 @@ internal class Scheduler(
         }
         handle = null
         if (lateDrops > 0 || insertedSilenceMicros > 0) {
-            logger.w { "Stream stats: lateDrops=$lateDrops insertedSilenceMs=${insertedSilenceMicros / 1_000}" }
+            logger.w { "Stream stats: lateDrops=$lateDrops insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI}" }
         }
     }
 
-    private fun framesToMicros(frames: Long, fmt: SinkFormat): Long = frames * 1_000_000L / fmt.sampleRate
+    private fun framesToMicros(frames: Long, fmt: SinkFormat): Long = frames * MICROS_PER_SECOND / fmt.sampleRate
 
-    private fun microsToFrames(micros: Long, fmt: SinkFormat): Long = micros * fmt.sampleRate / 1_000_000L
+    private fun microsToFrames(micros: Long, fmt: SinkFormat): Long = micros * fmt.sampleRate / MICROS_PER_SECOND
 
     private fun microsToBytes(micros: Long, fmt: SinkFormat): Int = (microsToFrames(micros, fmt) * fmt.bytesPerFrame).toInt()
 
@@ -273,6 +273,9 @@ internal class Scheduler(
         const val MAX_SILENCE_MICROS = 200_000L
 
         const val DECODER_FAILURE_LIMIT = 5
+        const val BITS_PER_BYTE = 8
+        const val MICROS_PER_SECOND = 1_000_000L
+        const val MICROS_PER_MILLI = 1_000L
 
         /** How long a chunk may wait for the first clock estimate. */
         const val CLOCK_WAIT_MICROS = 3_000_000L

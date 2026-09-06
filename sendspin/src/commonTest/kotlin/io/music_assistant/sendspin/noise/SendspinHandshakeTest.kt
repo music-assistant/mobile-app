@@ -1,11 +1,11 @@
 package io.music_assistant.sendspin.noise
 
+import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
+import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
 import io.music_assistant.sendspin.wire.NoiseHandshakeMessage
 import io.music_assistant.sendspin.wire.NoiseHandshakePayload
 import io.music_assistant.sendspin.wire.ServerInitMessage
 import io.music_assistant.sendspin.wire.ServerInitPayload
-import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
-import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest

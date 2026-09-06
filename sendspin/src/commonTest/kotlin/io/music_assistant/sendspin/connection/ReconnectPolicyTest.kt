@@ -26,15 +26,25 @@ class ReconnectPolicyTest {
 
     @Test
     fun offlineWaitsForNetworkForEveryRetriableReason() {
-        for (reason in listOf(lost, DropReason.ServerClosed, DropReason.Silent, DropReason.ConnectFailed(Exception()))) {
-            assertEquals(ReconnectPolicy.Decision.WaitForNetwork, ReconnectPolicy.next(3, reason, online = false, consecutiveRejections = 0))
+        for (reason in listOf(
+            lost,
+            DropReason.ServerClosed,
+            DropReason.Silent,
+            DropReason.ConnectFailed(Exception()),
+        )) {
+            assertEquals(
+                ReconnectPolicy.Decision.WaitForNetwork,
+                ReconnectPolicy.next(3, reason, online = false, consecutiveRejections = 0),
+            )
         }
     }
 
     @Test
     fun rejectionsRetryUntilTheCapThenFailWithTheMappedCause() {
         val rejected = DropReason.Rejected("pairing_required")
-        assertIs<ReconnectPolicy.Decision.Retry>(ReconnectPolicy.next(0, rejected, online = true, consecutiveRejections = 4))
+        assertIs<ReconnectPolicy.Decision.Retry>(
+            ReconnectPolicy.next(0, rejected, online = true, consecutiveRejections = 4),
+        )
         assertEquals(
             ReconnectPolicy.Decision.Fail(FailureCause.Unauthorized),
             ReconnectPolicy.next(0, rejected, online = true, consecutiveRejections = 5),

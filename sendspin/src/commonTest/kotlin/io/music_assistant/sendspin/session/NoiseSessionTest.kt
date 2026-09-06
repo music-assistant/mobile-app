@@ -186,7 +186,10 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
         server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"static_pin"}""")
         val abort = SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
         assertEquals("pair/abort", abort.getValue("type").jsonPrimitive.content)
-        assertEquals("method_not_supported", abort.getValue("payload").jsonObject.getValue("reason").jsonPrimitive.content)
+        assertEquals(
+            "method_not_supported",
+            abort.getValue("payload").jsonObject.getValue("reason").jsonPrimitive.content,
+        )
         assertFalse(f.transport.closed, "connection stays open")
 
         server.activate(activities = "[]", activeRoles = "[]")
