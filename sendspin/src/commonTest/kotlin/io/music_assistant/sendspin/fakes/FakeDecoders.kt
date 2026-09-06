@@ -25,13 +25,18 @@ class FakeDecoderFactory(
         var released = false
         var resets = 0
 
+        /** Real decoders are stateful: each call must correspond to exactly one chunk. */
+        var decodes = 0
+
         override fun configure(format: AudioFormatSpec, codecHeader: ByteArray?) {
             configured = format
             header = codecHeader
         }
 
-        override fun decode(input: ByteArray, offset: Int, length: Int): ByteArray =
-            if (failing) ByteArray(0) else input.copyOfRange(offset, offset + length)
+        override fun decode(input: ByteArray, offset: Int, length: Int): ByteArray {
+            decodes++
+            return if (failing) ByteArray(0) else input.copyOfRange(offset, offset + length)
+        }
 
         override val outputBitDepth: Int get() = 16
 

@@ -75,6 +75,7 @@ internal class Scheduler(
                 if (state.phase == StreamPhase.Playing) it.resume()
             }
             framesWritten = 0
+            played = false // the next write is a new start: the app must be told again
             corrector?.reset()
         }
         when (state.phase) {
@@ -143,17 +144,17 @@ internal class Scheduler(
         publish(AudioPhase.Buffering, starved = false)
     }
 
-    /** Returns true when [chunk] was consumed (played or dropped); false to retry later. */
+    /**
+     * Returns true when [chunk] was consumed (played or dropped); false to retry later.
+     *
+     * Every "retry later" exit happens before the decode: decoders are stateful
+     * (Opus advances per call, MediaCodec queues the frame), so a chunk is decoded
+     * exactly once, on the iteration that consumes it.
+     */
     private suspend fun play(chunk: AudioChunk): Boolean {
         val out = handle ?: return false
         val fmt = format ?: return false
         val target = clockSync.toLocalMicros(chunk.timestampMicros)?.plus(pipeline.userDelayMicros)
-        val pcm = decoder.decode(chunk) ?: run {
-            if (decoder.consecutiveFailures >= DECODER_FAILURE_LIMIT) {
-                pipeline.onSinkFailure(AudioEvent.DecoderFailed(pipeline.stream.value.format?.codec ?: "?"))
-            }
-            return true
-        }
         if (target == null) {
             // No clock estimate yet (first probe burst pending): hold the chunk briefly
             // rather than dump the server's lead-in into the sink; give up after a bound.
@@ -162,12 +163,11 @@ internal class Scheduler(
                 waitOrWake(CLOCK_POLL_MICROS)
                 return false
             }
-            return write(out, pcm)
+            return decodeAndWrite(out, chunk)
         }
         clockWaitSinceMicros = null
         // Opaque (natively decoded) bytes cannot be trimmed, padded, or resampled: open loop only.
         val opaque = !fmt.isPcm
-        val blockMicros = if (opaque) 0L else framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
         val position = if (opaque) null else out.position()
         val latency = out.latencyMicros ?: 0L
         val queuedMicros = position?.let { queuedMicros(it, fmt) } ?: 0L
@@ -176,6 +176,8 @@ internal class Scheduler(
         if (lead < -HARD_TOLERANCE_MICROS) {
             val late = -lead
             lateDrops++
+            val pcm = decode(chunk) ?: return true
+            val blockMicros = if (opaque) 0L else framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
             if (late >= blockMicros) return true // whole chunk is in the past
             val skip = microsToBytes(late, fmt)
             return write(out, pcm, skip, pcm.size - skip)
@@ -186,24 +188,40 @@ internal class Scheduler(
                 waitOrWake(lead)
                 return false
             }
-            return write(out, pcm)
+            return decodeAndWrite(out, chunk)
         }
+        if (lead > MAX_SILENCE_MICROS) {
+            waitOrWake(lead - MAX_SILENCE_MICROS)
+            return false
+        }
+        val pcm = decode(chunk) ?: return true
         return when {
-            lead > MAX_SILENCE_MICROS -> {
-                waitOrWake(lead - MAX_SILENCE_MICROS)
-                false
-            }
-
             lead > HARD_TOLERANCE_MICROS -> {
                 insertedSilenceMicros += lead
                 write(out, ByteArray(microsToBytes(lead, fmt))) && write(out, pcm)
             }
 
-            abs(lead) > SOFT_TOLERANCE_MICROS ->
+            abs(lead) > SOFT_TOLERANCE_MICROS -> {
+                val blockMicros = framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
                 write(out, corrector?.correct(pcm, driftMicros = -lead, blockMicros = blockMicros) ?: pcm)
+            }
 
             else -> write(out, pcm)
         }
+    }
+
+    private fun decodeAndWrite(out: SinkHandle, chunk: AudioChunk): Boolean {
+        val pcm = decode(chunk) ?: return true
+        return write(out, pcm)
+    }
+
+    /** PCM for [chunk], or null when the chunk is dropped for a decode failure (the stream ends at the limit). */
+    private fun decode(chunk: AudioChunk): ByteArray? {
+        val pcm = decoder.decode(chunk)
+        if (pcm == null && decoder.consecutiveFailures >= DECODER_FAILURE_LIMIT) {
+            pipeline.onSinkFailure(AudioEvent.DecoderFailed(pipeline.stream.value.format?.codec ?: "?"))
+        }
+        return pcm
     }
 
     /** Waits up to [micros], but wakes early on any stream change or new chunk. */

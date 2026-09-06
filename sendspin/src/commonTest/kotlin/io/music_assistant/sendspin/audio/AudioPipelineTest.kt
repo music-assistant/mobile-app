@@ -35,12 +35,16 @@ class AudioPipelineTest {
     private val flac = StreamStartPlayer("flac", 48_000, 2, 16)
     private val bytesPerFrame = 4
 
-    private inner class Harness(val scope: TestScope) {
+    private inner class Harness(val scope: TestScope, synced: Boolean = true) {
         val clock = MonotonicClock { scope.currentTime * 1_000 }
         val sink = FakeSink { clock.nowMicros() }
         val decoders = FakeDecoderFactory()
-        val clockSync = ClockSync(clock).apply {
-            onReply(ServerTimePayload(0, 0, 0))
+        val clockSync = ClockSync(clock).apply { if (synced) sync() }
+
+        /** One zero-RTT probe answered "now": server clock == local clock. */
+        fun ClockSync.sync() {
+            val now = clock.nowMicros()
+            onReply(ServerTimePayload(now, now, now))
             endBurst()
         }
         val pipeline = AudioPipeline(sink, decoders, clockSync, clock, capacityBytes = 10_000_000)
@@ -61,8 +65,8 @@ class AudioPipelineTest {
         fun feed(vararg dueMillis: Long) = dueMillis.forEach { pipeline.onAudio(chunk(it)) }
     }
 
-    private fun pipelineTest(block: suspend TestScope.(Harness) -> Unit) = runTest {
-        val h = Harness(this)
+    private fun pipelineTest(synced: Boolean = true, block: suspend TestScope.(Harness) -> Unit) = runTest {
+        val h = Harness(this, synced)
         runCurrent()
         try {
             block(h)
@@ -189,6 +193,62 @@ class AudioPipelineTest {
         h.pipeline.onAudio(h.chunk(-100))
         runCurrent()
         assertEquals(1, h.handle.writes.size, "late chunk dropped")
+    }
+
+    @Test
+    fun aChunkThatWaitsForItsDueTimeIsDecodedOnce() = pipelineTest { h ->
+        // Stateful decoders (Opus, MediaCodec) corrupt audio when a retried chunk is decoded again.
+        h.sink.reportPosition = false
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(500)
+        runCurrent()
+        // Wake the scheduler repeatedly while the chunk is still not due.
+        repeat(5) {
+            h.feed(600 + it * 10L)
+            advanceTimeBy(20)
+            runCurrent()
+        }
+        assertEquals(0, h.handle.writes.size, "nothing due yet")
+        assertEquals(0, h.decoders.created.single().decodes, "no decode before the chunk is consumed")
+        advanceTimeBy(700)
+        runCurrent()
+        assertEquals(6, h.handle.writes.size)
+        assertEquals(6, h.decoders.created.single().decodes, "one decode per chunk")
+    }
+
+    @Test
+    fun aChunkThatWaitsForTheClockIsDecodedOnce() = pipelineTest(synced = false) { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(500) // due exactly when the clock estimate arrives
+        advanceTimeBy(500)
+        runCurrent()
+        assertEquals(0, h.handle.writes.size, "held until the first clock estimate")
+        assertEquals(0, h.decoders.created.single().decodes)
+        with(h) { clockSync.sync() }
+        h.pipeline.wakeups.trySend(Unit)
+        runCurrent()
+        assertEquals(1, h.handle.writes.size)
+        assertEquals(1, h.decoders.created.single().decodes)
+    }
+
+    @Test
+    fun audioAfterClearReportsAFreshStart() = pipelineTest { h ->
+        // A local seek clears and continues without stream/start; the app waits for Started to unfreeze.
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(0)
+        runCurrent()
+        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull())
+        h.pipeline.apply(StreamAction.Clear)
+        runCurrent()
+        assertEquals(AudioEvent.Cleared, h.events.tryReceive().getOrNull())
+        assertEquals(AudioPhase.Buffering, h.pipeline.status.value.phase)
+        h.feed(10)
+        runCurrent()
+        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull(), "a second Started after clear")
+        assertEquals(1, h.sink.handles.size, "clear keeps the sink")
     }
 
     @Test
