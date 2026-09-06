@@ -520,8 +520,8 @@ class SettingsRepository(
         _sendspinUseTls.update { enabled }
     }
 
-    // User-tuned client-side playback delay (ms). Fed into AudioStreamManager's
-    // wall-clock gate as a subtraction from each chunk's local target time:
+    // User-tuned client-side playback delay (ms). LocalPlayerAdapter negates it
+    // into LocalPlayerConfig.userDelayMs, so each chunk's local target time is
     //   target = serverTimeToLocal(ts) - userDelay*1000
     // Positive → play earlier to compensate for downstream pipeline lag (the
     // normal case; ~250 ms is typical for Android AudioTrack + DAC). Negative

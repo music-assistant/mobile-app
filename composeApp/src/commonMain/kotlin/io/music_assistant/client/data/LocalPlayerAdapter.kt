@@ -26,6 +26,7 @@ import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.sendspin.SendspinPlayer
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
+import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
@@ -33,6 +34,7 @@ import io.music_assistant.sendspin.api.SendspinDeps
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.identity.SendspinKeyStore
 import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
+import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -54,8 +56,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_playback_stopped_connection_lost
 import org.jetbrains.compose.resources.getString
@@ -111,15 +111,13 @@ class LocalPlayerAdapter(
         settings.sendspinBufferCapacityMb,
         settings.sendspinStaticDelayMs,
     ) { values ->
-        val enabled = values[0] as Boolean
-        val endpoint = values[1] as io.music_assistant.sendspin.api.Endpoint?
-        if (!enabled || endpoint == null) return@combine null
-        LocalPlayerConfig(
-            endpoint = endpoint,
+        localPlayerConfig(
+            enabled = values[0] as Boolean,
+            endpoint = values[1] as Endpoint?,
             deviceName = values[2] as String,
-            codecPreference = listOf(values[3] as io.music_assistant.sendspin.wire.AudioCodec),
-            bufferCapacityBytes = (values[4] as Int) * SettingsRepository.BYTES_PER_MB,
-            userDelayMs = values[5] as Int,
+            codec = values[3] as AudioCodec,
+            bufferCapacityMb = values[4] as Int,
+            staticDelayMs = values[5] as Int,
         )
     }.stateIn(this, SharingStarted.Eagerly, null)
 
@@ -154,12 +152,9 @@ class LocalPlayerAdapter(
         }
         .stateIn(this, SharingStarted.Eagerly, 0.0)
 
-    private val commandQueueMutex = Mutex()
-    private val commandQueue = mutableListOf<QueuedEntry>()
+    private val commands = LocalCommandQueue(apiClient.isReadyForCommands, apiClient::sendRequest, this)
     private var pendingPlayTimeoutJob: Job? = null
     private var pausedByInterruption = false
-
-    private data class QueuedEntry(val action: PlayerAction, val request: Request)
 
     init {
         launch { player.events.collect(::onPlayerEvent) }
@@ -215,10 +210,7 @@ class LocalPlayerAdapter(
                 localPlayerData.value?.let { handleLocalCommand(it, PlayerAction.Play) }
             }
 
-            PlayerEvent.ServerRefreshNeeded -> {
-                _needsServerRefresh.emit(Unit)
-                drainCommandQueue()
-            }
+            PlayerEvent.ServerRefreshNeeded -> _needsServerRefresh.emit(Unit)
 
             is PlayerEvent.Warning -> log.w { "Local player warning: ${event.code}" }
         }
@@ -236,7 +228,7 @@ class LocalPlayerAdapter(
         applyOptimisticUpdate(data, resolved)
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
-            sendOrQueue(resolved, request)
+            commands.sendOrQueue(resolved, request)
         }
     }
 
@@ -336,30 +328,6 @@ class LocalPlayerAdapter(
         cancelPendingPlayTimeout()
         _localPlayerData.update { current ->
             current?.copy(player = current.player.copy(isPlaying = false), pendingPlay = false)
-        }
-    }
-
-    // --- Command queue (online: send immediately, offline: queue with dedup) ---
-
-    private suspend fun sendOrQueue(action: PlayerAction, request: Request) {
-        if (!apiClient.isReadyForCommands.value) {
-            enqueue(action, request)
-            return
-        }
-        if (apiClient.sendRequest(request).isFailure) enqueue(action, request)
-    }
-
-    fun drainCommandQueue() {
-        launch {
-            val entries = commandQueueMutex.withLock {
-                if (commandQueue.isEmpty()) return@launch
-                log.i { "Draining ${commandQueue.size} queued commands" }
-                commandQueue.toList().also { commandQueue.clear() }
-            }
-            entries.forEach { entry ->
-                apiClient.sendRequest(entry.request)
-                delay(100)
-            }
         }
     }
 
@@ -464,7 +432,7 @@ class LocalPlayerAdapter(
     /** Full reset: drop the optimistic UI state and pending offline commands (logout, disable). */
     fun clearState() {
         _localPlayerData.update { null }
-        launch { commandQueueMutex.withLock { commandQueue.clear() } }
+        launch { commands.clear() }
     }
 
     // --- Private helpers ---
@@ -517,38 +485,6 @@ class LocalPlayerAdapter(
         (newState?.queue as? DataState.Data)?.data?.info?.let { _optimisticQueueChanges.trySend(it) }
     }
 
-    private suspend fun enqueue(action: PlayerAction, request: Request) {
-        commandQueueMutex.withLock {
-            val entry = QueuedEntry(action, request)
-            fun toggle(match: (PlayerAction) -> Boolean) {
-                val idx = commandQueue.indexOfFirst { match(it.action) }
-                if (idx >= 0) commandQueue.removeAt(idx) else commandQueue.add(entry)
-            }
-            when (action) {
-                PlayerAction.TogglePlayPause -> toggle { it is PlayerAction.TogglePlayPause }
-                PlayerAction.Play, PlayerAction.Pause -> {
-                    commandQueue.removeAll { it.action is PlayerAction.Play || it.action is PlayerAction.Pause }
-                    commandQueue.add(entry)
-                }
-
-                is PlayerAction.ToggleShuffle -> toggle { it is PlayerAction.ToggleShuffle }
-                is PlayerAction.ToggleRepeatMode -> {
-                    commandQueue.removeAll { it.action is PlayerAction.ToggleRepeatMode }
-                    commandQueue.add(entry)
-                }
-
-                is PlayerAction.ToggleDontStopTheMusic -> toggle { it is PlayerAction.ToggleDontStopTheMusic }
-                is PlayerAction.ToggleCrossfade -> toggle { it is PlayerAction.ToggleCrossfade }
-                is PlayerAction.SeekTo -> {
-                    commandQueue.removeAll { it.action is PlayerAction.SeekTo }
-                    commandQueue.add(entry)
-                }
-
-                else -> commandQueue.add(entry)
-            }
-        }
-    }
-
     /** Remaps chapter-relative system-scrubber SeekTo payloads to absolute seconds. */
     private fun remapChapterRelativeSeek(data: PlayerData, action: PlayerAction): PlayerAction {
         if (action !is PlayerAction.SeekTo || !userPreferences.isChapterProgressEnabled) return action
@@ -557,8 +493,31 @@ class LocalPlayerAdapter(
         return PlayerAction.SeekTo(chapter.toAbsoluteSeekSeconds(action.position.toDouble()))
     }
 
-    private companion object {
+    internal companion object {
         const val PAIR_WEB_PLAYER_COMMAND = "sendspin/pair_web_player"
+
+        /**
+         * Settings to module config. The persisted static delay is a latency
+         * compensation (positive = play earlier); the module's [LocalPlayerConfig.userDelayMs]
+         * is a lag (positive = play later), so the sign flips here and nowhere else.
+         */
+        fun localPlayerConfig(
+            enabled: Boolean,
+            endpoint: Endpoint?,
+            deviceName: String,
+            codec: AudioCodec,
+            bufferCapacityMb: Int,
+            staticDelayMs: Int,
+        ): LocalPlayerConfig? {
+            if (!enabled || endpoint == null) return null
+            return LocalPlayerConfig(
+                endpoint = endpoint,
+                deviceName = deviceName,
+                codecPreference = listOf(codec),
+                bufferCapacityBytes = bufferCapacityMb * SettingsRepository.BYTES_PER_MB,
+                userDelayMs = -staticDelayMs,
+            )
+        }
 
         /** Optimistic-bump offset; safely below any realistic server-confirmation RTT. */
         const val OPTIMISTIC_BUMP_EPSILON_S = 0.0001
