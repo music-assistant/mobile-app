@@ -49,6 +49,7 @@ import io.music_assistant.client.ui.compose.settings.CarDspViewModel
 import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.NetworkMonitor
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
@@ -74,6 +75,7 @@ fun sharedModule(
         single(named(SECRETS)) { provideSecretSettings() }
         single { SettingsRepository(get(), get(named(SECRETS))) }
         singleOf(::NetworkMonitor)
+        singleOf(::LocalNetworkPermissionGate)
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)
         singleOf(::VolumeButtonService)
@@ -118,7 +120,7 @@ fun sharedModule(
         factory { BackgroundRestrictionViewModel(get(), get(), get()) }
         factory { SchemaVersionWarningViewModel(get()) }
         factory { ActionsViewModel(get(), get(), get()) }
-        factory { SettingsViewModel(get(), get(), get()) }
+        factory { SettingsViewModel(get(), get(), get(), get()) }
         factory { DefaultClickActionsViewModel(get()) }
         factory { CarActionsViewModel(get(), get()) }
         factory { CarDspViewModel(get(), get()) }

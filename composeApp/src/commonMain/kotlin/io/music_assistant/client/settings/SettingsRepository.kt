@@ -401,6 +401,18 @@ class SettingsRepository(
         _allowLandscapeOnAllDevices.update { enabled }
     }
 
+    // One-time Local Network onboarding; dismissed, not "first run", so a user who
+    // clears it without connecting is not re-prompted on every launch.
+    private val _localNetworkOnboardingShown = MutableStateFlow(
+        settings.getBoolean("local_network_onboarding_shown", false),
+    )
+    val localNetworkOnboardingShown = _localNetworkOnboardingShown.asStateFlow()
+
+    fun setLocalNetworkOnboardingShown() {
+        settings.putBoolean("local_network_onboarding_shown", true)
+        _localNetworkOnboardingShown.update { true }
+    }
+
     // Sendspin settings
     private val _sendspinEnabled = MutableStateFlow(
         settings.getBoolean("sendspin_enabled", false),

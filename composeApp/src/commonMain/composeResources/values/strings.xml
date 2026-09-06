@@ -316,10 +316,14 @@
   <string name="settings_disable_local_player">Disable local player</string>
   <string name="settings_disconnect">Disconnect</string>
   <string name="settings_enable_local_player">Enable local player</string>
+  <string name="settings_error_local_network_ios">Could not reach the server. iOS needs permission to access your local network — tap Allow if a prompt appeared, or enable it later in Settings &gt; Privacy &amp; Security &gt; Local Network. Also make sure your device is on the same network as the server, then try again.</string>
+  <string name="settings_error_offline_ios">Could not reach the server. Check that the address is correct and your device is online and on the same network as the server, then try again.</string>
   <string name="settings_exit_app">EXIT APP</string>
   <string name="settings_history_direct">Direct</string>
   <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
   <string name="settings_host">Host</string>
+  <string name="settings_local_network_onboarding_body_ios">When you connect to your server for the first time, iOS will ask for permission to access your local network. Tap Allow — without it the app cannot find or reach your server.</string>
+  <string name="settings_local_network_onboarding_title_ios">Local network access</string>
   <string name="settings_local_player_disabled">Local player (Sendspin protocol)</string>
   <string name="settings_local_player_enabled">Local player enabled</string>
   <string name="settings_misc">Misc</string>
