@@ -11,11 +11,9 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
-import io.music_assistant.client.player.sendspin.SendspinConfig
-import io.music_assistant.client.player.sendspin.audio.Codec
-import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.utils.myJson
+import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -412,19 +410,6 @@ class SettingsRepository(
         _sendspinEnabled.update { enabled }
     }
 
-    // Require the Noise-encrypted Sendspin protocol: when the connected
-    // server is too old to support it, the local player stays unavailable
-    // instead of falling back to the legacy cleartext protocol.
-    private val _sendspinRequireEncryption = MutableStateFlow(
-        settings.getBoolean("sendspin_require_encryption", false),
-    )
-    val sendspinRequireEncryption = _sendspinRequireEncryption.asStateFlow()
-
-    fun setSendspinRequireEncryption(enabled: Boolean) {
-        settings.putBoolean("sendspin_require_encryption", enabled)
-        _sendspinRequireEncryption.update { enabled }
-    }
-
     // Persisted dismissal of the "background usage disabled" warning (Android). Set only by an
     // explicit dialog dismissal; never auto-reset.
     private val _bgWarningDismissed = MutableStateFlow(
@@ -437,28 +422,12 @@ class SettingsRepository(
         _bgWarningDismissed.update { dismissed }
     }
 
-    // Legacy-protocol player identity only. On encrypted Sendspin connections
-    // the client_id is the device's X25519 public key (see
-    // player/sendspin/identity/SendspinIdentity), so this UUID is vestigial
-    // there; it remains in use for legacy connections to older servers.
-    @OptIn(ExperimentalUuidApi::class)
-    private val _sendspinClientId = MutableStateFlow(
-        settings.getStringOrNull("sendspin_client_id") ?: Uuid.random().toString().also {
-            settings.putString("sendspin_client_id", it)
-        },
-    )
-    val sendspinClientId = _sendspinClientId.asStateFlow()
-
-    // The player id the app addresses the local player by. On legacy
-    // connections it is the UUID above; on encrypted connections the server
-    // registers the player under the device's X25519 public key, so the
-    // Sendspin client factory switches this to that identity when it resolves
-    // the connection mode. Persisted so consumers address the right player
-    // from process start, before the factory has re-resolved the mode —
-    // otherwise the synthetic local player is briefly injected under an id
-    // the server doesn't have.
+    // The player id the app addresses the local player by: the Sendspin identity
+    // (the device's X25519 public key), written by LocalPlayerAdapter once the
+    // module reports it. Persisted so consumers address the right player from
+    // process start, before the first connection.
     private val _sendspinEffectivePlayerId = MutableStateFlow(
-        settings.getStringOrNull("sendspin_effective_player_id") ?: _sendspinClientId.value,
+        settings.getStringOrNull("sendspin_effective_player_id") ?: "",
     )
     val sendspinEffectivePlayerId = _sendspinEffectivePlayerId.asStateFlow()
 
@@ -498,23 +467,20 @@ class SettingsRepository(
     }
 
     private val _sendspinCodecPreference = MutableStateFlow(
-        Codec.valueOf(
-            settings.getString(
-                "sendspin_codec_preference",
-                (Codecs.list.getOrNull(0) ?: Codecs.default).name,
-            ).uppercase(),
-        ),
+        AudioCodec.entries.firstOrNull {
+            it.name.equals(settings.getString("sendspin_codec_preference", DEFAULT_CODEC.name), ignoreCase = true)
+        } ?: DEFAULT_CODEC,
     )
     val sendspinCodecPreference = _sendspinCodecPreference.asStateFlow()
 
-    fun setSendspinCodecPreference(codec: Codec) {
+    fun setSendspinCodecPreference(codec: AudioCodec) {
         settings.putString("sendspin_codec_preference", codec.name)
         _sendspinCodecPreference.update { codec }
     }
 
     // Advertised buffer_capacity, stored in MB (converted to bytes when building the client hello).
     private val _sendspinBufferCapacityMb = MutableStateFlow(
-        settings.getInt("sendspin_buffer_capacity_mb", SendspinConfig.BUFFER_MB_DEFAULT),
+        settings.getInt("sendspin_buffer_capacity_mb", BUFFER_MB_DEFAULT),
     )
     val sendspinBufferCapacityMb = _sendspinBufferCapacityMb.asStateFlow()
 
@@ -554,8 +520,8 @@ class SettingsRepository(
         _sendspinUseTls.update { enabled }
     }
 
-    // User-tuned client-side playback delay (ms). Fed into AudioStreamManager's
-    // wall-clock gate as a subtraction from each chunk's local target time:
+    // User-tuned client-side playback delay (ms). LocalPlayerAdapter negates it
+    // into LocalPlayerConfig.userDelayMs, so each chunk's local target time is
     //   target = serverTimeToLocal(ts) - userDelay*1000
     // Positive → play earlier to compensate for downstream pipeline lag (the
     // normal case; ~250 ms is typical for Android AudioTrack + DAC). Negative
@@ -807,20 +773,31 @@ class SettingsRepository(
         return SortOption(field, desc)
     }
 
-    private companion object {
-        const val CAR_DSP_CONNECT_KEY = "car_dsp_action_connect"
-        const val CAR_DSP_DISCONNECT_KEY = "car_dsp_action_disconnect"
+    companion object {
+        private const val CAR_DSP_CONNECT_KEY = "car_dsp_action_connect"
+        private const val CAR_DSP_DISCONNECT_KEY = "car_dsp_action_disconnect"
 
         // Keys below live in `secrets`, not in `settings`. Add a new key here
         // when it authenticates to the user's server or identifies it.
-        const val TOKEN_PREFIX = "token_"
-        const val SERVER_ID_PREFIX = "id_"
-        val SECRET_STRING_KEYS = listOf(
+        private const val TOKEN_PREFIX = "token_"
+        private const val SERVER_ID_PREFIX = "id_"
+        private val SECRET_STRING_KEYS = listOf(
             "host",
             "webrtc_remote_id",
             "last_connection_mode",
             "connection_history",
             "sendspin_host",
         )
+
+        val CODECS: List<AudioCodec> = listOf(AudioCodec.OPUS, AudioCodec.FLAC, AudioCodec.PCM)
+        val DEFAULT_CODEC: AudioCodec = AudioCodec.OPUS
+
+        // Advertised to the server in client/hello as `buffer_capacity`: a hard per-player
+        // limit in BYTES on queued audio, uniform across codecs. User slider limits, in MB.
+        const val BYTES_PER_MB: Int = 1_000_000
+        const val BUFFER_MB_MIN: Int = 5
+        const val BUFFER_MB_MAX: Int = 50
+        const val BUFFER_MB_STEP: Int = 5
+        const val BUFFER_MB_DEFAULT: Int = 15
     }
 }

@@ -68,7 +68,6 @@ import io.music_assistant.client.data.model.client.items.qualityTier
 import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.imageloader.rememberArtworkRequest
-import io.music_assistant.client.player.sendspin.SendspinState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.PlayerColors
@@ -80,6 +79,7 @@ import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.theme.favoriteTint
 import io.music_assistant.client.utils.formatDuration
+import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_favorite
@@ -110,7 +110,7 @@ fun CompactPlayerItem(
     onSelectPlayer: (() -> Unit)? = null,
     onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
-    sendSpinState: SendspinState?,
+    sendSpinState: PlayerState?,
     // Server preference gate for chapter-based Next enablement.
     chapterProgressEnabled: Boolean = true,
 ) {

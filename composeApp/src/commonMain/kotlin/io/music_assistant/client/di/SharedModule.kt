@@ -8,7 +8,8 @@ import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.CarDspApplier
-import io.music_assistant.client.data.LocalPlayerController
+import io.music_assistant.client.data.LocalPlayerAdapter
+import io.music_assistant.client.data.LocalPlayerEndpoints
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.PlayerPositionTracker
 import io.music_assistant.client.data.PlayerRequestFactory
@@ -21,11 +22,9 @@ import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.logging.LogSharer
-import io.music_assistant.client.player.MediaPlayerController
-import io.music_assistant.client.player.sendspin.SendspinClientFactory
-import io.music_assistant.client.player.sendspin.identity.SendspinKeyStore
-import io.music_assistant.client.player.sendspin.identity.SettingsSendspinKeyStore
+import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.settings.SettingsSendspinKeyStore
 import io.music_assistant.client.settings.provideSecretSettings
 import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
@@ -50,6 +49,10 @@ import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewMode
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.NetworkMonitor
+import io.music_assistant.sendspin.identity.SendspinKeyStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -94,15 +97,15 @@ fun sharedModule(
         }  // Eager - needs to start monitoring immediately
         // Expose the AuthCoordinator surface for viewmodels; same singleton instance.
         single<AuthCoordinator> { get<AuthenticationManager>() }
-        singleOf(::MediaPlayerController)  // Used by the local (Sendspin) player sink
-        singleOf(::SendspinClientFactory)   // Factory for creating Sendspin clients
+        single { MediaSessionBridge() }
         // Sendspin encrypted-protocol identity/trust persistence — the same
         // app settings storage as everything else.
         single<SendspinKeyStore> { SettingsSendspinKeyStore(get()) }
         single { PlayerPositionTracker() }  // Shared live-position source of truth
         single { UserPreferences() }        // Server-synced `auth/me` preferences
         singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
-        singleOf(::LocalPlayerController)    // Local player: lifecycle + state + commands
+        single { LocalPlayerEndpoints(get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
+        singleOf(::LocalPlayerAdapter)      // Local player: app side of the Sendspin module
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)

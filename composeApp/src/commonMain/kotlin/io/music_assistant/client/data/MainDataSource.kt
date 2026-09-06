@@ -44,8 +44,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
-import io.music_assistant.client.player.MediaPlayerController
-import io.music_assistant.client.player.sendspin.model.GoodbyeReason
+import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
@@ -99,8 +98,8 @@ internal fun mergeFullQueueSnapshot(
 class MainDataSource(
     private val settings: SettingsRepository,
     val apiClient: ServiceClient,
-    private val mediaPlayerController: MediaPlayerController,
-    private val localPlayerController: LocalPlayerController,
+    private val mediaSessionBridge: MediaSessionBridge,
+    private val localPlayerController: LocalPlayerAdapter,
     private val playerRequestFactory: PlayerRequestFactory,
     /**
      * Single source of truth for live elapsed-time per queue. Server events
@@ -109,7 +108,7 @@ class MainDataSource(
      * notification, iOS NowPlaying, audiobook chapter logic) read from this
      * tracker — synchronously via [PlayerPositionTracker.effectiveSec] or as
      * a smoothly-ticking flow via [PlayerPositionTracker.observe]. Shared with
-     * [PlayerRequestFactory] (and [LocalPlayerController] through it) via DI.
+     * [PlayerRequestFactory] (and [LocalPlayerAdapter] through it) via DI.
      */
     val positionTracker: PlayerPositionTracker,
     /** Server-synced user preferences, refreshed from `auth/me` and shared by all surfaces. */
@@ -129,7 +128,7 @@ class MainDataSource(
     )
 
     /** Local (Sendspin) player lifecycle, state and commands live in the controller. */
-    val sendspinState = localPlayerController.sendspinState
+    val sendspinState = localPlayerController.playerState
 
     /** Seconds of audio buffered ahead of the local playhead (buffered-progress indicator). */
     val localBufferedSeconds = localPlayerController.bufferedSeconds
@@ -357,7 +356,7 @@ class MainDataSource(
     private var updateJob: Job? = null
 
     init {
-        mediaPlayerController.setLongFormSeekIntervals(
+        mediaSessionBridge.setLongFormSeekIntervals(
             LongFormSeekDefaults.BACK_SECONDS,
             LongFormSeekDefaults.FORWARD_SECONDS,
         )
@@ -462,10 +461,8 @@ class MainDataSource(
                                             // from the data channel itself, not JSON-RPC auth state,
                                             // so it must be re-driven independently of the main
                                             // connection's auth lifecycle.
-                                            launch { localPlayerController.start() }
 
                                             // Drain any commands queued while disconnected
-                                            localPlayerController.drainCommandQueue()
                                         }
 
                                         StaleReason.PERSISTENT_ERROR -> {
@@ -477,9 +474,7 @@ class MainDataSource(
                                             updateProvidersManifests()
                                             updateUserPreferences()
                                             updateAiRadioAvailability()
-                                            localPlayerController.start()
                                             updatePlayersAndQueues()
-                                            localPlayerController.drainCommandQueue()
                                         }
                                     }
                                 }
@@ -495,7 +490,6 @@ class MainDataSource(
                                     // Safety net: reinit Sendspin if it's not already connected.
                                     // Factory detects channel freshness from the DataChannelWrapper
                                     // identity, so no manual reset needed here.
-                                    launch { localPlayerController.start() }
                                 }
 
                                 is DataState.Loading, is DataState.NoData, is DataState.Error -> {
@@ -504,7 +498,6 @@ class MainDataSource(
                                     updateProvidersManifests()
                                     updateUserPreferences()
                                     updateAiRadioAvailability()
-                                    localPlayerController.start()
                                     updatePlayersAndQueues()
                                 }
                             }
@@ -520,7 +513,6 @@ class MainDataSource(
 
                             if (isTerminalAuthFailure) {
                                 // Auth permanently failed — stop everything
-                                localPlayerController.stop(GoodbyeReason.Shutdown)
                                 clearAllData()
                             } else {
                                 // Transient: AwaitingServerInfo or auth in progress.
@@ -579,7 +571,6 @@ class MainDataSource(
 
                     SessionState.Connecting -> {
                         log.i { "Connecting - stopping Sendspin" }
-                        localPlayerController.stop(GoodbyeReason.Restart)
                         updateJob?.cancel()
                         updateJob = null
                         watchJob?.cancel()
@@ -605,7 +596,6 @@ class MainDataSource(
                             SessionState.Disconnected.ByUser -> {
                                 // Intentional logout - clear everything
                                 log.i { "Disconnected by user - clearing all data" }
-                                localPlayerController.stop(GoodbyeReason.UserRequest)
                                 clearAllData()
                                 updateJob?.cancel()
                                 updateJob = null
@@ -637,7 +627,6 @@ class MainDataSource(
                                         }
 
                                         // Stop Sendspin (can't stream without connection)
-                                        localPlayerController.stop(GoodbyeReason.Restart)
                                     }
 
                                     is DataState.Loading, is DataState.NoData, is DataState.Error -> {
@@ -678,7 +667,6 @@ class MainDataSource(
                                     }
                                 }
 
-                                localPlayerController.stop(GoodbyeReason.Restart)
                                 updateJob?.cancel()
                                 updateJob = null
                                 watchJob?.cancel()
@@ -688,7 +676,6 @@ class MainDataSource(
                             SessionState.Disconnected.Initial, SessionState.Disconnected.NoServerData -> {
                                 // App startup or no server configured - clear all
                                 log.i { "Disconnected (${sessionState::class.simpleName}) - clearing data" }
-                                localPlayerController.stop(GoodbyeReason.Shutdown)
                                 clearAllData()
                                 updateJob?.cancel()
                                 updateJob = null
@@ -734,12 +721,10 @@ class MainDataSource(
             settings.sendspinEnabled.collect { enabled ->
                 if (apiClient.sessionState.value is SessionState.Connected) {
                     if (enabled) {
-                        localPlayerController.start()
                         // Inject synthetic player immediately so UI reflects the change
                         // before Sendspin fully connects and server confirms the player
                         localPlayerController.onInitialPlayersReceived(hasLocalPlayer = false)
                     } else {
-                        localPlayerController.stop(GoodbyeReason.UserRequest)
                         // User turned Sendspin off — the local player is gone for good.
                         // stop() no longer resets it (transient teardowns must preserve
                         // a queued resume), so clear it explicitly here.
@@ -858,7 +843,7 @@ class MainDataSource(
      * artwork. The server sometimes omits the image on the player media payload while the
      * track still carries metadata images; without this the player cover, compact bar and
      * media notification go blank even though the queue row shows art. No-op for the local
-     * player (its imageUrl is already set from the track in `LocalPlayerController`).
+     * player (its imageUrl is already set from the track in `LocalPlayerAdapter`).
      */
     private fun applyNowPlayingArtwork(playerData: PlayerData): PlayerData {
         val media = playerData.player.currentMedia ?: return playerData

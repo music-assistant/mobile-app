@@ -94,6 +94,7 @@ kotlin {
 
         commonMain.dependencies {
             implementation(project(":shared-icons"))
+            implementation(project(":sendspin"))
 
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
