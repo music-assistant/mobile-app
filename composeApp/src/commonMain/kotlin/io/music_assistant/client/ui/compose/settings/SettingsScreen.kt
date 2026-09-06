@@ -217,7 +217,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                var ipAddress by remember { mutableStateOf(Defaults.URI) }
+                var ipAddress by remember { mutableStateOf("") }
                 var port by remember { mutableStateOf(Defaults.PORT.toString()) }
                 var isTls by remember { mutableStateOf(false) }
                 var basePath by remember { mutableStateOf("") }
@@ -291,13 +291,13 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onBasePathChange = { basePath = it },
                             onDirectConnect = {
                                 viewModel.attemptConnection(
-                                    ipAddress,
+                                    ipAddress.ifBlank { Defaults.URI },
                                     port,
                                     isTls,
                                     basePath,
                                 )
                             },
-                            directConnectEnabled = ipAddress.isValidHost() &&
+                            directConnectEnabled = ipAddress.ifBlank { Defaults.URI }.isValidHost() &&
                                     port.isIpPort() &&
                                     basePath.isValidBasePath(),
                             sessionState = sessionState,
@@ -307,7 +307,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
                     SessionState.Connecting -> {
                         ConnectingSection(
-                            ipAddress = ipAddress,
+                            ipAddress = ipAddress.ifBlank { Defaults.URI },
                             port = port,
                             preferredMethod = preferredMethod,
                             onCancel = { viewModel.disconnect() },
@@ -316,7 +316,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
                     is SessionState.Reconnecting -> {
                         ConnectingSection(
-                            ipAddress = ipAddress,
+                            ipAddress = ipAddress.ifBlank { Defaults.URI },
                             port = port,
                             preferredMethod = preferredMethod,
                             onCancel = { viewModel.disconnect() },
@@ -541,7 +541,14 @@ private fun ConnectionMethodTabs(
     var showHistoryDialog by remember { mutableStateOf(false) }
 
     val directHasToken = port.toIntOrNull()
-        ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls, basePath) } ?: false
+        ?.let {
+            viewModel.hasCredentialsForDirect(
+                ipAddress.ifBlank { Defaults.URI },
+                it,
+                isTls,
+                basePath,
+            )
+        } ?: false
     val webrtcHasToken = webrtcRemoteId.isNotBlank() &&
             viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
 
@@ -674,7 +681,7 @@ private fun DirectConnectionContent(
         value = ipAddress,
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
-        placeholder = { Text("homeassistant.local") },
+        placeholder = { Text(Defaults.URI) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -748,7 +755,12 @@ private fun DirectConnectionContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp),
-        text = ConnectionInfo.previewWsUrl(ipAddress, port, isTls, basePath),
+        text = ConnectionInfo.previewWsUrl(
+            ipAddress.ifBlank { Defaults.URI },
+            port,
+            isTls,
+            basePath,
+        ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
