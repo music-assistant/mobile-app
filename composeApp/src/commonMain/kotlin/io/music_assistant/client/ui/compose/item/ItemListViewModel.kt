@@ -8,27 +8,32 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.itemList
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
-import io.music_assistant.client.utils.combineAsStateFlow
+import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 class ItemListViewModel(
     private val itemList: ItemList,
-    private val mediaItemRepository: MediaItemRepository,
+    mediaItemRepository: MediaItemRepository,
 ) : ViewModel() {
-    private val items = MutableStateFlow<List<AppMediaItem>?>(null)
+    private val items = itemList(mediaItemRepository)
     private var sortOption = MutableStateFlow(SortConfig.defaultFor(itemList.mediaType))
-    val state = viewModelScope.combineAsStateFlow(items, sortOption) { items, sortOption ->
-        if (items != null) {
-            State(items = DataState.Data(items.clientSorted(sortOption)), sortOption = sortOption)
-        } else {
-            State(items = DataState.Loading(), sortOption = sortOption)
-        }
-    }
+    val state = items.asFlow()
+        .combine(sortOption) { items, sortOption ->
+            State(items = items.map { it.clientSorted(sortOption) }, sortOption = sortOption)
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            State(items = DataState.Loading(), sortOption = sortOption.value),
+        )
 
     init {
         viewModelScope.launch {
@@ -49,9 +54,7 @@ class ItemListViewModel(
                 )
             }
 
-            mediaItemRepository.fetchMediaItems(request) {
-                items.value = it
-            }
+            items.set(request)
         }
     }
 

@@ -36,6 +36,7 @@ import io.music_assistant.client.data.model.server.ServerAiRadioStation
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.fetchRecommendationFolders
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.settings.CarPlatform
 import io.music_assistant.client.settings.DefaultClickOption

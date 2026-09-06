@@ -9,6 +9,8 @@ import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.HomePage
+import io.music_assistant.client.support.pages.clickBack
 import io.music_assistant.client.support.pages.clickItemNavigationOption
 import io.music_assistant.client.support.pages.expandPlayer
 import io.music_assistant.client.support.pages.playMedia
@@ -103,5 +105,15 @@ class ItemNavigationTest {
             .playMedia(track)
             .expandPlayer(player.displayName, playing = true, item = track.name)
             .goToAlbum(album.name, navigationItem = "Home")
+    }
+
+    @Test
+    fun `can return from item`() {
+        val album = ServerMediaItemFixtures.album()
+        serviceClient.addItems(album)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(album)
+            .clickBack(HomePage(composeTestRule))
     }
 }

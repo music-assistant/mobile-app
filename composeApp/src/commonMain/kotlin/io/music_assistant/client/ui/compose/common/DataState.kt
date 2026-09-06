@@ -1,8 +1,10 @@
 package io.music_assistant.client.ui.compose.common
 
 import io.music_assistant.client.utils.AppError
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-sealed class DataState<T> {
+sealed class DataState<out T> {
     class Loading<T> : DataState<T>()
     data class Error<T>(val error: AppError? = null) : DataState<T>()
     class NoData<T> : DataState<T>()
@@ -43,4 +45,8 @@ fun <T, U> DataState<T>.map(transform: (T) -> U): DataState<U> {
             reason = reason,
         )
     }
+}
+
+fun <T, U> Flow<DataState<T>>.mapData(transform: (T) -> U): Flow<DataState<U>> {
+    return this.map { it.map(transform) }
 }
