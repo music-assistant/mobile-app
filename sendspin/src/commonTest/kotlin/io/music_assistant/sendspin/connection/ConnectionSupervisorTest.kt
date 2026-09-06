@@ -71,7 +71,7 @@ class ConnectionSupervisorTest {
         trustStore.setUnpairedAccessEnabled(unpairedAccess)
         val transports = mutableListOf<FakeTransport>()
         var attempts = 0
-        val connector = TransportConnector { _ -> connect(attempts++).also { transports += it } }
+        val connector = TransportConnector(openWebSocket = { _ -> connect(attempts++).also { transports += it } })
         val clock = MonotonicClock { testScheduler.currentTime * 1_000 }
         val supervisor = ConnectionSupervisor(
             connector,

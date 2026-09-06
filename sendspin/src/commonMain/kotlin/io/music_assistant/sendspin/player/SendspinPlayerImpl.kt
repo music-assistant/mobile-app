@@ -1,6 +1,7 @@
 package io.music_assistant.sendspin.player
 
 import co.touchlab.kermit.Logger
+import io.ktor.client.HttpClient
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.Endpoint
@@ -63,6 +64,8 @@ internal class SendspinPlayerImpl(
     private val config: StateFlow<LocalPlayerConfig?>,
     private val deps: SendspinDeps,
     scope: CoroutineScope,
+    /** One connector per enabled lifetime; injectable so tests can watch its close. */
+    private val connectorFactory: (HttpClient) -> TransportConnector = TransportConnector::ktor,
 ) : SendspinPlayer {
     private val logger = Logger.withTag("SendspinPlayer")
     private val _state = MutableStateFlow<PlayerState>(PlayerState.Disabled)
@@ -94,8 +97,9 @@ internal class SendspinPlayerImpl(
             deps.clock,
             config.value?.bufferCapacityBytes ?: 0,
         )
+        val connector = connectorFactory(deps.httpClient)
         val supervisor = ConnectionSupervisor(
-            connector = TransportConnector.ktor(deps.httpClient),
+            connector = connector,
             trustStore = trustStore,
             crypto = deps.crypto,
             online = deps.online,
@@ -127,6 +131,7 @@ internal class SendspinPlayerImpl(
                     )
                 }
         } finally {
+            connector.close()
             if (pipeline.status.value.phase == AudioPhase.Playing) {
                 _events.tryEmit(
                     PlayerEvent.PlaybackStopped(StopCause.Disabled),

@@ -10,9 +10,12 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Opens one authenticated transport per call. The caller owns the result.
  * [openWebSocket] is injectable so the connector is testable without Ktor.
+ * The connector itself is owned by one enabled lifetime: [close] releases
+ * whatever it holds (the derived Ktor client), never the app's own client.
  */
 internal class TransportConnector(
     private val openWebSocket: suspend (url: String) -> SendspinTransport,
+    private val release: () -> Unit = {},
 ) {
     suspend fun connect(endpoint: Endpoint, clientId: String): SendspinTransport = when (endpoint) {
         is Endpoint.WebRtc -> endpoint.openChannel()
@@ -26,19 +29,22 @@ internal class TransportConnector(
         }
     }
 
+    fun close() = release()
+
     companion object {
         private val PING_INTERVAL = 5.seconds
 
-        /** Production connector: WebSockets over a client derived from the app's. */
+        /** Production connector: WebSockets over a client derived from the app's; closed with the connector. */
         fun ktor(httpClient: HttpClient): TransportConnector {
-            val wsClient by lazy {
-                httpClient.config {
-                    install(WebSockets) {
-                        pingInterval = PING_INTERVAL
-                    }
+            val wsClient = httpClient.config {
+                install(WebSockets) {
+                    pingInterval = PING_INTERVAL
                 }
             }
-            return TransportConnector { url -> WebSocketTransport.connect(wsClient, url) }
+            return TransportConnector(
+                openWebSocket = { url -> WebSocketTransport.connect(wsClient, url) },
+                release = wsClient::close,
+            )
         }
     }
 }

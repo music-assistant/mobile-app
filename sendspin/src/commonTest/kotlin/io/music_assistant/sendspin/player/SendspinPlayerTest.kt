@@ -3,6 +3,7 @@ package io.music_assistant.sendspin.player
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.get
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.LocalPlayerConfig
@@ -18,6 +19,7 @@ import io.music_assistant.sendspin.fakes.FakeTransport
 import io.music_assistant.sendspin.identity.FakeSendspinKeyStore
 import io.music_assistant.sendspin.identity.SendspinTrustStore
 import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
+import io.music_assistant.sendspin.transport.TransportConnector
 import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -64,6 +66,8 @@ class SendspinPlayerTest {
         )
         val events = Channel<PlayerEvent>(Channel.UNLIMITED)
         var pairCalls = 0
+        var connectorsClosed = 0
+        val httpClient = HttpClient(MockEngine { respond("") })
         lateinit var identityPublicKey: ByteArray
         lateinit var serverStatic: io.music_assistant.sendspin.noise.crypto.X25519KeyPair
         lateinit var player: io.music_assistant.sendspin.api.SendspinPlayer
@@ -79,13 +83,16 @@ class SendspinPlayerTest {
                 decoders = FakeDecoderFactory(),
                 keyStore = keyStore,
                 crypto = crypto,
-                httpClient = HttpClient(MockEngine { respond("") }),
+                httpClient = httpClient,
                 online = MutableStateFlow(true),
                 pairWebPlayer = { pairCalls++ },
                 audioDispatcher = StandardTestDispatcher(scope.testScheduler),
                 clock = clock,
             )
-            player = SendspinPlayerImpl(config, deps, scope.backgroundScope)
+            player = SendspinPlayerImpl(config, deps, scope.backgroundScope) { client ->
+                check(client === httpClient) { "the connector derives from the app's client" }
+                TransportConnector({ error("WebSocket not used here") }, release = { connectorsClosed++ })
+            }
             scope.backgroundScope.launch { player.events.collect { events.trySend(it) } }
             scope.runCurrent()
         }
@@ -163,6 +170,22 @@ class SendspinPlayerTest {
         assertEquals(PlayerEvent.PlaybackStopped(StopCause.Disabled), h.nextEvent())
         assertTrue(server2.clientMessageTypes.contains("client/goodbye"), "goodbye sent: ${server2.clientMessageTypes}")
         assertTrue(h.sink.handles.single().closed)
+    }
+
+    @Test
+    fun eachEnabledLifetimeClosesItsConnectorAndLeavesTheAppClientUsable() = playerTest { h ->
+        val enabled = h.config.value
+        repeat(2) { round ->
+            h.connectServer()
+            h.awaitConnected()
+            h.config.value = null
+            runCurrent()
+            assertEquals(PlayerState.Disabled, h.player.state.value)
+            assertEquals(round + 1, h.connectorsClosed, "one connector closed per lifetime")
+            h.config.value = enabled
+            runCurrent()
+        }
+        h.httpClient.get("http://ma.local/still-open")
     }
 
     @Test

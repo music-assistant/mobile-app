@@ -14,6 +14,7 @@ import android.os.Build
 import co.touchlab.kermit.Logger
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.MonotonicClock
+import io.music_assistant.sendspin.api.MonotonicFrameCounter
 import io.music_assistant.sendspin.api.SinkEvent
 import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkHandle
@@ -88,6 +89,9 @@ class AudioTrackSink(
     private inner class Handle(private val track: AudioTrack, private val format: SinkFormat) : SinkHandle {
         private val sinkEvents = MutableSharedFlow<SinkEvent>(extraBufferCapacity = 8)
         private val timestamp = AudioTimestamp()
+
+        /** Both position sources wrap at 32 bits on some devices; one extender keeps them on one base. */
+        private val frames = MonotonicFrameCounter()
         private var interrupted = false
 
         override val events: Flow<SinkEvent> = sinkEvents
@@ -148,6 +152,7 @@ class AudioTrackSink(
                 track.pause()
                 track.flush()
             }
+            frames.reset()
             sinkEvents.tryEmit(SinkEvent.FocusLost)
         }
 
@@ -176,15 +181,15 @@ class AudioTrackSink(
 
         override fun flush() {
             runCatching { track.flush() }
+            frames.reset()
         }
 
         override fun position(): SinkPosition? {
             if (track.getTimestamp(timestamp)) {
                 val ageMicros = (System.nanoTime() - timestamp.nanoTime) / 1_000
-                return SinkPosition(timestamp.framePosition, clock.nowMicros() - ageMicros)
+                return SinkPosition(frames.extend(timestamp.framePosition), clock.nowMicros() - ageMicros)
             }
-            val head = track.playbackHeadPosition.toLong() and 0xFFFF_FFFFL
-            return SinkPosition(head, clock.nowMicros())
+            return SinkPosition(frames.extend(track.playbackHeadPosition.toLong()), clock.nowMicros())
         }
 
         override fun underrunCount(): Int = runCatching { track.underrunCount }.getOrDefault(0)

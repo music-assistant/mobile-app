@@ -18,7 +18,9 @@ import org.koin.dsl.module
 @OptIn(ExperimentalKtorApi::class)
 fun iosModule() = module {
     single { PlatformContext() }
-    single<AudioSink> { AudioQueueSink { command -> get<LocalPlayerAdapter>().onRemoteCommand(command) } }
+    single<AudioSink> {
+        AudioQueueSink(onRemoteCommand = { command -> get<LocalPlayerAdapter>().onRemoteCommand(command) })
+    }
     single<DecoderFactory> { IosDecoderFactory() }
     single<BackgroundUsageGuard> { IosBackgroundUsageGuard() }
 

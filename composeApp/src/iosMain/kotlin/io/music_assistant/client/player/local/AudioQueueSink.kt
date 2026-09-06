@@ -32,11 +32,15 @@ import platform.Foundation.create
  * only correction, by decision. Control Center commands are forwarded to
  * [onRemoteCommand]; interruptions become sink events.
  */
-class AudioQueueSink(private val onRemoteCommand: (command: String) -> Unit) : AudioSink {
+class AudioQueueSink(
+    private val onRemoteCommand: (command: String) -> Unit,
+    private val playerProvider: () -> PlatformAudioPlayer? = { PlatformPlayerProvider.player },
+) : AudioSink {
     private val logger = Logger.withTag("AudioQueueSink")
 
+    /** Throws when the native player cannot set up the stream; the scheduler reports SinkDied. */
     override fun open(format: SinkFormat): SinkHandle {
-        val player = PlatformPlayerProvider.player ?: error("no PlatformAudioPlayer registered")
+        val player = playerProvider() ?: error("no PlatformAudioPlayer registered")
         return Handle(player, format)
     }
 
@@ -44,6 +48,9 @@ class AudioQueueSink(private val onRemoteCommand: (command: String) -> Unit) : A
         private val sinkEvents = MutableSharedFlow<SinkEvent>(extraBufferCapacity = 8)
         override val events: Flow<SinkEvent> = sinkEvents
         override val latencyMicros: Long? = null
+
+        /** Latched: a native error before the scheduler subscribes must still fail the next write. */
+        private var died = false
 
         init {
             player.prepareStream(
@@ -57,10 +64,12 @@ class AudioQueueSink(private val onRemoteCommand: (command: String) -> Unit) : A
                     override fun onAudioCompleted() = Unit
                     override fun onError(error: Throwable?) {
                         logger.e(error) { "Native player error" }
+                        died = true
                         sinkEvents.tryEmit(SinkEvent.Died)
                     }
                 },
             )
+            if (died) error("native player failed to prepare the ${format.codec} stream")
             player.setRemoteCommandHandler(
                 object : RemoteCommandHandler {
                     override fun onCommand(command: String, source: String) {
@@ -76,6 +85,7 @@ class AudioQueueSink(private val onRemoteCommand: (command: String) -> Unit) : A
 
         @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
         override fun write(pcm: ByteArray, offset: Int, length: Int): Int {
+            if (died) return -1
             if (length == 0) return 0
             val data = pcm.usePinned { NSData.create(bytes = it.addressOf(offset), length = length.toULong()) }
             player.writeRawPcmNSData(data)
