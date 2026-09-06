@@ -55,8 +55,13 @@ class LocalPlayerEndpoints(
         .runningFold(null as Endpoint?) { previous, values -> next(previous, values[0] as SessionState) }
         .stateIn(scope, SharingStarted.Eagerly, null)
 
-    private fun next(previous: Endpoint?, state: SessionState): Endpoint? = when (state) {
-        is SessionState.Connected -> connected(previous, state) ?: previous
+    /** Pure reducer; a Connected session is Clear (terminal auth), Replace (proven), or Keep (auth pending). */
+    internal fun next(previous: Endpoint?, state: SessionState): Endpoint? = when (state) {
+        is SessionState.Connected -> when {
+            state.authIsTerminal() -> null
+            else -> connected(previous, state) ?: previous
+        }
+
         is SessionState.Disconnected.ByUser,
         SessionState.Disconnected.Initial,
         SessionState.Disconnected.NoServerData,
@@ -65,19 +70,18 @@ class LocalPlayerEndpoints(
         else -> previous
     }
 
-    private fun connected(previous: Endpoint?, state: SessionState.Connected): Endpoint? {
-        val connection = state.dataConnectionState
-        if (connection is DataConnectionState.AwaitingAuth &&
-            (connection.authProcessState is AuthProcessState.LoggedOut || connection.authProcessState is AuthProcessState.Failed)
-        ) {
-            return null
-        }
-        return when (state) {
-            is SessionState.Connected.WebRTC -> previous as? Endpoint.WebRtc ?: Endpoint.WebRtc(::openFreshChannel)
-            is SessionState.Connected.Direct -> {
-                val token = state.authenticatedToken() ?: return null
-                Endpoint.WebSocket(webSocketUrl(state), token)
-            }
+    /** A logout or a failed reauthorization keeps the session Connected; nothing follows on its own. */
+    private fun SessionState.Connected.authIsTerminal(): Boolean {
+        val connection = dataConnectionState as? DataConnectionState.AwaitingAuth ?: return false
+        return connection.authProcessState is AuthProcessState.LoggedOut ||
+            connection.authProcessState is AuthProcessState.Failed
+    }
+
+    /** The endpoint for a proven session, or null while authentication is still pending. */
+    private fun connected(previous: Endpoint?, state: SessionState.Connected): Endpoint? = when (state) {
+        is SessionState.Connected.WebRTC -> previous as? Endpoint.WebRtc ?: Endpoint.WebRtc(::openFreshChannel)
+        is SessionState.Connected.Direct -> state.authenticatedToken()?.let { token ->
+            Endpoint.WebSocket(webSocketUrl(state), token)
         }
     }
 

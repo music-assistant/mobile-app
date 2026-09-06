@@ -2,11 +2,14 @@ package io.music_assistant.client.data
 
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,6 +60,36 @@ class LocalCommandQueueTest {
         ready.value = true
         settle()
         assertEquals(listOf("next", "next"), sent, "the failed send is replayed")
+    }
+
+    @Test
+    fun aSendThatFailsAfterAReadinessBounceIsReplayedWithoutAnotherBounce() = runTest {
+        val inFlight = CompletableDeferred<Result<Unit>>()
+        var first = true
+        val queue = LocalCommandQueue(
+            ready,
+            { request ->
+                sent += request.command
+                if (first) {
+                    first = false
+                    inFlight.await()
+                } else {
+                    Result.success(Unit)
+                }
+            },
+            backgroundScope,
+        )
+        val sending = launch { queue.sendOrQueue(PlayerAction.Pause, request("pause")) }
+        runCurrent()
+        ready.value = false
+        ready.value = true // the drain runs against an empty queue
+        settle()
+        inFlight.complete(Result.failure(IllegalStateException("timed out")))
+        sending.join()
+        settle()
+        assertEquals(listOf("pause", "pause"), sent, "replayed without another readiness change")
+        settle()
+        assertEquals(2, sent.size, "no retry loop")
     }
 
     @Test

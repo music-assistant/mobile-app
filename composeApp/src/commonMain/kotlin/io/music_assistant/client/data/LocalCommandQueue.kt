@@ -4,6 +4,8 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filter
@@ -14,9 +16,13 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Local-player commands travel over the MA API, not over Sendspin. While the
  * command transport is not ready they are queued (deduplicated per action) and
- * replayed as soon as [isReady] turns true again. Readiness is the only drain
- * trigger: the Sendspin connection may stay up through an MA-only outage, so
- * its activation cannot be relied on to replay anything.
+ * replayed by one worker that wakes when [isReady] turns true or when a
+ * command is queued while already ready (a send that failed across a
+ * readiness bounce). Sendspin activation is not a trigger: the audio
+ * connection may stay up through an MA-only outage.
+ *
+ * A replay is sent once; a failure during replay is logged and dropped, so
+ * a persistently failing command cannot spin the worker.
  */
 internal class LocalCommandQueue(
     private val isReady: StateFlow<Boolean>,
@@ -26,11 +32,13 @@ internal class LocalCommandQueue(
     private val log = Logger.withTag("LocalCommandQueue")
     private val mutex = Mutex()
     private val queue = mutableListOf<Entry>()
+    private val wake = Channel<Unit>(Channel.CONFLATED)
 
     private data class Entry(val action: PlayerAction, val request: Request)
 
     init {
-        scope.launch { isReady.filter { it }.collect { drain() } }
+        scope.launch { isReady.filter { it }.collect { wake.trySend(Unit) } }
+        scope.launch { wake.consumeEach { if (isReady.value) drain() } }
     }
 
     suspend fun sendOrQueue(action: PlayerAction, request: Request) {
@@ -38,7 +46,10 @@ internal class LocalCommandQueue(
             enqueue(action, request)
             return
         }
-        if (send(request).isFailure) enqueue(action, request)
+        if (send(request).isFailure) {
+            enqueue(action, request)
+            wake.trySend(Unit)
+        }
     }
 
     suspend fun clear() = mutex.withLock { queue.clear() }
@@ -50,7 +61,7 @@ internal class LocalCommandQueue(
             queue.toList().also { queue.clear() }
         }
         entries.forEach { entry ->
-            send(entry.request)
+            send(entry.request).onFailure { log.w { "Replay of ${entry.request.command} failed: ${it.message}" } }
             delay(REPLAY_SPACING_MS)
         }
     }

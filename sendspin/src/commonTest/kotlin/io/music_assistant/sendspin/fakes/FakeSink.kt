@@ -39,6 +39,9 @@ class FakeSink(private val nowMicros: () -> Long) : AudioSink {
         override val events: Flow<SinkEvent> = sinkEvents
         override val latencyMicros: Long? get() = this@FakeSink.latencyMicros
 
+        /** Live collectors of [events]; must drop to zero once the handle is replaced. */
+        val subscribers: Int get() = sinkEvents.subscriptionCount.value
+
         val totalBytes: Int get() = writes.sumOf { it.size }
 
         fun framesPlayed(): Long {

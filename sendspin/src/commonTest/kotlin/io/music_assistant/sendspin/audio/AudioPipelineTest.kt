@@ -318,6 +318,32 @@ class AudioPipelineTest {
     }
 
     @Test
+    fun replacingTheSinkDropsTheOldHandlesEventCollector() = pipelineTest { h ->
+        repeat(3) {
+            h.pipeline.apply(StreamAction.StartFresh(flac))
+            runCurrent()
+        }
+        assertEquals(3, h.sink.handles.size)
+        assertEquals(listOf(0, 0, 1), h.sink.handles.map { it.subscribers })
+    }
+
+    @Test
+    fun aFocusLossPendingFromTheOldSinkDoesNotEndTheReplacementStream() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        val old = h.handle
+        old.emit(SinkEvent.FocusLost) // buffered, not yet delivered
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        assertEquals(StreamPhase.Playing, h.pipeline.phase)
+        val seen = generateSequence { h.events.tryReceive().getOrNull() }.toList()
+        assertEquals(emptyList(), seen, "the stale event is dropped")
+        h.feed(0)
+        runCurrent()
+        assertEquals(1, h.handle.writes.size)
+    }
+
+    @Test
     fun cancellingRunClosesSinkAndDecoder() = pipelineTest { h ->
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()

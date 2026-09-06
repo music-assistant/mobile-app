@@ -11,6 +11,7 @@ import io.music_assistant.sendspin.api.SinkHandle
 import io.music_assistant.sendspin.clock.ClockSync
 import io.music_assistant.sendspin.wire.AudioChunk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +45,7 @@ internal class Scheduler(
     val status: StateFlow<AudioStatus> = _status
 
     private var handle: SinkHandle? = null
+    private var handleEvents: Job? = null
     private var format: SinkFormat? = null
     private var corrector: DriftCorrector? = null
     private var openGeneration = -1
@@ -130,8 +132,12 @@ internal class Scheduler(
         played = false
         lateDrops = 0
         insertedSilenceMicros = 0
-        scope.launch {
+        val generation = state.generation
+        // The collector lives with this handle, not with the scheduler, and an event that
+        // belongs to this stream must never end a later one.
+        handleEvents = scope.launch {
             opened.events.collect { event ->
+                if (pipeline.stream.value.generation != generation) return@collect
                 when (event) {
                     SinkEvent.FocusLost -> pipeline.onSinkFailure(AudioEvent.FocusLost)
                     SinkEvent.FocusRegained -> pipeline.emit(AudioEvent.FocusRegained)
@@ -261,6 +267,8 @@ internal class Scheduler(
     }
 
     private fun closeSink() {
+        handleEvents?.cancel()
+        handleEvents = null
         try {
             handle?.close()
         } catch (e: CancellationException) {
