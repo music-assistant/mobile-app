@@ -19,7 +19,7 @@ import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.repository.MediaItemRepository
-import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -457,7 +457,7 @@ class HomeScreenViewModel(
             val playerData: List<PlayerData>,
             val selectedPlayerIndex: Int? = null,
             val localPlayerId: String? = null,
-            val sendspinState: SendspinState? = null,
+            val sendspinState: PlayerState? = null,
         ) : PlayersState()
     }
 

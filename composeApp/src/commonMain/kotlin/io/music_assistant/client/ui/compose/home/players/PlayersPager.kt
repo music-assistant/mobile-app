@@ -82,7 +82,7 @@ import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyrics
-import io.music_assistant.client.player.sendspin.SendspinState
+import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.DataState
@@ -435,7 +435,7 @@ private fun ExpandedPlayerPage(
     allPlayers: List<PlayerData>,
     moveToPlayer: (String) -> Unit,
     isWideScreen: Boolean,
-    sendspinState: SendspinState?,
+    sendspinState: PlayerState?,
     isQueueExpanded: Boolean,
     onExpandQueue: (Boolean) -> Unit,
     contentPadding: PaddingValues,
@@ -963,7 +963,7 @@ private fun CollapsedPlayerPage(
     isWideScreen: Boolean,
     player: PlayerData,
     colors: PlayerColors,
-    sendspinState: SendspinState?,
+    sendspinState: PlayerState?,
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
     playerAction: (PlayerData, PlayerAction) -> Unit,

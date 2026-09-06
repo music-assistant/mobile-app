@@ -6,7 +6,7 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.logging.LogSharer
-import io.music_assistant.client.player.sendspin.audio.Codec
+import io.music_assistant.sendspin.wire.AudioCodec
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
@@ -102,7 +102,6 @@ class SettingsViewModel(
 
     // Sendspin settings
     val sendspinEnabled = settings.sendspinEnabled
-    val sendspinRequireEncryption = settings.sendspinRequireEncryption
     val sendspinDeviceName = settings.sendspinDeviceName
     val sendspinUseCustomConnection = settings.sendspinUseCustomConnection
     val sendspinPort = settings.sendspinPort
@@ -112,8 +111,6 @@ class SettingsViewModel(
     val sendspinHost = settings.sendspinHost
     val sendspinUseTls = settings.sendspinUseTls
 
-    fun setSendspinRequireEncryption(enabled: Boolean) =
-        settings.setSendspinRequireEncryption(enabled)
     fun setSendspinEnabled(enabled: Boolean) = settings.setSendspinEnabled(enabled)
     fun setSendspinDeviceName(name: String) = settings.setSendspinDeviceName(name)
     fun setSendspinUseCustomConnection(enabled: Boolean) =
@@ -121,7 +118,7 @@ class SettingsViewModel(
 
     fun setSendspinPort(port: Int) = settings.setSendspinPort(port)
     fun setSendspinPath(path: String) = settings.setSendspinPath(path)
-    fun setSendspinCodecPreference(codec: Codec) = settings.setSendspinCodecPreference(codec)
+    fun setSendspinCodecPreference(codec: AudioCodec) = settings.setSendspinCodecPreference(codec)
     fun setSendspinBufferCapacityMb(mb: Int) = settings.setSendspinBufferCapacityMb(mb)
     fun setSendspinHost(host: String) = settings.setSendspinHost(host)
     fun setSendspinUseTls(enabled: Boolean) = settings.setSendspinUseTls(enabled)

@@ -112,44 +112,22 @@ When implementing new features or integrations:
 
 ### Sendspin Integration
 
-The built-in player functionality uses the Sendspin multi-room audio protocol:
+The built-in player is the `:sendspin` Gradle module (`io.music_assistant.sendspin`). The module is pure Kotlin Multiplatform. It has no Compose and no Koin dependency, and it is fully unit-tested with fakes.
 
-**Lifecycle Management:**
-- `MainDataSource` singleton manages Sendspin lifecycle via `SendspinClientFactory`
-- Factory pattern for client creation (validates settings, builds config, returns `Result<SendspinClient>`)
-- Integration point: `HomeScreenViewModel` interacts with Sendspin via MainDataSource
+**Public surface** (package `api`):
+- `SendspinPlayer(config: StateFlow<LocalPlayerConfig?>, deps, scope)` creates the player. A `null` config disables it. There is no start or stop call.
+- `state: StateFlow<PlayerState>` is `Disabled`, `Connecting`, `Connected`, `Reconnecting`, or `Failed`. `Connected` carries the player id, the server name, the clock quality, and the audio status.
+- `events: Flow<PlayerEvent>` carries `PlaybackStarted`, `PlaybackStopped(cause)`, `ServerRefreshNeeded`, `FocusRegained`, and `Warning(code)`.
+- Ports the app implements: `AudioSink`, `DecoderFactory`, `SendspinKeyStore`, and `Endpoint.WebRtc.openChannel`.
 
-**Architecture Components:**
-- **SendspinClient**: Protocol orchestrator (reduced to ~280 lines after refactoring)
-  - Delegates to specialized components following Single Responsibility Principle
-- **SendspinClientFactory**: Client creation and validation logic
-- **StateReporter**: Periodic state reporting (every 2 seconds) with volume/mute
-- **ReconnectionCoordinator**: Recovery management with StreamRecoveryState machine
-- **AudioPipeline** (interface): Abstraction for audio playback
-  - Implementation: `AudioStreamManager` with multi-threaded architecture
-  - Default dispatcher: Decoding (producer)
-  - audioDispatcher: Playback (high-priority consumer)
-  - Default dispatcher: Adaptation (every 5s)
-- **MessageDispatcher**: Protocol state machine with `MessageDispatcherConfig`
-- **SendspinError**: Categorized errors (Transient/Permanent/Degraded)
+**Internal layout**: `wire` (one parse per message), `transport` (one connection, no reconnect), `session` (Noise session on the caller's coroutine), `connection` (the single reconnect policy and the liveness watchdog), `clock` (seeded Kalman filter over probe bursts), `audio` (byte-capped jitter buffer, scheduler, drift corrector), `player` (composition root). The packages `noise`, `identity`, `pairing`, and `management` are unchanged from the previous implementation.
 
-**Connection Modes:**
-- **Proxy mode (default)**: Uses main connection (host/port/TLS) + path `/sendspin`
-  - Requires authentication with token before protocol handshake
-  - Port 8095 by default (same as main API)
-- **Custom mode**: Separate host/port configuration
-  - Supports direct connection to standalone Sendspin server (port 8927)
-  - Auto-detects proxy mode if port matches main connection
-
-**Platform-specific:**
-- `MediaPlayerController` has expect/actual for audio output
-- `AudioDecoder` has expect/actual for codec handling
-  - Android: Decoders output PCM (Concentus for Opus, MediaCodec for FLAC)
-  - iOS: Decoders passthrough to MPV (returns original codec)
-- Android: Uses `AudioTrack` for low-latency PCM playback
-- iOS: Uses MPV (libmpv via MPVKit) for all audio codecs
-
-See `.claude/sendspin-status.md` for complete architecture documentation and `.claude/settings-screen.md` for Settings UI details.
+**App side** (`composeApp`):
+- `data/LocalPlayerAdapter` owns the player and everything about the MA player model: optimistic UI, the offline command queue, and server event reconciliation.
+- `data/LocalPlayerEndpoints` derives the endpoint from the MA session. A WebRTC session gets the data channel. A direct session gets the proxied WebSocket at `<wsUrl>/sendspin`, or the custom Sendspin server from settings. A reconnecting MA session keeps the last endpoint.
+- `player/local/` holds the platform sinks and decoders. Android: `AudioTrackSink` and `AndroidDecoderFactory`. iOS: `AudioQueueSink` and pass-through `IosDecoderFactory` (the native player decodes).
+- The control plane stays on the MA REST API. Sendspin carries audio only (role `player@v1`).
+- Only the Noise-encrypted protocol is supported. Servers that predate it cannot use the local player.
 
 ### Android Services Integration
 
