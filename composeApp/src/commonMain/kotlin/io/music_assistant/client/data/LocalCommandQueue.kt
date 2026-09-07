@@ -28,6 +28,7 @@ internal class LocalCommandQueue(
     private val isReady: StateFlow<Boolean>,
     private val send: suspend (Request) -> Result<*>,
     scope: CoroutineScope,
+    private val requestPlaybackRecovery: () -> Unit = {},
 ) {
     private val log = Logger.withTag("LocalCommandQueue")
     private val mutex = Mutex()
@@ -42,6 +43,9 @@ internal class LocalCommandQueue(
     }
 
     suspend fun sendOrQueue(action: PlayerAction, request: Request) {
+        // Readiness can be stale even when true. Register Play intent before
+        // either the offline fast path or the first send can observe a drop.
+        if (action == PlayerAction.Play) requestPlaybackRecovery()
         if (!isReady.value) {
             enqueue(action, request)
             return

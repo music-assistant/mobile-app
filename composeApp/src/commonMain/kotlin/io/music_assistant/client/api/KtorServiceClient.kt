@@ -147,6 +147,9 @@ class KtorServiceClient(
     private var isInBackground = false
     private var hasActiveExternalConsumer = false
     private var hasActivePlayback = false
+    private val playbackRecovery = PlaybackRecoveryWindow()
+    private val canRecoverInBackground: Boolean
+        get() = hasActiveExternalConsumer || hasActivePlayback || playbackRecovery.isActive
     private var backgroundedAt = 0L
 
     private val silentReauth = SilentReauth(
@@ -382,9 +385,14 @@ class KtorServiceClient(
         logger.i { "External consumer inactive (state=${stateLabel(_sessionState.value)})" }
     }
 
-    /**
-     * Called when any player starts playing. Prevents background teardown.
-     */
+    override fun requestPlaybackRecovery() {
+        // Set this before scheduling recovery: a stale socket may report its drop
+        // as soon as the queued Play attempts to use it.
+        playbackRecovery.request()
+        launch { ensureReadyForCommands() }
+    }
+
+    /** Called when playback is confirmed, rather than merely requested. */
     override fun onPlaybackActive() {
         hasActivePlayback = true
         logger.i { "Playback active (state=${stateLabel(_sessionState.value)})" }
@@ -403,6 +411,7 @@ class KtorServiceClient(
     }
 
     override fun noServer() {
+        playbackRecovery.clear()
         _sessionState.update { SessionState.Disconnected.NoServerData }
     }
 
@@ -550,7 +559,7 @@ class KtorServiceClient(
                         }
 
                         is TransportState.Reconnecting -> {
-                            if (isInBackground && !hasActiveExternalConsumer && !hasActivePlayback) {
+                            if (isInBackground && !canRecoverInBackground) {
                                 backgroundedConnectionInfo = backgroundInfo()
                                 transport.disconnect()
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
@@ -749,13 +758,14 @@ class KtorServiceClient(
     }
 
     override fun disconnectByUser() {
+        playbackRecovery.clear()
         disconnect(SessionState.Disconnected.ByUser)
     }
 
     private fun disconnect(newState: SessionState.Disconnected) {
         launch {
             if (newState is SessionState.Disconnected.Backgrounded &&
-                (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)
+                (!isInBackground || canRecoverInBackground)
             ) {
                 logger.i { "Backgrounded disconnect aborted — app already foregrounded" }
                 return@launch
@@ -843,6 +853,7 @@ class KtorServiceClient(
     }
 
     override fun logout() {
+        playbackRecovery.clear()
         if (_sessionState.value !is SessionState.Connected) return
         _sessionState.update {
             (it as? SessionState.Connected)?.update(

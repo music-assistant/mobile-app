@@ -5,6 +5,7 @@ import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LocalCommandQueueTest {
@@ -31,6 +33,75 @@ class LocalCommandQueueTest {
 
     /** Runs the background collector and any replay spacing (advanceUntilIdle skips background-only work). */
     private fun TestScope.settle() = advanceTimeBy(1_000)
+
+    @Test
+    fun offlinePlayRequestsMaRecoveryAndDrainsWithoutForegroundOrSendspinEvents() = runTest {
+        ready.value = false
+        var recoveries = 0
+        val queue = LocalCommandQueue(ready, ::record, backgroundScope) {
+            recoveries++
+            backgroundScope.launch {
+                delay(100)
+                ready.value = true
+            }
+        }
+        queue.sendOrQueue(PlayerAction.Play, request("play"))
+        assertEquals(1, recoveries)
+        assertEquals(emptyList(), sent)
+        settle()
+        assertEquals(listOf("play"), sent)
+    }
+
+    @Test
+    fun playProtectsRecoveryBeforeAStaleReadySocketCanFail() = runTest {
+        var protected = false
+        var attempts = 0
+        val queue = LocalCommandQueue(
+            ready,
+            { request ->
+                assertTrue(protected, "recovery must be allowed before sending")
+                attempts++
+                if (attempts == 1) {
+                    ready.value = false
+                    Result.failure<Unit>(IllegalStateException("stale socket"))
+                } else {
+                    record(request)
+                }
+            },
+            backgroundScope,
+            requestPlaybackRecovery = { protected = true },
+        )
+        queue.sendOrQueue(PlayerAction.Play, request("play"))
+        ready.value = true
+        settle()
+        assertEquals(2, attempts)
+        assertEquals(listOf("play"), sent)
+    }
+
+    @Test
+    fun pauseDuringRecoveryReplacesQueuedPlayWithoutRequestingAnotherRecovery() = runTest {
+        ready.value = false
+        var recoveries = 0
+        val queue = LocalCommandQueue(ready, ::record, backgroundScope) { recoveries++ }
+        queue.sendOrQueue(PlayerAction.Play, request("play"))
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
+        assertEquals(1, recoveries)
+        ready.value = true
+        settle()
+        assertEquals(listOf("pause"), sent)
+    }
+
+    @Test
+    fun unrelatedOfflineCommandsDoNotWakeTheMaSession() = runTest {
+        ready.value = false
+        var recoveries = 0
+        val queue = LocalCommandQueue(ready, ::record, backgroundScope) { recoveries++ }
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
+        queue.sendOrQueue(PlayerAction.SeekTo(10), request("seek"))
+        settle()
+        assertEquals(0, recoveries)
+        assertEquals(emptyList(), sent)
+    }
 
     @Test
     fun commandQueuedDuringAnMaOnlyOutageIsSentOnceWhenReadinessReturns() = runTest {

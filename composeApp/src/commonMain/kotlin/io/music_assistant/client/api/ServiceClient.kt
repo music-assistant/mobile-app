@@ -35,6 +35,10 @@ interface ServiceClient {
     fun connect(connection: ConnectionInfo)
     fun connectWebRTC(remoteId: RemoteId)
     fun onExternalConsumerActive()
+
+    /** Explicit local Play may need to restore the command connection before audio can start. */
+    fun requestPlaybackRecovery() = Unit
+
     fun onPlaybackActive()
     fun onExternalConsumerInactive()
     fun onPlaybackInactive()

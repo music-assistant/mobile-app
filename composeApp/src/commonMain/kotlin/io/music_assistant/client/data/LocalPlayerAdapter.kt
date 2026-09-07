@@ -150,7 +150,12 @@ class LocalPlayerAdapter(
         }
         .stateIn(this, SharingStarted.Eagerly, 0.0)
 
-    private val commands = LocalCommandQueue(apiClient.isReadyForCommands, apiClient::sendRequest, this)
+    private val commands = LocalCommandQueue(
+        apiClient.isReadyForCommands,
+        apiClient::sendRequest,
+        this,
+        requestPlaybackRecovery = apiClient::requestPlaybackRecovery,
+    )
     private var pendingPlayTimeoutJob: Job? = null
     private var pausedByInterruption = false
 
@@ -222,7 +227,11 @@ class LocalPlayerAdapter(
      * Applies the optimistic UI update, then sends or offline-queues the request.
      */
     fun handleLocalCommand(data: PlayerData, action: PlayerAction) {
-        val resolved = playerRequestFactory.resolve(data, action)
+        val resolved = if (action == PlayerAction.TogglePlayPause) {
+            if (data.player.isPlaying || _localPlayerData.value?.pendingPlay == true) PlayerAction.Pause else PlayerAction.Play
+        } else {
+            playerRequestFactory.resolve(data, action)
+        }
         applyOptimisticUpdate(data, resolved)
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
@@ -314,10 +323,6 @@ class LocalPlayerAdapter(
     }
 
     private fun optimisticPlay() {
-        if (!apiClient.isReadyForCommands.value) {
-            log.i { "Suppressing pending local play while the command transport is not ready" }
-            return
-        }
         _localPlayerData.update { current -> current?.copy(pendingPlay = true) }
         armPendingPlayTimeout()
     }
