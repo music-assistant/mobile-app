@@ -31,6 +31,7 @@ import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.cd_filter
 import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.common_apply
+import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -234,6 +235,11 @@ fun <T : ComposePage> T.enableFilter(action: (FilterSheetPage) -> Unit): T {
 fun <T : ComposePage> T.assertNoItems(): T {
     composeTestRule.onNodeWithText(Res.string.library_empty.get()).assertIsDisplayed()
     return this
+}
+
+fun <T : ComposePage, U : Page> T.clickBack(destination: U): U {
+    composeTestRule.onNodeWithContentDescription(Res.string.common_back.get()).performClick()
+    return destination.assertOnPage()
 }
 
 private fun mediaItemMatcher(

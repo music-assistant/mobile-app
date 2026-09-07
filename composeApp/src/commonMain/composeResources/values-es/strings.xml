@@ -27,9 +27,14 @@
   <string name="action_remove_from_library">Quitar de la biblioteca</string>
   <string name="action_remove_from_playlist">Quitar de la lista de reproducción</string>
   <string name="action_similar_artists">Artistas similares</string>
-  <string name="action_start_endless_mix">Iniciar mezcla infinita</string>
+  <string name="action_start_endless_mix">Iniciar mezcla continua</string>
   <string name="action_start_radio">Iniciar radio</string>
   <string name="action_unfavorite">Quitar de favoritos</string>
+  <string name="ai_radio_empty">Todavía no hay emisoras de IA. Crea una en la aplicación web de Music Assistant.</string>
+  <string name="ai_radio_load_failed">No se han podido cargar las emisoras de IA</string>
+  <string name="ai_radio_no_player">Selecciona primero un reproductor</string>
+  <string name="ai_radio_stop">Detener</string>
+  <string name="ai_radio_title">Radio con IA</string>
   <string name="album_disc_header">Disco %1$d</string>
   <string name="album_type_album">Álbum</string>
   <string name="album_type_compilation">Recopilación</string>
@@ -90,6 +95,8 @@
   <string name="cd_fully_played">Reproducido por completo</string>
   <string name="cd_genre_filter">Filtros de género</string>
   <string name="cd_in_progress">En curso</string>
+  <string name="cd_keep_screen_on_disable">Permitir que la pantalla se apague</string>
+  <string name="cd_keep_screen_on_enable">Mantener la pantalla encendida</string>
   <string name="cd_leave_group">Salir del grupo</string>
   <string name="cd_library_filters">Filtros</string>
   <string name="cd_lyrics">Letras</string>
@@ -165,6 +172,7 @@
   <string name="item_subtitle_playlist_dynamic">Lista de reproducción dinámica</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_sound_effect">Servidor de IA</string>
   <string name="item_subtitle_unknown">Desconocido</string>
   <string name="kind_album">Álbumes</string>
   <string name="kind_artist">Artistas</string>
@@ -216,11 +224,13 @@
   <string name="player_autoplay">Reproducción automática</string>
   <string name="player_crossfade">Transición entre canciones</string>
   <string name="player_dynamic_colors">Colores dinámicos</string>
+  <string name="player_needs_setup">Configuración necesaria</string>
   <string name="player_power_off">Apagar</string>
   <string name="player_power_on">Encender</string>
   <string name="player_powered_off">Apagado</string>
   <string name="player_show_buffer_indicator">Mostrar indicador de búfer</string>
   <string name="player_sleep_timer">Temporizador de apagado</string>
+  <string name="player_standby">El reproductor está en modo de espera. Toca para activarlo.</string>
   <string name="players_dsp_settings">Ajustes de DSP</string>
   <string name="players_group_settings">Ajustes del grupo</string>
   <string name="players_group_volume">Volumen del grupo %1$s</string>

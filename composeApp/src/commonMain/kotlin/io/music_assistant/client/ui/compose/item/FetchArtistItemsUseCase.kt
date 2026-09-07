@@ -6,12 +6,11 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.repository.MediaItemRepository
 
-object ItemUseCases {
-    suspend inline fun <reified T : AppMediaItem> fetchArtistItemsAcrossProviders(
-        mediaItemRepository: MediaItemRepository,
+class FetchArtistItemsUseCase(private val mediaItemRepository: MediaItemRepository) {
+    suspend fun run(
         artist: Artist,
-        request: (itemId: String, providerInstance: String) -> Request,
-    ): ItemsWithMappings<T>? {
+        requestBuilder: (itemId: String, providerInstance: String) -> Request,
+    ): ItemsWithMappings<AppMediaItem>? {
         if (artist.providerMappings.isNullOrEmpty()) {
             return null
         }
@@ -19,18 +18,23 @@ object ItemUseCases {
         for (mapping in artist.providerMappings) {
             val itemId = mapping.itemId
             val providerInstance = mapping.providerInstance
-            val result = mediaItemRepository.fetchMediaItems(request(itemId, providerInstance))
-            val items = result.getOrNull()?.filterIsInstance<T>() ?: emptyList()
+            val request = requestBuilder(itemId, providerInstance)
+            val result = mediaItemRepository.fetchMediaItems(request)
+            val items = result.getOrNull() ?: emptyList()
             if (items.isNotEmpty()) {
-                return ItemsWithMappings(items, mapping)
+                return ItemsWithMappings(items, request, mapping)
             }
         }
 
-        return ItemsWithMappings(emptyList(), artist.providerMappings.first())
+        val mapping = artist.providerMappings.first()
+        val itemId = mapping.itemId
+        val providerInstance = mapping.providerInstance
+        return ItemsWithMappings(emptyList(), requestBuilder(itemId, providerInstance), mapping)
     }
 
     data class ItemsWithMappings<T : AppMediaItem>(
         val items: List<T>,
+        val request: Request,
         val mapping: ProviderMapping,
     )
 }

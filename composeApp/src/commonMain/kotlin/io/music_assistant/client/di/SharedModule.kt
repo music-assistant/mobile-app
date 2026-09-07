@@ -19,6 +19,7 @@ import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
 import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.logging.LogSharer
@@ -38,6 +39,7 @@ import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListViewModel
 import io.music_assistant.client.ui.compose.item.ViewModeViewModel
+import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel
 import io.music_assistant.client.ui.compose.library.AiRadioViewModel
 import io.music_assistant.client.ui.compose.library.BrowseViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
@@ -48,6 +50,7 @@ import io.music_assistant.client.ui.compose.settings.CarDspViewModel
 import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.sendspin.api.SendspinKeyStore
 import kotlinx.coroutines.CoroutineScope
@@ -77,6 +80,7 @@ fun sharedModule(
         single(named(SECRETS)) { provideSecretSettings() }
         single { SettingsRepository(get(), get(named(SECRETS))) }
         singleOf(::NetworkMonitor)
+        singleOf(::LocalNetworkPermissionGate)
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)
         singleOf(::VolumeButtonService)
@@ -109,8 +113,8 @@ fun sharedModule(
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)
-        singleOf(::MediaItemRepository)     // Server DTO/event → client model boundary for UI
         singleOf(::AiRadioRepository)       // Optional ai_radio plugin: list and run stations
+        singleOf(::ServiceClientMediaItemRepository) { bind<MediaItemRepository>() }
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch
             CarDspApplier(get(), get(), get(), get())
@@ -121,7 +125,7 @@ fun sharedModule(
         factory { BackgroundRestrictionViewModel(get(), get(), get()) }
         factory { SchemaVersionWarningViewModel(get()) }
         factory { ActionsViewModel(get(), get(), get()) }
-        factory { SettingsViewModel(get(), get(), get()) }
+        factory { SettingsViewModel(get(), get(), get(), get()) }
         factory { DefaultClickActionsViewModel(get()) }
         factory { CarActionsViewModel(get(), get()) }
         factory { CarDspViewModel(get(), get()) }
@@ -145,6 +149,9 @@ fun sharedModule(
                 params[1],
                 params[2],
             )
+        }
+        factory { params ->
+            ArtistDetailsViewModel(params[0], get())
         }
         factory { ViewModeViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get()) }

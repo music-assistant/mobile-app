@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * Covers [MediaItemRepository.fetchRecommendationFolders]
+ * Covers [fetchRecommendationFolders]
  * It must bridge both shapes of the `music/recommendations` response, selected
  * by the server's schema version: rows with their items embedded, and item-less
  * rows whose contents come from a per-row `music/recommendations/items` call.
@@ -101,7 +101,7 @@ class RecommendationFoldersCompatTest {
     }
 
     private fun repository(client: FakeClient) =
-        MediaItemRepository(client, MediaItemFactory(client))
+        ServiceClientMediaItemRepository(client, MediaItemFactory(client))
 
     @Test
     fun embeddedRowItemsAreUsedDirectly() = runTest {

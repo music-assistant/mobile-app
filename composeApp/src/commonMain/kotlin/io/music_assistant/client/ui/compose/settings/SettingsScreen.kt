@@ -80,6 +80,7 @@ import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidBasePath
@@ -94,6 +95,7 @@ import musicassistantclient.composeapp.generated.resources.cd_select_codec
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
+import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
@@ -167,6 +169,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val sendspinEnabled by viewModel.sendspinEnabled.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
+    val localNetworkOnboardingShown by viewModel.localNetworkOnboardingShown
+        .collectAsStateWithLifecycle()
+    val localNetworkBlocked by viewModel.localNetworkBlocked.collectAsStateWithLifecycle()
+    val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
@@ -215,7 +221,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                var ipAddress by remember { mutableStateOf(Defaults.URI) }
+                var ipAddress by remember { mutableStateOf("") }
                 var port by remember { mutableStateOf(Defaults.PORT.toString()) }
                 var isTls by remember { mutableStateOf(false) }
                 var basePath by remember { mutableStateOf("") }
@@ -230,6 +236,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 }
 
                 // Track if we've already attempted auto-reconnect
+                // Sticky for the screen's lifetime: once the iOS permission is determined,
+                // retries no longer wait on the prompt, so suppressing repeats is intended.
                 var autoReconnectAttempted by remember { mutableStateOf(false) }
 
                 // Auto-reconnect on error ONLY if user hasn't changed the connection info
@@ -237,31 +245,38 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
                 val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
                 LaunchedEffect(sessionState) {
+                    val errorState = sessionState as? SessionState.Disconnected.Error
                     val connInfo = savedConnectionInfo
-                    if (sessionState is SessionState.Disconnected.Error &&
-                        connInfo != null &&
+                    if (errorState != null &&
                         !autoReconnectAttempted &&
                         preferredMethod != "webrtc"
                     ) {
-                        // Only auto-reconnect if text fields match saved connection info
-                        // (i.e., user hasn't changed anything)
-                        val userChangedConnectionInfo =
-                            ipAddress != connInfo.host ||
-                                    port != connInfo.port.toString() ||
-                                    isTls != connInfo.isTls ||
-                                    basePath != connInfo.basePath
+                        if (connInfo != null) {
+                            // Only auto-reconnect if text fields match saved connection info
+                            // (i.e., user hasn't changed anything)
+                            val userChangedConnectionInfo =
+                                ipAddress != connInfo.host ||
+                                        port != connInfo.port.toString() ||
+                                        isTls != connInfo.isTls ||
+                                        basePath != connInfo.basePath
 
-                        if (!userChangedConnectionInfo) {
-                            // User is trying to reconnect to same server - auto-retry
+                            if (!userChangedConnectionInfo) {
+                                // User is trying to reconnect to same server - auto-retry
+                                autoReconnectAttempted = true
+                                viewModel.attemptConnection(
+                                    connInfo.host,
+                                    connInfo.port.toString(),
+                                    connInfo.isTls,
+                                    connInfo.basePath,
+                                )
+                            }
+                            // If user changed connection info, don't auto-retry - let them manually retry
+                        } else if (errorState.reason?.let(viewModel::isLikelyLocalNetworkBlocked) == true) {
+                            // Fresh install (no saved connection): retry once — the first
+                            // attempt is consumed by the platform permission prompt.
                             autoReconnectAttempted = true
-                            viewModel.attemptConnection(
-                                connInfo.host,
-                                connInfo.port.toString(),
-                                connInfo.isTls,
-                                connInfo.basePath,
-                            )
+                            viewModel.attemptConnection(ipAddress, port, isTls, basePath)
                         }
-                        // If user changed connection info, don't auto-retry - let them manually retry
                     }
                 }
 
@@ -274,9 +289,18 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
+                val connectAttemptInFlight by viewModel.connectAttemptInFlight
+                    .collectAsStateWithLifecycle()
+
                 when (sessionState) {
                     is SessionState.Disconnected -> {
                         AboutSection()
+                        LocalNetworkOnboardingCard(
+                            resources = viewModel.localNetworkOnboardingResources,
+                            visible = connectionHistory.isEmpty() &&
+                                !localNetworkOnboardingShown,
+                            onGotIt = viewModel::dismissLocalNetworkOnboarding,
+                        )
                         ConnectionMethodTabs(
                             viewModel = viewModel,
                             ipAddress = ipAddress,
@@ -289,23 +313,26 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onBasePathChange = { basePath = it },
                             onDirectConnect = {
                                 viewModel.attemptConnection(
-                                    ipAddress,
+                                    ipAddress.ifBlank { Defaults.URI },
                                     port,
                                     isTls,
                                     basePath,
                                 )
                             },
-                            directConnectEnabled = ipAddress.isValidHost() &&
+                            directConnectEnabled = ipAddress.ifBlank { Defaults.URI }.isValidHost() &&
                                     port.isIpPort() &&
-                                    basePath.isValidBasePath(),
+                                    basePath.isValidBasePath() &&
+                                    !connectAttemptInFlight,
                             sessionState = sessionState,
                             connectionHistory = connectionHistory,
+                            localNetworkBlocked = localNetworkBlocked,
+                            probeGranted = probeGranted,
                         )
                     }
 
                     SessionState.Connecting -> {
                         ConnectingSection(
-                            ipAddress = ipAddress,
+                            ipAddress = ipAddress.ifBlank { Defaults.URI },
                             port = port,
                             preferredMethod = preferredMethod,
                             onCancel = { viewModel.disconnect() },
@@ -314,7 +341,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
                     is SessionState.Reconnecting -> {
                         ConnectingSection(
-                            ipAddress = ipAddress,
+                            ipAddress = ipAddress.ifBlank { Defaults.URI },
                             port = port,
                             preferredMethod = preferredMethod,
                             onCancel = { viewModel.disconnect() },
@@ -501,6 +528,27 @@ private fun AboutSection() {
 }
 
 @Composable
+private fun LocalNetworkOnboardingCard(
+    resources: LocalNetworkOnboardingResources?,
+    visible: Boolean,
+    onGotIt: () -> Unit,
+) {
+    if (!visible || resources == null) return
+    SectionCard {
+        SectionTitle(stringResource(resources.title))
+        Text(
+            text = stringResource(resources.body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        OutlinedButton(onClick = onGotIt, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(Res.string.common_done))
+        }
+    }
+}
+
+@Composable
 private fun ExperimentalPill() {
     Box(
         modifier = Modifier
@@ -532,6 +580,8 @@ private fun ConnectionMethodTabs(
     directConnectEnabled: Boolean,
     sessionState: SessionState,
     connectionHistory: List<ConnectionHistoryEntry>,
+    localNetworkBlocked: Boolean,
+    probeGranted: Boolean?,
 ) {
     val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
     val selectedTab = if (preferredMethod == "webrtc") 1 else 0
@@ -539,7 +589,14 @@ private fun ConnectionMethodTabs(
     var showHistoryDialog by remember { mutableStateOf(false) }
 
     val directHasToken = port.toIntOrNull()
-        ?.let { viewModel.hasCredentialsForDirect(ipAddress, it, isTls, basePath) } ?: false
+        ?.let {
+            viewModel.hasCredentialsForDirect(
+                ipAddress.ifBlank { Defaults.URI },
+                it,
+                isTls,
+                basePath,
+            )
+        } ?: false
     val webrtcHasToken = webrtcRemoteId.isNotBlank() &&
             viewModel.hasCredentialsForWebRTC(webrtcRemoteId)
 
@@ -606,16 +663,18 @@ private fun ConnectionMethodTabs(
         }
 
         val error = (sessionState as? SessionState.Disconnected.Error)?.reason
-        if (error != null) {
-            val errorMessage = error.message?.toDisplayString()
+        val errorMessage = viewModel.localNetworkErrorGuidance(
+            error = error,
+            probeGranted = probeGranted,
+            locallyBlocked = localNetworkBlocked,
+        )?.toDisplayString() ?: error?.message?.toDisplayString()
 
-            if (errorMessage != null) {
-                Text(
-                    errorMessage.string(),
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+        if (errorMessage != null) {
+            Text(
+                errorMessage.string(),
+                modifier = Modifier.padding(top = 8.dp),
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 
@@ -672,7 +731,7 @@ private fun DirectConnectionContent(
         value = ipAddress,
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
-        placeholder = { Text("homeassistant.local") },
+        placeholder = { Text(Defaults.URI) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -746,7 +805,12 @@ private fun DirectConnectionContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp),
-        text = ConnectionInfo.previewWsUrl(ipAddress, port, isTls, basePath),
+        text = ConnectionInfo.previewWsUrl(
+            ipAddress.ifBlank { Defaults.URI },
+            port,
+            isTls,
+            basePath,
+        ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
