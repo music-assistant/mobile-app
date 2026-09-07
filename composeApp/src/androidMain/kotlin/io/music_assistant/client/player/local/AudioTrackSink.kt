@@ -34,8 +34,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
  *
  * Position feedback is the playback head only. [AudioTrack.getTimestamp] sits
  * behind the head by the output latency and is unavailable or stale for the
- * first few hundred ms of a fresh track, so mixing the two sources moved the
- * scheduler's queue estimate by that latency on every switch.
+ * first few hundred ms of a fresh track, so mixing the two sources moves the
+ * scheduler's queue estimate by that latency on every switch. Do not add it
+ * back as a fallback.
  */
 class AudioTrackSink(
     context: Context,

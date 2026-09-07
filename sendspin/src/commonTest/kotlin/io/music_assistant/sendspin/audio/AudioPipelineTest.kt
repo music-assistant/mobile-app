@@ -387,7 +387,7 @@ class AudioPipelineTest {
 
     @Test
     fun aSinkThatAcceptsNothingIsTreatedAsDead() = pipelineTest { h ->
-        // A zero return used to spin the audio thread forever.
+        // The audio thread must not retry a sink that takes nothing: that is an endless spin.
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()
         h.handle.acceptNothing = true
