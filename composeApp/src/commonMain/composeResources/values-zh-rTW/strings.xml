@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="action_start_endless_mix">開始無窮音樂</string>
+  <string name="ai_radio_empty">還沒有AI電臺。在Music Assistant瀏覽器創造。</string>
+  <string name="ai_radio_load_failed">不能載入AI電臺</string>
+  <string name="ai_radio_no_player">必須先選播放機</string>
+  <string name="ai_radio_stop">停</string>
+  <string name="ai_radio_title">AI收音機</string>
+  <string name="cd_keep_screen_on_disable">讓屏幕關機</string>
+  <string name="cd_keep_screen_on_enable">保持屏幕開機</string>
+  <string name="item_subtitle_sound_effect">AI直播</string>
+  <string name="player_crossfade">淡入淡出</string>
+  <string name="player_needs_setup">必須設定</string>
+  <string name="player_standby">播放機再睡。點擊喚醒。</string>
+  <string name="sleep_timer_hour">一小時</string>
+  <string name="sleep_timer_hours">%1$d小時</string>
+  <string name="sleep_timer_minutes">%1$d分鐘</string>
+  <string name="sleep_timer_stops_in">%1$s停</string>
+</resources>

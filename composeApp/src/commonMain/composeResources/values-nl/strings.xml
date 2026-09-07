@@ -30,6 +30,11 @@
   <string name="action_start_endless_mix">Start Endless Mix</string>
   <string name="action_start_radio">Start Endless Mix</string>
   <string name="action_unfavorite">Verwijder favoriet</string>
+  <string name="ai_radio_empty">Er zijn nog geen AI-stations. Maak er een aan in de Music Assistant-webapp.</string>
+  <string name="ai_radio_load_failed">Kon AI-stations niet laden</string>
+  <string name="ai_radio_no_player">Selecteer eerst een speler</string>
+  <string name="ai_radio_stop">Stop</string>
+  <string name="ai_radio_title">AI Radio</string>
   <string name="album_disc_header">Schijf %1$d</string>
   <string name="album_type_album">Album</string>
   <string name="album_type_compilation">Compilatie</string>
@@ -90,6 +95,8 @@
   <string name="cd_fully_played">Volledig afgespeeld</string>
   <string name="cd_genre_filter">Genrefilters</string>
   <string name="cd_in_progress">In behandeling</string>
+  <string name="cd_keep_screen_on_disable">Laat het scherm uitschakelen</string>
+  <string name="cd_keep_screen_on_enable">Laat het scherm aan staan</string>
   <string name="cd_leave_group">Groep verlaten</string>
   <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Songtekst</string>
@@ -165,6 +172,7 @@
   <string name="item_subtitle_playlist_dynamic">Dynamische afspeellijst</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_sound_effect">AI-presentator</string>
   <string name="item_subtitle_unknown">Onbekend</string>
   <string name="kind_album">Albums</string>
   <string name="kind_artist">Artiesten</string>
@@ -216,11 +224,13 @@
   <string name="player_autoplay">Autoplay</string>
   <string name="player_crossfade">Crossfade</string>
   <string name="player_dynamic_colors">Dynamische kleuren</string>
+  <string name="player_needs_setup">Installatie vereist</string>
   <string name="player_power_off">Uitzetten</string>
   <string name="player_power_on">Aanzetten</string>
   <string name="player_powered_off">Uitgeschakeld</string>
   <string name="player_show_buffer_indicator">Bufferindicator</string>
   <string name="player_sleep_timer">Slaaptimer</string>
+  <string name="player_standby">De speler staat in de stand-by-modus. Tik om het te activeren.</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
