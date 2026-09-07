@@ -23,7 +23,7 @@ import dev.whyoleg.cryptography.random.CryptographyRandom
  * session surfaces the error; the `cryptography-provider-jdk-bc` BouncyCastle
  * artifact is the documented drop-in fallback should field reports show this.
  */
-class CryptographyKotlinNoiseCrypto(
+internal class CryptographyKotlinNoiseCrypto(
     private val provider: CryptographyProvider = CryptographyProvider.Default,
 ) : NoiseCrypto {
     private val logger = Logger.withTag("NoiseCrypto")

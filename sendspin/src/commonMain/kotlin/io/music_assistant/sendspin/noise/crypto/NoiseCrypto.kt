@@ -1,7 +1,7 @@
 package io.music_assistant.sendspin.noise.crypto
 
 /** A raw X25519 keypair: both keys are 32 bytes. */
-class X25519KeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
+internal class X25519KeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
 
 /**
  * The crypto primitives the Sendspin Noise implementation is built on
@@ -14,7 +14,7 @@ class X25519KeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
  * bindings would be a drop-in alternative) and so tests can drive the Noise
  * state machine with fixed keys from reference vectors.
  */
-interface NoiseCrypto {
+internal interface NoiseCrypto {
     /** Generates a fresh X25519 keypair from a CSPRNG. */
     suspend fun generateX25519KeyPair(): X25519KeyPair
 

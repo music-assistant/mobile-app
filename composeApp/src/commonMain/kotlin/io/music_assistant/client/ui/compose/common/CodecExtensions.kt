@@ -1,7 +1,7 @@
 package io.music_assistant.client.ui.compose.common
 
 import androidx.compose.runtime.Composable
-import io.music_assistant.sendspin.wire.AudioCodec
+import io.music_assistant.sendspin.api.AudioCodec
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.codec_flac
 import musicassistantclient.composeapp.generated.resources.codec_opus

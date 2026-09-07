@@ -2,6 +2,8 @@ package io.music_assistant.sendspin.player
 
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
+import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.Endpoint
@@ -22,6 +24,8 @@ import io.music_assistant.sendspin.clock.ClockSync
 import io.music_assistant.sendspin.connection.ConnectionState
 import io.music_assistant.sendspin.connection.ConnectionSupervisor
 import io.music_assistant.sendspin.identity.SendspinTrustStore
+import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
+import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 import io.music_assistant.sendspin.session.Activation
 import io.music_assistant.sendspin.session.NoiseSession
 import io.music_assistant.sendspin.session.SessionConfig
@@ -29,8 +33,6 @@ import io.music_assistant.sendspin.session.SessionHandler
 import io.music_assistant.sendspin.session.SessionInfo
 import io.music_assistant.sendspin.transport.TransportConnector
 import io.music_assistant.sendspin.wire.AudioChunk
-import io.music_assistant.sendspin.wire.AudioCodec
-import io.music_assistant.sendspin.wire.AudioFormatSpec
 import io.music_assistant.sendspin.wire.ClientStateMessage
 import io.music_assistant.sendspin.wire.ClientStatePayload
 import io.music_assistant.sendspin.wire.EncryptedDeviceInfo
@@ -64,6 +66,8 @@ internal class SendspinPlayerImpl(
     private val config: StateFlow<LocalPlayerConfig?>,
     private val deps: SendspinDeps,
     scope: CoroutineScope,
+    /** Noise primitives; a test seam only, the app never chooses them. */
+    private val crypto: NoiseCrypto = CryptographyKotlinNoiseCrypto(),
     /** One connector per enabled lifetime; injectable so tests can watch its close. */
     private val connectorFactory: (HttpClient) -> TransportConnector = TransportConnector::ktor,
 ) : SendspinPlayer {
@@ -88,7 +92,7 @@ internal class SendspinPlayerImpl(
     }
 
     private suspend fun runEnabled() = coroutineScope {
-        val trustStore = SendspinTrustStore.load(deps.keyStore, deps.crypto)
+        val trustStore = SendspinTrustStore.load(deps.keyStore, crypto)
         val clockSync = ClockSync(deps.clock)
         val pipeline = AudioPipeline(
             deps.sink,
@@ -101,7 +105,7 @@ internal class SendspinPlayerImpl(
         val supervisor = ConnectionSupervisor(
             connector = connector,
             trustStore = trustStore,
-            crypto = deps.crypto,
+            crypto = crypto,
             online = deps.online,
             clock = deps.clock,
             pairWebPlayer = deps.pairWebPlayer,

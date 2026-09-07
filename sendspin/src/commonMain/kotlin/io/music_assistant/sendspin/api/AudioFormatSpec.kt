@@ -2,7 +2,7 @@
 // naming them `BIT_DEPTH_16` etc. doesn't add clarity over the literal.
 @file:Suppress("MagicNumber")
 
-package io.music_assistant.sendspin.wire
+package io.music_assistant.sendspin.api
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

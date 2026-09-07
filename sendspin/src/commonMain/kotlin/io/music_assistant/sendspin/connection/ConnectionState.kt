@@ -30,4 +30,4 @@ internal sealed interface DropReason {
 }
 
 /** Thrown inside an attempt when the server stops answering; ends the attempt. */
-class ServerSilentException : Exception("server stopped answering")
+internal class ServerSilentException : Exception("server stopped answering")

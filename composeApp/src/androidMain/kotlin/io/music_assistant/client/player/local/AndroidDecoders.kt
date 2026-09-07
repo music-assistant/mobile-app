@@ -9,10 +9,10 @@ import android.media.MediaFormat
 import android.os.Build
 import co.touchlab.kermit.Logger
 import io.github.jaredmdobson.concentus.OpusException
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioDecoder
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.DecoderFactory
-import io.music_assistant.sendspin.wire.AudioCodec
-import io.music_assistant.sendspin.wire.AudioFormatSpec
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import io.github.jaredmdobson.concentus.OpusDecoder as ConcentusOpusDecoder

@@ -1,6 +1,5 @@
 package io.music_assistant.sendspin.api
 
-import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.flow.Flow
 
 /** Platform audio output. [open] builds a fresh device stream every time. */

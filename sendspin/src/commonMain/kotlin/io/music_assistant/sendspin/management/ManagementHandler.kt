@@ -18,7 +18,7 @@ import kotlinx.serialization.json.contentOrNull
  * processes inbound messages sequentially). Payloads are never logged —
  * `add-record` and `set-pairing-config` carry raw secrets.
  */
-class ManagementHandler(
+internal class ManagementHandler(
     private val trustStore: SendspinTrustStore,
 ) {
     private val logger = Logger.withTag("ManagementHandler")

@@ -2,8 +2,8 @@ package io.music_assistant.client.data
 
 import io.music_assistant.client.data.LocalPlayerAdapter.Companion.localPlayerConfig
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.Endpoint
-import io.music_assistant.sendspin.wire.AudioCodec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

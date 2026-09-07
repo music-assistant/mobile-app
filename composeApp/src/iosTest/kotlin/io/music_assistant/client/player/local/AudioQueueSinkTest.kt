@@ -3,8 +3,8 @@ package io.music_assistant.client.player.local
 import io.music_assistant.client.player.MediaPlayerListener
 import io.music_assistant.client.player.PlatformAudioPlayer
 import io.music_assistant.client.player.RemoteCommandHandler
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.SinkFormat
-import io.music_assistant.sendspin.wire.AudioCodec
 import platform.Foundation.NSData
 import kotlin.test.Test
 import kotlin.test.assertEquals

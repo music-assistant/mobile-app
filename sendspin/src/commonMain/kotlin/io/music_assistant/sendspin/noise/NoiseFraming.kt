@@ -26,7 +26,7 @@ package io.music_assistant.sendspin.noise
  * frame may interleave with it. Malformed sequences are protocol errors and
  * must close the connection.
  */
-object NoiseFraming {
+internal object NoiseFraming {
     const val TYPE_JSON: Int = 0
     const val TYPE_FRAGMENT_MORE: Int = 2
     const val TYPE_FRAGMENT_END: Int = 3

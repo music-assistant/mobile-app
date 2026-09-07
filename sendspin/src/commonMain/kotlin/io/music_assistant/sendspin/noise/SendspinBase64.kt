@@ -6,7 +6,7 @@ import kotlin.io.encoding.Base64
  * Base64url without padding, the encoding Sendspin uses for identities
  * (`client_id`/`server_id`), `psk_id` values, and `noise/handshake` data.
  */
-object SendspinBase64 {
+internal object SendspinBase64 {
     private val codec = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 
     fun encode(bytes: ByteArray): String = codec.encode(bytes)

@@ -1,4 +1,4 @@
-package io.music_assistant.sendspin.identity
+package io.music_assistant.sendspin.api
 
 /**
  * Byte-blob persistence for the Sendspin identity and trust state.

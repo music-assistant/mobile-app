@@ -17,7 +17,7 @@ import kotlinx.atomicfu.locks.synchronized
  * `client/pair-finalize`, and persists the record only on `server/pair-finalize`.
  * Cancellation, abort, drop, or timeout discard the attempt with nothing persisted.
  */
-class PairingHandler(
+internal class PairingHandler(
     private val crypto: NoiseCrypto,
     private val trustStore: SendspinTrustStore,
 ) {

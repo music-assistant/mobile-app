@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
  * newer server never breaks parsing. Defaults are encoded so the server sees
  * every field the spec expects.
  */
-val SendspinJson: Json = Json {
+internal val SendspinJson: Json = Json {
     encodeDefaults = true
     ignoreUnknownKeys = true
     coerceInputValues = true

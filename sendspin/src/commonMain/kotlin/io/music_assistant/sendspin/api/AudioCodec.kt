@@ -1,4 +1,4 @@
-package io.music_assistant.sendspin.wire
+package io.music_assistant.sendspin.api
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

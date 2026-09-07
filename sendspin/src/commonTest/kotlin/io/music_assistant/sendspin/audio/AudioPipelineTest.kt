@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.audio
 
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.SinkEvent
@@ -7,7 +8,6 @@ import io.music_assistant.sendspin.clock.ClockSync
 import io.music_assistant.sendspin.fakes.FakeDecoderFactory
 import io.music_assistant.sendspin.fakes.FakeSink
 import io.music_assistant.sendspin.wire.AudioChunk
-import io.music_assistant.sendspin.wire.AudioCodec
 import io.music_assistant.sendspin.wire.ServerTimePayload
 import io.music_assistant.sendspin.wire.StreamStartPlayer
 import kotlinx.coroutines.ExperimentalCoroutinesApi

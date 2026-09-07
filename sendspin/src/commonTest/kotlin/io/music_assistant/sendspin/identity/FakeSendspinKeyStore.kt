@@ -1,5 +1,7 @@
 package io.music_assistant.sendspin.identity
 
+import io.music_assistant.sendspin.api.SendspinKeyStore
+
 /** In-memory [SendspinKeyStore] with corruption injection for recovery tests. */
 class FakeSendspinKeyStore : SendspinKeyStore {
     val entries = mutableMapOf<String, ByteArray>()

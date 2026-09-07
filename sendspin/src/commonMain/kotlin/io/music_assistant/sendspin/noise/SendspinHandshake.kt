@@ -24,23 +24,23 @@ const val SENDSPIN_CORE_VERSION = 1
  * failure-handling rules the caller closes the WebSocket without sending any
  * application-level error message.
  */
-class HandshakeFailedException(message: String, cause: Throwable? = null) :
+internal class HandshakeFailedException(message: String, cause: Throwable? = null) :
     Exception(message, cause)
 
 /** Frames the handshake driver can receive during the cleartext phase. */
-sealed interface HandshakeFrame {
+internal sealed interface HandshakeFrame {
     class Text(val text: String) : HandshakeFrame
     class Binary(val bytes: ByteArray) : HandshakeFrame
 }
 
 /** Minimal transport view the initial (cleartext) handshake runs over. */
-interface HandshakeIo {
+internal interface HandshakeIo {
     suspend fun sendText(text: String)
     suspend fun receive(): HandshakeFrame
 }
 
 /** The established encrypted channel plus its authentication context. */
-class HandshakeOutcome(
+internal class HandshakeOutcome(
     val transport: NoiseTransport,
     val handshakeHash: ByteArray,
     val serverId: String,
@@ -53,7 +53,7 @@ class HandshakeOutcome(
  * The initial prologue is the exact transmitted bytes of both init messages —
  * never a re-encoding; a re-handshake's prologue is the prior handshake hash.
  */
-class SendspinHandshake(
+internal class SendspinHandshake(
     private val crypto: NoiseCrypto,
     private val clientStatic: X25519KeyPair,
     private val pskCandidates: suspend () -> List<PskCandidate>,

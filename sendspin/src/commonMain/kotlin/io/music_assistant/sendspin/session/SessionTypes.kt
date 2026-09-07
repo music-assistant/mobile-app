@@ -9,7 +9,7 @@ import kotlinx.coroutines.CopyableThrowable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 /** Trust level the client extends to the connected server. */
-enum class TrustLevel(val wire: String) {
+internal enum class TrustLevel(val wire: String) {
     NONE("none"),
     USER("user"),
     ;
@@ -22,7 +22,7 @@ enum class TrustLevel(val wire: String) {
     }
 }
 
-class SessionConfig(
+internal class SessionConfig(
     val deviceName: String,
     val playerSupport: PlayerSupport?,
     val deviceInfo: EncryptedDeviceInfo?,
@@ -33,14 +33,14 @@ class SessionConfig(
 )
 
 /** Hello exchange complete under the current keys; outbound stays gated until activation. */
-data class SessionInfo(
+internal data class SessionInfo(
     val serverId: String,
     val serverName: String,
     val matchedPskCategory: PskCategory,
     val trustLevel: TrustLevel,
 )
 
-data class Activation(val activities: List<String>, val activeRoles: List<String>)
+internal data class Activation(val activities: List<String>, val activeRoles: List<String>)
 
 /** Called on the session's single reader coroutine, in wire order. Keep handlers short. */
 internal interface SessionHandler {
@@ -59,13 +59,13 @@ internal interface SessionHandler {
 
 /** The client sent `client/goodbye` with [reason] and closed the connection. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class SessionRejected(val reason: String) :
+internal class SessionRejected(val reason: String) :
     Exception("session rejected: $reason"), CopyableThrowable<SessionRejected> {
     override fun createCopy(): SessionRejected = SessionRejected(reason)
 }
 
 /** The connection ended with a failure. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class TransportLost(cause: Throwable?) : Exception("transport lost", cause), CopyableThrowable<TransportLost> {
+internal class TransportLost(cause: Throwable?) : Exception("transport lost", cause), CopyableThrowable<TransportLost> {
     override fun createCopy(): TransportLost = TransportLost(cause)
 }

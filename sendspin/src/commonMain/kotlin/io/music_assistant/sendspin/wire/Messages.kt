@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.wire
 
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -9,14 +10,14 @@ import kotlinx.serialization.json.JsonElement
  * server must keep seeing the same bytes, so change a field only with the spec.
  */
 @Serializable
-sealed interface SendspinMessage {
+internal sealed interface SendspinMessage {
     val type: String
 }
 
 // MARK: - Proxy authentication (WebSocket via the MA proxy, before Noise)
 
 @Serializable
-data class ClientAuthMessage(
+internal data class ClientAuthMessage(
     override val type: String = "auth",
     val token: String,
     @SerialName("client_id") val clientId: String,
@@ -25,38 +26,38 @@ data class ClientAuthMessage(
 // MARK: - Noise establishment
 
 @Serializable
-data class ClientInitMessage(
+internal data class ClientInitMessage(
     override val type: String = "client/init",
     val payload: ClientInitPayload,
 ) : SendspinMessage
 
 @Serializable
-data class ClientInitPayload(
+internal data class ClientInitPayload(
     @SerialName("client_id") val clientId: String,
     val version: Int = 1,
     val suite: String,
 )
 
 @Serializable
-data class ServerInitMessage(
+internal data class ServerInitMessage(
     override val type: String = "server/init",
     val payload: ServerInitPayload,
 ) : SendspinMessage
 
 @Serializable
-data class ServerInitPayload(
+internal data class ServerInitPayload(
     @SerialName("server_id") val serverId: String,
     val version: Int,
 )
 
 @Serializable
-data class NoiseHandshakeMessage(
+internal data class NoiseHandshakeMessage(
     override val type: String = "noise/handshake",
     val payload: NoiseHandshakePayload,
 ) : SendspinMessage
 
 @Serializable
-data class NoiseHandshakePayload(
+internal data class NoiseHandshakePayload(
     /** base64url-encoded (no padding) Noise handshake message bytes. */
     val data: String,
 )
@@ -64,13 +65,13 @@ data class NoiseHandshakePayload(
 // MARK: - Hello and activation
 
 @Serializable
-data class EncryptedClientHelloMessage(
+internal data class EncryptedClientHelloMessage(
     override val type: String = "client/hello",
     val payload: EncryptedClientHelloPayload,
 ) : SendspinMessage
 
 @Serializable
-data class EncryptedClientHelloPayload(
+internal data class EncryptedClientHelloPayload(
     val name: String,
     @SerialName("device_info") val deviceInfo: EncryptedDeviceInfo? = null,
     @SerialName("trust_level") val trustLevel: String,
@@ -81,20 +82,20 @@ data class EncryptedClientHelloPayload(
 )
 
 @Serializable
-data class EncryptedDeviceInfo(
+internal data class EncryptedDeviceInfo(
     @SerialName("product_name") val productName: String? = null,
     val manufacturer: String? = null,
     @SerialName("software_version") val softwareVersion: String? = null,
 )
 
 @Serializable
-data class PairMethodDescriptor(val method: String)
+internal data class PairMethodDescriptor(val method: String)
 
 @Serializable
-data class UnpairedAccess(val enabled: Boolean)
+internal data class UnpairedAccess(val enabled: Boolean)
 
 @Serializable
-enum class PlayerCommand {
+internal enum class PlayerCommand {
     @SerialName("volume")
     VOLUME,
 
@@ -103,29 +104,29 @@ enum class PlayerCommand {
 }
 
 @Serializable
-data class PlayerSupport(
+internal data class PlayerSupport(
     @SerialName("supported_formats") val supportedFormats: List<AudioFormatSpec>,
     @SerialName("buffer_capacity") val bufferCapacity: Int,
     @SerialName("supported_commands") val supportedCommands: List<PlayerCommand>,
 )
 
 @Serializable
-data class EncryptedServerHelloMessage(
+internal data class EncryptedServerHelloMessage(
     override val type: String = "server/hello",
     val payload: EncryptedServerHelloPayload,
 ) : SendspinMessage
 
 @Serializable
-data class EncryptedServerHelloPayload(val name: String)
+internal data class EncryptedServerHelloPayload(val name: String)
 
 @Serializable
-data class ServerActivateMessage(
+internal data class ServerActivateMessage(
     override val type: String = "server/activate",
     val payload: ServerActivatePayload,
 ) : SendspinMessage
 
 @Serializable
-data class ServerActivatePayload(
+internal data class ServerActivatePayload(
     val activities: List<String>,
     /** Required on the first activation; persists across later activations that omit it. */
     @SerialName("active_roles") val activeRoles: List<String>? = null,
@@ -133,7 +134,7 @@ data class ServerActivatePayload(
 )
 
 @Serializable
-data class ActivatePairing(
+internal data class ActivatePairing(
     val method: String,
     @SerialName("pin_length") val pinLength: Int? = null,
     val languages: List<String>? = null,
@@ -142,46 +143,46 @@ data class ActivatePairing(
 // MARK: - Pairing PSK flow
 
 @Serializable
-data class ClientPairFinalizeMessage(
+internal data class ClientPairFinalizeMessage(
     override val type: String = "client/pair-finalize",
     val payload: ClientPairFinalizePayload,
 ) : SendspinMessage
 
 @Serializable
-data class ClientPairFinalizePayload(
+internal data class ClientPairFinalizePayload(
     @SerialName("long_term_psk") val longTermPsk: String,
 )
 
 @Serializable
-data class PairAbortMessage(
+internal data class PairAbortMessage(
     override val type: String = "pair/abort",
     val payload: PairAbortPayload,
 ) : SendspinMessage
 
 @Serializable
-data class PairAbortPayload(val reason: String)
+internal data class PairAbortPayload(val reason: String)
 
 // MARK: - Clock sync
 
 @Serializable
-data class ClientTimeMessage(
+internal data class ClientTimeMessage(
     override val type: String = "client/time",
     val payload: ClientTimePayload,
 ) : SendspinMessage
 
 @Serializable
-data class ClientTimePayload(
+internal data class ClientTimePayload(
     @SerialName("client_transmitted") val clientTransmitted: Long,
 )
 
 @Serializable
-data class ServerTimeMessage(
+internal data class ServerTimeMessage(
     override val type: String = "server/time",
     val payload: ServerTimePayload,
 ) : SendspinMessage
 
 @Serializable
-data class ServerTimePayload(
+internal data class ServerTimePayload(
     @SerialName("client_transmitted") val clientTransmitted: Long,
     @SerialName("server_received") val serverReceived: Long,
     @SerialName("server_transmitted") val serverTransmitted: Long,
@@ -190,7 +191,7 @@ data class ServerTimePayload(
 // MARK: - State
 
 @Serializable
-enum class PlayerStateValue {
+internal enum class PlayerStateValue {
     @SerialName("synchronized")
     SYNCHRONIZED,
 
@@ -199,22 +200,22 @@ enum class PlayerStateValue {
 }
 
 @Serializable
-data class ClientStateMessage(
+internal data class ClientStateMessage(
     override val type: String = "client/state",
     val payload: ClientStatePayload,
 ) : SendspinMessage
 
 @Serializable
-data class ClientStatePayload(
+internal data class ClientStatePayload(
     val player: PlayerStateObject? = null,
     val available: Boolean? = null,
 )
 
 @Serializable
-data class PlayerStateObject(val state: PlayerStateValue)
+internal data class PlayerStateObject(val state: PlayerStateValue)
 
 @Serializable
-data class ServerStateMessage(
+internal data class ServerStateMessage(
     override val type: String = "server/state",
     val payload: JsonElement? = null,
 ) : SendspinMessage
@@ -222,16 +223,16 @@ data class ServerStateMessage(
 // MARK: - Stream
 
 @Serializable
-data class StreamStartMessage(
+internal data class StreamStartMessage(
     override val type: String = "stream/start",
     val payload: StreamStartPayload,
 ) : SendspinMessage
 
 @Serializable
-data class StreamStartPayload(val player: StreamStartPlayer? = null)
+internal data class StreamStartPayload(val player: StreamStartPlayer? = null)
 
 @Serializable
-data class StreamStartPlayer(
+internal data class StreamStartPlayer(
     val codec: String,
     @SerialName("sample_rate") val sampleRate: Int,
     val channels: Int,
@@ -240,13 +241,13 @@ data class StreamStartPlayer(
 )
 
 @Serializable
-data class StreamMetadataMessage(
+internal data class StreamMetadataMessage(
     override val type: String = "stream/metadata",
     val payload: StreamMetadataPayload,
 ) : SendspinMessage
 
 @Serializable
-data class StreamMetadataPayload(
+internal data class StreamMetadataPayload(
     val title: String? = null,
     val artist: String? = null,
     val album: String? = null,
@@ -254,33 +255,33 @@ data class StreamMetadataPayload(
 )
 
 @Serializable
-data class GroupUpdateMessage(
+internal data class GroupUpdateMessage(
     override val type: String = "group/update",
     val payload: GroupUpdatePayload,
 ) : SendspinMessage
 
 @Serializable
-data class GroupUpdatePayload(
+internal data class GroupUpdatePayload(
     @SerialName("playback_state") val playbackState: String? = null,
     @SerialName("group_id") val groupId: String? = null,
     @SerialName("group_name") val groupName: String? = null,
 )
 
 @Serializable
-data class SessionUpdateMessage(
+internal data class SessionUpdateMessage(
     override val type: String = "session/update",
     val payload: SessionUpdatePayload,
 ) : SendspinMessage
 
 @Serializable
-data class SessionUpdatePayload(
+internal data class SessionUpdatePayload(
     @SerialName("group_id") val groupId: String? = null,
     @SerialName("playback_state") val playbackState: String? = null,
     val metadata: SessionMetadata? = null,
 )
 
 @Serializable
-data class SessionMetadata(
+internal data class SessionMetadata(
     val title: String? = null,
     val artist: String? = null,
     val album: String? = null,
@@ -298,16 +299,16 @@ data class SessionMetadata(
 // MARK: - Commands
 
 @Serializable
-data class ServerCommandMessage(
+internal data class ServerCommandMessage(
     override val type: String = "server/command",
     val payload: ServerCommandPayload,
 ) : SendspinMessage
 
 @Serializable
-data class ServerCommandPayload(val player: PlayerCommandObject)
+internal data class ServerCommandPayload(val player: PlayerCommandObject)
 
 @Serializable
-data class PlayerCommandObject(
+internal data class PlayerCommandObject(
     val command: String,
     val volume: Int? = null,
     val mute: Boolean? = null,
@@ -316,20 +317,20 @@ data class PlayerCommandObject(
 // MARK: - Goodbye
 
 @Serializable
-data class ClientGoodbyeMessage(
+internal data class ClientGoodbyeMessage(
     override val type: String = "client/goodbye",
     val payload: GoodbyePayload? = null,
 ) : SendspinMessage
 
 @Serializable
-data class GoodbyePayload(val reason: String? = null)
+internal data class GoodbyePayload(val reason: String? = null)
 
 /**
  * Wire reasons for `client/goodbye`, mirroring aiosendspin's `GoodbyeReason`.
  * [Shutdown] and [UserRequest] trigger immediate session teardown on the
  * server; [Restart] is a warm, reconnect-friendly disconnect (30 s grace).
  */
-enum class GoodbyeReason(val wire: String) {
+internal enum class GoodbyeReason(val wire: String) {
     Shutdown("shutdown"),
     Restart("restart"),
     UserRequest("user_request"),

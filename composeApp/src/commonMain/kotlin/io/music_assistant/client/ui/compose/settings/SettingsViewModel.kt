@@ -9,7 +9,7 @@ import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
-import io.music_assistant.sendspin.wire.AudioCodec
+import io.music_assistant.sendspin.api.AudioCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,7 +1,5 @@
 package io.music_assistant.sendspin.api
 
-import io.music_assistant.sendspin.wire.AudioCodec
-
 sealed interface PlayerEvent {
     /** The first PCM of a stream reached the sink. Confirms audible playback. */
     data class PlaybackStarted(val playerId: String) : PlayerEvent

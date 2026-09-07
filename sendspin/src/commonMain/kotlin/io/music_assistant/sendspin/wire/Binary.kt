@@ -5,7 +5,7 @@ package io.music_assistant.sendspin.wire
  * starting at [offset]. No payload copy is made; the array is owned by the
  * chunk from here on.
  */
-class AudioChunk(
+internal class AudioChunk(
     /** Server presentation time in microseconds (server clock). */
     val timestampMicros: Long,
     val body: ByteArray,
@@ -19,13 +19,13 @@ class AudioChunk(
  * payload. This client implements only `player@v1`, so only audio chunks
  * (type 4) are parsed; other player types are reported as [BinaryFrame.Other].
  */
-sealed interface BinaryFrame {
+internal sealed interface BinaryFrame {
     data class Audio(val chunk: AudioChunk) : BinaryFrame
     data class Other(val type: Int) : BinaryFrame
     data object Malformed : BinaryFrame
 }
 
-object BinaryFrames {
+internal object BinaryFrames {
     const val TIMESTAMP_BYTES = 8
     private const val TYPE_AUDIO_CHUNK = 4
     private const val BYTE_MASK = 0xFFL

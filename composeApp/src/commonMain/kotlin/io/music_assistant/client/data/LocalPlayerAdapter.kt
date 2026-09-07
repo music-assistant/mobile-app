@@ -24,6 +24,7 @@ import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.audioDispatcher
 import io.music_assistant.client.utils.createPlatformHttpClient
 import io.music_assistant.sendspin.SendspinPlayer
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.Endpoint
@@ -31,10 +32,8 @@ import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinDeps
+import io.music_assistant.sendspin.api.SendspinKeyStore
 import io.music_assistant.sendspin.api.StopCause
-import io.music_assistant.sendspin.identity.SendspinKeyStore
-import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
-import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -127,7 +126,6 @@ class LocalPlayerAdapter(
             sink = sink,
             decoders = decoders,
             keyStore = keyStore,
-            crypto = CryptographyKotlinNoiseCrypto(),
             httpClient = createPlatformHttpClient(),
             online = networkMonitor.isAvailable,
             pairWebPlayer = ::pairWebPlayer,

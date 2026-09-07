@@ -1,6 +1,5 @@
 package io.music_assistant.sendspin.api
 
-import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.channels.ReceiveChannel
 
 /**

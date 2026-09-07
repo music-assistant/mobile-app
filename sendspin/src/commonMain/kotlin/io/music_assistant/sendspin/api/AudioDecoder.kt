@@ -1,8 +1,5 @@
 package io.music_assistant.sendspin.api
 
-import io.music_assistant.sendspin.wire.AudioCodec
-import io.music_assistant.sendspin.wire.AudioFormatSpec
-
 /** Decodes one codec to interleaved PCM. Single-threaded: called only from the audio thread. */
 interface AudioDecoder {
     fun configure(format: AudioFormatSpec, codecHeader: ByteArray?)

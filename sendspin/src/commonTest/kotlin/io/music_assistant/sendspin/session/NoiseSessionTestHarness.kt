@@ -1,5 +1,7 @@
 package io.music_assistant.sendspin.session
 
+import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.fakes.FakeNoiseServer
 import io.music_assistant.sendspin.fakes.FakeTransport
 import io.music_assistant.sendspin.identity.FakeSendspinKeyStore
@@ -9,8 +11,6 @@ import io.music_assistant.sendspin.noise.SendspinPsk
 import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
 import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
 import io.music_assistant.sendspin.wire.AudioChunk
-import io.music_assistant.sendspin.wire.AudioCodec
-import io.music_assistant.sendspin.wire.AudioFormatSpec
 import io.music_assistant.sendspin.wire.PlayerSupport
 import io.music_assistant.sendspin.wire.ServerMessage
 import kotlinx.coroutines.Deferred

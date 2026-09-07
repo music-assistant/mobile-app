@@ -8,7 +8,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = VersionedRoleSerializer::class)
-data class VersionedRole(
+internal data class VersionedRole(
     val role: String,
     val version: String,
 ) {
@@ -35,7 +35,7 @@ data class VersionedRole(
     }
 }
 
-object VersionedRoleSerializer : KSerializer<VersionedRole> {
+internal object VersionedRoleSerializer : KSerializer<VersionedRole> {
     override val descriptor = PrimitiveSerialDescriptor("VersionedRole", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: VersionedRole) {

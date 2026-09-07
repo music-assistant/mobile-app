@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.get
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.LocalPlayerConfig
@@ -20,7 +21,6 @@ import io.music_assistant.sendspin.identity.FakeSendspinKeyStore
 import io.music_assistant.sendspin.identity.SendspinTrustStore
 import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
 import io.music_assistant.sendspin.transport.TransportConnector
-import io.music_assistant.sendspin.wire.AudioCodec
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,14 +82,13 @@ class SendspinPlayerTest {
                 sink = sink,
                 decoders = FakeDecoderFactory(),
                 keyStore = keyStore,
-                crypto = crypto,
                 httpClient = httpClient,
                 online = MutableStateFlow(true),
                 pairWebPlayer = { pairCalls++ },
                 audioDispatcher = StandardTestDispatcher(scope.testScheduler),
                 clock = clock,
             )
-            player = SendspinPlayerImpl(config, deps, scope.backgroundScope) { client ->
+            player = SendspinPlayerImpl(config, deps, scope.backgroundScope, crypto) { client ->
                 check(client === httpClient) { "the connector derives from the app's client" }
                 TransportConnector({ error("WebSocket not used here") }, release = { connectorsClosed++ })
             }

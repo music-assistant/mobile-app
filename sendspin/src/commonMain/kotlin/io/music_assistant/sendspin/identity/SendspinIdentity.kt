@@ -10,7 +10,7 @@ import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
  * it, so it must be stable across restarts; losing it (reinstall/restore)
  * makes this device appear as a new player.
  */
-class SendspinIdentity(val keyPair: X25519KeyPair) {
+internal class SendspinIdentity(val keyPair: X25519KeyPair) {
     /** base64url (no padding) form of the static public key. */
     val clientId: String = SendspinBase64.encode(keyPair.publicKey)
 }

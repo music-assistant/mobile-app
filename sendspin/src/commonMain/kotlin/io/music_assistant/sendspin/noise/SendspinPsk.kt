@@ -7,7 +7,7 @@ import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
  * stores each PSK tagged with its category, and on a `psk_id` match the
  * category determines trust handling.
  */
-enum class PskCategory {
+internal enum class PskCategory {
     /** The published sentinel constant — no authentication on its own. */
     SENTINEL,
 
@@ -26,13 +26,13 @@ enum class PskCategory {
  * set only for [PskCategory.LONG_TERM_STORED] records, where a post-match
  * check requires it to equal the `server_id` from `server/init`.
  */
-class PskCandidate(
+internal class PskCandidate(
     val psk: ByteArray,
     val category: PskCategory,
     val serverId: String? = null,
 )
 
-object SendspinPsk {
+internal object SendspinPsk {
     /** Label prefixed to a PSK when deriving its `psk_id`. */
     private val PSK_ID_LABEL = "sendspin-psk-id-v1".encodeToByteArray()
 

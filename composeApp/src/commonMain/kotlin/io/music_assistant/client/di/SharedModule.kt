@@ -49,7 +49,7 @@ import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewMode
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.utils.NetworkMonitor
-import io.music_assistant.sendspin.identity.SendspinKeyStore
+import io.music_assistant.sendspin.api.SendspinKeyStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

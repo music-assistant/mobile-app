@@ -7,7 +7,7 @@ import io.music_assistant.sendspin.wire.ServerMessage
 import io.music_assistant.sendspin.wire.WireCodec
 import kotlinx.coroutines.withTimeoutOrNull
 
-class ProxyAuthException(message: String) : Exception(message)
+internal class ProxyAuthException(message: String) : Exception(message)
 
 /**
  * The MA proxy's `auth` / `auth_ok` exchange. Runs before anything else on a

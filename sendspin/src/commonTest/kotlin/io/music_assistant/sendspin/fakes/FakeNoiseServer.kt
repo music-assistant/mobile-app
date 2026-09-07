@@ -30,7 +30,7 @@ import kotlin.test.assertIs
  * production Noise core and framing, so tests pin session behaviour, not
  * Noise interoperability (the reference vectors cover the core).
  */
-class FakeNoiseServer(
+internal class FakeNoiseServer(
     private val crypto: NoiseCrypto,
     private val transport: FakeTransport,
     private val serverStatic: X25519KeyPair,

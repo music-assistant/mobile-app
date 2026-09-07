@@ -9,7 +9,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /** A server text message after exactly one parse. Handlers never touch JSON again. */
-sealed interface ServerMessage {
+internal sealed interface ServerMessage {
     data object AuthOk : ServerMessage
     data class Hello(val serverName: String) : ServerMessage
     data class Activate(val payload: ServerActivatePayload) : ServerMessage
@@ -34,7 +34,7 @@ sealed interface ServerMessage {
     data class Malformed(val cause: Throwable) : ServerMessage
 }
 
-object WireCodec {
+internal object WireCodec {
     /** Never throws: unparseable input is a [ServerMessage.Malformed] value. */
     fun parse(text: String): ServerMessage = try {
         val json = SendspinJson.parseToJsonElement(text).jsonObject

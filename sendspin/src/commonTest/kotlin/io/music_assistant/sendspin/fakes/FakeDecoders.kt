@@ -1,9 +1,9 @@
 package io.music_assistant.sendspin.fakes
 
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioDecoder
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.DecoderFactory
-import io.music_assistant.sendspin.wire.AudioCodec
-import io.music_assistant.sendspin.wire.AudioFormatSpec
 
 /** Pass-through decoders: chunk bytes are the PCM. [failing] codecs return empty output. */
 class FakeDecoderFactory(

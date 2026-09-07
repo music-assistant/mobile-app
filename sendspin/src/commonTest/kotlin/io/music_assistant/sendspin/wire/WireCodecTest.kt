@@ -1,5 +1,7 @@
 package io.music_assistant.sendspin.wire
 
+import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test

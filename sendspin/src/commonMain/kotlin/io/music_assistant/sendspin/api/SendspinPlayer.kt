@@ -1,8 +1,6 @@
 package io.music_assistant.sendspin.api
 
 import io.ktor.client.HttpClient
-import io.music_assistant.sendspin.identity.SendspinKeyStore
-import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,12 +14,15 @@ interface SendspinPlayer {
     val events: Flow<PlayerEvent>
 }
 
-/** Ports the app provides. */
+/**
+ * Ports the app provides. This and the rest of the `api` package are the whole
+ * public surface of the module; the Noise protocol, wire format and identity
+ * handling stay internal.
+ */
 class SendspinDeps(
     val sink: AudioSink,
     val decoders: DecoderFactory,
     val keyStore: SendspinKeyStore,
-    val crypto: NoiseCrypto,
     val httpClient: HttpClient,
     /** Network reachability; `false` pauses reconnect attempts until `true`. */
     val online: StateFlow<Boolean>,

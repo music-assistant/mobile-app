@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.identity
 
+import io.music_assistant.sendspin.api.SendspinKeyStore
 import io.music_assistant.sendspin.noise.PskCandidate
 import io.music_assistant.sendspin.noise.PskCategory
 import io.music_assistant.sendspin.noise.SendspinBase64
@@ -16,7 +17,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /** A persisted long-term PSK record, as exposed to management. */
-class TrustRecordView(
+internal class TrustRecordView(
     val psk: ByteArray,
     /** Bound server for stored-pubkey records; null for shared-PSK records. */
     val serverId: String?,
@@ -31,7 +32,7 @@ class TrustRecordView(
  * whole per serialized mutation, bound to the identity public key — a
  * regenerated identity resets the blob with it.
  */
-class SendspinTrustStore private constructor(
+internal class SendspinTrustStore private constructor(
     private val keyStore: SendspinKeyStore,
     private val crypto: NoiseCrypto,
     val identity: SendspinIdentity,

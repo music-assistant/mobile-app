@@ -5,15 +5,15 @@ import io.music_assistant.client.player.MediaPlayerListener
 import io.music_assistant.client.player.PlatformAudioPlayer
 import io.music_assistant.client.player.PlatformPlayerProvider
 import io.music_assistant.client.player.RemoteCommandHandler
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioDecoder
+import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.SinkEvent
 import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkHandle
 import io.music_assistant.sendspin.api.SinkPosition
-import io.music_assistant.sendspin.wire.AudioCodec
-import io.music_assistant.sendspin.wire.AudioFormatSpec
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf

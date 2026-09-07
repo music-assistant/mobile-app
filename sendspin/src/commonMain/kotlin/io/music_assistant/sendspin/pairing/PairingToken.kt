@@ -15,7 +15,7 @@ package io.music_assistant.sendspin.pairing
  * 2/Z pair in transcription), so a version-0 token is 107 characters drawn
  * from the QR alphanumeric set.
  */
-object PairingToken {
+internal object PairingToken {
     private const val PREFIX = "SP:"
     private const val VERSION = '0'
     private const val BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"

@@ -25,9 +25,9 @@ internal const val KEY_LEN = 32
 internal const val TAG_LEN = 16
 
 /** Raised on any Noise-level failure (AEAD failure, malformed message). */
-class NoiseException(message: String) : Exception(message)
+internal class NoiseException(message: String) : Exception(message)
 
-enum class NoiseRole { INITIATOR, RESPONDER }
+internal enum class NoiseRole { INITIATOR, RESPONDER }
 
 internal enum class Token { E, S, EE, ES, SE, SS, PSK }
 
@@ -84,7 +84,7 @@ internal class NoisePattern(
  * counter. An unkeyed CipherState passes data through unchanged (used before
  * any DH output is mixed in).
  */
-class CipherState internal constructor(private val crypto: NoiseCrypto) {
+internal class CipherState(private val crypto: NoiseCrypto) {
     private var key: ByteArray? = null
 
     // Internal visibility so tests can drive the counter to its limit.
@@ -220,7 +220,7 @@ internal class SymmetricState private constructor(
  * one CipherState per direction plus the final handshake hash `h` (used by
  * Sendspin as the prologue of an in-band re-handshake).
  */
-class NoiseTransport internal constructor(
+internal class NoiseTransport(
     private val sending: CipherState,
     private val receiving: CipherState,
     val handshakeHash: ByteArray,
@@ -241,7 +241,7 @@ class NoiseTransport internal constructor(
 }
 
 /** Result of processing the final handshake message. */
-class HandshakeResult internal constructor(
+internal class HandshakeResult(
     val transport: NoiseTransport,
     val handshakeHash: ByteArray,
 )
@@ -254,7 +254,7 @@ class HandshakeResult internal constructor(
  * reads message 1 and writes message 2. After the second message, [result]
  * carries the transport CipherStates and the final handshake hash.
  */
-class HandshakeState private constructor(
+internal class HandshakeState private constructor(
     private val crypto: NoiseCrypto,
     private val pattern: NoisePattern,
     private val role: NoiseRole,

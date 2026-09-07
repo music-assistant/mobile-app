@@ -1,7 +1,7 @@
 package io.music_assistant.client.settings
 
 import com.russhwolf.settings.Settings
-import io.music_assistant.sendspin.identity.SendspinKeyStore
+import io.music_assistant.sendspin.api.SendspinKeyStore
 import kotlin.io.encoding.Base64
 
 /**
