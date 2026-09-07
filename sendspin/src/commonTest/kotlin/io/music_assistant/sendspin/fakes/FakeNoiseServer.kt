@@ -10,46 +10,70 @@ import io.music_assistant.sendspin.noise.SendspinBase64
 import io.music_assistant.sendspin.noise.SendspinPsk
 import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
-import io.music_assistant.sendspin.wire.NoiseHandshakeMessage
-import io.music_assistant.sendspin.wire.NoiseHandshakePayload
-import io.music_assistant.sendspin.wire.SendspinJson
-import io.music_assistant.sendspin.wire.ServerInitMessage
-import io.music_assistant.sendspin.wire.ServerInitPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 /**
- * An in-test Noise-initiator Sendspin server over a [FakeTransport]. Reuses the
- * production Noise core and framing, so tests pin session behaviour, not
- * Noise interoperability (the reference vectors cover the core).
+ * An in-test Noise-initiator Sendspin server over a [FakeTransport]. Every JSON
+ * message is built by hand with the field names the spec writes, and client
+ * messages are parsed as raw JSON, so the fake shares no wire model with the
+ * implementation. It reuses the production Noise core and framing, which the
+ * KKpsk2 reference vectors pin.
  */
 internal class FakeNoiseServer(
     private val crypto: NoiseCrypto,
     private val transport: FakeTransport,
     private val serverStatic: X25519KeyPair,
-    private val clientPublicKey: ByteArray,
+    /** Defaults to the static key the client announces as `client_id` in `client/init`. */
+    clientPublicKey: ByteArray? = null,
     private val psk: ByteArray = SendspinPsk.SENTINEL_PSK,
 ) {
     lateinit var noise: NoiseTransport
     lateinit var handshakeHash: ByteArray
     private var decoder = NoiseFraming.Decoder()
+    private var clientStatic: ByteArray? = clientPublicKey
 
     val serverId: String get() = SendspinBase64.encode(serverStatic.publicKey)
+
+    /** Server clock minus local clock, as reported in every `server/time`. */
+    var serverClockOffsetMicros = 0L
+
+    /** While true, [serve] leaves `client/time` unanswered. */
+    var silent = false
+
+    /** Every non-probe client message received by [serve], as `type` values. */
+    val clientMessageTypes = mutableListOf<String>()
+
+    /** `client/goodbye` reasons received by [serve], in order. */
+    val goodbyeReasons = mutableListOf<String?>()
 
     private suspend fun clientText(): String =
         assertIs<Frame.Text>(withTimeout(AWAIT_MILLIS) { transport.outbound.receive() }).text
 
     suspend fun establish(pskIdOverride: String? = null) {
         val clientInit = clientText()
-        val serverInitText = SendspinJson.encodeToString(ServerInitMessage(payload = ServerInitPayload(serverId, 1)))
+        val serverInitText = message("server/init") {
+            put("server_id", serverId)
+            put("version", 1)
+        }
         transport.serverSends(serverInitText)
+        val remoteStatic = clientStatic
+            ?: SendspinBase64.decode(payloadOf(clientInit).getValue("client_id").jsonPrimitive.content)
+                .also { clientStatic = it }
 
         val handshake = HandshakeState.initialize(
             crypto = crypto,
@@ -57,18 +81,13 @@ internal class FakeNoiseServer(
             role = NoiseRole.INITIATOR,
             prologue = clientInit.encodeToByteArray() + serverInitText.encodeToByteArray(),
             localStatic = serverStatic,
-            remoteStaticPublic = clientPublicKey,
+            remoteStaticPublic = remoteStatic,
             psk = psk,
         )
         val pskId = pskIdOverride ?: SendspinPsk.pskId(crypto, psk)
         val message1 = handshake.writeMessage("""{"psk_id":"$pskId"}""".encodeToByteArray())
-        transport.serverSends(
-            SendspinJson.encodeToString(
-                NoiseHandshakeMessage(payload = NoiseHandshakePayload(SendspinBase64.encode(message1))),
-            ),
-        )
-        val message2 = SendspinJson.decodeFromString<NoiseHandshakeMessage>(clientText()).payload.data
-        handshake.readMessage(SendspinBase64.decode(message2))
+        transport.serverSends(handshakeMessage(message1))
+        handshake.readMessage(SendspinBase64.decode(handshakeData(clientText())))
         noise = handshake.result!!.transport
         handshakeHash = handshake.result!!.handshakeHash
         decoder = NoiseFraming.Decoder()
@@ -101,6 +120,13 @@ internal class FakeNoiseServer(
         return message.payload.decodeToString()
     }
 
+    /** The next client message must be `client/goodbye`; returns its reason. */
+    suspend fun receiveGoodbyeReason(): String? {
+        val goodbye = parse(receiveJson())
+        assertEquals("client/goodbye", goodbye.getValue("type").jsonPrimitive.content)
+        return goodbye["payload"]?.jsonObject?.get("reason")?.jsonPrimitive?.contentOrNull
+    }
+
     /** Runs a server-initiated in-band re-handshake to [newPsk]. */
     suspend fun rehandshake(newPsk: ByteArray) {
         val handshake = HandshakeState.initialize(
@@ -109,29 +135,30 @@ internal class FakeNoiseServer(
             role = NoiseRole.INITIATOR,
             prologue = handshakeHash,
             localStatic = serverStatic,
-            remoteStaticPublic = clientPublicKey,
+            remoteStaticPublic = checkNotNull(clientStatic) { "rehandshake before establish" },
             psk = newPsk,
         )
         val pskId = SendspinPsk.pskId(crypto, newPsk)
         val message1 = handshake.writeMessage("""{"psk_id":"$pskId"}""".encodeToByteArray())
-        sendJson(
-            SendspinJson.encodeToString(
-                NoiseHandshakeMessage(payload = NoiseHandshakePayload(SendspinBase64.encode(message1))),
-            ),
-        )
+        sendJson(handshakeMessage(message1))
         // Message 2 arrives under the old transport keys.
-        val message2 = SendspinJson.decodeFromString<NoiseHandshakeMessage>(receiveJson()).payload.data
-        handshake.readMessage(SendspinBase64.decode(message2))
+        handshake.readMessage(SendspinBase64.decode(handshakeData(receiveJson())))
         noise = handshake.result!!.transport
         handshakeHash = handshake.result!!.handshakeHash
         decoder = NoiseFraming.Decoder()
     }
 
     suspend fun completeHelloExchange(): String {
-        sendJson("""{"type":"server/hello","payload":{"name":"Enc Server"}}""")
+        sendJson(message("server/hello") { put("name", "Enc Server") })
         return receiveJson()
     }
 
+    /**
+     * Sends `server/activate`. The client decides the outcome: `["playback"]` on
+     * a sentinel session is admitted only with unpaired access enabled (else
+     * `pairing_required`), `["playback","management"]` on a sentinel is
+     * `unauthorized`, `["pairing"]` needs [pairing] with a method.
+     */
     suspend fun activate(
         activities: String = """["playback"]""",
         activeRoles: String? = """["player@v1"]""",
@@ -152,39 +179,72 @@ internal class FakeNoiseServer(
         activate()
     }
 
-    /** Every non-probe client message received by [serve], as parsed JSON type names. */
-    val clientMessageTypes = mutableListOf<String>()
-
     /**
-     * Answers `client/time` probes instantly with a server clock equal to the
-     * local clock (offset zero) and records every other client message.
-     * Runs until cancelled or the transport closes.
+     * Answers `client/time` probes instantly with a server clock shifted by
+     * [serverClockOffsetMicros] (unless [silent]) and records every other client
+     * message. Runs until cancelled or the transport closes.
      */
     fun serve(scope: CoroutineScope): Job = scope.launch {
         while (true) {
-            val json = runCatching { receiveJson() }.getOrNull() ?: return@launch
-            val root = SendspinJson.parseToJsonElement(json).jsonObject
+            val root = runCatching { parse(receiveJson()) }.getOrNull() ?: return@launch
             val type = root.getValue("type").jsonPrimitive.content
             if (type == "client/time") {
+                if (silent) continue
                 val t1 = root.getValue("payload").jsonObject.getValue("client_transmitted").jsonPrimitive.long
                 sendJson(
-                    """{"type":"server/time","payload":{"client_transmitted":$t1,"server_received":$t1,"server_transmitted":$t1}}""",
+                    message("server/time") {
+                        put("client_transmitted", t1)
+                        put("server_received", t1 + serverClockOffsetMicros)
+                        put("server_transmitted", t1 + serverClockOffsetMicros)
+                    },
                 )
             } else {
                 clientMessageTypes += type
+                if (type == "client/goodbye") {
+                    goodbyeReasons += root["payload"]?.jsonObject?.get("reason")?.jsonPrimitive?.contentOrNull
+                }
             }
         }
     }
 
-    /** Sends a `stream/start` for [codec] at 48 kHz stereo 16-bit. */
+    /** Sends a `stream/start` for [codec] at [SAMPLE_RATE] Hz stereo [BIT_DEPTH]-bit. */
     suspend fun startStream(codec: String = "flac") {
         sendJson(
-            """{"type":"stream/start","payload":{"player":{"codec":"$codec","sample_rate":48000,"channels":2,"bit_depth":16}}}""",
+            message("stream/start") {
+                putJsonObject("player") {
+                    put("codec", codec)
+                    put("sample_rate", SAMPLE_RATE)
+                    put("channels", 2)
+                    put("bit_depth", BIT_DEPTH)
+                }
+            },
         )
     }
+
+    suspend fun endStream() = sendJson(message("stream/end") {})
+
+    suspend fun clearStream() = sendJson(message("stream/clear") {})
+
+    suspend fun unpair() = sendJson(message("server/unpair") {})
+
+    private fun message(type: String, payload: JsonObjectBuilder.() -> Unit): String = buildJsonObject {
+        put("type", type)
+        putJsonObject("payload", payload)
+    }.toString()
+
+    private fun handshakeMessage(bytes: ByteArray): String =
+        message("noise/handshake") { put("data", SendspinBase64.encode(bytes)) }
+
+    private fun handshakeData(text: String): String = payloadOf(text).getValue("data").jsonPrimitive.content
+
+    private fun payloadOf(text: String): JsonObject = parse(text).getValue("payload").jsonObject
+
+    private fun parse(text: String): JsonObject = Json.parseToJsonElement(text).jsonObject
 
     private companion object {
         const val AWAIT_MILLIS = 5_000L
         const val TIMESTAMP_BYTES = 8
+        const val SAMPLE_RATE = 48_000
+        const val BIT_DEPTH = 16
     }
 }

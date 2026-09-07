@@ -28,6 +28,9 @@ class FakeSink(private val nowMicros: () -> Long) : AudioSink {
 
     inner class Handle(val format: SinkFormat) : SinkHandle {
         val writes = mutableListOf<ByteArray>()
+
+        /** Local time of each entry in [writes]. */
+        val writeTimes = mutableListOf<Long>()
         var paused = false
         var flushes = 0
         var closed = false
@@ -53,6 +56,7 @@ class FakeSink(private val nowMicros: () -> Long) : AudioSink {
         override fun write(pcm: ByteArray, offset: Int, length: Int): Int {
             if (dead) return -1
             writes += pcm.copyOfRange(offset, offset + length)
+            writeTimes += nowMicros()
             framesWritten += length / format.bytesPerFrame
             if (firstWriteMicros == null) firstWriteMicros = nowMicros()
             return length
