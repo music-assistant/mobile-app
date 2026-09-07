@@ -8,7 +8,6 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
-import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.os.Build
 import co.touchlab.kermit.Logger
@@ -28,8 +27,15 @@ import kotlinx.coroutines.flow.MutableSharedFlow
  * rebuild makes that bug class impossible by construction.
  *
  * Interruptions are reported, not handled: focus loss, an incoming call, or
- * unplugged headphones emit [SinkEvent.FocusLost]; the player ends the stream
- * and the app pauses the server. Ducking is the track's own gain.
+ * unplugged headphones kill the handle (every later [SinkHandle.write] returns
+ * -1) and emit [SinkEvent.FocusLost]; the player ends the stream, the app
+ * pauses the server, and the next stream opens a new track. Ducking is the
+ * track's own gain.
+ *
+ * Position feedback is the playback head only. [AudioTrack.getTimestamp] sits
+ * behind the head by the output latency and is unavailable or stale for the
+ * first few hundred ms of a fresh track, so mixing the two sources moved the
+ * scheduler's queue estimate by that latency on every switch.
  */
 class AudioTrackSink(
     context: Context,
@@ -88,11 +94,14 @@ class AudioTrackSink(
 
     private inner class Handle(private val track: AudioTrack, private val format: SinkFormat) : SinkHandle {
         private val sinkEvents = MutableSharedFlow<SinkEvent>(extraBufferCapacity = 8)
-        private val timestamp = AudioTimestamp()
 
-        /** Both position sources wrap at 32 bits on some devices; one extender keeps them on one base. */
+        /** The head position wraps at 32 bits. */
         private val frames = MonotonicFrameCounter()
         private var interrupted = false
+
+        /** Set on the first interruption; the audio thread may be inside a blocking write at that moment. */
+        @Volatile
+        private var dead = false
 
         override val events: Flow<SinkEvent> = sinkEvents
         override val latencyMicros: Long? = null
@@ -148,26 +157,35 @@ class AudioTrackSink(
 
         private fun interrupt(resumable: Boolean) {
             interrupted = resumable
+            dead = true
+            // A write blocked on a paused track never returns; stop() wakes it.
             runCatching {
                 track.pause()
                 track.flush()
+                track.stop()
             }
             frames.reset()
             sinkEvents.tryEmit(SinkEvent.FocusLost)
         }
 
         override fun write(pcm: ByteArray, offset: Int, length: Int): Int {
+            if (dead) return -1
             val written = try {
                 track.write(pcm, offset, length)
             } catch (e: IllegalStateException) {
                 logger.w(e) { "AudioTrack write on a released track" }
                 return -1
             }
-            return if (written < 0) {
-                logger.w { "AudioTrack write error $written" }
-                -1
-            } else {
-                written
+            return when {
+                dead -> -1
+                written < 0 -> {
+                    logger.w { "AudioTrack write error $written" }
+                    -1
+                }
+
+                // A stopped or paused track accepts nothing; the contract has no zero.
+                written == 0 -> -1
+                else -> written
             }
         }
 
@@ -184,13 +202,8 @@ class AudioTrackSink(
             frames.reset()
         }
 
-        override fun position(): SinkPosition? {
-            if (track.getTimestamp(timestamp)) {
-                val ageMicros = (System.nanoTime() - timestamp.nanoTime) / 1_000
-                return SinkPosition(frames.extend(timestamp.framePosition), clock.nowMicros() - ageMicros)
-            }
-            return SinkPosition(frames.extend(track.playbackHeadPosition.toLong()), clock.nowMicros())
-        }
+        override fun position(): SinkPosition =
+            SinkPosition(frames.extend(track.playbackHeadPosition.toLong()), clock.nowMicros())
 
         override fun underrunCount(): Int = runCatching { track.underrunCount }.getOrDefault(0)
 

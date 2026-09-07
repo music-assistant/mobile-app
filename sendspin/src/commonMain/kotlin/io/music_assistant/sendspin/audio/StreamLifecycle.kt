@@ -11,6 +11,9 @@ internal sealed interface StreamAction {
     /** Same stream continues on a new connection: keep buffer, decoder, and sink. */
     data object ResumeKeepBuffer : StreamAction
 
+    /** Same format after a discontinuity: clear buffer and de-dup, flush the sink, reset the decoder; keep both. */
+    data object Restart : StreamAction
+
     data object End : StreamAction
 
     /** End without an audio event: the caller reports its own cause (starvation). */
@@ -24,11 +27,14 @@ internal sealed interface StreamAction {
 /**
  * Pure stream lifecycle decisions.
  *
- * MA stitches consecutive tracks into one stream, so a `stream/start` while
- * playing is a discontinuity (seek, skip, restart), never a gapless boundary.
- * The one exception is the first `stream/start` of a new connection while the
- * previous connection's stream is still playing with the same format: that is
- * a reconnect resume, and the buffered audio must survive it.
+ * MA sends `stream/clear` plus a same-format `stream/start` on every track
+ * change, seek, and restart: a discontinuity, never a gapless boundary. While
+ * playing, the same format keeps the sink and decoder (a fresh device stream
+ * per skip costs hundreds of ms and the head of the track); a format change
+ * rebuilds. From idle the sink is always rebuilt, because routing goes stale
+ * while paused. The first `stream/start` of a new connection while the previous
+ * connection's stream is still playing with the same format is a reconnect
+ * resume, and the buffered audio must survive it.
  */
 internal object StreamLifecycle {
     fun onStart(
@@ -36,10 +42,10 @@ internal object StreamLifecycle {
         current: StreamStartPlayer?,
         next: StreamStartPlayer,
         newConnection: Boolean,
-    ): StreamAction = when (phase) {
-        StreamPhase.Idle, StreamPhase.Ended -> StreamAction.StartFresh(next)
-        StreamPhase.Playing ->
-            if (newConnection && next == current) StreamAction.ResumeKeepBuffer else StreamAction.StartFresh(next)
+    ): StreamAction = when {
+        phase != StreamPhase.Playing || next != current -> StreamAction.StartFresh(next)
+        newConnection -> StreamAction.ResumeKeepBuffer
+        else -> StreamAction.Restart
     }
 
     fun onEnd(phase: StreamPhase): StreamAction =

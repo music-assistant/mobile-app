@@ -41,7 +41,7 @@ internal class AudioPipeline(
     sink: AudioSink,
     decoders: DecoderFactory,
     clockSync: ClockSync,
-    clock: MonotonicClock,
+    private val clock: MonotonicClock,
     capacityBytes: Int,
 ) {
     internal data class StreamState(
@@ -49,8 +49,10 @@ internal class AudioPipeline(
         val format: StreamStartPlayer?,
         /** Bumped on every fresh start: the scheduler rebuilds decoder and sink. */
         val generation: Int,
-        /** Bumped on every clear: the scheduler flushes the sink. */
+        /** Bumped on every discontinuity: the scheduler flushes the sink and resets the decoder. */
         val flushGeneration: Int,
+        /** Local time of the last discontinuity; the scheduler reports its setup cost against it. */
+        val changedAtMicros: Long = 0L,
     )
 
     private val logger = Logger.withTag("AudioPipeline")
@@ -89,6 +91,14 @@ internal class AudioPipeline(
         when (action) {
             is StreamAction.StartFresh -> startFresh(action.format)
             StreamAction.ResumeKeepBuffer -> wakeups.trySend(Unit)
+            StreamAction.Restart -> {
+                // Same format: the sink and the decoder survive, only the timeline restarts.
+                logDiscontinuity("restart")
+                buffer.clear(resetDedup = true)
+                stream.update { it.copy(flushGeneration = it.flushGeneration + 1, changedAtMicros = clock.nowMicros()) }
+                wakeups.trySend(Unit)
+            }
+
             StreamAction.End, StreamAction.Abort -> {
                 stream.update { it.copy(phase = StreamPhase.Ended, flushGeneration = it.flushGeneration + 1) }
                 buffer.clear(resetDedup = false)
@@ -97,8 +107,9 @@ internal class AudioPipeline(
             }
 
             StreamAction.Clear -> {
+                logDiscontinuity("clear")
                 buffer.clear(resetDedup = true)
-                stream.update { it.copy(flushGeneration = it.flushGeneration + 1) }
+                stream.update { it.copy(flushGeneration = it.flushGeneration + 1, changedAtMicros = clock.nowMicros()) }
                 emit(AudioEvent.Cleared)
                 wakeups.trySend(Unit)
             }
@@ -113,11 +124,37 @@ internal class AudioPipeline(
             emit(AudioEvent.UnsupportedFormat(format.codec))
             return
         }
+        logDiscontinuity("start")
         // Admission opens here, before the sink and decoder exist: the server
         // front-loads the stream at ~25x realtime and those chunks are future audio.
         buffer.clear(resetDedup = true)
-        stream.update { it.copy(phase = StreamPhase.Playing, format = format, generation = it.generation + 1) }
+        stream.update {
+            it.copy(
+                phase = StreamPhase.Playing,
+                format = format,
+                generation = it.generation + 1,
+                changedAtMicros = clock.nowMicros(),
+            )
+        }
         wakeups.trySend(Unit)
+    }
+
+    /**
+     * One line per discontinuity. The discarded count is audio the server sent
+     * for the superseded timeline: on a skip burst it measures how much of the
+     * pipe must drain before the next stream is heard.
+     */
+    private fun logDiscontinuity(kind: String) {
+        val previous = stream.value
+        val sinceMillis = if (previous.changedAtMicros == 0L) {
+            -1L
+        } else {
+            (clock.nowMicros() - previous.changedAtMicros) / MICROS_PER_MILLI
+        }
+        logger.i {
+            "Stream $kind: gen=${previous.generation} sincePreviousMs=$sinceMillis " +
+                "discarded=${buffer.size} chunks / ${buffer.byteCount / BYTES_PER_KB} KB"
+        }
     }
 
     /** Sink-side failure reported by the scheduler: the stream is over. */
@@ -129,5 +166,10 @@ internal class AudioPipeline(
 
     internal fun emit(event: AudioEvent) {
         if (eventChannel.trySend(event).isFailure) logger.w { "Dropped audio event $event" }
+    }
+
+    private companion object {
+        const val MICROS_PER_MILLI = 1_000L
+        const val BYTES_PER_KB = 1_024
     }
 }

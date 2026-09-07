@@ -27,7 +27,8 @@ data class SinkFormat(
 interface SinkHandle : AutoCloseable {
     /**
      * Writes interleaved PCM. Blocks until the sink accepted the bytes.
-     * Returns the bytes accepted, or -1 when the sink is dead.
+     * Returns the bytes accepted (at least 1), or -1 when the sink is dead.
+     * There is no zero: a sink that accepts nothing is dead.
      */
     fun write(pcm: ByteArray, offset: Int, length: Int): Int
 

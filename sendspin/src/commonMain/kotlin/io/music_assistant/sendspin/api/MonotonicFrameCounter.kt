@@ -6,12 +6,10 @@ package io.music_assistant.sendspin.api
  * [reset] whenever the device counter restarts (flush, rebuild). Not thread-safe:
  * one owner, the sink's audio-thread caller.
  *
- * Readings may come from more than one device source (a timestamp can lag the
- * playback head by a few milliseconds), so they arrive slightly out of order
- * around a wrap. Each reading is placed in the wrap epoch nearest to the highest
- * position seen so far, and an older reading never moves that anchor. This
- * assumes the counter is read far more often than once per half range (about
- * 12 hours at 48 kHz).
+ * Each reading is placed in the wrap epoch nearest to the highest position seen
+ * so far, and an older reading (a small rewind, or a lagging second source)
+ * never moves that anchor. This assumes the counter is read far more often
+ * than once per half range (about 12 hours at 48 kHz).
  */
 class MonotonicFrameCounter {
     /** Highest extended position returned so far: the epoch anchor. */

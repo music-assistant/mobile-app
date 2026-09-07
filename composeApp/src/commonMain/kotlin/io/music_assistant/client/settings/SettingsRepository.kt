@@ -523,13 +523,14 @@ class SettingsRepository(
     // User-tuned client-side playback delay (ms). LocalPlayerAdapter negates it
     // into LocalPlayerConfig.userDelayMs, so each chunk's local target time is
     //   target = serverTimeToLocal(ts) - userDelay*1000
-    // Positive → play earlier to compensate for downstream pipeline lag (the
-    // normal case; ~250 ms is typical for Android AudioTrack + DAC). Negative
-    // → play later (escape hatch if this device somehow leads the group).
-    // We don't report this to the server — it's purely client-side scheduling.
-    // Range ±2000 ms; default 250.
+    // Positive → play earlier, to compensate output latency the module cannot
+    // see (HAL, Bluetooth). The sink's own queue is compensated by the
+    // scheduler's position feedback, so the default is 0: the server leads a
+    // stream by only 250 ms, and a positive default ate that lead and cut the
+    // head of every track. Negative → play later (escape hatch if this device
+    // somehow leads the group). Not reported to the server. Range ±2000 ms.
     private val _sendspinStaticDelayMs = MutableStateFlow(
-        settings.getInt("sendspin_static_delay_ms", 250).coerceIn(-2000, 2000),
+        settings.getInt("sendspin_static_delay_ms", 0).coerceIn(-2000, 2000),
     )
     val sendspinStaticDelayMs = _sendspinStaticDelayMs.asStateFlow()
 

@@ -53,8 +53,12 @@ internal class Scheduler(
     private var framesWritten = 0L
     private var played = false
     private var lateDrops = 0L
+    private var lateMicros = 0L
     private var insertedSilenceMicros = 0L
     private var clockWaitSinceMicros: Long? = null
+
+    /** Lead of the chunk being written, for the first-audio report. */
+    private var lastLeadMicros = 0L
 
     suspend fun run(): Nothing = coroutineScope {
         try {
@@ -76,6 +80,8 @@ internal class Scheduler(
                 it.flush()
                 if (state.phase == StreamPhase.Playing) it.resume()
             }
+            // Queued codec frames belong to the discarded timeline.
+            decoder.reset()
             framesWritten = 0
             played = false // the next write is a new start: the app must be told again
             corrector?.reset()
@@ -131,6 +137,7 @@ internal class Scheduler(
         framesWritten = 0
         played = false
         lateDrops = 0
+        lateMicros = 0
         insertedSilenceMicros = 0
         val generation = state.generation
         // The collector lives with this handle, not with the scheduler, and an event that
@@ -161,6 +168,7 @@ internal class Scheduler(
         val out = handle ?: return false
         val fmt = format ?: return false
         val target = clockSync.toLocalMicros(chunk.timestampMicros)?.plus(pipeline.userDelayMicros)
+        lastLeadMicros = 0L
         if (target == null) {
             // No clock estimate yet (first probe burst pending): hold the chunk briefly
             // rather than dump the server's lead-in into the sink; give up after a bound.
@@ -178,10 +186,12 @@ internal class Scheduler(
         val latency = out.latencyMicros ?: 0L
         val queuedMicros = position?.let { queuedMicros(it, fmt) } ?: 0L
         val lead = target - (clock.nowMicros() + queuedMicros + latency)
+        lastLeadMicros = lead
 
         if (lead < -HARD_TOLERANCE_MICROS) {
             val late = -lead
             lateDrops++
+            lateMicros += late
             val pcm = decode(chunk) ?: return true
             val blockMicros = if (opaque) 0L else framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
             if (late >= blockMicros) return true // whole chunk is in the past
@@ -216,7 +226,7 @@ internal class Scheduler(
         }
     }
 
-    private fun decodeAndWrite(out: SinkHandle, chunk: AudioChunk): Boolean {
+    private suspend fun decodeAndWrite(out: SinkHandle, chunk: AudioChunk): Boolean {
         val pcm = decode(chunk) ?: return true
         return write(out, pcm)
     }
@@ -235,14 +245,15 @@ internal class Scheduler(
         withTimeoutOrNull((micros / MICROS_PER_MILLI).coerceAtLeast(1)) { pipeline.wakeups.receive() }
     }
 
-    private fun write(out: SinkHandle, pcm: ByteArray, offset: Int = 0, length: Int = pcm.size): Boolean {
+    private suspend fun write(out: SinkHandle, pcm: ByteArray, offset: Int = 0, length: Int = pcm.size): Boolean {
         val fmt = format ?: return false
         var at = offset
         val end = offset + length
         while (at < end) {
+            // The contract has no zero: a sink that accepts nothing is dead.
             val written = out.write(pcm, at, end - at)
-            if (written < 0) {
-                pipeline.onSinkFailure(AudioEvent.SinkDied)
+            if (written <= 0) {
+                onDeadWrite(written)
                 return true
             }
             at += written
@@ -250,10 +261,38 @@ internal class Scheduler(
         if (fmt.isPcm) framesWritten += length / fmt.bytesPerFrame
         if (!played && length > 0) {
             played = true
+            reportFirstAudio()
             pipeline.emit(AudioEvent.Started)
         }
         publish(AudioPhase.Playing, starved = false)
         return true
+    }
+
+    /**
+     * A dead write is usually an interruption the sink has already announced.
+     * That event is queued behind this coroutine on the single audio thread, so
+     * yield briefly and let it name the cause; only an unexplained death is
+     * reported as a sink failure.
+     */
+    private suspend fun onDeadWrite(written: Int) {
+        logger.w { "Sink write returned $written" }
+        waitOrWake(SINK_EVENT_GRACE_MICROS)
+        if (pipeline.stream.value.phase == StreamPhase.Playing) pipeline.onSinkFailure(AudioEvent.SinkDied)
+    }
+
+    /** One line per stream start: what the sink build and the first chunk cost. */
+    private fun reportFirstAudio() {
+        val state = pipeline.stream.value
+        val setupMillis = if (state.changedAtMicros == 0L) {
+            -1L
+        } else {
+            (clock.nowMicros() - state.changedAtMicros) / MICROS_PER_MILLI
+        }
+        logger.i {
+            "First audio: gen=${state.generation} setupMs=$setupMillis " +
+                "leadMs=${lastLeadMicros / MICROS_PER_MILLI} lateDrops=$lateDrops " +
+                "lateMs=${lateMicros / MICROS_PER_MILLI} clock=${clockSync.quality()}"
+        }
     }
 
     private fun queuedMicros(position: io.music_assistant.sendspin.api.SinkPosition, fmt: SinkFormat): Long {
@@ -278,7 +317,10 @@ internal class Scheduler(
         }
         handle = null
         if (lateDrops > 0 || insertedSilenceMicros > 0) {
-            logger.w { "Stream stats: lateDrops=$lateDrops insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI}" }
+            logger.w {
+                "Stream stats: lateDrops=$lateDrops lateMs=${lateMicros / MICROS_PER_MILLI} " +
+                    "insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI}"
+            }
         }
     }
 
@@ -306,5 +348,8 @@ internal class Scheduler(
         /** How long a chunk may wait for the first clock estimate. */
         const val CLOCK_WAIT_MICROS = 3_000_000L
         const val CLOCK_POLL_MICROS = 50_000L
+
+        /** How long a dead write waits for the sink's own event to explain it. */
+        const val SINK_EVENT_GRACE_MICROS = 50_000L
     }
 }

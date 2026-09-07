@@ -318,6 +318,88 @@ class AudioPipelineTest {
     }
 
     @Test
+    fun aSameFormatStartWhilePlayingKeepsTheSinkAndTheDecoder() = pipelineTest { h ->
+        // MA sends stream/clear plus a same-format stream/start on every track change.
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(0)
+        runCurrent()
+        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull())
+        val action = StreamLifecycle.onStart(h.pipeline.phase, h.pipeline.stream.value.format, flac, false)
+        assertEquals(StreamAction.Restart, action)
+        h.pipeline.apply(action)
+        runCurrent()
+        assertEquals(1, h.sink.handles.size, "no device rebuild on a skip")
+        assertEquals(1, h.decoders.created.size)
+        assertEquals(1, h.decoders.created.single().resets, "the codec drops the discarded timeline")
+        assertEquals(1, h.handle.flushes)
+        assertTrue(h.pipeline.buffer.isEmpty)
+        h.feed(0) // the de-dup memory is reset with the timeline
+        runCurrent()
+        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull(), "a fresh start for the app")
+        assertEquals(2, h.handle.writes.size)
+    }
+
+    @Test
+    fun aFormatChangeWhilePlayingStillRebuilds() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        val opus = StreamStartPlayer("pcm", 44_100, 2, 16)
+        val action = StreamLifecycle.onStart(h.pipeline.phase, h.pipeline.stream.value.format, opus, false)
+        assertEquals(StreamAction.StartFresh(opus), action)
+        h.pipeline.apply(action)
+        runCurrent()
+        assertEquals(2, h.sink.handles.size)
+        assertEquals(2, h.decoders.created.size)
+    }
+
+    @Test
+    fun aDeadWriteYieldsToThePendingFocusLossBeforeReportingSinkDied() = pipelineTest { h ->
+        // The sink's own event is queued behind the writer on the single audio thread.
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.handle.onWrite = {
+            h.handle.dead = true
+            h.handle.emit(SinkEvent.FocusLost)
+        }
+        h.feed(0)
+        runCurrent()
+        assertEquals(AudioEvent.FocusLost, h.events.tryReceive().getOrNull())
+        assertEquals(StreamPhase.Ended, h.pipeline.phase)
+        advanceTimeBy(100)
+        runCurrent()
+        assertEquals(null, h.events.tryReceive().getOrNull(), "the cause is not overwritten by SinkDied")
+    }
+
+    @Test
+    fun aDeadWriteWithNoSinkEventReportsSinkDied() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.handle.onWrite = { h.handle.dead = true }
+        h.feed(0)
+        runCurrent()
+        assertEquals(null, h.events.tryReceive().getOrNull(), "still waiting for an explanation")
+        advanceTimeBy(60)
+        runCurrent()
+        assertEquals(AudioEvent.SinkDied, h.events.tryReceive().getOrNull())
+        assertEquals(StreamPhase.Ended, h.pipeline.phase)
+    }
+
+    @Test
+    fun aSinkThatAcceptsNothingIsTreatedAsDead() = pipelineTest { h ->
+        // A zero return used to spin the audio thread forever.
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.handle.acceptNothing = true
+        h.feed(0)
+        runCurrent()
+        advanceTimeBy(60)
+        runCurrent()
+        assertEquals(AudioEvent.SinkDied, h.events.tryReceive().getOrNull())
+        assertEquals(StreamPhase.Ended, h.pipeline.phase)
+    }
+
+    @Test
     fun replacingTheSinkDropsTheOldHandlesEventCollector() = pipelineTest { h ->
         repeat(3) {
             h.pipeline.apply(StreamAction.StartFresh(flac))

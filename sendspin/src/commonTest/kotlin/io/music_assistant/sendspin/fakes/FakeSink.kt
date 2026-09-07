@@ -35,6 +35,12 @@ class FakeSink(private val nowMicros: () -> Long) : AudioSink {
         var flushes = 0
         var closed = false
         var dead = false
+
+        /** A contract violation: [write] returns 0 without accepting anything. */
+        var acceptNothing = false
+
+        /** Runs inside [write], before the bytes are taken: simulates a device lost mid-write. */
+        var onWrite: (() -> Unit)? = null
         private var framesWritten = 0L
         private var firstWriteMicros: Long? = null
         private val sinkEvents = MutableSharedFlow<SinkEvent>(extraBufferCapacity = 4)
@@ -54,7 +60,9 @@ class FakeSink(private val nowMicros: () -> Long) : AudioSink {
         }
 
         override fun write(pcm: ByteArray, offset: Int, length: Int): Int {
+            onWrite?.invoke()
             if (dead) return -1
+            if (acceptNothing) return 0
             writes += pcm.copyOfRange(offset, offset + length)
             writeTimes += nowMicros()
             framesWritten += length / format.bytesPerFrame

@@ -18,10 +18,15 @@ class StreamLifecycleTest {
             StreamAction.StartFresh(flac),
             StreamLifecycle.onStart(StreamPhase.Ended, flac, flac, newConnection = true),
         )
-        // Same format on the same connection while playing is a seek or skip.
+        // Same format on the same connection while playing is a seek or skip: sink and decoder stay.
         assertEquals(
-            StreamAction.StartFresh(flac),
+            StreamAction.Restart,
             StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = false),
+        )
+        // A format change on the same connection still rebuilds.
+        assertEquals(
+            StreamAction.StartFresh(opus),
+            StreamLifecycle.onStart(StreamPhase.Playing, flac, opus, newConnection = false),
         )
         // Same format on a new connection while playing is a reconnect resume.
         assertEquals(
