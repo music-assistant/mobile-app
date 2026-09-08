@@ -54,6 +54,33 @@
 	<array>
 		<string>_ma-preflight._tcp</string>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Allow user-managed LAN servers, including unqualified and .local names.
+		     Keep ATS enabled for public hosts; do not enable arbitrary loads. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<!-- IP/CIDR exception matching is supported on iOS 17 and later.
+			     RFC 1918 private networks only. -->
+			<key>10.0.0.0/8</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+			<key>172.16.0.0/12</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+			<key>192.168.0.0/16</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Music Assistant can optionally use the camera to scan a QR code when you set up a remote connection. You can also enter the connection details manually instead.</string>
 	<key>NSLocalNetworkUsageDescription</key>
