@@ -44,6 +44,8 @@ kotlin {
         androidMain.dependencies {
             // Noise primitives backend (JCA crypto via the JDK provider).
             implementation(libs.cryptography.provider.jdk)
+            // X25519, which the platform JCA registers only from API 33.
+            implementation(libs.bouncycastle.provider)
             implementation(libs.concentus)
         }
 

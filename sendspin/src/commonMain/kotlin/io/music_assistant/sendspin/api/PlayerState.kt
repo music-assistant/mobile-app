@@ -39,4 +39,15 @@ enum class AudioPhase { Idle, Buffering, Playing }
 
 enum class ClockQuality { Good, Degraded, Lost }
 
-enum class FailureCause { Unauthorized, Unpaired, ServerRejected }
+enum class FailureCause {
+    Unauthorized,
+    Unpaired,
+    ServerRejected,
+
+    /**
+     * The player could not be built on this device, so it never reached the
+     * server. A missing platform primitive or unreadable key storage lands
+     * here. The log carries the cause.
+     */
+    SetupFailed,
+}

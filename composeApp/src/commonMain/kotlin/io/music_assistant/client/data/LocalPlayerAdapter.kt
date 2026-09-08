@@ -28,6 +28,7 @@ import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.Endpoint
+import io.music_assistant.sendspin.api.FailureCause
 import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -57,6 +59,10 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_playback_stopped_connection_lost
+import musicassistantclient.composeapp.generated.resources.sendspin_failed_server_rejected
+import musicassistantclient.composeapp.generated.resources.sendspin_failed_setup
+import musicassistantclient.composeapp.generated.resources.sendspin_failed_unauthorized
+import musicassistantclient.composeapp.generated.resources.sendspin_failed_unpaired
 import org.jetbrains.compose.resources.getString
 import kotlin.coroutines.CoroutineContext
 import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
@@ -171,7 +177,24 @@ class LocalPlayerAdapter(
                 }
             }
         }
+        launch {
+            // Failed is terminal. Say why once, so the player is not offered as
+            // a working one that answers every command with a server error.
+            // The state is a StateFlow, so it emits only on change: one message
+            // per entry into Failed, and another if the player fails again
+            // after a restart.
+            player.state.filterIsInstance<PlayerState.Failed>()
+                .collect { errorBus.emit(getString(it.cause.message)) }
+        }
     }
+
+    private val FailureCause.message
+        get() = when (this) {
+            FailureCause.Unauthorized -> Res.string.sendspin_failed_unauthorized
+            FailureCause.Unpaired -> Res.string.sendspin_failed_unpaired
+            FailureCause.ServerRejected -> Res.string.sendspin_failed_server_rejected
+            FailureCause.SetupFailed -> Res.string.sendspin_failed_setup
+        }
 
     private suspend fun pairWebPlayer(pairingToken: String) {
         val request = Request(

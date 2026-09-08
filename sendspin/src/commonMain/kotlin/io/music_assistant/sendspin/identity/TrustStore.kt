@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.identity
 
+import co.touchlab.kermit.Logger
 import io.music_assistant.sendspin.api.SendspinKeyStore
 import io.music_assistant.sendspin.noise.PskCandidate
 import io.music_assistant.sendspin.noise.PskCategory
@@ -206,6 +207,7 @@ internal class SendspinTrustStore private constructor(
         private const val PSK_SIZE = 32
 
         private val json = Json { ignoreUnknownKeys = true }
+        private val logger = Logger.withTag("SendspinTrustStore")
 
         /** Loads persisted state, regenerating cleanly on missing/corrupt storage. */
         suspend fun load(keyStore: SendspinKeyStore, crypto: NoiseCrypto): SendspinTrustStore {
@@ -258,7 +260,11 @@ internal class SendspinTrustStore private constructor(
                 // A public key that no longer matches its private key is corruption.
                 check(crypto.x25519PublicKey(privateKey).contentEquals(publicKey))
                 SendspinIdentity(X25519KeyPair(privateKey, publicKey))
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                // Any failure here regenerates the identity. The catch is broad
+                // on purpose, so log the cause: a platform without X25519
+                // throws here too, and would otherwise read as plain corruption.
+                logger.w(e) { "Stored identity unusable — regenerating" }
                 null
             }
         }

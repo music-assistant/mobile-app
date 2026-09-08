@@ -7,6 +7,7 @@ import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.Endpoint
+import io.music_assistant.sendspin.api.FailureCause
 import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
@@ -42,6 +43,7 @@ import io.music_assistant.sendspin.wire.PlayerStateValue
 import io.music_assistant.sendspin.wire.PlayerSupport
 import io.music_assistant.sendspin.wire.ServerMessage
 import io.music_assistant.sendspin.wire.WireCodec
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
@@ -86,8 +88,24 @@ internal class SendspinPlayerImpl(
     init {
         scope.launch {
             config.map { it != null }.distinctUntilChanged().collectLatest { enabled ->
-                if (enabled) runEnabled()
+                if (enabled) runEnabledOrFail()
             }
+        }
+    }
+
+    /**
+     * An enabled lifetime must always end in a state. Without this the setup
+     * in [runEnabled] could throw straight out of the collector, leaving the
+     * app on whatever it last saw and offering a player that cannot play.
+     */
+    private suspend fun runEnabledOrFail() {
+        try {
+            runEnabled()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.e(e) { "Local player setup failed" }
+            _state.value = PlayerState.Failed(FailureCause.SetupFailed)
         }
     }
 
