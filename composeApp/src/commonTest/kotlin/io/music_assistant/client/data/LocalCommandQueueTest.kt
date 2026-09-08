@@ -19,8 +19,10 @@ class LocalCommandQueueTest {
     private val ready = MutableStateFlow(true)
     private val sent = mutableListOf<String>()
     private var failSends = false
+    private var recoveries = 0
 
-    private fun queue(scope: CoroutineScope) = LocalCommandQueue(ready, ::record, scope)
+    private fun queue(scope: CoroutineScope) =
+        LocalCommandQueue(ready, ::record, scope) { recoveries++ }
 
     private fun record(request: Request): Result<Unit> {
         sent += request.command
@@ -78,7 +80,7 @@ class LocalCommandQueueTest {
                 }
             },
             backgroundScope,
-        )
+        ) { recoveries++ }
         val sending = launch { queue.sendOrQueue(PlayerAction.Pause, request("pause")) }
         runCurrent()
         ready.value = false
@@ -105,6 +107,41 @@ class LocalCommandQueueTest {
         ready.value = true
         settle()
         assertEquals(listOf("pause", "seek20"), sent)
+    }
+
+    @Test
+    fun anOfflineCommandAsksForTheSessionBackAndDrainsWithoutAForegroundEvent() = runTest {
+        val queue = LocalCommandQueue(ready, ::record, backgroundScope) {
+            recoveries++
+            ready.value = true // the recovery the queue asked for lands
+        }
+        ready.value = false
+        queue.sendOrQueue(PlayerAction.Play, request("play"))
+        assertEquals(1, recoveries)
+        settle()
+        assertEquals(listOf("play"), sent)
+    }
+
+    @Test
+    fun everyQueuedCommandAsksForRecoveryButAReplayDoesNot() = runTest {
+        val queue = queue(backgroundScope)
+        ready.value = false
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
+        queue.sendOrQueue(PlayerAction.Next, request("next"))
+        assertEquals(2, recoveries)
+        ready.value = true
+        settle()
+        assertEquals(listOf("pause", "next"), sent)
+        assertEquals(2, recoveries, "the drain sends through the gate, it does not re-ask")
+    }
+
+    @Test
+    fun aSendThatFailsWhileReadyDoesNotAskForRecovery() = runTest {
+        // sendRequest already holds the session and kicks the gate on its own.
+        val queue = queue(backgroundScope)
+        failSends = true
+        queue.sendOrQueue(PlayerAction.Next, request("next"))
+        assertEquals(0, recoveries)
     }
 
     @Test

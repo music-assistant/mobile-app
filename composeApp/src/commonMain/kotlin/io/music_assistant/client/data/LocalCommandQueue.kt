@@ -21,6 +21,11 @@ import kotlinx.coroutines.sync.withLock
  * readiness bounce). Sendspin activation is not a trigger: the audio
  * connection may stay up through an MA-only outage.
  *
+ * Queueing also calls [requestRecovery]. Every command here comes from a user
+ * gesture or an interruption, so the queue asks for the session back instead of
+ * waiting for readiness to arrive on its own — a backgrounded session torn down
+ * for idleness would otherwise only come back on the next foreground.
+ *
  * A replay is sent once; a failure during replay is logged and dropped, so
  * a persistently failing command cannot spin the worker.
  */
@@ -28,6 +33,7 @@ internal class LocalCommandQueue(
     private val isReady: StateFlow<Boolean>,
     private val send: suspend (Request) -> Result<*>,
     scope: CoroutineScope,
+    private val requestRecovery: () -> Unit,
 ) {
     private val log = Logger.withTag("LocalCommandQueue")
     private val mutex = Mutex()
@@ -43,7 +49,9 @@ internal class LocalCommandQueue(
 
     suspend fun sendOrQueue(action: PlayerAction, request: Request) {
         if (!isReady.value) {
+            // Enqueue first: the drain must see the entry when readiness flips.
             enqueue(action, request)
+            requestRecovery()
             return
         }
         if (send(request).isFailure) {

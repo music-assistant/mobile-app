@@ -150,7 +150,12 @@ class LocalPlayerAdapter(
         }
         .stateIn(this, SharingStarted.Eagerly, 0.0)
 
-    private val commands = LocalCommandQueue(apiClient.isReadyForCommands, apiClient::sendRequest, this)
+    private val commands = LocalCommandQueue(
+        isReady = apiClient.isReadyForCommands,
+        send = apiClient::sendRequest,
+        scope = this,
+        requestRecovery = apiClient::requestCommandRecovery,
+    )
     private var pendingPlayTimeoutJob: Job? = null
     private var pausedByInterruption = false
 
@@ -222,7 +227,7 @@ class LocalPlayerAdapter(
      * Applies the optimistic UI update, then sends or offline-queues the request.
      */
     fun handleLocalCommand(data: PlayerData, action: PlayerAction) {
-        val resolved = playerRequestFactory.resolve(data, action)
+        val resolved = playerRequestFactory.resolve(data, resolveLocalToggle(data, action))
         applyOptimisticUpdate(data, resolved)
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
@@ -313,11 +318,8 @@ class LocalPlayerAdapter(
         }
     }
 
+    /** The spinner is the only feedback an offline Play gives; [armPendingPlayTimeout] bounds it. */
     private fun optimisticPlay() {
-        if (!apiClient.isReadyForCommands.value) {
-            log.i { "Suppressing pending local play while the command transport is not ready" }
-            return
-        }
         _localPlayerData.update { current -> current?.copy(pendingPlay = true) }
         armPendingPlayTimeout()
     }
@@ -524,6 +526,20 @@ class LocalPlayerAdapter(
         const val PENDING_PLAY_TIMEOUT_MS = 10_000L
     }
 }
+
+/**
+ * Resolves a local play/pause toggle to the explicit action the user asked for,
+ * against the state they see. A queued `play_pause` would replay against the
+ * server's state instead, and [LocalCommandQueue] dedups toggles in their own
+ * class, so a toggle and a later Pause would both survive an outage. Local only:
+ * remote players keep the atomic server-side command.
+ */
+internal fun resolveLocalToggle(data: PlayerData, action: PlayerAction): PlayerAction =
+    if (action == PlayerAction.TogglePlayPause) {
+        if (data.player.isPlaying || data.pendingPlay) PlayerAction.Pause else PlayerAction.Play
+    } else {
+        action
+    }
 
 /**
  * Maps a platform remote-command string (Control Center / lock screen / CarPlay)

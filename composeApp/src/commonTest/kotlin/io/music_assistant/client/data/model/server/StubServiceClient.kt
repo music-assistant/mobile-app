@@ -67,6 +67,9 @@ open class StubServiceClient : ServiceClient {
     override fun onExternalConsumerActive() {
     }
 
+    override fun requestCommandRecovery() {
+    }
+
     override fun onPlaybackActive() {
     }
 
