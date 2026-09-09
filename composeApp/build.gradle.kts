@@ -182,7 +182,7 @@ val mdiFontOut = layout.projectDirectory.file("src/commonMain/composeResources/f
 val mdiCodepointsOut = layout.projectDirectory.file("src/commonMain/composeResources/files/mdi_codepoints.json")
 val mdiVersionMarker = layout.buildDirectory.file("mdi/version.marker")
 
-val generateMdiResources by tasks.registering {
+val generateMdiResources = tasks.register("generateMdiResources") {
     description = "Fetches the MDI webfont and generates a slim name->codepoint table."
     group = "build setup"
     inputs.property("mdiVersion", mdiVersion)
@@ -220,5 +220,7 @@ val generateMdiResources by tasks.registering {
 // Ensure the assets exist before Compose generates resource accessors (so Res.font.* and
 // the files/ table are present for both the IDE sync and clean CI builds).
 tasks.matching {
-    it.name.contains("ComposeResources") || it.name.contains("ResourceAccessors")
+    it.name.contains("ComposeResources") ||
+        it.name.contains("ResourceAccessors") ||
+        it.name.contains("ValueResourcesFor")
 }.configureEach { dependsOn(generateMdiResources) }
