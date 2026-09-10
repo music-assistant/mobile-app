@@ -76,6 +76,11 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  *
  * [MainDataSource] depends on this one-way. The control plane stays on the MA
  * REST API: Sendspin is an audio endpoint (player@v1), not a controller.
+ *
+ * Registered in `SharedModule` with the key store and [LocalPlayerEndpoints];
+ * the `AudioSink` and the `DecoderFactory` come from `AndroidModule` and
+ * `IosModule`. [pairWebPlayer] is the app's half of silent pairing: the module
+ * has no MA API client, so it calls back here to spend the pairing token.
  */
 class LocalPlayerAdapter(
     private val settings: SettingsRepository,

@@ -30,6 +30,8 @@ import kotlin.math.abs
  * gentle resample inside the tolerance band. The sink's own buffer is the
  * write-ahead cushion: writes block at the hardware rate, which paces the loop.
  * Without feedback (iOS), scheduling is open loop: wait until due, drop when late.
+ * A pass-through decoder (`outputCodec != PCM`, the sink decodes) forces open
+ * loop too: the bytes are opaque, so they cannot be trimmed, padded or resampled.
  *
  * Only this coroutine touches the sink handle and the decoder.
  */

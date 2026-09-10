@@ -7,6 +7,11 @@ there is no plaintext session. The module is a pure Kotlin Multiplatform leaf. I
 other Gradle project. It contains no Compose code, no Koin code, and no `expect`/`actual`
 declaration. Each platform difference is an interface that the application implements.
 
+This file documents the module from the outside, as a client of it sees it. Each package
+documents its own rules in KDoc next to the code. The cryptography, the specification mapping,
+and the test vectors are in
+[`noise/README.md`](src/commonMain/kotlin/io/music_assistant/sendspin/noise/README.md).
+
 ## Scope
 
 The module does this work:
@@ -25,6 +30,15 @@ The module does not do this work:
 - **No platform audio.** `AudioSink` and `DecoderFactory` are ports.
 - **No settings and no text.** The module never writes application settings and holds no
   user-facing string. It reports codes, and the application maps them to resources.
+
+## Design goals
+
+1. One owner per piece of state.
+2. One reconnect policy, in one pure object.
+3. Bounded queues everywhere. Nothing on the audio path grows without a limit.
+4. Structured concurrency. Cancellation is the only teardown.
+5. The audio pipeline outlives the connection, so buffered audio drains through a reconnect.
+6. A small public surface, enforced by `internal` and checked by the compiler.
 
 ## Use the module
 
@@ -49,34 +63,56 @@ application.
 
 ### Configuration
 
-`LocalPlayerConfig` has two classes of field.
+`LocalPlayerConfig` has two classes of field: ones that cause a reconnection when they change,
+and ones that do not.
 
-| Field | Class | Effect of a change |
+| Field | Causes reconnect? | Effect of a change |
 | --- | --- | --- |
-| `endpoint` | Reconnect | Restarts the connection. The audio pipeline is untouched. |
-| `deviceName` | Reconnect | Restarts the connection. |
-| `codecPreference` | Reconnect | Restarts the connection. |
-| `userDelayMs` | Live | Applies to the next scheduled chunk. |
-| `bufferCapacityBytes` | Live | Applies to the buffer now. Advertised at the next hello. |
+| `endpoint` | Yes | Restarts the connection. The audio pipeline is untouched. |
+| `deviceName` | Yes | Restarts the connection. |
+| `codecPreference` | Yes | Restarts the connection. |
+| `userDelayMs` | No | Applies to the next scheduled chunk. |
+| `bufferCapacityBytes` | No | Applies to the buffer now. Advertised at the next hello. |
 
-Keep the same `Endpoint` instance while the endpoint did not change. `Endpoint.WebRtc` compares
-by identity, so a new instance restarts the connection.
+Clients should keep the same `Endpoint` instance while the endpoint did not change.
+`Endpoint.WebRtc` compares by identity, so a new instance restarts the connection.
 
 ### Ports the application implements
 
-| Port | Purpose | Implementation |
-| --- | --- | --- |
-| `AudioSink` | Platform audio output. `open` builds a new device stream each time. | `AudioTrackSink.kt` (Android), `AudioQueueSink.kt` (iOS) |
-| `DecoderFactory` | Creates one `AudioDecoder` for a codec. | `AndroidDecoders.kt`, `IosDecoderFactory` in `AudioQueueSink.kt` |
-| `SendspinKeyStore` | Byte-blob storage for identity and trust. Reads never throw. | `SettingsSendspinKeyStore.kt` |
-| `SendspinTransport` | Frames over one WebRTC data channel. | `DataChannelTransport` in `LocalPlayerEndpoints.kt` |
+| Port | Purpose |
+| --- | --- |
+| `AudioSink` | Platform audio output. `open` builds a new device stream each time. |
+| `DecoderFactory` | Creates one `AudioDecoder` for a codec. |
+| `SendspinKeyStore` | Byte-blob storage for identity and trust. Reads never throw. |
+| `SendspinTransport` | Frames over one WebRTC data channel. |
 
 `SendspinDeps` also takes the application's `HttpClient`, an `online` flow, a `pairWebPlayer`
 call, and the audio dispatcher.
 
 A decoder can be a **pass-through**: it returns `outputCodec != PCM`, and the sink decodes the
 bytes itself. iOS works this way. The scheduler then treats the bytes as opaque. It cannot trim,
-pad, or resample them, so it schedules open loop. See "Audio path".
+pad, or resample them, so it schedules open loop. See the KDoc on `Scheduler`.
+
+### Authentication and pairing
+
+The module holds no credential of its own. It needs two things from the application, and both
+exist because Music Assistant hosts the Sendspin server.
+
+**The Music Assistant token is the price of entry to the proxy, not to Sendspin.**
+`Endpoint.WebSocket` carries a token because the default URL is the Music Assistant socket at
+`<server>/sendspin`. Music Assistant puts the Sendspin server behind the same authenticated
+reverse proxy as its control socket, so a client needs one open port and one credential. The
+module sends `auth` and waits for `auth_ok` before the Sendspin protocol starts. This exchange
+is the proxy's, not Sendspin's. A WebRTC data channel skips it, because the channel is already
+proven.
+
+**`pairWebPlayer` is how a web player pairs without a person.** A Sendspin server normally needs
+a person to approve a pairing code. The Music Assistant web players skip this step: the server
+accepts a pairing token over its own API instead. This module is such a web player, but it has
+no control plane and no Music Assistant API client, so it calls back into the application. The
+module makes the call when a session comes up unpaired, and it makes the call again after a
+server-side unpair. A client that talks to a Sendspin server directly can supply a `pairWebPlayer`
+that does nothing, and pair the player by the code instead.
 
 ### State and events
 
@@ -100,77 +136,6 @@ pad, or resample them, so it schedules open loop. See "Audio path".
 | `FocusRegained` | Resume playback if the user wants it. |
 | `Warning(code)` | Show a notice. The module already recovered or degraded. |
 
-## Architecture
-
-### Package dependencies
-
-```mermaid
-graph TD
-  player --> connection
-  player --> audio
-  connection --> session
-  connection --> transport
-  session --> noise
-  session --> identity
-  session --> pairing
-  session --> management
-  identity <--> pairing
-  management --> identity
-  audio --> clock
-  clock --> connection
-  transport --> wire
-  noise --> wire
-  wire --> api
-```
-
-The diagram shows the structure. Two edges are left out to keep it readable: `player` also uses
-the layers below `connection` and `audio` directly, and every package may use `api`.
-
-Two edges look wrong and are not. `clock` points at `connection` because the probe loop throws
-the connection layer's silent-server exception. `identity` and `pairing` point at each other. The
-trust store encodes its pairing token with `PairingToken`, and the pairing handler commits the
-finished record into the trust store.
-
-Nothing depends on `player`. The `api` package depends on nothing inside the module.
-
-| Package | Responsibility | Key files |
-| --- | --- | --- |
-| `api` | Public types and ports. | `SendspinPlayer.kt`, `LocalPlayerConfig.kt`, `PlayerState.kt`, `PlayerEvent.kt`, `AudioSink.kt`, `AudioDecoder.kt` |
-| `player` | Composition root. Maps internal state to `PlayerState` and `PlayerEvent`. | `SendspinPlayerImpl.kt` |
-| `connection` | Connection state machine and the single reconnect policy. | `ConnectionSupervisor.kt`, `ReconnectPolicy.kt`, `ConnectionState.kt`, `SilentPairing.kt` |
-| `session` | One encrypted session over one transport. | `NoiseSession.kt`, `ActivationPolicy.kt`, `SessionTypes.kt` |
-| `transport` | Frames over one connection attempt. No reconnect. | `WebSocketTransport.kt`, `TransportConnector.kt`, `ProxyAuth.kt` |
-| `noise` | Noise protocol, framing, and pre-shared keys. | `NoiseProtocol.kt`, `SendspinHandshake.kt`, `NoiseFraming.kt`, `SendspinPsk.kt` |
-| `identity` | Static key pair and trust records. | `SendspinIdentity.kt`, `TrustStore.kt` |
-| `pairing` | Pairing-PSK flow and the pairing token codec. | `PairingHandler.kt`, `PairingToken.kt` |
-| `management` | `management/*` requests from a paired server. | `ManagementHandler.kt` |
-| `audio` | Buffer, decode, drift correction, and scheduling. | `AudioPipeline.kt`, `Scheduler.kt`, `JitterBuffer.kt`, `DecoderStage.kt`, `DriftCorrector.kt`, `StreamLifecycle.kt` |
-| `clock` | Server time estimate and liveness. | `ClockSync.kt`, `ClockFilter.kt`, `ClockProbe.kt` |
-| `wire` | Parses each message once. | `Messages.kt`, `WireCodec.kt`, `Binary.kt`, `VersionedRole.kt` |
-
-### Concurrency
-
-Ownership follows the coroutine tree. Read it as the teardown order.
-
-```
-scope (supplied by the application)
-└─ config.enabled collector           collectLatest: "false" cancels everything below
-   └─ runEnabled()                    trust store, clock sync, pipeline, connector
-      ├─ pipeline.run()               on deps.audioDispatcher; outlives every connection
-      ├─ live-config collector        userDelayMicros, capacityBytes
-      └─ ConnectionSupervisor.run()   restarted when a reconnect-class field changes
-         └─ one attempt at a time
-            ├─ session.run()          reader coroutine
-            └─ companion              clock probes and state reports
-```
-
-These invariants hold:
-
-- No class implements `CoroutineScope`. Cancellation is the only teardown.
-- The session reader never blocks on the sink. It must stay free to process `stream/clear`.
-- The audio thread is the single owner of the decoder and the sink handle.
-- The audio pipeline outlives the connection, so buffered audio drains through a reconnect.
-
 ## Connection lifecycle
 
 ```mermaid
@@ -188,168 +153,14 @@ stateDiagram-v2
   Failed --> [*]: config change restarts the supervisor
 ```
 
-`ConnectionSupervisor` runs one attempt at a time. An attempt is a `coroutineScope` that holds
-the session and its companion, so one failure ends both. On cancellation the session sends
-`client/goodbye` first: `UserRequest` when the config went `null`, and `Restart` otherwise.
-
-Every attempt ends with a `DropReason`. `ReconnectPolicy` turns it into one of three decisions:
-retry after a delay, wait for the network, or fail. Only repeated `Rejected` drops can fail,
-because the first rejections are expected. The server rejects a sentinel session with
-`pairing_required` while the silent pairing call is still in flight. It admits the session on a
-later attempt. The backoff is exponential with jitter and a cap, and it is unlimited while the
-device is online. An attempt that stayed active long enough resets the attempt counter. The
-constants live in `ReconnectPolicy.kt`.
+`ConnectionSupervisor` runs one attempt at a time. Every attempt ends with a `DropReason`, and
+`ReconnectPolicy` turns it into one of three decisions: retry after a delay, wait for the
+network, or fail. Only repeated rejections can fail, because the first rejections are expected
+while the pairing call is still in flight. The backoff is exponential with jitter and a cap, and
+it is unlimited while the device is online.
 
 Offline is not a timer. The supervisor waits on the `online` flow and attempts again at once when
 the network returns.
 
-## Protocol
-
-The session uses `Noise_KKpsk2_25519_ChaChaPoly_SHA256`. **The server is the Noise initiator and
-this client is the responder**, whichever side opened the connection. See
-[`noise/README.md`](src/commonMain/kotlin/io/music_assistant/sendspin/noise/README.md) for the
-cryptography, the specification mapping, and the test vectors.
-
-One attempt runs these steps:
-
-1. For a WebSocket endpoint only: send `auth` with the token and wait for `auth_ok`. This is the
-   Music Assistant proxy, not Sendspin.
-2. Exchange `client/init` and `server/init`.
-3. Build the prologue from the exact transmitted bytes of both init messages. Never re-encode
-   them.
-4. Exchange the two `noise/handshake` messages. The server's message carries the `psk_id`, and
-   the client selects the matching pre-shared key.
-5. Exchange `server/hello` and `client/hello`. The client advertises the device name, the trust
-   level, the role `player@v1`, the supported formats, and the buffer capacity.
-6. Wait for the first admissible `server/activate`.
-
-After step 4 every frame is a binary Noise ciphertext. The first plaintext byte is a type: JSON,
-a fragment, or player audio. A message larger than one Noise message is fragmented and
-reassembled. `NoiseFraming.kt` holds the rules.
-
-Outbound traffic passes an explicit gate. The gate stays closed until the first admissible
-activation, and it closes again during a pairing activity and during a re-handshake. All sends
-take one mutex, because Noise nonces must stay in order. `ActivationPolicy.kt` holds the
-admission rules as a pure function: it admits, rejects with `pairing_required` or `unauthorized`,
-or aborts a pairing attempt with an unsupported method.
-
-The server can start a re-handshake inside the encrypted channel. The gate closes, the previous
-handshake hash becomes the new prologue, the reply goes out under the old keys, and the keys
-swap. Granted roles and any pairing attempt in progress are discarded with the old keys.
-
-## Audio path
-
-```mermaid
-flowchart LR
-  subgraph reader["Session reader coroutine"]
-    S["NoiseSession"] --> P["AudioPipeline.onAudio"]
-    P --> J[("JitterBuffer")]
-    P -.wake.-> W(("wakeups"))
-  end
-  subgraph audiothread["Audio dispatcher"]
-    SC["Scheduler"] --> D["DecoderStage"]
-    D --> DC["DriftCorrector"]
-    DC --> H["SinkHandle.write"]
-  end
-  J --> SC
-  W -.-> SC
-  CS["ClockSync"] --> SC
-```
-
-The reader side never suspends. A reader that blocked on audio could not process the
-`stream/clear` that would free the buffer.
-
-`JitterBuffer` holds encoded chunks in server-timestamp order under a byte cap. It drops a chunk
-at or before the last consumed timestamp, because that is a reconnect replay, and it drops an
-exact duplicate. Over the cap it evicts the **furthest-future** chunk, so the head stays
-continuous. The server honours the advertised capacity, so eviction is a safety net.
-
-`Scheduler` plays each chunk at `serverTime` converted to local time plus the user delay. With
-sink position feedback it compares that target against `now + audio queued in the sink + output
-latency` and corrects the difference:
-
-| Lead | Action |
-| --- | --- |
-| Far behind | Drop the chunk, or trim the late part off its head. |
-| Far ahead | Wait, and wake early on a new chunk or a stream change. |
-| Ahead | Write silence for the gap, then the chunk. |
-| Slightly off | Resample the block gently. |
-| In band | Write as is. |
-
-Where the sink reports no position, the scheduler runs open loop: it waits until the chunk is
-due, and drops it when it is late. The thresholds live in `Scheduler.kt`.
-
-Every "retry later" exit happens before the decode, because decoders are stateful and a chunk
-must be decoded exactly once.
-
-`DriftCorrector` resamples interleaved 16-bit little-endian PCM by linear interpolation, with a
-bounded rate change. Any other bit depth passes through unchanged.
-
-Music Assistant sends `stream/clear` and then a same-format `stream/start` on every track change,
-seek, and restart. That is a discontinuity, not a gapless boundary. `StreamLifecycle` therefore
-answers `Restart` while the same format plays. A `Restart` flushes the sink and resets the
-decoder, but it keeps both. A new device stream costs hundreds of milliseconds and the head of
-the track. A format change, or a start from idle, rebuilds. The first `stream/start` of a new connection
-that matches a still-playing stream is a resume, and the buffered audio survives it.
-
-## Clock synchronization
-
-`ClockProbe` sends `client/time` in bursts for the life of an attempt. `ClockSync` collects the
-replies of one burst and feeds the sample with the lowest round-trip time to `ClockFilter`.
-`ClockFilter` is a two-state Kalman filter over offset and drift. The audio thread reads an immutable snapshot of
-the estimate without taking a lock.
-
-`ClockQuality` reports `Good`, `Degraded` when the minimum round-trip time is high, and `Lost`
-when no sample was accepted for a long time. The constants live in `ClockSync.kt` and
-`ClockProbe.kt`.
-
-The probe loop is also the liveness watchdog. A server that answers no probe for three
-consecutive bursts is declared silent, which ends the attempt. This works over any transport,
-because it needs the protocol only.
-
-## Why this design
-
-1. One owner per piece of state.
-2. One reconnect policy, in one pure object.
-3. Bounded queues everywhere. Nothing on the audio path grows without a limit.
-4. Structured concurrency. Cancellation is the only teardown.
-5. The audio pipeline outlives the connection, so buffered audio drains through a reconnect.
-6. A small public surface, enforced by `internal` and checked by the compiler.
-
-## How the application wires it
-
-`LocalPlayerEndpoints.kt` derives a `StateFlow<Endpoint?>` from the service session state and the
-connection settings. It also opens a WebRTC data channel per attempt and adapts it to
-`SendspinTransport`.
-
-`LocalPlayerAdapter.kt` owns the player. It combines the Sendspin settings and the endpoint into
-the config flow, and it creates the player. It also mirrors the server-assigned player id back
-into the settings, and implements `pairWebPlayer` over the Music Assistant API.
-
-`MainDataSource.kt` is a one-way consumer. It re-exports the state, reacts to
-`ServerRefreshNeeded`, and sends all transport commands over the Music Assistant API.
-
-Registration points: `SharedModule.kt` for the key store, the endpoints, and the adapter;
-`AndroidModule.kt` and `IosModule.kt` for the sink and the decoder factory.
-
-## Build and test
-
-Targets: `android` (JVM 17), `iosArm64`, and `iosSimulatorArm64`. The module depends on
-coroutines, atomicfu, Ktor client with WebSockets, kotlinx-serialization, Kermit, and
-cryptography-kotlin. The cryptography provider differs per platform: the JDK provider on Android
-and CryptoKit on iOS.
-
-Tests live in `commonTest` and mirror the package layout. The `fakes` package holds
-`FakeNoiseServer`, `FakeTransport`, `FakeSink`, and `FakeDecoders`. `FakeNoiseServer` builds
-every message by hand, so it does not share the `wire` classes with the implementation.
-`SendspinPlayerTest.kt` drives the scenarios through the public factory.
-
-```
-./gradlew :sendspin:testAndroidHostTest
-./gradlew detektAll
-```
-
-Run the iOS simulator tests from a machine with Xcode.
-
-**Do not change `NoiseProtocol.kt` without running the reference vectors.** See
-[`noise/README.md`](src/commonMain/kotlin/io/music_assistant/sendspin/noise/README.md).
+A reconnect does not stop the audio. The pipeline outlives the connection, so audio that is
+already buffered keeps playing, and a stream that resumes in the same format is not rebuilt.

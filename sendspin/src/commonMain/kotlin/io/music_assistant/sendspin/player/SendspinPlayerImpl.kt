@@ -63,6 +63,25 @@ import kotlinx.coroutines.launch
  * Composition root. `config == null` is the only stop. Reconnect-class fields
  * restart the connection; the audio pipeline lives as long as the player is
  * enabled, so buffered audio drains across reconnects.
+ *
+ * Ownership follows the coroutine tree, which is also the teardown order:
+ *
+ * ```
+ * scope (supplied by the application)
+ * └─ config.enabled collector           collectLatest: "false" cancels everything below
+ *    └─ runEnabled()                    trust store, clock sync, pipeline, connector
+ *       ├─ pipeline.run()               on deps.audioDispatcher; outlives every connection
+ *       ├─ live-config collector        userDelayMicros, capacityBytes
+ *       └─ ConnectionSupervisor.run()   restarted when a reconnect-class field changes
+ *          └─ one attempt at a time
+ *             ├─ session.run()          reader coroutine
+ *             └─ companion              clock probes and state reports
+ * ```
+ *
+ * Three invariants hold across the module. No class implements `CoroutineScope`,
+ * so cancellation is the only teardown. The session reader never blocks on the
+ * sink, because it must stay free to process the `stream/clear` that frees the
+ * buffer. The audio thread is the single owner of the decoder and the sink handle.
  */
 internal class SendspinPlayerImpl(
     private val config: StateFlow<LocalPlayerConfig?>,
