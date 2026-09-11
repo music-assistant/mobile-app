@@ -79,7 +79,7 @@ class ConnectionSupervisorTest {
             crypto,
             online,
             clock,
-            pairWebPlayer = { pairCalls++ },
+            approvePairing = { pairCalls++ },
             random = Random(42),
         )
         val states = mutableListOf<Pair<ConnectionState, Long>>()

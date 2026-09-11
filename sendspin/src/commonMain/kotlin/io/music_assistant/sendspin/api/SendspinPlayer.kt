@@ -27,10 +27,12 @@ class SendspinDeps(
     /** Network reachability; `false` pauses reconnect attempts until `true`. */
     val online: StateFlow<Boolean>,
     /**
-     * Silent pairing: call MA's `sendspin/pair_web_player` with the pairing
-     * token on the app's API connection. Throw on failure; it is non-fatal.
+     * Silent pairing: get this token approved out of band, over whatever
+     * trusted channel the app already holds, so no person approves a pairing
+     * code. Throw on failure; it is non-fatal. An app that pairs by the code
+     * instead supplies a no-op.
      */
-    val pairWebPlayer: suspend (pairingToken: String) -> Unit,
+    val approvePairing: suspend (pairingToken: String) -> Unit,
     /** Where the audio loop runs: one thread, high priority where the platform allows. */
     val audioDispatcher: CoroutineDispatcher,
     val clock: MonotonicClock = SystemMonotonicClock,

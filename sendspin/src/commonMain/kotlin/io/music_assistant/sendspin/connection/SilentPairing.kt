@@ -12,35 +12,35 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 /**
- * Requests silent pairing through the app (`sendspin/pair_web_player` on the
- * MA API) when a session comes up unpaired on the sentinel PSK. Triggered on
- * ready rather than activation: a sentinel session's first activate only
- * arrives after this RPC, so waiting on it would deadlock.
+ * Asks the app to approve the pairing token when a session comes up unpaired
+ * on the sentinel PSK. Triggered on ready rather than activation: a sentinel
+ * session's first activate only arrives after the approval, so waiting on it
+ * would deadlock.
  *
- * The RPC runs on [scope], which outlives connection attempts: a sentinel
+ * The approval runs on [scope], which outlives connection attempts: a sentinel
  * session is often rejected (`pairing_required`) moments after the request
- * starts, and the request is what resolves the rejection. A server-side
- * unpair is therefore undone on reconnect, matching MA's built-in web players.
+ * starts, and the request is what resolves the rejection. A server-side unpair
+ * is therefore undone on reconnect.
  */
 internal class SilentPairing(
-    private val pairWebPlayer: suspend (pairingToken: String) -> Unit,
+    private val approvePairing: suspend (pairingToken: String) -> Unit,
     private val pairingToken: () -> String,
     private val scope: CoroutineScope,
 ) {
     private val logger = Logger.withTag("SilentPairing")
-    private var rpc: Job? = null
+    private var approval: Job? = null
 
     fun onReady(info: SessionInfo) {
         val unpaired = info.matchedPskCategory == PskCategory.SENTINEL && info.trustLevel == TrustLevel.NONE
-        if (unpaired && rpc?.isActive != true) trigger()
+        if (unpaired && approval?.isActive != true) trigger()
     }
 
     private fun trigger() {
-        logger.i { "Requesting silent web-player pairing" }
-        rpc = scope.launch {
+        logger.i { "Requesting silent pairing approval" }
+        approval = scope.launch {
             try {
-                withTimeout(RPC_TIMEOUT_MILLIS) { pairWebPlayer(pairingToken()) }
-                logger.i { "Silent pairing request accepted" }
+                withTimeout(APPROVAL_TIMEOUT_MILLIS) { approvePairing(pairingToken()) }
+                logger.i { "Silent pairing approved" }
             } catch (e: TimeoutCancellationException) {
                 logger.w(e) { "Silent pairing request timed out" }
             } catch (e: CancellationException) {
@@ -52,7 +52,7 @@ internal class SilentPairing(
     }
 
     private companion object {
-        /** Matches the pairing attempt window, so an unanswered RPC cannot leak. */
-        const val RPC_TIMEOUT_MILLIS = 120_000L
+        /** Matches the pairing attempt window, so an unanswered approval cannot leak. */
+        const val APPROVAL_TIMEOUT_MILLIS = 120_000L
     }
 }

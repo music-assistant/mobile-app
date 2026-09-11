@@ -145,7 +145,7 @@ internal class SendspinPlayerImpl(
             crypto = crypto,
             online = deps.online,
             clock = deps.clock,
-            pairWebPlayer = deps.pairWebPlayer,
+            approvePairing = deps.approvePairing,
         )
         val session = Session(pipeline, clockSync, trustStore, supervisor)
         launch(deps.audioDispatcher) { pipeline.run() }

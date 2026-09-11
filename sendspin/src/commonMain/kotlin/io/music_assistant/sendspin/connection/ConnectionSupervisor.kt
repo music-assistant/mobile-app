@@ -44,7 +44,7 @@ internal class ConnectionSupervisor(
     private val crypto: NoiseCrypto,
     private val online: StateFlow<Boolean>,
     private val clock: MonotonicClock,
-    private val pairWebPlayer: suspend (pairingToken: String) -> Unit,
+    private val approvePairing: suspend (pairingToken: String) -> Unit,
     private val random: Random = Random.Default,
 ) {
     private val logger = Logger.withTag("ConnectionSupervisor")
@@ -66,7 +66,7 @@ internal class ConnectionSupervisor(
         goodbyeOnCancel: () -> GoodbyeReason = { GoodbyeReason.Restart },
         companion: suspend CoroutineScope.(NoiseSession) -> Unit,
     ): Unit = coroutineScope {
-        val silentPairing = SilentPairing(pairWebPlayer, trustStore::pairingToken, this)
+        val silentPairing = SilentPairing(approvePairing, trustStore::pairingToken, this)
         var attempt = 0
         var consecutiveRejections = 0
         var lastReason: DropReason = DropReason.ServerClosed

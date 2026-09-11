@@ -86,7 +86,7 @@ Clients should keep the same `Endpoint` instance while the endpoint did not chan
 | `SendspinKeyStore` | Byte-blob storage for identity and trust. Reads never throw. |
 | `SendspinTransport` | Frames over one WebRTC data channel. |
 
-`SendspinDeps` also takes the application's `HttpClient`, an `online` flow, a `pairWebPlayer`
+`SendspinDeps` also takes the application's `HttpClient`, an `online` flow, an `approvePairing`
 call, and the audio dispatcher.
 
 A decoder can be a **pass-through**: it returns `outputCodec != PCM`, and the sink decodes the
@@ -106,13 +106,19 @@ module sends `auth` and waits for `auth_ok` before the Sendspin protocol starts.
 is the proxy's, not Sendspin's. A WebRTC data channel skips it, because the channel is already
 proven.
 
-**`pairWebPlayer` is how a web player pairs without a person.** A Sendspin server normally needs
-a person to approve a pairing code. The Music Assistant web players skip this step: the server
-accepts a pairing token over its own API instead. This module is such a web player, but it has
-no control plane and no Music Assistant API client, so it calls back into the application. The
-module makes the call when a session comes up unpaired, and it makes the call again after a
-server-side unpair. A client that talks to a Sendspin server directly can supply a `pairWebPlayer`
-that does nothing, and pair the player by the code instead.
+**`approvePairing` pairs the player without a person.** A Sendspin server does not accept an
+unknown player on its own. It shows a pairing code, and a person approves the code. A Sendspin
+server also accepts a pairing token that arrives over a channel it already trusts. That second
+route needs no person.
+
+The module mints the token, but it cannot deliver it. It speaks one protocol on one socket, and
+it holds no control plane. So it gives the token to the application, and the application gets
+the token approved. The module asks when a session comes up unpaired. The module asks again
+after a server-side unpair, so the player returns on the next reconnect.
+
+Music Assistant supplies the trusted channel: the application spends the token on the
+`sendspin/pair_web_player` command of its own API connection. An application that pairs by the
+code supplies an `approvePairing` that does nothing.
 
 ### State and events
 

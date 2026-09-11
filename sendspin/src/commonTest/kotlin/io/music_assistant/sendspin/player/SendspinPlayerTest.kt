@@ -110,7 +110,7 @@ class SendspinPlayerTest {
                 keyStore = keyStore,
                 httpClient = httpClient,
                 online = online,
-                pairWebPlayer = { pairCalls++ },
+                approvePairing = { pairCalls++ },
                 audioDispatcher = StandardTestDispatcher(scope.testScheduler),
                 clock = clock,
             )

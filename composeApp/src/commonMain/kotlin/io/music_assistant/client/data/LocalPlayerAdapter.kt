@@ -79,8 +79,9 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  *
  * Registered in `SharedModule` with the key store and [LocalPlayerEndpoints];
  * the `AudioSink` and the `DecoderFactory` come from `AndroidModule` and
- * `IosModule`. [pairWebPlayer] is the app's half of silent pairing: the module
- * has no MA API client, so it calls back here to spend the pairing token.
+ * `IosModule`. [approvePairing] is the app's half of silent pairing: the module
+ * has no MA API client, so it calls back here to spend the pairing token on
+ * `sendspin/pair_web_player`, which pairs the player without a person.
  */
 class LocalPlayerAdapter(
     private val settings: SettingsRepository,
@@ -139,7 +140,7 @@ class LocalPlayerAdapter(
             keyStore = keyStore,
             httpClient = createPlatformHttpClient(),
             online = networkMonitor.isAvailable,
-            pairWebPlayer = ::pairWebPlayer,
+            approvePairing = ::approvePairing,
             audioDispatcher = audioDispatcher,
         ),
         scope = this,
@@ -201,7 +202,7 @@ class LocalPlayerAdapter(
             FailureCause.SetupFailed -> Res.string.sendspin_failed_setup
         }
 
-    private suspend fun pairWebPlayer(pairingToken: String) {
+    private suspend fun approvePairing(pairingToken: String) {
         val request = Request(
             command = PAIR_WEB_PLAYER_COMMAND,
             args = kotlinx.serialization.json.buildJsonObject {
