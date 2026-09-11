@@ -115,6 +115,38 @@ class MediaSessionActionsTest {
         }
     }
 
+    @Test
+    fun `stream favorite wins the same slot as track favorite`() {
+        assertEquals(
+            listOf(SessionAction.SWITCH_PLAYER, SessionAction.FAVORITE),
+            sessionActions(
+                data(
+                    multiplePlayers = true,
+                    isFavoritableTrack = false,
+                    isFavoritableStream = true,
+                ),
+            ),
+        )
+        assertEquals(
+            listOf(SessionAction.SHUFFLE, SessionAction.FAVORITE),
+            sessionActions(data(isFavoritableTrack = false, isFavoritableStream = true)),
+        )
+    }
+
+    @Test
+    fun `no favorite slot when neither track nor stream is favoritable`() {
+        assertEquals(
+            listOf(SessionAction.SWITCH_PLAYER, SessionAction.SHUFFLE),
+            sessionActions(
+                data(
+                    multiplePlayers = true,
+                    isFavoritableTrack = false,
+                    isFavoritableStream = false,
+                ),
+            ),
+        )
+    }
+
     /**
      * Mirrors the gates in [MediaNotificationData.from]: a dynamic playlist nulls both
      * queue toggles because the server does not accept them there.
@@ -124,6 +156,7 @@ class MediaSessionActionsTest {
         isDynamic: Boolean = false,
         isFavoritableTrack: Boolean = true,
         isLongFormContent: Boolean = false,
+        isFavoritableStream: Boolean = false,
     ) = MediaNotificationData(
         multiplePlayers = multiplePlayers,
         longItemId = null,
@@ -134,6 +167,7 @@ class MediaSessionActionsTest {
         shuffleEnabled = false.takeIf { !isDynamic },
         isLongFormContent = isLongFormContent,
         isFavoritableTrack = isFavoritableTrack,
+        isFavoritableStream = isFavoritableStream,
         isFavorite = false,
         isPlaying = true,
         imageUrl = null,

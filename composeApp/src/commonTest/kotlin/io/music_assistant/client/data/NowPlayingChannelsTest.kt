@@ -121,24 +121,25 @@ class NowPlayingTrackChannelTest {
     }
 }
 
-class NowPlayingRadioStreamMetadataTest {
-    private fun streamMedia(
-        title: String? = "Song",
-        artist: String? = "Artist",
-        queueItemId: String? = "queue-item-1",
-        imageUrl: String? = null,
-    ) = PlayerMedia(
-        title = title,
-        artist = artist,
-        album = null,
-        imageUrl = imageUrl,
-        duration = null,
-        queueId = "queue-1",
-        queueItemId = queueItemId,
-        mediaType = MediaType.RADIO,
-        uri = null,
-    )
+/** Shared by [NowPlayingRadioStreamMetadataTest] and [PlayerDataHasFavoritableStreamTrackTest]. */
+private fun streamMedia(
+    title: String? = "Song",
+    artist: String? = "Artist",
+    queueItemId: String? = "queue-item-1",
+    imageUrl: String? = null,
+) = PlayerMedia(
+    title = title,
+    artist = artist,
+    album = null,
+    imageUrl = imageUrl,
+    duration = null,
+    queueId = "queue-1",
+    queueItemId = queueItemId,
+    mediaType = MediaType.RADIO,
+    uri = null,
+)
 
+class NowPlayingRadioStreamMetadataTest {
     private fun radioTrack(media: PlayerMedia?): NowPlayingTrack =
         buildNowPlayingTrack(
             playerData(testRadio(), queueInfo(queueId = "queue-1"), currentMedia = media),
@@ -194,6 +195,54 @@ class NowPlayingRadioStreamMetadataTest {
             playerData(testTrack(), queueInfo(queueId = "queue-1"), currentMedia = streamMedia()),
         )!!
         assertEquals("name", built.title)
+    }
+}
+
+/**
+ * Pins [PlayerData.hasFavoritableStreamTrack] against the same fixtures as
+ * [NowPlayingRadioStreamMetadataTest] — it must agree with what the Now Playing
+ * metadata actually renders, since the media session and the in-app player both act
+ * on it for the "favourite the song on air" gesture.
+ */
+class PlayerDataHasFavoritableStreamTrackTest {
+    private fun radioPlayerData(media: PlayerMedia?): PlayerData =
+        playerData(testRadio(), queueInfo(queueId = "queue-1"), currentMedia = media)
+
+    @Test
+    fun radioWithRealTitleIsFavoritable() {
+        assertTrue(radioPlayerData(streamMedia()).hasFavoritableStreamTrack())
+    }
+
+    @Test
+    fun titleEqualToStationNameIsNotFavoritable() {
+        assertFalse(radioPlayerData(streamMedia(title = "name")).hasFavoritableStreamTrack())
+    }
+
+    @Test
+    fun blankTitleIsNotFavoritable() {
+        assertFalse(radioPlayerData(streamMedia(title = " ")).hasFavoritableStreamTrack())
+    }
+
+    @Test
+    fun missingTitleIsNotFavoritable() {
+        assertFalse(radioPlayerData(streamMedia(title = null)).hasFavoritableStreamTrack())
+    }
+
+    @Test
+    fun queueItemIdMismatchIsNotFavoritable() {
+        val media = streamMedia(queueItemId = "queue-item-other")
+        assertFalse(radioPlayerData(media).hasFavoritableStreamTrack())
+    }
+
+    @Test
+    fun noCurrentMediaIsNotFavoritable() {
+        assertFalse(radioPlayerData(null).hasFavoritableStreamTrack())
+    }
+
+    @Test
+    fun nonRadioContentIsNotFavoritable() {
+        val data = playerData(testTrack(), queueInfo(queueId = "queue-1"), currentMedia = streamMedia())
+        assertFalse(data.hasFavoritableStreamTrack())
     }
 }
 
