@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
@@ -282,6 +283,7 @@ fun FullPlayerItem(
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
+    onFavoriteStreamClick: (PlayerData) -> Unit = {},
     livePositionFlow: Flow<Double>?,
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
@@ -694,6 +696,20 @@ fun FullPlayerItem(
                         imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = stringResource(Res.string.cd_favorite),
                         tint = if (isFavorite) favoriteTint else colors.controlTint,
+                    )
+                }
+            } else if (item.hasFavoritableStreamTrack()) {
+                // Radio favourite adds the on-air song to the library; the queue's `favorite`
+                // flag is the station's, not the song's, so there is no "already favourited"
+                // state and the heart always renders un-filled.
+                IconButton(
+                    modifier = Modifier.size(favoriteSlot),
+                    onClick = { onFavoriteStreamClick(item) },
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.FavoriteBorder,
+                        contentDescription = stringResource(Res.string.cd_favorite),
+                        tint = colors.controlTint,
                     )
                 }
             } else {

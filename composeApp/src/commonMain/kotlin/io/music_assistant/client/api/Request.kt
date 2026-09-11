@@ -173,6 +173,19 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("player_id", JsonPrimitive(playerId))
             },
         )
+
+        /**
+         * Resolves [playerId]'s current on-air stream title to a library item and
+         * favourites it. Add-only: the queue's `favorite` flag belongs to the station,
+         * not the song, so there is no matching "remove" call. Raises server-side when
+         * the player has no stream title or the title can't be resolved to an item.
+         */
+        fun addCurrentlyPlayingToFavorites(playerId: String) = Request(
+            command = APICommands.PLAYERS_ADD_CURRENTLY_PLAYING_TO_FAVORITES,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+            },
+        )
     }
 
     data object Queue {

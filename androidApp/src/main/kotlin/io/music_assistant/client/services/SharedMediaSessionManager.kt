@@ -23,6 +23,7 @@ import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
 import io.music_assistant.client.data.CarConnectionMonitor
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
@@ -434,10 +435,15 @@ class SharedMediaSessionManager(
                         }
                     }
 
-                    "ACTION_TOGGLE_FAVORITE" ->
-                        (currentPlayer()?.queueInfo?.currentItem?.track as? AppMediaItem)
+                    "ACTION_TOGGLE_FAVORITE" -> {
+                        val pd = currentPlayer()
+                        (pd?.queueInfo?.currentItem?.track as? AppMediaItem)
                             ?.takeIf { it.mediaType == MediaType.TRACK && it.canBeFavorited }
                             ?.let { dataSource.toggleFavorite(it) }
+                            // Radio: no track to toggle, just the stream's on-air song to add.
+                            ?: pd?.takeIf { it.hasFavoritableStreamTrack() }
+                                ?.let { dataSource.favoriteCurrentlyPlaying(it) }
+                    }
                 }
             }
         }

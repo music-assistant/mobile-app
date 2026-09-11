@@ -44,6 +44,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
+import io.music_assistant.client.data.model.server.supportsFavoriteCurrentlyPlaying
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.model.GoodbyeReason
 import io.music_assistant.client.settings.SettingsRepository
@@ -908,6 +909,30 @@ class MainDataSource(
                 )
             }
             result.onFailure { setFavoriteOverride(item, item.favorite) }
+        }
+    }
+
+    /**
+     * Favourites the song currently on air on [playerData]'s radio stream. Unlike
+     * [toggleFavorite], this always adds: the queue payload's `favorite` flag belongs
+     * to the station, not the on-air song, so there is no truthful "already
+     * favourited" state to toggle from. No optimistic override — the server resolves
+     * the favourited item from the stream title, not from the queue item, so there is
+     * nothing local to flip ahead of the round trip.
+     */
+    fun favoriteCurrentlyPlaying(playerData: PlayerData) {
+        launch {
+            val schemaVersion =
+                (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
+            if (!supportsFavoriteCurrentlyPlaying(schemaVersion)) {
+                log.w { "Server schema $schemaVersion predates add_currently_playing_to_favorites" }
+                return@launch
+            }
+            apiClient.sendRequest(
+                Request.Player.addCurrentlyPlayingToFavorites(playerData.player.id),
+            ).onFailure {
+                log.e(it) { "Failed to favorite currently playing for ${playerData.player.id}" }
+            }
         }
     }
 

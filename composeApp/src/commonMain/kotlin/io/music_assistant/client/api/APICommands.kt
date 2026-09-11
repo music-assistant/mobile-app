@@ -14,6 +14,7 @@ object APICommands {
     const val PLAYERS_CMD_UNGROUP = "$PLAYERS_CMD/ungroup"
     const val PLAYERS_SLEEP_TIMER_SET = "players/sleep_timer/set"
     const val PLAYERS_SLEEP_TIMER_CLEAR = "players/sleep_timer/clear"
+    const val PLAYERS_ADD_CURRENTLY_PLAYING_TO_FAVORITES = "players/add_currently_playing_to_favorites"
 
     // Player Queue commands
     const val PLAYER_QUEUES_ALL = "player_queues/all"
