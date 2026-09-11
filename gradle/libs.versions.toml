@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.0"
 android-compileSdk = "37"
 android-minSdk = "28"
 android-targetSdk = "36"
@@ -47,6 +47,10 @@ turbine = "1.2.1"
 # Pre-1.0 crypto primitives library; pinned deliberately. Wraps OS-native
 # crypto (JDK provider on Android, CryptoKit on iOS) behind one commonMain API.
 cryptographyKotlin = "0.6.0"
+# BouncyCastle supplies X25519 on Android, where the platform JCA registers it
+# only from API 33. Only the lightweight RFC 7748 math is used, not the JCA
+# provider bridge, so R8 strips the rest of the library.
+bouncycastle = "1.85.2"
 
 
 [libraries]
@@ -82,6 +86,7 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 ktor-client-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-client-webrtc = { module = "io.ktor:ktor-client-webrtc", version.ref = "ktor" }
 
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
@@ -133,6 +138,8 @@ cryptography-provider-jdk = { module = "dev.whyoleg.cryptography:cryptography-pr
 # The CryptoKit provider (not "apple"/CommonCrypto) is required on iOS: it is
 # the one registering XDH (X25519) and ChaCha20-Poly1305.
 cryptography-provider-cryptokit = { module = "dev.whyoleg.cryptography:cryptography-provider-cryptokit", version.ref = "cryptographyKotlin" }
+
+bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

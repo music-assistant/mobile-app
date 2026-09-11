@@ -1,7 +1,11 @@
 package io.music_assistant.client.data
 
+import io.music_assistant.client.data.model.client.Player
+import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,7 +14,9 @@ import kotlin.test.assertNull
 /**
  * Pins the remote-command-string contract shared by the lock screen, Control
  * Center, and CarPlay entry points. Toggle commands must carry the current
- * queue state so the optimistic-update machinery flips from the right side.
+ * queue state so the optimistic-update machinery flips from the right side,
+ * and a local play/pause toggle must resolve to the explicit action before it
+ * can reach the offline queue.
  */
 class RemoteCommandMappingTest {
     private fun queueInfo(
@@ -84,4 +90,72 @@ class RemoteCommandMappingTest {
         assertNull(remoteCommandToPlayerAction("warp_speed", null))
         assertNull(remoteCommandToPlayerAction("", null))
     }
+
+    // --- resolveLocalToggle ---
+
+    @Test
+    fun aLocalToggleResolvesAgainstTheStateTheUserSees() {
+        assertEquals(
+            PlayerAction.Play,
+            resolveLocalToggle(playerData(isPlaying = false), PlayerAction.TogglePlayPause),
+        )
+        assertEquals(
+            PlayerAction.Pause,
+            resolveLocalToggle(playerData(isPlaying = true), PlayerAction.TogglePlayPause),
+        )
+    }
+
+    @Test
+    fun aPendingPlayCountsAsPlayingSoTheNextToggleCancelsIt() {
+        assertEquals(
+            PlayerAction.Pause,
+            resolveLocalToggle(
+                playerData(isPlaying = false, pendingPlay = true),
+                PlayerAction.TogglePlayPause,
+            ),
+        )
+    }
+
+    @Test
+    fun everyOtherActionPassesThrough() {
+        val data = playerData(isPlaying = true)
+        assertEquals(PlayerAction.Next, resolveLocalToggle(data, PlayerAction.Next))
+        assertEquals(PlayerAction.Play, resolveLocalToggle(data, PlayerAction.Play))
+        assertEquals(PlayerAction.SeekTo(42), resolveLocalToggle(data, PlayerAction.SeekTo(42)))
+    }
+
+    private fun playerData(isPlaying: Boolean, pendingPlay: Boolean = false): PlayerData = PlayerData(
+        player = Player(
+            id = "sendspin-local",
+            name = "Local player",
+            provider = "builtin",
+            type = PlayerType.PLAYER,
+            isListed = true,
+            isAvailable = true,
+            needsSetup = false,
+            canSetVolume = false,
+            canPower = false,
+            isPowered = true,
+            volumeLevel = null,
+            volumeControl = null,
+            volumeMuted = false,
+            canMute = false,
+            queueId = "queue-1",
+            isPlaying = isPlaying,
+            isAnnouncing = false,
+            canGroupWith = null,
+            groupMembers = null,
+            staticGroupMembers = null,
+            activeGroup = null,
+            syncedTo = null,
+            groupVolume = null,
+            groupVolumeMuted = false,
+            currentMedia = null,
+        ),
+        queue = DataState.NoData(),
+        parentBind = null,
+        childrenBinds = emptyList(),
+        isLocal = true,
+        pendingPlay = pendingPlay,
+    )
 }

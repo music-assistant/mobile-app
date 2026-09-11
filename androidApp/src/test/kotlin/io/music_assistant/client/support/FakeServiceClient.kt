@@ -693,6 +693,9 @@ class FakeServiceClient : ServiceClient {
         TODO("Not yet implemented")
     }
 
+    override fun requestCommandRecovery() {
+    }
+
     override fun onPlaybackActive() {
     }
 

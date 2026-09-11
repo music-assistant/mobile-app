@@ -550,9 +550,9 @@ class WebRTCConnectionManager(
     /**
      * Set up the sendspin data channel.
      *
-     * The channel is stored and monitored, but message handling is delegated to SendspinClient
-     * via the SendspinTransport abstraction. This method just ensures the channel is available
-     * and logs its state changes.
+     * This manager only holds the channel and logs its state. Every message on it belongs to
+     * the local player: `LocalPlayerEndpoints` wraps the open channel in a `SendspinTransport`
+     * and the `:sendspin` module owns the protocol on top of it.
      */
     private fun setupSendspinDataChannel(channel: DataChannelWrapper) {
         // Close previous sendspin channel if exists (reconnection edge case)

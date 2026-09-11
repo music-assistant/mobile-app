@@ -280,6 +280,10 @@
   <string name="search_start">Start searching…</string>
   <string name="search_title">Global search</string>
   <string name="sendspin_encryption_required_unavailable">Encrypted connection required, but this server does not support it. Update Music Assistant or disable the requirement.</string>
+  <string name="sendspin_failed_server_rejected">The server refused this device as a player. Check the Music Assistant server log.</string>
+  <string name="sendspin_failed_setup">This device cannot start the local player. Send the app log to the developers.</string>
+  <string name="sendspin_failed_unauthorized">The server did not accept this device as a player. Sign in again.</string>
+  <string name="sendspin_failed_unpaired">The server removed this device. Pair it again in the settings.</string>
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
