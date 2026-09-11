@@ -244,6 +244,18 @@ class PlayerDataHasFavoritableStreamTrackTest {
         val data = playerData(testTrack(), queueInfo(queueId = "queue-1"), currentMedia = streamMedia())
         assertFalse(data.hasFavoritableStreamTrack())
     }
+
+    // canFavoriteCurrentlyPlaying additionally requires server support (schema >= 27):
+    // a real on-air song is not enough on its own.
+    @Test
+    fun realTitleBelowSchema27IsNotFavoritable() {
+        assertFalse(radioPlayerData(streamMedia()).canFavoriteCurrentlyPlaying(26))
+    }
+
+    @Test
+    fun realTitleAtOrAboveSchema27IsFavoritable() {
+        assertTrue(radioPlayerData(streamMedia()).canFavoriteCurrentlyPlaying(27))
+    }
 }
 
 class NowPlayingTransportDedupTest {

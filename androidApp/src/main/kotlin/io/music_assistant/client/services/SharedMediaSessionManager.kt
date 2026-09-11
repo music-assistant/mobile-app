@@ -23,7 +23,6 @@ import io.music_assistant.client.auto.toMediaDescription
 import io.music_assistant.client.auto.toUri
 import io.music_assistant.client.data.CarConnectionMonitor
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
@@ -365,6 +364,7 @@ class SharedMediaSessionManager(
                     multiplePlayers = multiplePlayers,
                     effectiveElapsedSec = elapsedSec,
                     currentChapter = chapter,
+                    isFavoritableStream = dataSource.canFavoriteCurrentlyPlaying(player),
                 )
             }
             .distinctUntilChanged { old, new -> MediaNotificationData.areTooSimilarToUpdate(old, new) }
@@ -441,7 +441,7 @@ class SharedMediaSessionManager(
                             ?.takeIf { it.mediaType == MediaType.TRACK && it.canBeFavorited }
                             ?.let { dataSource.toggleFavorite(it) }
                             // Radio: no track to toggle, just the stream's on-air song to add.
-                            ?: pd?.takeIf { it.hasFavoritableStreamTrack() }
+                            ?: pd?.takeIf { dataSource.canFavoriteCurrentlyPlaying(it) }
                                 ?.let { dataSource.favoriteCurrentlyPlaying(it) }
                     }
                 }

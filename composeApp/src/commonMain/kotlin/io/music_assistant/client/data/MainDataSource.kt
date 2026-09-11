@@ -44,7 +44,6 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
-import io.music_assistant.client.data.model.server.supportsFavoriteCurrentlyPlaying
 import io.music_assistant.client.player.MediaPlayerController
 import io.music_assistant.client.player.sendspin.model.GoodbyeReason
 import io.music_assistant.client.settings.SettingsRepository
@@ -913,26 +912,31 @@ class MainDataSource(
     }
 
     /**
+     * True when [playerData] has a real on-air stream song the connected server can
+     * resolve to a favouritable item. Gates the stream-favourite heart on both the
+     * media session and the in-app player, and guards [favoriteCurrentlyPlaying].
+     */
+    fun canFavoriteCurrentlyPlaying(playerData: PlayerData): Boolean =
+        playerData.canFavoriteCurrentlyPlaying(
+            (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion,
+        )
+
+    /**
      * Favourites the song currently on air on [playerData]'s radio stream. Unlike
      * [toggleFavorite], this always adds: the queue payload's `favorite` flag belongs
      * to the station, not the on-air song, so there is no truthful "already
      * favourited" state to toggle from. No optimistic override — the server resolves
      * the favourited item from the stream title, not from the queue item, so there is
-     * nothing local to flip ahead of the round trip.
+     * nothing local to flip ahead of the round trip. A server that can't resolve the
+     * title (no title / not in any library) is an expected refusal, not an error —
+     * same silent convention as [toggleFavorite]'s onFailure.
      */
     fun favoriteCurrentlyPlaying(playerData: PlayerData) {
+        if (!canFavoriteCurrentlyPlaying(playerData)) return
         launch {
-            val schemaVersion =
-                (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
-            if (!supportsFavoriteCurrentlyPlaying(schemaVersion)) {
-                log.w { "Server schema $schemaVersion predates add_currently_playing_to_favorites" }
-                return@launch
-            }
             apiClient.sendRequest(
                 Request.Player.addCurrentlyPlayingToFavorites(playerData.player.id),
-            ).onFailure {
-                log.e(it) { "Failed to favorite currently playing for ${playerData.player.id}" }
-            }
+            )
         }
     }
 

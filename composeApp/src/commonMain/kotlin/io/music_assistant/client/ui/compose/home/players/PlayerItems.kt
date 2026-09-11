@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
@@ -284,6 +283,8 @@ fun FullPlayerItem(
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onFavoriteClick: (AppMediaItem) -> Unit,
     onFavoriteStreamClick: (PlayerData) -> Unit = {},
+    // See MainDataSource.canFavoriteCurrentlyPlaying: on-air song AND server support.
+    canFavoriteStream: Boolean = false,
     livePositionFlow: Flow<Double>?,
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
@@ -698,7 +699,7 @@ fun FullPlayerItem(
                         tint = if (isFavorite) favoriteTint else colors.controlTint,
                     )
                 }
-            } else if (item.hasFavoritableStreamTrack()) {
+            } else if (canFavoriteStream) {
                 // Radio favourite adds the on-air song to the library; the queue's `favorite`
                 // flag is the station's, not the song's, so there is no "already favourited"
                 // state and the heart always renders un-filled.

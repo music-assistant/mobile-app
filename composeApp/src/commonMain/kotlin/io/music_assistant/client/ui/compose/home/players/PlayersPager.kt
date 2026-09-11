@@ -342,6 +342,7 @@ fun PlayersPager(
                                 onFavoriteStreamClick = {
                                     actionsViewModel.onFavoriteStreamClick(it)
                                 },
+                                canFavoriteStream = actionsViewModel.canFavoriteStream(player),
                                 onClose = onClose,
                                 queueAction = { homeScreenViewModel.queueAction(it) },
                                 allPlayers = playerDataList,
@@ -434,6 +435,7 @@ private fun ExpandedPlayerPage(
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     onFavoriteClick: (AppMediaItem) -> Unit,
     onFavoriteStreamClick: (PlayerData) -> Unit = {},
+    canFavoriteStream: Boolean = false,
     onClose: () -> Unit,
     queueAction: (QueueAction) -> Unit,
     allPlayers: List<PlayerData>,
@@ -623,6 +625,7 @@ private fun ExpandedPlayerPage(
                             playerAction = playerAction,
                             onFavoriteClick = onFavoriteClick,
                             onFavoriteStreamClick = onFavoriteStreamClick,
+                            canFavoriteStream = canFavoriteStream,
                             lyricsAvailable = lyricsAvailable,
                             onLyricsClick = onLyricsClick,
                             onAudioChainClick = onAudioChainClick,

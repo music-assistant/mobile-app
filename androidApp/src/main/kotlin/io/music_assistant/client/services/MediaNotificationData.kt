@@ -1,7 +1,6 @@
 package io.music_assistant.client.services
 
 import android.os.SystemClock
-import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
@@ -63,9 +62,11 @@ data class MediaNotificationData(
             multiplePlayers: Boolean,
             effectiveElapsedSec: Double?,
             currentChapter: ResolvedChapter? = null,
+            // Real on-air stream song AND the connected server can resolve it — see
+            // MainDataSource.canFavoriteCurrentlyPlaying, the single source for this.
+            isFavoritableStream: Boolean = false,
         ) = run {
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
-            val isFavoritableStream = playerData.hasFavoritableStreamTrack()
             MediaNotificationData(
             multiplePlayers = multiplePlayers,
             longItemId = playerData.player.currentMedia?.hashCode()?.toLong(),

@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.data.model.client.navigationChapters
+import io.music_assistant.client.data.model.server.supportsFavoriteCurrentlyPlaying
 import io.music_assistant.client.utils.monotonicMs
 import kotlin.math.abs
 
@@ -162,6 +163,10 @@ fun PlayerData.hasFavoritableStreamTrack(): Boolean {
     val currentItem = queueInfo?.currentItem ?: return false
     return radioStreamTitle(this, currentItem) != null
 }
+
+/** [hasFavoritableStreamTrack] AND the connected server can resolve it (schema >= 27). */
+fun PlayerData.canFavoriteCurrentlyPlaying(schemaVersion: Int?): Boolean =
+    hasFavoritableStreamTrack() && supportsFavoriteCurrentlyPlaying(schemaVersion)
 
 /**
  * Maps local state to a transport anchor; [currentChapter] makes elapsed time

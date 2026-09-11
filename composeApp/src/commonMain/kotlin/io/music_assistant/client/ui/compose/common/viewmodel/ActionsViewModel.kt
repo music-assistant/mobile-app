@@ -69,6 +69,9 @@ class ActionsViewModel(
     /** Favourites the on-air song for a radio stream. See [MainDataSource.favoriteCurrentlyPlaying]. */
     fun onFavoriteStreamClick(playerData: PlayerData) = dataSource.favoriteCurrentlyPlaying(playerData)
 
+    /** See [MainDataSource.canFavoriteCurrentlyPlaying]. */
+    fun canFavoriteStream(playerData: PlayerData) = dataSource.canFavoriteCurrentlyPlaying(playerData)
+
     override suspend fun getEditablePlaylists(): List<Playlist> =
         mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
             .getOrNull()
