@@ -927,9 +927,9 @@ class MainDataSource(
      * to the station, not the on-air song, so there is no truthful "already
      * favourited" state to toggle from. No optimistic override — the server resolves
      * the favourited item from the stream title, not from the queue item, so there is
-     * nothing local to flip ahead of the round trip. A server that can't resolve the
-     * title (no title / not in any library) is an expected refusal, not an error —
-     * same silent convention as [toggleFavorite]'s onFailure.
+     * nothing local to flip ahead of the round trip. An unsupported server or an
+     * unresolvable title is an expected refusal, not an error — silent, like
+     * [toggleFavorite]'s onFailure.
      */
     fun favoriteCurrentlyPlaying(playerData: PlayerData) {
         if (!canFavoriteCurrentlyPlaying(playerData)) return

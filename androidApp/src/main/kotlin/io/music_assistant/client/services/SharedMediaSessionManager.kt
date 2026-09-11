@@ -440,8 +440,9 @@ class SharedMediaSessionManager(
                         (pd?.queueInfo?.currentItem?.track as? AppMediaItem)
                             ?.takeIf { it.mediaType == MediaType.TRACK && it.canBeFavorited }
                             ?.let { dataSource.toggleFavorite(it) }
-                            // Radio: no track to toggle, just the stream's on-air song to add.
-                            ?: pd?.takeIf { dataSource.canFavoriteCurrentlyPlaying(it) }
+                            // Radio: no track to toggle, just the stream's on-air song to add
+                            // (favoriteCurrentlyPlaying guards support and metadata itself).
+                            ?: pd
                                 ?.let { dataSource.favoriteCurrentlyPlaying(it) }
                     }
                 }
