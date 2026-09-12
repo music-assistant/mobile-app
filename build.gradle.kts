@@ -87,7 +87,7 @@ subprojects {
     }
 }
 
-val checkTestNames by tasks.registering {
+val checkTestNames = tasks.register("checkTestNames") {
     group = "verification"
     description = "Fails when backtick-named Kotlin @Test functions contain characters rejected by Kotlin/Native."
 

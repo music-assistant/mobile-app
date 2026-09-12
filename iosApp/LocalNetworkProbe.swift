@@ -96,7 +96,7 @@ final class LocalNetworkProbe: NSObject, LocalNetworkPermissionProber {
             case .failed(let error):
                 NativeLog.shared.warn(tag: "LocalNetworkProbe", message: "browser .failed: \(String(describing: error))")
                 finish(nil, "browser .failed")
-            case .cancelled:
+            case .cancelled, .setup:
                 break
             @unknown default:
                 NativeLog.shared.warn(tag: "LocalNetworkProbe", message: "browser state \(state)")

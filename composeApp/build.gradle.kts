@@ -50,7 +50,9 @@ kotlin {
             // Trades a touch of release-link optimization for ~28% faster
             // linkReleaseFrameworkIosArm64 and a smaller binary. Experimental
             // Kotlin/Native flag — revisit if release-build correctness regresses.
-            binaryOption("smallBinary", "true")
+            if (buildType.name == "RELEASE") {
+                binaryOption("smallBinary", "true")
+            }
         }
 
         val webRtcSlice = if (iosTarget.name == "iosSimulatorArm64") {
@@ -181,7 +183,7 @@ val mdiFontOut = layout.projectDirectory.file("src/commonMain/composeResources/f
 val mdiCodepointsOut = layout.projectDirectory.file("src/commonMain/composeResources/files/mdi_codepoints.json")
 val mdiVersionMarker = layout.buildDirectory.file("mdi/version.marker")
 
-val generateMdiResources by tasks.registering {
+val generateMdiResources = tasks.register("generateMdiResources") {
     description = "Fetches the MDI webfont and generates a slim name->codepoint table."
     group = "build setup"
     inputs.property("mdiVersion", mdiVersion)
