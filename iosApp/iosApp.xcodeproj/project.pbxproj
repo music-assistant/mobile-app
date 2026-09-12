@@ -15,12 +15,9 @@
 		6CF3E16270B477C8D3CDB192 /* NowPlayingInfoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E184B96B79725950AACD5BE7 /* NowPlayingInfoStore.swift */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 		C29F123E61DAA17B671EC955 /* NowPlayingInfoStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE624765BDE4DC4138CA710 /* NowPlayingInfoStoreTests.swift */; };
-		C29F123E61DAA17B671EC956 /* PCMChunker.swift in iosAppTests Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1992F18C88B00185678 /* PCMChunker.swift */; };
-		E8RCH0012F1A000000000001 /* RemoteCommandHandlerStore.swift in iosApp Sources */ = {isa = PBXBuildFile; fileRef = E8RCH0002F1A000000000002 /* RemoteCommandHandlerStore.swift */; };
-		E8RCH0012F1A000000000003 /* RemoteCommandHandlerStore.swift in iosAppTests Sources */ = {isa = PBXBuildFile; fileRef = E8RCH0002F1A000000000002 /* RemoteCommandHandlerStore.swift */; };
-		E8RCH0012F1A000000000004 /* RemoteCommandHandlerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8RCH0002F1A000000000005 /* RemoteCommandHandlerStoreTests.swift */; };
+		C29F123E61DAA17B671EC956 /* PCMChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1992F18C88B00185678 /* PCMChunker.swift */; };
+		C29F123E61DAA17B671EC957 /* PCMChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1992F18C88B00185678 /* PCMChunker.swift */; };
 		C29F123E61DAA17B671EC958 /* PCMChunkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC19A2F18C88B00185678 /* PCMChunkerTests.swift */; };
-		C29F123E61DAA17B671EC957 /* PCMChunker.swift in iosApp Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1992F18C88B00185678 /* PCMChunker.swift */; };
 		C85119262F18C7A900185678 /* Copus in Frameworks */ = {isa = PBXBuildFile; productRef = C85119252F18C7A900185678 /* Copus */; };
 		C85119282F18C7A900185678 /* Opus in Frameworks */ = {isa = PBXBuildFile; productRef = C85119272F18C7A900185678 /* Opus */; };
 		C851192B2F18C88B00185678 /* FLAC in Frameworks */ = {isa = PBXBuildFile; productRef = C851192A2F18C88B00185678 /* FLAC */; };
@@ -28,16 +25,19 @@
 		C8AV00012F2C000000000001 /* AppIntentVocabulary.plist in Resources */ = {isa = PBXBuildFile; fileRef = C8AV00022F2C000000000002 /* AppIntentVocabulary.plist */; };
 		C8CP00012F1A000000000001 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */; };
 		C8CP00022F1A000000000002 /* CarPlayContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00042F1A000000000002 /* CarPlayContentManager.swift */; };
-		D8CP1001F1A000000000001 /* CarPlayNavigationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CP0001F1A000000000001 /* CarPlayNavigationCoordinator.swift */; };
 		C8CP00042F1A000000000004 /* CarPlayInterfaceControllerNavigationDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00062F1A000000000004 /* CarPlayInterfaceControllerNavigationDriver.swift */; };
 		C8CP00052F1A000000000005 /* CarPlayNavigationCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CP00072F1A000000000005 /* CarPlayNavigationCoordinatorTests.swift */; };
-		D8CP1002F1A000000000002 /* CarPlayNavigationCoordinator.swift in iosAppTests Sources */ = {isa = PBXBuildFile; fileRef = D8CP0001F1A000000000001 /* CarPlayNavigationCoordinator.swift */; };
 		C8FCC1922F17C6A9005E8312 /* NowPlayingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1912F17C6A9005E8312 /* NowPlayingCoordinator.swift */; };
 		C8FCC1952F17E001005E8312 /* NativeAudioController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1962F17E001005E8312 /* NativeAudioController.swift */; };
+		C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1982F17E001005E8312 /* AudioDecoders.swift */; };
 		C8OA00022F1B000000000002 /* OAuthWebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8OA00012F1B000000000001 /* OAuthWebSession.swift */; };
 		C8OA00022F1B000000000004 /* LocalNetworkProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8OA00012F1B000000000003 /* LocalNetworkProbe.swift */; };
-		C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FCC1982F17E001005E8312 /* AudioDecoders.swift */; };
 		C8SI00012F1B000000000001 /* SiriIntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8SI00022F1B000000000001 /* SiriIntentHandler.swift */; };
+		D8CP1001F1A000000000001 /* CarPlayNavigationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CP0001F1A000000000001 /* CarPlayNavigationCoordinator.swift */; };
+		D8CP1002F1A000000000002 /* CarPlayNavigationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CP0001F1A000000000001 /* CarPlayNavigationCoordinator.swift */; };
+		E8RCH0012F1A000000000001 /* RemoteCommandHandlerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8RCH0002F1A000000000002 /* RemoteCommandHandlerStore.swift */; };
+		E8RCH0012F1A000000000003 /* RemoteCommandHandlerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8RCH0002F1A000000000002 /* RemoteCommandHandlerStore.swift */; };
+		E8RCH0012F1A000000000004 /* RemoteCommandHandlerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8RCH0002F1A000000000005 /* RemoteCommandHandlerStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,18 +54,18 @@
 		C8AV00032F2C000000000003 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = en; path = en.lproj/AppIntentVocabulary.plist; sourceTree = "<group>"; };
 		C8CP00032F1A000000000001 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		C8CP00042F1A000000000002 /* CarPlayContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayContentManager.swift; sourceTree = "<group>"; };
-		D8CP0001F1A000000000001 /* CarPlayNavigationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayNavigationCoordinator.swift; sourceTree = "<group>"; };
 		C8CP00062F1A000000000004 /* CarPlayInterfaceControllerNavigationDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayInterfaceControllerNavigationDriver.swift; sourceTree = "<group>"; };
 		C8CP00072F1A000000000005 /* CarPlayNavigationCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayNavigationCoordinatorTests.swift; sourceTree = "<group>"; };
 		C8FCC1912F17C6A9005E8312 /* NowPlayingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingCoordinator.swift; sourceTree = "<group>"; };
 		C8FCC1962F17E001005E8312 /* NativeAudioController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAudioController.swift; sourceTree = "<group>"; };
-		C8OA00012F1B000000000001 /* OAuthWebSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthWebSession.swift; sourceTree = "<group>"; };
-		C8OA00012F1B000000000003 /* LocalNetworkProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNetworkProbe.swift; sourceTree = "<group>"; };
 		C8FCC1982F17E001005E8312 /* AudioDecoders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoders.swift; sourceTree = "<group>"; };
-		C8SI00022F1B000000000001 /* SiriIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriIntentHandler.swift; sourceTree = "<group>"; };
-		E184B96B79725950AACD5BE7 /* NowPlayingInfoStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NowPlayingInfoStore.swift; sourceTree = "<group>"; };
 		C8FCC1992F18C88B00185678 /* PCMChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCMChunker.swift; sourceTree = "<group>"; };
 		C8FCC19A2F18C88B00185678 /* PCMChunkerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCMChunkerTests.swift; sourceTree = "<group>"; };
+		C8OA00012F1B000000000001 /* OAuthWebSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthWebSession.swift; sourceTree = "<group>"; };
+		C8OA00012F1B000000000003 /* LocalNetworkProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNetworkProbe.swift; sourceTree = "<group>"; };
+		C8SI00022F1B000000000001 /* SiriIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriIntentHandler.swift; sourceTree = "<group>"; };
+		D8CP0001F1A000000000001 /* CarPlayNavigationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayNavigationCoordinator.swift; sourceTree = "<group>"; };
+		E184B96B79725950AACD5BE7 /* NowPlayingInfoStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NowPlayingInfoStore.swift; sourceTree = "<group>"; };
 		E8RCH0002F1A000000000002 /* RemoteCommandHandlerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCommandHandlerStore.swift; sourceTree = "<group>"; };
 		E8RCH0002F1A000000000005 /* RemoteCommandHandlerStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCommandHandlerStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -242,7 +242,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 1130;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 2660;
 				ORGANIZATIONNAME = orgName;
 				TargetAttributes = {
 					7555FF7A242A565900829871 = {
@@ -324,9 +324,9 @@
 				C29F123E61DAA17B671EC955 /* NowPlayingInfoStoreTests.swift in Sources */,
 				C29F123E61DAA17B671EC958 /* PCMChunkerTests.swift in Sources */,
 				C8CP00052F1A000000000005 /* CarPlayNavigationCoordinatorTests.swift in Sources */,
-				C29F123E61DAA17B671EC956 /* PCMChunker.swift in iosAppTests Sources */,
-				D8CP1002F1A000000000002 /* CarPlayNavigationCoordinator.swift in iosAppTests Sources */,
-				E8RCH0012F1A000000000003 /* RemoteCommandHandlerStore.swift in iosAppTests Sources */,
+				C29F123E61DAA17B671EC956 /* PCMChunker.swift in Sources */,
+				D8CP1002F1A000000000002 /* CarPlayNavigationCoordinator.swift in Sources */,
+				E8RCH0012F1A000000000003 /* RemoteCommandHandlerStore.swift in Sources */,
 				E8RCH0012F1A000000000004 /* RemoteCommandHandlerStoreTests.swift in Sources */,
 				6CF3E16270B477C8D3CDB192 /* NowPlayingInfoStore.swift in Sources */,
 			);
@@ -342,8 +342,8 @@
 				D8CP1001F1A000000000001 /* CarPlayNavigationCoordinator.swift in Sources */,
 				C8CP00042F1A000000000004 /* CarPlayInterfaceControllerNavigationDriver.swift in Sources */,
 				C8FCC1952F17E001005E8312 /* NativeAudioController.swift in Sources */,
-				E8RCH0012F1A000000000001 /* RemoteCommandHandlerStore.swift in iosApp Sources */,
-				C29F123E61DAA17B671EC957 /* PCMChunker.swift in iosApp Sources */,
+				E8RCH0012F1A000000000001 /* RemoteCommandHandlerStore.swift in Sources */,
+				C29F123E61DAA17B671EC957 /* PCMChunker.swift in Sources */,
 				C8OA00022F1B000000000002 /* OAuthWebSession.swift in Sources */,
 				C8OA00022F1B000000000004 /* LocalNetworkProbe.swift in Sources */,
 				C8FCC1972F17E001005E8312 /* AudioDecoders.swift in Sources */,
