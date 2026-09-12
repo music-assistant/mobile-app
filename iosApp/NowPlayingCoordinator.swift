@@ -111,6 +111,7 @@ final class NowPlayingCoordinator {
     private var currentLongFormSeekBackSeconds: Int64?
     private var currentLongFormSeekForwardSeconds: Int64?
     private var currentAudioSessionMode: AVAudioSession.Mode?
+    private var currentAudioSessionOptions: AVAudioSession.CategoryOptions?
 
     // MARK: - Logging
 
@@ -359,13 +360,19 @@ final class NowPlayingCoordinator {
     /// Sets the category only — does NOT activate. Activation interrupts other
     /// apps, so doing it at launch claims audio from whatever is already playing.
     /// Deferred to `activatePlayback()`, driven by real playback.
+    ///
+    /// Music is mixable so voice prompts (Strava cues) duck instead of
+    /// interrupting it; spoken audio stays non-mixing so prompts pause it
+    /// and playback resumes at the same position.
     private func configureAudioSession(mode: AVAudioSession.Mode = .default) {
-        guard currentAudioSessionMode != mode else { return }
+        let options: AVAudioSession.CategoryOptions = mode == .spokenAudio ? [] : [.mixWithOthers]
+        guard currentAudioSessionMode != mode || currentAudioSessionOptions != options else { return }
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: mode, options: [])
+            try session.setCategory(.playback, mode: mode, options: options)
             currentAudioSessionMode = mode
-            logDebug("Audio session category configured: mode=\(mode.rawValue)")
+            currentAudioSessionOptions = options
+            logDebug("Audio session category configured: mode=\(mode.rawValue) options=\(options)")
         } catch {
             logError("Failed to configure audio session: \(error)")
         }
@@ -375,19 +382,18 @@ final class NowPlayingCoordinator {
     func activatePlayback() {
         do {
             let session = AVAudioSession.sharedInstance()
-            // Re-assert exclusive (non-mixing) playback before activating. The
-            // volume-button observer may have switched the shared session to
-            // .mixWithOthers while only a remote player was being viewed; when
-            // local playback actually starts we must reclaim exclusive focus so we
-            // become the Now Playing app. Keep the mode the track handler chose
-            // (.spokenAudio for long-form content) rather than forcing .default,
-            // which would silently clobber it and desync `currentAudioSessionMode`.
-            try session.setCategory(.playback, mode: currentAudioSessionMode ?? .default, options: [])
+            // Re-assert before activating: the volume-button observer may have
+            // switched the session to .mixWithOthers while a remote player was
+            // in view. Restore the mode/options the track handler chose.
+            let mode = currentAudioSessionMode ?? .default
+            let options = currentAudioSessionOptions
+                ?? (mode == .spokenAudio ? [] : [.mixWithOthers])
+            try session.setCategory(.playback, mode: mode, options: options)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             // Info level: fires only when playback (re)starts, and an absent
             // line here is the tell when iOS shows "Not Playing" despite
             // healthy info-center assignments.
-            logInfo("Playback activated: mode=\((currentAudioSessionMode ?? .default).rawValue)")
+            logInfo("Playback activated: mode=\(mode.rawValue) options=\(options)")
         } catch {
             logError("Failed to activate playback: \(error)")
         }
