@@ -108,6 +108,7 @@ final class NowPlayingCoordinator {
     // MARK: - Command profile / session state
 
     private var currentIsLongFormContent: Bool?
+    private var currentIsRadio: Bool?
     private var currentLongFormSeekBackSeconds: Int64?
     private var currentLongFormSeekForwardSeconds: Int64?
     private var currentAudioSessionMode: AVAudioSession.Mode?
@@ -149,7 +150,7 @@ final class NowPlayingCoordinator {
 
     /// Applies track metadata: hands the track key group to the store, runs
     /// the artwork load, and derives session mode + command profile from the
-    /// long-form flag. A nil track means "nothing to present" — the store
+    /// content flags. A nil track means "nothing to present" — the store
     /// empties and profile/session return to defaults, while remote-command
     /// targets stay installed.
     private func handleTrack(_ track: NowPlayingTrack?) {
@@ -162,7 +163,7 @@ final class NowPlayingCoordinator {
         currentTrackId = track.mediaItemId
 
         configureAudioSession(mode: track.isLongFormContent ? .spokenAudio : .default)
-        updateRemoteCommandMode(isLongFormContent: track.isLongFormContent)
+        updateRemoteCommandMode(isLongFormContent: track.isLongFormContent, isRadio: track.isRadio)
 
         // No artwork: present immediately. Rebuild even for a same-identity
         // track — this write carries the complete presentation state, and a
@@ -456,7 +457,7 @@ final class NowPlayingCoordinator {
         addTarget(commandCenter.changeShuffleModeCommand, cmd: "toggle_shuffle", enabled: false)
         addTarget(commandCenter.changeRepeatModeCommand, cmd: "toggle_repeat", enabled: false)
 
-        commandCenter.changePlaybackPositionCommand.isEnabled = true
+        // Enablement belongs to the transport profile above.
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let positionEvent = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
             // Floor to the same whole-second target KMP freezes at; otherwise the
@@ -486,18 +487,20 @@ final class NowPlayingCoordinator {
         }
     }
 
-    /// Swaps the transport-command profile: music uses prev/next, long-form
-    /// content uses skip ±N. Never touches the shuffle/repeat commands —
-    /// those belong to the modes handler.
-    private func updateRemoteCommandMode(isLongFormContent: Bool) {
-        guard currentIsLongFormContent != isLongFormContent else { return }
+    /// Swaps the transport-command profile: radio uses play/pause only,
+    /// music uses prev/next, and long-form content uses skip ±N.
+    /// Shuffle/repeat commands belong to the modes handler.
+    private func updateRemoteCommandMode(isLongFormContent: Bool, isRadio: Bool = false) {
+        guard currentIsLongFormContent != isLongFormContent || currentIsRadio != isRadio else { return }
         currentIsLongFormContent = isLongFormContent
+        currentIsRadio = isRadio
 
         let commandCenter = MPRemoteCommandCenter.shared()
-        commandCenter.previousTrackCommand.isEnabled = !isLongFormContent
-        commandCenter.nextTrackCommand.isEnabled = !isLongFormContent
-        commandCenter.skipBackwardCommand.isEnabled = isLongFormContent
-        commandCenter.skipForwardCommand.isEnabled = isLongFormContent
+        commandCenter.previousTrackCommand.isEnabled = !isRadio && !isLongFormContent
+        commandCenter.nextTrackCommand.isEnabled = !isRadio && !isLongFormContent
+        commandCenter.skipBackwardCommand.isEnabled = !isRadio && isLongFormContent
+        commandCenter.skipForwardCommand.isEnabled = !isRadio && isLongFormContent
+        commandCenter.changePlaybackPositionCommand.isEnabled = !isRadio
     }
 
     func setLongFormSeekIntervals(backSeconds: Int64, forwardSeconds: Int64) {
