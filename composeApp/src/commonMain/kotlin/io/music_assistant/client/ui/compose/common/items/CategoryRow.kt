@@ -35,7 +35,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -74,6 +80,7 @@ fun <T, U> CategoryRow(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    bottomFocusRequester: FocusRequester? = null,
 ) {
     if (data is DataState.Data) {
         CategoryRow(
@@ -87,6 +94,7 @@ fun <T, U> CategoryRow(
             libraryActions = libraryActions,
             progressActions = progressActions,
             providerIconFetcher = providerIconFetcher,
+            bottomFocusRequester = bottomFocusRequester,
         )
     } else if (data is DataState.Loading) {
         val placeholderWidth = 140.dp
@@ -113,6 +121,7 @@ fun <T, U> CategoryRow(
                 )
             },
             actions = {},
+            bottomFocusRequester = bottomFocusRequester,
             row = {
                 repeat(PLACEHOLDER_ITEMS) {
                     item {
@@ -141,6 +150,7 @@ fun <T> CategoryRow(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    bottomFocusRequester: FocusRequester? = null,
 ) {
     if (itemCategory.items.isEmpty() && itemCategory.filter == null) {
         return
@@ -178,6 +188,7 @@ fun <T> CategoryRow(
         progressActions = progressActions,
         providerIconFetcher = providerIconFetcher,
         rowTag = itemCategory.tag,
+        bottomFocusRequester = bottomFocusRequester,
     )
 }
 
@@ -194,6 +205,14 @@ fun CategoryRow(
     progressActions: ProgressActions? = null,
     providerIconFetcher: (@Composable (Modifier, String) -> Unit),
     rowTag: String? = null,
+    // Android TV: set by a caller only on its last visible row, to route D-pad DOWN out of this
+    // row's LazyRow to a fixed element below the scrolling content (e.g. the persistent
+    // mini-player), since that element isn't a normal sibling default focus search can reach.
+    bottomFocusRequester: FocusRequester? = null,
+    // Android TV: set by a caller that needs to land D-pad focus on this row's first item
+    // programmatically (e.g. once async search results appear, when nothing upstream is a
+    // reliable relative-focus anchor -- see SearchScreen.kt). Only applied to the first item.
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val modifier = if (rowTag != null) {
         Modifier.testTag(rowTag)
@@ -211,6 +230,7 @@ fun CategoryRow(
             Text(title)
         },
         actions = actions,
+        bottomFocusRequester = bottomFocusRequester,
     ) {
         itemsIndexed(
             items = mediaItems,
@@ -229,7 +249,8 @@ fun CategoryRow(
                     else -> "Unknown"
                 }
             },
-        ) { _, item ->
+        ) { index, item ->
+            val itemFocusRequester = if (index == 0) firstItemFocusRequester else null
             when (item) {
                 is Artist -> ArtistWithMenu(
                     item = item,
@@ -237,6 +258,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Album -> AlbumWithMenu(
@@ -248,6 +270,7 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Playlist -> PlaylistWithMenu(
@@ -256,6 +279,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Podcast -> PodcastWithMenu(
@@ -264,6 +288,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Track -> TrackWithMenu(
@@ -274,6 +299,7 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is PodcastEpisode -> PodcastEpisodeWithMenu(
@@ -293,6 +319,7 @@ fun CategoryRow(
                     libraryActions = libraryActions,
                     progressActions = progressActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is RadioStation -> RadioWithMenu(
@@ -301,6 +328,7 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 is Genre -> GenreWithMenu(
@@ -309,6 +337,7 @@ fun CategoryRow(
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    firstItemFocusRequester = itemFocusRequester,
                 )
 
                 else -> {}
@@ -322,6 +351,7 @@ private fun RowWithTitle(
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit,
     actions: @Composable () -> Unit,
+    bottomFocusRequester: FocusRequester? = null,
     row: LazyListScope.() -> Unit,
 ) {
     Column(modifier) {
@@ -345,6 +375,22 @@ private fun RowWithTitle(
 
         val rowListState = rememberLazyListState()
         LazyRow(
+            modifier = if (bottomFocusRequester != null) {
+                // Android TV: this is a single horizontal row, so DOWN never has an in-row
+                // meaning — safe to unconditionally redirect it. onPreviewKeyEvent intercepts
+                // the key regardless of which card inside currently holds focus; a plain
+                // FocusProperties.down on this container would only apply if the container
+                // itself were focused, not a focused descendant card.
+                Modifier.onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                        bottomFocusRequester.requestFocus()
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                Modifier
+            },
             state = rowListState,
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),

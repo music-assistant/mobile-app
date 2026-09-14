@@ -255,6 +255,10 @@ class SharedMediaSessionManager(
             setFlags(MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS)
             setPlaybackToLocal(AudioManager.STREAM_MUSIC)
             setCallback(createCallback())
+            // Android TV has no notification shade: the home-screen "now playing" card is
+            // the way back to a still-playing app, and it launches the app via sessionActivity.
+            // Without this the card can't route a tap back to the app (issue: no way back).
+            setSessionActivity(openAppPendingIntent(applicationContext))
             // Publish the action mask before activating: the playback writer only runs once a
             // player emits, so without this a cold process would present an active session that
             // advertises nothing — and "play X on Music Assistant" arrives exactly then.
