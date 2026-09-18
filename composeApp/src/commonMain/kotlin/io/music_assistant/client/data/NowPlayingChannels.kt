@@ -30,6 +30,7 @@ data class NowPlayingTrack(
     val isLongFormContent: Boolean,
     // Pref-gated: remote next/previous will chapter-jump for this content.
     val hasChapterNavigation: Boolean = false,
+    val isRadio: Boolean = false,
 )
 
 /**
@@ -177,15 +178,17 @@ internal fun buildNowPlayingModes(playerData: PlayerData?): NowPlayingModes? {
         togglesEnabled = nowPlayingTogglesEnabled(
             isDynamicPlaylist = queueInfo.isDynamicPlaylist,
             isLongFormContent = track.isLongFormSpokenContent,
+            isRadio = track.mediaType == MediaType.RADIO,
         ),
     )
 }
 
-/** The same availability gates used by the in-app controls and Android media UI. */
+/** Availability gates for the system shuffle/repeat controls. */
 internal fun nowPlayingTogglesEnabled(
     isDynamicPlaylist: Boolean,
     isLongFormContent: Boolean,
-): Boolean = !isDynamicPlaylist && !isLongFormContent
+    isRadio: Boolean = false,
+): Boolean = !isDynamicPlaylist && !isLongFormContent && !isRadio
 
 private fun PlayableItem.toNowPlayingTrack(): NowPlayingTrack = NowPlayingTrack(
     mediaItemId = itemId,
@@ -195,4 +198,5 @@ private fun PlayableItem.toNowPlayingTrack(): NowPlayingTrack = NowPlayingTrack(
     artworkUrl = image(ImageType.THUMB)?.url,
     duration = duration,
     isLongFormContent = isLongFormSpokenContent,
+    isRadio = mediaType == MediaType.RADIO,
 )
