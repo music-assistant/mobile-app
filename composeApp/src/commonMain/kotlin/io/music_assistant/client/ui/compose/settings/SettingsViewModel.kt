@@ -181,6 +181,7 @@ class SettingsViewModel(
     val sendspinPath = settings.sendspinPath
     val sendspinCodecPreference = settings.sendspinCodecPreference
     val sendspinBufferCapacityMb = settings.sendspinBufferCapacityMb
+    val sendspinStaticDelayMs = settings.sendspinStaticDelayMs
     val sendspinHost = settings.sendspinHost
     val sendspinUseTls = settings.sendspinUseTls
 
@@ -193,6 +194,7 @@ class SettingsViewModel(
     fun setSendspinPath(path: String) = settings.setSendspinPath(path)
     fun setSendspinCodecPreference(codec: AudioCodec) = settings.setSendspinCodecPreference(codec)
     fun setSendspinBufferCapacityMb(mb: Int) = settings.setSendspinBufferCapacityMb(mb)
+    fun setSendspinStaticDelayMs(ms: Int) = settings.setSendspinStaticDelayMs(ms)
     fun setSendspinHost(host: String) = settings.setSendspinHost(host)
     fun setSendspinUseTls(enabled: Boolean) = settings.setSendspinUseTls(enabled)
 

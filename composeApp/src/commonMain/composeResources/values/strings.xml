@@ -348,6 +348,8 @@
   <string name="settings_server_host">Server host</string>
   <string name="settings_share_crash_logs">Share crash logs</string>
   <string name="settings_share_logs">Share logs</string>
+  <string name="settings_sync_offset">Playback sync offset</string>
+  <string name="settings_sync_offset_hint">Positive values play this device earlier; negative values play it later. Changes apply immediately.</string>
   <string name="settings_use_tls">Use TLS (wss://)</string>
   <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
   <string name="settings_version_info">Version %1$s, Schema %2$s</string>

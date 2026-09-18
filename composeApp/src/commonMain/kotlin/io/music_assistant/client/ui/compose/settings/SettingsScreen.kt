@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -56,7 +58,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -145,6 +150,8 @@ import musicassistantclient.composeapp.generated.resources.settings_server_base_
 import musicassistantclient.composeapp.generated.resources.settings_server_host
 import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
+import musicassistantclient.composeapp.generated.resources.settings_sync_offset
+import musicassistantclient.composeapp.generated.resources.settings_sync_offset_hint
 import musicassistantclient.composeapp.generated.resources.settings_use_tls
 import musicassistantclient.composeapp.generated.resources.settings_use_tls_wss
 import musicassistantclient.composeapp.generated.resources.settings_version_info
@@ -1272,6 +1279,116 @@ private fun SendspinSection(
                 steps = (SettingsRepository.BUFFER_MB_MAX - SettingsRepository.BUFFER_MB_MIN) /
                         SettingsRepository.BUFFER_MB_STEP - 1,
                 enabled = !sendspinEnabled,
+            )
+        }
+
+        // This applies live, allowing the local Sendspin player to be aligned with other players
+        // while music is playing. Positive compensation schedules audio earlier.
+        val sendspinStaticDelayMs by viewModel.sendspinStaticDelayMs.collectAsStateWithLifecycle()
+        var syncOffsetText by remember { mutableStateOf(sendspinStaticDelayMs.toString()) }
+        var isEditingSyncOffset by remember { mutableStateOf(false) }
+        val syncOffsetFocusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(sendspinStaticDelayMs) {
+            if (syncOffsetText.toIntOrNull() != sendspinStaticDelayMs) {
+                syncOffsetText = sendspinStaticDelayMs.toString()
+            }
+        }
+        LaunchedEffect(isEditingSyncOffset) {
+            if (isEditingSyncOffset) {
+                syncOffsetFocusRequester.requestFocus()
+                keyboardController?.show()
+            }
+        }
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_sync_offset),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (isEditingSyncOffset) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        BasicTextField(
+                            modifier = Modifier
+                                .width(72.dp)
+                                .focusRequester(syncOffsetFocusRequester)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            value = syncOffsetText,
+                            onValueChange = { value ->
+                                if (value.matches(Regex("-?\\d*"))) {
+                                    syncOffsetText = value
+                                    value.toIntOrNull()
+                                        ?.takeIf {
+                                            it >= SettingsRepository.SENDSPIN_SYNC_OFFSET_MIN_MS &&
+                                                it <= SettingsRepository.SENDSPIN_SYNC_OFFSET_MAX_MS
+                                        }
+                                        ?.let(viewModel::setSendspinStaticDelayMs)
+                                }
+                            },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.End,
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    val offset = syncOffsetText.toIntOrNull()
+                                    val clampedOffset = offset?.coerceIn(
+                                        SettingsRepository.SENDSPIN_SYNC_OFFSET_MIN_MS,
+                                        SettingsRepository.SENDSPIN_SYNC_OFFSET_MAX_MS,
+                                    )
+                                    if (clampedOffset != null) {
+                                        viewModel.setSendspinStaticDelayMs(clampedOffset)
+                                    }
+                                    syncOffsetText =
+                                        (clampedOffset ?: sendspinStaticDelayMs).toString()
+                                    isEditingSyncOffset = false
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                },
+                            ),
+                        )
+                        Text(
+                            modifier = Modifier.padding(start = 4.dp),
+                            text = "ms",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                } else {
+                    Text(
+                        modifier = Modifier.clickable {
+                            syncOffsetText = sendspinStaticDelayMs.toString()
+                            isEditingSyncOffset = true
+                        },
+                        text = "%+d ms".format(sendspinStaticDelayMs),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
+            Text(
+                text = stringResource(Res.string.settings_sync_offset_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Slider(
+                value = sendspinStaticDelayMs.toFloat(),
+                onValueChange = { viewModel.setSendspinStaticDelayMs(it.roundToInt()) },
+                valueRange = SettingsRepository.SENDSPIN_SYNC_OFFSET_MIN_MS.toFloat().rangeTo(
+                    SettingsRepository.SENDSPIN_SYNC_OFFSET_MAX_MS.toFloat(),
+                ),
             )
         }
 

@@ -543,12 +543,15 @@ class SettingsRepository(
     // later (escape hatch if this device somehow leads the group). Not reported
     // to the server. Range ±2000 ms.
     private val _sendspinStaticDelayMs = MutableStateFlow(
-        settings.getInt("sendspin_static_delay_ms", 0).coerceIn(-2000, 2000),
+        settings.getInt(
+            "sendspin_static_delay_ms",
+            0,
+        ).coerceIn(SENDSPIN_SYNC_OFFSET_MIN_MS, SENDSPIN_SYNC_OFFSET_MAX_MS),
     )
     val sendspinStaticDelayMs = _sendspinStaticDelayMs.asStateFlow()
 
     fun setSendspinStaticDelayMs(ms: Int) {
-        val clamped = ms.coerceIn(-2000, 2000)
+        val clamped = ms.coerceIn(SENDSPIN_SYNC_OFFSET_MIN_MS, SENDSPIN_SYNC_OFFSET_MAX_MS)
         settings.putInt("sendspin_static_delay_ms", clamped)
         _sendspinStaticDelayMs.update { clamped }
     }
@@ -813,5 +816,9 @@ class SettingsRepository(
         const val BUFFER_MB_MAX: Int = 50
         const val BUFFER_MB_STEP: Int = 5
         const val BUFFER_MB_DEFAULT: Int = 15
+
+        /** Manual Sendspin playback adjustment: positive values play earlier. */
+        const val SENDSPIN_SYNC_OFFSET_MIN_MS: Int = -2_000
+        const val SENDSPIN_SYNC_OFFSET_MAX_MS: Int = 2_000
     }
 }
