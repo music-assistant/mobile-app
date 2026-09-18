@@ -6,6 +6,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
@@ -64,6 +65,12 @@ class ActionsViewModel(
      * Sets exact or toggles favorite status of the item.
      */
     override fun onFavoriteClick(item: AppMediaItem) = dataSource.toggleFavorite(item)
+
+    /** Favourites the on-air song for a radio stream. See [MainDataSource.favoriteCurrentlyPlaying]. */
+    fun onFavoriteStreamClick(playerData: PlayerData) = dataSource.favoriteCurrentlyPlaying(playerData)
+
+    /** See [MainDataSource.canFavoriteCurrentlyPlaying]. */
+    fun canFavoriteStream(playerData: PlayerData) = dataSource.canFavoriteCurrentlyPlaying(playerData)
 
     override suspend fun getEditablePlaylists(): List<Playlist> =
         mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
