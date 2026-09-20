@@ -20,7 +20,7 @@ import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
-import io.music_assistant.client.imageloader.ImageCacheInvalidator
+import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.player.MediaSessionBridge
@@ -84,7 +84,14 @@ fun sharedModule(
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)
         singleOf(::VolumeButtonService)
-        singleOf(::ImageCacheInvalidator)
+        single<ArtworkRepository> {
+            ArtworkRepository(
+                store = get(),
+                transport = get(),
+                serviceClient = get(),
+                now = { io.music_assistant.client.utils.currentTimeMillis() },
+            )
+        }
         singleOf(serviceClientConstructor) { bind<ServiceClient>() }
         singleOf(::LogSharer)
         single(createdAtStart = true) {

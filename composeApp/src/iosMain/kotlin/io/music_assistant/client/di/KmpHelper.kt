@@ -3,10 +3,6 @@
 package io.music_assistant.client.di
 
 import co.touchlab.kermit.Logger
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.readRawBytes
-import io.ktor.http.Url
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
@@ -37,6 +33,8 @@ import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationFolders
+import io.music_assistant.client.imageloader.ArtworkRepository
+import io.music_assistant.client.imageloader.ArtworkToken
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.settings.CarPlatform
 import io.music_assistant.client.settings.DefaultClickOption
@@ -63,7 +61,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import org.koin.core.qualifier.named
+import org.koin.mp.KoinPlatform
 import platform.Foundation.NSData
 import platform.Foundation.create
 
@@ -87,7 +85,10 @@ object KmpHelper : KoinComponent {
     private val aiRadioRepository: AiRadioRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val volumeButtonService: VolumeButtonService by inject()
-    private val artworkHttpClient: HttpClient by inject(named("webrtcHttpClient"))
+
+    // Resolve per request so the active Koin graph supplies the current repository.
+    private val artworkRepository: ArtworkRepository
+        get() = KoinPlatform.getKoin().get()
 
     /**
      * Local Network permission gate; iOS replaces the default prober at bootstrap
@@ -152,47 +153,36 @@ object KmpHelper : KoinComponent {
     fun refreshCarPlayNowPlayingState() = mainDataSource.refreshPlayersAndQueues()
 
     // MARK: - Artwork loader (Swift-callable)
-    //
-    // Swift CarPlay / MPNowPlayingInfoCenter previously fetched artwork through
-    // `URLSession.shared.dataTask(...)`. That bypasses the WebRTC data-channel proxy
-    // (URLSession can't speak `mawebrtc://`) and breaks lock-screen / CarPlay artwork
-    // whenever the URL we hand Swift is a synthetic proxy URL. This helper routes:
-    //   - `mawebrtc://...` → `WebRTCHttpProxy.get(...)` (returns hex-decoded bytes)
-    //   - `http(s)://...`  → Ktor GET
-    // Swift consumes the NSData and builds the UIImage.
-    fun loadArtworkBytes(
+    fun loadArtwork(
         urlString: String,
-        completion: (NSData?) -> Unit,
+        completion: (NativeArtworkResult?) -> Unit,
     ): Cancellable {
         val job = mainScope.launch {
-            val bytes = try {
-                fetchArtworkInternal(urlString)
+            val result = try {
+                artworkRepository.load(urlString).let {
+                    NativeArtworkResult(it.bytes.toNSData(), it.mimeType, it.token)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                log.w { "loadArtworkBytes failed for $urlString: ${e.message}" }
+                log.w { "Artwork pre-flight failed (${e::class.simpleName ?: "Throwable"})" }
                 null
             }
-            completion(bytes?.toNSData())
+            completion(result)
         }
         return Cancellable { job.cancel() }
     }
 
-    private suspend fun fetchArtworkInternal(urlString: String): ByteArray? = when {
-        urlString.startsWith("mawebrtc://") -> {
-            val proxy = serviceClient.webRTCHttpProxy ?: return null
-            val parsed = Url(urlString)
-            val tail = parsed.encodedQuery.let { q ->
-                if (q.isEmpty()) parsed.encodedPath else "${parsed.encodedPath}?$q"
+    fun invalidateArtwork(token: ArtworkToken) {
+        mainScope.launch {
+            try {
+                artworkRepository.invalidate(token)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                // Invalidation is best-effort for the native bridge.
             }
-            val response = proxy.get(tail)
-            response.body.takeIf { response.status in 200..299 }
         }
-        urlString.startsWith("http://") || urlString.startsWith("https://") -> {
-            val response = artworkHttpClient.get(urlString)
-            response.readRawBytes().takeIf { response.status.value in 200..299 }
-        }
-        else -> null
     }
 
     private fun ByteArray.toNSData(): NSData {
