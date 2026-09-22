@@ -27,6 +27,9 @@ data class MediaNotificationData(
     // Current item is a favoritable track: a favorite toggle competes for a slot
     // (see sessionActions for the slot rule).
     val isFavoritableTrack: Boolean,
+    // Current item is a radio stream with a real song on air: same slot competition
+    // as isFavoritableTrack, but the action always adds (see getFavoriteIcon).
+    val isFavoritableStream: Boolean,
     val isFavorite: Boolean,
     val isPlaying: Boolean,
     val imageUrl: String?,
@@ -59,6 +62,9 @@ data class MediaNotificationData(
             multiplePlayers: Boolean,
             effectiveElapsedSec: Double?,
             currentChapter: ResolvedChapter? = null,
+            // Real on-air stream song AND the connected server can resolve it — see
+            // MainDataSource.canFavoriteCurrentlyPlaying, the single source for this.
+            isFavoritableStream: Boolean = false,
         ) = run {
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
             MediaNotificationData(
@@ -74,7 +80,11 @@ data class MediaNotificationData(
             isLongFormContent = playerData.queueInfo?.currentItem?.track.isLongFormSpokenContent,
             isFavoritableTrack = currentTrack
                 ?.let { it.mediaType == MediaType.TRACK && it.canBeFavorited } == true,
-            isFavorite = currentTrack?.favorite == true,
+            isFavoritableStream = isFavoritableStream,
+            // The station's own favorite flag would show a filled heart for an already-
+            // favorited station even though nothing has been favorited for the on-air song,
+            // so the stream case always renders un-filled.
+            isFavorite = currentTrack?.favorite == true && !isFavoritableStream,
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
             chapterName = currentChapter?.displayName,
