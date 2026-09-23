@@ -63,7 +63,7 @@ data class MediaNotificationData(
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
             MediaNotificationData(
             multiplePlayers = multiplePlayers,
-            longItemId = playerData.player.currentMedia?.hashCode()?.toLong(),
+            longItemId = playerData.player.currentMedia?.queueItemId?.let(::sessionQueueItemId),
             name = playerData.player.currentMedia?.title,
             artist = playerData.player.currentMedia?.artist,
             album = playerData.player.currentMedia?.album,

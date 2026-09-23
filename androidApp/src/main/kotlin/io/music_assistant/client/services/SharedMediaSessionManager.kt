@@ -84,6 +84,23 @@ private val SESSION_TRANSPORT_ACTIONS: Long =
 internal const val SESSION_BLOCK_DEBOUNCE_MS = 1500L
 
 /**
+ * Stable numeric id for a queue slot, used both as each [MediaSessionCompat.QueueItem]'s id
+ * (in [SharedMediaSessionManager.launchQueueWriter]) and as the value passed to
+ * [PlaybackStateCompat.Builder.setActiveQueueItemId] (in [MediaNotificationData.from]).
+ *
+ * MUST be derived from the queue slot's own unique id (the server's `queueItemId`, i.e.
+ * [io.music_assistant.client.data.model.client.QueueTrack.id] / [io.music_assistant.client.data.model.client.PlayerMedia.queueItemId]),
+ * never from the underlying track's catalog id or from hashing a whole data object. Multiple
+ * slots can hold the same track (repeat modes, duplicate queue entries, dynamic radio
+ * resurfacing a track), and a host needs every id in the list passed to `setQueue` to be
+ * unique so it can resolve the active-item id to the correct slot. Both call sites must use
+ * this same function, or the active id silently never matches anything in the queue list --
+ * which is what made Android Auto's queue screen always open scrolled to the top instead of
+ * the currently playing track, regardless of position.
+ */
+internal fun sessionQueueItemId(queueSlotId: String): Long = queueSlotId.hashCode().toLong()
+
+/**
  * Single source of truth for the app's MediaSession **and** its sole writer.
  *
  * Both AndroidAutoPlaybackService and MainMediaPlaybackService share this instance
@@ -305,16 +322,13 @@ class SharedMediaSessionManager(
         scope.launch {
             sourcePlayerData()
                 .map { (player, _) -> player.queueItems.orEmpty() }
-                .distinctUntilChanged { old, new ->
-                    old.size == new.size &&
-                        old.zip(new).all { (a, b) -> a.track.longId == b.track.longId }
-                }
+                .distinctUntilChanged { old, new -> old.map { it.id } == new.map { it.id } }
                 .collect { items ->
                     updateQueue(
                         items.map { queueTrack ->
                             MediaSessionCompat.QueueItem(
                                 (queueTrack.track as AppMediaItem).toMediaDescription(defaultIconUri),
-                                queueTrack.track.longId,
+                                sessionQueueItemId(queueTrack.id),
                             )
                         },
                     )
@@ -402,7 +416,7 @@ class SharedMediaSessionManager(
             override fun onSkipToQueueItem(id: Long) {
                 val playerData = currentPlayer() ?: return
                 val queueItemId = playerData.queueItems
-                    ?.find { it.track.longId == id }?.id ?: return
+                    ?.find { sessionQueueItemId(it.id) == id }?.id ?: return
                 dataSource.queueAction(
                     QueueAction.PlayQueueItem(
                         playerData.queueInfo?.id ?: playerData.player.id,
