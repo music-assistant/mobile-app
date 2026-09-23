@@ -32,6 +32,7 @@ internal fun buildAppImageLoader(
             webrtcFetcherFactory?.let { add(it) }
             add(SvgDecoder.Factory())
         }
+        .eventListenerFactory { createAtsBlockedImageEventListener() }
         .build()
 
 internal expect fun imageDiskCacheDir(context: PlatformContext): Path
