@@ -6,10 +6,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The media session shows 2 custom-action slots and the list has no gaps, so a
- * control that disappears drags its neighbours left. These tests pin the slot
- * rule that keeps the switch-player button from moving (issue: dynamic playlists
- * drop shuffle and repeat).
+ * [sessionActions] publishes every action [MediaNotificationData] supports -- it is not a
+ * fixed-size budget that drops whatever doesn't fit. These tests pin that every applicable
+ * action survives (switch-player always leads when present), and that a host filtering by
+ * [MediaNotificationData.supports] alone -- never a slot count -- is what decides the list.
+ *
+ * A previous version of this function capped the published list at 2 "slots," which silently
+ * discarded shuffle whenever a favoritable track played with more than one player configured
+ * (favorite ranked ahead of it for the one leftover slot after switch-player). See git history
+ * for that version if you need to compare.
  */
 class MediaSessionActionsTest {
     @Test
@@ -31,7 +36,20 @@ class MediaSessionActionsTest {
     }
 
     @Test
-    fun `dynamic playlist keeps the switch player slot`() {
+    fun `multi player layout includes every supported queue toggle, not just one`() {
+        assertEquals(
+            listOf(
+                SessionAction.SWITCH_PLAYER,
+                SessionAction.SHUFFLE,
+                SessionAction.FAVORITE,
+                SessionAction.REPEAT,
+            ),
+            sessionActions(data(multiplePlayers = true)),
+        )
+    }
+
+    @Test
+    fun `dynamic playlist drops shuffle and repeat but keeps switch player and favorite`() {
         assertEquals(
             listOf(SessionAction.SWITCH_PLAYER, SessionAction.FAVORITE),
             sessionActions(data(multiplePlayers = true, isDynamic = true)),
@@ -39,17 +57,9 @@ class MediaSessionActionsTest {
     }
 
     @Test
-    fun `favorite wins the free slot next to the anchor`() {
+    fun `unfavoritable multi player layout still surfaces shuffle and repeat`() {
         assertEquals(
-            listOf(SessionAction.SWITCH_PLAYER, SessionAction.FAVORITE),
-            sessionActions(data(multiplePlayers = true)),
-        )
-    }
-
-    @Test
-    fun `shuffle takes the free slot when the item is not favoritable`() {
-        assertEquals(
-            listOf(SessionAction.SWITCH_PLAYER, SessionAction.SHUFFLE),
+            listOf(SessionAction.SWITCH_PLAYER, SessionAction.SHUFFLE, SessionAction.REPEAT),
             sessionActions(data(multiplePlayers = true, isFavoritableTrack = false)),
         )
     }
@@ -65,9 +75,9 @@ class MediaSessionActionsTest {
     }
 
     @Test
-    fun `single player order is unchanged`() {
+    fun `single player layout includes every supported queue toggle`() {
         assertEquals(
-            listOf(SessionAction.SHUFFLE, SessionAction.FAVORITE),
+            listOf(SessionAction.SHUFFLE, SessionAction.FAVORITE, SessionAction.REPEAT),
             sessionActions(data()),
         )
         assertEquals(
@@ -81,13 +91,13 @@ class MediaSessionActionsTest {
     }
 
     @Test
-    fun `long form content keeps its seek controls`() {
+    fun `long form content keeps both seek controls regardless of player count`() {
         assertEquals(
             listOf(SessionAction.SEEK_BACK, SessionAction.SEEK_FORWARD),
             sessionActions(data(isLongFormContent = true, isFavoritableTrack = false)),
         )
         assertEquals(
-            listOf(SessionAction.SWITCH_PLAYER, SessionAction.SEEK_BACK),
+            listOf(SessionAction.SWITCH_PLAYER, SessionAction.SEEK_BACK, SessionAction.SEEK_FORWARD),
             sessionActions(
                 data(
                     multiplePlayers = true,
@@ -99,21 +109,46 @@ class MediaSessionActionsTest {
     }
 
     @Test
-    fun `no layout exceeds the two visible slots`() {
-        listOf(true, false).forEach { multiplePlayers ->
-            listOf(true, false).forEach { isDynamic ->
-                listOf(true, false).forEach { isFavoritable ->
-                    listOf(true, false).forEach { isLongForm ->
-                        val actions = sessionActions(
-                            data(multiplePlayers, isDynamic, isFavoritable, isLongForm),
-                        )
-                        assertTrue(actions.size <= 2, "too many actions: $actions")
-                        assertEquals(actions.distinct(), actions, "duplicate action: $actions")
+    fun `every layout is exactly its supported actions, with no duplicates`() {
+        val bools = listOf(true, false)
+        val layouts = bools.flatMap { multiplePlayers ->
+            bools.flatMap { isDynamic ->
+                bools.flatMap { isFavoritable ->
+                    bools.map { isLongForm ->
+                        Quad(multiplePlayers, isDynamic, isFavoritable, isLongForm)
                     }
                 }
             }
         }
+
+        layouts.forEach { combo ->
+            val layout = data(
+                combo.multiplePlayers,
+                combo.isDynamic,
+                combo.isFavoritable,
+                combo.isLongForm,
+            )
+            val actions = sessionActions(layout)
+            assertEquals(actions.distinct(), actions, "duplicate action: $actions")
+
+            val expectedCount = when {
+                combo.isLongForm -> (if (combo.multiplePlayers) 1 else 0) + 2
+                else -> (if (combo.multiplePlayers) 1 else 0) +
+                    listOf(!combo.isDynamic, combo.isFavoritable, !combo.isDynamic).count { it }
+            }
+            assertTrue(
+                actions.size == expectedCount,
+                "expected $expectedCount actions for $layout, got $actions",
+            )
+        }
     }
+
+    private data class Quad(
+        val multiplePlayers: Boolean,
+        val isDynamic: Boolean,
+        val isFavoritable: Boolean,
+        val isLongForm: Boolean,
+    )
 
     /**
      * Mirrors the gates in [MediaNotificationData.from]: a dynamic playlist nulls both
