@@ -63,6 +63,16 @@ actual class PlatformFeature {
 - **DataSource**: Network/local data access
 - **Models**: Server DTOs in `model/server/`, domain models in `model/client/`
 
+## Artwork Loading
+
+- **`ArtworkRepository`**: Single owner of artwork fetching, disk caching, freshness, and concurrent-request deduplication. Shared by all platforms.
+- **Compose and Android media**: Use the singleton Coil loader. Its artwork adapter resolves through the repository; Coil owns decoding and decoded-memory caching, not a second disk cache.
+- **CarPlay and iOS Now Playing**: Use `KmpHelper.loadArtwork` through a thin Swift adapter. Kotlin owns main-thread completion and cancellation; Swift owns native decoding and presentation.
+- **WebRTC**: Uses the same repository through the existing HTTP proxy. Cache identities include the server ID so synthetic URLs cannot collide across servers.
+- **Cache identity**: Decoded-image keys include the content version. Decode-failure eviction targets only that version, never a newer replacement.
+
+**Key rule**: Route new artwork consumers through the shared loader or bridge. Do not add independent downloads, disk caches, or URL-only caches that bypass repository freshness.
+
 ## Compose Guidelines
 
 - Material3 components

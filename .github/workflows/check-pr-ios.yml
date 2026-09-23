@@ -1,8 +1,8 @@
 name: Check PR (iOS)
 
-# Sanity-check that iOS still compiles on PRs that could affect it. Pure
+# Sanity-check that iOS builds and tests on PRs that could affect it. Pure
 # Android-only PRs are skipped. This is NOT a release — it does no signing,
-# no archive, no upload. Only goal: catch compile-time breakage early.
+# no archive, no upload.
 
 on:
   pull_request:
@@ -73,12 +73,13 @@ jobs:
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: chmod +x ./gradlew
 
-      # The Xcode app scheme has no test target, so `xcodebuild build` only proves
-      # the app compiles. Run the KMP iOS test executable explicitly to catch
-      # commonTest/iosTest failures, including Kotlin/Native-only test-name errors.
       - name: Run iOS Kotlin/Native tests
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: ./gradlew iosSimulatorArm64Test
+
+      - name: Run native XCTest suite
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        run: ./scripts/test-ios.sh
 
       # Simulator destination + signing disabled gives us a compile-only pass:
       # Kotlin framework compilation runs via the Xcode build phase script, and

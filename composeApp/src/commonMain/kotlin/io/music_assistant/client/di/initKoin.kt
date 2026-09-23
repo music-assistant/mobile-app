@@ -4,10 +4,16 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import coil3.SingletonImageLoader
 import io.music_assistant.client.api.ServiceClient
-import io.music_assistant.client.imageloader.WebRTCImageFetcher
+import io.music_assistant.client.imageloader.ArtworkDiskStore
+import io.music_assistant.client.imageloader.ArtworkRepository
+import io.music_assistant.client.imageloader.ArtworkTransport
+import io.music_assistant.client.imageloader.KtorArtworkTransport
 import io.music_assistant.client.imageloader.buildAppImageLoader
+import io.music_assistant.client.imageloader.buildArtworkDiskCache
+import io.music_assistant.client.imageloader.toArtworkLoaderPlatformContext
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.logging.platformLogWriters
+import io.music_assistant.client.player.PlatformContext
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
@@ -31,6 +37,14 @@ fun initKoin(
         config?.invoke(this)
         modules(sharedModule(), webrtcModule, *platformModules)
     }
-    val webrtcFetcherFactory = WebRTCImageFetcher.Factory(KoinPlatform.getKoin().get<ServiceClient>())
-    SingletonImageLoader.setSafe { context -> buildAppImageLoader(context, webrtcFetcherFactory) }
+    val koin = KoinPlatform.getKoin()
+    koin.declare(buildArtworkDiskCache(toArtworkLoaderPlatformContext(koin.get<PlatformContext>())))
+    koin.declare(ArtworkDiskStore(koin.get()))
+    koin.declare<ArtworkTransport>(
+        KtorArtworkTransport(
+            httpClient = koin.get(org.koin.core.qualifier.named("webrtcHttpClient")),
+            serviceClient = koin.get<ServiceClient>(),
+        ),
+    )
+    SingletonImageLoader.setSafe { context -> buildAppImageLoader(context, koin.get<ArtworkRepository>()) }
 }

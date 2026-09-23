@@ -21,7 +21,7 @@
 - **Navigation3** - Type-safe navigation + Material3 adaptive
 
 ## Media
-- **Coil 3** - Async image loading (with Ktor network)
+- **Coil 3.5.0** - Async image decoding and Compose integration; a pre-memory interceptor resolves HTTP and `mawebrtc` artwork through the app-owned `ArtworkRepository`, which supplies encoded bytes and content-based identities (no Coil network artifact). Coil 3.6.2 was reverted because it requires Compose 1.12 alignment.
 - **ExoPlayer (Media3)** - Android local playback
 - **AVPlayer** - iOS local playback
 
