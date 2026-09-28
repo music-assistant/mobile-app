@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="action_start_endless_mix">Lancer le mix infini</string>
+  <string name="ai_radio_empty">Aucune station IA pour le moment. Créez-en une dans l'application web Music Assistant.</string>
+  <string name="ai_radio_load_failed">Impossible de charger les stations IA</string>
+  <string name="ai_radio_no_player">Sélectionnez d'abord un player</string>
+  <string name="ai_radio_stop">Stop</string>
+  <string name="ai_radio_title">Radio IA</string>
+  <string name="cd_autoplay_off">Autoplay inactif</string>
+  <string name="cd_autoplay_on">Autoplay actif</string>
+  <string name="cd_crossfade_off">Crossfade inactif</string>
+  <string name="cd_crossfade_on">Crossfade actif</string>
+  <string name="cd_keep_screen_on_disable">Laissez l'écran s'éteindre</string>
+  <string name="cd_keep_screen_on_enable">Gardez l'écran allumé</string>
+  <string name="cd_leave_group">Quitter le groupe</string>
+  <string name="item_subtitle_sound_effect">Hôte IA</string>
+  <string name="player_autoplay">Autoplay</string>
+  <string name="player_crossfade">Crossfade</string>
+  <string name="player_needs_setup">Configuration requise</string>
+  <string name="player_standby">Le player est en veille. Cliquer pour le réveiller.</string>
+  <string name="queue_crossfade_disable">Activer le Crossfade</string>
+  <string name="queue_crossfade_enable">Activer le Crossfade</string>
+  <string name="sendspin_failed_server_rejected">Le serveur a refusé cet appareil comme player. Reconnectez-vous.</string>
+  <string name="sendspin_failed_setup">Cet appareil ne peut pas démarrer le player local. Envoyez les logs aux développeurs.</string>
+  <string name="sendspin_failed_unauthorized">Le serveur n'a pas accepté cet appareil comme player. Reconnectez-vous.</string>
+  <string name="sendspin_failed_unpaired">Le serveur a supprimé cet appareil. Réassociez-le dans les paramètres.</string>
+  <string name="settings_local_network_onboarding_title_ios">Accès au réseau local</string>
+  <string name="sleep_timer_hour">1 heure</string>
+  <string name="sleep_timer_hours">%1$d heures</string>
+  <string name="sleep_timer_minutes">%1$d minutes</string>
+  <string name="sleep_timer_stops_in">Arrêt dans %1$s</string>
+</resources>
