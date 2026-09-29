@@ -118,6 +118,7 @@ class MainDataSource(
     /** Combined inputs for a [MainDataSource] player-data rebuild. */
     private data class PlayerBuildInputs(
         val players: DataState<List<Player>>,
+        val sortedIds: List<String>?,
         val queues: List<QueueInfo>,
         val localData: PlayerData?,
         val favoriteOverrides: Map<String, Boolean>,
@@ -153,47 +154,6 @@ class MainDataSource(
      * [buildPlayerDataList] so queue updates can't clobber it.
      */
     private val _favoriteOverrides = MutableStateFlow<Map<String, Boolean>>(emptyMap())
-
-    private val _players =
-        combine(_serverPlayers, settings.playersSorting) { playersState, sortedIds ->
-            when (playersState) {
-                is DataState.Error,
-                is DataState.Loading,
-                is DataState.NoData,
-                    -> playersState
-
-                is DataState.Data -> {
-                    val players = playersState.data
-                    DataState.Data(
-                        sortedIds?.let {
-                            players.sortedBy { player ->
-                                sortedIds.indexOf(player.id).takeIf { it >= 0 }
-                                    ?: Int.MAX_VALUE
-                            }
-                        } ?: players.sortedBy { player -> player.name },
-                    )
-                }
-
-                is DataState.Stale -> {
-                    // Preserve stale state with sorted data
-                    val players = playersState.data
-                    DataState.Stale(
-                        data = sortedIds?.let {
-                            players.sortedBy { player ->
-                                sortedIds.indexOf(player.id).takeIf { it >= 0 }
-                                    ?: Int.MAX_VALUE
-                            }
-                        } ?: players.sortedBy { player -> player.name },
-                        disconnectedAt = playersState.disconnectedAt,
-                        reason = playersState.reason,
-                    )
-                }
-            }
-        }.stateIn(
-            scope = this,
-            started = SharingStarted.Eagerly,
-            initialValue = DataState.Loading(),
-        )
 
     private val _playersData = MutableStateFlow<DataState<List<PlayerData>>>(DataState.Loading())
     val playersData = _playersData.asStateFlow()
@@ -388,12 +348,13 @@ class MainDataSource(
 
         launch {
             combine(
-                _players,
+                _serverPlayers,
+                settings.playersSorting,
                 _queueInfos,
                 localPlayerController.localPlayerData,
                 _favoriteOverrides,
-            ) { players, queues, localData, favOverrides ->
-                PlayerBuildInputs(players, queues, localData, favOverrides)
+            ) { players, sortedIds, queues, localData, favOverrides ->
+                PlayerBuildInputs(players, sortedIds, queues, localData, favOverrides)
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { input ->
@@ -406,6 +367,7 @@ class MainDataSource(
                                 is DataState.Data -> DataState.Data(
                                     buildPlayerDataList(
                                         input.players.data,
+                                        input.sortedIds,
                                         input.queues,
                                         input.localData,
                                         input.favoriteOverrides,
@@ -740,13 +702,19 @@ class MainDataSource(
      * Local player uses repository state (single source of truth); others built from server data.
      */
     private fun buildPlayerDataList(
-        allPlayers: List<Player>,
+        serverPlayers: List<Player>,
+        sortedIds: List<String>?,
         queues: List<QueueInfo>,
         localData: PlayerData?,
         favoriteOverrides: Map<String, Boolean>,
         oldValues: DataState<List<PlayerData>>,
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinEffectivePlayerId.value
+        // User's saved order (unknown players last, in server order); name order until one is saved.
+        val allPlayers = sortedIds?.let {
+            serverPlayers.sortedBy { player -> sortedIds.indexOf(player.id).takeIf { it >= 0 } ?: Int.MAX_VALUE }
+        } ?: serverPlayers.sortedBy { it.name }
+        val oldPlayers = (oldValues as? DataState.Data)?.data.orEmpty()
         val playerDataList = allPlayers
             .map { player ->
                 val isLocal = player.id == localPlayerId
@@ -764,7 +732,7 @@ class MainDataSource(
                         allPlayers.filter { it.isAvailable }
                             .mapNotNull { it.asChildBindFor(player) }
                     }
-                if (isLocal && localData != null) {
+                val fresh = if (isLocal && localData != null) {
                     // Repository is source of truth for the local player; surface the
                     // latest server-anchored `elapsedTime` from `_queueInfos` so the slider
                     // re-anchors on `QueueTimeUpdatedEvent` (which writes only to
@@ -773,7 +741,7 @@ class MainDataSource(
                     val trackedElapsed = queues.find {
                         it.id == player.queueId || it.id == localPlayerId
                     }?.elapsedTime
-                    val withPosition = trackedElapsed?.let {
+                    trackedElapsed?.let {
                         (localData.queue as? DataState.Data)?.let { qd ->
                             localData.copy(
                                 queue = DataState.Data(
@@ -783,12 +751,8 @@ class MainDataSource(
                             )
                         }
                     } ?: localData
-                    // Preserve loaded queue items from previous state
-                    (oldValues as? DataState.Data)?.data
-                        ?.firstOrNull { it.player.id == player.id }
-                        ?.updateFrom(withPosition) ?: withPosition
                 } else {
-                    val newData = PlayerData(
+                    PlayerData(
                         player = player,
                         queue = queues.find { it.id == player.queueId }
                             ?.let { queueInfo ->
@@ -800,10 +764,9 @@ class MainDataSource(
                         childrenBinds = groupChildren,
                         isLocal = isLocal,
                     )
-                    (oldValues as? DataState.Data)?.data
-                        ?.firstOrNull { it.player.id == player.id }
-                        ?.updateFrom(newData) ?: newData
                 }
+                // Preserve loaded queue items from previous state
+                oldPlayers.firstOrNull { it.player.id == player.id }?.updateFrom(fresh) ?: fresh
             }
 
         // The local player is pinned first regardless of the saved order, whether the server
