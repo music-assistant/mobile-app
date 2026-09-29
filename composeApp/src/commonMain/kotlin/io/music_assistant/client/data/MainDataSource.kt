@@ -806,13 +806,10 @@ class MainDataSource(
                 }
             }
 
-        // Inject synthetic local player if not in server list
-        val withLocal =
-            if (localData != null && playerDataList.none { it.playerId == localPlayerId }) {
-                listOf(localData) + playerDataList
-            } else {
-                playerDataList
-            }
+        // The local player is pinned first regardless of the saved order, whether the server
+        // lists it or it is still the synthetic stand-in (SelectPlayerDialog won't move it).
+        val (serverLocal, others) = playerDataList.partition { it.isLocal }
+        val withLocal = serverLocal.ifEmpty { listOfNotNull(localData) } + others
         // Fill any null now-playing artwork from the queue track, then re-apply favorite
         // overrides last so the stale queue payload can't win. The two patches are
         // independent (currentMedia vs queue.currentItem.track.favorite), so order is free.

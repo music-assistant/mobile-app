@@ -106,6 +106,9 @@ private fun PlayerSelection(
     val listState = rememberLazyListState()
     val reorderableLazyListState =
         rememberReorderableLazyListState(listState) { from, to ->
+            // The local player is pinned first (see MainDataSource.buildPlayerDataList):
+            // nothing moves onto its slot, so nothing can land above it.
+            if (internalPlayers.getOrNull(to.index)?.isLocal == true) return@rememberReorderableLazyListState
             internalPlayers = internalPlayers.toMutableList().apply {
                 add(to.index, removeAt(from.index))
             }
@@ -150,7 +153,11 @@ private fun PlayerSelection(
                 Color.Transparent
             }
 
-            ReorderableItem(state = reorderableLazyListState, key = item.player.id) {
+            ReorderableItem(
+                state = reorderableLazyListState,
+                key = item.player.id,
+                enabled = !item.isLocal,
+            ) {
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
@@ -206,21 +213,23 @@ private fun PlayerSelection(
                             },
                         )
                     }
-                    Icon(
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .draggableHandle(
-                                onDragStopped = {
-                                    dragEndIndex?.let {
-                                        onReorder(internalPlayers.map { p -> p.player.id })
-                                    }
-                                },
-                            )
-                            .size(16.dp),
-                        imageVector = TablerIcons.GripVertical,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                    )
+                    if (!item.isLocal) {
+                        Icon(
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .draggableHandle(
+                                    onDragStopped = {
+                                        dragEndIndex?.let {
+                                            onReorder(internalPlayers.map { p -> p.player.id })
+                                        }
+                                    },
+                                )
+                                .size(16.dp),
+                            imageVector = TablerIcons.GripVertical,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
                 }
             }
         }
