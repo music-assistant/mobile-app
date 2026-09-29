@@ -30,4 +30,24 @@ class PlayersStateDataTest {
             ).selectedPlayer,
         )
     }
+
+    // Issue #1053: a player leaving ahead of the selected one must not move the selection
+    // onto whichever player shifts into the old slot.
+    @Test
+    fun `index follows the selected player when an earlier player leaves`() {
+        val local = PlayerDataFixtures.playerData(name = "Local")
+        val kitchen = PlayerDataFixtures.playerData(name = "Kitchen")
+        val office = PlayerDataFixtures.playerData(name = "Office")
+
+        assertEquals(1, listOf(local, kitchen, office).indexOfPlayer(kitchen.playerId))
+        assertEquals(0, listOf(kitchen, office).indexOfPlayer(kitchen.playerId))
+    }
+
+    @Test
+    fun `index is null when the selected player is not in the list`() {
+        val players = listOf(PlayerDataFixtures.playerData(), PlayerDataFixtures.playerData())
+
+        assertNull(players.indexOfPlayer("missing"))
+        assertNull(players.indexOfPlayer(null))
+    }
 }

@@ -42,7 +42,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
@@ -53,6 +52,12 @@ import kotlinx.serialization.json.buildJsonObject
 
 val HomeScreenViewModel.PlayersState.Data.selectedPlayer: PlayerData?
     get() = selectedPlayerIndex?.let(playerData::getOrNull)
+
+// Resolved against the same list it indexes: an index taken from a separately scheduled
+// flow can belong to the previous list, and the pager would then land on (and persist)
+// whichever player shifted into that slot.
+internal fun List<PlayerData>.indexOfPlayer(id: String?): Int? =
+    id?.let { indexOfFirst { it.playerId == id }.takeIf { it >= 0 } }
 
 @OptIn(FlowPreview::class)
 class HomeScreenViewModel(
@@ -150,7 +155,6 @@ class HomeScreenViewModel(
                                 }
                                 stopJobs()
                                 jobs.add(watchPlayersData())
-                                jobs.add(watchSelectedPlayerData())
                             }
 
                             is DataConnectionState.AwaitingAuth -> {
@@ -356,10 +360,11 @@ class HomeScreenViewModel(
     private fun watchPlayersData(): Job = viewModelScope.launch {
         combine(
             dataSource.playersData,
+            dataSource.selectedPlayerId,
             dataSource.sendspinState,
-        ) { playerData, sendspinState ->
-            playerData to sendspinState
-        }.collect { (playerData, sendspinState) ->
+        ) { playerData, selectedId, sendspinState ->
+            Triple(playerData, selectedId, sendspinState)
+        }.collect { (playerData, selectedId, sendspinState) ->
             // Update when in Loading or Data state
             // This allows transitioning from Loading to Data and updating existing Data
             // Don't update terminal states (Disconnected, NoAuth, NoServer)
@@ -369,14 +374,14 @@ class HomeScreenViewModel(
                     when (playerData) {
                         is DataState.Data -> PlayersState.Data(
                             playerData.data,
-                            dataSource.selectedPlayerIndex.value,
+                            playerData.data.indexOfPlayer(selectedId),
                             dataSource.localPlayer.value?.playerId,
                             sendspinState,
                         )
 
                         is DataState.Stale -> PlayersState.Data(
                             playerData.data,  // Show stale data as normal data
-                            dataSource.selectedPlayerIndex.value,
+                            playerData.data.indexOfPlayer(selectedId),
                             dataSource.localPlayer.value?.playerId,
                             sendspinState,
                         )
@@ -386,15 +391,6 @@ class HomeScreenViewModel(
                         is DataState.NoData -> PlayersState.Data(emptyList())
                     }
                 }
-            }
-        }
-    }
-
-    private fun watchSelectedPlayerData(): Job = viewModelScope.launch {
-        dataSource.selectedPlayerIndex.filterNotNull().collect { index ->
-            val dataState = _playersState.value as? PlayersState.Data
-            dataState?.let { state ->
-                _playersState.update { state.copy(selectedPlayerIndex = index) }
             }
         }
     }

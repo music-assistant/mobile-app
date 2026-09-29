@@ -16,6 +16,7 @@ import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
+import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
@@ -251,6 +252,12 @@ class MainDataSource(
             )
         }.stateIn(this, SharingStarted.Eagerly, settings.lastSelectedPlayerId.value)
 
+    /**
+     * Public view of the effective selection. Consumers that pair it with a player list
+     * must resolve the index against that same list, not read [selectedPlayerIndex].
+     */
+    val selectedPlayerId: StateFlow<String?> = _selectedPlayerId
+
     val selectedPlayerIndex = combine(_playersData, _selectedPlayerId) { listState, selectedId ->
         selectedId?.let { id ->
             (listState as? DataState.Data)?.data?.indexOfFirst { it.playerId == id }
@@ -259,9 +266,7 @@ class MainDataSource(
     }.stateIn(this, SharingStarted.Eagerly, null)
 
     val selectedPlayer: PlayerData?
-        get() = selectedPlayerIndex.value?.let { selectedIndex ->
-            (_playersData.value as? DataState.Data)?.data?.getOrNull(selectedIndex)
-        }
+        get() = _selectedPlayerId.value?.let { id -> (_playersData.value as? DataState.Data)?.data?.byId(id) }
 
     // --- Canonical media-session "now playing" source ---
     // Single source of truth for what the MediaSession / notification presents,

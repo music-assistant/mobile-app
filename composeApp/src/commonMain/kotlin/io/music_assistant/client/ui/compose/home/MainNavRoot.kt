@@ -155,9 +155,12 @@ fun MainNavigationRoot(
         }
 
         snapshotFlow { playerPagerState.settledPage }.collect { currentPage ->
-            currentData.playerData.getOrNull(currentPage)?.let { playerData ->
-                homeScreenViewModel.selectPlayer(playerData.player)
-            }
+            currentData.playerData.getOrNull(currentPage)
+                // Only a swipe to another player is a user choice. Re-writing the page the
+                // scroll above just landed on would persist the resolver's fallback (first
+                // player while the chosen one is briefly missing) as the user's selection.
+                ?.takeIf { it.playerId != currentData.selectedPlayer?.playerId }
+                ?.let { playerData -> homeScreenViewModel.selectPlayer(playerData.player) }
         }
     }
 
