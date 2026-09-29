@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,6 +31,7 @@ import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.data.model.client.navigationChapters
 import io.music_assistant.client.ui.alphaOn
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.PauseIcon
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
@@ -40,6 +42,7 @@ import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
 import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import io.music_assistant.client.ui.compose.common.tvFocus
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
@@ -55,6 +58,8 @@ fun PlayerControls(
     showSkip: Boolean = true,
     showSkipBack: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.primary,
+    tvFocusFlow: TvFocusFlow? = null,
+    playUpTarget: String = "slider",
     // Server audiobook_chapter_progress pref; gates chapter-based Next enablement.
     chapterProgressEnabled: Boolean = true,
 ) {
@@ -78,6 +83,32 @@ fun PlayerControls(
         else -> false
     }
     val smallButtonSize = (mainButtonSize.value * 0.6).dp
+    // Explicit D-pad links for the transport row (Android TV): geometric focus search between
+    // sibling IconButtons skips nodes, so the row is wired left-right through the focus graph.
+    // Links are built from the buttons actually rendered (which vary with showSkip/showSkipBack/
+    // showAdditionalButtons), so a missing button never leaves a dead directional link. The
+    // play/pause main button links up to the seek slider (declared by the hosting screen).
+    val focusLinks = remember(tvFocusFlow, showAdditionalButtons, showSkip, showSkipBack, playUpTarget) {
+        val sequence = buildList {
+            if (showAdditionalButtons) add("shuffle")
+            if (showSkipBack || showAdditionalButtons) add("prev")
+            add("play")
+            if (showSkip) add("next")
+            if (showAdditionalButtons) add("repeat")
+        }
+        buildMap {
+            for (i in sequence.indices) {
+                put(
+                    sequence[i],
+                    TvFocusFlow.Links(
+                        left = sequence.getOrNull(i - 1),
+                        right = sequence.getOrNull(i + 1),
+                        up = if (sequence[i] == "play") playUpTarget else null,
+                    ),
+                )
+            }
+        }
+    }
     Row(
         modifier = modifier
             .wrapContentSize(),
@@ -92,6 +123,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled,
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle"),
                     ) { playerAction(playerData, PlayerAction.SeekBy(-LongFormSeekDefaults.BACK_SECONDS)) }
                 } else {
                     ActionButton(
@@ -103,6 +135,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle"),
                     ) {
                         playerAction(
                             playerData,
@@ -119,12 +152,14 @@ fun PlayerControls(
                 tint = tint,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
+                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "prev"),
             ) { playerAction(playerData, PlayerAction.Previous) }
         }
 
         if (playerData.pendingPlay && !player.isPlaying) {
             IconButton(
                 modifier = Modifier
+                    .tvFocus(tvFocusFlow, focusLinks, "play")
                     .size(mainButtonSize),
                 onClick = { playerAction(playerData, PlayerAction.Pause) },
                 enabled = playerEnabled && buttonsEnabled,
@@ -148,6 +183,7 @@ fun PlayerControls(
                     true -> stringResource(Res.string.action_pause)
                     false -> stringResource(Res.string.action_play)
                 },
+                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "play"),
             ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
         }
 
@@ -157,6 +193,7 @@ fun PlayerControls(
                 tint = tint,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled && skipForwardEnabled,
+                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "next"),
             ) { playerAction(playerData, PlayerAction.Next) }
         }
 
@@ -168,6 +205,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled,
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "repeat"),
                     ) { playerAction(playerData, PlayerAction.SeekBy(LongFormSeekDefaults.FORWARD_SECONDS)) }
                 } else {
                     val repeatMode = it.repeatMode
@@ -182,6 +220,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist,
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "repeat"),
                     ) {
                         repeatMode?.let {
                             playerAction(
@@ -203,10 +242,11 @@ private fun ActionButton(
     tint: Color = MaterialTheme.colorScheme.primary,
     enabled: Boolean = true,
     contentDescription: String? = null,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     IconButton(
-        modifier = Modifier
+        modifier = modifier
             .alphaOn(enabled)
             .size(size),
         onClick = onClick,
