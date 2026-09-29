@@ -23,7 +23,7 @@ class SearchInputTest {
     @Test
     fun `requests focus`() {
         composeTestRule.setContent {
-            SearchInput(query = "")
+            SearchInput(mode = SearchInputMode.EXPLICIT_SEARCH, query = "")
         }
 
         composeTestRule.onNodeWithText(Res.string.search_query_label.get()).assertIsFocused()
@@ -34,7 +34,7 @@ class SearchInputTest {
         val restorationTester = StateRestorationTester(composeTestRule)
 
         restorationTester.setContent {
-            SearchInput(query = "blah")
+            SearchInput(mode = SearchInputMode.EXPLICIT_SEARCH, query = "blah")
         }
 
         composeTestRule.onNodeWithText("blah").assertIsNotFocused()
