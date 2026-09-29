@@ -58,4 +58,12 @@ class SortOptionTest {
     fun `podcast episodes stay user sortable`() {
         assertTrue(SortConfig.isUserSortable(SubItemContext.PODCAST_EPISODES))
     }
+
+    // The server silently drops unknown order_by keys (no ORDER BY at all), so a wrong key
+    // looks like "sort does nothing" rather than an error.
+    @Test
+    fun `artist sort uses the server album artist key`() {
+        assertEquals("album_artist_name", SortOption(SortField.ARTIST_NAME).toServerString())
+        assertEquals("album_artist_name_desc", SortOption(SortField.ARTIST_NAME, descending = true).toServerString())
+    }
 }
