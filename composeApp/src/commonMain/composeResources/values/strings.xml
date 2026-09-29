@@ -98,6 +98,7 @@
   <string name="cd_keep_screen_on_disable">Let the screen turn off</string>
   <string name="cd_keep_screen_on_enable">Keep the screen on</string>
   <string name="cd_leave_group">Leave group</string>
+  <string name="cd_find_in_list">Find in list</string>
   <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
@@ -153,6 +154,7 @@
   <string name="filter_favorites">Favorites</string>
   <string name="filter_genres">Genres</string>
   <string name="filter_none_selected">Any</string>
+  <string name="find_in_list_label">Find in list…</string>
   <string name="filter_providers">Music providers</string>
   <string name="filter_selected_count">%1$d selected</string>
   <string name="filter_sheet_title">Filters</string>

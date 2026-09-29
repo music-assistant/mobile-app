@@ -62,6 +62,13 @@ actual class PlatformFeature {
 - **Repository**: Single source of truth, exposes StateFlows
 - **DataSource**: Network/local data access
 - **Models**: Server DTOs in `model/server/`, domain models in `model/client/`
+- **List payloads**: `library_items` and `player_queues/items` answer in one message and the
+  server caps a message at about 9 MB. Never send a huge `limit`. Page with `Request.fetchAllPages`
+  (`api/Paging.kt`) when a caller needs the whole list. `playlist_tracks` is streamed by the
+  server in 500-item `partial` batches that `RpcEngine` reassembles. `library_items` already
+  returns slim summary items by default.
+- **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
+  items on the client. Derive the visible list as raw → filter → sort in one place.
 
 ## Compose Guidelines
 

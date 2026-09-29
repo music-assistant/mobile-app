@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -75,12 +77,16 @@ import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowAc
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
+import io.music_assistant.client.ui.compose.search.SearchInput
+import io.music_assistant.client.ui.compose.search.SearchInputMode
 import io.music_assistant.client.ui.contentColorByLuminance
 import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.WindowClass
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_similar_artists
+import musicassistantclient.composeapp.generated.resources.cd_close
+import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.refresh
@@ -161,6 +167,9 @@ internal fun ItemTopBar(
     navigateToItem: (AppMediaItem) -> Unit,
     onSimilarArtistsClick: () -> Unit,
     onRefresh: (() -> Unit)? = null,
+    /** In-list filter text; null while closed. Only honoured when [onQueryChanged] is set. */
+    query: String? = null,
+    onQueryChanged: ((String?) -> Unit)? = null,
 ) {
     // Flat fill equal to the header gradient's top color, so the bar reads as one
     // continuous wash with the header below it. Back/overflow icons are NOT control-tinted
@@ -174,7 +183,17 @@ internal fun ItemTopBar(
     // single-pass color change, in lockstep with the header gradient.
     Box(modifier = Modifier.background(barBg)) {
         TopAppBar(
-            title = {},
+            title = {
+                onQueryChanged?.let { changed ->
+                    query?.let {
+                        SearchInput(
+                            mode = SearchInputMode.FIND_IN_LIST,
+                            query = it,
+                            onQueryChanged = changed,
+                        )
+                    }
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
                 scrolledContainerColor = Color.Transparent,
@@ -191,6 +210,18 @@ internal fun ItemTopBar(
                 }
             },
             actions = {
+                onQueryChanged?.let { changed ->
+                    IconButton(onClick = { changed(if (query == null) "" else null) }) {
+                        if (query == null) {
+                            Icon(Icons.Default.FindInPage, stringResource(Res.string.cd_find_in_list))
+                        } else {
+                            Icon(Icons.Default.Close, stringResource(Res.string.cd_close))
+                        }
+                    }
+                }
+                // While the find field is open the bar is back + field + close only, so the field
+                // gets the width and the user isn't offered unrelated actions mid-typing.
+                if (query != null) return@TopAppBar
                 onRefresh?.let { refresh ->
                     IconButton(onClick = refresh) {
                         Icon(

@@ -10,6 +10,7 @@ import io.ktor.http.Url
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthCallback
 import io.music_assistant.client.carplay.CarPlayStrings
@@ -323,49 +324,49 @@ object KmpHelper : KoinComponent {
 
     fun fetchPlaylists(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("playlists", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary()).getOrNull()
+            Request.Playlist.listLibrary().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }
 
     fun fetchAlbums(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("albums", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Album.listLibrary()).getOrNull()
+            Request.Album.listLibrary().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }
 
     fun fetchArtists(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("artists", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Artist.listLibrary()).getOrNull()
+            Request.Artist.listLibrary().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }
 
     fun fetchAudiobooks(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("audiobooks", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Audiobook.listLibrary()).getOrNull()
+            Request.Audiobook.listLibrary().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }
 
     fun fetchTracks(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("tracks", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Track.list()).getOrNull()
+            Request.Track.list().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }
 
     fun fetchPodcasts(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("podcasts", completion) {
-            mediaItemRepository.fetchMediaItems(Request.Podcast.listLibrary()).getOrNull()
+            Request.Podcast.listLibrary().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }
 
     fun fetchRadioStations(completion: (List<AppMediaItem>?) -> Unit) {
         launchFetch("radioStations", completion) {
-            mediaItemRepository.fetchMediaItems(Request.RadioStation.listLibrary()).getOrNull()
+            Request.RadioStation.listLibrary().fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
                 ?: emptyList()
         }
     }

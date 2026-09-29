@@ -7,6 +7,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.MainDataSource.Companion.resolveSelectedPlayerId
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
@@ -1608,8 +1609,11 @@ class MainDataSource(
     ) {
         launch {
             (forcedQueueData ?: fullData.queueInfo)?.let { queueInfo ->
-                val queueTracks = apiClient.sendRequest(Request.Queue.items(queueInfo.id))
-                    .resultAs<List<ServerQueueItem>>()?.let { queueFactory.createTrackList(it) }
+                // Paged so a huge queue never exceeds the server's per-message cap. A queue edited
+                // between two pages can duplicate or skip an item until the next queue event.
+                val queueTracks = Request.Queue.items(queueInfo.id)
+                    .fetchAllPages { apiClient.sendRequest(it).resultAs<List<ServerQueueItem>>() }
+                    ?.let { queueFactory.createTrackList(it) }
 
                 // Forward to local player repository so external consumers (Android Auto, CarPlay) see items
                 if (fullData.isLocal && queueTracks != null) {

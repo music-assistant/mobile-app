@@ -41,9 +41,8 @@ class SortOptionTest {
 
     @Test
     fun `playlist items are not user sortable`() {
-        // ActionsViewModel.removeFromPlaylist derives the server position from the displayed index,
-        // which only holds while playlist items stay in ORIGINAL ascending order. Offering another
-        // field here would make removal delete the wrong track.
+        // Playlist order is the playlist's meaning, so no other field is offered. Removal sends
+        // Track.position, so this is a UX choice rather than a correctness constraint.
         assertEquals(listOf(SortField.ORIGINAL), SortConfig.fieldsFor(SubItemContext.PLAYLIST_ITEMS))
         assertFalse(SortConfig.isUserSortable(SubItemContext.PLAYLIST_ITEMS))
     }

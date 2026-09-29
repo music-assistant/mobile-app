@@ -1,5 +1,6 @@
 package io.music_assistant.client.api
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,5 +45,20 @@ class PlaylistTracksRequestTest {
             setOf("item_id", "provider_instance_id_or_domain"),
             request.args?.keys,
         )
+    }
+}
+
+/**
+ * Removal sends `Track.position` exactly as the server emitted it: providers number playlist
+ * entries from 1 and delete `items[position - 1]`, so any client-side offset would be a bug.
+ */
+class PlaylistRemoveTracksRequestTest {
+    @Test
+    fun removeTracksSendsPositionsVerbatim() {
+        val request = Request.Playlist.removeTracks(playlistId = "p1", positions = listOf(7))
+
+        assertEquals("music/playlists/remove_playlist_tracks", request.command)
+        assertEquals(JsonPrimitive("p1"), request.args?.get("db_playlist_id"))
+        assertEquals(JsonArray(listOf(JsonPrimitive(7))), request.args?.get("positions_to_remove"))
     }
 }

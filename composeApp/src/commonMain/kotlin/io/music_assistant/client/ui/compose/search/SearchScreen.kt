@@ -166,6 +166,7 @@ private fun SearchTopBar(
     TopAppBar(
         title = {
             SearchInput(
+                mode = SearchInputMode.EXPLICIT_SEARCH,
                 query = searchState.query,
                 onQueryChanged = onQueryChanged,
                 onSearch = onSearch,

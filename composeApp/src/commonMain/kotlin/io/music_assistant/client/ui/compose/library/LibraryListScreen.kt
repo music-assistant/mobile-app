@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -41,7 +41,9 @@ import io.music_assistant.client.ui.compose.item.ViewModeViewModel
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import io.music_assistant.client.ui.compose.search.SearchInput
+import io.music_assistant.client.ui.compose.search.SearchInputMode
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_quick_search
 import musicassistantclient.composeapp.generated.resources.media_type_albums
@@ -155,12 +157,12 @@ private fun LibraryListTopBar(
     onLoadFilterOptions: () -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
-
     Column {
         TwoRowTopAppBar(
             title = {
                 if (showSearch) {
                     SearchInput(
+                        mode = SearchInputMode.EXPLICIT_SEARCH,
                         query = searchQuery,
                         onQueryChanged = onSearchQueryChanged,
                         onSearch = onSearch,
@@ -196,13 +198,11 @@ private fun LibraryListTopBar(
                 }
             },
             navigationIcon = {
-                if (!showSearch) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            stringResource(Res.string.common_back),
-                        )
-                    }
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        stringResource(Res.string.common_back),
+                    )
                 }
             },
             actions = {
@@ -228,14 +228,11 @@ private fun LibraryListTopBar(
                         }
                     },
                 ) {
-                    Icon(
-                        imageVector = if (showSearch) {
-                            Icons.Default.SearchOff
-                        } else {
-                            Icons.Default.Search
-                        },
-                        contentDescription = stringResource(Res.string.library_quick_search),
-                    )
+                    if (showSearch) {
+                        Icon(Icons.Default.Close, stringResource(Res.string.cd_close))
+                    } else {
+                        Icon(Icons.Default.Search, stringResource(Res.string.library_quick_search))
+                    }
                 }
             },
             secondRow = {

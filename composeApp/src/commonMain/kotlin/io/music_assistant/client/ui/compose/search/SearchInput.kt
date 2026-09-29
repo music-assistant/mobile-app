@@ -1,11 +1,14 @@
 package io.music_assistant.client.ui.compose.search
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FindInPage
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,20 +25,44 @@ import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_clear
+import musicassistantclient.composeapp.generated.resources.find_in_list_label
+import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.search_query_label
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+
+/**
+ * How the field's text is consumed. The two behave differently, so they must look different:
+ * a live find narrows the loaded list on every keystroke (the browser "find in page" idea),
+ * while a server search only runs when the user submits it. "Filter" is deliberately not used
+ * here: the library screen's Filters sheet already owns that word and the filter-list icon.
+ */
+enum class SearchInputMode(
+    val icon: ImageVector,
+    val placeholder: StringResource,
+    val imeAction: ImeAction,
+) {
+    /** Narrows an already loaded list as the user types; nothing to submit. */
+    FIND_IN_LIST(Icons.Default.FindInPage, Res.string.find_in_list_label, ImeAction.Done),
+
+    /** Runs a server query on IME Search or the submit button; typing alone does nothing. */
+    EXPLICIT_SEARCH(Icons.Default.Search, Res.string.search_query_label, ImeAction.Search),
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchInput(
-    modifier: Modifier = Modifier,
+    mode: SearchInputMode,
     query: String,
+    modifier: Modifier = Modifier,
     onQueryChanged: (String) -> Unit = {},
+    /** Submit callback; only meaningful for [SearchInputMode.EXPLICIT_SEARCH]. */
     onSearch: () -> Unit = {},
     focusManager: FocusManager = LocalFocusManager.current,
 ) {
@@ -44,6 +71,10 @@ fun SearchInput(
         if (query.isEmpty()) {
             focusRequester.requestFocus()
         }
+    }
+    val submit = {
+        onSearch()
+        focusManager.clearFocus()
     }
 
     val textStyle = MaterialTheme.typography.bodyLarge
@@ -57,31 +88,40 @@ fun SearchInput(
         onValueChange = onQueryChanged,
         placeholder = {
             Text(
-                stringResource(Res.string.search_query_label),
+                stringResource(mode.placeholder),
                 style = textStyle,
             )
         },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardOptions = KeyboardOptions(imeAction = mode.imeAction),
         keyboardActions = KeyboardActions(
-            onSearch = {
-                onSearch()
-                focusManager.clearFocus()
-            },
+            onSearch = { submit() },
+            onDone = { focusManager.clearFocus() },
         ),
         textStyle = textStyle,
+        leadingIcon = { Icon(mode.icon, contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {
             {
-                IconButton(
-                    onClick = {
-                        onQueryChanged("")
-                        onSearch()
-                    },
-                ) {
-                    Icon(
-                        Icons.Default.Clear,
-                        contentDescription = stringResource(Res.string.common_clear),
-                    )
+                Row {
+                    IconButton(
+                        onClick = {
+                            onQueryChanged("")
+                            onSearch()
+                        },
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = stringResource(Res.string.common_clear),
+                        )
+                    }
+                    if (mode == SearchInputMode.EXPLICIT_SEARCH) {
+                        IconButton(onClick = submit) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(Res.string.nav_search),
+                            )
+                        }
+                    }
                 }
             }
         } else {
@@ -101,19 +141,26 @@ fun SearchInput(
 @Preview
 @Composable
 fun SearchInputPreview() {
-    SearchInput(query = "A query for something")
+    SearchInput(mode = SearchInputMode.EXPLICIT_SEARCH, query = "A query for something")
 }
 
 @Preview
 @Composable
 fun SearchInputEmptyPreview() {
-    SearchInput(query = "")
+    SearchInput(mode = SearchInputMode.EXPLICIT_SEARCH, query = "")
+}
+
+@Preview
+@Composable
+fun SearchInputFindInListPreview() {
+    SearchInput(mode = SearchInputMode.FIND_IN_LIST, query = "radiohead")
 }
 
 @Preview
 @Composable
 fun SearchInputLongQueryPreview() {
     SearchInput(
+        mode = SearchInputMode.EXPLICIT_SEARCH,
         query = "a really long query for something that isn't likely to be something anyone would actually ever type",
     )
 }

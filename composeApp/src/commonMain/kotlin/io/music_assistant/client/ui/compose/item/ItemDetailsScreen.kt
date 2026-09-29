@@ -116,6 +116,7 @@ import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.media_type_chapters
 import musicassistantclient.composeapp.generated.resources.media_type_episodes
+import musicassistantclient.composeapp.generated.resources.search_no_results
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -151,14 +152,15 @@ fun ItemDetailsScreen(
         onFavoriteClick = actionsViewModel::onFavoriteClick,
         onMarkPlayed = actionsViewModel::onMarkPlayed,
         onMarkUnplayed = actionsViewModel::onMarkUnplayed,
-        onRemoveFromPlaylist = { id, pos ->
-            actionsViewModel.removeFromPlaylist(id, pos, itemDetailsViewModel::reload)
+        onRemoveFromPlaylist = { id, position ->
+            actionsViewModel.removeFromPlaylist(id, position, itemDetailsViewModel::reload)
         },
         providerIconFetcher = providerViewModel.providerIconFetcher(),
         onPlayClick = itemDetailsViewModel::onPlayClick,
         onChapterClick = itemDetailsViewModel::onChapterClick,
         onChildPlayClick = itemDetailsViewModel::onPlayClick,
         onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
+        onPlayableItemsQueryChanged = itemDetailsViewModel::onPlayableItemsQueryChanged,
         onTabSelected = itemDetailsViewModel::onTabSelected,
         onLoadSimilarArtists = itemDetailsViewModel::loadSimilarArtists,
         onRefreshPlaylist = itemDetailsViewModel::refreshPlaylistTracks,
@@ -189,6 +191,7 @@ fun ItemDetails(
     onChapterClick: (Int) -> Unit = {},
     onChildPlayClick: PlayHandler<AppMediaItem> = { _, _, _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
+    onPlayableItemsQueryChanged: (String?) -> Unit = {},
     onTabSelected: (ItemDetailsTab) -> Unit = {},
     onLoadSimilarArtists: () -> Unit = {},
     onRefreshPlaylist: () -> Unit = {},
@@ -278,6 +281,7 @@ fun ItemDetails(
                     viewModeProvider = viewModeProvider,
                     onToggleViewMode = onToggleViewMode,
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
+                    onPlayableItemsQueryChanged = onPlayableItemsQueryChanged,
                     contentPadding = contentPadding,
                     onTabSelected = onTabSelected,
                     onLoadSimilarArtists = onLoadSimilarArtists,
@@ -317,6 +321,7 @@ private fun ItemContent(
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
+    onPlayableItemsQueryChanged: (String?) -> Unit,
     contentPadding: PaddingValues,
     onTabSelected: (ItemDetailsTab) -> Unit,
     onLoadSimilarArtists: () -> Unit,
@@ -378,6 +383,11 @@ private fun ItemContent(
                 // force_refresh is a playlist-tracks-only server argument, so no other
                 // media type gets the action.
                 onRefresh = onRefreshPlaylist.takeIf { item is Playlist },
+                // The in-list filter only exists for the flat playable-items tab (issue #1010).
+                query = state.playableItemsQuery,
+                onQueryChanged = onPlayableItemsQueryChanged.takeIf {
+                    item is Album || item is Playlist || item is Podcast
+                },
             )
         },
     ) {
@@ -597,6 +607,7 @@ private fun TabContent(
             playableItemsState = state.playableItemsState,
             parentItem = item,
             playableItemsSortOption = state.playableItemsSortOption,
+            playableItemsQuery = state.playableItemsQuery,
             viewModeProvider = viewModeProvider,
             onNavigateClick = onNavigateClick,
             onPlayChildClick = onPlayChildClick,
@@ -698,6 +709,7 @@ private fun LazyGridScope.fullSpanItem(
  */
 private inline fun <T> LazyGridScope.tabListBody(
     state: DataState<List<T>>,
+    emptyText: StringResource = Res.string.library_empty,
     crossinline items: LazyGridScope.(List<T>) -> Unit,
 ) {
     val data = when (state) {
@@ -716,7 +728,7 @@ private inline fun <T> LazyGridScope.tabListBody(
         else -> emptyList()
     }
     if (data.isEmpty()) {
-        fullSpanItem(DETAIL_EMPTY_KEY) { CenteredText(stringResource(Res.string.library_empty)) }
+        fullSpanItem(DETAIL_EMPTY_KEY) { CenteredText(stringResource(emptyText)) }
     } else {
         items(data)
     }
@@ -809,6 +821,7 @@ private fun PlayablesTabContent(
     playableItemsState: DataState<List<PlayableItem>>,
     parentItem: AppMediaItem,
     playableItemsSortOption: SortOption?,
+    playableItemsQuery: String?,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayChildClick: PlayHandler<AppMediaItem>,
@@ -824,7 +837,8 @@ private fun PlayablesTabContent(
 ) {
     val viewMode = viewModeProvider(MediaType.TRACK)
     // Shared row body for both the flat and the disc-sectioned layouts.
-    val trackItem: @Composable (index: Int, track: PlayableItem) -> Unit = { index, track ->
+    val canEditPlaylist = parentItem is Playlist && parentItem.isEditable
+    val trackItem: @Composable (track: PlayableItem) -> Unit = { track ->
         when (track) {
             is Track -> TrackWithMenu(
                 item = track,
@@ -834,11 +848,11 @@ private fun PlayablesTabContent(
                 containerItem = parentItem,
                 onPlayOption = onPlayChildClick,
                 playlistActions = playlistActions,
-                onRemoveFromPlaylist = if (parentItem is Playlist && parentItem.isEditable) {
-                    { onRemoveFromPlaylist(parentItem.itemId, index) }
-                } else {
-                    null
-                },
+                // Removal keys on the server position, so filtering or re-sorting the visible
+                // list can never target the wrong track.
+                onRemoveFromPlaylist = track.position
+                    ?.takeIf { canEditPlaylist }
+                    ?.let { position -> { onRemoveFromPlaylist(parentItem.itemId, position) } },
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
             )
@@ -856,8 +870,13 @@ private fun PlayablesTabContent(
     }
     val listSpan: (LazyGridItemSpanScope.() -> GridItemSpan)? =
         if (viewMode == ViewMode.LIST) ({ GridItemSpan(maxLineSpan) }) else null
+    val emptyText = if (playableItemsQuery.isNullOrBlank()) {
+        Res.string.library_empty
+    } else {
+        Res.string.search_no_results
+    }
     DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
-        tabListBody(playableItemsState) { tracks ->
+        tabListBody(playableItemsState, emptyText) { tracks ->
             val trackKeys = tracks.playableLazyListOccurrenceKeys()
             // Section a multi-disc album by disc, but only in its natural ("Original") order —
             // any other sort intentionally mixes discs, so headers would lie. Requiring every
@@ -874,7 +893,7 @@ private fun PlayablesTabContent(
                     if (index == 0 || disc != prevDisc) {
                         fullSpanItem("disc-header-$disc") { DiscHeader(disc) }
                     }
-                    item(key = trackKeys[index], span = listSpan) { trackItem(index, track) }
+                    item(key = trackKeys[index], span = listSpan) { trackItem(track) }
                 }
             } else {
                 itemsIndexed(
@@ -884,7 +903,7 @@ private fun PlayablesTabContent(
                         ViewMode.LIST -> { _, _ -> GridItemSpan(maxLineSpan) }
                         ViewMode.GRID -> null
                     },
-                ) { index, track -> trackItem(index, track) }
+                ) { _, track -> trackItem(track) }
             }
         }
     }

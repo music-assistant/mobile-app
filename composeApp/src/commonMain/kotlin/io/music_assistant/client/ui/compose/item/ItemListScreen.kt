@@ -3,6 +3,8 @@ package io.music_assistant.client.ui.compose.item
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -17,7 +19,11 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListContent
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
+import io.music_assistant.client.ui.compose.search.SearchInput
+import io.music_assistant.client.ui.compose.search.SearchInputMode
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_close
+import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.common_back
 import org.jetbrains.compose.resources.stringResource
 
@@ -38,14 +44,32 @@ fun ItemListScreen(
 
     TopBarLayout(
         topBar = {
+            val query = state.query
             TwoRowTopAppBar(
-                title = { Text(title) },
+                title = {
+                    query?.let {
+                        SearchInput(
+                            mode = SearchInputMode.FIND_IN_LIST,
+                            query = it,
+                            onQueryChanged = itemListViewModel::filter,
+                        )
+                    } ?: Text(title)
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             stringResource(Res.string.common_back),
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { itemListViewModel.filter(if (query == null) "" else null) }) {
+                        if (query == null) {
+                            Icon(Icons.Default.FindInPage, stringResource(Res.string.cd_find_in_list))
+                        } else {
+                            Icon(Icons.Default.Close, stringResource(Res.string.cd_close))
+                        }
                     }
                 },
                 secondRow = {
