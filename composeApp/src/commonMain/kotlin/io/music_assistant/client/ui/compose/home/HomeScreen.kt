@@ -109,7 +109,7 @@ fun HomeScreen(
     val enabledByKey =
         remember(items) { items.associate { it.first.category.lazyListKey to it.second } }
 
-    var editMode by remember { mutableStateOf(false) }
+    var editMode by state::editMode
     val displayedData =
         if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
 
@@ -354,6 +354,9 @@ class HomeScreenState(
     val lazyListState: LazyListState,
     val coroutineScope: CoroutineScope,
 ) : ScreenState {
+    /** Read by the navigation root, which hides the floating player bar while editing. */
+    var editMode by mutableStateOf(false)
+
     override fun reset() {
         coroutineScope.launch {
             topAppBarState.heightOffset = 0f

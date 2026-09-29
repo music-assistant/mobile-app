@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -200,6 +201,14 @@ fun <T : ComposePage> T.expandPlayer(
 ): ExpandedPlayerPage {
     composeTestRule.onNodeWithTag(FloatingBarSemantics.TAG).performClick()
     return ExpandedPlayerPage(name, playing, item, composeTestRule).assertOnPage()
+}
+
+fun <T : ComposePage> T.assertFloatingBar(showing: Boolean): T {
+    composeTestRule.waitUntil {
+        composeTestRule.onAllNodesWithTag(FloatingBarSemantics.TAG)
+            .fetchSemanticsNodes().isNotEmpty() == showing
+    }
+    return this
 }
 
 fun <T : ComposePage> T.assertReconnectingBanner(showing: Boolean): T {

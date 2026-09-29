@@ -7,6 +7,7 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.assertFloatingBar
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -70,5 +71,17 @@ class HomeTest {
         serviceClient.setRequestErrors(false)
         homePage.refresh()
             .assertMediaDisplayed(album)
+    }
+
+    @Test
+    fun `edit mode hides the floating player bar`() {
+        serviceClient.addItems(ServerMediaItemFixtures.album())
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .assertFloatingBar(showing = true)
+            .editRows()
+            .assertFloatingBar(showing = false)
+            .saveRows()
+            .assertFloatingBar(showing = true)
     }
 }

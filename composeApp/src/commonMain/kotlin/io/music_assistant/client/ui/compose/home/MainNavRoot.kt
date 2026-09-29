@@ -2,6 +2,9 @@
 
 package io.music_assistant.client.ui.compose.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
@@ -267,6 +271,11 @@ fun MainNavigationRoot(
         ),
     )
 
+    // A root screen in edit mode hides the collapsed bar so it does not cover drag targets.
+    // An expanded player (for example from a deep link) always stays visible.
+    val rootScreenEditing = homeScreenState.value?.editMode == true ||
+        libraryScreenState.value?.editMode == true
+
     Box(modifier = Modifier.fillMaxSize()) {
         AdaptiveNavigationBarLayout(
             showNavigation = !playerExpanded,
@@ -275,30 +284,38 @@ fun MainNavigationRoot(
             FloatingBarLayout(
                 modifier = Modifier.padding(scaffoldContentPadding),
                 floatingBar = {
-                    FloatingBar(
-                        expanded = playerExpanded,
-                        onExpand = onExpandPlayer,
-                        content = { expanded, contentPadding ->
-                            PlayersPager(
-                                playerPagerState = playerPagerState,
-                                state = playersState,
-                                homeScreenViewModel = homeScreenViewModel,
-                                actionsViewModel = actionsViewModel,
-                                dspSettingsViewModel = dspSettingsViewModel,
-                                expanded = expanded,
-                                onClose = { playerExpanded = false },
-                                contentPadding = contentPadding,
-                            ) { item ->
-                                multiBackStack.add(
-                                    MainNav.ItemDetails(
-                                        itemId = item.itemId,
-                                        mediaType = item.mediaType,
-                                        providerId = item.provider,
-                                    ),
-                                )
-                            }
-                        },
-                    )
+                    // The bar is bottom-anchored, so shrinking towards its top slides it down
+                    // while the content padding follows the animated height.
+                    AnimatedVisibility(
+                        visible = playerExpanded || !rootScreenEditing,
+                        enter = expandVertically(expandFrom = Alignment.Top),
+                        exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                    ) {
+                        FloatingBar(
+                            expanded = playerExpanded,
+                            onExpand = onExpandPlayer,
+                            content = { expanded, contentPadding ->
+                                PlayersPager(
+                                    playerPagerState = playerPagerState,
+                                    state = playersState,
+                                    homeScreenViewModel = homeScreenViewModel,
+                                    actionsViewModel = actionsViewModel,
+                                    dspSettingsViewModel = dspSettingsViewModel,
+                                    expanded = expanded,
+                                    onClose = { playerExpanded = false },
+                                    contentPadding = contentPadding,
+                                ) { item ->
+                                    multiBackStack.add(
+                                        MainNav.ItemDetails(
+                                            itemId = item.itemId,
+                                            mediaType = item.mediaType,
+                                            providerId = item.provider,
+                                        ),
+                                    )
+                                }
+                            },
+                        )
+                    }
                 },
             ) { floatingBarContentPadding ->
                 BackHandler(playerExpanded) {
