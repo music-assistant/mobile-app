@@ -1,1 +1,1 @@
-@import ../../../.claude/project.md
+@../../../.claude/project.md
