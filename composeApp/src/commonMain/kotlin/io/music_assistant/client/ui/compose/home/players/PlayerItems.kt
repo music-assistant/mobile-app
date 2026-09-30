@@ -146,6 +146,7 @@ fun CompactPlayerItem(
                     AsyncImage(
                         placeholder = placeholder,
                         fallback = placeholder,
+                        error = placeholder,
                         model = rememberArtworkRequest(currentMedia.imageUrl),
                         contentDescription = currentMedia.title,
                         contentScale = ContentScale.Crop,
@@ -325,6 +326,7 @@ fun FullPlayerItem(
                 AsyncImage(
                     placeholder = placeholder,
                     fallback = placeholder,
+                    error = placeholder,
                     model = rememberArtworkRequest(it),
                     contentDescription = currentMedia.title,
                     contentScale = ContentScale.Crop,

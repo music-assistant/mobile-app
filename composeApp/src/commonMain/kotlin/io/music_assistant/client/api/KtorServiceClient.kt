@@ -279,12 +279,18 @@ class KtorServiceClient(
     // Rebases a server-issued image URL (which embeds the server's self-view of its origin,
     // typically a LAN address) onto whatever base is reachable from this client. Used for
     // player-current-item artwork, which the server pushes as fully-qualified `image_url`.
-    // External (non-imageproxy) URLs pass through untouched.
+    // External (non-imageproxy) URLs go through [resolveImageUrl], like queue artwork: `https` stays
+    // direct, cleartext `http` is fetched by the server imageproxy (iOS ATS blocks it on the client —
+    // live-source covers such as Spotify Connect arrive this way). Anything else passes untouched.
     override fun rebaseServerImageUrl(rawUrl: String): String? {
         if (rawUrl.isEmpty()) return null
         val parsed = runCatching { Url(rawUrl) }.getOrNull() ?: return rawUrl
         val path = parsed.encodedPath
-        if (!path.contains("imageproxy", ignoreCase = true)) return rawUrl
+        if (!path.contains("imageproxy", ignoreCase = true)) {
+            // Checked on the raw string: Ktor defaults a missing scheme to http, which must not count.
+            return rawUrl.takeUnless { it.startsWith("http://", ignoreCase = true) }
+                ?: resolveImageUrl(rawUrl, provider = "builtin", isRemotelyAccessible = true, proxyId = null)
+        }
         val tail = parsed.encodedQuery.let { if (it.isEmpty()) path else "$path?$it" }
         val (base, prefix) = when (val state = _sessionState.value) {
             is SessionState.Connected.Direct -> state.connectionInfo.webUrl to state.connectionInfo.basePath
