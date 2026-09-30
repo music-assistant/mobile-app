@@ -11,6 +11,7 @@ import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.api.RpcEngine
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.server.ServerInfo
@@ -36,6 +37,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import musicassistantclient.composeapp.generated.resources.Res
@@ -162,6 +164,41 @@ class StreamFavoriteActionsTest {
         composeTestRule.runOnIdle { playerVm.onFavoriteStreamClick(radioStreamPlayer("Song")) }
         composeTestRule.mainClock.advanceTimeBy(300)
         composeTestRule.onNodeWithText(Res.string.toast_favorited_stream_track.get()).assertIsDisplayed()
+    }
+
+    @Test
+    fun `protocol error envelope becomes a failed favorite result`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        client.schema(27)
+        client.result = protocolRefusal()
+        assertTrue(client.result.isSuccess, "The transport itself received a response")
+        val dataSource = getKoin().get<MainDataSource>()
+        assertTrue(dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Song")).isFailure)
+    }
+
+    @Test
+    fun `protocol refusal renders failure instead of success`() {
+        client.schema(27)
+        client.result = protocolRefusal()
+        val vm = viewModel()
+        showPlayerToasts(vm)
+        composeTestRule.runOnIdle { vm.onFavoriteStreamClick(radioStreamPlayer("Song")) }
+        composeTestRule.mainClock.advanceTimeBy(300)
+        composeTestRule.onNodeWithText(Res.string.toast_error_favorite_stream_track.get()).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.toast_favorited_stream_track.get()).assertDoesNotExist()
+    }
+
+    /** Matches the real RPC engine and Ktor transport's successful response wrapper. */
+    private fun protocolRefusal(): Result<Answer> {
+        var response: Result<Answer> = Result.failure(IllegalStateException("No response"))
+        val engine = RpcEngine(onAuthError = {}, onError = {})
+        engine.registerCallback("stream-request") { response = Result.success(it) }
+        engine.handleResponse(
+            Json.parseToJsonElement(
+                """{"message_id":"stream-request","error_code":1,"details":"Stream title could not be resolved"}""",
+            ) as JsonObject,
+        )
+        return response
     }
 
     private fun showPlayerToasts(vm: ActionsViewModel) {

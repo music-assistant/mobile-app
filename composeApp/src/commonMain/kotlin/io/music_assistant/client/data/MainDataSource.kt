@@ -877,7 +877,11 @@ class MainDataSource(
         }
         return apiClient.sendRequest(
             Request.Player.addCurrentlyPlayingToFavorites(playerData.player.id),
-        )
+        ).mapCatching { answer ->
+            // A received RPC error is still a successful transport response.
+            check(!answer.json.containsKey("error_code")) { "The server rejected the stream favorite" }
+            answer
+        }
     }
 
     /** Overrides the now-playing track's favorite flag from [overrides]. */
