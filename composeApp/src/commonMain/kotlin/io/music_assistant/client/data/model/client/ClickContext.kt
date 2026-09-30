@@ -13,4 +13,10 @@ fun SubItemContext.toClickContext(): ClickContext? = when (this) {
     SubItemContext.PLAYLIST_ITEMS -> ClickContext.PLAYLIST
     SubItemContext.ARTIST_TRACKS -> ClickContext.ARTIST
     SubItemContext.ARTIST_ALBUMS, SubItemContext.PODCAST_EPISODES -> null
+
+    // Artist View all lists get ClickContext.ARTIST from their route, never from here.
+    SubItemContext.ARTIST_TOP_TRACKS,
+    SubItemContext.ARTIST_ALL_ALBUMS,
+    SubItemContext.ARTIST_LIBRARY_ALBUMS,
+    -> null
 }

@@ -532,6 +532,7 @@ private fun mainNavEntryProvider(
             ItemListScreen(
                 title = it.title,
                 mediaType = it.itemList.mediaType,
+                sortContext = it.itemList.sortContext,
                 itemListViewModel = itemListViewModel,
                 viewModeViewModel = viewModeViewModel,
                 actionsViewModel = actionsViewModel,

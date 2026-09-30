@@ -155,7 +155,7 @@ fun sharedModule(
             ArtistDetailsViewModel(params[0], get())
         }
         factory { ViewModeViewModel(get()) }
-        factory { params -> ItemListViewModel(params[0], get()) }
+        factory { params -> ItemListViewModel(params[0], get(), get()) }
         factory { DspSettingsViewModel(get()) }
         factory { HomeScreenViewModel(get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get()) }

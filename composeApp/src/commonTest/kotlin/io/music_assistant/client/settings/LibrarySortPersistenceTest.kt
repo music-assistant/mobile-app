@@ -101,4 +101,30 @@ class LibrarySortPersistenceTest {
             repo.getSortOption(SubItemContext.ARTIST_ALBUMS),
         )
     }
+
+    @Test
+    fun `each artist view all list keeps its own sort`() {
+        val repo = SettingsRepository(MapSettings(), MapSettings())
+        val topTracks = SortOption(SortField.DURATION, descending = true)
+        val allAlbums = SortOption(SortField.YEAR, descending = true)
+        repo.setSortOption(SubItemContext.ARTIST_TOP_TRACKS, topTracks)
+        repo.setSortOption(SubItemContext.ARTIST_ALL_ALBUMS, allAlbums)
+        assertEquals(topTracks, repo.getSortOption(SubItemContext.ARTIST_TOP_TRACKS))
+        assertEquals(allAlbums, repo.getSortOption(SubItemContext.ARTIST_ALL_ALBUMS))
+        assertEquals(SortOption(SortField.ORIGINAL), repo.getSortOption(SubItemContext.ARTIST_LIBRARY_ALBUMS))
+        // Not shared with Android Auto's artist albums or the library tabs.
+        assertEquals(
+            SortConfig.defaultFor(SubItemContext.ARTIST_ALBUMS),
+            repo.getSortOption(SubItemContext.ARTIST_ALBUMS),
+        )
+        assertEquals(SortConfig.defaultFor(MediaType.TRACK), repo.getSortOption(MediaType.TRACK))
+        assertEquals(SortConfig.defaultFor(MediaType.ALBUM), repo.getSortOption(MediaType.ALBUM))
+    }
+
+    @Test
+    fun `a field not offered on an artist view all list falls back to original`() {
+        val settings = MapSettings("sort_sub_ARTIST_TOP_TRACKS" to "PLAY_COUNT:true")
+        val repo = SettingsRepository(settings, MapSettings())
+        assertEquals(SortOption(SortField.ORIGINAL), repo.getSortOption(SubItemContext.ARTIST_TOP_TRACKS))
+    }
 }

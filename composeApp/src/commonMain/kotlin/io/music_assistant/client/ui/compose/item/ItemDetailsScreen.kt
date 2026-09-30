@@ -504,6 +504,9 @@ private fun TabsBar(
         SubItemContext.ALBUM_TRACKS,
         SubItemContext.PLAYLIST_ITEMS,
         SubItemContext.PODCAST_EPISODES,
+        SubItemContext.ARTIST_TOP_TRACKS,
+        SubItemContext.ARTIST_ALL_ALBUMS,
+        SubItemContext.ARTIST_LIBRARY_ALBUMS,
             -> playableItemsSortOption
 
         null -> null

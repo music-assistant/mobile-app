@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -31,6 +32,7 @@ import org.jetbrains.compose.resources.stringResource
 fun ItemListScreen(
     title: String,
     mediaType: MediaType,
+    sortContext: SubItemContext,
     itemListViewModel: ItemListViewModel,
     viewModeViewModel: ViewModeViewModel,
     actionsViewModel: ActionsViewModel,
@@ -75,7 +77,7 @@ fun ItemListScreen(
                 secondRow = {
                     ItemSortChip(
                         sortOption = state.sortOption,
-                        mediaType = mediaType,
+                        sortContext = sortContext,
                         onSortChanged = itemListViewModel::sort,
                     )
 

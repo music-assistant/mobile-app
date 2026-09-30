@@ -58,6 +58,42 @@ class SortOptionTest {
         assertTrue(SortConfig.isUserSortable(SubItemContext.PODCAST_EPISODES))
     }
 
+    @Test
+    fun `original keeps the delivered order outside album and playlist tracks`() {
+        // Provider order is the point of Top tracks, so ORIGINAL must not re-sort by track number.
+        val t = { track: Int, id: String -> testTrack().copy(itemId = id, discNumber = 1, trackNumber = track) }
+        val delivered = listOf(t(3, "a"), t(1, "b"), t(2, "c"))
+        val sorted = { descending: Boolean ->
+            delivered.clientSorted(SortOption(SortField.ORIGINAL, descending), SubItemContext.ARTIST_TOP_TRACKS)
+                .map { it.itemId }
+        }
+        assertEquals(listOf("a", "b", "c"), sorted(false))
+        assertEquals(listOf("c", "b", "a"), sorted(true))
+    }
+
+    @Test
+    fun `artist view all lists default to original and are user sortable`() {
+        listOf(
+            SubItemContext.ARTIST_TOP_TRACKS,
+            SubItemContext.ARTIST_ALL_ALBUMS,
+            SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        ).forEach {
+            assertEquals(SortOption(SortField.ORIGINAL), SortConfig.defaultFor(it))
+            assertTrue(SortConfig.isUserSortable(it))
+        }
+    }
+
+    @Test
+    fun `artist view all lists offer only fields that sort on the client`() {
+        assertEquals(
+            listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION),
+            SortConfig.fieldsFor(SubItemContext.ARTIST_TOP_TRACKS),
+        )
+        val albumFields = listOf(SortField.ORIGINAL, SortField.NAME, SortField.ARTIST_NAME, SortField.YEAR)
+        assertEquals(albumFields, SortConfig.fieldsFor(SubItemContext.ARTIST_ALL_ALBUMS))
+        assertEquals(albumFields, SortConfig.fieldsFor(SubItemContext.ARTIST_LIBRARY_ALBUMS))
+    }
+
     // The server silently drops unknown order_by keys (no ORDER BY at all), so a wrong key
     // looks like "sort does nothing" rather than an error.
     @Test

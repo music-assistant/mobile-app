@@ -394,7 +394,11 @@ class AutoLibrary(
             SubItemContext.PODCAST_EPISODES ->
                 Request.Podcast.getEpisodes(parent.itemId, parent.provider)
 
-            SubItemContext.ARTIST_TRACKS -> return null
+            SubItemContext.ARTIST_TRACKS,
+            SubItemContext.ARTIST_TOP_TRACKS,
+            SubItemContext.ARTIST_ALL_ALBUMS,
+            SubItemContext.ARTIST_LIBRARY_ALBUMS,
+            -> return null
         }
         val items = apiClient.sendRequest(request)
             .resultAs<List<ServerMediaItem>>()
