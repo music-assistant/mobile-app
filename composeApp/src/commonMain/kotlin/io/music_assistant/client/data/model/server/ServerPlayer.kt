@@ -89,7 +89,7 @@ data class ServerPlayerMedia(
     @SerialName("album") val album: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("duration") val duration: Double? = null,
-    @SerialName("queue_id") val queueId: String? = null,
+    @SerialName("source_id") val sourceId: String? = null,
     @SerialName("queue_item_id") val queueItemId: String? = null,
     // @SerialName("palette") val palette: MediaItemPalette? = null,
 //    @SerialName("custom_data") val customData: JsonObject? = null,

@@ -202,6 +202,7 @@ class MediaItemFactory(
 
             MediaType.FLOW_STREAM,
             MediaType.ANNOUNCEMENT,
+            MediaType.AUDIO_SOURCE,
             MediaType.UNKNOWN,
             null,
                 -> null

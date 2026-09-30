@@ -1,6 +1,7 @@
 package io.music_assistant.client.data.model.server
 
 import io.music_assistant.client.data.factory.PlayerFactory
+import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
@@ -132,6 +133,27 @@ class ServerPlayerSerializationTest {
 
         assertNull(server.sleepTimerExpiresAt)
         assertNull(playerFactory.create(server).sleepTimerExpiresAt)
+    }
+
+    @Test
+    fun mapsAudioSourceMediaAndItsSourceId() {
+        // A live external source (Spotify Connect) reports `media_type: audio_source`,
+        // `source_id` = the owning player and no `queue_item_id`.
+        val json = """{
+            "player_id": "pl1",
+            "current_media": {
+                "uri": "spotify_connect://pl1",
+                "media_type": "audio_source",
+                "title": "Song",
+                "source_id": "pl1"
+            }
+        }"""
+
+        val media = playerFactory.create(myJson.decodeFromString<ServerPlayer>(json)).currentMedia
+
+        assertEquals(MediaType.AUDIO_SOURCE, media?.mediaType)
+        assertEquals("pl1", media?.queueId)
+        assertNull(media?.queueItemId)
     }
 
     @Test
