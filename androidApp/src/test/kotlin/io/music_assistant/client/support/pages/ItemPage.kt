@@ -84,6 +84,7 @@ class ItemPage(
             MediaType.FLOW_STREAM -> TODO()
             MediaType.ANNOUNCEMENT -> TODO()
             MediaType.SOUND_EFFECT -> TODO()
+            MediaType.AUDIO_SOURCE -> TODO()
             MediaType.UNKNOWN -> TODO()
         }
     }

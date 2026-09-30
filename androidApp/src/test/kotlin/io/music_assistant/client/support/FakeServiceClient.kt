@@ -392,7 +392,7 @@ class FakeServiceClient : ServiceClient {
                                 uri = track.uri,
                                 mediaType = track.mediaType,
                                 title = track.name,
-                                queueId = queueId,
+                                sourceId = queueId,
                             )
                         },
                     )
@@ -487,7 +487,7 @@ class FakeServiceClient : ServiceClient {
                                 uri = track.uri,
                                 mediaType = track.mediaType,
                                 title = track.name,
-                                queueId = queueId,
+                                sourceId = queueId,
                             )
                         },
                     )
