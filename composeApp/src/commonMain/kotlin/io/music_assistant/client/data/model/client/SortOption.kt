@@ -16,7 +16,7 @@ enum class SortField(val serverKey: String, val displayName: String) {
     PLAY_COUNT("play_count", "Play count"),
     YEAR("year", "Year"),
     POSITION("position", "Position"),
-    ARTIST_NAME("artist_name", "Artist"),
+    ARTIST_NAME("album_artist_name", "Artist"),
     RELEASE_DATE("release_date", "Release date"),
 }
 

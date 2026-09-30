@@ -1,12 +1,15 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_customize_tabs
+import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_artists
 import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
@@ -32,6 +35,16 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
             ),
             selected = Res.string.nav_library.get(),
         )
+    }
+
+    fun customizeTabs(): LibraryPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_customize_tabs.get()).performClick()
+        return this
+    }
+
+    fun doneCustomizing(): LibraryPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.common_done.get()).performClick()
+        return this
     }
 
     fun clickAlbums(): LibraryListPage {

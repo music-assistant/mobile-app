@@ -2,7 +2,7 @@ package io.music_assistant.client.services
 
 /**
  * A custom action the media session can publish. Keep this Android-free so the
- * slot rule below stays unit-testable.
+ * priority order below stays unit-testable.
  */
 internal enum class SessionAction {
     SWITCH_PLAYER,
@@ -13,26 +13,22 @@ internal enum class SessionAction {
     SEEK_FORWARD,
 }
 
-/** Notification and Android Auto render at most this many custom actions. */
-private const val SLOT_COUNT = 2
-
-/** Switch-player holds the leading slot, so the favorite toggle wins the last one. */
-private val ANCHORED_PRIORITY =
+// Phone card keeps favorite ahead of shuffle so its 2-icon compact view is unchanged;
+// Android Auto is always single-player (see SharedMediaSessionManager.sourcePlayerData)
+// and never consumes this order.
+private val QUEUE_ACTION_PRIORITY_SINGLE_PLAYER =
+    listOf(SessionAction.SHUFFLE, SessionAction.FAVORITE, SessionAction.REPEAT)
+private val QUEUE_ACTION_PRIORITY_MULTI_PLAYER =
     listOf(SessionAction.FAVORITE, SessionAction.SHUFFLE, SessionAction.REPEAT)
 
-/** Both slots are free: shuffle keeps the lead it has always had. */
-private val FREE_PRIORITY =
-    listOf(SessionAction.SHUFFLE, SessionAction.FAVORITE, SessionAction.REPEAT)
-
 /**
- * Picks the custom actions for [data], in render order.
+ * Custom actions for [data], in render order. Publishes every supported action:
+ * Android Auto overflows the extras, the phone card shows only the first two.
  *
- * Only [SLOT_COUNT] slots exist and the list has no gaps, so a control that
- * disappears pulls everything on its right one slot left. A dynamic playlist
- * drops shuffle and repeat, which used to move the switch-player button under
- * the user's finger. Anchoring switch-player in the leading slot keeps all
- * variability in the tail slot, where a control can appear or disappear
- * without moving its neighbour.
+ * Switch-player always leads so a disappearing toggle never moves it under the
+ * user's finger. Multi-player puts favorite before shuffle so the phone keeps
+ * Switch + Favorite; Android Auto is always single-player (see
+ * SharedMediaSessionManager.sourcePlayerData) and never sees that order.
  */
 internal fun sessionActions(data: MediaNotificationData): List<SessionAction> = buildList {
     if (data.multiplePlayers) {
@@ -41,16 +37,18 @@ internal fun sessionActions(data: MediaNotificationData): List<SessionAction> = 
     if (data.isLongFormContent) {
         // Audiobooks and podcasts: seek controls instead of the queue toggles.
         add(SessionAction.SEEK_BACK)
-        if (!data.multiplePlayers) {
-            add(SessionAction.SEEK_FORWARD)
-        }
+        add(SessionAction.SEEK_FORWARD)
     } else {
-        val priority = if (data.multiplePlayers) ANCHORED_PRIORITY else FREE_PRIORITY
+        val priority = if (data.multiplePlayers) {
+            QUEUE_ACTION_PRIORITY_MULTI_PLAYER
+        } else {
+            QUEUE_ACTION_PRIORITY_SINGLE_PLAYER
+        }
         addAll(priority.filter { data.supports(it) })
     }
-}.take(SLOT_COUNT)
+}
 
-private fun MediaNotificationData.supports(action: SessionAction) = when (action) {
+internal fun MediaNotificationData.supports(action: SessionAction) = when (action) {
     SessionAction.FAVORITE -> isFavoritableTrack || isFavoritableStream
     SessionAction.SHUFFLE -> shuffleEnabled != null
     SessionAction.REPEAT -> repeatMode != null

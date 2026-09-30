@@ -43,14 +43,15 @@ object AppMediaItemFixtures {
     fun artist(
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Artist $itemId",
+        providerMappings: List<ProviderMapping> = listOf(
+            ProviderMapping(itemId, DEFAULT_PROVIDER_DOMAIN, DEFAULT_PROVIDER_INSTANCE),
+        ),
     ): Artist {
         return Artist(
             itemId = itemId,
             provider = DEFAULT_PROVIDER_DOMAIN,
             name = name,
-            providerMappings = listOf(
-                ProviderMapping(itemId, DEFAULT_PROVIDER_DOMAIN, DEFAULT_PROVIDER_INSTANCE),
-            ),
+            providerMappings = providerMappings,
             metadata = null,
             favorite = null,
             uri = null,

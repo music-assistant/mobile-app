@@ -15,7 +15,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ClickContext
@@ -93,8 +92,6 @@ fun DefaultClickActionsDialog(itemKind: ItemKind, onDismiss: () -> Unit) {
                         Text(
                             text = stringResource(ctx.label()),
                             modifier = Modifier.width(CTX_LABEL_WIDTH),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                         )
                         ActionDropdown(
                             context = ctx,

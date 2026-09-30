@@ -62,7 +62,7 @@ subprojects {
     // androidMain, iosMain) or Android-only modules (src/main/kotlin). Wire sources in
     // explicitly so the `detekt` task lints everything regardless of plugin layout.
     afterEvaluate {
-        val sourceDirs = mutableSetOf<java.io.File>()
+        val sourceDirs = mutableSetOf<File>()
         val kotlinExtension = extensions.findByName("kotlin")
         if (kotlinExtension is org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension) {
             kotlinExtension.sourceSets.forEach { sourceSet ->
@@ -87,7 +87,7 @@ subprojects {
     }
 }
 
-val checkTestNames by tasks.registering {
+val checkTestNames = tasks.register("checkTestNames") {
     group = "verification"
     description = "Fails when backtick-named Kotlin @Test functions contain characters rejected by Kotlin/Native."
 

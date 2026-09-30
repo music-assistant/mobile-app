@@ -15,12 +15,6 @@ sealed class ProviderIconModel {
     data class Mdi(val icon: ImageVector, val tint: Color = Color.White) : ProviderIconModel()
 
     /**
-     * Material Design Icons community-pack glyph, referenced by its server-provided name
-     * (e.g. "mdi-speaker"). Resolved to a font glyph at render time by [MdiIcon].
-     */
-    data class MdiGlyph(val name: String, val tint: Color = Color.White) : ProviderIconModel()
-
-    /**
      * PNG type - contains decoded PNG bytes ready for Coil
      */
     data class Png(val imageBytes: ByteArray) : ProviderIconModel() {
@@ -53,25 +47,15 @@ sealed class ProviderIconModel {
     }
 
     companion object Companion {
-        /**
-         * Factory method to create ProviderIconModel from a manifest's icon fields.
-         *
-         * Rules (highest fidelity first):
-         * 1. If iconSvg is present, decode it (base64 PNG, else raw SVG bytes).
-         * 2. Else if a MDI icon name is present, defer to a font glyph ([MdiGlyph]),
-         *    resolved against the full MDI codepoint table at render time.
-         * 3. If both are null, return null.
-         */
-        fun from(mdiIcon: String?, iconSvg: String?): ProviderIconModel? {
-            iconSvg ?: return mdiIcon?.let { MdiGlyph(it) }
-            return iconSvg.let { svgString ->
+        fun fromSvg(svg: String): ProviderIconModel? {
+            return svg.let { svgString ->
                 val b64i = svgString.indexOf("base64,")
                 if (b64i > 0) {
-                    val base64Data = iconSvg.substring(b64i + 7) // Skip "base64,"
+                    val base64Data = svg.substring(b64i + 7) // Skip "base64,"
                     // Remove any closing quotes or XML tags
                     val cleanedData = base64Data.substringBefore("\"").substringBefore("<")
                     try {
-                        val bytes = Base64.Default.decode(cleanedData)
+                        val bytes = Base64.decode(cleanedData)
                         Png(bytes)
                     } catch (e: Exception) {
                         Logger.e("Cannot decode base64 PNG: ${e.message}")

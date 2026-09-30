@@ -126,4 +126,15 @@ class ItemPage(
             .performClick()
         return ItemListPage(row, navigationItem, composeTestRule).assertOnPage()
     }
+
+    fun assertRowShown(row: String, shown: Boolean): ItemPage {
+        val title = composeTestRule.onNodeWithText(row)
+        if (shown) {
+            title.assertIsDisplayed()
+        } else {
+            title.assertIsNotDisplayed()
+        }
+
+        return this
+    }
 }

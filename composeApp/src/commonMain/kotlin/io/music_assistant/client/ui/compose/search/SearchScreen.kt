@@ -66,12 +66,14 @@ import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
-import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
+import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
+import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.library.FilterAction
 import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
+import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -87,6 +89,7 @@ fun SearchScreen(
     searchViewModel: SearchViewModel,
     onNavigateToItem: (String, MediaType, String) -> Unit,
     actionsViewModel: ActionsViewModel,
+    providerViewModel: ProviderViewModel,
     contentPadding: PaddingValues,
     state: SearchScreenState,
     pendingSearch: GlobalSearchRequest? = null,
@@ -145,10 +148,7 @@ fun SearchScreen(
                 playlistActions = actionsViewModel,
                 libraryActions = actionsViewModel,
                 progressActions = actionsViewModel,
-                providerIconFetcher = { modifier, provider ->
-                    actionsViewModel.getProviderIcon(provider)
-                        ?.let { ProviderIcon(modifier, it) }
-                },
+                providerIconFetcher = providerViewModel.providerIconFetcher(),
                 contentPadding = contentPadding,
                 lazyListState = state.lazyListState,
             )
@@ -166,6 +166,7 @@ private fun SearchTopBar(
     TopAppBar(
         title = {
             SearchInput(
+                mode = SearchInputMode.EXPLICIT_SEARCH,
                 query = searchState.query,
                 onQueryChanged = onQueryChanged,
                 onSearch = onSearch,
@@ -233,7 +234,7 @@ private fun SearchContent(
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    providerIconFetcher: ProviderIconFetcher,
     contentPadding: PaddingValues,
     lazyListState: LazyListState,
 ) {

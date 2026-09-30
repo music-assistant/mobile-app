@@ -91,7 +91,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             if isPlaying {
                 pausedByInterruption = true
                 logInfo("Pausing server playback due to interruption")
-                remoteCommandHandler?.onCommand(command: "pause", source: "interruption")
+                remoteCommandHandler.withSnapshot { $0?.onCommand(command: "pause", source: "interruption") }
             }
         case .ended:
             guard pausedByInterruption else { break }
@@ -103,7 +103,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             // audio device exclusively.
             if !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint {
                 logInfo("Resuming server playback after interruption")
-                remoteCommandHandler?.onCommand(command: "play", source: "interruption")
+                remoteCommandHandler.withSnapshot { $0?.onCommand(command: "play", source: "interruption") }
             } else {
                 logInfo("Another app holds audio — staying paused")
             }
@@ -144,7 +144,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         bufferLock.lock()
         pcmBuffer.removeAll()
         bufferLock.unlock()
-        remoteCommandHandler?.onCommand(command: "pause", source: "route_loss")
+        remoteCommandHandler.withSnapshot { $0?.onCommand(command: "pause", source: "route_loss") }
     }
 
     // MARK: - PlatformAudioPlayer Protocol
@@ -430,7 +430,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
     // MARK: - Now Playing (Control Center / Lock Screen)
 
-    private var remoteCommandHandler: RemoteCommandHandler?
+    private let remoteCommandHandler = RemoteCommandHandlerStore<RemoteCommandHandler?>(nil)
 
     func setLongFormSeekIntervals(backSeconds: Int64, forwardSeconds: Int64) {
         NowPlayingCoordinator.shared.setLongFormSeekIntervals(
@@ -440,11 +440,11 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     }
 
     func setRemoteCommandHandler(handler: RemoteCommandHandler?) {
-        self.remoteCommandHandler = handler
+        remoteCommandHandler.replace(handler)
 
         NowPlayingCoordinator.shared.setCommandHandler { [weak self] command in
             self?.logInfo("Remote command: \(command)")
-            self?.remoteCommandHandler?.onCommand(command: command, source: "remote")
+            self?.remoteCommandHandler.withSnapshot { $0?.onCommand(command: command, source: "remote") }
         }
     }
 }

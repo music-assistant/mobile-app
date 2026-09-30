@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.QueueOption
@@ -73,8 +74,8 @@ class ActionsViewModel(
     fun canFavoriteStream(playerData: PlayerData) = dataSource.canFavoriteCurrentlyPlaying(playerData)
 
     override suspend fun getEditablePlaylists(): List<Playlist> =
-        mediaItemRepository.fetchMediaItems(Request.Playlist.listLibrary())
-            .getOrNull()
+        Request.Playlist.listLibrary()
+            .fetchAllPages { mediaItemRepository.fetchMediaItems(it).getOrNull() }
             ?.filterIsInstance<Playlist>()
             // Smart/dynamic playlists are rule-generated; tracks can't be added manually.
             ?.filter { it.isEditable && !it.isDynamic }
@@ -114,10 +115,9 @@ class ActionsViewModel(
     }
 
     /**
-     * [position] must be the 0-based index in the server's playlist order, which callers take from
-     * the displayed list. That only matches while playlist items stay in ORIGINAL ascending order —
-     * see `SortConfig.isUserSortable`. Restoring a sort option for PLAYLIST_ITEMS makes this delete
-     * the wrong track, so resolve the original index first if that ever changes.
+     * [position] is the track's `Track.position` exactly as the server emitted it for this playlist
+     * (providers number from 1 and delete `items[position - 1]`), so the displayed order or an
+     * active filter never affects which track is removed.
      */
     fun removeFromPlaylist(
         playlistId: String,
@@ -128,7 +128,7 @@ class ActionsViewModel(
             apiClient.sendRequest(
                 Request.Playlist.removeTracks(
                     playlistId = playlistId,
-                    positions = listOf(position + 1), // +1 because server uses 1-based indexing
+                    positions = listOf(position),
                 ),
             ).onSuccess {
                 onSuccess()
@@ -171,8 +171,6 @@ class ActionsViewModel(
                 .onFailure { _toasts.emit(getString(Res.string.toast_error_mark_unplayed)) }
         }
     }
-
-    fun getProviderIcon(provider: String) = dataSource.providerIcon(provider)
 
     fun onPlayClick(
         item: AppMediaItem,

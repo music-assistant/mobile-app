@@ -5,7 +5,6 @@ package io.music_assistant.client.ui.compose.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -65,6 +64,7 @@ import io.music_assistant.client.ui.compose.common.items.ItemCategory
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
+import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.BackHandler
@@ -88,7 +88,7 @@ fun HomeScreen(
     homeScreenViewModel: HomeScreenViewModel,
     contentPadding: PaddingValues,
     onNavigateClick: (AppMediaItem) -> Unit,
-    providerIconFetcher: (@Composable (Modifier, String) -> Unit),
+    providerIconFetcher: ProviderIconFetcher,
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
 ) {
@@ -109,7 +109,7 @@ fun HomeScreen(
     val enabledByKey =
         remember(items) { items.associate { it.first.category.lazyListKey to it.second } }
 
-    var editMode by remember { mutableStateOf(false) }
+    var editMode by state::editMode
     val displayedData =
         if (editMode) items.map { it.first } else working.filter { it.second }.map { it.first }
 
@@ -174,7 +174,6 @@ fun HomeScreen(
                     modifier = Modifier.testTag(HomeScreenSemantics.LIST_TAG),
                     state = state.lazyListState,
                     contentPadding = contentPadding,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(
                         items = displayedData,
@@ -355,6 +354,9 @@ class HomeScreenState(
     val lazyListState: LazyListState,
     val coroutineScope: CoroutineScope,
 ) : ScreenState {
+    /** Read by the navigation root, which hides the floating player bar while editing. */
+    var editMode by mutableStateOf(false)
+
     override fun reset() {
         coroutineScope.launch {
             topAppBarState.heightOffset = 0f

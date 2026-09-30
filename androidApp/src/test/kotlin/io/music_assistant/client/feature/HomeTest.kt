@@ -7,6 +7,7 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.assertFloatingBar
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.rules.createTestRuleChain
@@ -26,19 +27,6 @@ class HomeTest {
     val composeTestRule = createComposeRule()
 
     val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
-
-    // The default FakeServiceClient serves item-less rows resolved per row;
-    // legacy versions embed the items in the rows response.
-    @Test
-    fun `loads home recommendations from servers that embed row items`() {
-        serviceClient.setLegacyVersion(FakeServiceClient.LegacyVersion.V2_9)
-
-        val album = ServerMediaItemFixtures.album()
-        serviceClient.addItems(album)
-
-        launchLoggedInApp(composeTestRule, serviceClient)
-            .assertMediaDisplayed(album)
-    }
 
     @Test
     fun `can refresh home recommendations`() {
@@ -83,5 +71,17 @@ class HomeTest {
         serviceClient.setRequestErrors(false)
         homePage.refresh()
             .assertMediaDisplayed(album)
+    }
+
+    @Test
+    fun `edit mode hides the floating player bar`() {
+        serviceClient.addItems(ServerMediaItemFixtures.album())
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .assertFloatingBar(showing = true)
+            .editRows()
+            .assertFloatingBar(showing = false)
+            .saveRows()
+            .assertFloatingBar(showing = true)
     }
 }

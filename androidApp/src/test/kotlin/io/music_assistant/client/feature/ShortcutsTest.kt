@@ -6,13 +6,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.support.FakeServiceClient
-import io.music_assistant.client.support.FakeServiceClient.LegacyVersion
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
-import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertPlayer
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
@@ -56,17 +54,6 @@ class ShortcutsTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .playShortcut(track)
             .assertPlayer(player.displayName, playing = true, item = track.name)
-    }
-
-    @Test
-    fun `still loads home screen if shortcuts not supported by server`() {
-        serviceClient.setLegacyVersion(LegacyVersion.V2_8)
-
-        val album = ServerMediaItemFixtures.album()
-        serviceClient.addItems(album)
-
-        launchLoggedInApp(composeTestRule, serviceClient)
-            .assertMediaDisplayed(album)
     }
 
     @Test

@@ -15,6 +15,7 @@ import io.music_assistant.client.R
 import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.executeLocalPlayerDispatch
 import io.music_assistant.client.data.factory.MediaItemFactory
@@ -365,8 +366,8 @@ class AutoLibrary(
 
             else -> return null
         }
-        return apiClient.sendRequest(request)
-            .resultAs<List<ServerMediaItem>>()
+        return request
+            .fetchAllPages { apiClient.sendRequest(it).resultAs<List<ServerMediaItem>>() }
             ?.let { mediaItemFactory.createList(it) }
             ?.filter { it.isPlayable }
             ?.map { it.toAutoMediaItem(true, defaultIconUri) }

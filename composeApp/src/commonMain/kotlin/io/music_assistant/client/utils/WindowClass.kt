@@ -37,12 +37,6 @@ object WindowClass {
 }
 
 @Composable
-fun gridItemMinSize() = when {
-    WindowClass.isAtLeastMedium() -> 180.dp
-    else -> 140.dp
-}
-
-@Composable
 fun rowImageSize() = when {
     WindowClass.isAtLeastMedium() -> 48.dp
     else -> 48.dp

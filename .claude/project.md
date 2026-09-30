@@ -29,10 +29,10 @@ open iosApp/iosApp.xcodeproj
 
 ## Architecture
 
-@import .claude/architecture.md
-@import .claude/project-structure.md
-@import .claude/dependencies.md
-@import .claude/guidelines.md
+@architecture.md
+@project-structure.md
+@dependencies.md
+@guidelines.md
 
 ## UI Documentation
 

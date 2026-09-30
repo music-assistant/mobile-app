@@ -8,15 +8,14 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.AudioFormat
 import io.music_assistant.client.data.model.server.AuthProvider
-import io.music_assistant.client.data.model.server.DSPSettings
 import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.PlayerState
-import io.music_assistant.client.data.model.server.ProviderManifest
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerPlayerMedia
+import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.ServerUser
@@ -61,6 +60,7 @@ class FakeServiceClient : ServiceClient {
     private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
     private val mediaItemStore = FakeMediaItemStore()
     private val shortcuts = mutableListOf<String>()
+    private val providers = mutableListOf<ServerProviderInstance>()
 
     val username = "user"
     val password = "password"
@@ -81,31 +81,26 @@ class FakeServiceClient : ServiceClient {
         }
 
         return when (request.command) {
-            APICommands.PROVIDERS_MANIFESTS -> {
+            APICommands.PROVIDERS -> {
                 Result.success(
                     answer(
                         request = request,
-                        result = emptyList<ProviderManifest>(),
+                        result = providers,
                     ),
                 )
             }
 
             APICommands.AUTH_ME -> {
-                if (legacyVersion == LegacyVersion.V2_8) {
-                    Result.success(
-                        answer(
-                            request = request,
-                            result = emptyMap<String, String>(),
-                        ),
-                    )
-                } else {
-                    Result.success(
-                        answer(
-                            request = request,
-                            result = ServerUser(preferences = ServerUserPreferences(shortcuts)),
-                        ),
-                    )
-                }
+                Result.success(
+                    answer(
+                        request = request,
+                        result = if (shortcuts.isNotEmpty()) {
+                            ServerUser(preferences = ServerUserPreferences(shortcuts))
+                        } else {
+                            ServerUser()
+                        },
+                    ),
+                )
             }
 
             APICommands.AUTH_PROVIDERS -> {
@@ -524,23 +519,11 @@ class FakeServiceClient : ServiceClient {
         items: List<ServerQueueItem>,
     ) {
         val queueIndex = queues.indexOfFirst { it.queueId == queueId }
-        val player = findPlayer { it.activeSource == queueId }.second
-
-        val dsp = legacyVersion.let {
-            if (it != null && it <= LegacyVersion.V2_9) {
-                mapOf(player.playerId to DSPSettings(outputFormat = playerAudioFormats[player.playerId]))
-            } else {
-                null
-            }
-        }
 
         val firstItem = items.firstOrNull()
         val currentItem = firstItem?.copy(
             streamDetails = firstItem.streamDetails.let { streamDetails ->
-                streamDetails?.copy(dsp = dsp) ?: StreamDetails(
-                    audioFormat = AudioFormat(),
-                    dsp = dsp,
-                )
+                streamDetails ?: StreamDetails(audioFormat = AudioFormat())
             },
         ) ?: firstItem
 
@@ -693,6 +676,9 @@ class FakeServiceClient : ServiceClient {
         TODO("Not yet implemented")
     }
 
+    override fun requestCommandRecovery() {
+    }
+
     override fun onPlaybackActive() {
     }
 
@@ -741,6 +727,10 @@ class FakeServiceClient : ServiceClient {
 
     fun addShortcut(item: ServerMediaItem) {
         shortcuts.add(item.uri!!)
+    }
+
+    fun addProvider(provider: ServerProviderInstance) {
+        providers.add(provider)
     }
 
     fun getState(playerId: String): PlayerState? {
@@ -894,10 +884,7 @@ class FakeServiceClient : ServiceClient {
         return this.map { mediaItemStore.enrichLibraryItem(it) }
     }
 
-    enum class LegacyVersion {
-        V2_8,
-        V2_9,
-    }
+    enum class LegacyVersion
 }
 
 private fun answer(request: Request, result: JsonElement): Answer {

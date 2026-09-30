@@ -15,11 +15,15 @@ Before enabling, configure the following options:
 
 Tap **Enable local player** to activate it. The section header will update to **Local player enabled**, and the button will change to **Disable local player**.
 
-> **Good to know:** The Local Player is hidden by default in the Music Assistant Web UI, but visible under Music Assistant > Settings > Players as long as it is registered to the server. It registers automatically when the Local Player is enabled and the app is active and connected to the server. When the app is inactive, the player is de-registered and its settings are no longer editable.
-
 ![Local Player Disabled - Setup](screenshots/local-sendspin-player-settings/local-player-disabled.jpeg)
 ![Local Player Codec Preference](screenshots/local-sendspin-player-settings/local-player-codec.jpeg)
 ![Local Player Enabled](screenshots/local-sendspin-player-settings/player-enabled.jpeg)
+
+> **Good to know:** The app's built-in Local Player is designed to be a private player for a personal music experience. It plays music on your device, for you, while you're using it. This is different from the other players Music Assistant supports (like speakers), which stay on and available all the time. The Local Player isn't meant to work that way, so you can't find or control it from other apps or devices.
+
+> It's hidden by default in the Music Assistant Web UI, but visible under Music Assistant > Settings > Players as long as it's registered to the server. Registration only happens automatically while the Local Player is enabled and the app is active and connected to the server. As soon as the app goes inactive or loses that connection, the player is de-registered and its settings become uneditable.
+
+> **Note:** de-registration can take a moment after the app becomes inactive or loses its connection. This delay is one of the reasons the player is hidden by default on other interfaces: during that window, manual actions taken from those interfaces (like the Web UI or another device) may not come through correctly in the app, even though the player might still appear active there.
 
 ## Codec Preference
 

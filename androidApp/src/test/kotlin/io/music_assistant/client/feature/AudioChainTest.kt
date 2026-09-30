@@ -5,7 +5,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AudioFormat
 import io.music_assistant.client.support.FakeServiceClient
-import io.music_assistant.client.support.FakeServiceClient.LegacyVersion
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
@@ -49,31 +48,5 @@ class AudioChainTest {
             .clickOnMedia(album)
             .clickPlay()
             .expandPlayer(player.displayName, playing = true, item = track.name)
-    }
-
-    @Test
-    fun `can view output format for current queue item in legacy versions`() {
-        serviceClient.setLegacyVersion(LegacyVersion.V2_9)
-
-        val album = ServerMediaItemFixtures.album()
-        val track = ServerMediaItemFixtures.track(album = album)
-        serviceClient.addItems(track)
-
-        val audioFormat = AudioFormat(
-            contentType = "s16le",
-            sampleRate = 48000,
-            bitDepth = 16,
-        )
-
-        val player = ServerPlayerFixtures.player()
-        serviceClient.addPlayers(player)
-        serviceClient.setPlayerAudioFormat(player, audioFormat)
-
-        launchLoggedInApp(composeTestRule, serviceClient)
-            .clickOnMedia(album)
-            .clickPlay()
-            .expandPlayer(player.displayName, playing = true, item = track.name)
-            .clickQualityTier("HQ")
-            .assertFormatDisplayed(audioFormat)
     }
 }

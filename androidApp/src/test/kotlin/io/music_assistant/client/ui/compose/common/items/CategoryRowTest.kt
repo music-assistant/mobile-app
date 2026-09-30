@@ -32,7 +32,7 @@ class CategoryRowTest {
                 onPlayClick = { _, _, _, _ -> },
                 playlistActions = StubPlaylistActions(),
                 libraryActions = StubLibraryActions(),
-                providerIconFetcher = { _, _ -> },
+                providerIconFetcher = { _, _, _ -> },
             )
         }
 
@@ -59,7 +59,7 @@ class CategoryRowTest {
                 onPlayClick = { _, _, _, _ -> },
                 playlistActions = StubPlaylistActions(),
                 libraryActions = StubLibraryActions(),
-                providerIconFetcher = { _, _ -> },
+                providerIconFetcher = { _, _, _ -> },
             )
         }
 

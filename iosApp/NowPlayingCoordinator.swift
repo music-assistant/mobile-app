@@ -54,7 +54,7 @@ final class NowPlayingCoordinator {
         return "Info center assign: \(info.count) keys title=\(title) rate=\(rate) elapsed=\(elapsed)"
     }
 
-    private var commandHandler: CommandHandler?
+    private let commandHandler = RemoteCommandHandlerStore<CommandHandler?>(nil)
 
     // MARK: - Channel subscriptions
 
@@ -108,9 +108,11 @@ final class NowPlayingCoordinator {
     // MARK: - Command profile / session state
 
     private var currentIsLongFormContent: Bool?
+    private var currentIsRadio: Bool?
     private var currentLongFormSeekBackSeconds: Int64?
     private var currentLongFormSeekForwardSeconds: Int64?
     private var currentAudioSessionMode: AVAudioSession.Mode?
+    private var currentAudioSessionOptions: AVAudioSession.CategoryOptions?
 
     // MARK: - Logging
 
@@ -149,7 +151,7 @@ final class NowPlayingCoordinator {
 
     /// Applies track metadata: hands the track key group to the store, runs
     /// the artwork load, and derives session mode + command profile from the
-    /// long-form flag. A nil track means "nothing to present" — the store
+    /// content flags. A nil track means "nothing to present" — the store
     /// empties and profile/session return to defaults, while remote-command
     /// targets stay installed.
     private func handleTrack(_ track: NowPlayingTrack?) {
@@ -162,7 +164,7 @@ final class NowPlayingCoordinator {
         currentTrackId = track.mediaItemId
 
         configureAudioSession(mode: track.isLongFormContent ? .spokenAudio : .default)
-        updateRemoteCommandMode(isLongFormContent: track.isLongFormContent)
+        updateRemoteCommandMode(isLongFormContent: track.isLongFormContent, isRadio: track.isRadio)
 
         // No artwork: present immediately. Rebuild even for a same-identity
         // track — this write carries the complete presentation state, and a
@@ -359,13 +361,19 @@ final class NowPlayingCoordinator {
     /// Sets the category only — does NOT activate. Activation interrupts other
     /// apps, so doing it at launch claims audio from whatever is already playing.
     /// Deferred to `activatePlayback()`, driven by real playback.
+    ///
+    /// Music is mixable so voice prompts (Strava cues) duck instead of
+    /// interrupting it; spoken audio stays non-mixing so prompts pause it
+    /// and playback resumes at the same position.
     private func configureAudioSession(mode: AVAudioSession.Mode = .default) {
-        guard currentAudioSessionMode != mode else { return }
+        let options: AVAudioSession.CategoryOptions = mode == .spokenAudio ? [] : [.mixWithOthers]
+        guard currentAudioSessionMode != mode || currentAudioSessionOptions != options else { return }
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: mode, options: [])
+            try session.setCategory(.playback, mode: mode, options: options)
             currentAudioSessionMode = mode
-            logDebug("Audio session category configured: mode=\(mode.rawValue)")
+            currentAudioSessionOptions = options
+            logDebug("Audio session category configured: mode=\(mode.rawValue) options=\(options)")
         } catch {
             logError("Failed to configure audio session: \(error)")
         }
@@ -375,19 +383,18 @@ final class NowPlayingCoordinator {
     func activatePlayback() {
         do {
             let session = AVAudioSession.sharedInstance()
-            // Re-assert exclusive (non-mixing) playback before activating. The
-            // volume-button observer may have switched the shared session to
-            // .mixWithOthers while only a remote player was being viewed; when
-            // local playback actually starts we must reclaim exclusive focus so we
-            // become the Now Playing app. Keep the mode the track handler chose
-            // (.spokenAudio for long-form content) rather than forcing .default,
-            // which would silently clobber it and desync `currentAudioSessionMode`.
-            try session.setCategory(.playback, mode: currentAudioSessionMode ?? .default, options: [])
+            // Re-assert before activating: the volume-button observer may have
+            // switched the session to .mixWithOthers while a remote player was
+            // in view. Restore the mode/options the track handler chose.
+            let mode = currentAudioSessionMode ?? .default
+            let options = currentAudioSessionOptions
+                ?? (mode == .spokenAudio ? [] : [.mixWithOthers])
+            try session.setCategory(.playback, mode: mode, options: options)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             // Info level: fires only when playback (re)starts, and an absent
             // line here is the tell when iOS shows "Not Playing" despite
             // healthy info-center assignments.
-            logInfo("Playback activated: mode=\((currentAudioSessionMode ?? .default).rawValue)")
+            logInfo("Playback activated: mode=\(mode.rawValue) options=\(options)")
         } catch {
             logError("Failed to activate playback: \(error)")
         }
@@ -398,7 +405,7 @@ final class NowPlayingCoordinator {
     /// Sets the handler for remote commands
     /// We now support dynamic handler updates without re-registering commands
     func setCommandHandler(_ handler: @escaping CommandHandler) {
-        self.commandHandler = handler
+        commandHandler.replace(handler)
         logDebug("Command handler updated")
     }
 
@@ -408,6 +415,8 @@ final class NowPlayingCoordinator {
     func dispatchCarCommand(_ command: String) {
         dispatchPrecondition(condition: .onQueue(.main))
         let resolvedCommand = resolveRemoteCommand(command)
+        var commandHandler: CommandHandler?
+        self.commandHandler.withSnapshot { commandHandler = $0 }
         guard let commandHandler else {
             // Narrow window (the handler is wired during player init, before
             // any CarPlay button can become enabled), but a silently vanishing
@@ -433,7 +442,7 @@ final class NowPlayingCoordinator {
                 guard let self = self else { return .commandFailed }
                 let resolvedCommand = self.resolveRemoteCommand(cmd)
                 self.logDebug("Remote command received: \(resolvedCommand)")
-                self.commandHandler?(resolvedCommand)
+                self.commandHandler.withSnapshot { $0?(resolvedCommand) }
                 return .success
             }
         }
@@ -454,14 +463,14 @@ final class NowPlayingCoordinator {
         addTarget(commandCenter.changeShuffleModeCommand, cmd: "toggle_shuffle", enabled: false)
         addTarget(commandCenter.changeRepeatModeCommand, cmd: "toggle_repeat", enabled: false)
 
-        commandCenter.changePlaybackPositionCommand.isEnabled = true
+        // Enablement belongs to the transport profile above.
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let positionEvent = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
             // Floor to the same whole-second target KMP freezes at; otherwise the
             // lock-screen thumb can correct backward when the KMP anchor lands.
             let seekPosition = positionEvent.positionTime.rounded(.down)
             self?.logInfo("Remote seek command received: \(seekPosition)")
-            self?.commandHandler?("seek:\(seekPosition)")
+            self?.commandHandler.withSnapshot { $0?("seek:\(seekPosition)") }
             return .success
         }
     }
@@ -484,18 +493,20 @@ final class NowPlayingCoordinator {
         }
     }
 
-    /// Swaps the transport-command profile: music uses prev/next, long-form
-    /// content uses skip ±N. Never touches the shuffle/repeat commands —
-    /// those belong to the modes handler.
-    private func updateRemoteCommandMode(isLongFormContent: Bool) {
-        guard currentIsLongFormContent != isLongFormContent else { return }
+    /// Swaps the transport-command profile: radio uses play/pause only,
+    /// music uses prev/next, and long-form content uses skip ±N.
+    /// Shuffle/repeat commands belong to the modes handler.
+    private func updateRemoteCommandMode(isLongFormContent: Bool, isRadio: Bool = false) {
+        guard currentIsLongFormContent != isLongFormContent || currentIsRadio != isRadio else { return }
         currentIsLongFormContent = isLongFormContent
+        currentIsRadio = isRadio
 
         let commandCenter = MPRemoteCommandCenter.shared()
-        commandCenter.previousTrackCommand.isEnabled = !isLongFormContent
-        commandCenter.nextTrackCommand.isEnabled = !isLongFormContent
-        commandCenter.skipBackwardCommand.isEnabled = isLongFormContent
-        commandCenter.skipForwardCommand.isEnabled = isLongFormContent
+        commandCenter.previousTrackCommand.isEnabled = !isRadio && !isLongFormContent
+        commandCenter.nextTrackCommand.isEnabled = !isRadio && !isLongFormContent
+        commandCenter.skipBackwardCommand.isEnabled = !isRadio && isLongFormContent
+        commandCenter.skipForwardCommand.isEnabled = !isRadio && isLongFormContent
+        commandCenter.changePlaybackPositionCommand.isEnabled = !isRadio
     }
 
     func setLongFormSeekIntervals(backSeconds: Int64, forwardSeconds: Int64) {

@@ -2,13 +2,17 @@ package io.music_assistant.client.ui.compose.common.providers
 
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
-import musicassistantclient.composeapp.generated.resources.*
+import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_provider_icon
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -27,14 +31,6 @@ fun ProviderIcon(
             Icon(
                 imageVector = providerIconModel.icon,
                 contentDescription = stringResource(Res.string.cd_provider_icon),
-                modifier = modifier,
-                tint = providerIconModel.tint,
-            )
-        }
-
-        is ProviderIconModel.MdiGlyph -> {
-            MdiIcon(
-                name = providerIconModel.name,
                 modifier = modifier,
                 tint = providerIconModel.tint,
             )
@@ -63,5 +59,24 @@ fun ProviderIcon(
         }
 
         null -> Unit
+    }
+}
+
+typealias ProviderIconFetcher = (@Composable (modifier: Modifier, providerDomain: String, variant: String) -> Unit)
+fun ProviderViewModel.providerIconFetcher(): (
+    @Composable (
+    modifier: Modifier,
+    providerDomain: String,
+    variant: String,
+) -> Unit
+) {
+    return { modifier, providerDomain, variant ->
+        val providerIconModel by remember {
+            this.getProviderIcon(providerDomain, variant)
+        }.collectAsStateWithLifecycle()
+
+        if (providerIconModel != null) {
+            ProviderIcon(modifier, providerIconModel)
+        }
     }
 }

@@ -2,6 +2,9 @@
 
 package io.music_assistant.client.ui.compose.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
@@ -56,7 +60,7 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
-import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
+import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
@@ -83,6 +87,7 @@ import io.music_assistant.client.ui.compose.nav.MultiBackStack
 import io.music_assistant.client.ui.compose.nav.NavigationItem
 import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.createNavigationItem
+import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.ui.compose.search.SearchScreenState
@@ -113,6 +118,7 @@ fun MainNavigationRoot(
     actionsViewModel: ActionsViewModel = koinViewModel(),
     viewModeViewModel: ViewModeViewModel = koinViewModel(),
     dspSettingsViewModel: DspSettingsViewModel = koinViewModel(),
+    providerViewModel: ProviderViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -153,9 +159,12 @@ fun MainNavigationRoot(
         }
 
         snapshotFlow { playerPagerState.settledPage }.collect { currentPage ->
-            currentData.playerData.getOrNull(currentPage)?.let { playerData ->
-                homeScreenViewModel.selectPlayer(playerData.player)
-            }
+            currentData.playerData.getOrNull(currentPage)
+                // Only a swipe to another player is a user choice. Re-writing the page the
+                // scroll above just landed on would persist the resolver's fallback (first
+                // player while the chosen one is briefly missing) as the user's selection.
+                ?.takeIf { it.playerId != currentData.selectedPlayer?.playerId }
+                ?.let { playerData -> homeScreenViewModel.selectPlayer(playerData.player) }
         }
     }
 
@@ -262,6 +271,11 @@ fun MainNavigationRoot(
         ),
     )
 
+    // A root screen in edit mode hides the collapsed bar so it does not cover drag targets.
+    // An expanded player (for example from a deep link) always stays visible.
+    val rootScreenEditing = homeScreenState.value?.editMode == true ||
+        libraryScreenState.value?.editMode == true
+
     Box(modifier = Modifier.fillMaxSize()) {
         AdaptiveNavigationBarLayout(
             showNavigation = !playerExpanded,
@@ -270,30 +284,38 @@ fun MainNavigationRoot(
             FloatingBarLayout(
                 modifier = Modifier.padding(scaffoldContentPadding),
                 floatingBar = {
-                    FloatingBar(
-                        expanded = playerExpanded,
-                        onExpand = onExpandPlayer,
-                        content = { expanded, contentPadding ->
-                            PlayersPager(
-                                playerPagerState = playerPagerState,
-                                state = playersState,
-                                homeScreenViewModel = homeScreenViewModel,
-                                actionsViewModel = actionsViewModel,
-                                dspSettingsViewModel = dspSettingsViewModel,
-                                expanded = expanded,
-                                onClose = { playerExpanded = false },
-                                contentPadding = contentPadding,
-                            ) { item ->
-                                multiBackStack.add(
-                                    MainNav.ItemDetails(
-                                        itemId = item.itemId,
-                                        mediaType = item.mediaType,
-                                        providerId = item.provider,
-                                    ),
-                                )
-                            }
-                        },
-                    )
+                    // The bar is bottom-anchored, so shrinking towards its top slides it down
+                    // while the content padding follows the animated height.
+                    AnimatedVisibility(
+                        visible = playerExpanded || !rootScreenEditing,
+                        enter = expandVertically(expandFrom = Alignment.Top),
+                        exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                    ) {
+                        FloatingBar(
+                            expanded = playerExpanded,
+                            onExpand = onExpandPlayer,
+                            content = { expanded, contentPadding ->
+                                PlayersPager(
+                                    playerPagerState = playerPagerState,
+                                    state = playersState,
+                                    homeScreenViewModel = homeScreenViewModel,
+                                    actionsViewModel = actionsViewModel,
+                                    dspSettingsViewModel = dspSettingsViewModel,
+                                    expanded = expanded,
+                                    onClose = { playerExpanded = false },
+                                    contentPadding = contentPadding,
+                                ) { item ->
+                                    multiBackStack.add(
+                                        MainNav.ItemDetails(
+                                            itemId = item.itemId,
+                                            mediaType = item.mediaType,
+                                            providerId = item.provider,
+                                        ),
+                                    )
+                                }
+                            },
+                        )
+                    }
                 },
             ) { floatingBarContentPadding ->
                 BackHandler(playerExpanded) {
@@ -316,6 +338,7 @@ fun MainNavigationRoot(
                                 homeScreenViewModel,
                                 actionsViewModel,
                                 viewModeViewModel,
+                                providerViewModel,
                                 homeScreenState,
                                 libraryScreenState,
                                 searchScreenState,
@@ -340,6 +363,7 @@ private fun mainNavEntryProvider(
     homeScreenViewModel: HomeScreenViewModel,
     actionsViewModel: ActionsViewModel,
     viewModeViewModel: ViewModeViewModel,
+    providerViewModel: ProviderViewModel,
     homeScreenState: MutableState<HomeScreenState?>,
     libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
@@ -376,10 +400,7 @@ private fun mainNavEntryProvider(
                         else -> Unit
                     }
                 },
-                providerIconFetcher = { modifier, provider ->
-                    actionsViewModel.getProviderIcon(provider)
-                        ?.let { ProviderIcon(modifier, it) }
-                },
+                providerIconFetcher = providerViewModel.providerIconFetcher(),
                 actionsViewModel = actionsViewModel,
                 state = screenState,
             )
@@ -548,6 +569,7 @@ private fun mainNavEntryProvider(
                 itemDetailsViewModel = itemDetailsViewModel,
                 viewModeViewModel = viewModeViewModel,
                 actionsViewModel = actionsViewModel,
+                providerViewModel = providerViewModel,
                 onBack = { multiBackStack.removeLastOrNull() },
                 onNavigateToItem = { itemId, mediaType, providerId ->
                     multiBackStack.add(
@@ -584,6 +606,7 @@ private fun mainNavEntryProvider(
                 },
                 contentPadding = contentPadding,
                 actionsViewModel = actionsViewModel,
+                providerViewModel = providerViewModel,
                 state = screenState,
                 pendingSearch = pendingSearch,
                 onSearchConsumed = { pendingSearch = null },

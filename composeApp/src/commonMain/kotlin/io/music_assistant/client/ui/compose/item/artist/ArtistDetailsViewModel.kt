@@ -6,20 +6,22 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.itemList
-import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.data.model.client.items.set
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
 import io.music_assistant.client.ui.compose.common.mapData
-import io.music_assistant.client.ui.compose.item.FetchArtistItemsUseCase
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel.Companion.ARTIST_SECTION_LIMIT
 import io.music_assistant.client.ui.compose.item.ItemList
+import io.music_assistant.client.ui.compose.item.toRequests
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ArtistDetailsViewModel(
@@ -44,44 +46,30 @@ class ArtistDetailsViewModel(
     private val allProviderFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val all = allItems.asFlow()
         .combine(allProviderFilter) { items, providerFilter ->
-            if (providerFilter != null) {
-                items.map {
-                    Section(
-                        items = it
-                            .filterIsInstance<Album>()
-                            .take(ARTIST_SECTION_LIMIT),
-                        itemList = ItemList.ArtistAlbums(
-                            providerFilter.current.providerInstance,
-                            providerFilter.current.itemId,
-                        ),
-                        providerFilter = providerFilter,
-                    )
-                }
-            } else {
-                DataState.Loading<Section<Album>>()
+            items.map {
+                Section(
+                    items = it
+                        .filterIsInstance<Album>()
+                        .take(ARTIST_SECTION_LIMIT),
+                    itemList = providerFilter?.current,
+                    providerFilter = providerFilter,
+                )
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
 
     private val topTrackItems = itemList(mediaItemRepository)
-    private val topTracksProviderInfo = MutableStateFlow<Section.ProviderFilter?>(null)
+    private val topTracksFilter = MutableStateFlow<Section.ProviderFilter?>(null)
     val topTracks = topTrackItems.asFlow()
-        .combine(topTracksProviderInfo) { items, providerFilter ->
-            if (providerFilter != null) {
-                items.map {
-                    Section(
-                        items = it
-                            .filterIsInstance<Track>()
-                            .take(ARTIST_SECTION_LIMIT),
-                        itemList = ItemList.ArtistTopTracks(
-                            providerFilter.current.providerInstance,
-                            providerFilter.current.itemId,
-                        ),
-                        providerFilter = providerFilter,
-                    )
-                }
-            } else {
-                DataState.Loading<Section<Track>>()
+        .combine(topTracksFilter) { items, providerFilter ->
+            items.map {
+                Section(
+                    items = it
+                        .filterIsInstance<Track>()
+                        .take(ARTIST_SECTION_LIMIT),
+                    itemList = providerFilter?.current,
+                    providerFilter = providerFilter,
+                )
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
@@ -100,74 +88,56 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val itemsWithMappings = fetchArtistItemsUseCase.run(
-                artist,
-                Request.Artist::getAlbums,
-            )
+            val artistItems = fetchArtistItemsUseCase.run(artist) { ItemList.ArtistAlbums(it) }
 
-            if (itemsWithMappings != null) {
-                allItems.set(itemsWithMappings.items, itemsWithMappings.request)
-                allProviderFilter.value = Section.ProviderFilter(
-                    itemsWithMappings.mapping,
-                    artist.providerMappings ?: emptyList(),
-                )
+            if (artistItems != null) {
+                val (items, itemList, options) = artistItems
+                allProviderFilter.value = Section.ProviderFilter(itemList, options)
+                allItems.set(items, itemList.toRequests())
             } else {
-                allItems.setError()
+                allItems.setEmpty()
             }
         }
 
         viewModelScope.launch {
-            val itemsWithMappings = fetchArtistItemsUseCase.run(
-                artist,
-                Request.Artist::getTopTracks,
-            )
+            val result = fetchArtistItemsUseCase.run(artist) { ItemList.ArtistTopTracks(it) }
 
-            if (itemsWithMappings != null) {
-                topTrackItems.set(itemsWithMappings.items, itemsWithMappings.request)
-                topTracksProviderInfo.value = Section.ProviderFilter(
-                    itemsWithMappings.mapping,
-                    artist.providerMappings ?: emptyList(),
-                )
+            if (result != null) {
+                val (items, itemList, options) = result
+                topTracksFilter.value = Section.ProviderFilter(itemList, options)
+                topTrackItems.set(items, itemList.toRequests())
             } else {
-                topTrackItems.setError()
+                topTrackItems.setEmpty()
             }
         }
     }
 
-    fun loadAlbumsForProvider(mapping: ProviderMapping) {
-        allProviderFilter.value = Section.ProviderFilter(
-            mapping,
-            artist.providerMappings ?: emptyList(),
-        )
+    fun loadAll(itemList: ItemList) {
+        allProviderFilter.update {
+            it?.copy(current = itemList)
+        }
 
         viewModelScope.launch {
-            val itemId = mapping.itemId
-            val providerInstance = mapping.providerInstance
-            allItems.set(Request.Artist.getAlbums(itemId, providerInstance))
+            allItems.set(itemList.toRequests())
         }
     }
 
-    fun loadTopTracksForProvider(mapping: ProviderMapping) {
-        topTracksProviderInfo.value = Section.ProviderFilter(
-            mapping,
-            artist.providerMappings ?: emptyList(),
-        )
+    fun loadTopTracks(itemList: ItemList) {
+        topTracksFilter.update { it?.copy(current = itemList) }
 
         viewModelScope.launch {
-            val itemId = mapping.itemId
-            val providerInstance = mapping.providerInstance
-            topTrackItems.set(Request.Artist.getTopTracks(itemId, providerInstance))
+            topTrackItems.set(itemList.toRequests())
         }
     }
 
     data class Section<T : AppMediaItem>(
         val items: List<T>,
-        val itemList: ItemList,
+        val itemList: ItemList?,
         val providerFilter: ProviderFilter? = null,
     ) {
         data class ProviderFilter(
-            val current: ProviderMapping,
-            val options: List<ProviderMapping>,
+            val current: ItemList,
+            val options: List<ItemList>,
         )
     }
 }

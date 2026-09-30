@@ -24,8 +24,6 @@ interface PlayableItem {
     val provider: String
     val isInLibrary: Boolean
     val favorite: Boolean?
-    val longId: Long
-        get() = itemId.hashCode().toLong()
     val canStartEndlessMix: Boolean
 
     val isPlayable: Boolean

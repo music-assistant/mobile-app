@@ -47,7 +47,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     //   - Track channel: profile flips swap which retained instances are
     //     installed. Music gets shuffle/repeat; long-form content with
     //     navigable chapters gets chapter prev/next (the transport row keeps
-    //     the ±N skips); other long-form content gets nothing.
+    //     the ±N skips); radio and other long-form content get nothing.
     //   - Modes channel: shuffle/repeat enablement only.
     // Selected state is never written here: CarPlay renders it from
     // MPRemoteCommandCenter's currentShuffleType/currentRepeatType, whose sole
@@ -270,11 +270,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         nowPlayingButtonsEnabled = nil
 
         trackSubscription = KmpHelper.shared.observeNowPlayingTrack { [weak self] track in
-            // Bottom bar shows chapter prev/next only when the long-form
-            // content has navigable chapters, otherwise nothing. A nil track
-            // keeps the music profile; the modes channel's nil disables it.
+            // Radio has no auxiliary controls. Long-form shows chapter
+            // prev/next only with navigable chapters. A nil track keeps the
+            // music profile; the modes channel's nil disables it.
             let profile: NowPlayingButtonProfile
-            if track?.isLongFormContent != true {
+            if track?.isRadio == true {
+                profile = .empty
+            } else if track?.isLongFormContent != true {
                 profile = .music
             } else if track?.hasChapterNavigation == true {
                 profile = .chapters

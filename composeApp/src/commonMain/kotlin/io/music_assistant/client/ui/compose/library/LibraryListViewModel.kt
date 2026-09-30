@@ -158,7 +158,7 @@ class LibraryListViewModel(
         val feature = providerFeatureFor(mediaType) ?: return
         viewModelScope.launch {
             _providerOptions.update { DataState.Loading() }
-            val providers = apiClient.sendRequest(Request.Library.providers())
+            val providers = apiClient.sendRequest(Request.Provider.all())
                 .resultAs<List<ServerProviderInstance>>()
             _providerOptions.update {
                 providers
@@ -232,7 +232,7 @@ class LibraryListViewModel(
         }
 
         viewModelScope.launch {
-            val searchQuery = currentState.searchQuery.takeIf { it.length >= 3 }
+            val searchQuery = currentState.serverSearchQuery()
             val orderBy = currentState.sortOption.toServerString()
 
             _state.update {
@@ -405,9 +405,12 @@ class LibraryListViewModel(
         }
     }
 
+    /** The server accepts any non-blank query; both page loaders must agree or later pages leak unfiltered items. */
+    private fun State.serverSearchQuery(): String? = searchQuery.takeIf { it.isNotBlank() }
+
     private fun loadFirstPage() {
         viewModelScope.launch {
-            val searchQuery = state.value.searchQuery.takeIf { it.length >= 0 }
+            val searchQuery = state.value.serverSearchQuery()
             val orderBy = state.value.sortOption.toServerString()
             updateState(DataState.Loading())
 

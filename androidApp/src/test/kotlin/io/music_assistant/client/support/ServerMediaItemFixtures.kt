@@ -3,6 +3,7 @@ package io.music_assistant.client.support
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.utils.UniqueIdGenerator
 
 object ServerMediaItemFixtures {
@@ -13,7 +14,10 @@ object ServerMediaItemFixtures {
         name: String = "Album $itemId",
         artist: ServerMediaItem = artist(),
         favorite: Boolean? = null,
-        provider: Provider = Provider(DEFAULT_PROVIDER_DOMAIN, DEFAULT_PROVIDER_INSTANCE),
+        provider: ServerProviderInstance = provider(
+            DEFAULT_PROVIDER_DOMAIN,
+            DEFAULT_PROVIDER_INSTANCE,
+        ),
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
@@ -28,7 +32,7 @@ object ServerMediaItemFixtures {
                 ProviderMapping(
                     itemId = itemId,
                     providerDomain = provider.domain,
-                    providerInstance = provider.instance,
+                    providerInstance = provider.instanceId,
                 ),
             ),
         )
@@ -37,7 +41,10 @@ object ServerMediaItemFixtures {
     fun artist(
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Artist $itemId",
-        provider: Provider = Provider(DEFAULT_PROVIDER_DOMAIN, DEFAULT_PROVIDER_INSTANCE),
+        provider: ServerProviderInstance = provider(
+            DEFAULT_PROVIDER_DOMAIN,
+            DEFAULT_PROVIDER_INSTANCE,
+        ),
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
@@ -48,7 +55,7 @@ object ServerMediaItemFixtures {
                 ProviderMapping(
                     itemId = itemId,
                     providerDomain = provider.domain,
-                    providerInstance = provider.instance,
+                    providerInstance = provider.instanceId,
                 ),
             ),
         )
@@ -59,7 +66,10 @@ object ServerMediaItemFixtures {
         name: String = "Track $itemId",
         album: ServerMediaItem? = album(),
         artists: List<ServerMediaItem>? = album?.artists ?: listOf(artist()),
-        provider: Provider = Provider(DEFAULT_PROVIDER_DOMAIN, DEFAULT_PROVIDER_INSTANCE),
+        provider: ServerProviderInstance = provider(
+            DEFAULT_PROVIDER_DOMAIN,
+            DEFAULT_PROVIDER_INSTANCE,
+        ),
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
@@ -74,7 +84,7 @@ object ServerMediaItemFixtures {
                 ProviderMapping(
                     itemId = itemId,
                     providerDomain = provider.domain,
-                    providerInstance = provider.instance,
+                    providerInstance = provider.instanceId,
                 ),
             ),
         )
@@ -183,12 +193,16 @@ object ServerMediaItemFixtures {
     fun provider(
         domain: String = DEFAULT_PROVIDER_DOMAIN,
         instance: String = DEFAULT_PROVIDER_INSTANCE,
-    ): Provider {
-        return Provider(domain, instance)
+        name: String = domain,
+    ): ServerProviderInstance {
+        return ServerProviderInstance(
+            domain = domain,
+            instanceId = instance,
+            name = name,
+            type = "music",
+        )
     }
 
     private const val DEFAULT_PROVIDER_DOMAIN = "test-domain"
     private const val DEFAULT_PROVIDER_INSTANCE = "test-instance"
-
-    data class Provider(val domain: String, val instance: String)
 }

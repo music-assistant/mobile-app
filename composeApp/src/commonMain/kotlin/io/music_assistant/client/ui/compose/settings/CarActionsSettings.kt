@@ -29,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -183,8 +182,6 @@ private fun CarEnqueueActionDialog(viewModel: CarActionsViewModel, onDismiss: ()
                         Text(
                             text = stringResource(kind.labelRes()),
                             modifier = Modifier.width(KIND_LABEL_WIDTH),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                         )
                         ActionDropdown(
                             context = LocalClickActionConfig.current.context,

@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.data.model.client.clientFiltered
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -49,6 +50,8 @@ class ItemDetailsViewModel(
         val similarArtistsState: DataState<List<Artist>> = DataState.NoData(),
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
+        /** In-list text filter; null while the search field is closed, "" once opened. */
+        val playableItemsQuery: String? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
         val userSelectedTab: ItemDetailsTab? = null,
     ) {
@@ -73,6 +76,7 @@ class ItemDetailsViewModel(
 
     private var rawAlbums: List<Album> = emptyList()
     private var rawPlayableItems: List<PlayableItem> = emptyList()
+    private var playableItemsContext: SubItemContext? = null
 
     fun onTabSelected(tab: ItemDetailsTab) {
         _state.update { it.copy(userSelectedTab = tab) }
@@ -235,20 +239,7 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
-                rawPlayableItems = tracks
-                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(
-                    SubItemContext.ALBUM_TRACKS,
-                )
-                _state.update {
-                    it.copy(
-                        playableItemsState = DataState.Data(
-                            tracks.clientSorted(
-                                sort,
-                                SubItemContext.ALBUM_TRACKS,
-                            ),
-                        ),
-                    )
-                }
+                setPlayableItems(tracks, SubItemContext.ALBUM_TRACKS)
             } catch (e: Exception) {
                 Logger.e("Failed to load album tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -275,20 +266,7 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<PlayableItem>()
                     ?: emptyList()
 
-                rawPlayableItems = tracks
-                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(
-                    SubItemContext.PLAYLIST_ITEMS,
-                )
-                _state.update {
-                    it.copy(
-                        playableItemsState = DataState.Data(
-                            tracks.clientSorted(
-                                sort,
-                                SubItemContext.PLAYLIST_ITEMS,
-                            ),
-                        ),
-                    )
-                }
+                setPlayableItems(tracks, SubItemContext.PLAYLIST_ITEMS)
             } catch (e: Exception) {
                 Logger.e("Failed to load playlist tracks", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -310,19 +288,7 @@ class ItemDetailsViewModel(
                     ?.filterIsInstance<PodcastEpisode>()
                     ?: emptyList()
 
-                rawPlayableItems = episodes
-                val sort = _state.value.playableItemsSortOption ?: SortConfig.defaultFor(
-                    SubItemContext.PODCAST_EPISODES,
-                )
-                _state.update {
-                    it.copy(
-                        playableItemsState = DataState.Data(
-                            episodes.clientSorted(
-                                sort,
-                            ),
-                        ),
-                    )
-                }
+                setPlayableItems(episodes, SubItemContext.PODCAST_EPISODES)
             } catch (e: Exception) {
                 Logger.e("Failed to load podcast episodes", e)
                 _state.update { it.copy(playableItemsState = DataState.Error()) }
@@ -467,17 +433,34 @@ class ItemDetailsViewModel(
 
     fun onPlayableItemsSortChanged(context: SubItemContext, sortOption: SortOption) {
         settingsRepository.setSortOption(context, sortOption)
-        _state.update { st ->
-            st.copy(
-                playableItemsSortOption = sortOption,
-                playableItemsState = DataState.Data(
-                    rawPlayableItems.clientSorted(
-                        sortOption,
-                        context,
-                    ),
-                ),
-            )
-        }
+        _state.update { it.copy(playableItemsSortOption = sortOption) }
+        publishPlayableItems()
+    }
+
+    /** null closes the filter and shows the full list again; any string filters live. */
+    fun onPlayableItemsQueryChanged(query: String?) {
+        _state.update { it.copy(playableItemsQuery = query) }
+        publishPlayableItems()
+    }
+
+    private fun setPlayableItems(items: List<PlayableItem>, context: SubItemContext) {
+        rawPlayableItems = items
+        playableItemsContext = context
+        publishPlayableItems()
+    }
+
+    /**
+     * Single derivation of the visible list: raw → filter → sort. Every input change (load, sort,
+     * query, item update) funnels through here so the three never drift apart.
+     */
+    private fun publishPlayableItems() {
+        val context = playableItemsContext ?: return
+        val st = _state.value
+        val sort = st.playableItemsSortOption ?: SortConfig.defaultFor(context)
+        val visible = rawPlayableItems
+            .clientFiltered(st.playableItemsQuery.orEmpty())
+            .clientSorted(sort, context)
+        _state.update { it.copy(playableItemsState = DataState.Data(visible)) }
     }
 
     // Bypasses the server's playlist-tracks cache, which is the only way to make a
@@ -510,15 +493,11 @@ class ItemDetailsViewModel(
             }
 
             is PlayableItem -> {
-                val tracksData =
-                    (_state.value.playableItemsState as? DataState.Data)?.data ?: return
-                val updated = tracksData.map { existing ->
-                    if (existing.itemId == changed.itemId) changed else existing
-                }
+                if (_state.value.playableItemsState !is DataState.Data) return
                 rawPlayableItems = rawPlayableItems.map { existing ->
                     if (existing.itemId == changed.itemId) changed else existing
                 }
-                _state.update { it.copy(playableItemsState = DataState.Data(updated)) }
+                publishPlayableItems()
             }
 
             else -> Unit

@@ -146,6 +146,32 @@ class NowPlayingRadioStreamMetadataTest {
         )!!
 
     @Test
+    fun radioClassificationSurvivesStreamMetadataChanges() {
+        assertTrue(radioTrack(null).isRadio)
+        assertTrue(radioTrack(streamMedia()).isRadio)
+        assertTrue(radioTrack(streamMedia(title = "Another song")).isRadio)
+        assertFalse(radioTrack(streamMedia()).isLongFormContent)
+        for (item in listOf(testTrack(), testAudiobook(), testPodcastEpisode())) {
+            assertFalse(buildNowPlayingTrack(playerData(item, queueInfo(queueId = "queue-1")))!!.isRadio)
+        }
+    }
+
+    @Test
+    fun radioDisablesQueueModeControls() {
+        val regularQueueData = playerData(
+            testRadio(),
+            queueInfo(queueId = "queue-1", isDynamicPlaylist = false),
+        )
+        assertFalse(buildNowPlayingModes(regularQueueData)!!.togglesEnabled)
+
+        val dynamicQueueData = playerData(
+            testRadio(),
+            queueInfo(queueId = "queue-1", isDynamicPlaylist = true),
+        )
+        assertFalse(buildNowPlayingModes(dynamicQueueData)!!.togglesEnabled)
+    }
+
+    @Test
     fun overlaysDynamicStreamMetadataKeepingStationIdentity() {
         val built = radioTrack(streamMedia(imageUrl = "https://example.invalid/song.jpg"))
         assertEquals("Song", built.title)

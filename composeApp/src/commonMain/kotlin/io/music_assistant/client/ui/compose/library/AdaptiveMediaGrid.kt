@@ -49,7 +49,7 @@ import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
-import io.music_assistant.client.utils.gridItemMinSize
+import io.music_assistant.client.ui.compose.grid.gridItemMinSize
 
 @Composable
 fun AdaptiveMediaGrid(

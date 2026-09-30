@@ -5,14 +5,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,10 +72,9 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Defaults
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
-import io.music_assistant.client.player.sendspin.SendspinConfig
-import io.music_assistant.client.player.sendspin.audio.Codecs
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -137,7 +142,6 @@ import musicassistantclient.composeapp.generated.resources.settings_remote_id_hi
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_invalid
 import musicassistantclient.composeapp.generated.resources.settings_saved_connections
 import musicassistantclient.composeapp.generated.resources.settings_scan_qr
-import musicassistantclient.composeapp.generated.resources.settings_sendspin_require_encryption
 import musicassistantclient.composeapp.generated.resources.settings_server
 import musicassistantclient.composeapp.generated.resources.settings_server_base_path
 import musicassistantclient.composeapp.generated.resources.settings_server_base_path_hint
@@ -220,7 +224,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
                     .clearFocusOnScroll()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    // Settings sits outside AdaptiveNavigationBarLayout, so nothing else reserves
+                    // the system nav bar; padding the scroll content keeps the last item reachable.
+                    .windowInsetsPadding(WindowInsets.navigationBars),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 var ipAddress by remember { mutableStateOf("") }
@@ -556,6 +563,7 @@ private fun ExperimentalPill() {
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.primary)
+            .wrapContentWidth(unbounded = true)
             .padding(horizontal = 6.dp, vertical = 1.dp),
     ) {
         Text(
@@ -563,10 +571,13 @@ private fun ExperimentalPill() {
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimary,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ConnectionMethodTabs(
     viewModel: SettingsViewModel,
@@ -620,9 +631,13 @@ private fun ConnectionMethodTabs(
                 selected = selectedTab == 1,
                 onClick = { viewModel.setPreferredConnectionMethod("webrtc") },
                 text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                        maxItemsInEachRow = 1,
+                    ) {
                         Text(stringResource(Res.string.settings_connection_webrtc))
-                        Spacer(modifier = Modifier.size(6.dp))
                         ExperimentalPill()
                     }
                 },
@@ -1188,7 +1203,7 @@ private fun SendspinSection(
 
         // Codec selection
         OverflowMenuButton(
-            options = Codecs.list.map { item ->
+            options = SettingsRepository.CODECS.map { item ->
                 OverflowMenuOption(
                     title = item.localizedTitle(),
                 ) { viewModel.setSendspinCodecPreference(item) }
@@ -1259,9 +1274,9 @@ private fun SendspinSection(
             Slider(
                 value = sendspinBufferCapacityMb.toFloat(),
                 onValueChange = { viewModel.setSendspinBufferCapacityMb(it.roundToInt()) },
-                valueRange = SendspinConfig.BUFFER_MB_MIN.toFloat()..SendspinConfig.BUFFER_MB_MAX.toFloat(),
-                steps = (SendspinConfig.BUFFER_MB_MAX - SendspinConfig.BUFFER_MB_MIN) /
-                        SendspinConfig.BUFFER_MB_STEP - 1,
+                valueRange = SettingsRepository.BUFFER_MB_MIN.toFloat()..SettingsRepository.BUFFER_MB_MAX.toFloat(),
+                steps = (SettingsRepository.BUFFER_MB_MAX - SettingsRepository.BUFFER_MB_MIN) /
+                        SettingsRepository.BUFFER_MB_STEP - 1,
                 enabled = !sendspinEnabled,
             )
         }
@@ -1290,28 +1305,6 @@ private fun SendspinSection(
 
         // Require-encryption toggle: refuse the legacy cleartext protocol
         // when the server is too old for encrypted Sendspin.
-        val sendspinRequireEncryption by viewModel.sendspinRequireEncryption
-            .collectAsStateWithLifecycle()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(
-                checked = sendspinRequireEncryption,
-                onCheckedChange = { viewModel.setSendspinRequireEncryption(it) },
-                enabled = !sendspinEnabled,
-            )
-            Text(
-                text = stringResource(Res.string.settings_sendspin_require_encryption),
-                color = if (sendspinEnabled) {
-                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                } else {
-                    MaterialTheme.colorScheme.onBackground
-                },
-            )
-        }
 
         // Connection fields (only shown when using custom connection)
         if (sendspinUseCustomConnection) {

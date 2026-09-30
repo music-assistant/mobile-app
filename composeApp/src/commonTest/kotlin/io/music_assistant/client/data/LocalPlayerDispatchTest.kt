@@ -412,6 +412,7 @@ private class RecordingClient(
     override fun connect(connection: ConnectionInfo) = Unit
     override fun connectWebRTC(remoteId: RemoteId) = Unit
     override fun onExternalConsumerActive() = Unit
+    override fun requestCommandRecovery() = Unit
     override fun onPlaybackActive() = Unit
     override fun onExternalConsumerInactive() = Unit
     override fun onPlaybackInactive() = Unit

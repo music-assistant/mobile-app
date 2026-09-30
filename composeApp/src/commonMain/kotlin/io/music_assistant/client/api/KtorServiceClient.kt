@@ -67,6 +67,7 @@ import org.koin.core.component.inject
 import org.koin.core.qualifier.named
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class KtorServiceClient(
@@ -148,6 +149,14 @@ class KtorServiceClient(
     private var hasActiveExternalConsumer = false
     private var hasActivePlayback = false
     private var backgroundedAt = 0L
+
+    // A command is trying to reach the server: the reconnect it asked for must not
+    // be torn down under it. Bounded by the same budget the request gate waits on.
+    private val sessionHold = SessionHold(ENSURE_READY_TIMEOUT_MS.milliseconds)
+
+    /** Background teardown is only safe while nothing needs the session. */
+    private val canTearDownInBackground: Boolean
+        get() = !hasActiveExternalConsumer && !hasActivePlayback && !sessionHold.isHeld
 
     private val silentReauth = SilentReauth(
         ReauthPolicy(
@@ -382,6 +391,14 @@ class KtorServiceClient(
         logger.i { "External consumer inactive (state=${stateLabel(_sessionState.value)})" }
     }
 
+    override fun requestCommandRecovery() {
+        // Hold before the gate runs: a stale-ready socket can report its drop as soon
+        // as the queued command tries to use it, and that drop must not tear down the
+        // reconnect this call is asking for.
+        sessionHold.hold()
+        launch { ensureReadyForCommands() }
+    }
+
     /**
      * Called when any player starts playing. Prevents background teardown.
      */
@@ -403,6 +420,7 @@ class KtorServiceClient(
     }
 
     override fun noServer() {
+        sessionHold.clear()
         _sessionState.update { SessionState.Disconnected.NoServerData }
     }
 
@@ -550,7 +568,7 @@ class KtorServiceClient(
                         }
 
                         is TransportState.Reconnecting -> {
-                            if (isInBackground && !hasActiveExternalConsumer && !hasActivePlayback) {
+                            if (isInBackground && canTearDownInBackground) {
                                 backgroundedConnectionInfo = backgroundInfo()
                                 transport.disconnect()
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
@@ -749,15 +767,16 @@ class KtorServiceClient(
     }
 
     override fun disconnectByUser() {
+        sessionHold.clear()
         disconnect(SessionState.Disconnected.ByUser)
     }
 
     private fun disconnect(newState: SessionState.Disconnected) {
         launch {
             if (newState is SessionState.Disconnected.Backgrounded &&
-                (!isInBackground || hasActiveExternalConsumer || hasActivePlayback)
+                (!isInBackground || !canTearDownInBackground)
             ) {
-                logger.i { "Backgrounded disconnect aborted — app already foregrounded" }
+                logger.i { "Backgrounded disconnect aborted — the session is still needed" }
                 return@launch
             }
 
@@ -843,6 +862,7 @@ class KtorServiceClient(
     }
 
     override fun logout() {
+        sessionHold.clear()
         if (_sessionState.value !is SessionState.Connected) return
         _sessionState.update {
             (it as? SessionState.Connected)?.update(
@@ -1065,6 +1085,9 @@ class KtorServiceClient(
         // Auth-handshake commands bypass the gate — they're the mechanism by which
         // `ensureReadyForCommands` is *resolved*, so gating them would deadlock.
         if (request.command in authHandshakeCommands) return sendRequestRaw(request)
+        // Covers both the cold recovery below and the stale-ready case, where the gate
+        // passes on a projected state and only the send itself discovers the dead socket.
+        sessionHold.hold()
         if (!ensureReadyForCommands()) {
             logger.i { "sendRequest gated — not ready (state=${stateLabel(_sessionState.value)})" }
             controlLog?.let { logger.i { "$it command failed: transport not ready" } }

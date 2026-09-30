@@ -23,15 +23,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.settings.DefaultClickOption
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Single-line, ellipsizing dropdown over [DefaultClickOption]s. Shared by the per-context
- * customize dialog and the car tap-behaviour dialog so the look stays identical.
+ * Dropdown over [DefaultClickOption]s. Both the selected value and open-menu options wrap long
+ * labels; the open menu is bounded and uses the menu's built-in scrolling. Shared by the
+ * per-context customize dialog and the car tap-behaviour dialog so the look stays identical.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,8 +50,8 @@ fun ActionDropdown(
         onExpandedChange = { expanded = it },
         modifier = modifier,
     ) {
-        // Custom anchor (not OutlinedTextField): a read-only text field scrolls instead of
-        // ellipsizing, so we build the outlined row ourselves to get true single-line ellipsis.
+        // Custom anchor (not OutlinedTextField): build the outlined row ourselves so the
+        // selected label can wrap while keeping the icon and trailing arrow aligned.
         Row(
             modifier = Modifier
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
@@ -65,8 +65,6 @@ fun ActionDropdown(
             Icon(selectedAction.icon(context), contentDescription = null, modifier = Modifier.size(20.dp))
             Text(
                 text = stringResource(selectedAction.title(context)),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
             )
@@ -76,13 +74,7 @@ fun ActionDropdown(
             options.forEach { action ->
                 val itemAction = action.toItemAction()
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(itemAction.title(context)),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
+                    text = { Text(stringResource(itemAction.title(context))) },
                     leadingIcon = {
                         Icon(
                             itemAction.icon(context),

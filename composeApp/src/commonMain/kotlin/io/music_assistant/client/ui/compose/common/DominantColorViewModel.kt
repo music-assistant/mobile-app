@@ -11,6 +11,7 @@ import com.kmpalette.generatePalette
 import io.music_assistant.client.data.model.server.RgbColor
 import io.music_assistant.client.imageloader.artworkImageRequest
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel.Companion.MAX_CACHE_SIZE
+import io.music_assistant.client.utils.getOrPut
 import io.music_assistant.client.utils.toImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,11 +33,12 @@ class DominantColorViewModel : ViewModel() {
     fun peekColors(imageUrl: String): ExtractedColors? = cache[imageUrl]
 
     suspend fun getColors(context: PlatformContext, imageUrl: String): ExtractedColors? {
-        cache[imageUrl]?.let { return it }
-        val extracted = withContext(Dispatchers.Default) {
-            runCatching { extract(context, imageUrl) }.getOrNull()
-        } ?: return null
-        cache.put(imageUrl, extracted)
+        val extracted = cache.getOrPut(imageUrl) {
+            withContext(Dispatchers.Default) {
+                runCatching { extract(context, imageUrl) }.getOrNull()
+            }
+        }
+
         return extracted
     }
 

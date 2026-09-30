@@ -27,7 +27,7 @@ The (official) Music Assistant Mobile app is a cross-platform client application
 
 ### Server compatibility
 
-Releases of the Music Assistant Mobile App are intended to support the latest (at the time of release) and  one previous  [Music Assistant Server](https://github.com/music-assistant/server) stable versions.
+Releases of the Music Assistant Mobile App are intended to support the latest [Music Assistant Server](https://github.com/music-assistant/server) stable versions.
 
 ### Design goals
 
@@ -44,6 +44,8 @@ The goal of this app is to provide an iOS and Android native feeling experience 
 - Start browsing library
 - Open settings
 
+The app's built-in Local player is designed to be a private player for a personal music experience. It plays music on your device, for you, while you're using it. This is different from the many other players Music Assistant supports, like speakers, that stay on and available all the time. The app's Local player isn't meant to be one of those, and by default you can't find it or control it from other apps.
+
 Compatibility with Apple CarPlay and Android Auto is a core focus, ensuring you can enjoy your music easily and safely through your car’s infotainment system. These in-car experiences are dedicated exclusively to the local player; managing external players is out of scope.
 
 In addition, there's some general design directions that are being observed:
@@ -57,6 +59,10 @@ Android users can download the APK [for the latest release](https://github.com/m
 
 iOS users can join [TestFlight](https://testflight.apple.com/join/AkvSDf2z).
 
+### Configuring and using the app
+
+For information on configuring and using the Music Assistant Mobile app, see the [App Documentation](docs/app-documentation/index.md).
+
 ## Android Auto & Google Assistant
 
 See [ANDROID-AUTO](docs/ANDROID-AUTO.md) for:
@@ -67,6 +73,6 @@ See [ANDROID-AUTO](docs/ANDROID-AUTO.md) for:
 - shell-based testing of `MEDIA_PLAY_FROM_SEARCH` intents;
 - known limitations.
 
-## Configuring and using the app
+---
 
-For information on configuring and using the Music Assistant Mobile app, see the [App Documentation](docs/app-documentation/index.md).
+[![A project from the Open Home Foundation](https://www.openhomefoundation.org/badges/ohf-project.png)](https://www.openhomefoundation.org/)

@@ -104,24 +104,6 @@ class RecommendationFoldersCompatTest {
         ServiceClientMediaItemRepository(client, MediaItemFactory(client))
 
     @Test
-    fun embeddedRowItemsAreUsedDirectly() = runTest {
-        val client = FakeClient(
-            rowsJson = """
-                [${folderJson("row1", "library", "[${trackJson("t1")}]")},
-                 ${folderJson("row2", "spotify", "[]")}]
-            """.trimIndent(),
-            itemsJsonFor = { _, _ -> fail("embedded-items schema must not trigger items calls") },
-            schemaVersion = EMBEDDED_ROWS_SCHEMA,
-        )
-
-        val folders = repository(client).fetchRecommendationFolders().getOrThrow()
-
-        assertEquals(listOf("row1", "row2"), folders.map { it.itemId })
-        assertEquals(listOf("t1"), folders[0].items?.map { it.itemId })
-        assertTrue(client.itemsRequests.isEmpty())
-    }
-
-    @Test
     fun itemLessRowsGetItemsFetchedPerRow() = runTest {
         val client = FakeClient(
             rowsJson = """

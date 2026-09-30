@@ -280,6 +280,10 @@
   <string name="search_start">Empezar a buscar…</string>
   <string name="search_title">Búsqueda global</string>
   <string name="sendspin_encryption_required_unavailable">Se requiere una conexión cifrada, pero este servidor no la admite. Actualiza Music Assistant o desactiva este requisito.</string>
+  <string name="sendspin_failed_server_rejected">El servidor ha rechazado este dispositivo como reproductor. Comprueba el registro del servidor de Music Assistant.</string>
+  <string name="sendspin_failed_setup">Este dispositivo no puede iniciar el reproductor local. Envía el registro de la aplicación a los desarrolladores.</string>
+  <string name="sendspin_failed_unauthorized">El servidor no ha aceptado este dispositivo como reproductor. Vuelve a iniciar sesión.</string>
+  <string name="sendspin_failed_unpaired">El servidor ha eliminado este dispositivo. Vuelve a emparejarlo en los ajustes.</string>
   <string name="server_id_mismatch_error">El ID del servidor ha cambiado. Se requiere volver a autenticarse.</string>
   <string name="settings_about_description">Music Assistant es un servidor de música gratuito, de código abierto y autogestionado. Conéctate a tu servidor a continuación para explorar tu biblioteca y controlar la reproducción en toda tu casa.</string>
   <string name="settings_about_learn_more">Más información en music-assistant.io →</string>
@@ -316,10 +320,14 @@
   <string name="settings_disable_local_player">Desactivar reproductor local</string>
   <string name="settings_disconnect">Desconectar</string>
   <string name="settings_enable_local_player">Activar reproductor local</string>
+  <string name="settings_error_local_network_ios">No se ha podido conectar con el servidor. iOS necesita permiso para acceder a tu red local; pulsa «Permitir» si aparece el aviso o actívalo más tarde en Ajustes &gt; Privacidad y seguridad &gt; Red local. Comprueba también que tu dispositivo esté conectado a la misma red que el servidor y vuelve a intentarlo.</string>
+  <string name="settings_error_offline_ios">No se ha podido conectar con el servidor. Comprueba que la dirección sea correcta y que tu dispositivo esté conectado y en la misma red que el servidor; después, inténtalo de nuevo.</string>
   <string name="settings_exit_app">SALIR DE LA APLICACIÓN</string>
   <string name="settings_history_direct">Directa</string>
   <string name="settings_history_webrtc">WebRTC (acceso remoto)</string>
   <string name="settings_host">Host</string>
+  <string name="settings_local_network_onboarding_body_ios">Cuando te conectes a tu servidor por primera vez, iOS te pedirá permiso para acceder a tu red local. Pulsa «Permitir»; sin este permiso, la aplicación no podrá encontrar ni conectarse a tu servidor.</string>
+  <string name="settings_local_network_onboarding_title_ios">Acceso a la red local</string>
   <string name="settings_local_player_disabled">Reproductor local (protocolo Sendspin)</string>
   <string name="settings_local_player_enabled">Reproductor local activado</string>
   <string name="settings_misc">Varios</string>
