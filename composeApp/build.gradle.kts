@@ -123,7 +123,6 @@ kotlin {
             implementation(libs.navigation.compose)
 
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor3)
             implementation(libs.coil.svg)
 
             implementation(libs.kmpalette.core)
@@ -151,6 +150,7 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.ktor.client.mock)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
             implementation(libs.settings.multiplatform.test)
@@ -167,6 +167,9 @@ kotlin {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.ui.tooling)
+    add("androidHostTestImplementation", libs.kotlin.test)
+    add("androidHostTestImplementation", libs.junit)
+    add("androidHostTestImplementation", libs.robolectric)
 }
 
 // --- Material Design Icons (community pack) webfont + codepoint table ---------

@@ -502,7 +502,6 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
                 let displayItems = Array(folderItems.prefix(maxImages))
                 var images = Array(repeating: placeholder, count: displayItems.count)
-
                 let row = CPListImageRowItem(text: folder.displayName, images: images)
                 row.listImageRowHandler = { [weak self] _, index, completion in
                     guard let self = self else { completion(); return }

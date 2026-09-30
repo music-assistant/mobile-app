@@ -70,6 +70,16 @@ actual class PlatformFeature {
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 
+## Artwork Loading
+
+- **`ArtworkRepository`**: Single owner of artwork fetching, disk caching, freshness, and concurrent-request deduplication. Shared by all platforms.
+- **Compose and Android media**: Use the singleton Coil loader. Its artwork adapter resolves through the repository; Coil owns decoding and decoded-memory caching, not a second disk cache.
+- **CarPlay and iOS Now Playing**: Use `KmpHelper.loadArtwork` through the shared `NativeArtworkLoader` adapter. Kotlin owns one cancellable coroutine covering fresh-token lookup and body loading; it accepts a synchronous Swift cache probe after token resolution, so a versioned native decoded-image hit skips the body entirely. Swift owns the bounded shared `NSCache` (including decode and presentation); only reusable repository results are inserted under the token identity-plus-digest key.
+- **WebRTC**: Uses the same repository through the existing HTTP proxy. Cache identities include the server ID so synthetic URLs cannot collide across servers.
+- **Cache identity**: Decoded-image keys include the content version. Decode-failure eviction targets only that version, never a newer replacement.
+
+**Key rule**: Route new artwork consumers through the shared loader or bridge. Do not add independent downloads, disk caches, or URL-only caches that bypass repository freshness.
+
 ## Compose Guidelines
 
 - Material3 components

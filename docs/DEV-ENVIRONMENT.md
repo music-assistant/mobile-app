@@ -10,6 +10,10 @@ See [IOS-BUILD-INSTRUCTIONS](IOS-BUILD-INSTRUCTIONS.md) for a full step-by-step 
 - Build commands for simulator and physical device
 - Known limitations and troubleshooting
 
+Same-art native loads first resolve fresh metadata; a decoded version hit then skips body loading and decoding.
+
+CarPlay and Now Playing share the native decoded-artwork cache.
+
 ## Android
 
 To build the app:

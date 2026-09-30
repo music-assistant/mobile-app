@@ -7,25 +7,9 @@ import ComposeApp
 class CarPlayImageLoader {
     static let shared = CarPlayImageLoader()
 
-    private let cache = NSCache<NSString, UIImage>()
-
-    // Routes through KmpHelper so `mawebrtc://` synthetic URLs (WebRTC mode) resolve via
-    // the data-channel HTTP proxy instead of failing in URLSession.
-    func loadImage(from urlString: String, completion: @escaping (UIImage?) -> Void) {
-        let cacheKey = urlString as NSString
-        if let cached = cache.object(forKey: cacheKey) {
-            completion(cached)
-            return
-        }
-
-        _ = KmpHelper.shared.loadArtworkBytes(urlString: urlString) { [weak self] data in
-            guard let data = data as Data?, let image = UIImage(data: data) else {
-                DispatchQueue.main.async { completion(nil) }
-                return
-            }
-            self?.cache.setObject(image, forKey: cacheKey)
-            DispatchQueue.main.async { completion(image) }
-        }
+    @discardableResult
+    func loadImage(from urlString: String, completion: @escaping (UIImage?) -> Void) -> ComposeApp.Cancellable {
+        NativeArtworkLoader.loadArtwork(urlString: urlString, completion: completion)
     }
 }
 

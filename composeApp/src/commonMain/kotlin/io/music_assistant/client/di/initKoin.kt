@@ -3,8 +3,6 @@ package io.music_assistant.client.di
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import coil3.SingletonImageLoader
-import io.music_assistant.client.api.ServiceClient
-import io.music_assistant.client.imageloader.WebRTCImageFetcher
 import io.music_assistant.client.imageloader.buildAppImageLoader
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.logging.platformLogWriters
@@ -31,6 +29,6 @@ fun initKoin(
         config?.invoke(this)
         modules(sharedModule(), webrtcModule, *platformModules)
     }
-    val webrtcFetcherFactory = WebRTCImageFetcher.Factory(KoinPlatform.getKoin().get<ServiceClient>())
-    SingletonImageLoader.setSafe { context -> buildAppImageLoader(context, webrtcFetcherFactory) }
+    val koin = KoinPlatform.getKoin()
+    SingletonImageLoader.setSafe { context -> buildAppImageLoader(context, koin.get()) }
 }

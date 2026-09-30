@@ -15,7 +15,6 @@ import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
-import io.music_assistant.client.imageloader.ImageCacheInvalidator
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
@@ -132,7 +131,6 @@ class KtorServiceClient(
     private val webrtcHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
     private val networkMonitor: NetworkMonitor by inject()
-    private val imageCacheInvalidator: ImageCacheInvalidator by inject()
 
     // --- Transport ---
     private var transport: Transport? = null
@@ -263,8 +261,7 @@ class KtorServiceClient(
             }
         }.buildString()
 
-    // Synthetic URL consumed by WebRTCImageFetcher. Scheme is matched by the Coil fetcher
-    // factory; path+query are reconstructed verbatim into the http-proxy-request `path` field.
+    // Synthetic URL routed through the shared artwork repository and WebRTC HTTP proxy.
     private fun buildWebRTCImageProxyUrl(path: String, provider: String): String =
         "$WEBRTC_PROXY_BASE/imageproxy" +
             "?path=${path.encodeURLQueryComponent()}" +
@@ -750,11 +747,7 @@ class KtorServiceClient(
             onReconnected = {
                 // Re-auth is owned by AuthenticationManager (driven by the
                 // `needsReauthOnReconnect = true` gate above); nothing to do here.
-                // But we DO need to evict `mawebrtc://` entries from Coil's memory cache:
-                // `WebRTCHttpProxy.cancelAll()` ran on the previous transport's tear-down,
-                // failing every in-flight image request — Coil caches those errors and
-                // won't retry on its own, so visible tiles stay broken until invalidated.
-                imageCacheInvalidator.evictWebRTCEntries()
+                // ArtworkRepository owns reusable bytes and retries failed fetches after reconnect.
                 logger.i { "WebRTC reconnection successful — awaiting AuthenticationManager re-auth" }
             },
             needsReauthOnReconnect = true,

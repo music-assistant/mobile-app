@@ -42,7 +42,12 @@ User taps an item → `CarPlayContentManager.playItem()` → `KmpHelper.playMedi
 
 ### Artwork loading
 
-`CarPlayImageLoader` singleton: `NSCache`-backed image cache, async URL loading, SF Symbol placeholders while loading, in-place updates on `CPListItem` once images arrive.
+- `CarPlayImageLoader` uses `NativeArtworkLoader` → `KmpHelper.loadArtwork` to share artwork with the app and iOS Now Playing. Do not add a separate downloader or URL-only `NSCache`.
+- SF Symbol placeholders remain until artwork loads; successful results update `CPListItem` images in place.
+- Kotlin delivers completion on Main, including `nil` on failure or timeout. Cancelling the returned handle suppresses completion.
+- `NativeArtworkDecoder` handles native decoding and version-specific invalidation. Unsupported formats, notably SVG, keep their shared cached bytes and leave the placeholder visible.
+
+See [Artwork Loading](architecture.md#artwork-loading) for shared cache ownership.
 
 ---
 

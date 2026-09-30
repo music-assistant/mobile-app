@@ -117,6 +117,74 @@ class WebRTCHttpProxyChannelTest {
     }
 
     @Test
+    fun proxy_binary_oversize_before_assembly() = runTest {
+        val channel = RecordingChannel()
+        val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
+        proxy.attachChannel(channel.send)
+        val response = async { runCatching { proxy.get("/imageproxy?p=oversize") } }
+        val id = channel.awaitFirstRequestId()
+        proxy.dispatchProxyChannelText(binaryHeader(id, 16 * 1024 * 1024 + 1))
+        assertTrue(response.await().exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun proxy_hex_oversize_before_decode() = runTest {
+        val channel = RecordingChannel()
+        val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
+        proxy.attachChannel(channel.send)
+        val response = async { runCatching { proxy.get("/imageproxy?p=oversize") } }
+        val id = channel.awaitFirstRequestId()
+        val hex = "00".repeat(16 * 1024 * 1024 + 1)
+        val responseText =
+            """{"type":"http-proxy-response","id":"$id","status":200,"headers":{},"body":"$hex"}"""
+        proxy.dispatchProxyChannelText(responseText)
+        assertTrue(response.await().exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun acceptsEmptyCompactHexBody() = runTest {
+        val channel = RecordingChannel()
+        val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
+        proxy.attachChannel(channel.send)
+
+        val response = async { proxy.get("/imageproxy?p=empty") }
+        val id = channel.awaitFirstRequestId()
+        proxy.dispatchProxyChannelText(hexResponse(id, emptyList()))
+
+        assertEquals(0, response.await().body.size)
+    }
+
+    @Test
+    fun rejectsOddLengthHexBodyBeforeDecode() = runTest {
+        val channel = RecordingChannel()
+        val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
+        proxy.attachChannel(channel.send)
+
+        val response = async { runCatching { proxy.get("/imageproxy?p=odd") } }
+        val id = channel.awaitFirstRequestId()
+        proxy.dispatchProxyChannelText(
+            """{"type":"http-proxy-response","id":"$id","status":200,"headers":{},"body":"0"}""",
+        )
+
+        assertTrue(response.await().exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun whitespaceHexBodyUsesBoundedFallbackValidation() = runTest {
+        val channel = RecordingChannel()
+        val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })
+        proxy.attachChannel(channel.send)
+
+        val response = async { proxy.get("/imageproxy?p=whitespace") }
+        val id = channel.awaitFirstRequestId()
+        proxy.dispatchProxyChannelText(
+            """{ "type": "http-proxy-response", "id": "$id", "status": 200, "headers": {}, "body": "040506" }""",
+        )
+
+        assertContentEquals(byteArrayOf(4, 5, 6), response.await().body)
+    }
+
+    @Test
     fun failsInFlightProxyChannelRequestsWhenChannelCloses() = runTest {
         val channel = RecordingChannel()
         val proxy = WebRTCHttpProxy(sender = { error("must not use ma-api") })

@@ -1,6 +1,7 @@
 package io.music_assistant.client.webrtc
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.utils.ARTWORK_MAX_BODY_BYTES
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.CompletableDeferred
@@ -229,6 +230,14 @@ class WebRTCHttpProxy(
             logger.w { "No pending request for id=$id (timed out or cancelled)" }
             return
         }
+        if (rawJsonString.contains(BODY_KEY)) {
+            val decodedBodyByteCount = decodedBodyByteCount(rawJsonString)
+            if (decodedBodyByteCount == null) {
+                pendingMutex.withLock { pending.remove(id) }
+                entry.deferred.completeExceptionally(IllegalArgumentException("http-proxy hex body rejected"))
+                return
+            }
+        }
         entry.deferred.complete(Payload.Hex(rawJsonString))
     }
 
@@ -274,6 +283,8 @@ class WebRTCHttpProxy(
         }
         if (size !in 0..MAX_BODY_BYTES) {
             logger.w { "Rejecting http-proxy-response id=$id with implausible size=$size" }
+            val waiting = pendingMutex.withLock { pending.remove(id) }
+            waiting?.deferred?.completeExceptionally(IllegalArgumentException("http-proxy binary body rejected"))
             return
         }
         val status = (frame["status"] as? JsonPrimitive)?.intOrNull ?: 0
@@ -374,6 +385,7 @@ class WebRTCHttpProxy(
         val status = findStatusBefore(raw, bodyKeyIdx) ?: return null
         val headers = extractHeadersBefore(raw, bodyKeyIdx) ?: return null
 
+        if (decodedBodyByteCount(bodyEnd - bodyStart) == null) return null
         val body = hexToBytes(raw, bodyStart, bodyEnd)
         return ProxyResponse(status, headers, body)
     }
@@ -417,7 +429,22 @@ class WebRTCHttpProxy(
             ?.mapValues { it.value.jsonPrimitive.contentOrNull.orEmpty() }
             .orEmpty()
         val bodyHex = json["body"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        require(decodedBodyByteCount(bodyHex.length) != null) { "http-proxy hex body rejected" }
         return ProxyResponse(status, headers, hexToBytes(bodyHex))
+    }
+
+    private fun decodedBodyByteCount(hexCharacterCount: Int): Int? =
+        if (hexCharacterCount % HEX_CHARACTERS_PER_BYTE != 0) {
+            null
+        } else {
+            (hexCharacterCount / HEX_CHARACTERS_PER_BYTE).takeIf { it <= MAX_BODY_BYTES }
+        }
+
+    private fun decodedBodyByteCount(raw: String): Int? {
+        val bodyStart = raw.indexOf(BODY_KEY).takeIf { it >= 0 }?.plus(BODY_KEY.length) ?: return null
+        val bodyEnd = raw.indexOf('"', startIndex = bodyStart)
+        if (bodyEnd < bodyStart) return null
+        return decodedBodyByteCount(bodyEnd - bodyStart)
     }
 
     private fun extractId(rawJsonString: String): String? {
@@ -449,7 +476,8 @@ class WebRTCHttpProxy(
         private const val PROXY_HEADER_MAX_CHARS = 8 * 1024
 
         // Upper bound on a single proxied body, mirroring the transport's reassembly guard.
-        private const val MAX_BODY_BYTES = 16 * 1024 * 1024
+        private const val MAX_BODY_BYTES = ARTWORK_MAX_BODY_BYTES
+        private const val HEX_CHARACTERS_PER_BYTE = 2
 
         // Matches both `"id":"..."` and `"id": "..."` (with optional whitespace).
         private val ID_REGEX = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"")

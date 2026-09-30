@@ -136,8 +136,7 @@ internal class AutoArtworkTokenCodec(masterKey: ByteArray) {
         const val ENCRYPTION_LABEL = "ma-auto-artwork-enc"
         const val NONCE_LABEL = "ma-auto-artwork-nonce"
 
-        // Synthetic scheme minted by KtorServiceClient for WebRTC-proxied artwork. Only
-        // WebRTCImageFetcher can resolve it, which is exactly why it has to be proxied here.
+        // Synthetic scheme routed through the shared artwork repository's WebRTC proxy.
         const val WEBRTC_SCHEME = "mawebrtc"
     }
 }
@@ -274,13 +273,13 @@ class AndroidAutoArtworkProvider : ContentProvider() {
                 val jpeg = fetchSlots.withPermit { loadArtwork(providerContext, sourceUrl) }
                 ParcelFileDescriptor.AutoCloseOutputStream(writeSide).use { it.write(jpeg) }
             } catch (error: Throwable) {
+                val className = error::class.simpleName ?: "Throwable"
                 runCatching { writeSide.closeWithError("Artwork unavailable") }
-                logger.w { "Unable to serve Android Auto artwork (${error::class.simpleName})" }
+                logger.w { "Unable to serve Android Auto artwork ($className)" }
             }
         }
         return readSide
     }
-
     override fun query(
         uri: Uri,
         projection: Array<out String>?,
