@@ -9,6 +9,7 @@ import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.sendspin.api.AudioCodec
@@ -29,6 +30,7 @@ class SettingsViewModel(
     private val settings: SettingsRepository,
     private val logSharer: LogSharer,
     private val localNetworkPermissionGate: LocalNetworkPermissionGate,
+    val appVersion: AppVersion,
 ) : ViewModel() {
     val savedConnectionInfo = settings.connectionInfo
     val sessionState = apiClient.sessionState

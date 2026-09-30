@@ -36,10 +36,12 @@ class ConnectPage(private val composeTestRule: ComposeTestRule, private val save
     private fun clickConnect() {
         if (savedCredentials) {
             composeTestRule.onNodeWithText(Res.string.settings_connect_saved.get())
+                .performScrollTo()
                 .assertIsDisplayed()
                 .performClick()
         } else {
             composeTestRule.onNodeWithText(Res.string.settings_connect.get())
+                .performScrollTo()
                 .assertIsDisplayed()
                 .performClick()
         }
