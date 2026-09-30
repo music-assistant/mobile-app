@@ -246,7 +246,7 @@ class MainDataSource(
             _userSelectedPlayerId,
         ) { playersDataState, user ->
             val visibleIds = (playersDataState as? DataState.Data)
-                ?.data?.map { it.playerId }
+                ?.data?.filter { it.player.isSelectable }?.map { it.playerId }
                 .orEmpty()
             resolveSelectedPlayerId(
                 visiblePlayerIds = visibleIds,

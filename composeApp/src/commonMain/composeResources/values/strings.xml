@@ -233,6 +233,7 @@
   <string name="player_show_buffer_indicator">Show buffer indicator</string>
   <string name="player_sleep_timer">Sleep timer</string>
   <string name="player_standby">Player is in stand-by mode. Tap to wake.</string>
+  <string name="player_unavailable">Unavailable</string>
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>

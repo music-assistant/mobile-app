@@ -19,7 +19,8 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
  * can never tear down an open dialog. The host resolves [request] against the newest
  * [players] on each composition: when the player or the track the request names is gone, it
  * clears the request instead of leaving a stale id behind that a returning player would
- * revive.
+ * revive. [players] are the pager's players and anchor every request; [allPlayers] feed the
+ * player list, which also shows the players the pager leaves out.
  *
  * [homeScreenViewModel] is passed whole rather than as one callback per action: this is a
  * feature composable for a single screen, and the narrow form needs eleven parameters.
@@ -28,6 +29,7 @@ import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 fun PlayerDialogHost(
     request: PlayerDialogRequest?,
     players: List<PlayerData>,
+    allPlayers: List<PlayerData>,
     homeScreenViewModel: HomeScreenViewModel,
     dspSettingsViewModel: DspSettingsViewModel,
     playlistActions: PlaylistActions?,
@@ -42,7 +44,7 @@ fun PlayerDialogHost(
     when (request) {
         is PlayerDialogRequest.Select -> SelectPlayerDialog(
             selectedPlayer = player,
-            players = players,
+            players = allPlayers,
             onDismissRequest = onDismiss,
             onMoveToPlayer = onMoveToPlayer,
             onReorder = { homeScreenViewModel.onPlayersSortChanged(it) },

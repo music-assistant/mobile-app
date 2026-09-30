@@ -49,6 +49,7 @@ import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.player_unavailable
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
@@ -167,6 +168,7 @@ private fun PlayerSelection(
                         .border(1.dp, borderColor, plateShape)
                         .selectable(
                             selected = selected,
+                            enabled = item.player.isSelectable,
                             onClick = {
                                 onDismissRequest()
                                 onSelectPlayer(item.player.id)
@@ -176,8 +178,9 @@ private fun PlayerSelection(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // A dormant player stays selectable: pinning the selection to the
-                    // speaker the user wants keeps it there when the speaker wakes up.
+                    // A dormant player the app can still act on stays selectable: pinning the
+                    // selection to it keeps it there when the speaker wakes up. One it cannot
+                    // act on is listed but disabled.
                     val dormant = item.player.isPoweredOff
                     PlayerIcon(
                         player = item.player,
@@ -211,6 +214,14 @@ private fun PlayerSelection(
                             } else {
                                 Color(0xFF2196F3)
                             },
+                        )
+                    }
+                    if (!item.player.isSelectable) {
+                        Text(
+                            text = stringResource(Res.string.player_unavailable),
+                            modifier = Modifier.padding(start = 8.dp).alpha(0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
                         )
                     }
                     if (!item.isLocal) {

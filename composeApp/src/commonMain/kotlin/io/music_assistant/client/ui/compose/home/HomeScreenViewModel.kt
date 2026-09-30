@@ -370,21 +370,22 @@ class HomeScreenViewModel(
             // Don't update terminal states (Disconnected, NoAuth, NoServer)
             val currentState = _playersState.value
             if (currentState is PlayersState.Loading || currentState is PlayersState.Data) {
+                // The pager shows only players the app can act on; the player list shows all.
+                fun dataOf(all: List<PlayerData>): PlayersState.Data {
+                    val pageable = all.filter { it.player.isSelectable }
+                    return PlayersState.Data(
+                        playerData = pageable,
+                        selectedPlayerIndex = pageable.indexOfPlayer(selectedId),
+                        localPlayerId = dataSource.localPlayer.value?.playerId,
+                        sendspinState = sendspinState,
+                        allPlayerData = all,
+                    )
+                }
                 _playersState.update {
                     when (playerData) {
-                        is DataState.Data -> PlayersState.Data(
-                            playerData.data,
-                            playerData.data.indexOfPlayer(selectedId),
-                            dataSource.localPlayer.value?.playerId,
-                            sendspinState,
-                        )
-
-                        is DataState.Stale -> PlayersState.Data(
-                            playerData.data,  // Show stale data as normal data
-                            playerData.data.indexOfPlayer(selectedId),
-                            dataSource.localPlayer.value?.playerId,
-                            sendspinState,
-                        )
+                        is DataState.Data -> dataOf(playerData.data)
+                        // Show stale data as normal data
+                        is DataState.Stale -> dataOf(playerData.data)
 
                         is DataState.Error -> PlayersState.Error
                         is DataState.Loading -> PlayersState.Loading
@@ -449,6 +450,8 @@ class HomeScreenViewModel(
             val selectedPlayerIndex: Int? = null,
             val localPlayerId: String? = null,
             val sendspinState: PlayerState? = null,
+            /** Every listed player, including those left out of [playerData]. */
+            val allPlayerData: List<PlayerData> = playerData,
         ) : PlayersState()
     }
 
