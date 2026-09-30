@@ -116,7 +116,8 @@ class MediaItemFactory(
                 metadata = createMetadata(metadata),
                 favorite = favorite,
                 sortName = sortName,
-                uri = uri,
+                // The server's feed parser puts the feed's website link in `uri`; build the MA uri instead.
+                uri = "$provider://${MediaType.PODCAST.serverValue}/$itemId",
                 images = resolveImageInfo(image, metadata),
             )
 

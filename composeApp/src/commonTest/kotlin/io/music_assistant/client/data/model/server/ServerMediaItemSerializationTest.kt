@@ -2,6 +2,7 @@ package io.music_assistant.client.data.model.server
 
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.utils.myJson
@@ -86,5 +87,21 @@ class ServerMediaItemSerializationTest {
 
         assertEquals(true, item.isDynamic)
         assertEquals(true, (factory.create(item) as RadioStation).isDynamic)
+    }
+
+    // A feed-parsed podcast carries the feed's website link in `uri`; the MA uri is rebuilt.
+    @Test
+    fun factoryBuildsPodcastUriFromIdentity() {
+        val item = myJson.decodeFromString<ServerMediaItem>(
+            """
+                {"item_id":"https://feed.example/rss","provider":"itunes_podcasts--x",
+                 "name":"Podcast","media_type":"podcast","uri":"https://www.example.com/show"}
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            "itunes_podcasts--x://podcast/https://feed.example/rss",
+            (factory.create(item) as Podcast).uri,
+        )
     }
 }
