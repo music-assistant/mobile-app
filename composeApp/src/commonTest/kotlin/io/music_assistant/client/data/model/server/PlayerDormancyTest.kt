@@ -100,13 +100,9 @@ class PlayerDormancyTest {
     }
 
     @Test
-    fun `an unreachable player without power control is not selectable`() {
-        // Nothing in the app can wake it (issue #962), so it leaves the pager.
+    fun `an unreachable player is not selectable even with power control`() {
+        // The server drops every command for it, power included (issue #962).
         assertFalse(player("""{"player_id": "p", "available": false}""").isSelectable)
-    }
-
-    @Test
-    fun `an unreachable player stays selectable while something can act on it`() {
         val powerable = player(
             """{
                 "player_id": "p",
@@ -115,9 +111,13 @@ class PlayerDormancyTest {
                 "supported_features": ["power"]
             }""",
         )
+        assertFalse(powerable.isSelectable)
+    }
+
+    @Test
+    fun `a reachable player or one awaiting setup is selectable`() {
         val awaitingSetup = player("""{"player_id": "p", "available": false, "needs_setup": true}""")
 
-        assertTrue(powerable.isSelectable)
         assertTrue(awaitingSetup.isSelectable)
         assertTrue(player("""{"player_id": "p", "available": true}""").isSelectable)
     }

@@ -43,11 +43,11 @@ data class Player(
     val isPoweredOff: Boolean get() = !isAvailable || (canPower && !isPowered)
 
     /**
-     * Something in the app can act on the player: the server reaches it, a power command can
-     * bring it back, or it waits for setup. A player that fails all three is left out of the
-     * pager and shown disabled in the player list.
+     * Something in the app can act on the player: the server reaches it, or it waits for setup.
+     * The server drops every command, power included, for a player it cannot reach, so such a
+     * player is left out of the pager and shown disabled in the player list.
      */
-    val isSelectable: Boolean get() = isAvailable || canPower || needsSetup
+    val isSelectable: Boolean get() = isAvailable || needsSetup
 
     val isGroup = type == PlayerType.GROUP
     val isGrouped = !isGroup && groupMembers?.isNotEmpty() == true
