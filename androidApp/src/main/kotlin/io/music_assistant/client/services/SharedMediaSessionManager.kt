@@ -457,7 +457,9 @@ class SharedMediaSessionManager(
                             // Radio: no track to toggle, just the stream's on-air song to add
                             // (favoriteCurrentlyPlaying guards support and metadata itself).
                             ?: pd
-                                ?.let { dataSource.favoriteCurrentlyPlaying(it) }
+                                ?.let { player ->
+                                    managerScope.launch { dataSource.favoriteCurrentlyPlaying(player) }
+                                }
                     }
                 }
             }

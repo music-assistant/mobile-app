@@ -687,19 +687,7 @@ fun FullPlayerItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (currentTrack?.canBeFavorited == true) {
-                val isFavorite = currentTrack.favorite == true
-                IconButton(
-                    modifier = Modifier.size(favoriteSlot),
-                    onClick = { onFavoriteClick(currentTrack) },
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = stringResource(Res.string.cd_favorite),
-                        tint = if (isFavorite) favoriteTint else colors.controlTint,
-                    )
-                }
-            } else if (canFavoriteStream) {
+            if (canFavoriteStream) {
                 // Radio favourite adds the on-air song to the library; the queue's `favorite`
                 // flag is the station's, not the song's, so there is no "already favourited"
                 // state and the heart always renders un-filled.
@@ -711,6 +699,18 @@ fun FullPlayerItem(
                         imageVector = Icons.Outlined.FavoriteBorder,
                         contentDescription = stringResource(Res.string.cd_favorite),
                         tint = colors.controlTint,
+                    )
+                }
+            } else if (currentTrack?.canBeFavorited == true) {
+                val isFavorite = currentTrack.favorite == true
+                IconButton(
+                    modifier = Modifier.size(favoriteSlot),
+                    onClick = { onFavoriteClick(currentTrack) },
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = stringResource(Res.string.cd_favorite),
+                        tint = if (isFavorite) favoriteTint else colors.controlTint,
                     )
                 }
             } else {

@@ -5,6 +5,7 @@ package io.music_assistant.client.data
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.APICommands
+import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.api.fetchAllPages
@@ -868,16 +869,15 @@ class MainDataSource(
      * favourited" state to toggle from. No optimistic override — the server resolves
      * the favourited item from the stream title, not from the queue item, so there is
      * nothing local to flip ahead of the round trip. An unsupported server or an
-     * unresolvable title is an expected refusal, not an error — silent, like
-     * [toggleFavorite]'s onFailure.
+     * unresolvable title is an expected refusal; callers report the result to the user.
      */
-    fun favoriteCurrentlyPlaying(playerData: PlayerData) {
-        if (!canFavoriteCurrentlyPlaying(playerData)) return
-        launch {
-            apiClient.sendRequest(
-                Request.Player.addCurrentlyPlayingToFavorites(playerData.player.id),
-            )
+    suspend fun favoriteCurrentlyPlaying(playerData: PlayerData): Result<Answer> {
+        if (!canFavoriteCurrentlyPlaying(playerData)) {
+            return Result.failure(IllegalStateException("No supported on-air song to favorite"))
         }
+        return apiClient.sendRequest(
+            Request.Player.addCurrentlyPlayingToFavorites(playerData.player.id),
+        )
     }
 
     /** Overrides the now-playing track's favorite flag from [overrides]. */

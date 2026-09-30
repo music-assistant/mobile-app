@@ -13,20 +13,28 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.server.supportsFavoriteCurrentlyPlaying
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
+import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.toast_added_to_playlist
 import musicassistantclient.composeapp.generated.resources.toast_error_add_playlist
 import musicassistantclient.composeapp.generated.resources.toast_error_create_playlist
+import musicassistantclient.composeapp.generated.resources.toast_error_favorite_stream_track
 import musicassistantclient.composeapp.generated.resources.toast_error_mark_played
 import musicassistantclient.composeapp.generated.resources.toast_error_mark_unplayed
+import musicassistantclient.composeapp.generated.resources.toast_favorited_stream_track
 import musicassistantclient.composeapp.generated.resources.toast_marked_played
 import musicassistantclient.composeapp.generated.resources.toast_marked_unplayed
 import musicassistantclient.composeapp.generated.resources.toast_no_uri
@@ -68,10 +76,19 @@ class ActionsViewModel(
     override fun onFavoriteClick(item: AppMediaItem) = dataSource.toggleFavorite(item)
 
     /** Favourites the on-air song for a radio stream. See [MainDataSource.favoriteCurrentlyPlaying]. */
-    fun onFavoriteStreamClick(playerData: PlayerData) = dataSource.favoriteCurrentlyPlaying(playerData)
+    fun onFavoriteStreamClick(playerData: PlayerData) {
+        viewModelScope.launch {
+            dataSource.favoriteCurrentlyPlaying(playerData)
+                .onSuccess { _toasts.emit(getString(Res.string.toast_favorited_stream_track)) }
+                .onFailure { _toasts.emit(getString(Res.string.toast_error_favorite_stream_track)) }
+        }
+    }
 
-    /** See [MainDataSource.canFavoriteCurrentlyPlaying]. */
-    fun canFavoriteStream(playerData: PlayerData) = dataSource.canFavoriteCurrentlyPlaying(playerData)
+    /** Session-scoped support; the player's current stream title is observed separately. */
+    val streamFavoriteSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsFavoriteCurrentlyPlaying((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     override suspend fun getEditablePlaylists(): List<Playlist> =
         Request.Playlist.listLibrary()

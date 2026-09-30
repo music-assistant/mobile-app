@@ -1,0 +1,139 @@
+package io.music_assistant.client.ui.compose
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.music_assistant.client.api.APICommands
+import io.music_assistant.client.api.Answer
+import io.music_assistant.client.api.ConnectionInfo
+import io.music_assistant.client.api.Request
+import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.server.ServerInfo
+import io.music_assistant.client.support.FakeServiceClient
+import io.music_assistant.client.support.get
+import io.music_assistant.client.support.radioStreamPlayer
+import io.music_assistant.client.support.rules.createKoinTestRule
+import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.utils.ConnectionData
+import io.music_assistant.client.utils.SessionState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.toast_error_favorite_stream_track
+import musicassistantclient.composeapp.generated.resources.toast_favorited_stream_track
+import org.junit.After
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import org.koin.core.context.GlobalContext.get as getKoin
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(AndroidJUnit4::class)
+class StreamFavoriteActionsTest {
+    @get:Rule
+    val koinRule = createKoinTestRule { _, _ -> client }
+
+    private val client = StreamClient()
+
+    @After
+    fun resetDispatcher() = Dispatchers.resetMain()
+
+    @Test
+    fun `success emits a toast after the stream request`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        client.schema(27)
+        val vm = viewModel()
+        val toast = async(UnconfinedTestDispatcher(testScheduler)) { vm.toasts.first() }
+        vm.onFavoriteStreamClick(radioStreamPlayer("Song"))
+        assertEquals(Res.string.toast_favorited_stream_track.get(), toast.await())
+        assertEquals(1, client.requests.size)
+        assertEquals("player", client.requests.single().args?.get("player_id")?.toString()?.trim('"'))
+    }
+
+    @Test
+    fun `server refusal emits the resolution failure toast`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        client.schema(27)
+        client.result = Result.failure(IllegalArgumentException("Cannot resolve stream title"))
+        val vm = viewModel()
+        val toast = async(UnconfinedTestDispatcher(testScheduler)) { vm.toasts.first() }
+        vm.onFavoriteStreamClick(radioStreamPlayer("Song"))
+        assertEquals(Res.string.toast_error_favorite_stream_track.get(), toast.await())
+        assertEquals(1, client.requests.size)
+    }
+
+    @Test
+    fun `capability follows schema and disconnect without a player change`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.streamFavoriteSupported.collect {} }
+        assertFalse(vm.streamFavoriteSupported.value)
+        client.schema(26)
+        runCurrent()
+        assertFalse(vm.streamFavoriteSupported.value)
+        client.schema(27)
+        runCurrent()
+        assertTrue(vm.streamFavoriteSupported.value)
+        client.sessionState.value = SessionState.Disconnected.ByUser
+        runCurrent()
+        assertFalse(vm.streamFavoriteSupported.value)
+    }
+
+    @Test
+    fun `send boundary refuses unsupported schema or missing title`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val dataSource = getKoin().get<MainDataSource>()
+        client.schema(26)
+        assertTrue(dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Song")).isFailure)
+        client.schema(27)
+        assertTrue(dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Station")).isFailure)
+        assertTrue(client.requests.isEmpty())
+    }
+
+    @Test
+    fun `send boundary returns the server result`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        client.schema(27)
+        val player = radioStreamPlayer("Song")
+        val dataSource = getKoin().get<MainDataSource>()
+        assertEquals(client.result, dataSource.favoriteCurrentlyPlaying(player))
+        val refusal = IllegalArgumentException("Cannot resolve stream title")
+        client.result = Result.failure(refusal)
+        assertSame(refusal, dataSource.favoriteCurrentlyPlaying(player).exceptionOrNull())
+    }
+
+    private fun viewModel() = ActionsViewModel(client, getKoin().get(), getKoin().get())
+
+    private class StreamClient : ServiceClient by FakeServiceClient() {
+        override val sessionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
+        val requests = mutableListOf<Request>()
+        var result: Result<Answer> = Result.success(Answer(JsonObject(mapOf("result" to JsonNull))))
+
+        fun schema(version: Int) {
+            sessionState.value = SessionState.Connected.Direct(
+                ConnectionInfo("example.invalid", 80, false),
+                ConnectionData(serverInfo = ServerInfo("fixture", schemaVersion = version)),
+            )
+        }
+
+        override suspend fun sendRequest(request: Request): Result<Answer> {
+            check(request.command == APICommands.PLAYERS_ADD_CURRENTLY_PLAYING_TO_FAVORITES)
+            requests += request
+            return result
+        }
+    }
+}

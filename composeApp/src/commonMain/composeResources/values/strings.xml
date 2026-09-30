@@ -380,4 +380,6 @@
   <string name="toast_marked_played">Marked as played</string>
   <string name="toast_marked_unplayed">Marked as unplayed</string>
   <string name="toast_no_uri">Media item has no URI</string>
+  <string name="toast_favorited_stream_track">Added the on-air song to favorites</string>
+  <string name="toast_error_favorite_stream_track">Could not favorite the on-air song. The server may be unable to resolve its title.</string>
 </resources>

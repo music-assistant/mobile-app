@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
@@ -159,6 +160,8 @@ fun PlayersPager(
         // Server-synced audiobook_chapter_progress preference; gates the
         // chapter-relative timeline in FullPlayerItem.
         val chapterProgressEnabled by homeScreenViewModel.chapterProgressEnabled
+            .collectAsStateWithLifecycle()
+        val streamFavoriteSupported by actionsViewModel.streamFavoriteSupported
             .collectAsStateWithLifecycle()
         // Sleep timers are a server-side feature from schema 35 on; below that the
         // menu entry and the badge stay hidden entirely.
@@ -342,7 +345,7 @@ fun PlayersPager(
                                 onFavoriteStreamClick = {
                                     actionsViewModel.onFavoriteStreamClick(it)
                                 },
-                                canFavoriteStream = actionsViewModel.canFavoriteStream(player),
+                                canFavoriteStream = streamFavoriteSupported && player.hasFavoritableStreamTrack(),
                                 onClose = onClose,
                                 queueAction = { homeScreenViewModel.queueAction(it) },
                                 allPlayers = playerDataList,
