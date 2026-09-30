@@ -1,5 +1,12 @@
 package io.music_assistant.client.ui.compose
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Answer
@@ -12,7 +19,11 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.radioStreamPlayer
 import io.music_assistant.client.support.rules.createKoinTestRule
+import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
+import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +57,9 @@ import org.koin.core.context.GlobalContext.get as getKoin
 class StreamFavoriteActionsTest {
     @get:Rule
     val koinRule = createKoinTestRule { _, _ -> client }
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
 
     private val client = StreamClient()
 
@@ -114,6 +128,63 @@ class StreamFavoriteActionsTest {
         val refusal = IllegalArgumentException("Cannot resolve stream title")
         client.result = Result.failure(refusal)
         assertSame(refusal, dataSource.favoriteCurrentlyPlaying(player).exceptionOrNull())
+    }
+
+    @Test
+    fun `player renders the successful stream favorite toast`() {
+        client.schema(27)
+        val vm = viewModel()
+        showPlayerToasts(vm)
+        composeTestRule.runOnIdle { vm.onFavoriteStreamClick(radioStreamPlayer("Song")) }
+        composeTestRule.mainClock.advanceTimeBy(300)
+        composeTestRule.onNodeWithText(Res.string.toast_favorited_stream_track.get()).assertIsDisplayed()
+    }
+
+    @Test
+    fun `player renders the failed stream favorite toast`() {
+        client.schema(27)
+        client.result = Result.failure(IllegalArgumentException("Cannot resolve stream title"))
+        val vm = viewModel()
+        showPlayerToasts(vm)
+        composeTestRule.runOnIdle { vm.onFavoriteStreamClick(radioStreamPlayer("Song")) }
+        composeTestRule.mainClock.advanceTimeBy(300)
+        composeTestRule.onNodeWithText(Res.string.toast_error_favorite_stream_track.get()).assertIsDisplayed()
+    }
+
+    @Test
+    fun `player host only collects its own action view model`() {
+        client.schema(27)
+        val playerVm = viewModel()
+        val navigationVm = viewModel()
+        showPlayerToasts(playerVm)
+        composeTestRule.runOnIdle { navigationVm.onFavoriteStreamClick(radioStreamPlayer("Song")) }
+        composeTestRule.mainClock.advanceTimeBy(300)
+        composeTestRule.onNodeWithText(Res.string.toast_favorited_stream_track.get()).assertDoesNotExist()
+        composeTestRule.runOnIdle { playerVm.onFavoriteStreamClick(radioStreamPlayer("Song")) }
+        composeTestRule.mainClock.advanceTimeBy(300)
+        composeTestRule.onNodeWithText(Res.string.toast_favorited_stream_track.get()).assertIsDisplayed()
+    }
+
+    private fun showPlayerToasts(vm: ActionsViewModel) {
+        composeTestRule.mainClock.autoAdvance = false
+        composeTestRule.setContent {
+            val toastState = rememberToastState()
+            Box {
+                PlayersPager(
+                    playerPagerState = rememberPagerState { 0 },
+                    state = HomeScreenViewModel.PlayersState.NoServer,
+                    homeScreenViewModel = getKoin().get(),
+                    actionsViewModel = vm,
+                    dspSettingsViewModel = getKoin().get(),
+                    expanded = true,
+                    onClose = {},
+                    contentPadding = PaddingValues(),
+                    toastState = toastState,
+                    navigateToItem = {},
+                )
+                ToastHost(toastState)
+            }
+        }
     }
 
     private fun viewModel() = ActionsViewModel(client, getKoin().get(), getKoin().get())

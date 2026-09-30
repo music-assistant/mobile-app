@@ -52,6 +52,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,6 +93,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuDivider
 import io.music_assistant.client.ui.compose.common.OverflowMenuEntry
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
+import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
@@ -147,8 +149,12 @@ fun PlayersPager(
     expanded: Boolean,
     onClose: () -> Unit,
     contentPadding: PaddingValues,
+    toastState: ToastState,
     navigateToItem: (AppMediaItem) -> Unit,
 ) {
+    LaunchedEffect(actionsViewModel, toastState) {
+        actionsViewModel.toasts.collect { toastState.showToast(it) }
+    }
     if (state is HomeScreenViewModel.PlayersState.Data && state.playerData.isNotEmpty()) {
         val moveToPlayer: (String) -> Unit = { id: String ->
             state.playerData.find { it.player.id == id }
