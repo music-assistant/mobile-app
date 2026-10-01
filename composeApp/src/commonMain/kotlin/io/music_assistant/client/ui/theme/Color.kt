@@ -6,7 +6,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
 // ---- Light ----
-val primaryLight = Color(0xFF2CB1F5)
+val primaryLight = Color(0xFF18BCF2)
 val onPrimaryLight = Color(0xFF003547)
 val primaryContainerLight = Color(0xFFCBE6FF)
 val onPrimaryContainerLight = Color(0xFF001D31)
@@ -33,7 +33,7 @@ val outlineVariantLight = Color(0xFFC1C7CF)
 val scrimLight = Color(0xFF000000)
 val inverseSurfaceLight = Color(0xFF2D3135)
 val inverseOnSurfaceLight = Color(0xFFEEF0F6)
-val inversePrimaryLight = Color(0xFF8DCDFF)
+val inversePrimaryLight = Color(0xFF18BCF2)
 val surfaceDimLight = Color(0xFFD7DAE0)
 val surfaceBrightLight = Color(0xFFF7F9FF)
 val surfaceContainerLowestLight = Color(0xFFFFFFFF)
@@ -43,7 +43,7 @@ val surfaceContainerHighLight = Color(0xFFE5E8EE)
 val surfaceContainerHighestLight = Color(0xFFE0E2E9)
 
 // ---- Dark ----
-val primaryDark = Color(0xFF8DCDFF)
+val primaryDark = Color(0xFF18BCF2)
 val onPrimaryDark = Color(0xFF00344C)
 val primaryContainerDark = Color(0xFF004C6B)
 val onPrimaryContainerDark = Color(0xFFCBE6FF)
