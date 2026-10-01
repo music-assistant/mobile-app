@@ -42,13 +42,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Duration.Companion.seconds
 
 val HomeScreenViewModel.PlayersState.Data.selectedPlayer: PlayerData?
     get() = selectedPlayerIndex?.let(playerData::getOrNull)
@@ -59,6 +63,14 @@ val HomeScreenViewModel.PlayersState.Data.selectedPlayer: PlayerData?
 internal fun List<PlayerData>.indexOfPlayer(id: String?): Int? =
     id?.let { indexOfFirst { it.playerId == id }.takeIf { it >= 0 } }
 
+// Deep-link player lookup, as the web frontend does it: selectable players only, case-insensitive.
+// An id match wins over a name match because names are not unique.
+internal fun List<Player>.findByIdOrName(query: String): Player? =
+    filter { it.isSelectable }.let { candidates ->
+        candidates.find { it.id.equals(query, ignoreCase = true) }
+            ?: candidates.find { it.name.equals(query, ignoreCase = true) }
+    }
+
 @OptIn(FlowPreview::class)
 class HomeScreenViewModel(
     private val apiClient: ServiceClient,
@@ -68,6 +80,7 @@ class HomeScreenViewModel(
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
+    private var deepLinkPlayerJob: Job? = null
 
     private val _links = MutableSharedFlow<String>()
     val links = _links.asSharedFlow()
@@ -397,6 +410,22 @@ class HomeScreenViewModel(
     }
 
     fun selectPlayer(player: Player) = dataSource.selectPlayer(player)
+
+    /**
+     * Selects the player that a deep link names by id or name. Waits for the player list
+     * (cold launch) for a bounded time; no match in that time keeps the current selection.
+     */
+    fun selectPlayerByIdOrName(query: String) {
+        deepLinkPlayerJob?.cancel()
+        deepLinkPlayerJob = viewModelScope.launch {
+            withTimeoutOrNull(DEEP_LINK_PLAYER_TIMEOUT) {
+                dataSource.playersData
+                    .mapNotNull { state -> state.dataOrNull?.map { it.player }?.findByIdOrName(query) }
+                    .first()
+            }?.let(dataSource::selectPlayer)
+                ?: Logger.withTag("HomeScreenVM").w { "Deep link: no selectable player '$query'" }
+        }
+    }
     fun playerAction(playerId: String, action: PlayerAction) =
         dataSource.playerAction(playerId, action)
 
@@ -457,6 +486,7 @@ class HomeScreenViewModel(
 
     private companion object {
         private const val BUFFER_REAL_INTERVAL = 500L
+        private val DEEP_LINK_PLAYER_TIMEOUT = 10.seconds
     }
 }
 

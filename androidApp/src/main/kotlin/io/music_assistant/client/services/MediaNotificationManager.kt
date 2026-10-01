@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import io.music_assistant.client.MainActivity
 import io.music_assistant.client.R
 import io.music_assistant.client.services.MainMediaPlaybackService.Companion.ACTION_NOTIFICATION_DISMISSED
+import androidx.core.net.toUri
 
 class MediaNotificationManager(
     private val context: Context,
@@ -21,7 +22,7 @@ class MediaNotificationManager(
     fun createNotification(bitmap: Bitmap?): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            data = Uri.parse("musicassistant://app/players")
+            data = "musicassistant://app/players".toUri()
         }
 
         val pendingIntent = PendingIntent.getActivity(

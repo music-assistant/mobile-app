@@ -47,7 +47,7 @@
                     android:host="auth"
                     android:path="/callback" />
             </intent-filter>
-            <!-- In-app page deep links: musicassistant://app/home|library|search -->
+            <!-- In-app page deep links: musicassistant://app/home|library|search|players[?player=<id|name>] -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

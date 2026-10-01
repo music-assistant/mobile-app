@@ -211,11 +211,14 @@ fun MainNavigationRoot(
                 multiBackStack.resetCurrentBackStack()
             }
 
-            DeepLinkDestination.Players -> {
+            is DeepLinkDestination.Players -> {
                 // Expand the now-playing layout over the current tab (the
                 // FloatingBar is global, so no tab switch needed). The pager
-                // renders its own empty state if no player is present.
+                // renders its own empty state if no player is present. A named
+                // player is selected in the ViewModel scope: consume() below
+                // restarts this effect, which would cancel the lookup.
                 playerExpanded = true
+                dest.playerIdOrName?.let(homeScreenViewModel::selectPlayerByIdOrName)
             }
         }
         deepLinkBus.consume(dest)

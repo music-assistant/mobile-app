@@ -17,8 +17,11 @@ sealed interface DeepLinkDestination {
     // existing pendingSearch hoist in MainNavRoot when needed.
     data object Search : DeepLinkDestination
 
-    /** Expand the players (now-playing) layout over the current tab. */
-    data object Players : DeepLinkDestination
+    /**
+     * Expand the players (now-playing) layout over the current tab. [playerIdOrName] set
+     * (`?player=<id|name>`) = also select that player.
+     */
+    data class Players(val playerIdOrName: String? = null) : DeepLinkDestination
 }
 
 /**
@@ -71,7 +74,9 @@ class DeepLinkBus {
                 )
             }
             "search" -> DeepLinkDestination.Search
-            "players" -> DeepLinkDestination.Players
+            "players" -> DeepLinkDestination.Players(
+                playerIdOrName = url.parameters["player"]?.trim()?.takeIf { it.isNotEmpty() },
+            )
             else -> return
         }
         _pending.value = dest
