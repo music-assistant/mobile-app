@@ -24,7 +24,7 @@ jobs:
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 21
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}

@@ -25,6 +25,8 @@ jobs:
       - name: Checkout code
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 21
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
