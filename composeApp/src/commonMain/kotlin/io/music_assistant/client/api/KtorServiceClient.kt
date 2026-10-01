@@ -22,9 +22,9 @@ import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
+import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.platformLocale

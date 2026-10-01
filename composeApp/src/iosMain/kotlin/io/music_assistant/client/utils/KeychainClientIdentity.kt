@@ -1,8 +1,8 @@
 package io.music_assistant.client.utils
 
-import co.touchlab.kermit.Logger
 import cnames.structs.__CFDictionary
 import cnames.structs.__SecIdentity
+import co.touchlab.kermit.Logger
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.MemScope
