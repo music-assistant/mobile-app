@@ -616,7 +616,6 @@ private fun ConnectionMethodTabs(
     val webrtcRemoteId by viewModel.webrtcRemoteId.collectAsStateWithLifecycle()
     var showHistoryDialog by remember { mutableStateOf(false) }
     val clientCertificateAlias by viewModel.clientCertificateAlias.collectAsStateWithLifecycle()
-    val clientCertificatePicker = rememberClientCertificatePicker(viewModel::setClientCertificateAlias)
 
     val directHasToken = port.toIntOrNull()
         ?.let {
@@ -681,16 +680,7 @@ private fun ConnectionMethodTabs(
                     enabled = directConnectEnabled,
                     onShowHistory = { showHistoryDialog = true },
                     clientCertificateAlias = clientCertificateAlias,
-                    onChooseClientCertificate = clientCertificatePicker?.let { picker ->
-                        {
-                            picker.pick(
-                                ipAddress.ifBlank { Defaults.URI },
-                                port.toIntOrNull() ?: -1,
-                                clientCertificateAlias,
-                            )
-                        }
-                    },
-                    onClearClientCertificate = { viewModel.setClientCertificateAlias(null) },
+                    onClientCertificateAliasChange = viewModel::setClientCertificateAlias,
                 )
             }
 
@@ -766,8 +756,7 @@ private fun DirectConnectionContent(
     enabled: Boolean,
     onShowHistory: () -> Unit,
     clientCertificateAlias: String?,
-    onChooseClientCertificate: (() -> Unit)?,
-    onClearClientCertificate: () -> Unit,
+    onClientCertificateAliasChange: (String?) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -849,13 +838,12 @@ private fun DirectConnectionContent(
     }
 
     if (isTls) {
-        onChooseClientCertificate?.let {
-            ClientCertificateRow(
-                alias = clientCertificateAlias,
-                onChoose = it,
-                onClear = onClearClientCertificate,
-            )
-        }
+        ClientCertificateSetting(
+            host = ipAddress.ifBlank { Defaults.URI },
+            port = port.toIntOrNull() ?: -1,
+            alias = clientCertificateAlias,
+            onAliasChange = onClientCertificateAliasChange,
+        )
     }
 
     // Live preview of the address the app will actually contact.

@@ -76,7 +76,9 @@ actual class PlatformFeature {
 - Android (`AndroidHttpClientFactory`): OkHttp with the KeyChain client certificate that the user selected
   (`SettingsRepository.clientCertificateAlias`), for mTLS. Trust stays the platform default, so the network
   security config applies. All clients share one connection pool. A certificate change evicts that pool.
-- iOS (`IosHttpClientFactory`): Darwin, no client certificate yet.
+- iOS (`IosHttpClientFactory`): Darwin. `handleChallenge` answers a client-certificate challenge with the identity
+  in `KeychainClientIdentity`, only while `clientCertificateAlias` is set. The Darwin engine owns its session pool,
+  so `KtorServiceClient` makes a new client when the certificate changes.
 
 ## Artwork Loading
 

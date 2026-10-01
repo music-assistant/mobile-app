@@ -18,14 +18,18 @@ import musicassistantclient.composeapp.generated.resources.settings_client_certi
 import musicassistantclient.composeapp.generated.resources.settings_client_certificate_none
 import org.jetbrains.compose.resources.stringResource
 
-/** Opens the platform chooser for the client certificate sent to an mTLS server. */
-fun interface ClientCertificatePicker {
-    fun pick(host: String, port: Int, currentAlias: String?)
-}
-
-/** Null where the platform has no certificate chooser; then the row is hidden. */
+/**
+ * The client certificate sent to an mTLS server. Each platform owns how the user
+ * gets one: the Android KeyChain chooser, or a `.p12` import into the iOS Keychain.
+ * [host] and [port] only preselect a certificate in the chooser.
+ */
 @Composable
-expect fun rememberClientCertificatePicker(onPicked: (String) -> Unit): ClientCertificatePicker?
+expect fun ClientCertificateSetting(
+    host: String,
+    port: Int,
+    alias: String?,
+    onAliasChange: (String?) -> Unit,
+)
 
 @Composable
 internal fun ClientCertificateRow(

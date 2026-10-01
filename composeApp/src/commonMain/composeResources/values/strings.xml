@@ -358,6 +358,10 @@
   <string name="settings_client_certificate_none">None</string>
   <string name="settings_client_certificate_choose">Choose</string>
   <string name="settings_client_certificate_clear">Clear</string>
+  <string name="settings_client_certificate_password_title">Certificate password</string>
+  <string name="settings_client_certificate_password">Password</string>
+  <string name="settings_client_certificate_wrong_password">Wrong password</string>
+  <string name="settings_client_certificate_import_failed">Cannot import this certificate</string>
   <string name="settings_version_info">Version %1$s, Schema %2$s</string>
   <string name="settings_webrtc_description">Connect from anywhere without port forwarding</string>
   <string name="settings_webrtc_disclaimer">WebRTC connection can be slower and less reliable than direct or proxied connection to your server.</string>

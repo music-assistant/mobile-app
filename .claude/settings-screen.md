@@ -41,10 +41,12 @@ The Settings screen adapts its UI based on connection and authentication state:
 
 ### ServerConnectionSection
 - Text fields for host, port, and TLS checkbox
-- Client certificate row (mTLS), shown when TLS is on and the platform has a chooser (Android only):
-  - **Choose** opens the system KeyChain chooser. The chooser lists the certificates that the user installed in Android settings.
-  - **Clear** removes the selection.
-  - The app keeps one alias for all servers. It sends the certificate only to a server that asks for one.
+- Client certificate row (mTLS), shown when TLS is on. `ClientCertificateSetting` is an expect composable:
+  - Android: **Choose** opens the system KeyChain chooser. The chooser lists the certificates that the user installed in Android settings.
+  - iOS: **Choose** opens the document picker for a `.p12` file. A dialog asks for the file password. The app imports the identity into the Keychain.
+  - **Clear** removes the selection. On iOS, it also deletes the Keychain identity.
+  - The app keeps one certificate for all servers. It sends the certificate only to a server that asks for one.
+  - OAuth login on iOS uses `ASWebAuthenticationSession`, which cannot use the imported identity. For OAuth behind mTLS, install the certificate as an iOS profile too.
 - Shows "Credentials present" badge when token exists
 - Connect button
 

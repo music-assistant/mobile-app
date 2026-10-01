@@ -130,6 +130,22 @@ class KtorServiceClient(
         }
     }
 
+    // A connection kept from an attempt without the new client certificate would be
+    // reused and rejected again. The Darwin engine owns its session pool, so the only
+    // way to drop such a connection is a fresh client.
+    private fun startClientCertificateObserver() {
+        launch {
+            settings.clientCertificateAlias
+                .drop(1)
+                .collect {
+                    if (_sessionState.value !is SessionState.Connected) {
+                        logger.i { "Client certificate changed while not connected — rotating HttpClient" }
+                        rotateHttpClient()
+                    }
+                }
+        }
+    }
+
     // WebRTC HTTP client - created lazily on first WebRTC connection
     private val webrtcHttpClient: HttpClient by inject(named("webrtcHttpClient"))
 
@@ -484,6 +500,7 @@ class KtorServiceClient(
 
     init {
         startNetworkObserver()
+        startClientCertificateObserver()
         launch {
             isReadyForCommands.collect { ready ->
                 logger.i { "isReadyForCommands=$ready" }
