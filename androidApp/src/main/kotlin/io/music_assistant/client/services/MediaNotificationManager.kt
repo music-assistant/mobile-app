@@ -6,14 +6,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Build
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.net.toUri
 import io.music_assistant.client.MainActivity
 import io.music_assistant.client.R
 import io.music_assistant.client.services.MainMediaPlaybackService.Companion.ACTION_NOTIFICATION_DISMISSED
-import androidx.core.net.toUri
 
 class MediaNotificationManager(
     private val context: Context,
