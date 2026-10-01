@@ -203,6 +203,10 @@ class SettingsViewModel(
 
     fun setPreferredConnectionMethod(method: String) = settings.setPreferredConnectionMethod(method)
 
+    val clientCertificateAlias = settings.clientCertificateAlias
+
+    fun setClientCertificateAlias(alias: String?) = settings.setClientCertificateAlias(alias)
+
     // WebRTC settings
     val webrtcRemoteId = settings.webrtcRemoteId
 

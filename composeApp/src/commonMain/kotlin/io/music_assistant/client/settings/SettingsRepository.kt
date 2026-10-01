@@ -581,6 +581,22 @@ class SettingsRepository(
         _preferredConnectionMethod.update { method }
     }
 
+    /**
+     * Platform reference to the client certificate sent when a server asks for one (mTLS),
+     * for example the Android KeyChain alias. One for all servers: the server is unknown
+     * until the connection succeeds, and a certificate goes only to a server that asks.
+     */
+    private val _clientCertificateAlias = MutableStateFlow(
+        secrets.getStringOrNull(CLIENT_CERTIFICATE_ALIAS_KEY),
+    )
+    val clientCertificateAlias = _clientCertificateAlias.asStateFlow()
+
+    fun setClientCertificateAlias(alias: String?) {
+        alias?.let { secrets.putString(CLIENT_CERTIFICATE_ALIAS_KEY, it) }
+            ?: secrets.remove(CLIENT_CERTIFICATE_ALIAS_KEY)
+        _clientCertificateAlias.update { alias }
+    }
+
     // WebRTC Remote Access settings
     private val _webrtcRemoteId = MutableStateFlow(
         secrets.getString("webrtc_remote_id", ""),
@@ -795,6 +811,7 @@ class SettingsRepository(
         // when it authenticates to the user's server or identifies it.
         private const val TOKEN_PREFIX = "token_"
         private const val SERVER_ID_PREFIX = "id_"
+        private const val CLIENT_CERTIFICATE_ALIAS_KEY = "client_certificate_alias"
         private val SECRET_STRING_KEYS = listOf(
             "host",
             "webrtc_remote_id",

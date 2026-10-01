@@ -615,6 +615,8 @@ private fun ConnectionMethodTabs(
     val selectedTab = if (preferredMethod == "webrtc") 1 else 0
     val webrtcRemoteId by viewModel.webrtcRemoteId.collectAsStateWithLifecycle()
     var showHistoryDialog by remember { mutableStateOf(false) }
+    val clientCertificateAlias by viewModel.clientCertificateAlias.collectAsStateWithLifecycle()
+    val clientCertificatePicker = rememberClientCertificatePicker(viewModel::setClientCertificateAlias)
 
     val directHasToken = port.toIntOrNull()
         ?.let {
@@ -678,6 +680,17 @@ private fun ConnectionMethodTabs(
                     onConnect = onDirectConnect,
                     enabled = directConnectEnabled,
                     onShowHistory = { showHistoryDialog = true },
+                    clientCertificateAlias = clientCertificateAlias,
+                    onChooseClientCertificate = clientCertificatePicker?.let { picker ->
+                        {
+                            picker.pick(
+                                ipAddress.ifBlank { Defaults.URI },
+                                port.toIntOrNull() ?: -1,
+                                clientCertificateAlias,
+                            )
+                        }
+                    },
+                    onClearClientCertificate = { viewModel.setClientCertificateAlias(null) },
                 )
             }
 
@@ -752,6 +765,9 @@ private fun DirectConnectionContent(
     onConnect: () -> Unit,
     enabled: Boolean,
     onShowHistory: () -> Unit,
+    clientCertificateAlias: String?,
+    onChooseClientCertificate: (() -> Unit)?,
+    onClearClientCertificate: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -830,6 +846,16 @@ private fun DirectConnectionContent(
             onCheckedChange = onTlsChange,
         )
         Text(stringResource(Res.string.settings_use_tls))
+    }
+
+    if (isTls) {
+        onChooseClientCertificate?.let {
+            ClientCertificateRow(
+                alias = clientCertificateAlias,
+                onChoose = it,
+                onClear = onClearClientCertificate,
+            )
+        }
     }
 
     // Live preview of the address the app will actually contact.

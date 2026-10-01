@@ -22,7 +22,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.audioDispatcher
-import io.music_assistant.client.utils.createPlatformHttpClient
+import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.sendspin.SendspinPlayer
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioSink
@@ -95,6 +95,7 @@ class LocalPlayerAdapter(
     decoders: DecoderFactory,
     keyStore: SendspinKeyStore,
     networkMonitor: NetworkMonitor,
+    httpClientFactory: HttpClientFactory,
 ) : CoroutineScope {
     private val log = Logger.withTag("LocalPlayerAdapter")
     private val supervisorJob = SupervisorJob()
@@ -138,7 +139,7 @@ class LocalPlayerAdapter(
             sink = sink,
             decoders = decoders,
             keyStore = keyStore,
-            httpClient = createPlatformHttpClient(),
+            httpClient = httpClientFactory.create(),
             online = networkMonitor.isAvailable,
             approvePairing = ::approvePairing,
             audioDispatcher = audioDispatcher,

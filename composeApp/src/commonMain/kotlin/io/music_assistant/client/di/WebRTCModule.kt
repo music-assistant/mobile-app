@@ -2,7 +2,7 @@ package io.music_assistant.client.di
 
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
-import io.music_assistant.client.utils.createPlatformHttpClient
+import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.webrtc.SignalingClient
 import kotlinx.coroutines.CoroutineScope
@@ -20,10 +20,9 @@ import org.koin.dsl.module
  */
 val webrtcModule = module {
     // Shared HttpClient for WebRTC signaling
-    // Uses default engine (platform-specific: CIO on JVM/Android, Darwin on iOS)
     // Configured with WebSockets support for signaling server connection
     single(named("webrtcHttpClient")) {
-        createPlatformHttpClient {
+        get<HttpClientFactory>().create {
             install(WebSockets) {
                 contentConverter = KotlinxWebsocketSerializationConverter(myJson)
             }

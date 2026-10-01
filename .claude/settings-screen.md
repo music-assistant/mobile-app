@@ -41,6 +41,10 @@ The Settings screen adapts its UI based on connection and authentication state:
 
 ### ServerConnectionSection
 - Text fields for host, port, and TLS checkbox
+- Client certificate row (mTLS), shown when TLS is on and the platform has a chooser (Android only):
+  - **Choose** opens the system KeyChain chooser. The chooser lists the certificates that the user installed in Android settings.
+  - **Clear** removes the selection.
+  - The app keeps one alias for all servers. It sends the certificate only to a server that asks for one.
 - Shows "Credentials present" badge when token exists
 - Connect button
 

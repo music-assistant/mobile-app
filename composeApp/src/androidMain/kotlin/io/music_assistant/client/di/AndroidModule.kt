@@ -6,8 +6,11 @@ import io.ktor.utils.io.ExperimentalKtorApi
 import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.player.local.AndroidDecoderFactory
 import io.music_assistant.client.player.local.AudioTrackSink
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AndroidBackgroundUsageGuard
+import io.music_assistant.client.utils.AndroidHttpClientFactory
 import io.music_assistant.client.utils.BackgroundUsageGuard
+import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.SystemMonotonicClock
@@ -20,6 +23,9 @@ fun androidModule() = module {
     single<AudioSink> { AudioTrackSink(androidContext(), SystemMonotonicClock) }
     single<DecoderFactory> { AndroidDecoderFactory() }
     single<BackgroundUsageGuard> { AndroidBackgroundUsageGuard(androidContext()) }
+    single<HttpClientFactory> {
+        AndroidHttpClientFactory(androidContext(), get<SettingsRepository>().clientCertificateAlias)
+    }
 
     // Ktor WebRTC engine — Phase A spike for migration off webrtc-kmp.
     // See plans/let-s-investigate-possible-migration-sequential-pike.md.

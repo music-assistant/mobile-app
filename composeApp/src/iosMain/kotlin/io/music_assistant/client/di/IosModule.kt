@@ -10,7 +10,9 @@ import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.player.local.AudioQueueSink
 import io.music_assistant.client.player.local.IosDecoderFactory
 import io.music_assistant.client.utils.BackgroundUsageGuard
+import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.IosBackgroundUsageGuard
+import io.music_assistant.client.utils.IosHttpClientFactory
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import org.koin.dsl.module
@@ -23,6 +25,7 @@ fun iosModule() = module {
     }
     single<DecoderFactory> { IosDecoderFactory() }
     single<BackgroundUsageGuard> { IosBackgroundUsageGuard() }
+    single<HttpClientFactory> { IosHttpClientFactory() }
 
     // CarPlay scene-delegate edges (via ServiceClient.onExternalConsumerActive/Inactive) are a
     // precise connect/disconnect signal on iOS — reuse them directly.

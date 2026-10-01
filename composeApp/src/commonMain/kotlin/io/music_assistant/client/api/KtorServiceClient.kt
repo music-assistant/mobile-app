@@ -24,7 +24,7 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.SessionState
-import io.music_assistant.client.utils.createPlatformHttpClient
+import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.platformLocale
@@ -85,8 +85,11 @@ class KtorServiceClient(
 
     private val clientMutex = Mutex()
 
+    // Declared before currentClient, whose initializer reads it.
+    private val httpClientFactory: HttpClientFactory by inject()
+
     @kotlin.concurrent.Volatile
-    private var currentClient: HttpClient = createPlatformHttpClient {
+    private var currentClient: HttpClient = httpClientFactory.create {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(myJson)
             pingInterval = 10.seconds
@@ -101,7 +104,7 @@ class KtorServiceClient(
     private suspend fun rotateHttpClient() {
         clientMutex.withLock {
             val oldClient = currentClient
-            currentClient = createPlatformHttpClient {
+            currentClient = httpClientFactory.create {
                 install(WebSockets) {
                     contentConverter = KotlinxWebsocketSerializationConverter(myJson)
                     pingInterval = 10.seconds
