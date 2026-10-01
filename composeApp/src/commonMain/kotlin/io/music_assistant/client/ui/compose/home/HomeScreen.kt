@@ -45,16 +45,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.Shortcut
-import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.data.model.client.items.Artist
-import io.music_assistant.client.data.model.client.items.Audiobook
-import io.music_assistant.client.data.model.client.items.Genre
-import io.music_assistant.client.data.model.client.items.Playlist
-import io.music_assistant.client.data.model.client.items.Podcast
-import io.music_assistant.client.data.model.client.items.PodcastEpisode
-import io.music_assistant.client.data.model.client.items.RadioStation
-import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.CenteredProgress
 import io.music_assistant.client.ui.compose.common.CenteredText
@@ -267,17 +258,8 @@ internal fun getCategories(
             // A still-loading row stays visible as a placeholder; a resolved row
             // must contain something the home page can render.
             .filter { row ->
-                row.items is DataState.Loading || row.resolvedItems?.any { item ->
-                    item is Track ||
-                            item is Artist ||
-                            item is Album ||
-                            item is Playlist ||
-                            item is Audiobook ||
-                            item is Podcast ||
-                            item is PodcastEpisode ||
-                            item is RadioStation ||
-                            item is Genre
-                } == true
+                row.items is DataState.Loading ||
+                        row.resolvedItems?.any { it.isHomeRowItem() } == true
             }
             .distinctBy { it.folder.lazyListKey() }
             .map { row ->

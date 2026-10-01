@@ -32,7 +32,7 @@ class AiRadioCategoryVisibilityTest {
         val hidden = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
 
         assertEquals(
-            LibraryCategory.entries.filterNot { it == LibraryCategory.AI_RADIO },
+            libraryTabCategories.filterNot { it == LibraryCategory.AI_RADIO },
             hidden,
         )
     }
@@ -40,7 +40,7 @@ class AiRadioCategoryVisibilityTest {
     @Test
     fun `saving while AI Radio is hidden preserves its stored disabled flag`() {
         // The user turned AI Radio off, then the plugin went away.
-        val stored = LibraryCategory.entries.map {
+        val stored = libraryTabCategories.map {
             pref(it, enabled = it != LibraryCategory.AI_RADIO)
         }
         val reconciled = reconcileLibraryCategories(stored)
@@ -49,7 +49,7 @@ class AiRadioCategoryVisibilityTest {
         // The editor saves only what it could see; the hidden entry must survive.
         val merged = mergeHiddenCategories(edited, reconciled)
 
-        assertEquals(LibraryCategory.entries.toSet(), merged.map { it.first }.toSet())
+        assertEquals(libraryTabCategories.toSet(), merged.map { it.first }.toSet())
         assertTrue(merged.contains(LibraryCategory.AI_RADIO to false))
     }
 
@@ -61,8 +61,8 @@ class AiRadioCategoryVisibilityTest {
         val merged = mergeHiddenCategories(edited, reconciled)
 
         assertEquals(edited, merged.take(edited.size))
-        assertEquals(LibraryCategory.entries.size, merged.size)
-        assertEquals(LibraryCategory.entries.toSet(), merged.map { it.first }.toSet())
+        assertEquals(libraryTabCategories.size, merged.size)
+        assertEquals(libraryTabCategories.toSet(), merged.map { it.first }.toSet())
     }
 
     @Test
@@ -77,5 +77,23 @@ class AiRadioCategoryVisibilityTest {
         assertEquals(LibraryCategory.ALBUMS to false, result.first())
         assertEquals(carTabCategories.toSet(), result.map { it.first }.toSet())
         assertTrue(result.contains(LibraryCategory.AI_RADIO to true))
+    }
+
+    @Test
+    fun `home is the first car tab and lands last in a config saved before it`() {
+        assertEquals(LibraryCategory.HOME to true, reconcileCarTabs(null).first())
+
+        val savedBeforeHome = (carTabCategories - LibraryCategory.HOME).map { pref(it) }
+
+        assertEquals(LibraryCategory.HOME to true, reconcileCarTabs(savedBeforeHome).last())
+    }
+
+    @Test
+    fun `home never becomes a phone library tab`() {
+        assertFalse(reconcileLibraryCategories(null).any { it.first == LibraryCategory.HOME })
+        assertFalse(
+            reconcileLibraryCategories(listOf(pref(LibraryCategory.HOME)))
+                .any { it.first == LibraryCategory.HOME },
+        )
     }
 }

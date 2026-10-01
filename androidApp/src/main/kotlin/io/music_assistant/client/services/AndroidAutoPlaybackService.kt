@@ -61,6 +61,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
         sessionToken = sharedSession.acquire()
         defaultIconUri = R.drawable.baseline_library_music_24.toUri(this)
         observeCarTabsConfig()
+        observeHomeRowsConfig()
         observeLocalPlayerEnabled()
         observeAiRadioAvailability()
         ensureNotificationService()
@@ -75,6 +76,16 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
             settingsRepository.carTabsConfig
                 .drop(1)
                 .collect { notifyChildrenChanged(MediaIds.ROOT) }
+        }
+    }
+
+    // Hiding or reordering a row on the phone home page reorders the AA Home tab too. The rows
+    // themselves stay cached: AutoLibrary applies the config on every read.
+    private fun observeHomeRowsConfig() {
+        scope.launch {
+            settingsRepository.homeRowsConfig
+                .drop(1)
+                .collect { notifyChildrenChanged(MediaIds.TAB_HOME) }
         }
     }
 
@@ -110,6 +121,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
 
     private fun notifyBrowseTreeChanged() {
         notifyChildrenChanged(MediaIds.ROOT)
+        notifyChildrenChanged(MediaIds.TAB_HOME)
         notifyChildrenChanged(MediaIds.TAB_ARTISTS)
         notifyChildrenChanged(MediaIds.TAB_ALBUMS)
         notifyChildrenChanged(MediaIds.TAB_PLAYLISTS)

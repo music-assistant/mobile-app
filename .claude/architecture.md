@@ -163,6 +163,10 @@ Android foreground services integrate with Sendspin through MainDataSource:
 - Uses `playerData.queue` for queue access (not deprecated `builtinPlayerQueue`)
 - When Sendspin is playing locally, it appears in Android Auto
 - Supports library browsing via `AutoLibrary`
+- Shows a Home tab that copies the app home page. The tab has one browsable item for each
+  recommendation row. `visibleHomeFolders` (`ui/compose/home/HomeRowsConfig.kt`) filters and
+  orders the rows. It uses the same rules and the same `homeRowsConfig` as the app. The Shortcuts
+  row is not in the tab. The user turns the tab on or off in Settings → Car → Tabs.
 - All actions go through `MainDataSource.playerAction()` and `queueAction()`
 - Publishes browse-row and queue-row artwork as opaque, read-only `content://` URIs through
   `AndroidAutoArtworkProvider`. A media host fetches icon URIs in its own process and its own UID,

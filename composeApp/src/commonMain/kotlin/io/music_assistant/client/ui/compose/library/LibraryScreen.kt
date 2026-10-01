@@ -250,6 +250,6 @@ private const val ITEM_HEIGHT_RATIO = 3
 private fun LibraryGridPreview() {
     LibraryGrid(
         paddingValues = PaddingValues(vertical = 16.dp),
-        categories = LibraryCategory.entries.map { it to true },
+        categories = libraryTabCategories.map { it to true },
     ) {}
 }

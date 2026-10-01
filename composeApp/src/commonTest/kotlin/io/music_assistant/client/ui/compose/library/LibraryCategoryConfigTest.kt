@@ -13,7 +13,7 @@ class LibraryCategoryConfigTest {
     fun `null config yields every category enabled in declaration order`() {
         val result = reconcileLibraryCategories(null)
 
-        assertEquals(LibraryCategory.entries.map { it to true }, result)
+        assertEquals(libraryTabCategories.map { it to true }, result)
     }
 
     @Test
@@ -32,8 +32,8 @@ class LibraryCategoryConfigTest {
         // ...and BROWSE (absent from the stored config) is appended, enabled.
         assertTrue(result.contains(LibraryCategory.BROWSE to true))
         // Every live category is present exactly once.
-        assertEquals(LibraryCategory.entries.toSet(), result.map { it.first }.toSet())
-        assertEquals(LibraryCategory.entries.size, result.size)
+        assertEquals(libraryTabCategories.toSet(), result.map { it.first }.toSet())
+        assertEquals(libraryTabCategories.size, result.size)
     }
 
     @Test
@@ -48,12 +48,12 @@ class LibraryCategoryConfigTest {
         assertEquals(LibraryCategory.TRACKS to true, result.first())
         assertTrue(result.none { it.first.name == "A_REMOVED_CATEGORY" })
         // Dropping an unknown name still leaves the full live universe reconciled in.
-        assertEquals(LibraryCategory.entries.toSet(), result.map { it.first }.toSet())
+        assertEquals(libraryTabCategories.toSet(), result.map { it.first }.toSet())
     }
 
     @Test
     fun `a fully-specified config is returned verbatim`() {
-        val stored = LibraryCategory.entries.mapIndexed { index, category ->
+        val stored = libraryTabCategories.mapIndexed { index, category ->
             pref(category, enabled = index % 2 == 0)
         }
 
