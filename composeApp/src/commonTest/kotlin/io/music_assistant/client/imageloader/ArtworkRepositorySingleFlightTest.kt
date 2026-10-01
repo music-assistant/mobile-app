@@ -7,6 +7,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -105,7 +107,11 @@ class ArtworkRepositorySingleFlightTest {
         val transport = RecordingArtworkTransport()
         val gate = CompletableDeferred<Unit>()
         val repository = ArtworkRepository(
-            store = testStore("cancel-write", beforeWrite = { gate.await() }),
+            store = testStore(
+                "cancel-write",
+                beforeWrite = { gate.await() },
+                ioDispatcher = StandardTestDispatcher(testScheduler),
+            ),
             transport = transport,
             serviceClient = MutableArtworkServiceClient(),
             now = { 1_000L },
@@ -144,12 +150,14 @@ class ArtworkRepositorySingleFlightTest {
         assertEquals(1, equalTransport.calls.size)
     }
 
-    private fun repository(
+    // Disk work runs on the test scheduler, so advanceUntilIdle() covers it. On a real IO
+    // thread it races the call-count assertions.
+    private fun TestScope.repository(
         transport: ArtworkTransport,
         mutex: Mutex = Mutex(),
         scope: CoroutineScope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob()),
     ): ArtworkRepository = ArtworkRepository(
-        store = testStore("singleflight"),
+        store = testStore("singleflight", ioDispatcher = StandardTestDispatcher(testScheduler)),
         transport = transport,
         serviceClient = MutableArtworkServiceClient(),
         now = { 1_000L },

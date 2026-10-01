@@ -3,6 +3,7 @@ package io.music_assistant.client.imageloader
 import coil3.disk.DiskCache
 import io.music_assistant.client.utils.ARTWORK_MAX_BODY_BYTES
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.sync.Mutex
@@ -35,13 +36,14 @@ internal class ArtworkDiskStore(
     private val fileSystem: FileSystem = cache.fileSystem,
     private val now: () -> Long = { 0L },
     private val beforeWrite: (suspend () -> Unit)? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val metadataMutex = Mutex()
     private val metadataCache = LinkedHashMap<String, ArtworkMetadata>()
     private var metadataEpoch = 0L
 
     suspend fun readMetadata(identity: ArtworkIdentity, currentTimeMs: Long = now()): ArtworkMetadata? = withContext(
-        Dispatchers.IO,
+        ioDispatcher,
     ) {
         metadataMutex.withLock {
             metadataCache.remove(identity.key)?.let { cached ->
@@ -64,7 +66,7 @@ internal class ArtworkDiskStore(
     }
 
     suspend fun read(identity: ArtworkIdentity, currentTimeMs: Long = now()): StoredArtwork? = withContext(
-        Dispatchers.IO,
+        ioDispatcher,
     ) {
         val snapshotAndMetadata = metadataMutex.withLock {
             val snapshot = bestEffort { cache.openSnapshot(identity.key) } ?: return@withLock null
@@ -113,7 +115,7 @@ internal class ArtworkDiskStore(
         fetchedAtMs: Long,
         expiresAtMs: Long,
         digest: String? = null,
-    ): StoredArtwork? = withContext(Dispatchers.IO) {
+    ): StoredArtwork? = withContext(ioDispatcher) {
         if (bytes.isEmpty() || bytes.size > ARTWORK_MAX_BODY_BYTES) return@withContext null
         val payloadDigest = digest ?: artworkSha256Hex(bytes)
         metadataMutex.withLock {
@@ -138,7 +140,7 @@ internal class ArtworkDiskStore(
         }
     }
 
-    suspend fun invalidate(identity: ArtworkIdentity, digest: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun invalidate(identity: ArtworkIdentity, digest: String): Boolean = withContext(ioDispatcher) {
         metadataMutex.withLock {
             val cached = metadataCache[identity.key]
             if (cached != null && cached.digest != digest) return@withLock false
