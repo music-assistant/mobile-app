@@ -1,0 +1,45 @@
+name: Publish Docs
+
+# Manual only: release tags are pushed with GITHUB_TOKEN, which does not
+# trigger other workflows, so a tag trigger would never fire.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build site
+        run: |
+          # 9.7.x caps mkdocs<2; MkDocs 2.0 drops plugins and themes.
+          pip install mkdocs-material==9.7.*
+          mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

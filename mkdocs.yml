@@ -1,0 +1,53 @@
+site_name: Music Assistant Mobile App
+site_description: User documentation for the Music Assistant mobile app for Android and iOS.
+site_url: https://music-assistant.github.io/mobile-app/
+repo_url: https://github.com/music-assistant/mobile-app
+repo_name: music-assistant/mobile-app
+edit_uri: edit/main/docs/app-documentation/
+
+# Only user-facing docs are published; developer docs in docs/ stay out.
+docs_dir: docs/app-documentation
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.action.edit
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Onboarding:
+      - First time setup: app-settings.md
+      - Direct connection: connection-to-server-direct.md
+      - WebRTC connection: connection-to-server-webrtc.md
+      - Local Sendspin player: local-sendspin-player-settings.md
+  - Using the app:
+      - Home tab: home.md
+      - Library tab: library.md
+      - Global search: global-search.md
+      - Item details: item-details.md
+      - Players pager: players-pager.md
+      - Managing playlists: playlists.md
