@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.home.players
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,18 +17,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.BedtimeOff
-import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -62,7 +63,11 @@ import musicassistantclient.composeapp.generated.resources.cd_keep_screen_on_ena
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_close
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_offset_decrease
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_offset_increase
+import musicassistantclient.composeapp.generated.resources.edit_audio
 import musicassistantclient.composeapp.generated.resources.lyrics_screen_wake_on
+import musicassistantclient.composeapp.generated.resources.night_sight_auto
+import musicassistantclient.composeapp.generated.resources.night_sight_auto_off
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -128,18 +133,26 @@ fun LyricsSheet(
                             )
                         }
                     }
-                    IconButton(
-                        onClick = {
-                            keepScreenOn = !keepScreenOn
-                            if (keepScreenOn) toastState.showToast(screenWakeOnMessage)
+                    IconToggleButton(
+                        checked = keepScreenOn,
+                        onCheckedChange = {
+                            keepScreenOn = it
+                            if (it) toastState.showToast(screenWakeOnMessage)
                         },
+                        colors = IconButtonDefaults.iconToggleButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
                     ) {
                         Icon(
-                            imageVector = if (keepScreenOn) {
-                                Icons.Outlined.BedtimeOff
-                            } else {
-                                Icons.Outlined.Bedtime
-                            },
+                            painter = painterResource(
+                                if (keepScreenOn) {
+                                    Res.drawable.night_sight_auto_off
+                                } else {
+                                    Res.drawable.night_sight_auto
+                                },
+                            ),
                             contentDescription = stringResource(
                                 if (keepScreenOn) {
                                     Res.string.cd_keep_screen_on_disable
@@ -147,11 +160,6 @@ fun LyricsSheet(
                                     Res.string.cd_keep_screen_on_enable
                                 },
                             ),
-                            tint = if (keepScreenOn) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.inactive()
-                            },
                         )
                     }
                 }
@@ -180,37 +188,50 @@ private fun LyricsOffsetStepper(
     offsetMs: Int,
     onOffsetChange: (Int) -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = CircleShape,
+            )
+            .padding(start = 12.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Icon(
-            Icons.Outlined.GraphicEq,
+            painterResource(Res.drawable.edit_audio),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurface.inactive(),
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.padding(end=16.dp).size(16.dp),
         )
+        // 32 dp visually; IconButton still keeps the 48 dp touch target around it.
         IconButton(
             onClick = { onOffsetChange(offsetMs - LYRICS_OFFSET_STEP_MS) },
             enabled = offsetMs > -LYRICS_OFFSET_LIMIT_MS,
+            modifier = Modifier.size(32.dp),
         ) {
             Icon(
                 Icons.Default.Remove,
                 contentDescription = stringResource(Res.string.cd_lyrics_offset_decrease),
+                modifier = Modifier.size(18.dp),
             )
         }
         Text(
             text = "${if (offsetMs > 0) "+" else ""}$offsetMs ms",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             // Fixed width so the buttons stay put as the value's length changes.
-            modifier = Modifier.width(72.dp),
+            modifier = Modifier.width(64.dp),
         )
         IconButton(
             onClick = { onOffsetChange(offsetMs + LYRICS_OFFSET_STEP_MS) },
             enabled = offsetMs < LYRICS_OFFSET_LIMIT_MS,
+            modifier = Modifier.size(32.dp),
         ) {
             Icon(
                 Icons.Default.Add,
                 contentDescription = stringResource(Res.string.cd_lyrics_offset_increase),
+                modifier = Modifier.size(18.dp),
             )
         }
     }
@@ -295,5 +316,5 @@ private fun SyncedLyrics(
 }
 
 private const val LYRICS_BOTTOM_SHEET_HEIGHT = 0.8f
-private const val LYRICS_OFFSET_STEP_MS = 100
+private const val LYRICS_OFFSET_STEP_MS = 200
 private const val LYRICS_OFFSET_LIMIT_MS = 2000
