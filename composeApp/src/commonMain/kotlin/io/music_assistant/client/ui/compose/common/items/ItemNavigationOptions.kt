@@ -30,44 +30,48 @@ fun AppMediaItem.navigationOptions(
     containerItem: AppMediaItem? = null,
 ): List<OverflowMenuOption> {
     val item = this
-    // When an item has multiple artists we can't pick for the user; hold the candidates
-    // here so the shared "Choose artist" dialog (emitted below) can resolve the choice.
-    var artistChoices by remember { mutableStateOf<List<Artist>?>(null) }
-    val options = buildList {
-        when (item) {
-            is Track -> {
-                if (item.album != null && !item.album.isSameItemAs(containerItem)) {
-                    add(
-                        OverflowMenuOption(
-                            title = stringResource(Res.string.action_go_to_album),
-                            icon = Icons.Default.Album,
-                            onClick = {
-                                navigateToItem(item.album)
-                            },
-                        ),
-                    )
-                }
-
-                val artists = item.artists.otherThan(containerItem)
-                if (artists.isNotEmpty()) {
-                    add(goToArtist(artists, navigateToItem, onChoose = { artistChoices = it }))
-                }
-            }
-
-            is Album -> {
-                val artists = item.artists.otherThan(containerItem)
-                if (artists.isNotEmpty()) {
-                    add(goToArtist(artists, navigateToItem, onChoose = { artistChoices = it }))
-                }
-            }
-
-            else -> Unit
+    val artists = when (item) {
+        is Track -> item.artists
+        is Album -> item.artists
+        else -> emptyList()
+    }.otherThan(containerItem)
+    val goToArtist = rememberArtistNavigation(artists, navigateToItem)
+    return buildList {
+        if (item is Track && item.album != null && !item.album.isSameItemAs(containerItem)) {
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.action_go_to_album),
+                    icon = Icons.Default.Album,
+                    onClick = { navigateToItem(item.album) },
+                ),
+            )
+        }
+        goToArtist?.let {
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.action_go_to_artist),
+                    icon = Icons.Default.Person,
+                    onClick = it,
+                ),
+            )
         }
     }
+}
 
-    artistChoices?.let { artists ->
+/**
+ * Click handler that opens one of [artists]: a single artist navigates straight through,
+ * several open the shared "Choose artist" dialog (emitted here). Null when [artists] is empty.
+ */
+@Composable
+fun rememberArtistNavigation(
+    artists: List<Artist>,
+    navigateToItem: (AppMediaItem) -> Unit,
+): (() -> Unit)? {
+    // We can't pick for the user among several artists; hold the candidates for the dialog.
+    var artistChoices by remember { mutableStateOf<List<Artist>?>(null) }
+    artistChoices?.let { choices ->
         ChooseArtistDialog(
-            artists = artists,
+            artists = choices,
             onSelect = {
                 navigateToItem(it)
                 artistChoices = null
@@ -75,26 +79,9 @@ fun AppMediaItem.navigationOptions(
             onDismiss = { artistChoices = null },
         )
     }
-
-    return options
-}
-
-// Returns a value on purpose: a Unit-returning @Composable gets its own restart scope, and
-// recomposing it alone would mutate an already-frozen buildList builder.
-@Composable
-private fun goToArtist(
-    artists: List<Artist>,
-    navigateToItem: (AppMediaItem) -> Unit,
-    onChoose: (List<Artist>) -> Unit,
-): OverflowMenuOption {
-    return OverflowMenuOption(
-        title = stringResource(Res.string.action_go_to_artist),
-        icon = Icons.Default.Person,
-        onClick = {
-            // A single artist navigates straight through; multiple defers to the dialog.
-            if (artists.size == 1) navigateToItem(artists[0]) else onChoose(artists)
-        },
-    )
+    return artists.takeIf { it.isNotEmpty() }?.let { candidates ->
+        { candidates.singleOrNull()?.let(navigateToItem) ?: run { artistChoices = candidates } }
+    }
 }
 
 /** Drops the artist whose screen the list belongs to; navigating there would go nowhere. */

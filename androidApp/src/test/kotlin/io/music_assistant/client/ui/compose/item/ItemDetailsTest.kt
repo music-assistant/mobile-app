@@ -15,14 +15,18 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColors
 import io.music_assistant.client.ui.compose.common.ExtractedColorsSource
 import io.music_assistant.client.ui.compose.support.inScrollable
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_choose_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.cd_more
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,6 +89,42 @@ class ItemDetailsTest {
 
         composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
         composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).assertIsNotDisplayed()
+    }
+
+    @Test
+    fun `tapping the album artist line navigates to the single artist`() {
+        val artist = AppMediaItemFixtures.artist(name = "Solo")
+        val album = AppMediaItemFixtures.album(artist = artist)
+        var navigatedTo: AppMediaItem? = null
+
+        composeTestRule.setInspectableContent {
+            ItemHeader(item = album, navigateToItem = { navigatedTo = it })
+        }
+
+        composeTestRule.onNodeWithText("Solo").performClick()
+
+        composeTestRule.onNodeWithText(Res.string.action_choose_artist.get()).assertIsNotDisplayed()
+        assertEquals(artist, navigatedTo)
+    }
+
+    @Test
+    fun `tapping a multi-artist album line opens the choose-artist dialog`() {
+        val first = AppMediaItemFixtures.artist(name = "First")
+        val second = AppMediaItemFixtures.artist(name = "Second")
+        val album = AppMediaItemFixtures.album().copy(artists = listOf(first, second))
+        var navigatedTo: AppMediaItem? = null
+
+        composeTestRule.setInspectableContent {
+            ItemHeader(item = album, navigateToItem = { navigatedTo = it })
+        }
+
+        composeTestRule.onNodeWithText("First, Second").performClick()
+        composeTestRule.onNodeWithText(Res.string.action_choose_artist.get()).assertIsDisplayed()
+        assertNull(navigatedTo)
+
+        composeTestRule.onNodeWithText("Second").performClick()
+
+        assertEquals(second, navigatedTo)
     }
 
     @Test

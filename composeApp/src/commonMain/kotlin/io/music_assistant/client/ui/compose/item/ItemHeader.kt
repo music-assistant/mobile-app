@@ -6,6 +6,7 @@ package io.music_assistant.client.ui.compose.item
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -73,6 +75,7 @@ import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
+import io.music_assistant.client.ui.compose.common.items.rememberArtistNavigation
 import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowActions
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
@@ -84,6 +87,7 @@ import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.WindowClass
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_similar_artists
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_find_in_list
@@ -102,6 +106,7 @@ fun ItemHeader(
     ),
     providerIconFetcher: ProviderIconFetcher? = null,
     onPlayClick: (QueueOption, Boolean) -> Unit = { _, _ -> },
+    navigateToItem: (AppMediaItem) -> Unit = {},
 ) {
     // Art color on top, fading down to the surface the Screen actually paints, so the
     // wash dissolves seamlessly where the tabs begin. Mirrors the player gradient (inverted).
@@ -122,7 +127,7 @@ fun ItemHeader(
         }
 
         val textAndControls = @Composable { textAlign: TextAlign ->
-            ItemText(item, textAlign, Modifier.padding(top = 16.dp))
+            ItemText(item, textAlign, navigateToItem, Modifier.padding(top = 16.dp))
             ItemPlayButton(
                 item,
                 onPlayClick = onPlayClick,
@@ -319,6 +324,7 @@ private fun ItemOverflow(
 private fun ItemText(
     item: AppMediaItem,
     textAlign: TextAlign,
+    navigateToItem: (AppMediaItem) -> Unit,
     modifier: Modifier,
 ) {
     val horizontalAlignment = if (textAlign == TextAlign.Center) {
@@ -358,10 +364,24 @@ private fun ItemText(
             }
         }
 
+        // An album's subtitle is its artist list; tapping it does the overflow's "Go to artist".
+        val onSubtitleClick = rememberArtistNavigation(
+            artists = (item as? Album)?.artists.orEmpty(),
+            navigateToItem = navigateToItem,
+        )
         item.localizedSubtitle()?.let {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(
+                        onSubtitleClick?.let { onClick ->
+                            Modifier.clickable(
+                                onClickLabel = stringResource(Res.string.action_go_to_artist),
+                                role = Role.Button,
+                                onClick = onClick,
+                            )
+                        } ?: Modifier,
+                    )
                     .fadingEdges()
                     .basicMarquee()
                     .padding(horizontal = 16.dp),

@@ -24,6 +24,10 @@ Tap the **three-dot menu** in the top right corner to access additional actions 
 
 ![Three-dot Menu](screenshots/item-details/three-dot-menu.jpeg)
 
+## Going to the Artist
+
+On an album, tap the artist names below the album title to open the artist. If the album has more than one artist, a dialog opens. Select the artist that you want to open. The **Go to artist** action in the three-dot menu does the same thing.
+
 ## Tracks, Episodes, or Chapters
 
 The content listed in the details view depends on the type of item you are viewing — artists show albums and tracks, albums show tracks, podcasts show episodes, and audiobooks show chapters.

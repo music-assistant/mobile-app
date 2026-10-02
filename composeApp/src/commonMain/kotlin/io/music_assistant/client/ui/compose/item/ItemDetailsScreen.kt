@@ -366,6 +366,7 @@ private fun ItemContent(
                 colors = colors,
                 providerIconFetcher = providerIconFetcher,
                 onPlayClick = onPlayItemClick,
+                navigateToItem = onNavigateClick,
             )
         }
     }
