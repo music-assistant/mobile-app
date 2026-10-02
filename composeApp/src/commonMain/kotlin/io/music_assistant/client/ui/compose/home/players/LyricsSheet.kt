@@ -1,15 +1,17 @@
 package io.music_assistant.client.ui.compose.home.players
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -17,16 +19,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.BedtimeOff
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -39,12 +42,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
+import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.KeepScreenOn
 import kotlinx.coroutines.flow.Flow
@@ -53,6 +60,9 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_keep_screen_on_disable
 import musicassistantclient.composeapp.generated.resources.cd_keep_screen_on_enable
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_close
+import musicassistantclient.composeapp.generated.resources.cd_lyrics_offset_decrease
+import musicassistantclient.composeapp.generated.resources.cd_lyrics_offset_increase
+import musicassistantclient.composeapp.generated.resources.lyrics_screen_wake_on
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -69,9 +79,13 @@ fun LyricsSheet(
     livePositionFlow: Flow<Double>?,
     onDismiss: () -> Unit,
 ) {
-    var offsetSec by remember(lyrics) { mutableStateOf(0f) }
+    var offsetMs by remember(lyrics) { mutableStateOf(0) }
     var keepScreenOn by remember { mutableStateOf(false) }
-    val isSynced = lyrics is Lyrics.Synced
+    // The offset shifts lines against the live position, so it means nothing without both.
+    val canAdjustOffset = lyrics is Lyrics.Synced && livePositionFlow != null
+    // The sheet is its own window, so it hosts its own toasts above the page's ToastHost.
+    val toastState = rememberToastState()
+    val screenWakeOnMessage = stringResource(Res.string.lyrics_screen_wake_on)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -82,106 +96,122 @@ fun LyricsSheet(
         // empty bottom band (pointless on iOS, which has no button bar). Matches BottomSheet.kt.
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(LYRICS_BOTTOM_SHEET_HEIGHT)
                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
         ) {
-            // Scoped to the sheet: leaving the composition releases the screen lock,
-            // whichever way the sheet was closed.
-            KeepScreenOn(enabled = keepScreenOn)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Slider(
-                    value = offsetSec,
-                    onValueChange = { offsetSec = it },
-                    valueRange = -2f..2f,
-                    steps = 39,
-                    enabled = isSynced,
-                    thumb = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            if (isSynced) {
-                                Text(
-                                    text = "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                            SliderDefaults.Thumb(
-                                interactionSource = remember { MutableInteractionSource() },
-                                thumbSize = DpSize(16.dp, 16.dp),
-                                enabled = isSynced,
-                            )
-
-                            if (isSynced) {
-                                Text(
-                                    text = formatDecimal(offsetSec.toDouble(), 1),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        }
-                    },
-                    track = { sliderState ->
-                        SliderDefaults.Track(
-                            sliderState = sliderState,
-                            thumbTrackGapSize = 0.dp,
-                            trackInsideCornerSize = 0.dp,
-                            drawStopIndicator = null,
-                            enabled = isSynced,
-                            modifier = Modifier.height(8.dp),
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Scoped to the sheet: leaving the composition releases the screen lock,
+                // whichever way the sheet was closed.
+                KeepScreenOn(enabled = keepScreenOn)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.ExpandMore,
+                            contentDescription = stringResource(Res.string.cd_lyrics_close),
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { keepScreenOn = !keepScreenOn }) {
-                    Icon(
-                        imageVector = if (keepScreenOn) {
-                            Icons.Filled.Lightbulb
-                        } else {
-                            Icons.Outlined.Lightbulb
+                    }
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (canAdjustOffset) {
+                            LyricsOffsetStepper(
+                                offsetMs = offsetMs,
+                                onOffsetChange = { offsetMs = it },
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            keepScreenOn = !keepScreenOn
+                            if (keepScreenOn) toastState.showToast(screenWakeOnMessage)
                         },
-                        contentDescription = stringResource(
-                            if (keepScreenOn) {
-                                Res.string.cd_keep_screen_on_disable
+                    ) {
+                        Icon(
+                            imageVector = if (keepScreenOn) {
+                                Icons.Outlined.BedtimeOff
                             } else {
-                                Res.string.cd_keep_screen_on_enable
+                                Icons.Outlined.Bedtime
                             },
-                        ),
-                        tint = if (keepScreenOn) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.onSurface.inactive()
-                        },
-                    )
+                            contentDescription = stringResource(
+                                if (keepScreenOn) {
+                                    Res.string.cd_keep_screen_on_disable
+                                } else {
+                                    Res.string.cd_keep_screen_on_enable
+                                },
+                            ),
+                            tint = if (keepScreenOn) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.inactive()
+                            },
+                        )
+                    }
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(Res.string.cd_lyrics_close),
-                        tint = MaterialTheme.colorScheme.onSurface,
+                when (lyrics) {
+                    is Lyrics.Plain -> PlainLyrics(
+                        text = lyrics.text,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                     )
-                }
-            }
-            when (lyrics) {
-                is Lyrics.Plain -> PlainLyrics(
-                    text = lyrics.text,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                )
 
-                is Lyrics.Synced -> SyncedLyrics(
-                    lines = lyrics.lines,
-                    livePositionFlow = livePositionFlow,
-                    offsetSec = offsetSec,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                )
+                    is Lyrics.Synced -> SyncedLyrics(
+                        lines = lyrics.lines,
+                        livePositionFlow = livePositionFlow,
+                        offsetMs = offsetMs,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+                }
             }
+            ToastHost(toastState = toastState)
+        }
+    }
+}
+
+/** `− value +` stepper for the lyrics offset; each end disables its button at the limit. */
+@Composable
+private fun LyricsOffsetStepper(
+    offsetMs: Int,
+    onOffsetChange: (Int) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Outlined.GraphicEq,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface.inactive(),
+            modifier = Modifier.size(20.dp),
+        )
+        IconButton(
+            onClick = { onOffsetChange(offsetMs - LYRICS_OFFSET_STEP_MS) },
+            enabled = offsetMs > -LYRICS_OFFSET_LIMIT_MS,
+        ) {
+            Icon(
+                Icons.Default.Remove,
+                contentDescription = stringResource(Res.string.cd_lyrics_offset_decrease),
+            )
+        }
+        Text(
+            text = "${if (offsetMs > 0) "+" else ""}$offsetMs ms",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            // Fixed width so the buttons stay put as the value's length changes.
+            modifier = Modifier.width(72.dp),
+        )
+        IconButton(
+            onClick = { onOffsetChange(offsetMs + LYRICS_OFFSET_STEP_MS) },
+            enabled = offsetMs < LYRICS_OFFSET_LIMIT_MS,
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = stringResource(Res.string.cd_lyrics_offset_increase),
+            )
         }
     }
 }
@@ -202,16 +232,16 @@ private fun PlainLyrics(text: String, modifier: Modifier = Modifier) {
 private fun SyncedLyrics(
     lines: List<LrcLine>,
     livePositionFlow: Flow<Double>?,
-    offsetSec: Float = 0f,
+    offsetMs: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val synced = livePositionFlow != null
     val positionSec by (livePositionFlow ?: emptyFlow()).collectAsState(initial = 0.0)
-    val currentIndex = remember(lines, positionSec, offsetSec) {
+    val currentIndex = remember(lines, positionSec, offsetMs) {
         if (!synced) {
             -1
         } else {
-            val ms = ((positionSec + offsetSec) * 1000).toLong()
+            val ms = (positionSec * 1000).toLong() + offsetMs
             lines.indexOfLast { it.timeMs <= ms }
         }
     }
@@ -238,19 +268,32 @@ private fun SyncedLyrics(
     ) {
         itemsIndexed(lines) { index, line ->
             val active = index == currentIndex
-            Text(
-                text = line.text,
-                fontSize = 28.sp,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                color = if (active) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurface.inactive()
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // An invisible bold copy sizes every line, so activating a line never
+            // re-wraps it and shifts the list; only the visible copy changes weight.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = line.text,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Transparent,
+                    modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
+                )
+                Text(
+                    text = line.text,
+                    fontSize = 28.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    color = if (active) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.inactive()
+                    },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
         }
     }
 }
 
 private const val LYRICS_BOTTOM_SHEET_HEIGHT = 0.8f
+private const val LYRICS_OFFSET_STEP_MS = 100
+private const val LYRICS_OFFSET_LIMIT_MS = 2000

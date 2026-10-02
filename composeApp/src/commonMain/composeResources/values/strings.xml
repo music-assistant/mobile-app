@@ -102,6 +102,8 @@
   <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Lyrics</string>
   <string name="cd_lyrics_close">Close lyrics</string>
+  <string name="cd_lyrics_offset_decrease">Show lyrics later</string>
+  <string name="cd_lyrics_offset_increase">Show lyrics earlier</string>
   <string name="cd_more">More</string>
   <string name="cd_mute">Mute</string>
   <string name="cd_play_now">Play now</string>
@@ -190,6 +192,7 @@
   <string name="library_quick_search">Quick search</string>
   <string name="library_search_global">Search everywhere</string>
   <string name="loading">Loading…</string>
+  <string name="lyrics_screen_wake_on">Screen wake is on</string>
   <string name="media_action_forward">Forward 30s</string>
   <string name="media_action_next_player">Next player</string>
   <string name="media_action_open_app">Open app</string>
