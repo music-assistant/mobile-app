@@ -60,8 +60,17 @@ fun AppMediaItem.navigationOptions(
 
 /**
  * Click handler that opens one of [artists]: a single artist navigates straight through,
- * several open the shared "Choose artist" dialog (emitted here). Null when [artists] is empty.
+ * several go to [onChoose]. Null when [artists] is empty.
  */
+fun artistNavigation(
+    artists: List<Artist>,
+    navigateToItem: (AppMediaItem) -> Unit,
+    onChoose: (List<Artist>) -> Unit,
+): (() -> Unit)? = artists.takeIf { it.isNotEmpty() }?.let { candidates ->
+    { candidates.singleOrNull()?.let(navigateToItem) ?: onChoose(candidates) }
+}
+
+/** [artistNavigation] that resolves several artists with the "Choose artist" dialog (emitted here). */
 @Composable
 fun rememberArtistNavigation(
     artists: List<Artist>,
@@ -79,9 +88,7 @@ fun rememberArtistNavigation(
             onDismiss = { artistChoices = null },
         )
     }
-    return artists.takeIf { it.isNotEmpty() }?.let { candidates ->
-        { candidates.singleOrNull()?.let(navigateToItem) ?: run { artistChoices = candidates } }
-    }
+    return artistNavigation(artists, navigateToItem) { artistChoices = it }
 }
 
 /** Drops the artist whose screen the list belongs to; navigating there would go nowhere. */

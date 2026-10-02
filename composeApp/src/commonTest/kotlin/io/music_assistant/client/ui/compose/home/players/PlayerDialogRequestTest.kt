@@ -57,6 +57,15 @@ class PlayerDialogRequestTest {
     }
 
     @Test
+    fun `choose-artist request drops when the current track changes`() {
+        val player = playerWith(queueItemId = "q1", trackId = "track-1")
+        val request = PlayerDialogRequest.ChooseArtist(player.playerId, trackId = "track-1")
+
+        assertTrue(request.hasAnchor(player))
+        assertFalse(request.hasAnchor(playerWith(queueItemId = "q2", trackId = "track-2")))
+    }
+
+    @Test
     fun `audio chain request drops when the queue item changes`() {
         val player = playerWith(queueItemId = "q1")
         val request = PlayerDialogRequest.AudioChain(player.playerId, queueItemId = "q1")

@@ -205,6 +205,10 @@ fun PlayersPager(
             playlistActions = actionsViewModel,
             canLeaveGroup = leaderLeaveSupported,
             onMoveToPlayer = moveToPlayer,
+            onNavigateToItem = {
+                navigateToItem(it)
+                onClose()
+            },
             onDismiss = { dialogRequest = null },
         )
 
@@ -271,6 +275,11 @@ fun PlayersPager(
                 val onLyricsClick: () -> Unit = remember(playerId, trackId) {
                     {
                         trackId?.let { dialogRequest = PlayerDialogRequest.Lyrics(playerId, it) }
+                    }
+                }
+                val onChooseArtist: () -> Unit = remember(playerId, trackId) {
+                    {
+                        trackId?.let { dialogRequest = PlayerDialogRequest.ChooseArtist(playerId, it) }
                     }
                 }
                 val onAudioChainClick: () -> Unit = remember(playerId, queueItemId) {
@@ -373,6 +382,7 @@ fun PlayersPager(
                                 onLyricsClick = onLyricsClick,
                                 onAudioChainClick = onAudioChainClick,
                                 onPlaybackSpeedClick = onPlaybackSpeedClick,
+                                onChooseArtist = onChooseArtist,
                                 chapterProgressEnabled = chapterProgressEnabled,
                             )
                         }
@@ -460,6 +470,7 @@ private fun ExpandedPlayerPage(
     contentPadding: PaddingValues,
     isCurrentPage: Boolean,
     navigateToItem: (AppMediaItem) -> Unit = {},
+    onChooseArtist: () -> Unit = {},
     livePositionFlow: Flow<Double>?,
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
@@ -473,6 +484,13 @@ private fun ExpandedPlayerPage(
     // then split the width 2:1, so the layout degrades smoothly from a large
     // tablet down to a phone in landscape.
     val showSideQueue = WindowClass.isWide()
+    // Navigating away from the player collapses it, so the target screen is visible.
+    val navigateAndClose: (AppMediaItem) -> Unit = remember(navigateToItem, onClose) {
+        {
+            navigateToItem(it)
+            onClose()
+        }
+    }
     val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
     // Minimum gesture speed (px/s) to count as a fling rather than a slow drag.
     val minFlingVelocityPx = with(LocalDensity.current) { 1000.dp.toPx() }
@@ -516,10 +534,7 @@ private fun ExpandedPlayerPage(
                     allPlayers = allPlayers,
                     playerAction = { playerAction(player, it) },
                     queueAction = queueAction,
-                    navigateToItem = {
-                        navigateToItem(it)
-                        onClose()
-                    },
+                    navigateToItem = navigateAndClose,
                     onPlayerSelected = { moveToPlayer(it) },
                     onOpenDsp = onDspButton,
                     onAddToPlaylist = onAddToPlaylist,
@@ -646,6 +661,8 @@ private fun ExpandedPlayerPage(
                             livePositionFlow = livePositionFlow,
                             bufferedAheadSecFlow = bufferedAheadSecFlow,
                             chapterProgressEnabled = chapterProgressEnabled,
+                            navigateToItem = navigateAndClose,
+                            onChooseArtist = onChooseArtist,
                         )
                     }
                 }

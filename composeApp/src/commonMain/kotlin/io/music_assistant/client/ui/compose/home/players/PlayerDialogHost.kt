@@ -5,10 +5,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.byId
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyrics
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
+import io.music_assistant.client.ui.compose.common.items.ChooseArtistDialog
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
@@ -37,6 +39,7 @@ fun PlayerDialogHost(
     playlistActions: PlaylistActions?,
     canLeaveGroup: Boolean,
     onMoveToPlayer: (String) -> Unit,
+    onNavigateToItem: (AppMediaItem) -> Unit,
     onDismiss: () -> Unit,
 ) {
     request ?: return
@@ -86,6 +89,17 @@ fun PlayerDialogHost(
             LyricsSheet(
                 lyrics = lyrics,
                 livePositionFlow = livePositionFlow,
+                onDismiss = onDismiss,
+            )
+        }
+
+        is PlayerDialogRequest.ChooseArtist -> (player.queueInfo?.currentItem?.track as? Track)?.let {
+            ChooseArtistDialog(
+                artists = it.artists,
+                onSelect = { artist ->
+                    onDismiss()
+                    onNavigateToItem(artist)
+                },
                 onDismiss = onDismiss,
             )
         }

@@ -65,6 +65,7 @@ You can create a temporary group on the fly directly from the compacted or expan
 | Swipe left / right | Switch to the previous / next player or group |
 | Swipe up from track title | Open the queue |
 | Swipe down on album art | Dismiss expanded view → return to compacted view |
+| Tap the artist line below the track title | Open the artist. If the track has more than one artist, select the artist in the dialog. |
 
 ### Queue
 

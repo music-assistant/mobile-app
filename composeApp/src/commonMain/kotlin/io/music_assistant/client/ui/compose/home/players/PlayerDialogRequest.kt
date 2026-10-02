@@ -25,6 +25,8 @@ sealed interface PlayerDialogRequest {
 
     data class Lyrics(override val playerId: String, val trackId: String) : PlayerDialogRequest
 
+    data class ChooseArtist(override val playerId: String, val trackId: String) : PlayerDialogRequest
+
     data class AudioChain(
         override val playerId: String,
         val queueItemId: String,
@@ -54,6 +56,9 @@ sealed interface PlayerDialogRequest {
  */
 fun PlayerDialogRequest.hasAnchor(player: PlayerData): Boolean = when (this) {
     is PlayerDialogRequest.Lyrics ->
+        (player.queueInfo?.currentItem?.track as? Track)?.itemId == trackId
+
+    is PlayerDialogRequest.ChooseArtist ->
         (player.queueInfo?.currentItem?.track as? Track)?.itemId == trackId
 
     is PlayerDialogRequest.AudioChain ->
