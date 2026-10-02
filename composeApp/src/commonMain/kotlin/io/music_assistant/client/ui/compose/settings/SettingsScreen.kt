@@ -108,6 +108,7 @@ import musicassistantclient.composeapp.generated.resources.settings_about_descri
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
+import musicassistantclient.composeapp.generated.resources.settings_app_documentation
 import musicassistantclient.composeapp.generated.resources.settings_app_version_info
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
@@ -523,11 +524,19 @@ internal fun SectionTitle(text: String) {
 
 @Composable
 private fun AppVersionSection(appVersion: AppVersion) {
+    val uriHandler = LocalUriHandler.current
     SectionCard {
         Text(
             text = stringResource(Res.string.settings_app_version_info, appVersion.name, appVersion.code),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+        )
+        Spacer(modifier = Modifier.size(4.dp))
+        Text(
+            text = stringResource(Res.string.settings_app_documentation),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.github.io/mobile-app/") },
         )
     }
 }
