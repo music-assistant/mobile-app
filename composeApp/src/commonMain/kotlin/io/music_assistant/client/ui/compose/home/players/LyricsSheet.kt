@@ -201,7 +201,7 @@ private fun LyricsOffsetStepper(
             painterResource(Res.drawable.edit_audio),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurface.inactive(),
-            modifier = Modifier.padding(end=16.dp).size(16.dp),
+            modifier = Modifier.padding(end = 16.dp).size(16.dp),
         )
         // 32 dp visually; IconButton still keeps the 48 dp touch target around it.
         IconButton(
