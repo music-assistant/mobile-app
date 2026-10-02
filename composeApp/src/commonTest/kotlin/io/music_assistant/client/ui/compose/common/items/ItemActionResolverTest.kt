@@ -2,6 +2,7 @@ package io.music_assistant.client.ui.compose.common.items
 
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.testPodcastEpisode
 import io.music_assistant.client.data.model.client.testTrack
 import musicassistantclient.composeapp.generated.resources.Res
@@ -84,5 +85,30 @@ class ItemActionResolverTest {
     @Test
     fun `play-button overflow is empty for a non-playable item`() {
         assertEquals(emptyList(), resolvePlayButtonActions(testTrack(isPlayable = false), default = null))
+    }
+
+    @Test
+    fun `a playable browse folder offers exactly the four queue options`() {
+        val folder = RecommendationFolder(
+            itemId = "audio/disc1",
+            provider = "fs",
+            name = "Disc 1",
+            uri = "fs://folder/audio/disc1",
+            images = emptyMap(),
+            isPlayable = true,
+        )
+        val actions = resolveLongClickActions(
+            item = folder,
+            clickContext = ClickContext.BROWSE,
+            librarySupported = false,
+            canAddToPlaylist = false,
+            canRemoveFromPlaylist = false,
+            progressSupported = false,
+        )
+        assertEquals(
+            listOf(QueueOption.REPLACE, QueueOption.PLAY, QueueOption.NEXT, QueueOption.ADD)
+                .map { ItemAction.Play(it) },
+            actions,
+        )
     }
 }

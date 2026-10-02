@@ -37,7 +37,7 @@ import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
-import io.music_assistant.client.ui.compose.common.items.FolderCell
+import io.music_assistant.client.ui.compose.common.items.FolderWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
@@ -193,10 +193,12 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is RecommendationFolder -> FolderCell(
+                is RecommendationFolder -> FolderWithMenu(
                     item = item,
                     viewMode = viewMode,
                     onNavigateClick = onNavigateClick,
+                    onPlayOption = onPlayClick,
+                    libraryActions = libraryActions,
                 )
 
                 // Reaches the client only as a queue item (an AI Radio host clip), never

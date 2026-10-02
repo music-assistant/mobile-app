@@ -16,6 +16,8 @@ data class RecommendationFolder(
     val items: List<AppMediaItem>? = null,
     // BrowseFolder path used to descend one level; null for recommendation folders.
     val path: String? = null,
+    // The server marks a folder it can enqueue (with every playable item beneath it); off by default.
+    override val isPlayable: Boolean = false,
 ) : AppMediaItem() {
     override val providerMappings: List<ProviderMapping>? = null
     override val metadata: Metadata? = null

@@ -17,15 +17,16 @@ import kotlin.test.assertTrue
 class BrowseFolderMappingTest {
     private val factory = MediaItemFactory(StubServiceClient())
 
-    private fun folderJson(name: String, path: String?) = buildString {
+    private fun folderJson(name: String, path: String?, isPlayable: Boolean? = null) = buildString {
         append("""{"item_id":"f1","provider":"tidal","media_type":"${MediaType.FOLDER.serverValue}"""")
         append(""","name":"$name"""")
         path?.let { append(""","path":"$it"""") }
+        isPlayable?.let { append(""","is_playable":$it""") }
         append("}")
     }
 
-    private fun folder(name: String, path: String?): RecommendationFolder =
-        factory.create(myJson.decodeFromString<ServerMediaItem>(folderJson(name, path)))
+    private fun folder(name: String, path: String?, isPlayable: Boolean? = null): RecommendationFolder =
+        factory.create(myJson.decodeFromString<ServerMediaItem>(folderJson(name, path, isPlayable)))
             as RecommendationFolder
 
     @Test
@@ -63,5 +64,12 @@ class BrowseFolderMappingTest {
         assertTrue(folder(name = "..", path = "root").isParentLink)
         assertFalse(folder(name = "", path = "tidal--6rdvd8iR://tracks").isParentLink)
         assertFalse(folder(name = "Tidal", path = "tidal--6rdvd8iR://").isParentLink)
+    }
+
+    @Test
+    fun `a folder is playable only when the server marks it so`() {
+        assertTrue(folder(name = "Disc 1", path = "fs://audio/disc1", isPlayable = true).isPlayable)
+        assertFalse(folder(name = "Disc 1", path = "fs://audio/disc1", isPlayable = false).isPlayable)
+        assertFalse(folder(name = "Tidal", path = "tidal--6rdvd8iR://").isPlayable)
     }
 }

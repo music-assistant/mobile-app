@@ -1107,31 +1107,33 @@ internal fun GenreRowItem(
 }
 
 /**
- * Browse-only cell for a [RecommendationFolder]: icon + name, no long-press menu — tapping it
- * navigates one level deeper. Folders never appear in library lists, so this is exercised only
- * by the Browse screen.
+ * Browse-only cell for a [RecommendationFolder]: icon + name. Tapping it navigates one level
+ * deeper. Folders never appear in library lists, so this is exercised only by the Browse screen.
  */
 @Composable
-fun FolderCell(
+internal fun FolderCell(
+    modifier: Modifier = Modifier,
     item: RecommendationFolder,
     viewMode: ViewMode = ViewMode.GRID,
-    onNavigateClick: (RecommendationFolder) -> Unit,
+    onClick: (RecommendationFolder) -> Unit,
+    onLongClick: (RecommendationFolder) -> Unit,
 ) {
     when (viewMode) {
         ViewMode.LIST -> RowItem(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth(),
             name = item.displayName,
             subtitle = null,
             description = contentDescription(item),
             prefixContent = { FolderImage(item) },
-            onClick = { onNavigateClick(item) },
-            onLongClick = {},
+            onClick = { onClick(item) },
+            onLongClick = { onLongClick(item) },
         )
 
         ViewMode.GRID -> GridItem(
+            modifier = modifier,
             description = contentDescription(item),
-            onClick = { onNavigateClick(item) },
-            onLongClick = {},
+            onClick = { onClick(item) },
+            onLongClick = { onLongClick(item) },
         ) {
             FolderImage(item)
             Spacer(Modifier.height(4.dp))

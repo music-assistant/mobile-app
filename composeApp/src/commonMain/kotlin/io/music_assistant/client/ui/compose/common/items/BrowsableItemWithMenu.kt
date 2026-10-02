@@ -20,6 +20,7 @@ import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
@@ -263,6 +264,47 @@ fun PodcastWithMenu(
     }
 }
 
+/**
+ * A playable browse folder offers the playback block on long press. Other folders (provider
+ * roots, the ".." entry) are navigation only: no menu, and not dimmed.
+ */
+@Composable
+fun FolderWithMenu(
+    item: RecommendationFolder,
+    viewMode: ViewMode = ViewMode.GRID,
+    onNavigateClick: (RecommendationFolder) -> Unit,
+    onPlayOption: PlayHandler<RecommendationFolder>,
+    libraryActions: LibraryActions,
+) {
+    when {
+        item.isPlayable -> BrowsableItemWithMenu(
+            modifier = when (viewMode) {
+                ViewMode.GRID -> Modifier
+                ViewMode.LIST -> Modifier.fillMaxWidth()
+            },
+            item = item,
+            onNavigateClick = onNavigateClick,
+            onPlayOption = onPlayOption,
+            libraryActions = libraryActions,
+        ) { mod, onClick, onLongClick ->
+            FolderCell(
+                modifier = mod,
+                item = item,
+                viewMode = viewMode,
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
+        }
+
+        else -> FolderCell(
+            item = item,
+            viewMode = viewMode,
+            onClick = onNavigateClick,
+            onLongClick = {},
+        )
+    }
+}
+
 @Composable
 private fun <T : AppMediaItem> BrowsableItemWithMenu(
     modifier: Modifier = Modifier,
@@ -288,7 +330,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     val actions = resolveLongClickActions(
         item = item,
         clickContext = clickContext,
-        librarySupported = item !is Genre,
+        librarySupported = item !is Genre && item !is RecommendationFolder,
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = false,
         progressSupported = progressActions != null && item is Audiobook,
