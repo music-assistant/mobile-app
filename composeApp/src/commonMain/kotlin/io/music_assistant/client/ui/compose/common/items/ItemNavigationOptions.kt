@@ -67,7 +67,9 @@ fun artistNavigation(
     navigateToItem: (AppMediaItem) -> Unit,
     onChoose: (List<Artist>) -> Unit,
 ): (() -> Unit)? = artists.takeIf { it.isNotEmpty() }?.let { candidates ->
-    { candidates.singleOrNull()?.let(navigateToItem) ?: onChoose(candidates) }
+    {
+        candidates.singleOrNull()?.let(navigateToItem) ?: onChoose(candidates)
+    }
 }
 
 /** [artistNavigation] that resolves several artists with the "Choose artist" dialog (emitted here). */

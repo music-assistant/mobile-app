@@ -392,7 +392,12 @@ fun FullPlayerItem(
                 .clearAndSetSemantics {
                     contentDescription = trackContentDescription
                     // The cleared subtree hides the line's own click, so expose it here.
-                    onSubtitleClick?.let { onClick(goToArtistLabel) { it(); true } }
+                    onSubtitleClick?.let {
+                        onClick(goToArtistLabel) {
+                        it()
+                    true
+                    }
+                    }
                 },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
