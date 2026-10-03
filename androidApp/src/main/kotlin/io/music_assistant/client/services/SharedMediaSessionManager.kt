@@ -623,27 +623,14 @@ class SharedMediaSessionManager(
             .build()
         session.setPlaybackState(playbackState)
 
-        val metadata = MediaMetadataCompat.Builder()
-            .putString(
-                MediaMetadataCompat.METADATA_KEY_TITLE,
-                titleMetadata(data),
-            )
-            .putString(
-                MediaMetadataCompat.METADATA_KEY_ARTIST,
-                artistMetadata(data, multiPlayer),
-            )
-            .putString(
-                MediaMetadataCompat.METADATA_KEY_ALBUM,
-                data.album,
-            )
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
-            .also { builder ->
-                data.duration?.let {
-                    builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it)
-                }
-            }
-            .build()
-        session.setMetadata(metadata)
+        session.setMetadata(
+            buildMediaSessionMetadata(
+                data = data,
+                bitmap = bitmap,
+                unknownTrack = strings?.unknownTrack ?: "",
+                artist = artistMetadata(data, multiPlayer),
+            ),
+        )
     }
 
     private fun titleMetadata(data: MediaNotificationData): String =
@@ -784,4 +771,40 @@ class SharedMediaSessionManager(
         } else {
             R.drawable.baseline_arrow_right_alt_24
         }
+}
+
+/**
+ * Build the canonical metadata plus Android's preferred display projection. For radio,
+ * set all three display fields: MediaMetadataCompat only honors DISPLAY_DESCRIPTION when
+ * DISPLAY_TITLE is also present. The canonical title/artist/album keys remain available
+ * unchanged to consumers that do not use the display projection.
+ */
+internal fun buildMediaSessionMetadata(
+    data: MediaNotificationData,
+    bitmap: Bitmap?,
+    unknownTrack: String,
+    artist: String,
+): MediaMetadataCompat {
+    val title = data.name?.takeIf { it.isNotBlank() }
+        ?: data.stationName?.takeIf { it.isNotBlank() }
+        ?: unknownTrack
+    val station = data.stationName?.takeIf { it.isNotBlank() }
+    return MediaMetadataCompat.Builder()
+        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, data.album)
+        .also { builder ->
+            station?.let {
+                builder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist)
+                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, it)
+            }
+        }
+        .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+        .also { builder ->
+            data.duration?.let {
+                builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it)
+            }
+        }
+        .build()
 }
