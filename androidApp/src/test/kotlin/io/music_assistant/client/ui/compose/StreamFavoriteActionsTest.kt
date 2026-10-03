@@ -218,6 +218,7 @@ class StreamFavoriteActionsTest {
                     toastState = toastState,
                     navigateToItem = {},
                     providerViewModel = getKoin().get(),
+                    queueDjViewModel = getKoin().get()
                 )
                 ToastHost(toastState)
             }
