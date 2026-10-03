@@ -69,6 +69,9 @@ actual class PlatformFeature {
   returns slim summary items by default.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
+- **AI Radio**: The `ai_radio` plugin sends no events. Re-read its state with a request. The queue DJ
+  menu (`QueueDjViewModel`) shows its cache and refreshes each time the player ⋮ menu opens. It has
+  its own gate, `MainDataSource.aiRadioQueueDjAvailable`, separate from the stations gate.
 
 ## HTTP Clients
 

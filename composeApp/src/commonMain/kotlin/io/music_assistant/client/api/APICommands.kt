@@ -117,6 +117,9 @@ object APICommands {
     const val AI_RADIO_START = "ai_radio/start"
     const val AI_RADIO_STOP = "ai_radio/stop"
     const val AI_RADIO_STATUS = "ai_radio/status"
+    const val AI_RADIO_HOSTS_LIST = "ai_radio/hosts/list"
+    const val AI_RADIO_QUEUE_DJ_STATUS = "ai_radio/queue_dj/status"
+    const val AI_RADIO_QUEUE_DJ_SET = "ai_radio/queue_dj/set"
 
     // DSP commands
     const val CONFIG_PLAYERS_DSP_GET = "config/players/dsp/get"
