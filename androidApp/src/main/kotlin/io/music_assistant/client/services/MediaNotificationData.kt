@@ -43,6 +43,9 @@ data class MediaNotificationData(
     val elapsedUpdateTimeMs: Long?,
     val playerName: String?,
     val duration: Long?,
+    // Name of the current radio queue item. This remains stable while the server's
+    // currentMedia title and artist change with the song currently on air.
+    val stationName: String? = null,
 ) {
     companion object {
         /**
@@ -67,6 +70,7 @@ data class MediaNotificationData(
             isFavoritableStream: Boolean = false,
         ) = run {
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
+            val currentQueueTrack = playerData.queueInfo?.currentItem?.track
             MediaNotificationData(
             multiplePlayers = multiplePlayers,
             longItemId = playerData.player.currentMedia?.queueItemId?.let(::sessionQueueItemId),
@@ -95,6 +99,10 @@ data class MediaNotificationData(
             playerName = playerData.player.nameAndSuffix.takeIf { !playerData.isLocal },
             duration = (currentChapter?.duration ?: playerData.player.currentMedia?.duration)
                 ?.toLong()?.let { it * 1000 },
+            stationName = currentQueueTrack
+                ?.takeIf { it.mediaType == MediaType.RADIO }
+                ?.displayName
+                ?.takeIf { it.isNotBlank() },
             )
         }
 
