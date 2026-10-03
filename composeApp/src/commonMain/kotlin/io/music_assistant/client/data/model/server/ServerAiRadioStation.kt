@@ -54,3 +54,14 @@ data class ServerAiRadioSession(
 data class ServerAiRadioStatus(
     @SerialName("sessions") val sessions: List<ServerAiRadioSession> = emptyList(),
 )
+
+/**
+ * A host from `ai_radio/hosts/list`: the persona that speaks between tracks. Only the fields
+ * the queue DJ menu shows are bound; prompts, voice and sections are authored in the web
+ * frontend.
+ */
+@Serializable
+data class ServerAiRadioHost(
+    @SerialName("id") val id: String,
+    @SerialName("name") val name: String,
+)

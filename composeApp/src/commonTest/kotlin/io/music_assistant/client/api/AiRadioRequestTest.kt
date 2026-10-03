@@ -1,6 +1,9 @@
 package io.music_assistant.client.api
 
+import io.music_assistant.client.utils.myJson
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -46,6 +49,45 @@ class AiRadioRequestTest {
 
         assertEquals("ai_radio/status", request.command)
         assertNull(request.args)
+    }
+
+    @Test
+    fun hostsListTakesNoArgs() {
+        val request = Request.AiRadio.hosts()
+
+        assertEquals("ai_radio/hosts/list", request.command)
+        assertNull(request.args)
+    }
+
+    @Test
+    fun queueDjStatusTakesNoArgs() {
+        val request = Request.AiRadio.queueDjStatus()
+
+        assertEquals("ai_radio/queue_dj/status", request.command)
+        assertNull(request.args)
+    }
+
+    @Test
+    fun setQueueDjCarriesQueueAndHost() {
+        val request = Request.AiRadio.setQueueDj(queueId = "queue-1", hostId = "host-1")
+
+        assertEquals("ai_radio/queue_dj/set", request.command)
+        assertEquals(JsonPrimitive("queue-1"), request.args?.get("queue_id"))
+        assertEquals(JsonPrimitive("host-1"), request.args?.get("host_id"))
+        assertEquals(setOf("queue_id", "host_id"), request.args?.keys)
+    }
+
+    /**
+     * Off is an explicit null: the server's `host_id` has no default, so a dropped key would
+     * fail the call. Encoded the way `KtorServiceClient` puts a request on the wire.
+     */
+    @Test
+    fun setQueueDjOffSendsAnExplicitNullHost() {
+        val request = Request.AiRadio.setQueueDj(queueId = "queue-1", hostId = null)
+
+        assertEquals(JsonNull, request.args?.get("host_id"))
+        val wire = myJson.encodeToJsonElement(Request.serializer(), request).jsonObject
+        assertEquals(JsonNull, wire["args"]?.jsonObject?.get("host_id"))
     }
 
     /**

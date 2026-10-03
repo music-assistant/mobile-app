@@ -25,6 +25,7 @@ import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
+import io.music_assistant.client.data.model.server.AI_RADIO_QUEUE_DJ_SCOPES
 import io.music_assistant.client.data.model.server.AI_RADIO_REQUIRED_SCOPE
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
@@ -147,6 +148,14 @@ class MainDataSource(
      */
     private val _aiRadioAvailable = MutableStateFlow(false)
     val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()
+
+    /**
+     * Whether the queue DJ menu may be offered: the `ai_radio` plugin is loaded AND the role
+     * grants every scope in [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable],
+     * which needs the write scope that the DJ commands do not.
+     */
+    private val _aiRadioQueueDjAvailable = MutableStateFlow(false)
+    val aiRadioQueueDjAvailable: StateFlow<Boolean> = _aiRadioQueueDjAvailable.asStateFlow()
 
     /**
      * Authoritative favorite state per track, keyed by [favKey]. The server's
@@ -920,6 +929,7 @@ class MainDataSource(
         // Server-scoped: the plugin set and the user's role both belong to the old
         // connection, so another server must not inherit this one's gate.
         _aiRadioAvailable.value = false
+        _aiRadioQueueDjAvailable.value = false
         // Note: _providersIcons deliberately NOT cleared (static data)
     }
 
@@ -1582,7 +1592,7 @@ class MainDataSource(
     }
 
     /**
-     * Resolves the AI Radio gate. Fails closed: any missing piece — plugin absent, role
+     * Resolves the AI Radio gates. Fails closed: any missing piece — plugin absent, role
      * unknown, either fetch failing — leaves the feature hidden rather than half-offered.
      */
     private fun updateAiRadioAvailability() {
@@ -1592,6 +1602,7 @@ class MainDataSource(
                 ?.any { it.domain == AI_RADIO_DOMAIN && it.available } == true
             if (!pluginLoaded) {
                 _aiRadioAvailable.value = false
+                _aiRadioQueueDjAvailable.value = false
                 return@launch
             }
             val roleScopes = apiClient.sendRequest(Request(APICommands.AUTH_SCOPES))
@@ -1599,6 +1610,8 @@ class MainDataSource(
                 .orEmpty()
             val role = (apiClient.sessionState.value as? HasConnectionData)?.user?.role
             _aiRadioAvailable.value = grantsScope(roleScopes, role, AI_RADIO_REQUIRED_SCOPE)
+            _aiRadioQueueDjAvailable.value =
+                AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
         }
     }
 

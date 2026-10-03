@@ -12,6 +12,7 @@ import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
@@ -949,5 +950,24 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
 
         /** All sessions, newest first. The provider emits no events, so this is poll-only. */
         fun status() = Request(command = APICommands.AI_RADIO_STATUS)
+
+        /** All hosts, sorted by name server-side. Needs `config.providers.read`. */
+        fun hosts() = Request(command = APICommands.AI_RADIO_HOSTS_LIST)
+
+        /** The `queue_id -> host_id` map of queues that have a DJ. Needs `queues.control`. */
+        fun queueDjStatus() = Request(command = APICommands.AI_RADIO_QUEUE_DJ_STATUS)
+
+        /**
+         * Attaches [hostId] as the DJ of [queueId], or detaches the DJ when [hostId] is null.
+         * Off is an explicit JSON `null`, which is what the server's `host_id: str | None`
+         * expects. Answers with the full status map after the change.
+         */
+        fun setQueueDj(queueId: String, hostId: String?) = Request(
+            command = APICommands.AI_RADIO_QUEUE_DJ_SET,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+                put("host_id", hostId?.let(::JsonPrimitive) ?: JsonNull)
+            },
+        )
     }
 }

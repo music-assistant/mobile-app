@@ -59,4 +59,19 @@ class AiRadioSupportTest {
         val widened = mapOf("user" to listOf("config.providers.read", AI_RADIO_REQUIRED_SCOPE))
         assertTrue(grantsScope(widened, "user", AI_RADIO_REQUIRED_SCOPE))
     }
+
+    private fun grantedQueueDj(role: String?) =
+        AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
+
+    @Test
+    fun userMayUseTheQueueDjThatNeedsNoWriteScope() {
+        assertTrue(grantedQueueDj("user"))
+        assertTrue(grantedQueueDj("admin"))
+    }
+
+    @Test
+    fun guestLacksTheProviderReadScopeTheHostListNeeds() {
+        assertFalse(grantedQueueDj("guest"))
+        assertFalse(grantedQueueDj(null))
+    }
 }

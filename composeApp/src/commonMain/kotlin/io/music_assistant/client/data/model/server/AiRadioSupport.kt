@@ -11,6 +11,13 @@ const val AI_RADIO_DOMAIN = "ai_radio"
  */
 const val AI_RADIO_REQUIRED_SCOPE = "config.providers.write"
 
+/**
+ * Scopes the queue DJ menu needs. `ai_radio/hosts/list` demands `config.providers.read`, and
+ * `ai_radio/queue_dj/status` and `/set` demand `queues.control`. Neither is the write scope that
+ * gates stations, so the DJ has its own gate.
+ */
+val AI_RADIO_QUEUE_DJ_SCOPES = listOf("config.providers.read", "queues.control")
+
 /** The server's wildcard scope, granted to `admin`. */
 private const val SCOPE_ALL = "*"
 
