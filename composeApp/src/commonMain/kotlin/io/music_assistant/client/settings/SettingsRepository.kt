@@ -449,7 +449,7 @@ class SettingsRepository(
     }
 
     private val _sendspinDeviceName = MutableStateFlow(
-        settings.getStringOrNull("sendspin_device_name") ?: "My Phone",
+        settings.getStringOrNull("sendspin_device_name") ?: DEVICE_NAME,
     )
     val sendspinDeviceName = _sendspinDeviceName.asStateFlow()
 
@@ -822,6 +822,7 @@ class SettingsRepository(
 
         val CODECS: List<AudioCodec> = listOf(AudioCodec.OPUS, AudioCodec.FLAC, AudioCodec.PCM)
         val DEFAULT_CODEC: AudioCodec = AudioCodec.OPUS
+        const val DEVICE_NAME: String = "My Phone"
 
         // Advertised to the server in client/hello as `buffer_capacity`: a hard per-player
         // limit in BYTES on queued audio, uniform across codecs. User slider limits, in MB.
