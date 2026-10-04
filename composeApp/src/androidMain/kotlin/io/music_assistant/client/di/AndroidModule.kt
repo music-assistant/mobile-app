@@ -3,6 +3,8 @@ package io.music_assistant.client.di
 import io.ktor.client.webrtc.AndroidWebRtc
 import io.ktor.client.webrtc.WebRtcClient
 import io.ktor.utils.io.ExperimentalKtorApi
+import io.music_assistant.client.data.announcement.AudioRecordCapture
+import io.music_assistant.client.data.announcement.MicrophoneCapture
 import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.player.local.AndroidDecoderFactory
 import io.music_assistant.client.player.local.AudioTrackSink
@@ -22,6 +24,7 @@ fun androidModule() = module {
     single { PlatformContext(androidContext()) }
     single<AudioSink> { AudioTrackSink(androidContext(), SystemMonotonicClock) }
     single<DecoderFactory> { AndroidDecoderFactory() }
+    single<MicrophoneCapture> { AudioRecordCapture() }
     single<BackgroundUsageGuard> { AndroidBackgroundUsageGuard(androidContext()) }
     single<HttpClientFactory> {
         AndroidHttpClientFactory(androidContext(), get<SettingsRepository>().clientCertificateAlias)

@@ -14,6 +14,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.PlayerPositionTracker
 import io.music_assistant.client.data.PlayerRequestFactory
 import io.music_assistant.client.data.UserPreferences
+import io.music_assistant.client.data.announcement.AnnouncementRepository
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
@@ -142,6 +143,15 @@ fun sharedModule(
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)
         singleOf(::AiRadioRepository)       // Optional ai_radio plugin: list and run stations
+        single {                            // Typed and spoken announcements; outlives the dialog
+            AnnouncementRepository(
+                apiClient = get(),
+                httpClient = get(named("webrtcHttpClient")),
+                microphone = get(),
+                errorBus = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
         singleOf(::ServiceClientMediaItemRepository) { bind<MediaItemRepository>() }
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch

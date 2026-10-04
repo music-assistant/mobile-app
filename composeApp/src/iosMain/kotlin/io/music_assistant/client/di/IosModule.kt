@@ -6,6 +6,8 @@ import io.ktor.utils.io.ExperimentalKtorApi
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.CarConnectionMonitor
 import io.music_assistant.client.data.LocalPlayerAdapter
+import io.music_assistant.client.data.announcement.AudioEngineCapture
+import io.music_assistant.client.data.announcement.MicrophoneCapture
 import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.player.local.AudioQueueSink
 import io.music_assistant.client.player.local.IosDecoderFactory
@@ -26,6 +28,7 @@ fun iosModule() = module {
         AudioQueueSink(onRemoteCommand = { command -> get<LocalPlayerAdapter>().onRemoteCommand(command) })
     }
     single<DecoderFactory> { IosDecoderFactory() }
+    single<MicrophoneCapture> { AudioEngineCapture() }
     single<BackgroundUsageGuard> { IosBackgroundUsageGuard() }
     single { KeychainClientIdentity() }
     single<HttpClientFactory> {

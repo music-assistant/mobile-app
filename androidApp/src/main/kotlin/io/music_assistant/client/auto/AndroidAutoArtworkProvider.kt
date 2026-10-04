@@ -19,6 +19,7 @@ import androidx.media.MediaSessionManager
 import coil3.BitmapImage
 import coil3.Image
 import coil3.SingletonImageLoader
+import coil3.request.ErrorResult
 import coil3.request.SuccessResult
 import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
 import io.music_assistant.client.imageloader.artworkImageRequest
@@ -318,10 +319,12 @@ class AndroidAutoArtworkProvider : ContentProvider() {
     // Shares artworkImageRequest's fixed decode size and memory-cache key with the phone UI, so a
     // row served to the car reuses a bitmap the app has already decoded.
     private suspend fun loadArtwork(context: Context, sourceUrl: String): ByteArray {
-        val result = SingletonImageLoader.get(context)
-            .execute(artworkImageRequest(context, sourceUrl)) as? SuccessResult
-        val bitmap = (result?.image ?: throw FileNotFoundException("Artwork fetch failed"))
-            .toArtworkBitmap()
+        // Rethrow Coil's own failure so the log names the real cause, not a generic wrapper.
+        val request = artworkImageRequest(context, sourceUrl)
+        val bitmap = when (val result = SingletonImageLoader.get(context).execute(request)) {
+            is SuccessResult -> result.image
+            is ErrorResult -> throw result.throwable
+        }.toArtworkBitmap()
         return ByteArrayOutputStream().use { output ->
             check(bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, output)) {
                 "Artwork encode failed"

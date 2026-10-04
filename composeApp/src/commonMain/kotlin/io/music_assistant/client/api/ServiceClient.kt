@@ -28,6 +28,9 @@ interface ServiceClient {
     val events: Flow<Event<out Any>>
     val webrtcSendspinChannel: DataChannelWrapper?
 
+    /** A new channel for [label] on the WebRTC session; null on a direct session. The caller closes it. */
+    suspend fun openWebRTCDataChannel(label: String): DataChannelWrapper? = null
+
     fun onAppForeground()
     fun onAppBackground()
     val foregroundEvents: Flow<Unit>

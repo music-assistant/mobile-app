@@ -187,6 +187,36 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("player_id", JsonPrimitive(playerId))
             },
         )
+
+        /**
+         * Speaks [message] on [playerId] through the server's text-to-speech engine. A null
+         * [preAnnounce] or [volumeLevel] is left out, so the player's own settings apply.
+         */
+        fun playAnnouncement(
+            playerId: String,
+            message: String,
+            preAnnounce: Boolean?,
+            volumeLevel: Int?,
+        ) = Request(
+            command = APICommands.PLAYERS_CMD_PLAY_ANNOUNCEMENT,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("message", JsonPrimitive(message))
+                preAnnounce?.let { put("pre_announce", JsonPrimitive(it)) }
+                volumeLevel?.let { put("volume_level", JsonPrimitive(it)) }
+            },
+        )
+
+        fun ttsEngines() = Request(command = APICommands.PLAYERS_TTS_ENGINES)
+
+        /** The player's own "chime before an announcement" setting, which the dialog starts from. */
+        fun announcementChime(playerId: String) = Request(
+            command = APICommands.CONFIG_PLAYERS_GET_VALUE,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("key", JsonPrimitive("tts_pre_announce"))
+            },
+        )
     }
 
     data object Queue {

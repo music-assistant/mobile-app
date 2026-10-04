@@ -140,6 +140,26 @@ class WebRTCConnectionManager(
     }
 
     /**
+     * Opens a channel for [label] on the live peer connection, signalled in-band like
+     * [openHttpProxyChannel]. The server must know the label, so callers gate on the schema
+     * version first. The caller owns the channel and closes it. Null when there is no peer
+     * connection or the channel does not open in time.
+     */
+    suspend fun openDataChannel(label: String): DataChannelWrapper? {
+        val pc = peerConnection ?: return null
+        val channel = pc.createDataChannel(label = label, ordered = true)
+        val opened = withTimeoutOrNull(CHANNEL_OPEN_TIMEOUT_MS) {
+            channel.state.first { it == DataChannelState.Open }
+        }
+        if (opened == null) {
+            logger.w { "$label channel did not open within ${CHANNEL_OPEN_TIMEOUT_MS}ms" }
+            channel.close()
+            return null
+        }
+        return channel
+    }
+
+    /**
      * Connect to Music Assistant server via WebRTC.
      *
      * @param remoteId Remote ID of the Music Assistant server

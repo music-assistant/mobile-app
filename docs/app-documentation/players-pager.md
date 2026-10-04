@@ -112,6 +112,17 @@ Two options are always available regardless of content type:
 
 Additional options such as *Add to playlist*, *Go to album*, *Go to artist*, and *Enable Don't Stop The Music* appear depending on whether you are playing a track, album, podcast, or audiobook.
 
+### Play announcement
+
+Use **Play announcement** to speak a message on the player. The player stops or lowers its music, plays the message, and then continues.
+
+- **Type**: Write the message. The server speaks it with its text-to-speech engine. The tab shows only if the server has a text-to-speech engine.
+- **Speak**: Push and hold the microphone button, then speak. Release the button to send the message. The tab shows only on a server with schema version 48 or higher. The tab does not show for the player on this phone.
+- **Play chime first**: Plays a short sound before the message. The switch starts with the setting of the player.
+- **Custom volume**: Turn on the switch to set the volume of the message with the slider. If the switch is off, the player uses its own announcement volume. The server keeps the volume between the minimum and the maximum announcement volume of the player.
+
+The app asks for the microphone permission at the first push of the button. If you refused the permission, use **Open settings** to turn it on. The message plays after you release the button, so you can close the dialog at once.
+
 ## Favoriting
 
 Tap the **♡ heart icon** next to the track title to add the current content to your favorites. Tap it again to remove it.

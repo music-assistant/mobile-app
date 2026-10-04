@@ -69,6 +69,11 @@ actual class PlatformFeature {
   returns slim summary items by default.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
+- **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,
+  because the server answers only after playback. Text uses `players/cmd/play_announcement` with
+  `message`. Voice has no upload endpoint: raw s16le PCM streams live over `/live_announcement`
+  (WebSocket) or the `live_announcement` data channel (WebRTC). Closing the link ends the clip, so
+  never cancel a session early. The platform microphone is the `MicrophoneCapture` Koin binding.
 
 ## HTTP Clients
 

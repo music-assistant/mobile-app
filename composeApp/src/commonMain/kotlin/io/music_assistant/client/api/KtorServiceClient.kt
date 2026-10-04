@@ -217,6 +217,9 @@ class KtorServiceClient(
     override val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
         get() = (transport as? WebRTCTransport)?.sendspinDataChannel
 
+    override suspend fun openWebRTCDataChannel(label: String): io.music_assistant.client.webrtc.DataChannelWrapper? =
+        (transport as? WebRTCTransport)?.openDataChannel(label)
+
     override val webRTCHttpProxy: io.music_assistant.client.webrtc.WebRTCHttpProxy?
         get() = (transport as? WebRTCTransport)?.httpProxy
 

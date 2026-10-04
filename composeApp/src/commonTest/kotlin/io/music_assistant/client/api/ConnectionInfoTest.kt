@@ -23,6 +23,7 @@ class ConnectionInfoTest {
         val info = ConnectionInfo(host = "ha.example.org", port = 443, isTls = true, basePath = "/ma")
         assertEquals("https://ha.example.org:443/ma", info.webUrl)
         assertEquals("wss://ha.example.org:443/ma", info.wsUrl)
+        assertEquals("wss://ha.example.org:443/ma/live_announcement", info.liveAnnouncementUrl)
     }
 
     @Test
