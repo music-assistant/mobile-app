@@ -48,7 +48,7 @@ class LiveAnnouncementSessionTest {
     }
 
     @Test
-    fun `sends auth and start, holds audio until started, then streams and stops`() = runTest {
+    fun `sends auth and start then holds audio until started then streams and stops`() = runTest {
         val link = FakeLink()
         val frames = Channel<ByteArray>(Channel.UNLIMITED)
         frames.trySend(byteArrayOf(1))
