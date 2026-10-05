@@ -100,6 +100,7 @@ import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
 import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
+import io.music_assistant.client.ui.compose.common.ignoreDragsFromBottomGestureZone
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
@@ -238,7 +239,7 @@ fun PlayersPager(
             }
 
             HorizontalPager(
-                modifier = Modifier,
+                modifier = Modifier.ignoreDragsFromBottomGestureZone(),
                 state = playerPagerState,
                 key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page },
             ) { page ->
