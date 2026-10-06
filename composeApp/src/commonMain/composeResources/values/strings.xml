@@ -30,6 +30,7 @@
   <string name="action_start_endless_mix">Start endless mix</string>
   <string name="action_start_radio">Start radio</string>
   <string name="action_unfavorite">Unfavorite</string>
+  <string name="action_view_all">View all</string>
   <string name="ai_radio_empty">No AI stations yet. Create one in the Music Assistant web app.</string>
   <string name="ai_radio_load_failed">Could not load AI stations</string>
   <string name="ai_radio_no_player">Select a player first</string>

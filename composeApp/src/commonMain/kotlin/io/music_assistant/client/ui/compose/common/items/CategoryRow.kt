@@ -65,6 +65,7 @@ import io.music_assistant.client.ui.compose.grid.GridItem
 import io.music_assistant.client.ui.compose.grid.gridItemMinSize
 import io.music_assistant.client.ui.compose.item.ItemList
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_view_all
 import musicassistantclient.composeapp.generated.resources.cd_view_all
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -380,7 +381,7 @@ private fun ViewAllButton(
             onNavigateToList(rowTitle, itemList)
         },
     ) {
-        Text("View all")
+        Text(stringResource(Res.string.action_view_all))
     }
 }
 
