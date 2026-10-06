@@ -16,6 +16,8 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
     private let bufferLock = NSLock()
     private let kNumberOfBuffers = 5 // More buffers for smoother playback
     private let kBufferSize: UInt32 = 65536 // 64KB per buffer for less stuttering
+    /// True while the queue is fed silence; logs once per run instead of once per buffer.
+    private var starved = true
 
 
     // MARK: - Decoder
@@ -366,7 +368,8 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
 
         audioQueue = queue
 
-        // Allocate and prime buffers
+        // Allocate and prime buffers; silent priming is not a starvation.
+        starved = true
         for _ in 0..<kNumberOfBuffers {
             var buffer: AudioQueueBufferRef?
             let allocStatus = AudioQueueAllocateBuffer(queue, kBufferSize, &buffer)
@@ -412,6 +415,7 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
         bufferLock.unlock()
 
         if let data = pcmData {
+            starved = false
             // Copy PCM data to buffer
             let copySize = min(data.count, Int(buffer.pointee.mAudioDataBytesCapacity))
             _ = data.withUnsafeBytes { srcBytes in
@@ -420,6 +424,12 @@ class NativeAudioController: NSObject, PlatformAudioPlayer {
             buffer.pointee.mAudioDataByteSize = UInt32(copySize)
         } else {
             // No data - output silence
+            if !starved {
+                starved = true
+                let silenceMs = Double(buffer.pointee.mAudioDataBytesCapacity)
+                    / Double(max(1, audioFormat.mBytesPerFrame)) / audioFormat.mSampleRate * 1000
+                logInfo("Starved: enqueued \(Int(silenceMs)) ms of silence")
+            }
             memset(buffer.pointee.mAudioData, 0, Int(buffer.pointee.mAudioDataBytesCapacity))
             buffer.pointee.mAudioDataByteSize = buffer.pointee.mAudioDataBytesCapacity
         }

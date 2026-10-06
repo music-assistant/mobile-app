@@ -71,6 +71,32 @@ class ClockFilterTest {
     }
 
     @Test
+    fun noisierNetworkWithinTheRttBoundNeverReseeds() {
+        val filter = ClockFilter()
+        var now = 0L
+        repeat(12) {
+            now += 10_000_000L
+            exact(filter, now)
+        }
+
+        // The network turns slow and one-sided (a queue in the downstream path only):
+        // every sample reads 90 ms off on the same side, but within its own rtt / 2.
+        // A lasting one-way delay is unobservable, so a slow pull is fine; a step is not.
+        var previous = assertNotNull(filter.estimate()).offsetMicros
+        var worstStep = 0.0
+        repeat(30) {
+            now += 10_000_000L
+            val t2 = now + 10_000L + trueOffset
+            val t3 = t2 + 1_000L
+            filter.update(now, t2, t3, t3 - trueOffset + 190_000L)
+            val offset = assertNotNull(filter.estimate()).offsetMicros
+            worstStep = maxOf(worstStep, abs(offset - previous))
+            previous = offset
+        }
+        assertTrue(worstStep < 2_000, "estimate stepped by ${worstStep / 1000.0} ms")
+    }
+
+    @Test
     fun negativeRttIsIgnored() {
         val filter = ClockFilter()
         assertFalse(filter.update(t1 = 100, t2 = 200, t3 = 500, t4 = 150))

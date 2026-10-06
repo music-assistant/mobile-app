@@ -8,6 +8,7 @@ import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.SinkEvent
 import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkHandle
+import io.music_assistant.sendspin.api.SinkPosition
 import io.music_assistant.sendspin.clock.ClockSync
 import io.music_assistant.sendspin.wire.AudioChunk
 import kotlinx.coroutines.CancellationException
@@ -57,6 +58,9 @@ internal class Scheduler(
     private var lateDrops = 0L
     private var lateMicros = 0L
     private var insertedSilenceMicros = 0L
+    private var underruns = 0
+    private var correctionLogs = 0
+    private var lastWriteMicros = 0L
     private var clockWaitSinceMicros: Long? = null
 
     /** Lead of the chunk being written, for the first-audio report. */
@@ -141,6 +145,9 @@ internal class Scheduler(
         lateDrops = 0
         lateMicros = 0
         insertedSilenceMicros = 0
+        underruns = 0
+        correctionLogs = 0
+        lastWriteMicros = 0L
         val generation = state.generation
         // The collector lives with this handle, not with the scheduler, and an event that
         // belongs to this stream must never end a later one.
@@ -169,6 +176,7 @@ internal class Scheduler(
     private suspend fun play(chunk: AudioChunk): Boolean {
         val out = handle ?: return false
         val fmt = format ?: return false
+        checkUnderruns(out)
         val target = clockSync.toLocalMicros(chunk.timestampMicros)?.plus(pipeline.userDelayMicros)
         lastLeadMicros = 0L
         if (target == null) {
@@ -194,6 +202,7 @@ internal class Scheduler(
             val late = -lead
             lateDrops++
             lateMicros += late
+            logCorrection("late", lead, queuedMicros, position)
             val pcm = decode(chunk) ?: return true
             val blockMicros = if (opaque) 0L else framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
             if (late >= blockMicros) return true // whole chunk is in the past
@@ -215,7 +224,11 @@ internal class Scheduler(
         val pcm = decode(chunk) ?: return true
         return when {
             lead > HARD_TOLERANCE_MICROS -> {
-                insertedSilenceMicros += lead
+                // The first write after an open or a flush is the alignment, not a correction.
+                if (played) {
+                    insertedSilenceMicros += lead
+                    logCorrection("early", lead, queuedMicros, position)
+                }
                 write(out, ByteArray(microsToBytes(lead, fmt))) && write(out, pcm)
             }
 
@@ -261,6 +274,7 @@ internal class Scheduler(
             at += written
         }
         if (fmt.isPcm) framesWritten += length / fmt.bytesPerFrame
+        lastWriteMicros = clock.nowMicros()
         if (!played && length > 0) {
             played = true
             reportFirstAudio()
@@ -281,6 +295,32 @@ internal class Scheduler(
         waitOrWake(SINK_EVENT_GRACE_MICROS)
         if (pipeline.stream.value.phase == StreamPhase.Playing) pipeline.onSinkFailure(AudioEvent.SinkDied)
     }
+
+    /** One line per hard correction, capped per stream: every input of the lead it acted on. */
+    private fun logCorrection(kind: String, lead: Long, queuedMicros: Long, position: SinkPosition?) {
+        if (correctionLogs++ >= MAX_CORRECTION_LOGS) return
+        val estimate = clockSync.snapshot()
+        logger.w {
+            "Correction $kind: leadMs=${lead / MICROS_PER_MILLI} queuedMs=${queuedMicros / MICROS_PER_MILLI} " +
+                "head=${position?.framesPlayed} written=$framesWritten sinceWriteMs=${sinceWriteMillis()} " +
+                "underruns=$underruns offsetUs=${estimate?.offsetMicros?.toLong()} " +
+                "driftPpm=${estimate?.driftPerMicro?.times(MICROS_PER_SECOND)} clockSamples=${estimate?.samples} " +
+                "clock=${clockSync.quality()}"
+        }
+    }
+
+    /** A sink underrun is audible by itself; the gap since the last write tells a stalled feeder from a slow sink. */
+    private fun checkUnderruns(out: SinkHandle) {
+        val count = out.underrunCount()
+        if (count <= underruns) return
+        if (correctionLogs++ < MAX_CORRECTION_LOGS) {
+            logger.w { "Sink underrun: +${count - underruns} total=$count sinceWriteMs=${sinceWriteMillis()}" }
+        }
+        underruns = count
+    }
+
+    private fun sinceWriteMillis(): Long =
+        if (lastWriteMicros == 0L) -1L else (clock.nowMicros() - lastWriteMicros) / MICROS_PER_MILLI
 
     /** One line per stream start: what the sink build and the first chunk cost. */
     private fun reportFirstAudio() {
@@ -318,10 +358,10 @@ internal class Scheduler(
             logger.w { "Sink close failed: ${e.message}" }
         }
         handle = null
-        if (lateDrops > 0 || insertedSilenceMicros > 0) {
+        if (lateDrops > 0 || insertedSilenceMicros > 0 || underruns > 0) {
             logger.w {
                 "Stream stats: lateDrops=$lateDrops lateMs=${lateMicros / MICROS_PER_MILLI} " +
-                    "insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI}"
+                    "insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI} underruns=$underruns"
             }
         }
     }
@@ -343,6 +383,9 @@ internal class Scheduler(
         const val MAX_SILENCE_MICROS = 200_000L
 
         const val DECODER_FAILURE_LIMIT = 5
+
+        /** Correction and underrun lines per stream; the stream stats line keeps the totals. */
+        const val MAX_CORRECTION_LOGS = 30
         const val BITS_PER_BYTE = 8
         const val MICROS_PER_SECOND = 1_000_000L
         const val MICROS_PER_MILLI = 1_000L
