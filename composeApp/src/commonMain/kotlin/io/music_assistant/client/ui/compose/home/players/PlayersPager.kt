@@ -125,6 +125,7 @@ import musicassistantclient.composeapp.generated.resources.action_add_to_playlis
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj_off
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj_on_air
+import musicassistantclient.composeapp.generated.resources.announcement_title
 import musicassistantclient.composeapp.generated.resources.bound_player_joined_to
 import musicassistantclient.composeapp.generated.resources.bound_player_part_of_group
 import musicassistantclient.composeapp.generated.resources.bound_player_playing_with
