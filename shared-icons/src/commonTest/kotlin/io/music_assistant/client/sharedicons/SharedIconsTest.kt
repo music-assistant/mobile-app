@@ -13,7 +13,7 @@ class SharedIconsTest {
     @Test
     fun `getResource returns speaker for unknown ID`() {
         val resource = SharedIcons.getResource("unknown")
-        assertEquals(Res.drawable.speaker, resource)
+        assertEquals(resource, Res.drawable.speaker)
     }
 
     @Test
@@ -28,7 +28,7 @@ class SharedIconsTest {
 
 private const val MANIFEST_JSON = $$"""{
   "$schema": "./schema/manifest.schema.json",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "fallback": "speaker",
   "icons": [
     "homepod-mini",
@@ -41,6 +41,7 @@ private const val MANIFEST_JSON = $$"""{
     "speaker",
     "speakers",
     "soundbar",
+    "receiver",
     "radio",
     "tv",
     "monitor",
