@@ -92,6 +92,7 @@
   <string name="cd_delete_crash_logs">Eliminar registros de errores</string>
   <string name="cd_favorite">Favorito</string>
   <string name="cd_filter">Filtros</string>
+  <string name="cd_find_in_list">Buscar en la lisa</string>
   <string name="cd_fully_played">Reproducido por completo</string>
   <string name="cd_genre_filter">Filtros de género</string>
   <string name="cd_in_progress">En curso</string>
@@ -101,6 +102,8 @@
   <string name="cd_library_filters">Filtros</string>
   <string name="cd_lyrics">Letras</string>
   <string name="cd_lyrics_close">Cerrar letras</string>
+  <string name="cd_lyrics_offset_decrease">Mostrar la letra más tarde</string>
+  <string name="cd_lyrics_offset_increase">Mostrar la letra antes</string>
   <string name="cd_more">Más</string>
   <string name="cd_mute">Silenciar</string>
   <string name="cd_play_now">Reproducir ahora</string>
@@ -156,6 +159,7 @@
   <string name="filter_providers">Proveedor de música</string>
   <string name="filter_selected_count">%1$d seleccionado</string>
   <string name="filter_sheet_title">Filtros</string>
+  <string name="find_in_list_label">Buscar en la lista…</string>
   <string name="genre_filter_empty_all">Todo</string>
   <string name="genre_filter_empty_default">Predeterminado</string>
   <string name="genre_filter_empty_non_empty">Solo con contenido</string>
@@ -188,6 +192,7 @@
   <string name="library_quick_search">Búsqueda rápida</string>
   <string name="library_search_global">Buscar en todas partes</string>
   <string name="loading">Cargando</string>
+  <string name="lyrics_screen_wake_on">La activación de la pantalla está habilitada</string>
   <string name="media_action_forward">Avanzar 30 s</string>
   <string name="media_action_next_player">Siguiente reproductor</string>
   <string name="media_action_open_app">Abrir aplicación</string>
@@ -231,6 +236,7 @@
   <string name="player_show_buffer_indicator">Mostrar indicador de búfer</string>
   <string name="player_sleep_timer">Temporizador de apagado</string>
   <string name="player_standby">El reproductor está en modo de espera. Toca para activarlo.</string>
+  <string name="player_unavailable">No disponible</string>
   <string name="players_dsp_settings">Ajustes de DSP</string>
   <string name="players_group_settings">Ajustes del grupo</string>
   <string name="players_group_volume">Volumen del grupo %1$s</string>
@@ -289,6 +295,8 @@
   <string name="settings_about_learn_more">Más información en music-assistant.io →</string>
   <string name="settings_allow_landscape">Permitir la orientación horizontal en todos los dispositivos</string>
   <string name="settings_allow_landscape_hint">Experimental: algunas pantallas pueden mostrarse incorrectamente en orientación horizontal. Úsalo bajo tu propia responsabilidad.</string>
+  <string name="settings_app_documentation">Documentación de la aplicación →</string>
+  <string name="settings_app_version_info">Versión %1$s, compilación %2$s</string>
   <string name="settings_buffer_size">Tamaño del buffer</string>
   <string name="settings_car">Coche (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s acciones</string>
@@ -302,6 +310,14 @@
   <string name="settings_car_enqueue_action">Acción para añadir a la cola</string>
   <string name="settings_car_item_actions">Acciones del elemento</string>
   <string name="settings_car_tabs">Pestañas</string>
+  <string name="settings_client_certificate">Certificado de cliente (mTLS)</string>
+  <string name="settings_client_certificate_choose">Elegir</string>
+  <string name="settings_client_certificate_clear">Borrar</string>
+  <string name="settings_client_certificate_import_failed">No se puede importar este certificado</string>
+  <string name="settings_client_certificate_none">Ninguno</string>
+  <string name="settings_client_certificate_password">Contraseña</string>
+  <string name="settings_client_certificate_password_title">Contraseña del certificado</string>
+  <string name="settings_client_certificate_wrong_password">Contraseña incorrecta</string>
   <string name="settings_codec_preference">Preferencia de códec</string>
   <string name="settings_connect">Conectar</string>
   <string name="settings_connect_saved">Conectar con las credenciales guardadas</string>
@@ -373,8 +389,10 @@
   <string name="toast_added_to_playlist">Añadido a %1$s</string>
   <string name="toast_error_add_playlist">Error al añadir a la lista de reproducción</string>
   <string name="toast_error_create_playlist">Error al crear la lista de reproducción</string>
+  <string name="toast_error_favorite_stream_track">No se ha podido añadir a favoritos la canción que está sonando. Puede que el servidor no consiga resolver su título.</string>
   <string name="toast_error_mark_played">Error al marcar como reproducido</string>
   <string name="toast_error_mark_unplayed">Error al marcar como no reproducido</string>
+  <string name="toast_favorited_stream_track">Se ha añadido a favoritos la canción que está sonando</string>
   <string name="toast_marked_played">Marcar como reproducido</string>
   <string name="toast_marked_unplayed">Marcado como no reproducido</string>
   <string name="toast_no_uri">El elemento multimedia no tiene URI</string>

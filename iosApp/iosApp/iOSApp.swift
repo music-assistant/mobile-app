@@ -58,7 +58,10 @@ private final class SystemVolumeButtonObserver: NSObject {
         guard observation == nil else { return }
         do {
             // KVO needs an active session; mix so remote volume capture doesn't steal focus.
-            if player?.isRenderingAudio != true {
+            let ownsSession = NowPlayingCoordinator.shared.ownsActiveSession
+            // While we own the session (playing or paused) it is already active and
+            // non-mixable; switching it to mixable would drop the lock screen widget.
+            if player?.isRenderingAudio != true && !ownsSession {
                 try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
                 try session.setActive(true, options: [])
             }

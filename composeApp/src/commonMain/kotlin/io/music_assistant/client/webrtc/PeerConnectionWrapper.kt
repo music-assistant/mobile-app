@@ -37,7 +37,11 @@ import org.koin.core.component.inject
  *  6. `close()` when done.
  */
 @OptIn(ExperimentalKtorApi::class)
-class PeerConnectionWrapper : KoinComponent {
+class PeerConnectionWrapper(
+    // No default: a forgotten argument would silently fork the connection's shared
+    // attempt correlation onto a fresh WebRTCDiagnostics.
+    private val diagnostics: WebRTCDiagnostics,
+) : KoinComponent {
     private val logger = Logger.withTag("PeerConnectionWrapper")
     private val webRtcClient: WebRtcClient by inject()
 
@@ -102,8 +106,8 @@ class PeerConnectionWrapper : KoinComponent {
                         if (event is DataChannelEvent.Open) {
                             val ch = event.channel
                             if (!locallyCreatedChannels.contains(ch)) {
-                                logger.i { "Remote data channel received: ${ch.label}" }
-                                _dataChannels.emit(DataChannelWrapper(ch, pc.dataChannelEvents))
+                                diagnostics.event("remote channel received label=${safeChannelLabel(ch.label)}")
+                                _dataChannels.emit(DataChannelWrapper(ch, pc.dataChannelEvents, diagnostics))
                             }
                         }
                     }
@@ -118,7 +122,7 @@ class PeerConnectionWrapper : KoinComponent {
                 try {
                     pc.state.collect { state ->
                         val mapped = state.toCommon()
-                        logger.d { "Connection state: $state -> $mapped" }
+                        diagnostics.event("peer state=$state")
                         _connectionState.value = mapped
                     }
                 } catch (e: CancellationException) {
@@ -128,9 +132,15 @@ class PeerConnectionWrapper : KoinComponent {
                 }
             }
 
-            logger.d { "Peer connection initialized" }
+            eventScope.launch {
+                pc.iceConnectionState.collect { diagnostics.event("ICE connection state=$it") }
+            }
+            eventScope.launch {
+                pc.iceGatheringState.collect { diagnostics.event("ICE gathering state=$it") }
+            }
+            diagnostics.event("peer initialized")
         } catch (e: Exception) {
-            logger.e(e) { "Failed to initialize peer connection" }
+            diagnostics.failure("peer initialization failed", e)
             eventScope.cancel()
             peerConnection = null
             throw e
@@ -139,21 +149,21 @@ class PeerConnectionWrapper : KoinComponent {
 
     suspend fun createOffer(): SessionDescription {
         val pc = peerConnection ?: error("Peer connection not initialized")
-        logger.d { "Creating SDP offer" }
         val offer = pc.createOffer()
         pc.setLocalDescription(offer)
+        diagnostics.event("sdp offer created bytes=${offer.sdp.length}")
         return SessionDescription(sdp = offer.sdp, type = "offer")
     }
 
     suspend fun setRemoteAnswer(answer: SessionDescription) {
         val pc = peerConnection ?: error("Peer connection not initialized")
-        logger.d { "Setting remote answer" }
         pc.setRemoteDescription(
             WebRtc.SessionDescription(
                 type = WebRtc.SessionDescriptionType.ANSWER,
                 sdp = answer.sdp,
             ),
         )
+        diagnostics.event("sdp remote answer accepted bytes=${answer.sdp.length}")
     }
 
     suspend fun addIceCandidate(candidate: IceCandidateData) {
@@ -180,11 +190,11 @@ class PeerConnectionWrapper : KoinComponent {
             this.maxRetransmits = if (maxRetransmits < 0) null else maxRetransmits
         }
         locallyCreatedChannels.add(ch)
-        return DataChannelWrapper(ch, pc.dataChannelEvents)
+        return DataChannelWrapper(ch, pc.dataChannelEvents, diagnostics)
     }
 
     fun close() {
-        logger.i { "Closing peer connection" }
+        diagnostics.event("peer local close requested state=${_connectionState.value}")
         eventScope.cancel()
         peerConnection?.close()
         peerConnection = null

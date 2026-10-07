@@ -13,6 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -21,8 +22,9 @@ import kotlin.test.assertTrue
  *
  * Functional: register a callback, feed the matching response (including
  * partial-then-final sequences), and the callback fires with the merged
- * `result`. `removeCallback` and `clear` prevent firing; auth error
- * code 20 triggers the [onAuthError] hook.
+ * `result`. `removeCallback` prevents firing; `failAll` fires every pending
+ * callback with a failure and nothing fires twice; auth error code 20
+ * triggers the [onAuthError] hook.
  *
  * Thread-safety: `registerCallback` / `removeCallback` run on the
  * request-issuing coroutine, while `handleResponse` runs on the websocket
@@ -46,7 +48,7 @@ class RpcEngineTest {
     fun finalResponseFiresRegisteredCallback() {
         val engine = engine()
         var received: Answer? = null
-        engine.registerCallback("m1") { received = it }
+        engine.registerCallback("m1") { received = it.getOrThrow() }
 
         val handled = engine.handleResponse(
             message("""{"message_id": "m1", "result": {"ok": true}}"""),
@@ -73,7 +75,7 @@ class RpcEngineTest {
     fun partialResponsesAccumulateAndMergeIntoFinal() {
         val engine = engine()
         var received: Answer? = null
-        engine.registerCallback("m1") { received = it }
+        engine.registerCallback("m1") { received = it.getOrThrow() }
 
         engine.handleResponse(
             message("""{"message_id": "m1", "partial": true, "result": [1, 2]}"""),
@@ -132,7 +134,7 @@ class RpcEngineTest {
         // response. The partials from the previous registration must not
         // leak into this one.
         var received: Answer? = null
-        engine.registerCallback("m1") { received = it }
+        engine.registerCallback("m1") { received = it.getOrThrow() }
         engine.handleResponse(
             message("""{"message_id": "m1", "result": [99]}"""),
         )
@@ -143,19 +145,71 @@ class RpcEngineTest {
     }
 
     @Test
-    fun clearDropsAllPendingCallbacks() {
+    fun failAllFailsEveryPendingCallbackExactlyOnce() {
         val engine = engine()
-        var firedA = false
-        var firedB = false
-        engine.registerCallback("m1") { firedA = true }
-        engine.registerCallback("m2") { firedB = true }
+        val cause = ConnectionLostException("socket died")
+        val outcomesA = mutableListOf<Result<Answer>>()
+        val outcomesB = mutableListOf<Result<Answer>>()
+        engine.registerCallback("m1") { outcomesA += it }
+        engine.registerCallback("m2") { outcomesB += it }
 
-        engine.clear()
+        engine.failAll(cause)
+        // Late responses for already-failed requests must not fire a second time.
         engine.handleResponse(message("""{"message_id": "m1", "result": {}}"""))
         engine.handleResponse(message("""{"message_id": "m2", "result": {}}"""))
 
-        assertFalse(firedA)
-        assertFalse(firedB)
+        assertEquals(1, outcomesA.size, "m1 must be completed exactly once")
+        assertEquals(1, outcomesB.size, "m2 must be completed exactly once")
+        assertSame(cause, outcomesA.single().exceptionOrNull())
+        assertSame(cause, outcomesB.single().exceptionOrNull())
+    }
+
+    @Test
+    fun failAllDropsAccumulatedPartials() {
+        val engine = engine()
+        engine.registerCallback("m1") { /* failed below */ }
+        engine.handleResponse(
+            message("""{"message_id": "m1", "partial": true, "result": [1, 2]}"""),
+        )
+
+        engine.failAll(ConnectionLostException("socket died"))
+
+        // A new request reusing the id must not inherit the old partials.
+        var received: Answer? = null
+        engine.registerCallback("m1") { received = it.getOrThrow() }
+        engine.handleResponse(message("""{"message_id": "m1", "result": [99]}"""))
+        assertEquals("[99]", received?.json?.get("result")?.toString())
+    }
+
+    @Test
+    fun failAllWithNothingPendingIsANoOp() {
+        val engine = engine()
+        engine.failAll(ConnectionLostException("socket died"))
+        // Requests registered afterwards behave normally.
+        var received: Answer? = null
+        engine.registerCallback("m1") { received = it.getOrThrow() }
+        engine.handleResponse(message("""{"message_id": "m1", "result": {}}"""))
+        assertNotNull(received)
+    }
+
+    /** Only the atomic removal winner may resume the caller; a second resume would throw. */
+    @Test
+    fun removeCallbackReportsWhetherRequestWasStillPending() {
+        val engine = engine()
+        engine.registerCallback("pending") { }
+        engine.registerCallback("failed") { }
+        engine.registerCallback("answered") { }
+
+        engine.failAll(ConnectionLostException("socket died"))
+        engine.registerCallback("pending") { }
+        engine.registerCallback("answered") { }
+        engine.handleResponse(message("""{"message_id": "answered", "result": {}}"""))
+
+        assertTrue(engine.removeCallback("pending"), "still pending → caller owns completion")
+        assertFalse(engine.removeCallback("pending"), "second removal finds nothing")
+        assertFalse(engine.removeCallback("failed"), "failAll already completed it")
+        assertFalse(engine.removeCallback("answered"), "response already completed it")
+        assertFalse(engine.removeCallback("ghost"), "never registered")
     }
 
     @Test
@@ -246,9 +300,9 @@ class RpcEngineTest {
 
         // Register everything first, then flood partials + finals in parallel.
         messageIds.forEachIndexed { idx, id ->
-            engine.registerCallback(id) { answer ->
+            engine.registerCallback(id) { result ->
                 receivedSizes[idx] =
-                    answer.json["result"]?.toString()?.let { it.count { c -> c == ',' } + 1 }
+                    result.getOrThrow().json["result"]?.toString()?.let { it.count { c -> c == ',' } + 1 }
                         ?: 0
             }
         }

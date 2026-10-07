@@ -30,6 +30,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -116,6 +117,21 @@ class ConnectionSupervisorTest {
         assertTrue(backoffs.drop(6).all { (it.reason is DropReason.ConnectFailed) })
         val lateDelay = (backoffs[7].retryAtMicros / 1_000) - h.states.first { it.first == backoffs[7] }.second
         assertTrue(lateDelay in 24_000L..36_000L, "capped: $lateDelay")
+    }
+
+    @Test
+    fun connectTimeoutIsAFailedAttemptNotACancellation() = runTest {
+        var attempts = 0
+        val h = harness(connect = {
+            attempts++
+            withTimeout(1_000) { awaitCancellation() }
+        })
+        advanceTimeBy(20_000)
+        h.job.cancel()
+
+        assertTrue(attempts >= 2, "a timed-out connect is retried, attempts=$attempts")
+        val backoffs = h.statesOf { it is ConnectionState.Backoff }.map { it.first as ConnectionState.Backoff }
+        assertTrue(backoffs.isNotEmpty() && backoffs.all { it.reason is DropReason.ConnectFailed })
     }
 
     @Test

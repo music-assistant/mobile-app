@@ -157,6 +157,22 @@ final class NowPlayingCoordinator {
     private var currentAudioSessionMode: AVAudioSession.Mode?
     private var currentAudioSessionOptions: AVAudioSession.CategoryOptions?
 
+    /// True from the first `activatePlayback()` until the presentation clears.
+    /// Written on the audio thread, read on main, hence the lock.
+    private let ownsSessionLock = NSLock()
+    private var ownsSession = false
+    var ownsActiveSession: Bool {
+        ownsSessionLock.lock()
+        defer { ownsSessionLock.unlock() }
+        return ownsSession
+    }
+
+    private func setOwnsActiveSession(_ value: Bool) {
+        ownsSessionLock.lock()
+        ownsSession = value
+        ownsSessionLock.unlock()
+    }
+
     // MARK: - Logging
 
     private static let logTag = "NowPlayingCoordinator"
@@ -296,6 +312,7 @@ final class NowPlayingCoordinator {
         supersedeArtworkLoad()
         lastTransport = nil
         infoStore.clear()
+        setOwnsActiveSession(false)
         configureAudioSession(mode: .default)
         updateRemoteCommandMode(isLongFormContent: false)
     }
@@ -385,11 +402,11 @@ final class NowPlayingCoordinator {
     /// apps, so doing it at launch claims audio from whatever is already playing.
     /// Deferred to `activatePlayback()`, driven by real playback.
     ///
-    /// Music is mixable so voice prompts (Strava cues) duck instead of
-    /// interrupting it; spoken audio stays non-mixing so prompts pause it
-    /// and playback resumes at the same position.
+    /// Keep music non-mixable: `.mixWithOthers` prevents this app from becoming
+    /// the Now Playing app. Other apps request prompt ducking with `.duckOthers`,
+    /// so this session needs no ducking option.
     private func configureAudioSession(mode: AVAudioSession.Mode = .default) {
-        let options: AVAudioSession.CategoryOptions = mode == .spokenAudio ? [] : [.mixWithOthers]
+        let options: AVAudioSession.CategoryOptions = []
         guard currentAudioSessionMode != mode || currentAudioSessionOptions != options else { return }
         do {
             let session = AVAudioSession.sharedInstance()
@@ -410,10 +427,10 @@ final class NowPlayingCoordinator {
             // switched the session to .mixWithOthers while a remote player was
             // in view. Restore the mode/options the track handler chose.
             let mode = currentAudioSessionMode ?? .default
-            let options = currentAudioSessionOptions
-                ?? (mode == .spokenAudio ? [] : [.mixWithOthers])
+            let options: AVAudioSession.CategoryOptions = []
             try session.setCategory(.playback, mode: mode, options: options)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            setOwnsActiveSession(true)
             // Info level: fires only when playback (re)starts, and an absent
             // line here is the tell when iOS shows "Not Playing" despite
             // healthy info-center assignments.

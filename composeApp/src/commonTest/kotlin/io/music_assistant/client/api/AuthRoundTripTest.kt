@@ -146,6 +146,23 @@ class AuthRoundTripTest {
         )
     }
 
+    @Test
+    fun connectionLossAfterSendIsClassifiedAsNoReply() {
+        val result = classifyAuthRoundTrip(
+            response = Result.failure(ConnectionLostException("socket died")),
+            isAutoLogin = false,
+            priorSilentFailures = 0,
+            maxSilentFailures = 3,
+        )
+
+        assertTrue(result is AuthRoundTrip.NoResponse)
+        assertEquals(
+            AuthFailureCause.NO_REPLY,
+            result.cause,
+            "The socket dropped after the send; reporting 'not sent' would blame the wrong side",
+        )
+    }
+
     // --- authRoundTrip (timeout helper) ---
 
     @Test

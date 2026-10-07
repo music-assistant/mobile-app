@@ -13,8 +13,11 @@ import kotlin.math.sqrt
  * that into the drift state and throw the offset off by seconds later.
  *
  * Measurement noise is `(rtt / 4)^2`, so low-RTT samples weigh more. An
- * innovation far outside what the recent minimum RTT can explain is rejected;
- * three consecutive rejections re-seed the filter (the clock really moved).
+ * innovation far outside what the recent minimum RTT can explain is rejected.
+ * A sample bounds the true offset to `measured ± rtt / 2`; only three consecutive
+ * samples that each exclude the estimate by that bound, on the same side, re-seed
+ * the filter (the clock really moved). A merely noisy sample never moves it: its
+ * RTT still enters the window, so a lasting RTT rise widens the gate instead.
  */
 internal class ClockFilter {
     class Estimate(
@@ -38,7 +41,10 @@ internal class ClockFilter {
     private var p11 = INITIAL_DRIFT_VARIANCE
     private var lastPredictMicros = 0L
     private var seeded = false
-    private var rejections = 0
+
+    /** Consecutive rejected samples that each exclude the estimate on the same side; the lowest-RTT one. */
+    private var contradictions = 0
+    private var contradictionBest: Contradiction? = null
     private val recentRtts = ArrayDeque<Long>()
 
     var samples = 0
@@ -65,16 +71,16 @@ internal class ClockFilter {
         predict(t4)
         val innovation = measured - xOffset
         val gate = INNOVATION_GATE_RTT_FACTOR * rttMinMicros + INNOVATION_GATE_FLOOR_MICROS
+        rememberRtt(rtt)
         if (abs(innovation) > gate) {
-            rejections++
-            if (rejections < REJECTIONS_BEFORE_RESEED) return false
+            val best = contradiction(innovation, measured, rtt, variance) ?: return false
+            if (contradictions < REJECTIONS_BEFORE_RESEED) return false
             recentRtts.clear()
-            seed(measured, t4, variance)
-            rememberRtt(rtt)
+            seed(best.measured, t4, best.variance)
+            rememberRtt(best.rtt)
             return true
         }
-        rejections = 0
-        rememberRtt(rtt)
+        resetContradictions()
 
         val s = p00 + variance
         val k0 = p00 / s
@@ -98,9 +104,33 @@ internal class ClockFilter {
         return Estimate(xOffset, effectiveDrift, lastPredictMicros, rttMinMicros, samples)
     }
 
+    /**
+     * Extends the contradiction streak with this rejected sample and returns its
+     * lowest-RTT member, or resets the streak and returns null when the sample
+     * does not rule the estimate out. A contradiction on the other side starts a
+     * new streak. The slack absorbs drift across the streak.
+     */
+    private fun contradiction(innovation: Double, measured: Double, rtt: Long, variance: Double): Contradiction? {
+        if (abs(innovation) <= rtt / 2.0 + INNOVATION_GATE_FLOOR_MICROS) {
+            resetContradictions()
+            return null
+        }
+        val sign = if (innovation > 0) 1 else -1
+        if (contradictionBest?.sign != sign) resetContradictions()
+        contradictions++
+        val best = contradictionBest?.takeIf { it.rtt <= rtt } ?: Contradiction(measured, rtt, variance, sign)
+        contradictionBest = best
+        return best
+    }
+
+    private fun resetContradictions() {
+        contradictions = 0
+        contradictionBest = null
+    }
+
     private fun seed(measured: Double, atMicros: Long, variance: Double) {
         seeded = true
-        rejections = 0
+        resetContradictions()
         xOffset = measured
         xDrift = 0.0
         lastPredictMicros = atMicros
@@ -124,6 +154,8 @@ internal class ClockFilter {
         p10 = p10New
         p11 = p11New
     }
+
+    private class Contradiction(val measured: Double, val rtt: Long, val variance: Double, val sign: Int)
 
     private fun rememberRtt(rtt: Long) {
         recentRtts.addLast(rtt)

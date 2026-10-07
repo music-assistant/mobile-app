@@ -36,18 +36,24 @@ class DataChannelWrapper internal constructor(
     receiveSource: DataChannelReceiveSource,
     initialState: DataChannelState,
     val label: String,
+    // No default: a channel created without its connection's WebRTCDiagnostics would
+    // silently fork the attempt correlation onto a fresh instance.
+    private val diagnostics: WebRTCDiagnostics,
 ) {
     constructor(
         dataChannel: WebRtcDataChannel,
         connectionEvents: SharedFlow<DataChannelEvent>,
+        diagnostics: WebRTCDiagnostics,
     ) : this(
         dataChannel = dataChannel,
         connectionEvents = connectionEvents,
         receiveSource = KtorDataChannelReceiveSource(dataChannel),
         initialState = dataChannel.state.toCommon(),
         label = dataChannel.label,
+        diagnostics = diagnostics,
     )
 
+    private val logChannel = "${safeChannelLabel(label)}#${hashCode().toUInt().toString(16)}"
     private val logger = Logger.withTag("DataChannelWrapper")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -86,6 +92,7 @@ class DataChannelWrapper internal constructor(
     private val drainJob: Job
 
     init {
+        diagnostics.event("channel=$logChannel created state=$initialState")
         // Drain outgoing messages — exits naturally when `outgoing` is closed by close().
         drainJob = scope.launch {
             for (msg in outgoing) {
@@ -108,6 +115,7 @@ class DataChannelWrapper internal constructor(
                     }
                 }
             } finally {
+                diagnostics.event("channel=$logChannel receive terminated localClose=$closed state=${_state.value}")
                 inboundChannel.close()
             }
         }
@@ -124,10 +132,13 @@ class DataChannelWrapper internal constructor(
                             is DataChannelEvent.Closing -> DataChannelState.Closing
                             is DataChannelEvent.Closed -> DataChannelState.Closed
                             is DataChannelEvent.Error -> {
-                                logger.e { "Data channel $label error: ${event.reason}" }
+                                diagnostics.event("channel=$logChannel error event reason=omitted localClose=$closed")
                                 DataChannelState.Closed
                             }
                             is DataChannelEvent.BufferedAmountLow -> return@collect
+                        }
+                        if (_state.value != mapped) {
+                            diagnostics.event("channel=$logChannel state=${_state.value}->$mapped localClose=$closed")
                         }
                         _state.update { mapped }
                     }
@@ -142,7 +153,7 @@ class DataChannelWrapper internal constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            logger.e(e) { failureMessage }
+            diagnostics.failure("channel=$logChannel ${failureMessage.substringBefore(" on channel")}", e)
         }
     }
 
@@ -169,16 +180,22 @@ class DataChannelWrapper internal constructor(
     suspend fun close() {
         if (closed) return
         closed = true
-        logger.i { "Closing data channel $label" }
+        diagnostics.event("channel=$logChannel local close requested state=${_state.value}")
         // Close the outgoing Channel, then give the drain a bounded chance to
         // flush queued sends before the scope is cancelled out from under it.
         // The state event collector won't deliver the resulting Closed event
         // since the scope is gone, so push it manually.
         outgoing.close()
-        withTimeoutOrNull(CLOSE_FLUSH_TIMEOUT_MILLIS) { drainJob.join() }
-        scope.cancel()
-        dataChannel?.close()
-        _state.update { DataChannelState.Closed }
+        try {
+            withTimeoutOrNull(CLOSE_FLUSH_TIMEOUT_MILLIS) { drainJob.join() }
+        } finally {
+            // A cancelled caller aborts the flush; without this the channel stays
+            // Open with a live inbound while send() already drops everything.
+            scope.cancel()
+            dataChannel?.close()
+            _state.update { DataChannelState.Closed }
+            diagnostics.event("channel=$logChannel local close completed")
+        }
     }
 }
 

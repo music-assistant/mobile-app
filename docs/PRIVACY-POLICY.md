@@ -84,7 +84,7 @@ If you tap an external link — such as **"Learn More"** (which opens `music-ass
 - ❌ Analytics or usage statistics
 - ❌ Location data
 - ❌ Contacts, calendars, photos, or files
-- ❌ Microphone audio
+- ❌ Microphone audio, except a spoken announcement that you send yourself (see below)
 - ❌ Advertising identifiers
 - ❌ Any personal profile about you
 
@@ -100,6 +100,7 @@ If you tap an external link — such as **"Learn More"** (which opens `music-ass
 | `WAKE_LOCK` | To keep audio playing reliably while the screen is off |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | To play audio in the background with a media notification |
 | `CAMERA` | **Optional** — to scan a QR code when you set up a remote (WebRTC) connection (you can also enter the details manually). The camera is active only while the scanner is open; **nothing is recorded, stored, or transmitted.** |
+| `RECORD_AUDIO` | **Optional** — to send a spoken announcement to a speaker. The microphone is active only while you hold the talk button. The audio goes only to **your own** Music Assistant server, which plays it and then deletes it. The app does not store it. |
 
 ### iOS
 
@@ -109,7 +110,7 @@ If you tap an external link — such as **"Learn More"** (which opens `music-ass
 | **Background audio** | To keep playing music when the app is in the background |
 | **Siri** | **Optional** — to search, play, and like/dislike tracks hands-free, including from CarPlay |
 | **Camera** | **Optional** — to scan a QR code when you set up a remote (WebRTC) connection (you can also enter the details manually). The camera is active only while the scanner is open; **nothing is recorded, stored, or transmitted.** |
-| **Microphone usage string** *(present but **not used**)* | Required only because an included framework (WebRTC) references microphone APIs. The app does **not** access your microphone. |
+| **Microphone** | **Optional** — to send a spoken announcement to a speaker. The microphone is active only while you hold the talk button. The audio goes only to **your own** Music Assistant server, which plays it and then deletes it. The app does not store it. |
 
 ---
 

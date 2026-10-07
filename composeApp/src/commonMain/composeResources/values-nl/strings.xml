@@ -92,6 +92,7 @@
   <string name="cd_delete_crash_logs">Verwijder crashlogs</string>
   <string name="cd_favorite">Favoriet</string>
   <string name="cd_filter">Filters</string>
+  <string name="cd_find_in_list">Zoek in lijst</string>
   <string name="cd_fully_played">Volledig afgespeeld</string>
   <string name="cd_genre_filter">Genrefilters</string>
   <string name="cd_in_progress">In behandeling</string>
@@ -101,6 +102,8 @@
   <string name="cd_library_filters">Filters</string>
   <string name="cd_lyrics">Songtekst</string>
   <string name="cd_lyrics_close">Songtekst sluiten</string>
+  <string name="cd_lyrics_offset_decrease">Lyrics later weergeven</string>
+  <string name="cd_lyrics_offset_increase">Lyrics eerder weergeven</string>
   <string name="cd_more">Meer</string>
   <string name="cd_mute">Dempen</string>
   <string name="cd_play_now">Nu afspelen</string>
@@ -156,6 +159,7 @@
   <string name="filter_providers">Muziekproviders</string>
   <string name="filter_selected_count">%1$d geselecteerd</string>
   <string name="filter_sheet_title">Filters</string>
+  <string name="find_in_list_label">Zoek in lijst…</string>
   <string name="genre_filter_empty_all">Alle</string>
   <string name="genre_filter_empty_default">Standaard</string>
   <string name="genre_filter_empty_non_empty">Alleen niet-lege</string>
@@ -188,6 +192,7 @@
   <string name="library_quick_search">Snel zoeken</string>
   <string name="library_search_global">Overal zoeken</string>
   <string name="loading">Laden…</string>
+  <string name="lyrics_screen_wake_on">Scherm blijft ingeschakeld</string>
   <string name="media_action_forward">30s vooruit</string>
   <string name="media_action_next_player">Volgende speler</string>
   <string name="media_action_open_app">App openen</string>
@@ -231,6 +236,7 @@
   <string name="player_show_buffer_indicator">Bufferindicator</string>
   <string name="player_sleep_timer">Slaaptimer</string>
   <string name="player_standby">De speler staat in de stand-by-modus. Tik om het te activeren.</string>
+  <string name="player_unavailable">Niet beschikbaar</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
@@ -289,6 +295,8 @@
   <string name="settings_about_learn_more">Meer informatie op music-assistant.io →</string>
   <string name="settings_allow_landscape">Sta landschapsmodus toe op alle apparaten</string>
   <string name="settings_allow_landscape_hint">Experimenteel: sommige schermen kunnen er in liggende modus vreemd uitzien. Gebruik op eigen risico.</string>
+  <string name="settings_app_documentation">App-documentatie →</string>
+  <string name="settings_app_version_info">Versie %1$s, Build %2$s</string>
   <string name="settings_buffer_size">Buffergrootte</string>
   <string name="settings_car">Auto (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s acties</string>
@@ -302,6 +310,14 @@
   <string name="settings_car_enqueue_action">Wachtrij actie</string>
   <string name="settings_car_item_actions">Itemacties</string>
   <string name="settings_car_tabs">Tabbladen</string>
+  <string name="settings_client_certificate">Clientcertificaat (mTLS)</string>
+  <string name="settings_client_certificate_choose">Kies</string>
+  <string name="settings_client_certificate_clear">Wissen</string>
+  <string name="settings_client_certificate_import_failed">Dit certificaat kan niet worden geïmporteerd.</string>
+  <string name="settings_client_certificate_none">Geen</string>
+  <string name="settings_client_certificate_password">Wachtwoord</string>
+  <string name="settings_client_certificate_password_title">Certificaatwachtwoord</string>
+  <string name="settings_client_certificate_wrong_password">Onjuist wachtwoord</string>
   <string name="settings_codec_preference">Codec-voorkeur</string>
   <string name="settings_connect">Verbinden</string>
   <string name="settings_connect_saved">Verbinden met opgeslagen inloggegevens</string>
@@ -373,8 +389,10 @@
   <string name="toast_added_to_playlist">Toegevoegd aan %1$s</string>
   <string name="toast_error_add_playlist">Fout bij toevoegen aan afspeellijst</string>
   <string name="toast_error_create_playlist">Fout bij maken afspeellijst</string>
+  <string name="toast_error_favorite_stream_track">Het nummer dat op de radio is, kon niet aan je favorieten worden toegevoegd. De server kan de titel mogelijk niet herkennen.</string>
   <string name="toast_error_mark_played">Fout bij als afgespeeld markeren</string>
   <string name="toast_error_mark_unplayed">Fout bij als niet afgespeeld markeren</string>
+  <string name="toast_favorited_stream_track">Het nummer dat op de radio is, is aan je favorieten toegevoegd</string>
   <string name="toast_marked_played">Als afgespeeld gemarkeerd</string>
   <string name="toast_marked_unplayed">Als niet afgespeeld gemarkeerd</string>
   <string name="toast_no_uri">Media-item heeft geen URI</string>

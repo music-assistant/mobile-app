@@ -19,6 +19,7 @@ import io.music_assistant.sendspin.wire.ServerMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -130,6 +131,10 @@ internal class ConnectionSupervisor(
     ): DropReason {
         val transport = try {
             connector.connect(endpoint, trustStore.clientId)
+        } catch (e: TimeoutCancellationException) {
+            // A timeout inside connect() is a failed attempt, not this coroutine being cancelled;
+            // rethrowing it would end the retry loop for good.
+            return DropReason.ConnectFailed(e)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

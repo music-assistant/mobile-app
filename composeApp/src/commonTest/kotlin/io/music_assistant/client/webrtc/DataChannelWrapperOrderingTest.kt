@@ -37,6 +37,7 @@ class DataChannelWrapperOrderingTest {
             receiveSource = source,
             initialState = DataChannelState.Open,
             label = "test",
+            diagnostics = WebRTCDiagnostics(),
         )
 
     @Test

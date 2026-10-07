@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -17,7 +18,7 @@ data class Answer(
 
     /**
      * Decode the RPC result payload as [T], returning `null` if there's no
-     * result or if the payload doesn't match the Kotlin model. Decode
+     * result (absent or JSON null) or if the payload doesn't match the Kotlin model. Decode
      * failures are logged with a truncated JSON preview (so the reason is
      * recoverable from logs) rather than thrown — an uncaught
      * [SerializationException] on a background coroutine dispatcher aborts
@@ -26,6 +27,9 @@ data class Answer(
      */
     inline fun <reified T : Any> resultAs(): T? {
         val payload = result ?: return null
+        // JSON null means "no value", same as an absent result: decoding it would
+        // throw for every T and spam the log for RPCs that legitimately return null.
+        if (payload is JsonNull) return null
         return try {
             myJson.decodeFromJsonElement<T>(payload)
         } catch (e: SerializationException) {

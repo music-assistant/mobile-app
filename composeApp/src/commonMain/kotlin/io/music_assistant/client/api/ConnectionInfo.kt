@@ -12,6 +12,9 @@ data class ConnectionInfo(
     val webUrl: String = origin(if (isTls) "https" else "http")
     val wsUrl: String = origin(if (isTls) "wss" else "ws")
 
+    /** The webserver socket that takes a spoken announcement as live PCM. */
+    val liveAnnouncementUrl: String = "$wsUrl/live_announcement"
+
     private fun origin(scheme: String) = "$scheme://$host:$port$path"
 
     companion object {

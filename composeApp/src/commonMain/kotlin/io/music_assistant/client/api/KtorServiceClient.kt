@@ -194,8 +194,11 @@ class KtorServiceClient(
         MutableStateFlow(SessionState.Disconnected.Initial)
     override val sessionState = _sessionState.asStateFlow()
 
+    private val SessionState.readyForCommands: Boolean
+        get() = this is SessionState.Connected && dataConnectionState is DataConnectionState.Authenticated
+
     override val isReadyForCommands: StateFlow<Boolean> = _sessionState
-        .map { it is SessionState.Connected && it.dataConnectionState is DataConnectionState.Authenticated }
+        .map { it.readyForCommands }
         .stateIn(this, SharingStarted.Eagerly, false)
 
     private val _externalConsumerActive = MutableStateFlow(false)
@@ -213,6 +216,9 @@ class KtorServiceClient(
      */
     override val webrtcSendspinChannel: io.music_assistant.client.webrtc.DataChannelWrapper?
         get() = (transport as? WebRTCTransport)?.sendspinDataChannel
+
+    override suspend fun openWebRTCDataChannel(label: String): io.music_assistant.client.webrtc.DataChannelWrapper? =
+        (transport as? WebRTCTransport)?.openDataChannel(label)
 
     override val webRTCHttpProxy: io.music_assistant.client.webrtc.WebRTCHttpProxy?
         get() = (transport as? WebRTCTransport)?.httpProxy
@@ -596,23 +602,31 @@ class KtorServiceClient(
                                 transport.disconnect()
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
                                 logger.i { "Transport→Reconnecting while backgrounded → Disconnected.Backgrounded" }
-                                return@collect
+                            } else {
+                                val preserved =
+                                    (_sessionState.value as? HasConnectionData)?.connectionData
+                                        ?: ConnectionData()
+                                _sessionState.update {
+                                    createReconnecting(
+                                        transportState.attempt,
+                                        preserved,
+                                    )
+                                }
+                                logger.i { "Transport→Reconnecting (attempt=${transportState.attempt})" }
                             }
-                            val preserved =
-                                (_sessionState.value as? HasConnectionData)?.connectionData
-                                    ?: ConnectionData()
-                            _sessionState.update {
-                                createReconnecting(
-                                    transportState.attempt,
-                                    preserved,
-                                )
-                            }
-                            logger.i { "Transport→Reconnecting (attempt=${transportState.attempt})" }
+                            // After the state update: a command re-queued by this failure must
+                            // see "not ready", not replay onto the dying socket.
+                            rpcEngine.failAll(
+                                ConnectionLostException("Transport reconnecting (attempt=${transportState.attempt})"),
+                            )
                         }
 
                         is TransportState.Failed -> {
                             _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
                             logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
+                            rpcEngine.failAll(
+                                ConnectionLostException("Transport failed: ${transportState.error.message}"),
+                            )
                         }
 
                         TransportState.Disconnected -> {
@@ -620,6 +634,7 @@ class KtorServiceClient(
                                 _sessionState.update { SessionState.Disconnected.ByUser }
                                 logger.i { "Transport→Disconnected → Disconnected.ByUser" }
                             }
+                            rpcEngine.failAll(ConnectionLostException("Transport disconnected"))
                         }
 
                         TransportState.Connecting -> {} // already handled
@@ -677,12 +692,7 @@ class KtorServiceClient(
         // New connection episode: the silent-failure budget is per-server-session, so
         // a prior server's failures must not pre-charge this one's escape hatch.
         silentReauth.reset()
-        // Cancel observer before disconnecting transport to prevent race where the old
-        // observer processes TransportState.Disconnected and briefly sets ByUser
-        transportObserverJob?.cancel()
-        transport?.disconnect()
-        transport?.close()
-        _sessionState.update { SessionState.Connecting }
+        tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
         startConnectWatchdog()
 
         val directTransport = DirectTransport(
@@ -739,10 +749,7 @@ class KtorServiceClient(
     /** WebRTC twin of [forceConnect]. */
     private fun forceConnectWebRTC(remoteId: RemoteId) {
         silentReauth.reset()
-        transportObserverJob?.cancel()
-        transport?.disconnect()
-        transport?.close()
-        _sessionState.update { SessionState.Connecting }
+        tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
         startConnectWatchdog()
 
         val webrtcTransport = WebRTCTransport(
@@ -799,14 +806,22 @@ class KtorServiceClient(
                 return@launch
             }
 
-            transportObserverJob?.cancel()
-            transportObserverJob = null
-            transport?.disconnect()
-            transport?.close()
-            transport = null
-            _sessionState.update { newState }
-            rpcEngine.clear()
+            tearDownTransport(newState, "Disconnected (${stateLabel(newState)})")
         }
+    }
+
+    /**
+     * Cancelling the observer avoids a spurious `Disconnected.ByUser`; pending requests must be failed
+     * here, after the state update, so retries observe [newState].
+     */
+    private fun tearDownTransport(newState: SessionState, cause: String) {
+        transportObserverJob?.cancel()
+        transportObserverJob = null
+        transport?.disconnect()
+        transport?.close()
+        transport = null
+        _sessionState.update { newState }
+        rpcEngine.failAll(ConnectionLostException(cause))
     }
 
     // --- Auth ---
@@ -1036,13 +1051,15 @@ class KtorServiceClient(
      * request with a clear "not connected/not authenticated" result.
      */
     private suspend fun ensureReadyForCommands(timeoutMs: Long = ENSURE_READY_TIMEOUT_MS): Boolean {
-        if (isReadyForCommands.value) return true
+        // Gate on the session state itself, not the `isReadyForCommands` projection, which
+        // updates a dispatch later and can still read true after a transport loss.
+        if (_sessionState.value.readyForCommands) return true
         recoveryMutex.withLock {
-            if (isReadyForCommands.value) return true
+            if (_sessionState.value.readyForCommands) return true
             kickRecovery()
         }
         return withTimeoutOrNull(timeoutMs) {
-            isReadyForCommands.first { it }
+            _sessionState.first { it.readyForCommands }
             true
         } == true
     }
@@ -1136,12 +1153,15 @@ class KtorServiceClient(
             val startMs = currentTimeMillis()
             logger.d { "sendRequest[$msgId] cmd=$cmd start" }
 
-            rpcEngine.registerCallback(msgId) { response ->
+            // The engine invokes this exactly once: with the server's answer, or
+            // with a failure when the transport carrying the request is lost.
+            rpcEngine.registerCallback(msgId) { result ->
                 logger.d {
                     "sendRequest[$msgId] cmd=$cmd resumed in " +
-                        "${currentTimeMillis() - startMs}ms"
+                        "${currentTimeMillis() - startMs}ms " +
+                        (if (result.isSuccess) "(answered)" else "(failed: ${result.exceptionOrNull()?.message})")
                 }
-                continuation.resume(Result.success(response))
+                continuation.resume(result)
             }
             // Caller cancellation (e.g. withTimeoutOrNull) must release the
             // rpcEngine callback, otherwise it leaks for the session lifetime.
@@ -1155,8 +1175,11 @@ class KtorServiceClient(
             launch {
                 val t = transport ?: run {
                     logger.i { "sendRequest[$msgId] cmd=$cmd transport=null at send time" }
-                    rpcEngine.removeCallback(msgId)
-                    continuation.resume(Result.failure(IllegalStateException("Not connected")))
+                    // Resume only if the engine hasn't already failed this request
+                    // (a transport loss racing the send); a second resume would throw.
+                    if (rpcEngine.removeCallback(msgId)) {
+                        continuation.resume(Result.failure(IllegalStateException("Not connected")))
+                    }
                     return@launch
                 }
                 try {
@@ -1166,8 +1189,9 @@ class KtorServiceClient(
                     logger.d { "sendRequest[$msgId] cmd=$cmd sent" }
                 } catch (e: Exception) {
                     logger.e(e) { "sendRequest[$msgId] cmd=$cmd send FAILED" }
-                    rpcEngine.removeCallback(msgId)
-                    continuation.resume(Result.failure(e))
+                    if (rpcEngine.removeCallback(msgId)) {
+                        continuation.resume(Result.failure(e))
+                    }
                     // A send failure is definitive liveness evidence: the high-level
                     // Connected/Authenticated state can lag behind a closed WebRTC data channel.
                     // Kick a fresh reconnect so callers that queue on failure are replayed when
@@ -1191,6 +1215,7 @@ class KtorServiceClient(
         }
 
     fun close() {
+        rpcEngine.failAll(ConnectionLostException("Client closed"))
         supervisorJob.cancel()
         currentClient.close()
     }

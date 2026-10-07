@@ -25,6 +25,7 @@ import musicassistantclient.shared_icons.generated.resources.music
 import musicassistantclient.shared_icons.generated.resources.office
 import musicassistantclient.shared_icons.generated.resources.outdoor
 import musicassistantclient.shared_icons.generated.resources.radio
+import musicassistantclient.shared_icons.generated.resources.receiver
 import musicassistantclient.shared_icons.generated.resources.smartphone
 import musicassistantclient.shared_icons.generated.resources.sonos
 import musicassistantclient.shared_icons.generated.resources.soundbar
@@ -85,6 +86,7 @@ object SharedIcons {
     const val SUN = "sun"
     const val HOME = "home"
     const val BUILDING = "building"
+    const val RECEIVER = "receiver"
 
     private val resourceMap: Map<String, DrawableResource> = mapOf(
         HOMEPOD_MINI to Res.drawable.homepod_mini,
@@ -124,5 +126,6 @@ object SharedIcons {
         SUN to Res.drawable.sun,
         HOME to Res.drawable.home,
         BUILDING to Res.drawable.building,
+        RECEIVER to Res.drawable.receiver,
     )
 }

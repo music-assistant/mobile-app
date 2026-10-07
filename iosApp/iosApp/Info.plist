@@ -14,6 +14,17 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>de</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>nl</string>
+		<string>sr</string>
+		<string>zh-CN</string>
+		<string>zh-TW</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -32,7 +43,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>51</string>
+	<string>53</string>
 	<key>INIntentsSupported</key>
 	<array>
 		<string>INPlayMediaIntent</string>
@@ -59,7 +70,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Music Assistant connects to your Music Assistant server on your local network to browse and play your music library.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Music Assistant does not access the microphone. This description is required because an included framework (WebRTC) references microphone APIs that this app does not use.</string>
+	<string>Music Assistant uses the microphone only while you hold the talk button, to send a spoken announcement to a speaker through your Music Assistant server.</string>
 	<key>NSSiriUsageDescription</key>
 	<string>Music Assistant uses Siri to search your library, play music, and like or dislike songs hands-free, including from CarPlay.</string>
 	<key>NSUserActivityTypes</key>

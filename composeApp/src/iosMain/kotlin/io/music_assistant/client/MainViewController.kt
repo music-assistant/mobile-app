@@ -2,10 +2,12 @@
     kotlinx.cinterop.ExperimentalForeignApi::class,
     kotlinx.cinterop.BetaInteropApi::class,
     kotlin.experimental.ExperimentalNativeApi::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
 )
 
 package io.music_assistant.client
 
+import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.ui.window.ComposeUIViewController
 import io.music_assistant.client.di.initKoin
 import io.music_assistant.client.di.iosModule
@@ -40,6 +42,10 @@ fun bootstrapKmp() {
 }
 
 private val kmpBootstrap: Unit by lazy {
+    // The UIKit VelocityTracker reads node-local positions, so a list that moves under the finger
+    // (the collapsing top bar in TopBarLayout) needs the drag node's offset compensation. With the
+    // "fix" enabled, the first fling across a top bar collapse gets a near-zero velocity (#1093).
+    ComposeFoundationFlags.isDragNodeOffsetDoubleCountingFixEnabled = false
     initKoin(iosModule(), verboseLogging = Platform.isDebugBinary)
     cleanupStaleLogFile()
     installCrashHandler()

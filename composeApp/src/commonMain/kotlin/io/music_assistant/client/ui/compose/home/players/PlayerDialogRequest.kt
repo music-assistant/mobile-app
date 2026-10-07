@@ -37,6 +37,8 @@ sealed interface PlayerDialogRequest {
         val queueItemId: String,
     ) : PlayerDialogRequest
 
+    data class Announcement(override val playerId: String) : PlayerDialogRequest
+
     /**
      * Carries the item itself: the add-to-playlist target is a snapshot taken at click time
      * (a queue row the user long-pressed), not something to re-derive from the player.

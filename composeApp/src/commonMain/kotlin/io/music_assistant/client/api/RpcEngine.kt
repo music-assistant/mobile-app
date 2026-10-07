@@ -12,12 +12,18 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+/** Distinguishes loss of the request's connection from a server error. */
+internal class ConnectionLostException(message: String) : Exception(message)
+
 /**
  * Handles RPC request/response correlation for the Music Assistant API.
  *
  * Manages pending request callbacks and partial result accumulation. The
  * server sends large result sets in 500-item batches with `"partial": true`;
  * this class accumulates them and delivers the merged result to the caller.
+ *
+ * Only the winner of atomic removal may complete a request; racing responses,
+ * transport loss, and send failures must not resume the same caller twice.
  *
  * Thread-safety: [registerCallback] and [removeCallback] are called from
  * request-issuing coroutines on `Dispatchers.IO`, while [handleResponse]
@@ -43,7 +49,7 @@ class RpcEngine(
     private val logger = Logger.withTag("RpcEngine")
 
     private val pendingResponses =
-        AtomicReference<Map<String, (Answer) -> Unit>>(emptyMap())
+        AtomicReference<Map<String, (Result<Answer>) -> Unit>>(emptyMap())
 
     // Accumulated partial results: message_id -> list of result items received so far.
     private val partialResults =
@@ -96,26 +102,34 @@ class RpcEngine(
                     ?.let(onError)
             }
         }
-        callback.invoke(answer)
+        callback.invoke(Result.success(answer))
         return true
     }
 
     /** Register a pending request callback by message_id. */
-    fun registerCallback(messageId: String, callback: (Answer) -> Unit) {
+    fun registerCallback(messageId: String, callback: (Result<Answer>) -> Unit) {
         pendingResponses.update { it + (messageId to callback) }
     }
 
-    /** Remove a pending request callback (for cancellation on send failure). */
-    fun removeCallback(messageId: String) {
-        pendingResponses.update { it - messageId }
+    /**
+     * Withdraws the callback without invoking it. Returns true if it was still pending,
+     * in which case the caller now owns completion of the request.
+     */
+    fun removeCallback(messageId: String): Boolean {
+        val removed = pendingResponses.getAndUpdate { it - messageId }.containsKey(messageId)
         // Drop any partials accumulated for a request that will never resolve.
         partialResults.update { it - messageId }
+        return removed
     }
 
-    /** Cancel all pending requests — call on disconnect to prevent leaks. */
-    fun clear() {
-        pendingResponses.store(emptyMap())
+    /** Fails every pending request with [cause]. Call on every transport loss: replies never cross connections. */
+    fun failAll(cause: Throwable) {
+        val pending = pendingResponses.getAndUpdate { emptyMap() }
         partialResults.store(emptyMap())
+        if (pending.isEmpty()) return
+        logger.i { "Failing ${pending.size} pending request(s): ${cause.message}" }
+        val failure = Result.failure<Answer>(cause)
+        pending.values.forEach { it.invoke(failure) }
     }
 
     private companion object {

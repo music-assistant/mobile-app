@@ -15,7 +15,7 @@ import kotlin.test.assertNull
  * Kotlin/Native aborts the whole process, so `resultAs` must:
  *
  *  - return the decoded model on success,
- *  - return `null` when `result` is absent,
+ *  - return `null` when `result` is absent or JSON null,
  *  - return `null` (and log) when the payload shape doesn't match `T`.
  */
 class AnswerTest {
@@ -44,6 +44,26 @@ class AnswerTest {
         val answer = envelopeNoResult()
 
         assertNull(answer.resultAs<ServerPlayer>())
+    }
+
+    @Test
+    fun returnsNullWhenResultIsJsonNull() {
+        // Server sends "result": null for RPCs with no value — e.g. the provider
+        // icon request for a provider without an icon. Must return null without
+        // going through the decode-failure warning path.
+        val answer = envelope("null")
+
+        assertNull(answer.resultAs<String>())
+        assertNull(answer.resultAs<ServerPlayer>())
+    }
+
+    @Test
+    fun decodesStringResult() {
+        // Positive control for the JSON-null guard above: real string results
+        // must still decode.
+        val answer = envelope(""""just a string"""")
+
+        assertEquals("just a string", answer.resultAs<String>())
     }
 
     @Test

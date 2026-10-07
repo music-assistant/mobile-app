@@ -23,7 +23,7 @@ internal enum class AuthFailureCause {
     /** The send itself failed — no transport, or the socket died before the write. */
     NOT_SENT,
 
-    /** The request went out, but no reply arrived within the timeout. */
+    /** No reply arrived: the round-trip timed out, or the connection dropped after the send. */
     NO_REPLY,
 }
 
@@ -91,7 +91,7 @@ internal fun classifyAuthRoundTrip(
         AuthRoundTrip.NoResponse(
             surfaceAsFailure = !isAutoLogin || budgetReached,
             cause = when (error) {
-                is AuthRoundTripTimeout -> AuthFailureCause.NO_REPLY
+                is AuthRoundTripTimeout, is ConnectionLostException -> AuthFailureCause.NO_REPLY
                 else -> AuthFailureCause.NOT_SENT
             },
         )

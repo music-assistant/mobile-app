@@ -16,6 +16,12 @@ object APICommands {
     const val PLAYERS_SLEEP_TIMER_CLEAR = "players/sleep_timer/clear"
     const val PLAYERS_ADD_CURRENTLY_PLAYING_TO_FAVORITES = "players/add_currently_playing_to_favorites"
 
+    // Announcements. The command answers only after the announcement has finished playing.
+    // An empty engine list means the server cannot speak a typed message (schema 46+).
+    const val PLAYERS_CMD_PLAY_ANNOUNCEMENT = "$PLAYERS_CMD/play_announcement"
+    const val PLAYERS_TTS_ENGINES = "players/tts_engines"
+    const val CONFIG_PLAYERS_GET_VALUE = "config/players/get_value"
+
     // Player Queue commands
     const val PLAYER_QUEUES_ALL = "player_queues/all"
     const val PLAYER_QUEUES_ITEMS = "player_queues/items"
