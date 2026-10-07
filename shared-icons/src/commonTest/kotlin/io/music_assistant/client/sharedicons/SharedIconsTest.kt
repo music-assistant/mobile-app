@@ -13,7 +13,7 @@ class SharedIconsTest {
     @Test
     fun `getResource returns speaker for unknown ID`() {
         val resource = SharedIcons.getResource("unknown")
-        assertEquals(resource, Res.drawable.speaker)
+        assertEquals(Res.drawable.speaker, resource)
     }
 
     @Test
