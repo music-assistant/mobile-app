@@ -387,6 +387,18 @@ class SettingsRepository(
         _dynamicColors.update { enabled }
     }
 
+    // Whether the player's status badges (sleep timer, autoplay, crossfade) drop their text
+    // labels and show only their icons.
+    private val _compactPlayerBadges = MutableStateFlow(
+        settings.getBoolean("compact_player_badges", false),
+    )
+    val compactPlayerBadges = _compactPlayerBadges.asStateFlow()
+
+    fun setCompactPlayerBadges(enabled: Boolean) {
+        settings.putBoolean("compact_player_badges", enabled)
+        _compactPlayerBadges.update { enabled }
+    }
+
     // Opt-in escape hatch from the compact-device portrait lock: when set, the
     // platform layer stops constraining orientation on any device.
     private val _allowLandscapeOnAllDevices = MutableStateFlow(

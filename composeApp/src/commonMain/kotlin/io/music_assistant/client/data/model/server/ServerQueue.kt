@@ -35,6 +35,11 @@ data class ServerQueue(
      * read-modern/write-legacy split here.
      */
     @SerialName("crossfade_enabled") val crossfadeEnabled: Boolean? = null,
+    /**
+     * Server-derived and read-only: crossfade is on, smart is preferred, and smart fades are
+     * available. Drives the animated crossfade badge, as it does the web frontend's icon.
+     */
+    @SerialName("smart_fades_active") val smartFadesActive: Boolean = false,
     @SerialName("current_index") val currentIndex: Int? = null,
     // @SerialName("index_in_buffer") val indexInBuffer: Int? = null,
     @SerialName("elapsed_time") val elapsedTime: Double? = null,

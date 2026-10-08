@@ -28,6 +28,8 @@ data class QueueInfo(
      * Nullability is the gate for the badge and the menu entry.
      */
     val crossfadeEnabled: Boolean? = null,
+    /** Server-derived: the effective crossfade is smart crossfade. */
+    val smartFadesActive: Boolean = false,
     /** Server-derived: the active source is a dynamic/smart playlist (rule-generated). */
     val isDynamicPlaylist: Boolean = false,
     val playbackSpeed: Double? = null,

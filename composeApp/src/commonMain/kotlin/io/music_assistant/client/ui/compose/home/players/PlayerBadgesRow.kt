@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AllInclusive
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,8 +26,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.server.AudioQueueProcessing
 import io.music_assistant.client.ui.alphaOn
-import io.music_assistant.client.ui.compose.common.icons.CrossfadeIcon
+import io.music_assistant.client.ui.compose.common.icons.AnimatedAutoplayIcon
+import io.music_assistant.client.ui.compose.common.icons.AnimatedCrossfadeIcon
 import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_off
@@ -62,6 +61,9 @@ private const val BADGE_PILL_ALPHA = 0.2f
  *
  * Always emitted, never conditionally skipped — the row holds [BADGE_ROW_HEIGHT] even
  * with nothing to show, so a badge switching on does not shift the artwork below it.
+ *
+ * [compact] drops the text labels so each badge is just its icon. A running sleep timer
+ * keeps its countdown, since that is a value rather than a label.
  */
 @Composable
 fun PlayerBadgesRow(
@@ -71,6 +73,7 @@ fun PlayerBadgesRow(
     onToggleAutoplay: (current: Boolean) -> Unit,
     onToggleCrossfade: (current: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -87,6 +90,7 @@ fun PlayerBadgesRow(
                 remaining = sleepRemaining,
                 tint = tint,
                 onClick = onSleepTimerClick,
+                compact = compact,
             )
         }
 
@@ -106,6 +110,7 @@ fun PlayerBadgesRow(
             AutoplayBadge(
                 tint = tint,
                 on = on,
+                compact = compact,
                 onClick = { onToggleAutoplay(on) }.takeIf { !isDynamic && hasSomethingToPlay },
             )
         }
@@ -115,9 +120,15 @@ fun PlayerBadgesRow(
         // but accepts crossfade, so dimming it would forbid a call the server allows.
         val crossfadeEnabled = queueInfo?.crossfadeEnabled
         if (crossfadeEnabled != null) {
+            // Same rule as the web frontend: smart fades animate, unless the source provider
+            // crossfades on its own and the server's fades never apply.
+            val sourceCrossfades = queueInfo.currentItem?.audioProcessingChain?.queueProcessing
+                ?.crossfadeMode == AudioQueueProcessing.CROSSFADE_MODE_SOURCE
             CrossfadeBadge(
                 tint = tint,
                 on = crossfadeEnabled,
+                smart = crossfadeEnabled && queueInfo.smartFadesActive && !sourceCrossfades,
+                compact = compact,
                 onClick = {
                     onToggleCrossfade(crossfadeEnabled)
                 }.takeIf { queueInfo.currentItem != null },
@@ -127,49 +138,53 @@ fun PlayerBadgesRow(
 }
 
 @Composable
-private fun CrossfadeBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
+private fun CrossfadeBadge(
+    tint: Color,
+    on: Boolean,
+    smart: Boolean,
+    compact: Boolean,
+    onClick: (() -> Unit)?,
+) {
     BadgePill(
         contentDescription = stringResource(
             if (on) Res.string.cd_crossfade_on else Res.string.cd_crossfade_off,
         ),
         tint = tint,
         on = on,
+        iconOnly = compact,
         onClick = onClick,
     ) {
         // Colors come from the pill via LocalContentColor.
-        Icon(
-            imageVector = CrossfadeIcon,
-            contentDescription = null,
-            modifier = Modifier.size(BADGE_ICON_SIZE),
-        )
-        Text(
-            text = stringResource(Res.string.player_crossfade),
-            style = MaterialTheme.typography.labelSmall,
-        )
+        AnimatedCrossfadeIcon(smart = smart, modifier = Modifier.size(BADGE_ICON_SIZE))
+        if (!compact) {
+            Text(
+                text = stringResource(Res.string.player_crossfade),
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
     }
 }
 
 @Composable
-private fun AutoplayBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
+private fun AutoplayBadge(tint: Color, on: Boolean, compact: Boolean, onClick: (() -> Unit)?) {
     BadgePill(
         contentDescription = stringResource(
             if (on) Res.string.cd_autoplay_on else Res.string.cd_autoplay_off,
         ),
         tint = tint,
         on = on,
+        iconOnly = compact,
         onClick = onClick,
     ) {
         // Colors come from the pill via LocalContentColor, so the badge cannot drift
         // out of sync with its own container.
-        Icon(
-            imageVector = Icons.Default.AllInclusive,
-            contentDescription = null,
-            modifier = Modifier.size(BADGE_ICON_SIZE),
-        )
-        Text(
-            text = stringResource(Res.string.player_autoplay),
-            style = MaterialTheme.typography.labelSmall,
-        )
+        AnimatedAutoplayIcon(active = on, modifier = Modifier.size(BADGE_ICON_SIZE))
+        if (!compact) {
+            Text(
+                text = stringResource(Res.string.player_autoplay),
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
     }
 }
 
@@ -190,6 +205,9 @@ private fun AutoplayBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
  *
  * Merges its descendants' semantics under [contentDescription] so the badge is one node
  * carrying both the description and the click action — the icon inside stays undescribed.
+ *
+ * [iconOnly] evens out the padding so a lone icon sits in a circle rather than a stub of a
+ * pill. The content decides what to drop; this only shapes the container around it.
  */
 @Composable
 internal fun BadgePill(
@@ -198,6 +216,7 @@ internal fun BadgePill(
     on: Boolean,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    iconOnly: Boolean = false,
     content: @Composable RowScope.() -> Unit,
 ) {
     val container = if (on) {
@@ -214,7 +233,7 @@ internal fun BadgePill(
             .clip(BADGE_PILL_SHAPE)
             .background(container)
             .then(onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = if (iconOnly) 4.dp else 8.dp, vertical = 4.dp)
             .clearAndSetSemantics { this.contentDescription = contentDescription },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),

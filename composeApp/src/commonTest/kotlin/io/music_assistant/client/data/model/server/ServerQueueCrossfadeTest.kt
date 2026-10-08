@@ -5,7 +5,9 @@ import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Pins crossfade decoding, and above all that an absent key stays null.
@@ -43,5 +45,33 @@ class ServerQueueCrossfadeTest {
     fun unrelatedQueueFieldsDoNotLeakIntoCrossfade() {
         // A queue that reports autoplay but not crossfade must still gate crossfade off.
         assertNull(crossfadeEnabled("""{"queue_id": "q1", "autoplay_enabled": true}"""))
+    }
+
+    private fun smartFadesActive(json: String) = queueFactory.create(decode(json)).smartFadesActive
+
+    @Test
+    fun smartFadesActiveIsRead() {
+        assertTrue(
+            smartFadesActive(
+                """{"queue_id": "q1", "crossfade_enabled": true, "smart_fades_active": true}""",
+            ),
+        )
+    }
+
+    @Test
+    fun absentSmartFadesKeyMeansNoAnimation() {
+        // Older servers never send the key; the crossfade badge must then stay static.
+        assertFalse(smartFadesActive("""{"queue_id": "q1", "crossfade_enabled": true}"""))
+    }
+
+    @Test
+    fun queueProcessingCrossfadeModeIsRead() {
+        val chain = myJson.decodeFromString<AudioProcessingChain>(
+            """{"queue_processing": {"crossfade_mode": "source", "playback_speed": 1.0}}""",
+        )
+        assertEquals(
+            AudioQueueProcessing.CROSSFADE_MODE_SOURCE,
+            chain.queueProcessing?.crossfadeMode,
+        )
     }
 }

@@ -99,12 +99,14 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
+import io.music_assistant.client.ui.compose.common.compactBadgesMenuOption
 import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.ignoreDragsFromBottomGestureZone
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
+import io.music_assistant.client.ui.compose.common.rememberCompactPlayerBadges
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -573,6 +575,7 @@ private fun ExpandedPlayerPage(
             onToggleCrossfade = { current ->
                 playerAction(player, PlayerAction.ToggleCrossfade(current = current))
             },
+            compact = rememberCompactPlayerBadges(),
         )
 
         AnimatedVisibility(
@@ -954,7 +957,8 @@ private fun PlayerOverflowMenu(
     }
 
     // Player actions (top group): power, queue ops, announcement, DSP, then the display toggles —
-    // dynamic colors and buffer indicator sit right after DSP, consistently for every player.
+    // dynamic colors, compact badges and buffer indicator sit right after DSP, consistently for
+    // every player.
     val displayOptions = buildList {
         onAnnounce?.let {
             add(
@@ -975,6 +979,7 @@ private fun PlayerOverflowMenu(
             )
         }
         add(dynamicColorsMenuOption())
+        add(compactBadgesMenuOption())
         // Buffer indicator toggle — local player only (the segment it controls is local-only).
         if (currentPlayer.isLocal) {
             add(bufferIndicatorMenuOption())

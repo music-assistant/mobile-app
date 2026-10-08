@@ -57,6 +57,9 @@ fun rememberSleepTimerRemaining(expiresAtSec: Double?): Duration? =
  * A null [remaining] is the idle state: outlined pill and the `--:--` that
  * [formatDuration] already renders for a null duration. It stays tappable either way —
  * tapping with no timer running is how you set one.
+ *
+ * [compact] drops the idle "Sleep timer" label; a running countdown is a value, not a
+ * label, so it always shows.
  */
 @Composable
 fun SleepTimerBadge(
@@ -64,7 +67,13 @@ fun SleepTimerBadge(
     tint: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
+    val text = when {
+        remaining != null -> remaining.formatDuration()
+        compact -> null
+        else -> stringResource(Res.string.player_sleep_timer)
+    }
     BadgePill(
         contentDescription = stringResource(
             if (remaining != null) Res.string.cd_sleep_timer else Res.string.cd_sleep_timer_off,
@@ -73,6 +82,7 @@ fun SleepTimerBadge(
         on = remaining != null,
         onClick = onClick,
         modifier = modifier,
+        iconOnly = text == null,
     ) {
         // Colors come from the pill via LocalContentColor.
         Icon(
@@ -80,13 +90,11 @@ fun SleepTimerBadge(
             contentDescription = null,
             modifier = Modifier.size(BADGE_ICON_SIZE),
         )
-        Text(
-            text = if (remaining != null) {
-                remaining.formatDuration()
-            } else {
-                stringResource(Res.string.player_sleep_timer)
-            },
-            style = MaterialTheme.typography.labelSmall,
-        )
+        text?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
     }
 }

@@ -42,8 +42,20 @@ data class StreamDetails(
 @Serializable
 data class AudioProcessingChain(
     @SerialName("input_fidelity") val inputFidelity: AudioFidelity? = null,
+    @SerialName("queue_processing") val queueProcessing: AudioQueueProcessing? = null,
     @SerialName("outputs") val outputs: List<AudioOutputDetails>? = null,
 )
+
+/** Processing shared before output fan-out. Only the crossfade mode is read for now. */
+@Serializable
+data class AudioQueueProcessing(
+    @SerialName("crossfade_mode") val crossfadeMode: String? = null,
+) {
+    companion object {
+        /** The source provider crossfades on its own, so the server's smart fades do not apply. */
+        const val CROSSFADE_MODE_SOURCE = "source"
+    }
+}
 
 @Serializable
 data class AudioFidelity(

@@ -30,6 +30,7 @@ class QueueFactory(
             repeatMode = RepeatMode.fromServer(repeatMode) ?: RepeatMode.OFF,
             autoPlayEnabled = autoplayEnabled ?: dontStopTheMusicEnabled,
             crossfadeEnabled = crossfadeEnabled,
+            smartFadesActive = smartFadesActive,
             elapsedTime = elapsedTime,
             elapsedTimeLastUpdated = elapsedTimeLastUpdated,
             currentItem = currentItem?.let(::createTrack),

@@ -242,6 +242,7 @@
   <string name="not_connected_retry">Not connected — try again when reconnected</string>
   <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="player_autoplay">Autoplay</string>
+  <string name="player_compact_badges">Compact badges</string>
   <string name="player_crossfade">Crossfade</string>
   <string name="player_dynamic_colors">Dynamic colors</string>
   <string name="player_needs_setup">Setup required</string>
