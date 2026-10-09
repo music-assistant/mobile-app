@@ -8,6 +8,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioRouting
 import android.media.AudioTrack
 import android.os.Build
 import co.touchlab.kermit.Logger
@@ -88,7 +89,8 @@ class AudioTrackSink(
         }
         track.play()
         logger.i {
-            "AudioTrack opened: ${format.sampleRate}Hz ${format.channels}ch ${format.bitDepth}bit, buffer ${minBuffer * BUFFER_MULTIPLIER}"
+            "AudioTrack opened: ${format.sampleRate}Hz ${format.channels}ch ${format.bitDepth}bit, " +
+                "buffer ${minBuffer * BUFFER_MULTIPLIER}, performanceMode=${track.performanceMode}"
         }
         return Handle(track, format)
     }
@@ -108,6 +110,7 @@ class AudioTrackSink(
         override val latencyMicros: Long? = null
 
         private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+            logger.i { "Audio focus change: $change" }
             when (change) {
                 AudioManager.AUDIOFOCUS_GAIN -> {
                     runCatching { track.setVolume(1f) }
@@ -147,7 +150,15 @@ class AudioTrackSink(
             null
         }
 
+        // Fires once with the initial device, then on every reroute, including a track the system rebuilds.
+        private val routingListener = AudioRouting.OnRoutingChangedListener { router ->
+            val device = router.routedDevice
+            logger.i { "AudioTrack routed to ${device?.productName} type=${device?.type} id=${device?.id}" }
+            sinkEvents.tryEmit(SinkEvent.RouteChanged)
+        }
+
         init {
+            track.addOnRoutingChangedListener(routingListener, null)
             val granted = audioManager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
             if (!granted) logger.w { "Audio focus not granted; playing anyway" }
             context.registerReceiver(noisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
@@ -209,6 +220,7 @@ class AudioTrackSink(
         override fun underrunCount(): Int = runCatching { track.underrunCount }.getOrDefault(0)
 
         override fun close() {
+            track.removeOnRoutingChangedListener(routingListener)
             runCatching { context.unregisterReceiver(noisyReceiver) }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 modeListener?.let { runCatching { audioManager.removeOnModeChangedListener(it) } }

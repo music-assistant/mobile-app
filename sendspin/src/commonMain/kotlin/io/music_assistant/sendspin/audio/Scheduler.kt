@@ -265,6 +265,7 @@ internal class Scheduler(
 
     private suspend fun write(out: SinkHandle, pcm: ByteArray, offset: Int = 0, length: Int = pcm.size): Boolean {
         val fmt = format ?: return false
+        checkLoopGap()
         var at = offset
         val end = offset + length
         while (at < end) {
@@ -320,6 +321,18 @@ internal class Scheduler(
             logger.w { "Sink underrun: +${count - underruns} total=$count sinceWriteMs=${sinceWriteMillis()}" }
         }
         underruns = count
+    }
+
+    /**
+     * A long gap between writes while playing means the feeder stalled (thread starved,
+     * decoder or data late), as opposed to a glitch below the sink that the loop cannot see.
+     */
+    private fun checkLoopGap() {
+        val gapMillis = sinceWriteMillis()
+        if (!played || gapMillis < LOOP_GAP_LOG_MILLIS) return
+        if (correctionLogs++ < MAX_CORRECTION_LOGS) {
+            logger.w { "Audio loop gap: sinceWriteMs=$gapMillis bufferedMs=${pipeline.buffer.spanMicros / MICROS_PER_MILLI}" }
+        }
     }
 
     private fun sinceWriteMillis(): Long =
@@ -389,6 +402,9 @@ internal class Scheduler(
 
         /** Correction and underrun lines per stream; the stream stats line keeps the totals. */
         const val MAX_CORRECTION_LOGS = 30
+
+        /** Writes normally return a block (~100 ms) apart; well beyond that the feeder stalled. */
+        const val LOOP_GAP_LOG_MILLIS = 150L
         const val BITS_PER_BYTE = 8
         const val MICROS_PER_SECOND = 1_000_000L
         const val MICROS_PER_MILLI = 1_000L
