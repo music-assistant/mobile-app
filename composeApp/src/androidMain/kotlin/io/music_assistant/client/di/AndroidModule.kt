@@ -13,16 +13,16 @@ import io.music_assistant.client.utils.AndroidBackgroundUsageGuard
 import io.music_assistant.client.utils.AndroidHttpClientFactory
 import io.music_assistant.client.utils.BackgroundUsageGuard
 import io.music_assistant.client.utils.HttpClientFactory
+import io.music_assistant.client.utils.sendspinClock
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
-import io.music_assistant.sendspin.api.SystemMonotonicClock
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 @OptIn(ExperimentalKtorApi::class)
 fun androidModule() = module {
     single { PlatformContext(androidContext()) }
-    single<AudioSink> { AudioTrackSink(androidContext(), SystemMonotonicClock) }
+    single<AudioSink> { AudioTrackSink(androidContext(), sendspinClock) }
     single<DecoderFactory> { AndroidDecoderFactory() }
     single<MicrophoneCapture> { AudioRecordCapture() }
     single<BackgroundUsageGuard> { AndroidBackgroundUsageGuard(androidContext()) }

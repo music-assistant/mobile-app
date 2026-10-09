@@ -30,7 +30,9 @@ import kotlin.math.abs
  * corrected by inserting silence (early), trimming or dropping (late), or a
  * gentle resample inside the tolerance band. The sink's own buffer is the
  * write-ahead cushion: writes block at the hardware rate, which paces the loop.
- * Without feedback (iOS), scheduling is open loop: wait until due, drop when late.
+ * Without feedback (iOS), scheduling is open loop: wait until due, write even when
+ * late. The native queue holds far more than any stall, and the local player is never
+ * grouped, so a late drop would only cut audio that still plays in sequence.
  * A pass-through decoder (`outputCodec != PCM`, the sink decodes) forces open
  * loop too: the bytes are opaque, so they cannot be trimmed, padded or resampled.
  *
@@ -198,24 +200,25 @@ internal class Scheduler(
         val lead = target - (clock.nowMicros() + queuedMicros + latency)
         lastLeadMicros = lead
 
-        if (lead < -HARD_TOLERANCE_MICROS) {
-            val late = -lead
-            lateDrops++
-            lateMicros += late
-            logCorrection("late", lead, queuedMicros, position)
-            val pcm = decode(chunk) ?: return true
-            val blockMicros = if (opaque) 0L else framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
-            if (late >= blockMicros) return true // whole chunk is in the past
-            val skip = microsToBytes(late, fmt)
-            return write(out, pcm, skip, pcm.size - skip)
-        }
         if (position == null) {
             // Open loop: no feedback, so the wall clock is the only reference.
             if (lead > SOFT_TOLERANCE_MICROS) {
                 waitOrWake(lead)
                 return false
             }
+            if (lead < -HARD_TOLERANCE_MICROS) logCorrection("late", lead, queuedMicros, position)
             return decodeAndWrite(out, chunk)
+        }
+        if (lead < -HARD_TOLERANCE_MICROS) {
+            val late = -lead
+            lateDrops++
+            lateMicros += late
+            logCorrection("late", lead, queuedMicros, position)
+            val pcm = decode(chunk) ?: return true
+            val blockMicros = framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
+            if (late >= blockMicros) return true // whole chunk is in the past
+            val skip = microsToBytes(late, fmt)
+            return write(out, pcm, skip, pcm.size - skip)
         }
         if (lead > MAX_SILENCE_MICROS) {
             waitOrWake(lead - MAX_SILENCE_MICROS)

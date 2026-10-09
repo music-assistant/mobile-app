@@ -38,7 +38,11 @@ class SendspinDeps(
     val clock: MonotonicClock = SystemMonotonicClock,
 )
 
-/** Local monotonic time in microseconds. Injected so tests can drive it. */
+/**
+ * Local monotonic time in microseconds. Injected so tests can drive it. A production clock
+ * must tick through device sleep: the server offset is learned against it, and a clock that
+ * pauses in a doze is off by the whole sleep when playback resumes.
+ */
 fun interface MonotonicClock {
     fun nowMicros(): Long
 }

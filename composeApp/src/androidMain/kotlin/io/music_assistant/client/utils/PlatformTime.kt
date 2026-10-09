@@ -17,10 +17,14 @@ private val hasRealSystemClock: Boolean = try {
 }
 
 private const val NANOS_PER_MILLI = 1_000_000L
+private const val NANOS_PER_MICRO = 1_000L
 
 /** [SystemClock.elapsedRealtime] ticks through deep sleep; [SystemClock.uptimeMillis] doesn't. */
 actual fun monotonicMs(): Long =
     if (hasRealSystemClock) SystemClock.elapsedRealtime() else System.nanoTime() / NANOS_PER_MILLI
+
+actual fun monotonicMicros(): Long =
+    (if (hasRealSystemClock) SystemClock.elapsedRealtimeNanos() else System.nanoTime()) / NANOS_PER_MICRO
 
 actual fun formatIsoDate(isoDate: String): String = try {
     LocalDate.parse(isoDate.substringBefore("T"))
