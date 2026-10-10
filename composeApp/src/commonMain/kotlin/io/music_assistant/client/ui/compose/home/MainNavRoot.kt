@@ -68,6 +68,7 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
+import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListScreen
@@ -355,15 +356,7 @@ private fun navigationItems(
     searchScreenState: MutableState<SearchScreenState?>,
     playersState: HomeScreenViewModel.PlayersState,
 ): List<NavigationItem> {
-    val playerName = playersState.let {
-        if (it is HomeScreenViewModel.PlayersState.Data) {
-            it.selectedPlayer?.player?.name
-        } else {
-            null
-        }
-    }
-
-    return listOf(
+    val navigationItems = mutableListOf(
         multiBackStack.createNavigationItem(
             backStack = 0,
             icon = Icons.Default.Home,
@@ -382,18 +375,34 @@ private fun navigationItems(
             label = stringResource(Res.string.nav_search),
             screenState = searchScreenState.value,
         ),
-        NavigationItem(
-            selected = false,
-            onClick = { },
-            icon = vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-            label = playerName ?: "",
-            contentDescription = if (playerName != null) {
-                stringResource(Res.string.cd_current_player, playerName)
-            } else {
-                null
-            },
-        ),
     )
+
+    if (playersState is HomeScreenViewModel.PlayersState.Data) {
+        val selectedPlayer = playersState.selectedPlayer
+        if (selectedPlayer != null) {
+            var showPlayerSelection by remember { mutableStateOf(false) }
+            if (showPlayerSelection) {
+                SelectPlayerDialog(
+                    selectedPlayer = selectedPlayer,
+                    players = playersState.playerData,
+                    onDismissRequest = { showPlayerSelection = false },
+                )
+            }
+
+            navigationItems += NavigationItem(
+                selected = false,
+                onClick = { showPlayerSelection = true },
+                icon = vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+                label = selectedPlayer.player.name,
+                contentDescription = stringResource(
+                    Res.string.cd_current_player,
+                    selectedPlayer.player.name,
+                ),
+            )
+        }
+    }
+
+    return navigationItems
 }
 
 /**
