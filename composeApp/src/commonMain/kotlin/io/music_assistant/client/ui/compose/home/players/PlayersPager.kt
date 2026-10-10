@@ -37,7 +37,9 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -120,6 +122,9 @@ import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
+import musicassistantclient.composeapp.generated.resources.ai_radio_dj
+import musicassistantclient.composeapp.generated.resources.ai_radio_dj_off
+import musicassistantclient.composeapp.generated.resources.ai_radio_dj_on_air
 import musicassistantclient.composeapp.generated.resources.announcement_title
 import musicassistantclient.composeapp.generated.resources.bound_player_joined_to
 import musicassistantclient.composeapp.generated.resources.bound_player_part_of_group
@@ -153,6 +158,7 @@ fun PlayersPager(
     actionsViewModel: ActionsViewModel,
     dspSettingsViewModel: DspSettingsViewModel,
     providerViewModel: ProviderViewModel,
+    queueDjViewModel: QueueDjViewModel,
     expanded: Boolean,
     onClose: () -> Unit,
     contentPadding: PaddingValues,
@@ -186,6 +192,8 @@ fun PlayersPager(
             .collectAsStateWithLifecycle()
         val announcementAvailability by koinInject<AnnouncementRepository>().availability
             .collectAsStateWithLifecycle()
+        // Null while the AI Radio DJ gate is closed, which hides the menu row.
+        val queueDjState by queueDjViewModel.state.collectAsStateWithLifecycle()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -400,6 +408,9 @@ fun PlayersPager(
                                 onPlaybackSpeedClick = onPlaybackSpeedClick,
                                 onChooseArtist = onChooseArtist,
                                 chapterProgressEnabled = chapterProgressEnabled,
+                                queueDjMenu = player.queueId?.let { queueDjState?.menuFor(it) },
+                                onQueueDjSelected = queueDjViewModel::select,
+                                onMenuOpen = queueDjViewModel::refresh,
                             )
                         }
                     }
@@ -495,6 +506,9 @@ private fun ExpandedPlayerPage(
     onAudioChainClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
     chapterProgressEnabled: Boolean = true,
+    queueDjMenu: QueueDjMenu? = null,
+    onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
+    onMenuOpen: () -> Unit = {},
 ) {
     // The queue sits beside the player whenever the window is wide (see
     // [WindowClass.isWide]); otherwise it collapses underneath it. The two panes
@@ -556,6 +570,9 @@ private fun ExpandedPlayerPage(
                     onOpenDsp = onDspButton,
                     onAnnounce = onAnnounceButton,
                     onAddToPlaylist = onAddToPlaylist,
+                    queueDjMenu = queueDjMenu,
+                    onQueueDjSelected = onQueueDjSelected,
+                    onMenuOpen = onMenuOpen,
                 )
             },
         )
@@ -867,8 +884,12 @@ private fun PlayerOverflowMenu(
     onOpenDsp: (() -> Unit)?,
     onAnnounce: (() -> Unit)?,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
+    queueDjMenu: QueueDjMenu? = null,
+    onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
+    onMenuOpen: () -> Unit = {},
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
+    var queueDjMenuExpanded by remember { mutableStateOf(false) }
     val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
 
     val queueData = currentPlayer.queue as? DataState.Data
@@ -935,6 +956,51 @@ private fun PlayerOverflowMenu(
         }
     }
 
+    // AI Radio DJ: needs a queue but not its items, since a DJ can wait for the queue to fill.
+    val queueDjOptions = queueId?.let { id ->
+        when (queueDjMenu) {
+            null -> emptyList()
+            // A running show owns the queue, so the row only says so.
+            QueueDjMenu.OnAir -> listOf(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.ai_radio_dj_on_air),
+                    icon = Icons.Default.AutoAwesome,
+                    enabled = false,
+                    onClick = {},
+                ),
+            )
+            is QueueDjMenu.Choices -> {
+                Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+                    OverflowMenu(
+                        expanded = queueDjMenuExpanded,
+                        onClose = { queueDjMenuExpanded = false },
+                        options = queueDjMenu.hosts.map { host ->
+                            OverflowMenuOption(
+                                title = host.name,
+                                trailingIcon = Icons.Default.Check
+                                    .takeIf { host.id == queueDjMenu.selectedHostId },
+                                onClick = { onQueueDjSelected(id, host.id) },
+                            )
+                        } + OverflowMenuOption(
+                            title = stringResource(Res.string.ai_radio_dj_off),
+                            trailingIcon = Icons.Default.Check
+                                .takeIf { queueDjMenu.selectedHostId == null },
+                            onClick = { onQueueDjSelected(id, null) },
+                        ),
+                    )
+                }
+                listOf(
+                    OverflowMenuOption(
+                        title = stringResource(Res.string.ai_radio_dj),
+                        icon = Icons.Default.AutoAwesome,
+                        trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
+                        onClick = { queueDjMenuExpanded = true },
+                    ),
+                )
+            }
+        }
+    }.orEmpty()
+
     // Power sits at the very top of the menu, ahead of queue/player/navigation options.
     val powerOption = if (currentPlayer.player.canPower) {
         // Reads the dormant state, not the raw flag: an unreachable player reports itself
@@ -980,7 +1046,7 @@ private fun PlayerOverflowMenu(
             add(bufferIndicatorMenuOption())
         }
     }
-    val playerActions = powerOption + queueOptions + displayOptions
+    val playerActions = powerOption + queueOptions + queueDjOptions + displayOptions
 
     // Track actions (bottom group): add-to-playlist + navigation (go to artist/album).
     val navigationOptions =
@@ -1013,6 +1079,7 @@ private fun PlayerOverflowMenu(
         OverflowMenuButton(
             modifier = Modifier,
             options = menuOptions,
+            onOpen = onMenuOpen,
         ) { onClick ->
             IconButton(onClick = onClick) {
                 Icon(

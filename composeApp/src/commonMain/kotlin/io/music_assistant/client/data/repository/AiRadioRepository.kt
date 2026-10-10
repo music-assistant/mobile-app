@@ -1,9 +1,11 @@
 package io.music_assistant.client.data.repository
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.server.ServerAiRadioHost
 import io.music_assistant.client.data.model.server.ServerAiRadioSession
 import io.music_assistant.client.data.model.server.ServerAiRadioStation
 import io.music_assistant.client.data.model.server.ServerAiRadioStatus
@@ -15,12 +17,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 /**
  * Read/run access to the optional `ai_radio` plugin provider.
  *
- * Listing and running only: stations, sections and hosts are authored in the web frontend,
- * whose prompt editor this deliberately does not reproduce.
+ * Listing, running, and the queue DJ only: stations, sections and hosts are authored in the
+ * web frontend, whose prompt editor this deliberately does not reproduce.
  *
  * Every call fails on a server without the plugin, and starting or stopping additionally
  * needs a scope that only `admin` holds. Gate the call sites on
- * [io.music_assistant.client.data.MainDataSource.aiRadioAvailable] rather than calling blind.
+ * [io.music_assistant.client.data.MainDataSource.aiRadioAvailable], or on
+ * [io.music_assistant.client.data.MainDataSource.aiRadioQueueDjAvailable] for the queue DJ calls,
+ * rather than calling blind.
  */
 class AiRadioRepository(
     private val apiClient: ServiceClient,
@@ -87,6 +91,28 @@ class AiRadioRepository(
                 ?: error("Missing or undecodable AI Radio status payload")
             status.sessions.firstOrNull { it.isRunning }
         }
+
+    /** All hosts, for the queue DJ menu. Sorted by name server-side. */
+    suspend fun hosts(): Result<List<ServerAiRadioHost>> =
+        apiClient.sendRequest(Request.AiRadio.hosts()).mapCatching { answer ->
+            answer.resultAs<List<ServerAiRadioHost>>()
+                ?: error("Missing or undecodable AI Radio host list payload")
+        }
+
+    /**
+     * The `queue_id -> host_id` map of every queue that has a DJ. The provider emits no event
+     * when it changes, so this has to be re-read whenever the menu that shows it opens.
+     */
+    suspend fun queueDjStatus(): Result<Map<String, String>> =
+        apiClient.sendRequest(Request.AiRadio.queueDjStatus()).mapCatching { it.decodeQueueDj() }
+
+    /** Sets or, with a null [hostId], removes the DJ of [queueId]. Answers the new status map. */
+    suspend fun setQueueDj(queueId: String, hostId: String?): Result<Map<String, String>> =
+        apiClient.sendRequest(Request.AiRadio.setQueueDj(queueId, hostId))
+            .mapCatching { it.decodeQueueDj() }
+
+    private fun Answer.decodeQueueDj(): Map<String, String> =
+        resultAs<Map<String, String>>() ?: error("Missing or undecodable AI Radio queue DJ payload")
 
     /**
      * Artwork URLs for [stations], keyed by station id.
