@@ -16,7 +16,6 @@ import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.nav_settings
 
 class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
@@ -26,7 +25,6 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
                 Res.string.nav_home.get(),
                 Res.string.nav_library.get(),
                 Res.string.nav_search.get(),
-                Res.string.nav_settings.get(),
             ),
             selected = Res.string.nav_home.get(),
         )
