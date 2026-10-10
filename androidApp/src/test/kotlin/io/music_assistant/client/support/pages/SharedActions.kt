@@ -116,7 +116,7 @@ fun <T : Page> ComposePage.clickLibrary(destination: T): T {
 }
 
 fun ComposePage.clickSettings(): SettingsPage {
-    clickNavBarItem(Res.string.nav_settings.get())
+    composeTestRule.onNodeWithContentDescription(Res.string.nav_settings.get()).performClick()
     return SettingsPage(composeTestRule).assertOnPage()
 }
 
