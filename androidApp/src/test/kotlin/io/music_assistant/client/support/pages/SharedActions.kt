@@ -156,6 +156,20 @@ fun <T : ComposePage> T.pause(): T {
     return this
 }
 
+fun <T : ComposePage> T.clickCurrentPlayer(name: String): PlayerSelectionPage<T> {
+    composeTestRule.waitUntil {
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+            .isDisplayed()
+    }
+
+    composeTestRule
+        .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+        .performClick()
+
+    return PlayerSelectionPage(this, composeTestRule).assertOnPage()
+}
+
 fun <T : ComposePage> T.assertPlayer(
     name: String,
     playing: Boolean = false,
