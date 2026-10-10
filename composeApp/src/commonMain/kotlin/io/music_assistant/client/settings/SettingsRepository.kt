@@ -182,6 +182,16 @@ class SettingsRepository(
         _playersSorting.update { newValue }
     }
 
+    private val _hideUnavailablePlayers = MutableStateFlow(
+        settings.getBoolean("hide_unavailable_players", false),
+    )
+    val hideUnavailablePlayers = _hideUnavailablePlayers.asStateFlow()
+
+    fun setHideUnavailablePlayers(hide: Boolean) {
+        settings.putBoolean("hide_unavailable_players", hide)
+        _hideUnavailablePlayers.update { hide }
+    }
+
     // Home-screen rows: visibility + user-defined order in a single ordered list.
     // Order = display sort; enabled=false = hidden. JSON-encoded because folder
     // ids are arbitrary server strings (may contain the delimiters a flat string

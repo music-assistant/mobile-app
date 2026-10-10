@@ -255,6 +255,7 @@
   <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
   <string name="players_group_volume">%1$s group volume</string>
+  <string name="players_hide_unavailable">Hide unavailable</string>
   <string name="players_loading">Loading players…</string>
   <string name="players_none_available">No players available</string>
   <string name="players_nothing">Nothing playing</string>

@@ -54,6 +54,8 @@ fun PlayerDialogHost(
             onDismissRequest = onDismiss,
             onMoveToPlayer = onMoveToPlayer,
             onReorder = { homeScreenViewModel.onPlayersSortChanged(it) },
+            hideUnavailable = rememberHideUnavailablePlayers(),
+            onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
         )
 
         is PlayerDialogRequest.Group -> GroupSettingsDialog(
