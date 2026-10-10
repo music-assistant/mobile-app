@@ -14,7 +14,6 @@ import musicassistantclient.composeapp.generated.resources.common_clear
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.search_query_label
 import musicassistantclient.composeapp.generated.resources.search_start
 
@@ -31,7 +30,6 @@ class SearchPage(composeTestRule: ComposeTestRule, val query: String? = null) : 
                 Res.string.nav_home.get(),
                 Res.string.nav_library.get(),
                 Res.string.nav_search.get(),
-                Res.string.nav_settings.get(),
             ),
             selected = Res.string.nav_search.get(),
         )

@@ -21,7 +21,6 @@ import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.nav_settings
 
 class LibraryPage(composeTestRule: ComposeTestRule) :
     ComposePage(composeTestRule) {
@@ -31,7 +30,6 @@ class LibraryPage(composeTestRule: ComposeTestRule) :
                 Res.string.nav_home.get(),
                 Res.string.nav_library.get(),
                 Res.string.nav_search.get(),
-                Res.string.nav_settings.get(),
             ),
             selected = Res.string.nav_library.get(),
         )

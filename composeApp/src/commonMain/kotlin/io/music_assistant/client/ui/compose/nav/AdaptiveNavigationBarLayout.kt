@@ -29,6 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -107,10 +112,18 @@ fun AdaptiveNavigationBarLayout(
                 ) {
                     navigationItems.forEach {
                         NavigationBarItem(
+                            modifier = Modifier.clearAndSetSemantics {
+                                role = Role.Tab
+                                selected = it.selected
+                                contentDescription = it.contentDescription ?: it.label
+                            },
                             selected = it.selected,
                             onClick = it.onClick,
                             icon = {
-                                Icon(it.icon, contentDescription = it.label)
+                                Icon(it.icon, contentDescription = null)
+                            },
+                            label = {
+                                Text(it.label)
                             },
                         )
                     }
@@ -124,13 +137,14 @@ data class NavigationItem(
     val selected: Boolean,
     val onClick: () -> Unit,
     val icon: ImageVector,
-    val label: String? = null,
+    val label: String,
+    val contentDescription: String? = null,
 )
 
 fun <T : NavKey> MultiBackStack<T>.createNavigationItem(
     backStack: Int,
     icon: ImageVector,
-    label: String? = null,
+    label: String,
     screenState: ScreenState? = null,
 ): NavigationItem {
     return NavigationItem(
@@ -156,11 +170,13 @@ fun PreviewAdaptiveNavigationBarLayout() {
                 selected = true,
                 onClick = {},
                 icon = Icons.Default.Home,
+                label = "Home",
             ),
             NavigationItem(
                 selected = false,
                 onClick = {},
                 icon = Icons.Default.Settings,
+                label = "Settings",
             ),
         ),
     ) { contentPadding ->

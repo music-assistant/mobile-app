@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,6 +70,7 @@ import musicassistantclient.composeapp.generated.resources.home_save_rows
 import musicassistantclient.composeapp.generated.resources.home_shortcuts
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
@@ -82,6 +84,7 @@ fun HomeScreen(
     providerIconFetcher: ProviderIconFetcher,
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
+    goToSettings: () -> Unit,
 ) {
     val homeScreenState by homeScreenViewModel.state.collectAsStateWithLifecycle()
 
@@ -133,6 +136,7 @@ fun HomeScreen(
                         editMode = true
                     }
                 },
+                goToSettings = goToSettings,
             )
         },
         topAppBarState = state.topAppBarState,
@@ -306,6 +310,7 @@ private fun LandingPageTopBar(
     editMode: Boolean,
     onRefresh: () -> Unit,
     onToggleEditMode: () -> Unit,
+    goToSettings: () -> Unit,
 ) {
     TopAppBar(
         title = { Text(stringResource(Res.string.nav_home)) },
@@ -326,6 +331,13 @@ private fun LandingPageTopBar(
                         contentDescription = stringResource(Res.string.refresh),
                     )
                 }
+            }
+
+            IconButton(onClick = goToSettings) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = stringResource(Res.string.nav_settings),
+                )
             }
         },
     )
