@@ -47,6 +47,7 @@ import androidx.compose.ui.window.Dialog
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
@@ -82,10 +83,12 @@ fun SelectPlayerDialog(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
         ) {
-            var groupPlayer by remember { mutableStateOf<PlayerData?>(null) }
-            groupPlayer.let {
-                if (it != null) {
-                    GroupLayout(it, players, onDismissRequest, onPlayerAction)
+            var showGroupSettings by remember { mutableStateOf<String?>(null) }
+            val groupPlayer = showGroupSettings?.let { players.byId(it) }
+
+            Box(modifier = Modifier.padding(16.dp)) {
+                if (groupPlayer != null) {
+                    GroupLayout(groupPlayer, players, onDismissRequest, onPlayerAction)
                 } else {
                     PlayerLayout(
                         players = players,
@@ -93,7 +96,7 @@ fun SelectPlayerDialog(
                         onDismissRequest = onDismissRequest,
                         onMoveToPlayer = onMoveToPlayer,
                         onReorder = onReorder,
-                        onGroupRequest = { player -> groupPlayer = player },
+                        onGroupRequest = { player -> showGroupSettings = player.playerId },
                         hideUnavailable = hideUnavailable,
                         onToggleHideUnavailable = onToggleHideUnavailable,
                     )
@@ -114,60 +117,55 @@ private fun PlayerLayout(
     hideUnavailable: Boolean,
     onToggleHideUnavailable: () -> Unit,
 ) {
-    Box(modifier = Modifier.padding(vertical = 16.dp)) {
-        Column {
-            Row(
-                        modifier = Modifier.padding(start = 16.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
                 stringResource(Res.string.players_title),
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f),
-                        )
-                        OverflowMenuButton(
-                            options = listOf(
-                                OverflowMenuOption(
-                                    title = stringResource(Res.string.players_hide_unavailable),
-                                    icon = Icons.Default.VisibilityOff,
-                                    trailingIcon = Icons.Default.Check.takeIf { hideUnavailable },
-                                    onClick = onToggleHideUnavailable,
-                                ),
-                            ),
-                        ) { onClick ->
-                            IconButton(onClick = onClick) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = stringResource(Res.string.cd_more),
-                                )
-                            }
-                        }
-            }
-
-            // The selected player stays listed even when unavailable, so the
-            // selection never disappears from the list.
-            val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
-                if (hideUnavailable) {
-                    players.filter {
-                        it.player.isSelectable || it.player.id == selectedPlayer.player.id
-                    }
-                } else {
-                    players
+            )
+            OverflowMenuButton(
+                options = listOf(
+                    OverflowMenuOption(
+                        title = stringResource(Res.string.players_hide_unavailable),
+                        icon = Icons.Default.VisibilityOff,
+                        trailingIcon = Icons.Default.Check.takeIf { hideUnavailable },
+                        onClick = onToggleHideUnavailable,
+                    ),
+                ),
+            ) { onClick ->
+                IconButton(onClick = onClick) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(Res.string.cd_more),
+                    )
                 }
             }
+        }
 
-            Box(modifier = Modifier.padding(top = 16.dp)) {
-                PlayerSelection(
-                    players = shownPlayers,
-                    selectedPlayer = selectedPlayer,
-                    onDismissRequest = onDismissRequest,
-                    onSelectPlayer = onMoveToPlayer,
-                    onReorder =  { reordered, movedId ->
+        // The selected player stays listed even when unavailable, so the
+        // selection never disappears from the list.
+        val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
+            if (hideUnavailable) {
+                players.filter {
+                    it.player.isSelectable || it.player.id == selectedPlayer.player.id
+                }
+            } else {
+                players
+            }
+        }
+
+        Box(modifier = Modifier.padding(top = 16.dp)) {
+            PlayerSelection(
+                players = shownPlayers,
+                selectedPlayer = selectedPlayer,
+                onDismissRequest = onDismissRequest,
+                onSelectPlayer = onMoveToPlayer,
+                onReorder =  { reordered, movedId ->
                         onReorder(mergeReorderedPlayers(players.map { it.player.id }, reordered, movedId))
                     },
-                    onGroupRequest = onGroupRequest,
-                )
-            }
+                onGroupRequest = onGroupRequest,
+            )
         }
     }
 }
@@ -181,17 +179,18 @@ private fun GroupLayout(
 ) {
     Column {
         Text(
-            modifier = Modifier.padding(all = 8.dp),
             text = stringResource(Res.string.players_group_settings),
             style = MaterialTheme.typography.headlineSmall,
         )
 
-        GroupSettings(
-            item = it,
-            onDismiss = onDismissRequest,
-            playerAction = onPlayerAction,
-            localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
-        )
+        Box(modifier = Modifier.padding(top = 16.dp)) {
+            GroupSettings(
+                item = it,
+                onDismiss = onDismissRequest,
+                playerAction = onPlayerAction,
+                localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
+            )
+        }
     }
 }
 
@@ -297,7 +296,6 @@ private fun ReorderableCollectionItemScope.PlayerItem(
 ) {
     Row(
         modifier = Modifier
-            .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(plateShape)
             .background(backgroundColor)
