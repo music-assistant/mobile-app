@@ -774,10 +774,11 @@ class SharedMediaSessionManager(
 }
 
 /**
- * Build the canonical metadata plus Android's preferred display projection. For radio,
- * set all three display fields: MediaMetadataCompat only honors DISPLAY_DESCRIPTION when
- * DISPLAY_TITLE is also present. The canonical title/artist/album keys remain available
- * unchanged to consumers that do not use the display projection.
+ * Build the canonical metadata plus Android's preferred display projection. Radio streams
+ * show the on-air title and artist, with the station in the description when that adds
+ * information. If the station has to stand in for a missing title, don't repeat it in the
+ * description. MediaMetadataCompat only honors DISPLAY_DESCRIPTION when DISPLAY_TITLE is set.
+ * Non-radio items keep the platform's normal title / artist / album description fallback.
  */
 internal fun buildMediaSessionMetadata(
     data: MediaNotificationData,
@@ -785,10 +786,20 @@ internal fun buildMediaSessionMetadata(
     unknownTrack: String,
     artist: String,
 ): MediaMetadataCompat {
-    val title = data.name?.takeIf { it.isNotBlank() }
-        ?: data.stationName?.takeIf { it.isNotBlank() }
-        ?: unknownTrack
     val station = data.stationName?.takeIf { it.isNotBlank() }
+    // Preserve the existing non-radio title value exactly. For radio, use the station when
+    // the server has not supplied an on-air title (including a blank title).
+    val title = if (station != null) {
+        data.name?.takeIf { it.isNotBlank() } ?: station
+    } else {
+        data.name ?: unknownTrack
+    }
+    val displayArtist = artist.takeIf {
+        data.artist?.isNotBlank() == true && !sameMetadataLabel(title, data.artist)
+    }
+    val displayStation = station?.takeUnless {
+        sameMetadataLabel(it, title) || sameMetadataLabel(it, data.artist)
+    }
     return MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
@@ -796,8 +807,12 @@ internal fun buildMediaSessionMetadata(
         .also { builder ->
             station?.let {
                 builder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
-                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist)
-                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, it)
+                displayArtist?.let { value ->
+                    builder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, value)
+                }
+                displayStation?.let { value ->
+                    builder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, value)
+                }
             }
         }
         .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
@@ -808,3 +823,6 @@ internal fun buildMediaSessionMetadata(
         }
         .build()
 }
+
+private fun sameMetadataLabel(first: String, second: String?): Boolean =
+    second != null && first.trim().equals(second.trim(), ignoreCase = true)
