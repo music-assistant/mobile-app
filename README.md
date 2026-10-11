@@ -14,7 +14,7 @@ The (official) Music Assistant Mobile app is a cross-platform client application
   - local playback on device from MA library (Sendspin streaming protocol over WebRTC or WebSocket);
   - comprehensive Settings screen with section-based UI for server connection, authentication (builtin/OAuth), and local player configuration.
 - Android-specific:
-  - requires Android 8.0 or later; 
+  - requires Android 9 or later; 
   - media service (background playback) and media notification in system area for quick access to players controls;
   - Android Auto support for the built-in player, plus voice playback ("Hey Google, play *X* on Music Assistant") via Google Assistant and Gemini App Actions — works in the car *and* on the phone, single symmetric code path. Full phrase reference, architecture notes and testing in [ANDROID-AUTO.md](docs/ANDROID-AUTO.md).
 - iOS-specific:
