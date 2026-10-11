@@ -168,7 +168,7 @@ class MediaNotificationDataStationTest {
     }
 
     @Test
-    fun `radio without on-air title uses station in MediaDescription`() {
+    fun `radio without on-air title uses station once in MediaDescription`() {
         val data = MediaNotificationData.from(
             playerData(
                 station = radioStation("Example Radio"),
@@ -187,17 +187,159 @@ class MediaNotificationDataStationTest {
             multiplePlayers = false,
             effectiveElapsedSec = null,
         )
-        val description = buildMediaSessionMetadata(
+        val metadata = buildMediaSessionMetadata(
             data = data,
             bitmap = null,
             unknownTrack = "Unknown Track",
             artist = "Unknown Artist",
+        )
+        val description = metadata.description
+
+        assertEquals("Example Radio", description.title.toString())
+        assertNull(description.subtitle)
+        assertNull(description.description)
+        assertEquals("Example Radio", metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE))
+        assertEquals("Unknown Artist", metadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST))
+    }
+
+    @Test
+    fun `radio station is omitted from description when it matches the song title`() {
+        val data = MediaNotificationData(
+            multiplePlayers = false,
+            longItemId = null,
+            name = "Example Radio",
+            artist = "On Air Artist",
+            album = null,
+            repeatMode = null,
+            shuffleEnabled = null,
+            isLongFormContent = false,
+            isFavoritableTrack = false,
+            isFavoritableStream = false,
+            isFavorite = false,
+            isPlaying = true,
+            imageUrl = null,
+            chapterName = null,
+            elapsedTime = null,
+            elapsedUpdateTimeMs = null,
+            playerName = null,
+            duration = null,
+            stationName = " example radio ",
+        )
+
+        val description = buildMediaSessionMetadata(
+            data = data,
+            bitmap = null,
+            unknownTrack = "Unknown Track",
+            artist = "On Air Artist",
         ).description
 
         assertEquals("Example Radio", description.title.toString())
-        assertEquals("Unknown Artist", description.subtitle.toString())
-        assertEquals("Example Radio", description.description.toString())
+        assertEquals("On Air Artist", description.subtitle.toString())
+        assertNull(description.description)
+
+        val stationMatchesArtist = buildMediaSessionMetadata(
+            data = data.copy(
+                name = "On Air Song",
+                artist = "EXAMPLE RADIO",
+                stationName = "Example Radio",
+            ),
+            bitmap = null,
+            unknownTrack = "Unknown Track",
+            artist = "EXAMPLE RADIO",
+        ).description
+        assertEquals("On Air Song", stationMatchesArtist.title.toString())
+        assertEquals("EXAMPLE RADIO", stationMatchesArtist.subtitle.toString())
+        assertNull(stationMatchesArtist.description)
     }
+
+    @Test
+    fun `radio station matching raw artist keeps the rendered player suffix once`() {
+        val data = radioDisplayData(
+            name = "On Air Song",
+            artist = "KEXP",
+            station = "KEXP",
+        )
+
+        val description = buildMediaSessionMetadata(
+            data = data,
+            bitmap = null,
+            unknownTrack = "Unknown Track",
+            artist = "KEXP (on Kitchen)",
+        ).description
+
+        assertEquals("On Air Song", description.title.toString())
+        assertEquals("KEXP (on Kitchen)", description.subtitle.toString())
+        assertNull(description.description)
+
+        val stationTitle = buildMediaSessionMetadata(
+            data = data.copy(name = null),
+            bitmap = null,
+            unknownTrack = "Unknown Track",
+            artist = "KEXP (on Kitchen)",
+        ).description
+        assertEquals("KEXP", stationTitle.title.toString())
+        assertNull(stationTitle.subtitle)
+        assertNull(stationTitle.description)
+    }
+
+    @Test
+    fun `blank radio title falls back to station in MediaDescription`() {
+        val data = MediaNotificationData(
+            multiplePlayers = false,
+            longItemId = null,
+            name = "   ",
+            artist = "On Air Artist",
+            album = null,
+            repeatMode = null,
+            shuffleEnabled = null,
+            isLongFormContent = false,
+            isFavoritableTrack = false,
+            isFavoritableStream = false,
+            isFavorite = false,
+            isPlaying = true,
+            imageUrl = null,
+            chapterName = null,
+            elapsedTime = null,
+            elapsedUpdateTimeMs = null,
+            playerName = null,
+            duration = null,
+            stationName = "Example Radio",
+        )
+
+        val description = buildMediaSessionMetadata(
+            data = data,
+            bitmap = null,
+            unknownTrack = "Unknown Track",
+            artist = "On Air Artist",
+        ).description
+
+        assertEquals("Example Radio", description.title.toString())
+        assertEquals("On Air Artist", description.subtitle.toString())
+        assertNull(description.description)
+    }
+
+    private fun radioDisplayData(name: String?, artist: String?, station: String) =
+        MediaNotificationData(
+            multiplePlayers = false,
+            longItemId = null,
+            name = name,
+            artist = artist,
+            album = null,
+            repeatMode = null,
+            shuffleEnabled = null,
+            isLongFormContent = false,
+            isFavoritableTrack = false,
+            isFavoritableStream = false,
+            isFavorite = false,
+            isPlaying = true,
+            imageUrl = null,
+            chapterName = null,
+            elapsedTime = null,
+            elapsedUpdateTimeMs = null,
+            playerName = null,
+            duration = null,
+            stationName = station,
+        )
 
     private fun playerData(station: PlayableItem, media: PlayerMedia) =
         PlayerDataFixtures.playerData().let { original ->

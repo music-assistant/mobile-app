@@ -69,8 +69,8 @@ data class MediaNotificationData(
             // MainDataSource.canFavoriteCurrentlyPlaying, the single source for this.
             isFavoritableStream: Boolean = false,
         ) = run {
-            val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
             val currentQueueTrack = playerData.queueInfo?.currentItem?.track
+            val currentTrack = currentQueueTrack as? AppMediaItem
             MediaNotificationData(
             multiplePlayers = multiplePlayers,
             longItemId = playerData.player.currentMedia?.queueItemId?.let(::sessionQueueItemId),
