@@ -34,6 +34,7 @@ data class SoundEffect(
     override val favorite: Boolean? = null
     override val uri: String? = null
     override val version: String? = null
+    override val position: Int? = null
     override val parentName: String? = null
     override val defaultIcon = Icons.Default.RecordVoiceOver
     override fun withFavorite(favorite: Boolean?) = this

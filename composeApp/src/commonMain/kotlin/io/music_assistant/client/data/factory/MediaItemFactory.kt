@@ -79,7 +79,7 @@ class MediaItemFactory(
                 album = album?.let { create(it) as? Album },
                 discNumber = discNumber,
                 trackNumber = trackNumber,
-                position = position?.takeIf { it in 0L..Int.MAX_VALUE.toLong() }?.toInt(),
+                position = intPosition,
                 version = version,
                 source = server,
             )
@@ -96,6 +96,7 @@ class MediaItemFactory(
                 images = resolveImageInfo(image, metadata),
                 isEditable = isEditable == true,
                 isDynamic = isDynamic == true,
+                supportedMediaTypes = supportedMediatypes?.mapNotNull(MediaType::fromServer)?.toSet(),
             )
 
             MediaType.FOLDER -> RecommendationFolder(
@@ -139,6 +140,7 @@ class MediaItemFactory(
                 resumePositionMs = resumePositionMs,
                 releaseDate = metadata?.releaseDate,
                 version = version,
+                position = intPosition,
                 source = server,
             )
 
@@ -155,6 +157,7 @@ class MediaItemFactory(
                 version = version,
                 isPlayable = isPlayable == true,
                 isDynamic = isDynamic == true,
+                position = intPosition,
             )
 
             MediaType.SOUND_EFFECT -> SoundEffect(
@@ -186,6 +189,7 @@ class MediaItemFactory(
                 fullyPlayed = fullyPlayed,
                 resumePositionMs = resumePositionMs,
                 version = version,
+                position = intPosition,
                 source = server,
             )
 
@@ -223,6 +227,9 @@ class MediaItemFactory(
         radios = search.radio.mapNotNull { create(it) as? RadioStation },
         genres = search.genres.mapNotNull { create(it) as? Genre },
     )
+
+    private val ServerMediaItem.intPosition: Int?
+        get() = position?.takeIf { it in 0L..Int.MAX_VALUE.toLong() }?.toInt()
 
     private fun createMetadata(server: ServerMetadata?): Metadata? = server?.let {
         Metadata(

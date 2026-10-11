@@ -132,9 +132,9 @@ class ActionsViewModel(
     }
 
     /**
-     * [position] is the track's `Track.position` exactly as the server emitted it for this playlist
-     * (providers number from 1 and delete `items[position - 1]`), so the displayed order or an
-     * active filter never affects which track is removed.
+     * [position] is the item's `PlayableItem.position` exactly as the server emitted it for this
+     * playlist (providers number from 1 and delete `items[position - 1]`), so the displayed order
+     * or an active filter never affects which item is removed.
      */
     fun removeFromPlaylist(
         playlistId: String,

@@ -53,10 +53,12 @@ fun AddToPlaylistDialog(
     var highlighted by remember { mutableStateOf<Playlist?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // Hide playlists whose provider would silently drop this item's type.
+    suspend fun loadPlaylists() = playlistActions.getEditablePlaylists().filter { it.accepts(item) }
 
     LaunchedEffect(item.itemId) {
         isLoading = true
-        playlists = playlistActions.getEditablePlaylists()
+        playlists = loadPlaylists()
         isLoading = false
     }
 
@@ -77,7 +79,7 @@ fun AddToPlaylistDialog(
                     isLoading = true
                     val created = playlistActions.createPlaylist(name)
                     if (created != null) {
-                        playlists = playlistActions.getEditablePlaylists()
+                        playlists = loadPlaylists()
                         highlighted = created
                     }
                     isLoading = false

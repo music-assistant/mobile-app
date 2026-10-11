@@ -20,6 +20,7 @@ data class RadioStation(
     override val version: String?,
     override val isPlayable: Boolean,
     val isDynamic: Boolean,
+    override val position: Int? = null,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.RADIO
     override val duration: Double? = null

@@ -27,6 +27,9 @@ interface PlayableItem {
 
     val isPlayable: Boolean
 
+    /** Server `position`. In a playlist listing it is the row key for removal, for every item type. */
+    val position: Int?
+
     /** Returns a copy of this item with its [favorite] flag set to [favorite]. */
     fun withFavorite(favorite: Boolean?): PlayableItem
 }

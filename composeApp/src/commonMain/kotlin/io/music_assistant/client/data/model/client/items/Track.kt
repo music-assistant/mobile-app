@@ -24,7 +24,7 @@ data class Track(
     val album: Album?,
     val discNumber: Int?,
     val trackNumber: Int?,
-    val position: Int?,
+    override val position: Int?,
     override val version: String?,
     // Retained DTO echoed back for metadata/get_track_lyrics — the server resolves
     // lyrics from the full track it can't reconstruct from our decomposed model.

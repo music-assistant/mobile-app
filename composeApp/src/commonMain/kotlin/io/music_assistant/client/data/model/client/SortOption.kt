@@ -123,7 +123,7 @@ fun <T> List<T>.clientSorted(option: SortOption, context: SubItemContext? = null
     }
     val comparator: Comparator<T> = when (option.field) {
         SortField.ORIGINAL -> if (context == SubItemContext.PLAYLIST_ITEMS) {
-            compareBy<T, Int?>(nullsLast()) { (it as? Track)?.position }
+            compareBy<T, Int?>(nullsLast()) { (it as? PlayableItem)?.position }
         } else {
             compareBy<T, Int?>(nullsLast()) {
                 (it as? Track)?.discNumber

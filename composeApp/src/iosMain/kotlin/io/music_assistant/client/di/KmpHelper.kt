@@ -23,6 +23,7 @@ import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -457,7 +458,8 @@ object KmpHelper : KoinComponent {
                     forceRefresh = null,
                 ),
             ).getOrNull()
-                ?.filterIsInstance<Track>()
+                // A playlist also holds radio stations, podcast episodes and audiobooks.
+                ?.filter { it is PlayableItem }
                 ?: emptyList()
         }
     }

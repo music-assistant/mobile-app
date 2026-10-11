@@ -22,9 +22,15 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.compose.common.ConfirmationDialog
 import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_remove
+import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_message
+import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_title
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AlbumWithMenu(
@@ -153,6 +159,7 @@ fun AudiobookWithMenu(
     onNavigateClick: (Audiobook) -> Unit,
     onPlayOption: PlayHandler<Audiobook>,
     playlistActions: PlaylistActions? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher?,
@@ -166,6 +173,7 @@ fun AudiobookWithMenu(
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
+        onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
         progressActions = progressActions,
     ) { mod, onClick, onLongClick ->
@@ -314,6 +322,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<T>,
     playlistActions: PlaylistActions? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     itemComposable: @Composable (
@@ -326,13 +335,14 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
+    var showRemovePlaylistConfirmation by remember { mutableStateOf(false) }
 
     val actions = resolveLongClickActions(
         item = item,
         clickContext = clickContext,
         librarySupported = item !is Genre && item !is RecommendationFolder,
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
-        canRemoveFromPlaylist = false,
+        canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is Audiobook,
         customizationAllowed = false,
     )
@@ -368,7 +378,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     ItemAction.AddToPlaylist -> showPlaylistDialog = true
                     ItemAction.MarkPlayed -> progressActions?.onMarkPlayed(item)
                     ItemAction.MarkUnplayed -> progressActions?.onMarkUnplayed(item)
-                    ItemAction.RemoveFromPlaylist -> Unit
+                    ItemAction.RemoveFromPlaylist -> showRemovePlaylistConfirmation = true
                     // Browsable items never surface Customize (playable-only menu entry).
                     ItemAction.Customize -> Unit
                     else -> Unit
@@ -390,6 +400,16 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                 item = item,
                 onConfirm = { libraryActions.onLibraryClick(item) },
                 onDismiss = { showRemoveConfirmation = false },
+            )
+        }
+
+        if (showRemovePlaylistConfirmation && onRemoveFromPlaylist != null) {
+            ConfirmationDialog(
+                title = stringResource(Res.string.dialog_remove_from_playlist_title),
+                message = stringResource(Res.string.dialog_remove_from_playlist_message, item.displayName),
+                confirmLabel = stringResource(Res.string.action_remove),
+                onConfirm = { onRemoveFromPlaylist.invoke() },
+                onDismiss = { showRemovePlaylistConfirmation = false },
             )
         }
     }

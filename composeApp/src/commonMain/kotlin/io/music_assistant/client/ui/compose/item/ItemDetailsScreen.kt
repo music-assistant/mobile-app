@@ -64,6 +64,7 @@ import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
@@ -77,6 +78,7 @@ import io.music_assistant.client.ui.compose.common.ExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.NoOverscroll
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.CategoryRow
 import io.music_assistant.client.ui.compose.common.items.ItemCategory
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
@@ -86,6 +88,7 @@ import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
+import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.items.playableLazyListOccurrenceKeys
@@ -851,6 +854,11 @@ private fun PlayablesTabContent(
     // Shared row body for both the flat and the disc-sectioned layouts.
     val canEditPlaylist = parentItem is Playlist && parentItem.isEditable
     val trackItem: @Composable (track: PlayableItem) -> Unit = { track ->
+        // Removal keys on the server position, so filtering or re-sorting the visible
+        // list can never target the wrong item.
+        val onRemove = track.position
+            ?.takeIf { canEditPlaylist }
+            ?.let { position -> { onRemoveFromPlaylist(parentItem.itemId, position) } }
         when (track) {
             is Track -> TrackWithMenu(
                 item = track,
@@ -860,11 +868,7 @@ private fun PlayablesTabContent(
                 containerItem = parentItem,
                 onPlayOption = onPlayChildClick,
                 playlistActions = playlistActions,
-                // Removal keys on the server position, so filtering or re-sorting the visible
-                // list can never target the wrong track.
-                onRemoveFromPlaylist = track.position
-                    ?.takeIf { canEditPlaylist }
-                    ?.let { position -> { onRemoveFromPlaylist(parentItem.itemId, position) } },
+                onRemoveFromPlaylist = onRemove,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
             )
@@ -873,7 +877,30 @@ private fun PlayablesTabContent(
                 item = track,
                 viewMode = viewMode,
                 onPlayOption = onPlayChildClick,
-                playlistActions = null,
+                playlistActions = playlistActions,
+                onRemoveFromPlaylist = onRemove,
+                libraryActions = libraryActions,
+                progressActions = progressActions,
+                providerIconFetcher = providerIconFetcher,
+            )
+
+            is RadioStation -> RadioWithMenu(
+                item = track,
+                viewMode = viewMode,
+                onPlayOption = onPlayChildClick,
+                playlistActions = playlistActions,
+                onRemoveFromPlaylist = onRemove,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+            )
+
+            is Audiobook -> AudiobookWithMenu(
+                item = track,
+                viewMode = viewMode,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayChildClick,
+                playlistActions = playlistActions,
+                onRemoveFromPlaylist = onRemove,
                 libraryActions = libraryActions,
                 progressActions = progressActions,
                 providerIconFetcher = providerIconFetcher,
