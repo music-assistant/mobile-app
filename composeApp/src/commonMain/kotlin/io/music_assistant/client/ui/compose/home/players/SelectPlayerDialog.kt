@@ -77,6 +77,8 @@ fun SelectPlayerDialog(
     onPlayerAction: (String, PlayerAction) -> Unit = { _, _ -> },
     hideUnavailable: Boolean = false,
     onToggleHideUnavailable: () -> Unit = {},
+    onAdjustPlaybackDelay: (Int) -> Unit = {},
+    canLeaveGroup: Boolean = false,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -88,7 +90,14 @@ fun SelectPlayerDialog(
 
             Box(modifier = Modifier.padding(16.dp)) {
                 if (groupPlayer != null) {
-                    GroupLayout(groupPlayer, players, onDismissRequest, onPlayerAction)
+                    GroupLayout(
+                        player = groupPlayer,
+                        players = players,
+                        onDismissRequest = onDismissRequest,
+                        onPlayerAction = onPlayerAction,
+                        onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                        canLeaveGroup = canLeaveGroup,
+                    )
                 } else {
                     PlayerLayout(
                         players = players,
@@ -172,10 +181,12 @@ private fun PlayerLayout(
 
 @Composable
 private fun GroupLayout(
-    it: PlayerData,
+    player: PlayerData,
     players: List<PlayerData>,
     onDismissRequest: () -> Unit,
     onPlayerAction: (String, PlayerAction) -> Unit,
+    onAdjustPlaybackDelay: (Int) -> Unit,
+    canLeaveGroup: Boolean,
 ) {
     Column {
         Text(
@@ -185,10 +196,12 @@ private fun GroupLayout(
 
         Box(modifier = Modifier.padding(top = 16.dp)) {
             GroupSettings(
-                item = it,
+                item = player,
                 onDismiss = onDismissRequest,
                 playerAction = onPlayerAction,
                 localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
+                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                canLeaveGroup = canLeaveGroup,
             )
         }
     }

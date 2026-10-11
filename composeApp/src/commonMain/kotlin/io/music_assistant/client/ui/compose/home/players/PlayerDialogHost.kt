@@ -56,6 +56,8 @@ fun PlayerDialogHost(
             onReorder = { homeScreenViewModel.onPlayersSortChanged(it) },
             hideUnavailable = rememberHideUnavailablePlayers(),
             onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
+            onAdjustPlaybackDelay = { homeScreenViewModel.adjustSendspinStaticDelayMs(it) },
+            canLeaveGroup = canLeaveGroup,
         )
 
         is PlayerDialogRequest.Group -> GroupSettingsDialog(
