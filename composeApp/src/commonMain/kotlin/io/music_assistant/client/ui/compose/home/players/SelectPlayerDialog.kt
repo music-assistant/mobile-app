@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,28 +42,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
+import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.vectorResource
+import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SelectPlayerDialog(
     selectedPlayer: PlayerData,
@@ -72,6 +73,7 @@ fun SelectPlayerDialog(
     onDismissRequest: () -> Unit = {},
     onMoveToPlayer: (String) -> Unit = {},
     onReorder: (List<String>) -> Unit = {},
+    onPlayerAction: (String, PlayerAction) -> Unit = { _, _ -> },
     hideUnavailable: Boolean = false,
     onToggleHideUnavailable: () -> Unit = {},
 ) {
@@ -80,16 +82,48 @@ fun SelectPlayerDialog(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
         ) {
-            Box(modifier = Modifier.padding(vertical = 16.dp)) {
-                Column {
-                    Row(
+            var groupPlayer by remember { mutableStateOf<PlayerData?>(null) }
+            groupPlayer.let {
+                if (it != null) {
+                    GroupLayout(it, players, onDismissRequest, onPlayerAction)
+                } else {
+                    PlayerLayout(
+                        players = players,
+                        selectedPlayer = selectedPlayer,
+                        onDismissRequest = onDismissRequest,
+                        onMoveToPlayer = onMoveToPlayer,
+                        onReorder = onReorder,
+                        onGroupRequest = { player -> groupPlayer = player },
+                        hideUnavailable = hideUnavailable,
+                        onToggleHideUnavailable = onToggleHideUnavailable,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerLayout(
+    players: List<PlayerData>,
+    selectedPlayer: PlayerData,
+    onDismissRequest: () -> Unit,
+    onMoveToPlayer: (String) -> Unit,
+    onReorder: (List<String>) -> Unit,
+    onGroupRequest: (PlayerData) -> Unit,
+    hideUnavailable: Boolean,
+    onToggleHideUnavailable: () -> Unit,
+) {
+    Box(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column {
+            Row(
                         modifier = Modifier.padding(start = 16.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            stringResource(Res.string.players_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.weight(1f),
+                stringResource(Res.string.players_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f),
                         )
                         OverflowMenuButton(
                             options = listOf(
@@ -108,34 +142,56 @@ fun SelectPlayerDialog(
                                 )
                             }
                         }
-                    }
+            }
 
-                    // The selected player stays listed even when unavailable, so the
-                    // selection never disappears from the list.
-                    val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
-                        if (hideUnavailable) {
-                            players.filter {
-                                it.player.isSelectable || it.player.id == selectedPlayer.player.id
-                            }
-                        } else {
-                            players
-                        }
+            // The selected player stays listed even when unavailable, so the
+            // selection never disappears from the list.
+            val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
+                if (hideUnavailable) {
+                    players.filter {
+                        it.player.isSelectable || it.player.id == selectedPlayer.player.id
                     }
-
-                    Box(modifier = Modifier.padding(top = 8.dp)) {
-                        PlayerSelection(
-                            shownPlayers,
-                            selectedPlayer,
-                            onDismissRequest,
-                            onMoveToPlayer,
-                            onReorder = { reordered, movedId ->
-                                onReorder(mergeReorderedPlayers(players.map { it.player.id }, reordered, movedId))
-                            },
-                        )
-                    }
+                } else {
+                    players
                 }
             }
+
+            Box(modifier = Modifier.padding(top = 16.dp)) {
+                PlayerSelection(
+                    players = shownPlayers,
+                    selectedPlayer = selectedPlayer,
+                    onDismissRequest = onDismissRequest,
+                    onSelectPlayer = onMoveToPlayer,
+                    onReorder =  { reordered, movedId ->
+                        onReorder(mergeReorderedPlayers(players.map { it.player.id }, reordered, movedId))
+                    },
+                    onGroupRequest = onGroupRequest,
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun GroupLayout(
+    it: PlayerData,
+    players: List<PlayerData>,
+    onDismissRequest: () -> Unit,
+    onPlayerAction: (String, PlayerAction) -> Unit,
+) {
+    Column {
+        Text(
+            modifier = Modifier.padding(all = 8.dp),
+            text = stringResource(Res.string.players_group_settings),
+            style = MaterialTheme.typography.headlineSmall,
+        )
+
+        GroupSettings(
+            item = it,
+            onDismiss = onDismissRequest,
+            playerAction = onPlayerAction,
+            localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
+        )
     }
 }
 
@@ -146,6 +202,7 @@ private fun PlayerSelection(
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
     onReorder: (reordered: List<String>, movedId: String) -> Unit,
+    onGroupRequest: (PlayerData) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
 
@@ -206,115 +263,131 @@ private fun PlayerSelection(
                 key = item.player.id,
                 enabled = !item.isLocal,
             ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxWidth()
-                        .clip(plateShape)
-                        .background(backgroundColor)
-                        .border(1.dp, borderColor, plateShape)
-                        .selectable(
-                            selected = selected,
-                            enabled = item.player.isSelectable,
-                            onClick = {
-                                onDismissRequest()
-                                onSelectPlayer(item.player.id)
-                            },
-                            role = Role.RadioButton,
-                        )
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // A dormant player the app can still act on stays selectable: pinning the
-                    // selection to it keeps it there when the speaker wakes up. One it cannot
-                    // act on is listed but disabled.
-                    val dormant = item.player.isPoweredOff
-                    PlayerIcon(
-                        player = item.player,
-                        isLocal = item.isLocal,
-                        modifier = Modifier.size(20.dp).alphaOn(!dormant),
-                    )
-                    Text(
-                        text = item.player.name,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .weight(1f)
-                            .alphaOn(!dormant),
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    item.player.suffix?.let { suffix ->
-                        Text(
-                            text = suffix,
-                            modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
-                            style = MaterialTheme.typography.bodyLarge,
-                            maxLines = 1,
-                        )
-                    }
-                    if (item.player.isPlaying || item.player.isAnnouncing) {
-                        NowPlayingIcon(
-                            modifier = Modifier.padding(start = 8.dp),
-                            size = 12.dp,
-                            color = if (item.player.isAnnouncing) {
-                                Color(0xFFFF9800)
-                            } else {
-                                Color(0xFF2196F3)
-                            },
-                        )
-                    }
-                    if (!item.player.isSelectable) {
-                        Text(
-                            text = stringResource(Res.string.player_unavailable),
-                            modifier = Modifier.padding(start = 8.dp).alpha(0.6f),
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                        )
-                    }
-                    if (!item.isLocal) {
-                        Icon(
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .draggableHandle(
-                                    onDragStopped = {
-                                        dragEndIndex?.let {
-                                            onReorder(internalPlayers.map { p -> p.player.id }, item.player.id)
-                                        }
-                                    },
-                                )
-                                .size(16.dp),
-                            imageVector = TablerIcons.GripVertical,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                }
+                PlayerItem(
+                    plateShape = plateShape,
+                    backgroundColor = backgroundColor,
+                    borderColor = borderColor,
+                    selected = selected,
+                    item = item,
+                    onDismissRequest = onDismissRequest,
+                    onSelectPlayer = onSelectPlayer,
+                    dragEndIndex = dragEndIndex,
+                    onReorder = onReorder,
+                    internalPlayers = internalPlayers,
+                    onGroupRequest = { onGroupRequest(item) },
+                )
             }
         }
     }
 }
 
-@Preview
 @Composable
-private fun PreviewSelectPlayerDialog() {
-    val selectedPlayer = PlayerDataFixtures.playerData()
-    SelectPlayerDialog(
-        selectedPlayer = selectedPlayer,
-        players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
-        onDismissRequest = {},
-    )
-}
+private fun ReorderableCollectionItemScope.PlayerItem(
+    plateShape: RoundedCornerShape,
+    backgroundColor: Color,
+    borderColor: Color,
+    selected: Boolean,
+    item: PlayerData,
+    onDismissRequest: () -> Unit,
+    onSelectPlayer: (String) -> Unit,
+    dragEndIndex: Int?,
+    onReorder: (reordered: List<String>, movedId: String) -> Unit,
+    internalPlayers: List<PlayerData>,
+    onGroupRequest: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .clip(plateShape)
+            .background(backgroundColor)
+            .border(1.dp, borderColor, plateShape)
+            .selectable(
+                selected = selected,
+                enabled = item.player.isSelectable,
+                onClick = {
+                    onDismissRequest()
+                    onSelectPlayer(item.player.id)
+                },
+                role = Role.RadioButton,
+            )
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // A dormant player the app can still act on stays selectable: pinning the
+        // selection to it keeps it there when the speaker wakes up. One it cannot
+        // act on is listed but disabled.
+        val dormant = item.player.isPoweredOff
+        PlayerIcon(
+            player = item.player,
+            isLocal = item.isLocal,
+            modifier = Modifier.size(20.dp).alphaOn(!dormant),
+        )
 
-@Preview
-@Composable
-private fun PreviewSelectPlayerDialogLongList() {
-    val players = 0.until(25).map {
-        PlayerDataFixtures.playerData()
+        Text(
+            text = item.player.name,
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .weight(1f)
+                .alphaOn(!dormant),
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        item.player.suffix?.let { suffix ->
+            Text(
+                text = suffix,
+                modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+            )
+        }
+
+        if (item.player.isPlaying || item.player.isAnnouncing) {
+            NowPlayingIcon(
+                modifier = Modifier.padding(start = 8.dp),
+                size = 12.dp,
+                color = if (item.player.isAnnouncing) {
+                    Color(0xFFFF9800)
+                } else {
+                    Color(0xFF2196F3)
+                },
+            )
+        }
+
+        IconButton(onClick = onGroupRequest) {
+            Icon(
+                vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+                contentDescription = null,
+            )
+        }
+
+        if (!item.player.isSelectable) {
+            Text(
+                text = stringResource(Res.string.player_unavailable),
+                modifier = Modifier.padding(start = 8.dp).alpha(0.6f),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+            )
+        }
+
+        if (!item.isLocal) {
+            Icon(
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .draggableHandle(
+                        onDragStopped = {
+                            dragEndIndex?.let {
+                                onReorder(internalPlayers.map { p -> p.player.id }, item.player.id)
+                            }
+                        },
+                    )
+                    .size(16.dp),
+                imageVector = TablerIcons.GripVertical,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        }
     }
-
-    SelectPlayerDialog(
-        selectedPlayer = players[0],
-        players = players,
-        onDismissRequest = {},
-    )
 }
