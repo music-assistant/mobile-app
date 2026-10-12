@@ -61,6 +61,7 @@ import musicassistantclient.composeapp.generated.resources.player_unavailable
 import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
 import musicassistantclient.composeapp.generated.resources.players_title
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -329,10 +330,10 @@ private fun ReorderableCollectionItemScope.PlayerItem(
         // selection to it keeps it there when the speaker wakes up. One it cannot
         // act on is listed but disabled.
         val dormant = item.player.isPoweredOff
-        PlayerIcon(
-            player = item.player,
-            isLocal = item.isLocal,
+        Icon(
+            painter = painterResource(item.iconRes()),
             modifier = Modifier.size(20.dp).alphaOn(!dormant),
+            contentDescription = null,
         )
 
         Text(

@@ -60,7 +60,6 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.input.VolumeButtonService
-import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
@@ -69,6 +68,9 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
+import io.music_assistant.client.ui.compose.home.players.contentDescription
+import io.music_assistant.client.ui.compose.home.players.iconRes
+import io.music_assistant.client.ui.compose.home.players.label
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
@@ -105,7 +107,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.cd_current_player
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -419,12 +420,9 @@ private fun navigationItems(
             navigationItems += NavigationItem(
                 selected = false,
                 onClick = onSelectPlayer,
-                icon = vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-                label = selectedPlayer.player.name,
-                contentDescription = stringResource(
-                    Res.string.cd_current_player,
-                    selectedPlayer.player.name,
-                ),
+                icon = vectorResource(selectedPlayer.iconRes()),
+                label = selectedPlayer.label(),
+                contentDescription = selectedPlayer.contentDescription(),
             )
         }
     }

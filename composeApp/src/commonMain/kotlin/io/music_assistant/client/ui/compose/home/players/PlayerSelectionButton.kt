@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -24,9 +25,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.sendspin.api.PlayerState
-import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.cd_current_player
-import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun PlayerSelectionButton(
@@ -38,10 +37,9 @@ fun PlayerSelectionButton(
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
 
-    val currentPlayerContentDescription =
-        stringResource(Res.string.cd_current_player, player.player.name)
+    val playerContentDescription = player.contentDescription()
     val modifier = Modifier.clearAndSetSemantics {
-        contentDescription = currentPlayerContentDescription
+        contentDescription = playerContentDescription
     }
 
     OutlinedButton(
@@ -49,7 +47,6 @@ fun PlayerSelectionButton(
         onClick = onSelectPlayer,
     ) {
         PlayerButtonContent(
-            isLocalPlayer = isLocalPlayer,
             player = player,
             controlTint = controlTint,
             dotColor = dotColor,
@@ -59,7 +56,6 @@ fun PlayerSelectionButton(
 
 @Composable
 private fun PlayerButtonContent(
-    isLocalPlayer: Boolean,
     player: PlayerData,
     controlTint: Color,
     dotColor: Color?,
@@ -68,12 +64,13 @@ private fun PlayerButtonContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        PlayerIcon(
-            player = player.player,
-            isLocal = isLocalPlayer,
+        Icon(
+            painter = painterResource(player.iconRes()),
             modifier = Modifier.size(16.dp),
             tint = controlTint,
+            contentDescription = null,
         )
+
         dotColor?.let {
             Box(
                 modifier = Modifier
@@ -82,12 +79,7 @@ private fun PlayerButtonContent(
             )
         }
 
-        val boundCount = player.childrenBinds.count { it.isBound }
-        val playerLabel = when {
-            player.player.isGroup -> "${player.player.name} (${player.player.groupMembers?.size ?: 0})"
-            boundCount > 0 -> "${player.player.name} + $boundCount"
-            else -> player.player.name
-        }
+        val playerLabel = player.label()
 
         Text(
             text = playerLabel,
