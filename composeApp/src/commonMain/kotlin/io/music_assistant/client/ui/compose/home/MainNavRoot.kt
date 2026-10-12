@@ -52,7 +52,6 @@ import io.music_assistant.client.api.DeepLinkDestination
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
@@ -64,7 +63,6 @@ import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
-import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -261,8 +259,35 @@ fun MainNavigationRoot(
     val rootScreenEditing = homeScreenState.value?.editMode == true ||
         libraryScreenState.value?.editMode == true
 
-    val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
-        .collectAsStateWithLifecycle()
+    var showPlayerSelection by remember { mutableStateOf(false) }
+    playersState.let {
+        if (it is HomeScreenViewModel.PlayersState.Data) {
+            val selectedPlayer = it.selectedPlayer
+            if (selectedPlayer != null) {
+                if (showPlayerSelection) {
+                    val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
+                        .collectAsStateWithLifecycle()
+
+                    SelectPlayerDialog(
+                        selectedPlayer = selectedPlayer,
+                        players = it.playerData,
+                        onDismissRequest = { showPlayerSelection = false },
+                        onMoveToPlayer = { id: String ->
+                            it.playerData.find { playerData -> playerData.player.id == id }?.player?.let { player ->
+                                homeScreenViewModel.selectPlayer(player)
+                            }
+                        },
+                        onReorder = homeScreenViewModel::onPlayersSortChanged,
+                        onPlayerAction =  homeScreenViewModel::playerAction,
+                        hideUnavailable = rememberHideUnavailablePlayers(),
+                        onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
+                        onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
+                        canLeaveGroup = leaderLeaveSupported,
+                    )
+                }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AdaptiveNavigationBarLayout(
@@ -273,11 +298,7 @@ fun MainNavigationRoot(
                 libraryScreenState = libraryScreenState,
                 searchScreenState = searchScreenState,
                 playersState = playersState,
-                onSelectPlayer = homeScreenViewModel::selectPlayer,
-                onPlayerAction = homeScreenViewModel::playerAction,
-                onPlayerSortChange = homeScreenViewModel::onPlayersSortChanged,
-                onAdjustPlaybackDelay = { homeScreenViewModel.adjustSendspinStaticDelayMs(it) },
-                canLeaveGroup = leaderLeaveSupported,
+                onSelectPlayer = { showPlayerSelection = true },
             ),
         ) { scaffoldContentPadding ->
             FloatingBarLayout(
@@ -305,15 +326,17 @@ fun MainNavigationRoot(
                                     onClose = { playerExpanded = false },
                                     contentPadding = contentPadding,
                                     toastState = toastState,
-                                ) { item ->
-                                    multiBackStack.add(
-                                        MainNav.ItemDetails(
-                                            itemId = item.itemId,
-                                            mediaType = item.mediaType,
-                                            providerId = item.provider,
-                                        ),
-                                    )
-                                }
+                                    navigateToItem = { item ->
+                                        multiBackStack.add(
+                                            MainNav.ItemDetails(
+                                                itemId = item.itemId,
+                                                mediaType = item.mediaType,
+                                                providerId = item.provider,
+                                            ),
+                                        )
+                                    },
+                                    onSelectPlayer = { showPlayerSelection = true },
+                                )
                             },
                         )
                     }
@@ -367,11 +390,7 @@ private fun navigationItems(
     libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
     playersState: HomeScreenViewModel.PlayersState,
-    onSelectPlayer: (Player) -> Unit,
-    onPlayerAction: (String, PlayerAction) -> Unit,
-    onPlayerSortChange: (List<String>) -> Unit,
-    onAdjustPlaybackDelay: (Int) -> Unit,
-    canLeaveGroup: Boolean,
+    onSelectPlayer: () -> Unit,
 ): List<NavigationItem> {
     val navigationItems = mutableListOf(
         multiBackStack.createNavigationItem(
@@ -397,29 +416,9 @@ private fun navigationItems(
     if (playersState is HomeScreenViewModel.PlayersState.Data) {
         val selectedPlayer = playersState.selectedPlayer
         if (selectedPlayer != null) {
-            var showPlayerSelection by remember { mutableStateOf(false) }
-
-            if (showPlayerSelection) {
-                SelectPlayerDialog(
-                    selectedPlayer = selectedPlayer,
-                    players = playersState.playerData,
-                    onDismissRequest = { showPlayerSelection = false },
-                    onMoveToPlayer = { id: String ->
-                        playersState.playerData.find { it.player.id == id }
-                            ?.let { onSelectPlayer(it.player) }
-                    },
-                    onReorder = onPlayerSortChange,
-                    onPlayerAction = onPlayerAction,
-                    hideUnavailable = rememberHideUnavailablePlayers(),
-                    onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
-                    onAdjustPlaybackDelay = onAdjustPlaybackDelay,
-                    canLeaveGroup = canLeaveGroup,
-                )
-            }
-
             navigationItems += NavigationItem(
                 selected = false,
-                onClick = { showPlayerSelection = true },
+                onClick = onSelectPlayer,
                 icon = vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
                 label = selectedPlayer.player.name,
                 contentDescription = stringResource(
