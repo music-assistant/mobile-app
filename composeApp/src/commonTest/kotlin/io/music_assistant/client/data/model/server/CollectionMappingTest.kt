@@ -53,7 +53,7 @@ class CollectionMappingTest {
     }
 
     @Test
-    fun `an empty collection still maps, without artwork`() {
+    fun `an empty collection still maps without artwork`() {
         val series = assertIs<MediaCollection>(collection())
 
         assertTrue(series.items.isEmpty())
