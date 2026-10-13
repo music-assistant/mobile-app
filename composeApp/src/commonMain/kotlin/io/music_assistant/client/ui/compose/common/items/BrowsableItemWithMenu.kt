@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
@@ -197,6 +198,41 @@ fun AudiobookWithMenu(
 }
 
 @Composable
+fun MediaCollectionWithMenu(
+    item: MediaCollection,
+    viewMode: ViewMode = ViewMode.GRID,
+    onNavigateClick: (MediaCollection) -> Unit,
+    onPlayOption: PlayHandler<MediaCollection>,
+    libraryActions: LibraryActions,
+) {
+    BrowsableItemWithMenu(
+        modifier = when (viewMode) {
+            ViewMode.GRID -> Modifier
+            ViewMode.LIST -> Modifier.fillMaxWidth()
+        },
+        item = item,
+        onNavigateClick = onNavigateClick,
+        onPlayOption = onPlayOption,
+        libraryActions = libraryActions,
+    ) { mod, onClick, onLongClick ->
+        when (viewMode) {
+            ViewMode.LIST -> MediaCollectionRowItem(
+                modifier = mod,
+                item = item,
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
+            ViewMode.GRID -> MediaCollectionGridItem(
+                modifier = mod,
+                item = item,
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
+        }
+    }
+}
+
+@Composable
 fun GenreWithMenu(
     item: Genre,
     viewMode: ViewMode = ViewMode.GRID,
@@ -340,7 +376,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     val actions = resolveLongClickActions(
         item = item,
         clickContext = clickContext,
-        librarySupported = item !is Genre && item !is RecommendationFolder,
+        librarySupported = item !is Genre && item !is RecommendationFolder && item !is MediaCollection,
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is Audiobook,

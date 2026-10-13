@@ -75,6 +75,7 @@ object SortConfig {
         SubItemContext.ARTIST_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
         SubItemContext.ALBUM_TRACKS -> listOf(SortField.ORIGINAL)
         SubItemContext.PLAYLIST_ITEMS -> listOf(SortField.ORIGINAL)
+        SubItemContext.COLLECTION_ITEMS -> listOf(SortField.ORIGINAL)
         SubItemContext.PODCAST_EPISODES -> listOf(SortField.NAME, SortField.RELEASE_DATE, SortField.DURATION)
         SubItemContext.ARTIST_TOP_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
         SubItemContext.ARTIST_ALL_ALBUMS,
@@ -92,6 +93,7 @@ object SortConfig {
         SubItemContext.ARTIST_ALBUMS -> SortOption(SortField.YEAR, descending = true)
         SubItemContext.ALBUM_TRACKS -> SortOption(SortField.ORIGINAL)
         SubItemContext.PLAYLIST_ITEMS -> SortOption(SortField.ORIGINAL)
+        SubItemContext.COLLECTION_ITEMS -> SortOption(SortField.ORIGINAL)
         SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
@@ -107,6 +109,9 @@ enum class SubItemContext {
     ALBUM_TRACKS,
     PLAYLIST_ITEMS,
     PODCAST_EPISODES,
+
+    // Books of an audiobook series, fixed in the server's series order.
+    COLLECTION_ITEMS,
 
     // Artist "View all" screens. Distinct from ARTIST_ALBUMS (Android Auto), so each list keeps
     // its own remembered sort.

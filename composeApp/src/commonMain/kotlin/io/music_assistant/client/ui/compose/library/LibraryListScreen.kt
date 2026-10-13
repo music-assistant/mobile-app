@@ -26,6 +26,7 @@ import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.settings.SeriesGrouping
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SelectOption
@@ -87,6 +88,8 @@ fun LibraryListScreen(
                 onBack = onBack,
                 onToggleViewMode = { viewModeViewModel.toggleFor(state.mediaType) },
                 viewMode = viewMode,
+                seriesGrouping = state.seriesGrouping,
+                onToggleSeriesGrouping = libraryListViewModel::onSeriesGroupingToggled,
                 searchQuery = state.searchQuery,
                 onSearchQueryChanged = libraryListViewModel::onSearchQueryChanged,
                 onSearch = libraryListViewModel::onSearch,
@@ -141,6 +144,8 @@ private fun LibraryListTopBar(
     onBack: () -> Unit,
     onToggleViewMode: () -> Unit,
     viewMode: ViewMode,
+    seriesGrouping: SeriesGrouping,
+    onToggleSeriesGrouping: () -> Unit,
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
@@ -238,6 +243,13 @@ private fun LibraryListTopBar(
                     mediaType = mediaType,
                     onSortChanged = { onSortChanged(it) },
                 )
+
+                if (mediaType == MediaType.AUDIOBOOK) {
+                    SeriesGroupingToggle(
+                        grouping = seriesGrouping,
+                        onToggle = onToggleSeriesGrouping,
+                    )
+                }
 
                 ViewModeToggle(
                     viewMode = viewMode,

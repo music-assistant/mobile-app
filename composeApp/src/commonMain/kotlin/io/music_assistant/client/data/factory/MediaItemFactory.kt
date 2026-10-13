@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -109,6 +110,20 @@ class MediaItemFactory(
                 path = path,
                 isPlayable = isPlayable == true,
             )
+
+            MediaType.COLLECTION -> {
+                val children = items?.let { createList(it) }.orEmpty()
+                MediaCollection(
+                    itemId = itemId,
+                    provider = provider,
+                    name = name,
+                    uri = uri,
+                    // The server gives a collection no artwork; borrow the first child's.
+                    images = resolveImageInfo(image, metadata)
+                        .ifEmpty { children.firstOrNull { it.images.isNotEmpty() }?.images.orEmpty() },
+                    items = children,
+                )
+            }
 
             MediaType.PODCAST -> Podcast(
                 itemId = itemId,

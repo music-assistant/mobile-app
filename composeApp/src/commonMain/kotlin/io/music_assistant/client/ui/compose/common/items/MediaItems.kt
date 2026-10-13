@@ -59,6 +59,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
@@ -685,7 +686,7 @@ internal fun AudiobookGridItem(
 
 @Composable
 private fun AudiobookImage(
-    item: Audiobook,
+    item: AppMediaItem,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -1197,6 +1198,48 @@ internal fun AudiobookRowItem(
                 resumePositionMs = item.resumePositionMs,
             )
         },
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) },
+    )
+}
+
+/** A series: the audiobook cover of its first book, no badges (it has no provider or progress). */
+@Composable
+internal fun MediaCollectionGridItem(
+    modifier: Modifier = Modifier,
+    item: MediaCollection,
+    onClick: (MediaCollection) -> Unit,
+    onLongClick: (MediaCollection) -> Unit,
+) {
+    GridItem(
+        modifier = modifier,
+        description = contentDescription(item),
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) },
+    ) {
+        AudiobookImage(item)
+        Spacer(Modifier.height(4.dp))
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+internal fun MediaCollectionRowItem(
+    modifier: Modifier = Modifier,
+    item: MediaCollection,
+    onClick: (MediaCollection) -> Unit,
+    onLongClick: (MediaCollection) -> Unit,
+) {
+    RowItem(
+        modifier = modifier,
+        name = item.displayName,
+        subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
+        prefixContent = { AudiobookImage(item) },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     )

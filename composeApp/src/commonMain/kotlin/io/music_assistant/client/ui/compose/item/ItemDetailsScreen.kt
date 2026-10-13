@@ -60,6 +60,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
@@ -117,6 +118,7 @@ import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
+import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
 import musicassistantclient.composeapp.generated.resources.media_type_chapters
 import musicassistantclient.composeapp.generated.resources.media_type_episodes
 import musicassistantclient.composeapp.generated.resources.search_no_results
@@ -262,6 +264,7 @@ fun ItemDetails(
                             is Playlist,
                             is Podcast,
                             is Audiobook,
+                            is MediaCollection,
                             is Genre,
                                 -> {
                                 onNavigateToItem(item.itemId, item.mediaType, item.provider)
@@ -302,6 +305,7 @@ fun ItemDetails(
 private fun ItemDetailsTab.stringResource(): StringResource? = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
     ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
+    ItemDetailsTab.COLLECTION_ITEMS -> Res.string.media_type_audiobooks
     else -> viewMediaType?.stringResource()
 }
 
@@ -513,6 +517,7 @@ private fun TabsBar(
         SubItemContext.ALBUM_TRACKS,
         SubItemContext.PLAYLIST_ITEMS,
         SubItemContext.PODCAST_EPISODES,
+        SubItemContext.COLLECTION_ITEMS,
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
@@ -618,6 +623,7 @@ private fun TabContent(
         ItemDetailsTab.ALBUM_TRACKS,
         ItemDetailsTab.PLAYLIST_ITEMS,
         ItemDetailsTab.PODCAST_EPISODES,
+        ItemDetailsTab.COLLECTION_ITEMS,
             -> PlayablesTabContent(
             playableItemsState = state.playableItemsState,
             parentItem = item,

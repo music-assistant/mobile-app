@@ -53,6 +53,7 @@ object APICommands {
 
     // Audiobook commands
     const val MUSIC_AUDIOBOOKS_LIBRARY_ITEMS = "music/audiobooks/library_items"
+    const val MUSIC_AUDIOBOOKS_GET_COLLECTION = "music/audiobooks/get_collection"
 
     // Genre commands
     const val MUSIC_GENRES_LIBRARY_ITEMS = "music/genres/library_items"

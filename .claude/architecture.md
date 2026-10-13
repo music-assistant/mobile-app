@@ -67,6 +67,11 @@ actual class PlatformFeature {
   (`api/Paging.kt`) when a caller needs the whole list. `playlist_tracks` is streamed by the
   server in 500-item `partial` batches that `RpcEngine` reassembles. `library_items` already
   returns slim summary items by default.
+- **Collections**: an audiobook series is `MediaType.COLLECTION` (`MediaCollection`, books in `items`). The
+  server returns series rows only when `library_items` gets `collapse_collections`. The Audiobooks top bar sets
+  it with the `SeriesGrouping` toggle, which is a display setting and not a filter. `music/audiobooks/get_collection`
+  loads one series. Home rows from Audiobookshelf can also contain series. Play the series `uri` and the
+  server starts the first book that is not fully played. Android Auto and CarPlay show the flat book list.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

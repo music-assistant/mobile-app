@@ -790,6 +790,16 @@ class SettingsRepository(
 
     private fun librarySortKey(mediaType: MediaType) = "library_sort_${mediaType.name}"
 
+    // Audiobook-library display choice; the library ViewModel is the only writer, like sort.
+    fun getSeriesGrouping(): SeriesGrouping =
+        settings.getStringOrNull(SERIES_GROUPING_KEY)
+            ?.let { runCatching { SeriesGrouping.valueOf(it) }.getOrNull() }
+            ?: SeriesGrouping.FLAT
+
+    fun setSeriesGrouping(grouping: SeriesGrouping) {
+        settings.putString(SERIES_GROUPING_KEY, grouping.name)
+    }
+
     fun getSortOption(context: SubItemContext): SortOption {
         // A fixed-order context has no chip, so a value persisted by an older app version could
         // never be changed back — including a stale descending flag on ORIGINAL. Ignore it outright.
@@ -822,6 +832,7 @@ class SettingsRepository(
         private const val TOKEN_PREFIX = "token_"
         private const val SERVER_ID_PREFIX = "id_"
         private const val CLIENT_CERTIFICATE_ALIAS_KEY = "client_certificate_alias"
+        private const val SERIES_GROUPING_KEY = "library_series_grouping"
         private val SECRET_STRING_KEYS = listOf(
             "host",
             "webrtc_remote_id",

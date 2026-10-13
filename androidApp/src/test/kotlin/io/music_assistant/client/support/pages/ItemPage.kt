@@ -84,6 +84,7 @@ class ItemPage(
             MediaType.PODCAST_EPISODE -> TODO()
             MediaType.GENRE -> TODO()
             MediaType.FOLDER -> TODO()
+            MediaType.COLLECTION -> TODO()
             MediaType.FLOW_STREAM -> TODO()
             MediaType.ANNOUNCEMENT -> TODO()
             MediaType.SOUND_EFFECT -> TODO()

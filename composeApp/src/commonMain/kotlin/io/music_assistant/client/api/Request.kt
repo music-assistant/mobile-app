@@ -521,6 +521,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             orderBy: String? = null,
             providers: List<String>? = null,
             genres: List<Int>? = null,
+            collapseCollections: Boolean = false,
         ) = Request(
             command = APICommands.MUSIC_AUDIOBOOKS_LIBRARY_ITEMS,
             args = buildJsonObject {
@@ -530,6 +531,15 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
                 putListFilters(providers, genres)
+                // Groups series into `collection` rows. Servers before 2.10 ignore it.
+                if (collapseCollections) put("collapse_collections", JsonPrimitive(true))
+            },
+        )
+
+        fun getCollection(itemId: String) = Request(
+            command = APICommands.MUSIC_AUDIOBOOKS_GET_COLLECTION,
+            args = buildJsonObject {
+                put("item_id", JsonPrimitive(itemId))
             },
         )
     }

@@ -59,6 +59,7 @@ import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
@@ -274,8 +275,8 @@ private fun ItemOverflow(
 
     val canonical = resolveDetailOverflowActions(
         item = item,
-        librarySupported = libraryActions != null && item !is Genre,
-        canAddToPlaylist = playlistActions != null,
+        librarySupported = libraryActions != null && item !is Genre && item !is MediaCollection,
+        canAddToPlaylist = playlistActions != null && item !is MediaCollection,
     ).map { action ->
         action.toOverflowOption(LocalClickActionConfig.current.context) {
             when (it) {

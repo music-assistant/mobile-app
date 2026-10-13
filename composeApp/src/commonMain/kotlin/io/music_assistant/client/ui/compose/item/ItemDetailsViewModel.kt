@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
@@ -141,6 +142,7 @@ class ItemDetailsViewModel(
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)
             MediaType.AUDIOBOOK -> Request.Audiobook.get(itemId, providerId)
             MediaType.GENRE -> Request.Genre.get(itemId, providerId)
+            MediaType.COLLECTION -> Request.Audiobook.getCollection(itemId)
             else -> return null
         }
 
@@ -198,6 +200,18 @@ class ItemDetailsViewModel(
                     )
                 }
                 loadGenreOverview(item.itemId, item.provider)
+            }
+
+            // get_collection already carries the books, so there is nothing more to load.
+            is MediaCollection -> {
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = null,
+                    )
+                }
+                setPlayableItems(item.items.filterIsInstance<PlayableItem>(), SubItemContext.COLLECTION_ITEMS)
             }
 
             is Audiobook -> {
@@ -527,6 +541,7 @@ private fun ItemDetailsTab.subState(
     ItemDetailsTab.ALBUM_TRACKS,
     ItemDetailsTab.PLAYLIST_ITEMS,
     ItemDetailsTab.PODCAST_EPISODES,
+    ItemDetailsTab.COLLECTION_ITEMS,
         -> state.playableItemsState
 
     ItemDetailsTab.GENRE_ARTISTS -> state.artistsState

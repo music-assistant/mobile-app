@@ -133,6 +133,7 @@
   <string name="cd_sleep_timer_off">Sleep timer off</string>
   <string name="cd_sort_direction">Sort direction</string>
   <string name="cd_toggle_queue">Toggle Queue</string>
+  <string name="cd_toggle_series_grouping">Group series</string>
   <string name="cd_toggle_view_mode">Toggle view mode</string>
   <string name="cd_unmute">Unmute</string>
   <string name="cd_view_all">View all %1$s</string>
@@ -190,6 +191,7 @@
   <string name="item_subtitle_playlist">Playlist</string>
   <string name="item_subtitle_playlist_dynamic">Dynamic playlist</string>
   <string name="item_subtitle_podcast">Podcast</string>
+  <string name="item_subtitle_series">Series</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_sound_effect">AI host</string>
   <string name="item_subtitle_unknown">Unknown</string>
