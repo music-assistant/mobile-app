@@ -40,7 +40,7 @@ class SelectPlayerDialogTest {
                 )
             }),
                 content = {
-                SelectPlayerDialog(
+                SelectPlayerSheet(
                     selectedPlayer = players[0],
                     players,
                 )
@@ -98,7 +98,7 @@ class SelectPlayerDialogTest {
                     modules(module { singleOf(::MdiCodepoints) })
                 }),
                 content = {
-                    SelectPlayerDialog(
+                    SelectPlayerSheet(
                         selectedPlayer = selected,
                         players = players,
                         hideUnavailable = hideUnavailable,

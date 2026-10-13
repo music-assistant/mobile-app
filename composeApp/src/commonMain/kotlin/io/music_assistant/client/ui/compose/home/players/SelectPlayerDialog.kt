@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,11 +22,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,13 +45,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.sharedicons.SharedIcons
-import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -68,8 +68,9 @@ import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectPlayerDialog(
+fun SelectPlayerSheet(
     selectedPlayer: PlayerData,
     players: List<PlayerData>,
     onDismissRequest: () -> Unit = {},
@@ -81,37 +82,38 @@ fun SelectPlayerDialog(
     onAdjustPlaybackDelay: (Int) -> Unit = {},
     canLeaveGroup: Boolean = false,
 ) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            var showGroupSettings by remember { mutableStateOf<String?>(null) }
-            val groupPlayer = showGroupSettings?.let { players.byId(it) }
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
 
-            Box(modifier = Modifier.padding(16.dp)) {
-                if (groupPlayer != null) {
-                    GroupLayout(
-                        player = groupPlayer,
-                        players = players,
-                        onDismissRequest = onDismissRequest,
-                        onPlayerAction = onPlayerAction,
-                        onAdjustPlaybackDelay = onAdjustPlaybackDelay,
-                        canLeaveGroup = canLeaveGroup,
-                    )
-                } else {
-                    PlayerLayout(
-                        players = players,
-                        selectedPlayer = selectedPlayer,
-                        onDismissRequest = onDismissRequest,
-                        onMoveToPlayer = onMoveToPlayer,
-                        onReorder = onReorder,
-                        onGroupRequest = { player -> showGroupSettings = player.playerId },
-                        hideUnavailable = hideUnavailable,
-                        onToggleHideUnavailable = onToggleHideUnavailable,
-                    )
-                }
-            }
+    ModalBottomSheet(
+        sheetState = sheetState,
+        onDismissRequest = onDismissRequest,
+    ) {
+        var showGroupSettings by remember { mutableStateOf<String?>(null) }
+        val groupPlayer = showGroupSettings?.let { players.byId(it) }
+
+        if (groupPlayer != null) {
+            GroupLayout(
+                player = groupPlayer,
+                players = players,
+                onDismissRequest = onDismissRequest,
+                onPlayerAction = onPlayerAction,
+                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                canLeaveGroup = canLeaveGroup,
+            )
+        } else {
+            PlayerLayout(
+                players = players,
+                selectedPlayer = selectedPlayer,
+                onDismissRequest = onDismissRequest,
+                onMoveToPlayer = onMoveToPlayer,
+                onReorder = onReorder,
+                onGroupRequest = { player -> showGroupSettings = player.playerId },
+                hideUnavailable = hideUnavailable,
+                onToggleHideUnavailable = onToggleHideUnavailable,
+            )
         }
     }
 }
@@ -128,12 +130,16 @@ private fun PlayerLayout(
     onToggleHideUnavailable: () -> Unit,
 ) {
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
             Text(
                 stringResource(Res.string.players_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
             )
+
             OverflowMenuButton(
                 options = listOf(
                     OverflowMenuOption(
@@ -165,15 +171,21 @@ private fun PlayerLayout(
             }
         }
 
-        Box(modifier = Modifier.padding(top = 16.dp)) {
+        Box(modifier = Modifier.padding(16.dp)) {
             PlayerSelection(
                 players = shownPlayers,
                 selectedPlayer = selectedPlayer,
                 onDismissRequest = onDismissRequest,
                 onSelectPlayer = onMoveToPlayer,
-                onReorder =  { reordered, movedId ->
-                        onReorder(mergeReorderedPlayers(players.map { it.player.id }, reordered, movedId))
-                    },
+                onReorder = { reordered, movedId ->
+                    onReorder(
+                        mergeReorderedPlayers(
+                            players.map { it.player.id },
+                            reordered,
+                            movedId,
+                        ),
+                    )
+                },
                 onGroupRequest = onGroupRequest,
             )
         }
@@ -192,12 +204,13 @@ private fun GroupLayout(
     Column {
         Text(
             text = stringResource(Res.string.players_group_settings),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 16.dp),
         )
 
-        Box(modifier = Modifier.padding(top = 16.dp)) {
+        Box(modifier = Modifier.padding(16.dp)) {
             GroupSettings(
-                item = player,
+                player = player,
                 onDismiss = onDismissRequest,
                 playerAction = onPlayerAction,
                 localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
@@ -250,8 +263,7 @@ private fun PlayerSelection(
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
-            .selectableGroup()
-            .heightIn(max = MAX_DIALOG_HEIGHT),
+            .selectableGroup(),
         state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

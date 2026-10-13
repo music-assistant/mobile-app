@@ -67,7 +67,7 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
-import io.music_assistant.client.ui.compose.home.players.SelectPlayerDialog
+import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
 import io.music_assistant.client.ui.compose.home.players.iconRes
 import io.music_assistant.client.ui.compose.home.players.label
@@ -269,7 +269,7 @@ fun MainNavigationRoot(
                     val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
                         .collectAsStateWithLifecycle()
 
-                    SelectPlayerDialog(
+                    SelectPlayerSheet(
                         selectedPlayer = selectedPlayer,
                         players = it.playerData,
                         onDismissRequest = { showPlayerSelection = false },
