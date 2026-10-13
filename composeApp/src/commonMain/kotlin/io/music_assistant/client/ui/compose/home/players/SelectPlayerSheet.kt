@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -359,15 +361,6 @@ private fun ReorderableCollectionItemScope.PlayerItem(
             overflow = TextOverflow.Ellipsis,
         )
 
-        item.player.suffix?.let { suffix ->
-            Text(
-                text = suffix,
-                modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-            )
-        }
-
         if (item.player.isPlaying || item.player.isAnnouncing) {
             NowPlayingIcon(
                 modifier = Modifier.padding(start = 8.dp),
@@ -381,10 +374,25 @@ private fun ReorderableCollectionItemScope.PlayerItem(
         }
 
         IconButton(onClick = onGroupRequest) {
-            Icon(
-                vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-                contentDescription = null,
-            )
+            BadgedBox(
+                badge = {
+                    val groupMembers = item.player.groupMembers?.size ?: 0
+                    val playerCount = if (groupMembers > 0) {
+                        groupMembers
+                    } else {
+                        1
+                    }
+
+                    Badge {
+                        Text(playerCount.toString())
+                    }
+                },
+            ) {
+                Icon(
+                    vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+                    contentDescription = null,
+                )
+            }
         }
 
         if (!item.player.isSelectable) {
