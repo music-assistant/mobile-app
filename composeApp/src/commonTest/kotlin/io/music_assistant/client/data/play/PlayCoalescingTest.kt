@@ -5,7 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class PlayCoalescingTest {
-
     @Test
     fun `a request on an idle queue waits alone`() {
         assertEquals(listOf(playA), coalesce(emptyList(), null, playA))

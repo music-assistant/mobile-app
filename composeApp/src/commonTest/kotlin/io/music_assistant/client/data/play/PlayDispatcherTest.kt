@@ -17,7 +17,6 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayDispatcherTest {
-
     @Test
     fun `ten different taps during a running request send two requests`() = runTest {
         val client = GatedClient()
