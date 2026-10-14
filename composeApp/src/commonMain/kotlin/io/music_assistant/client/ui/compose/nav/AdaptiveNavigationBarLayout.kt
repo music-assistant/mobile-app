@@ -126,15 +126,21 @@ fun AdaptiveNavigationBarLayout(
                                 Icon(it.icon, contentDescription = null)
                             },
                             label = {
+                                val modifier = if (it.marqueeLabel) {
+                                    Modifier
+                                        .padding(horizontal = 8.dp)
+                                        .fillMaxWidth()
+                                        .fadingEdges(12.dp)
+                                        .basicMarquee()
+                                } else {
+                                    Modifier
+                                }
+
                                 Text(
                                     it.label,
                                     maxLines = 1,
                                     textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .fillMaxWidth()
-                                        .fadingEdges(12.dp)
-                                        .basicMarquee(),
+                                    modifier = modifier,
                                 )
                             },
                         )
@@ -151,6 +157,7 @@ data class NavigationItem(
     val icon: ImageVector,
     val label: String,
     val contentDescription: String? = null,
+    val marqueeLabel: Boolean = false,
 )
 
 fun <T : NavKey> MultiBackStack<T>.createNavigationItem(
