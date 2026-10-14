@@ -30,10 +30,12 @@ A request is the full value of `(queueId, media, option, radio, startItem)`. Two
 
 The client keeps one request in progress and an ordered list of waiting requests for each queue. When a new request comes:
 
-1. If it is equal to the request in progress, drop it.
-2. If it is equal to the last waiting request, drop it.
-3. If it is a replacing request (`PLAY` or `REPLACE`) and the last waiting request is also a replacing request, put the new request in the place of the last waiting request.
+1. If it is a replacing request (`PLAY` or `REPLACE`) and the last waiting request is also a replacing request, remove the last waiting request.
+2. Find the predecessor: the last waiting request, or the request in progress if no request waits.
+3. If the new request is equal to the predecessor, drop it. It is a double tap.
 4. In all other cases, add the request to the end of the list.
+
+Rule 1 comes before rule 3 on purpose. If "Play A" is in progress and "Play B" waits, a new tap on "Play A" removes "Play B". The newest tap is "Play A", and it is already in progress.
 
 `ADD` and `NEXT` requests are never replaced and never move. This keeps their order relative to the play requests. For example, "Play B, then Add C" still adds C after B starts.
 

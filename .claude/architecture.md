@@ -85,7 +85,9 @@ actual class PlatformFeature {
   off, send `enabled=false` only, because the server keeps the last sound and volume.
 - **Play requests**: send every `player_queues/play_media` through `PlayDispatcher` (`data/play/`). Do not send it
   from a screen or from a car surface directly. The dispatcher runs each request in an app scope, because the server
-  answers only after playback starts, and that can take tens of seconds.
+  answers only after playback starts, and that can take tens of seconds. It sends one request for each queue at a
+  time. It drops a double tap, and a new "play" or "replace" request replaces a waiting one (`coalesce`).
+  `busyQueueIds` gives the queues that have a request in progress or waiting.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,
