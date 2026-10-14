@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -542,7 +543,9 @@ fun FullPlayerItem(
                 track = { sliderState ->
                     val audiobook = item.queueInfo?.currentItem?.track as? Audiobook
                     val chapters = audiobook?.chapters
-                    Box {
+                    // Square inside corners leave a full or empty track, and the buffered band,
+                    // with a square outer end; the clip keeps both ends round.
+                    Box(modifier = Modifier.clip(CircleShape)) {
                         SliderDefaults.Track(
                             sliderState = sliderState,
                             colors = progressSliderColors,

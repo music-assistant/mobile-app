@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -61,6 +62,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -788,7 +790,8 @@ private fun ExpandedPlayerPage(
                                             thumbTrackGapSize = 0.dp,
                                             trackInsideCornerSize = 0.dp,
                                             drawStopIndicator = null,
-                                            modifier = Modifier.height(4.dp),
+                                            // Square inside corners leave 0 % and 100 % with a square end.
+                                            modifier = Modifier.height(4.dp).clip(CircleShape),
                                         )
                                     },
                                 )
