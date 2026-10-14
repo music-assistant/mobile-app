@@ -19,6 +19,7 @@ import io.music_assistant.sendspin.api.SinkEvent
 import io.music_assistant.sendspin.api.SinkFormat
 import io.music_assistant.sendspin.api.SinkHandle
 import io.music_assistant.sendspin.api.SinkPosition
+import io.music_assistant.sendspin.api.SteppedHeadTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -37,7 +38,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
  * behind the head by the output latency and is unavailable or stale for the
  * first few hundred ms of a fresh track, so mixing the two sources moves the
  * scheduler's queue estimate by that latency on every switch. Do not add it
- * back as a fallback.
+ * back as a fallback. The head moves in mixer-period steps, so
+ * [SteppedHeadTracker] stamps each reading with the time the head last moved.
  */
 class AudioTrackSink(
     context: Context,
@@ -77,7 +79,10 @@ class AudioTrackSink(
             // 4x minimum absorbs scheduling jitter while keeping the steady-state fill low.
             .setBufferSizeInBytes(minBuffer * BUFFER_MULTIPLIER)
             .setTransferMode(AudioTrack.MODE_STREAM)
-            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+            // Not LOW_LATENCY: aptX Adaptive "Auto-adjust" switches codec profile on every foreground
+            // change of a low-latency track, which pauses playback (#1141). The extra mixer delay is
+            // unmeasured (latencyMicros = null), a constant offset that matters only for grouping.
+            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_NONE)
             .build()
         if (track.state != AudioTrack.STATE_INITIALIZED) {
             track.release()
@@ -100,6 +105,7 @@ class AudioTrackSink(
 
         /** The head position wraps at 32 bits. */
         private val frames = MonotonicFrameCounter()
+        private val head = SteppedHeadTracker(format.sampleRate)
         private var interrupted = false
 
         /** Set on the first interruption; the audio thread may be inside a blocking write at that moment. */
@@ -177,6 +183,7 @@ class AudioTrackSink(
                 track.stop()
             }
             frames.reset()
+            head.reset()
             sinkEvents.tryEmit(SinkEvent.FocusLost)
         }
 
@@ -212,10 +219,11 @@ class AudioTrackSink(
         override fun flush() {
             runCatching { track.flush() }
             frames.reset()
+            head.reset()
         }
 
         override fun position(): SinkPosition =
-            SinkPosition(frames.extend(track.playbackHeadPosition.toLong()), clock.nowMicros())
+            head.position(frames.extend(track.playbackHeadPosition.toLong()), clock.nowMicros())
 
         override fun underrunCount(): Int = runCatching { track.underrunCount }.getOrDefault(0)
 

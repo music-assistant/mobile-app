@@ -23,7 +23,7 @@
 ### ✅ Platform Support
 
 #### Android
-- **Audio Output**: AudioTrack (low-latency raw PCM)
+- **Audio Output**: AudioTrack (raw PCM, default performance mode)
 - **PCM Streaming**: ✅ Working
 - **Opus Decoding**: ✅ Working (Concentus library)
 - **FLAC Decoding**: ✅ Working (MediaCodec, API 26+)
