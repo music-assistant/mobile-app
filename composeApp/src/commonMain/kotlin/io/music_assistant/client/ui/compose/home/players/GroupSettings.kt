@@ -4,13 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,11 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.HUNDRED
-import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.ONE
 import io.music_assistant.client.ui.TEN
 import io.music_assistant.client.ui.alphaOn
@@ -58,57 +52,18 @@ import musicassistantclient.composeapp.generated.resources.cd_leave_group
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_remove_from_group
 import musicassistantclient.composeapp.generated.resources.cd_unmute
-import musicassistantclient.composeapp.generated.resources.common_done
-import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_group_volume
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 @Composable
-fun GroupSettingsDialog(
+fun GroupSettings(
     player: PlayerData,
-    onDismissRequest: () -> Unit = {},
-    groupAction: (String, PlayerAction) -> Unit = { _, _ -> },
+    onDismiss: () -> Unit = {},
+    playerAction: (String, PlayerAction) -> Unit = { _, _ -> },
     localPlayerId: String? = null,
-    onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
-    canLeaveGroup: Boolean = false,
-) {
-    // TODO generalize Dialogs across the app
-    Dialog(onDismissRequest = onDismissRequest) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Box(modifier = Modifier.padding(all = 8.dp)) {
-                Column {
-                    Text(
-                        modifier = Modifier.padding(all = 8.dp),
-                        text = stringResource(Res.string.players_group_settings),
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-
-                    GroupSettings(
-                        item = player,
-                        onDismiss = onDismissRequest,
-                        playerAction = groupAction,
-                        localPlayerId = localPlayerId,
-                        onAdjustPlaybackDelay = onAdjustPlaybackDelay,
-                        canLeaveGroup = canLeaveGroup,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GroupSettings(
-    item: PlayerData,
-    onDismiss: () -> Unit,
-    playerAction: (String, PlayerAction) -> Unit,
-    localPlayerId: String? = null,
-    onAdjustPlaybackDelay: ((Int) -> Unit)? = null,
+    onAdjustPlaybackDelay: ((Int) -> Unit) = {},
     canLeaveGroup: Boolean = false,
 ) {
     Column(
@@ -117,35 +72,34 @@ private fun GroupSettings(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = MAX_DIALOG_HEIGHT)
                 .weight(1f, false),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (item.player.isGrouped) {
-                item(key = item.player.groupVolume) {
+            if (player.player.isGrouped) {
+                item(key = player.player.groupVolume) {
                     GroupPlayerItemCard {
                         GroupItemTitle(
-                            isEnabled = item.player.groupVolume != null,
-                            name = stringResource(Res.string.players_group_volume, item.player.name),
+                            isEnabled = player.player.groupVolume != null,
+                            name = stringResource(Res.string.players_group_volume, player.player.name),
                         )
                         VolumeRow(
-                            volume = item.player.groupVolume,
-                            isMuted = item.player.groupVolumeMuted,
-                            enabled = item.player.groupVolume != null,
+                            volume = player.player.groupVolume,
+                            isMuted = player.player.groupVolumeMuted,
+                            enabled = player.player.groupVolume != null,
                             onMuteToggle = {
                                 playerAction(
-                                    item.player.id,
-                                    PlayerAction.GroupToggleMute(isMutedNow = item.player.groupVolumeMuted),
+                                    player.player.id,
+                                    PlayerAction.GroupToggleMute(isMutedNow = player.player.groupVolumeMuted),
                                 )
                             },
                             onVolumeSet = { level ->
                                 playerAction(
-                                    item.player.id,
+                                    player.player.id,
                                     PlayerAction.GroupVolumeSet(level.toDouble()),
                                 )
                             },
-                            onStepDown = { playerAction(item.player.id, PlayerAction.GroupVolumeDown) },
-                            onStepUp = { playerAction(item.player.id, PlayerAction.GroupVolumeUp) },
+                            onStepDown = { playerAction(player.player.id, PlayerAction.GroupVolumeDown) },
+                            onStepUp = { playerAction(player.player.id, PlayerAction.GroupVolumeUp) },
                         )
                     }
                 }
@@ -157,7 +111,7 @@ private fun GroupSettings(
                 ) {
                     GroupItemTitle(
                         isEnabled = true,
-                        name = item.player.name,
+                        name = player.player.name,
                         // The leader leaves via `ungroup`, not `set_members`: the server
                         // owns the choice of successor and moves the queue there.
                         toggle = GroupToggle(
@@ -165,60 +119,60 @@ private fun GroupSettings(
                             isManageable = true,
                             contentDescription = Res.string.cd_leave_group,
                             onClick = {
-                                playerAction(item.player.id, PlayerAction.LeaveGroup)
+                                playerAction(player.player.id, PlayerAction.LeaveGroup)
                                 onDismiss()
                             },
-                        ).takeIf { canLeaveGroup && item.player.canLeaveOwnGroup },
+                        ).takeIf { canLeaveGroup && player.player.canLeaveOwnGroup },
                     )
-                    if (item.player.isGroup) {
-                        item.player.groupVolume?.let { playerVolumeLevel ->
+                    if (player.player.isGroup) {
+                        player.player.groupVolume?.let { playerVolumeLevel ->
                             VolumeRow(
                                 volume = playerVolumeLevel,
-                                isMuted = item.player.groupVolumeMuted.takeIf { item.player.canMute },
-                                enabled = item.player.isVolumeSliderAccessible,
+                                isMuted = player.player.groupVolumeMuted.takeIf { player.player.canMute },
+                                enabled = player.player.isVolumeSliderAccessible,
                                 onMuteToggle = {
                                     playerAction(
-                                        item.player.id,
-                                        PlayerAction.GroupToggleMute(isMutedNow = item.player.groupVolumeMuted),
+                                        player.player.id,
+                                        PlayerAction.GroupToggleMute(isMutedNow = player.player.groupVolumeMuted),
                                     )
                                 },
                                 onVolumeSet = { level ->
                                     playerAction(
-                                        item.player.id,
+                                        player.player.id,
                                         PlayerAction.GroupVolumeSet(level.toDouble()),
                                     )
                                 },
-                                onStepDown = { playerAction(item.player.id, PlayerAction.GroupVolumeDown) },
-                                onStepUp = { playerAction(item.player.id, PlayerAction.GroupVolumeUp) },
+                                onStepDown = { playerAction(player.player.id, PlayerAction.GroupVolumeDown) },
+                                onStepUp = { playerAction(player.player.id, PlayerAction.GroupVolumeUp) },
                             )
                         }
                     } else {
-                        item.player.volumeLevel?.let { playerVolumeLevel ->
+                        player.player.volumeLevel?.let { playerVolumeLevel ->
                             VolumeRow(
                                 volume = playerVolumeLevel,
-                                isMuted = item.player.volumeMuted.takeIf { item.player.canMute },
-                                enabled = item.player.isVolumeSliderAccessible,
+                                isMuted = player.player.volumeMuted.takeIf { player.player.canMute },
+                                enabled = player.player.isVolumeSliderAccessible,
                                 onMuteToggle = {
                                     playerAction(
-                                        item.player.id,
-                                        PlayerAction.ToggleMute(isMutedNow = item.player.volumeMuted),
+                                        player.player.id,
+                                        PlayerAction.ToggleMute(isMutedNow = player.player.volumeMuted),
                                     )
                                 },
                                 onVolumeSet = { level ->
                                     playerAction(
-                                        item.player.id,
+                                        player.player.id,
                                         PlayerAction.VolumeSet(level.toDouble()),
                                     )
                                 },
-                                onStepDown = { playerAction(item.player.id, PlayerAction.VolumeDown) },
-                                onStepUp = { playerAction(item.player.id, PlayerAction.VolumeUp) },
+                                onStepDown = { playerAction(player.player.id, PlayerAction.VolumeDown) },
+                                onStepUp = { playerAction(player.player.id, PlayerAction.VolumeUp) },
                             )
                         }
                     }
                 }
             }
 
-            val sortedChildren = item.childrenBinds.sortedByDescending { it.isBound }
+            val sortedChildren = player.childrenBinds.sortedByDescending { it.isBound }
             items(sortedChildren, key = { "${it.id}_${it.volume}" }) { bindInfo ->
                 GroupPlayerItemCard(
                     background = if (bindInfo.isBound) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
@@ -276,15 +230,6 @@ private fun GroupSettings(
                 }
             }
         }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.common_done))
-            }
-        }
     }
 }
 
@@ -296,7 +241,6 @@ private fun GroupSettings(
  * phone-speaker player. The row stays visible even when the local player
  * isn't joined to the group; the name and management buttons disabled.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GroupPlayerItemCard(
     background: Color = Color.Transparent,
@@ -485,12 +429,9 @@ private fun VolumeRow(
 
 @Preview
 @Composable
-private fun PreviewGroupSettingDialog() {
+private fun PreviewGroupSettings() {
     val selectedPlayer = PlayerDataFixtures.playerData()
-    GroupSettingsDialog(
-        player = selectedPlayer,
-        onDismissRequest = {},
-    )
+    GroupSettings(player = selectedPlayer)
 }
 
 /** The sync leader's own card carries a leave button once the server supports handoff. */
@@ -500,11 +441,10 @@ private fun PreviewGroupSettingDialogLeaderCanLeave() {
     val leader = PlayerDataFixtures.playerData(
         groupChildren = List(2) { PlayerDataFixtures.bind().copy(isBound = true) },
     )
-    GroupSettingsDialog(
+    GroupSettings(
         player = leader.copy(
             player = leader.player.copy(groupMembers = setOf("member-a", "member-b")),
         ),
-        onDismissRequest = {},
         canLeaveGroup = true,
     )
 }
@@ -517,8 +457,5 @@ private fun PreviewGroupSettingDialogLongList() {
             PlayerDataFixtures.bind()
         },
     )
-    GroupSettingsDialog(
-        player = selectedPlayer,
-        onDismissRequest = {},
-    )
+    GroupSettings(player = selectedPlayer)
 }

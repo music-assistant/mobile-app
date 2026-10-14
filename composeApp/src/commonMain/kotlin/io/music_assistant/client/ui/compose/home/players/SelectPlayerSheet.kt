@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,12 +22,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,98 +46,178 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.client.PlayerDataFixtures
-import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
+import io.music_assistant.client.data.model.client.byId
+import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
+import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
 import musicassistantclient.composeapp.generated.resources.players_title
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.vectorResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectPlayerDialog(
+fun SelectPlayerSheet(
     selectedPlayer: PlayerData,
     players: List<PlayerData>,
     onDismissRequest: () -> Unit = {},
     onMoveToPlayer: (String) -> Unit = {},
     onReorder: (List<String>) -> Unit = {},
+    onPlayerAction: (String, PlayerAction) -> Unit = { _, _ -> },
     hideUnavailable: Boolean = false,
     onToggleHideUnavailable: () -> Unit = {},
+    onAdjustPlaybackDelay: (Int) -> Unit = {},
+    canLeaveGroup: Boolean = false,
 ) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+
+    ModalBottomSheet(
+        sheetState = sheetState,
+        onDismissRequest = onDismissRequest,
+    ) {
+        var showGroupSettings by remember { mutableStateOf<String?>(null) }
+        val groupPlayer = showGroupSettings?.let { players.byId(it) }
+
+        if (groupPlayer != null) {
+            GroupLayout(
+                player = groupPlayer,
+                players = players,
+                onDismissRequest = onDismissRequest,
+                onPlayerAction = onPlayerAction,
+                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                canLeaveGroup = canLeaveGroup,
+            )
+        } else {
+            PlayerLayout(
+                players = players,
+                selectedPlayer = selectedPlayer,
+                onDismissRequest = onDismissRequest,
+                onMoveToPlayer = onMoveToPlayer,
+                onReorder = onReorder,
+                onGroupRequest = { player -> showGroupSettings = player.playerId },
+                hideUnavailable = hideUnavailable,
+                onToggleHideUnavailable = onToggleHideUnavailable,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerLayout(
+    players: List<PlayerData>,
+    selectedPlayer: PlayerData,
+    onDismissRequest: () -> Unit,
+    onMoveToPlayer: (String) -> Unit,
+    onReorder: (List<String>) -> Unit,
+    onGroupRequest: (PlayerData) -> Unit,
+    hideUnavailable: Boolean,
+    onToggleHideUnavailable: () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(modifier = Modifier.padding(vertical = 16.dp)) {
-                Column {
-                    Row(
-                        modifier = Modifier.padding(start = 16.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            stringResource(Res.string.players_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OverflowMenuButton(
-                            options = listOf(
-                                OverflowMenuOption(
-                                    title = stringResource(Res.string.players_hide_unavailable),
-                                    icon = Icons.Default.VisibilityOff,
-                                    trailingIcon = Icons.Default.Check.takeIf { hideUnavailable },
-                                    onClick = onToggleHideUnavailable,
-                                ),
-                            ),
-                        ) { onClick ->
-                            IconButton(onClick = onClick) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = stringResource(Res.string.cd_more),
-                                )
-                            }
-                        }
-                    }
+            Text(
+                stringResource(Res.string.players_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
 
-                    // The selected player stays listed even when unavailable, so the
-                    // selection never disappears from the list.
-                    val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
-                        if (hideUnavailable) {
-                            players.filter {
-                                it.player.isSelectable || it.player.id == selectedPlayer.player.id
-                            }
-                        } else {
-                            players
-                        }
-                    }
-
-                    Box(modifier = Modifier.padding(top = 8.dp)) {
-                        PlayerSelection(
-                            shownPlayers,
-                            selectedPlayer,
-                            onDismissRequest,
-                            onMoveToPlayer,
-                            onReorder = { reordered, movedId ->
-                                onReorder(mergeReorderedPlayers(players.map { it.player.id }, reordered, movedId))
-                            },
-                        )
-                    }
+            OverflowMenuButton(
+                options = listOf(
+                    OverflowMenuOption(
+                        title = stringResource(Res.string.players_hide_unavailable),
+                        icon = Icons.Default.VisibilityOff,
+                        trailingIcon = Icons.Default.Check.takeIf { hideUnavailable },
+                        onClick = onToggleHideUnavailable,
+                    ),
+                ),
+            ) { onClick ->
+                IconButton(onClick = onClick) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(Res.string.cd_more),
+                    )
                 }
             }
+        }
+
+        // The selected player stays listed even when unavailable, so the
+        // selection never disappears from the list.
+        val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
+            if (hideUnavailable) {
+                players.filter {
+                    it.player.isSelectable || it.player.id == selectedPlayer.player.id
+                }
+            } else {
+                players
+            }
+        }
+
+        Box(modifier = Modifier.padding(16.dp)) {
+            PlayerSelection(
+                players = shownPlayers,
+                selectedPlayer = selectedPlayer,
+                onDismissRequest = onDismissRequest,
+                onSelectPlayer = onMoveToPlayer,
+                onReorder = { reordered, movedId ->
+                    onReorder(
+                        mergeReorderedPlayers(
+                            players.map { it.player.id },
+                            reordered,
+                            movedId,
+                        ),
+                    )
+                },
+                onGroupRequest = onGroupRequest,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupLayout(
+    player: PlayerData,
+    players: List<PlayerData>,
+    onDismissRequest: () -> Unit,
+    onPlayerAction: (String, PlayerAction) -> Unit,
+    onAdjustPlaybackDelay: (Int) -> Unit,
+    canLeaveGroup: Boolean,
+) {
+    Column {
+        Text(
+            text = stringResource(Res.string.players_group_settings),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 16.dp),
+        )
+
+        Box(modifier = Modifier.padding(16.dp)) {
+            GroupSettings(
+                player = player,
+                onDismiss = onDismissRequest,
+                playerAction = onPlayerAction,
+                localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
+                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                canLeaveGroup = canLeaveGroup,
+            )
         }
     }
 }
@@ -146,6 +229,7 @@ private fun PlayerSelection(
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
     onReorder: (reordered: List<String>, movedId: String) -> Unit,
+    onGroupRequest: (PlayerData) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
 
@@ -180,8 +264,7 @@ private fun PlayerSelection(
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
-            .selectableGroup()
-            .heightIn(max = MAX_DIALOG_HEIGHT),
+            .selectableGroup(),
         state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -208,11 +291,14 @@ private fun PlayerSelection(
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(horizontal = 16.dp)
                         .fillMaxWidth()
-                        .clip(plateShape)
-                        .background(backgroundColor)
-                        .border(1.dp, borderColor, plateShape)
+                        .clip(shape = plateShape)
+                        .background(color = backgroundColor)
+                        .border(
+                            1.dp,
+                            color = borderColor,
+                            shape = plateShape,
+                        )
                         .selectable(
                             selected = selected,
                             enabled = item.player.isSelectable,
@@ -229,11 +315,12 @@ private fun PlayerSelection(
                     // selection to it keeps it there when the speaker wakes up. One it cannot
                     // act on is listed but disabled.
                     val dormant = item.player.isPoweredOff
-                    PlayerIcon(
-                        player = item.player,
-                        isLocal = item.isLocal,
+                    Icon(
+                        painter = painterResource(item.iconRes()),
                         modifier = Modifier.size(20.dp).alphaOn(!dormant),
+                        contentDescription = null,
                     )
+
                     Text(
                         text = item.player.name,
                         modifier = Modifier
@@ -244,14 +331,7 @@ private fun PlayerSelection(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    item.player.suffix?.let { suffix ->
-                        Text(
-                            text = suffix,
-                            modifier = Modifier.padding(start = 4.dp).alpha(0.6f),
-                            style = MaterialTheme.typography.bodyLarge,
-                            maxLines = 1,
-                        )
-                    }
+
                     if (item.player.isPlaying || item.player.isAnnouncing) {
                         NowPlayingIcon(
                             modifier = Modifier.padding(start = 8.dp),
@@ -263,6 +343,29 @@ private fun PlayerSelection(
                             },
                         )
                     }
+
+                    IconButton(onClick = { onGroupRequest(item) }) {
+                        BadgedBox(
+                            badge = {
+                                val groupMembers = item.player.groupMembers?.size ?: 0
+                                val playerCount = if (groupMembers > 0) {
+                                    groupMembers
+                                } else {
+                                    1
+                                }
+
+                                Badge {
+                                    Text(playerCount.toString())
+                                }
+                            },
+                        ) {
+                            Icon(
+                                vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+
                     if (!item.player.isSelectable) {
                         Text(
                             text = stringResource(Res.string.player_unavailable),
@@ -271,6 +374,7 @@ private fun PlayerSelection(
                             maxLines = 1,
                         )
                     }
+
                     if (!item.isLocal) {
                         Icon(
                             modifier = Modifier
@@ -278,7 +382,10 @@ private fun PlayerSelection(
                                 .draggableHandle(
                                     onDragStopped = {
                                         dragEndIndex?.let {
-                                            onReorder(internalPlayers.map { p -> p.player.id }, item.player.id)
+                                            onReorder(
+                                                internalPlayers.map { p -> p.player.id },
+                                                item.player.id,
+                                            )
                                         }
                                     },
                                 )
@@ -292,29 +399,4 @@ private fun PlayerSelection(
             }
         }
     }
-}
-
-@Preview
-@Composable
-private fun PreviewSelectPlayerDialog() {
-    val selectedPlayer = PlayerDataFixtures.playerData()
-    SelectPlayerDialog(
-        selectedPlayer = selectedPlayer,
-        players = listOf(selectedPlayer, PlayerDataFixtures.playerData()),
-        onDismissRequest = {},
-    )
-}
-
-@Preview
-@Composable
-private fun PreviewSelectPlayerDialogLongList() {
-    val players = 0.until(25).map {
-        PlayerDataFixtures.playerData()
-    }
-
-    SelectPlayerDialog(
-        selectedPlayer = players[0],
-        players = players,
-        onDismissRequest = {},
-    )
 }

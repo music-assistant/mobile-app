@@ -9,16 +9,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SplitButtonDefaults.LeadingButton
-import androidx.compose.material3.SplitButtonDefaults.TrailingButton
-import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,109 +24,38 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
-import io.music_assistant.client.data.model.client.PlayerType
-import io.music_assistant.client.ui.contentColorByLuminance
 import io.music_assistant.sendspin.api.PlayerState
-import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.cd_current_player
-import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.painterResource
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlayerSelectionButton(
     player: PlayerData,
     controlTint: Color = MaterialTheme.colorScheme.primary,
     sendSpinState: PlayerState?,
     onSelectPlayer: () -> Unit = {},
-    onGroupButton: () -> Unit = {},
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
-    val onTint = controlTint.contentColorByLuminance()
-    val hasGroupChildren = player.childrenBinds.isNotEmpty()
-    val hasBoundChildren = player.childrenBinds.any { it.isBound }
 
-    val currentPlayerContentDescription =
-        stringResource(Res.string.cd_current_player, player.player.name)
+    val playerContentDescription = player.contentDescription()
     val modifier = Modifier.clearAndSetSemantics {
-        contentDescription = currentPlayerContentDescription
+        contentDescription = playerContentDescription
     }
 
-    if (hasGroupChildren) {
-        SplitButtonLayout(
-            modifier = modifier,
-            leadingButton = {
-                LeadingButton(
-                    onClick = onSelectPlayer,
-                    colors = ButtonDefaults.outlinedButtonColors(),
-                    border = ButtonDefaults.outlinedButtonBorder(),
-                ) {
-                    PlayerButtonContent(
-                        isLocalPlayer = isLocalPlayer,
-                        player = player,
-                        controlTint = controlTint,
-                        dotColor = dotColor,
-                    )
-                }
-            },
-            trailingButton = {
-                if (hasGroupChildren) {
-                    val (buttonColor, iconColor, border) = if (hasBoundChildren) {
-                        Triple(
-                            ButtonDefaults.buttonColors(
-                                containerColor = controlTint,
-                                contentColor = onTint,
-                            ),
-                            null,
-                            null,
-                        )
-                    } else {
-                        Triple(
-                            ButtonDefaults.outlinedButtonColors(),
-                            controlTint,
-                            ButtonDefaults.outlinedButtonBorder(),
-                        )
-                    }
-
-                    TrailingButton(
-                        onClick = onGroupButton,
-                        colors = buttonColor,
-                        border = border,
-                    ) {
-                        iconColor?.let {
-                            Icon(
-                                modifier = Modifier.size(16.dp),
-                                imageVector = Icons.Default.Link,
-                                contentDescription = null,
-                                tint = it,
-                            )
-                        } ?: Icon(
-                            modifier = Modifier.size(16.dp),
-                            imageVector = Icons.Default.Link,
-                            contentDescription = null,
-                        )
-                    }
-                }
-            },
+    OutlinedButton(
+        modifier = modifier,
+        onClick = onSelectPlayer,
+    ) {
+        PlayerButtonContent(
+            player = player,
+            controlTint = controlTint,
+            dotColor = dotColor,
         )
-    } else {
-        OutlinedButton(
-            modifier = modifier,
-            onClick = onSelectPlayer,
-        ) {
-            PlayerButtonContent(
-                isLocalPlayer = isLocalPlayer,
-                player = player,
-                controlTint = controlTint,
-                dotColor = dotColor,
-            )
-        }
     }
 }
 
 @Composable
 private fun PlayerButtonContent(
-    isLocalPlayer: Boolean,
     player: PlayerData,
     controlTint: Color,
     dotColor: Color?,
@@ -142,12 +64,13 @@ private fun PlayerButtonContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        PlayerIcon(
-            player = player.player,
-            isLocal = isLocalPlayer,
+        Icon(
+            painter = painterResource(player.iconRes()),
             modifier = Modifier.size(16.dp),
             tint = controlTint,
+            contentDescription = null,
         )
+
         dotColor?.let {
             Box(
                 modifier = Modifier
@@ -156,12 +79,7 @@ private fun PlayerButtonContent(
             )
         }
 
-        val boundCount = player.childrenBinds.count { it.isBound }
-        val playerLabel = when {
-            player.player.isGroup -> "${player.player.name} (${player.player.groupMembers?.size ?: 0})"
-            boundCount > 0 -> "${player.player.name} + $boundCount"
-            else -> player.player.name
-        }
+        val playerLabel = player.label()
 
         Text(
             text = playerLabel,
@@ -208,30 +126,6 @@ private fun PlayerSelectionButtonPreview() {
             player = PlayerDataFixtures.playerData(
                 groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = false)),
             ),
-            sendSpinState = null,
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun PlayerSelectionButtonInGroupPreview() {
-    MaterialTheme {
-        PlayerSelectionButton(
-            player = PlayerDataFixtures.playerData(
-                groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = true)),
-            ),
-            sendSpinState = null,
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun PlayerSelectionButtonIsGroupPreview() {
-    MaterialTheme {
-        PlayerSelectionButton(
-            player = PlayerDataFixtures.playerData(playerType = PlayerType.GROUP),
             sendSpinState = null,
         )
     }

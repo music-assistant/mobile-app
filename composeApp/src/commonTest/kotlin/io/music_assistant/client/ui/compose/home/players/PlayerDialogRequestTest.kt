@@ -40,8 +40,6 @@ class PlayerDialogRequestTest {
         val id = player.playerId
         val item = AppMediaItemFixtures.track()
 
-        assertTrue(PlayerDialogRequest.Select(id).hasAnchor(player))
-        assertTrue(PlayerDialogRequest.Group(id).hasAnchor(player))
         assertTrue(PlayerDialogRequest.Dsp(id).hasAnchor(player))
         assertTrue(PlayerDialogRequest.SleepTimer(id).hasAnchor(player))
         assertTrue(PlayerDialogRequest.AddToPlaylist(id, item).hasAnchor(player))

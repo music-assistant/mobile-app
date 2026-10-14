@@ -116,7 +116,7 @@ fun <T : Page> ComposePage.clickLibrary(destination: T): T {
 }
 
 fun ComposePage.clickSettings(): SettingsPage {
-    clickNavBarItem(Res.string.nav_settings.get())
+    composeTestRule.onNodeWithContentDescription(Res.string.nav_settings.get()).performClick()
     return SettingsPage(composeTestRule).assertOnPage()
 }
 
@@ -154,6 +154,20 @@ fun <T : ComposePage> T.playMedia(item: ServerMediaItem, withinTag: String? = nu
 fun <T : ComposePage> T.pause(): T {
     composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get()).performClick()
     return this
+}
+
+fun <T : ComposePage> T.clickCurrentPlayer(name: String): PlayerSelectionPage<T> {
+    composeTestRule.waitUntil {
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+            .isDisplayed()
+    }
+
+    composeTestRule
+        .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+        .performClick()
+
+    return PlayerSelectionPage(this, composeTestRule).assertOnPage()
 }
 
 fun <T : ComposePage> T.assertPlayer(

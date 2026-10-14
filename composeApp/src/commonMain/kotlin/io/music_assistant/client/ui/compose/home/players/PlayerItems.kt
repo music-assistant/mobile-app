@@ -112,7 +112,6 @@ fun CompactPlayerItem(
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     onSelectPlayer: (() -> Unit)? = null,
-    onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
     sendSpinState: PlayerState?,
     // Server preference gate for chapter-based Next enablement.
@@ -261,7 +260,6 @@ fun CompactPlayerItem(
                     controlTint = colors.controlTint,
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
-                    onGroupButton = onGroupButton ?: {},
                 )
             }
         }

@@ -12,6 +12,7 @@ import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.Page
 import io.music_assistant.client.support.pages.assertPlayer
+import io.music_assistant.client.support.pages.clickCurrentPlayer
 import io.music_assistant.client.support.pages.expandPlayer
 import io.music_assistant.client.support.pages.pause
 import io.music_assistant.client.support.pages.playMedia
@@ -113,6 +114,30 @@ class PlayerTest {
                 serviceClient,
                 player.playerId,
                 playerState = PlayerState.PAUSED,
+                serverMediaItem = track,
+            )
+    }
+
+    @Test
+    fun `can change current player`() {
+        val album = ServerMediaItemFixtures.album()
+        val track = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addItems(track)
+
+        val player1 = ServerPlayerFixtures.player()
+        val player2 = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player1, player2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickCurrentPlayer(player1.displayName)
+            .selectPlayer(player2.displayName)
+            .clickOnMedia(album)
+            .clickPlay()
+            .assertPlayer(player2.displayName, playing = true, item = track.name)
+            .assertPlayerState(
+                serviceClient,
+                player2.playerId,
+                playerState = PlayerState.PLAYING,
                 serverMediaItem = track,
             )
     }

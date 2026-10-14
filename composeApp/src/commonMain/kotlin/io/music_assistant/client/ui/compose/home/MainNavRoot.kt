@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package io.music_assistant.client.ui.compose.home
 
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -10,7 +8,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,9 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -74,6 +68,12 @@ import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
+import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
+import io.music_assistant.client.ui.compose.home.players.contentDescription
+import io.music_assistant.client.ui.compose.home.players.iconRes
+import io.music_assistant.client.ui.compose.home.players.label
+import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
+import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListScreen
@@ -111,16 +111,15 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_home
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.vectorResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainNavigationRoot(
     homeScreenViewModel: HomeScreenViewModel = koinViewModel(),
@@ -257,42 +256,52 @@ fun MainNavigationRoot(
         }
     }
 
-    val navigationItems = listOf(
-        multiBackStack.createNavigationItem(
-            backStack = 0,
-            icon = Icons.Default.Home,
-            label = stringResource(Res.string.nav_home),
-            screenState = homeScreenState.value,
-        ),
-        multiBackStack.createNavigationItem(
-            backStack = 1,
-            icon = Icons.Default.LibraryMusic,
-            label = stringResource(Res.string.nav_library),
-            screenState = libraryScreenState.value,
-        ),
-        multiBackStack.createNavigationItem(
-            backStack = 2,
-            icon = Icons.Default.Search,
-            label = stringResource(Res.string.nav_search),
-            screenState = searchScreenState.value,
-        ),
-        NavigationItem(
-            selected = false,
-            onClick = { goToSettings() },
-            Icons.Default.Settings,
-            label = stringResource(Res.string.nav_settings),
-        ),
-    )
-
     // A root screen in edit mode hides the collapsed bar so it does not cover drag targets.
     // An expanded player (for example from a deep link) always stays visible.
     val rootScreenEditing = homeScreenState.value?.editMode == true ||
         libraryScreenState.value?.editMode == true
 
+    var showPlayerSelection by remember { mutableStateOf(false) }
+    playersState.let {
+        if (it is HomeScreenViewModel.PlayersState.Data) {
+            val selectedPlayer = it.selectedPlayer
+            if (selectedPlayer != null) {
+                if (showPlayerSelection) {
+                    val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
+                        .collectAsStateWithLifecycle()
+
+                    SelectPlayerSheet(
+                        selectedPlayer = selectedPlayer,
+                        players = it.playerData,
+                        onDismissRequest = { showPlayerSelection = false },
+                        onMoveToPlayer = { id: String ->
+                            it.playerData.find { playerData -> playerData.player.id == id }?.player?.let { player ->
+                                homeScreenViewModel.selectPlayer(player)
+                            }
+                        },
+                        onReorder = homeScreenViewModel::onPlayersSortChanged,
+                        onPlayerAction =  homeScreenViewModel::playerAction,
+                        hideUnavailable = rememberHideUnavailablePlayers(),
+                        onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
+                        onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
+                        canLeaveGroup = leaderLeaveSupported,
+                    )
+                }
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AdaptiveNavigationBarLayout(
             showNavigation = !playerExpanded,
-            navigationItems = navigationItems,
+            navigationItems = navigationItems(
+                multiBackStack = multiBackStack,
+                homeScreenState = homeScreenState,
+                libraryScreenState = libraryScreenState,
+                searchScreenState = searchScreenState,
+                playersState = playersState,
+                onSelectPlayer = { showPlayerSelection = true },
+            ),
         ) { scaffoldContentPadding ->
             FloatingBarLayout(
                 modifier = Modifier.padding(scaffoldContentPadding),
@@ -319,15 +328,17 @@ fun MainNavigationRoot(
                                     onClose = { playerExpanded = false },
                                     contentPadding = contentPadding,
                                     toastState = toastState,
-                                ) { item ->
-                                    multiBackStack.add(
-                                        MainNav.ItemDetails(
-                                            itemId = item.itemId,
-                                            mediaType = item.mediaType,
-                                            providerId = item.provider,
-                                        ),
-                                    )
-                                }
+                                    navigateToItem = { item ->
+                                        multiBackStack.add(
+                                            MainNav.ItemDetails(
+                                                itemId = item.itemId,
+                                                mediaType = item.mediaType,
+                                                providerId = item.provider,
+                                            ),
+                                        )
+                                    },
+                                    onSelectPlayer = { showPlayerSelection = true },
+                                )
                             },
                         )
                     }
@@ -347,6 +358,7 @@ fun MainNavigationRoot(
                     homeScreenState,
                     libraryScreenState,
                     searchScreenState,
+                    goToSettings,
                 )
                 val tabRootKeys = backStacks.map { entryProvider(it.first()).contentKey }
                 ConditionalBackNavDisplay(
@@ -371,6 +383,53 @@ fun MainNavigationRoot(
         }
         ToastHost(toastState = toastState)
     }
+}
+
+@Composable
+private fun navigationItems(
+    multiBackStack: MultiBackStack<NavKey>,
+    homeScreenState: MutableState<HomeScreenState?>,
+    libraryScreenState: MutableState<LibraryScreenState?>,
+    searchScreenState: MutableState<SearchScreenState?>,
+    playersState: HomeScreenViewModel.PlayersState,
+    onSelectPlayer: () -> Unit,
+): List<NavigationItem> {
+    val navigationItems = mutableListOf(
+        multiBackStack.createNavigationItem(
+            backStack = 0,
+            icon = Icons.Default.Home,
+            label = stringResource(Res.string.nav_home),
+            screenState = homeScreenState.value,
+        ),
+        multiBackStack.createNavigationItem(
+            backStack = 1,
+            icon = Icons.Default.LibraryMusic,
+            label = stringResource(Res.string.nav_library),
+            screenState = libraryScreenState.value,
+        ),
+        multiBackStack.createNavigationItem(
+            backStack = 2,
+            icon = Icons.Default.Search,
+            label = stringResource(Res.string.nav_search),
+            screenState = searchScreenState.value,
+        ),
+    )
+
+    if (playersState is HomeScreenViewModel.PlayersState.Data) {
+        val selectedPlayer = playersState.selectedPlayer
+        if (selectedPlayer != null) {
+            navigationItems += NavigationItem(
+                selected = false,
+                onClick = onSelectPlayer,
+                icon = vectorResource(selectedPlayer.iconRes()),
+                label = selectedPlayer.label(),
+                marqueeLabel = true,
+                contentDescription = selectedPlayer.contentDescription(),
+            )
+        }
+    }
+
+    return navigationItems
 }
 
 /**
@@ -404,6 +463,7 @@ private fun mainNavEntryProvider(
     homeScreenState: MutableState<HomeScreenState?>,
     libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
+    goToSettings: () -> Unit,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -441,6 +501,7 @@ private fun mainNavEntryProvider(
                 providerIconFetcher = providerViewModel.providerIconFetcher(),
                 actionsViewModel = actionsViewModel,
                 state = screenState,
+                goToSettings = goToSettings,
             )
         }
 
