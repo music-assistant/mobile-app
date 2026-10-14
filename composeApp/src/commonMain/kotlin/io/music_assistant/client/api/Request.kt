@@ -359,6 +359,26 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 queueItemId?.let { put("queue_item_id", JsonPrimitive(it)) }
             },
         )
+
+        /**
+         * Configures the ambient sound overlay. A null argument is left out, and the server
+         * keeps its current value. The server applies source, then volume, then enabled, so
+         * one call can select a sound and turn it on.
+         */
+        fun setOverlay(
+            queueId: String,
+            enabled: Boolean,
+            source: String? = null,
+            volume: Int? = null,
+        ) = Request(
+            command = APICommands.PLAYER_QUEUES_OVERLAY,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+                put("enabled", JsonPrimitive(enabled))
+                source?.let { put("source", JsonPrimitive(it)) }
+                volume?.let { put("volume", JsonPrimitive(it)) }
+            },
+        )
     }
 
     data object Playlist {
@@ -738,6 +758,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 path?.let { put("path", JsonPrimitive(it)) }
             },
         )
+    }
+
+    data object SoundEffects {
+        fun all() = Request(command = APICommands.MUSIC_SOUND_EFFECTS)
     }
 
     data object Metadata {

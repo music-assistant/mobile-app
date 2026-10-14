@@ -52,6 +52,14 @@
   <string name="all_podcasts">All podcasts</string>
   <string name="all_radio">All radio stations</string>
   <string name="all_tracks">All tracks</string>
+  <string name="ambient_sound_load_failed">Could not load the ambient sounds</string>
+  <string name="ambient_sound_menu_subtitle">%1$s · %2$d%</string>
+  <string name="ambient_sound_none_available">No ambient sounds are available</string>
+  <string name="ambient_sound_off">Off</string>
+  <string name="ambient_sound_sound">Sound</string>
+  <string name="ambient_sound_title">Ambient sound</string>
+  <string name="ambient_sound_volume">Relative volume: %1$d%</string>
+  <string name="ambient_sound_volume_hint">Relative to the music volume. At 100%, the sound is as loud as the music.</string>
   <string name="announcement_chime">Play chime first</string>
   <string name="announcement_custom_volume">Custom volume</string>
   <string name="announcement_failed">The announcement failed</string>
@@ -95,6 +103,7 @@
   <string name="cd_add_playlist">Add playlist</string>
   <string name="cd_add_to_group">Add to group</string>
   <string name="cd_album_item">Album "%1$s" from %2$s</string>
+  <string name="cd_ambient_sound_on">Ambient sound on</string>
   <string name="cd_applied">Applied</string>
   <string name="cd_autoplay_off">Autoplay off</string>
   <string name="cd_autoplay_on">Autoplay on</string>

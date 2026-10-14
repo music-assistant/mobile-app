@@ -77,6 +77,12 @@ actual class PlatformFeature {
   with `play_media`. A source never ends, so the long-press menu has "Play now" only. A source has no favorite
   state. Native player inputs (`source_list`, `players/cmd/select_source`) are a different feature, and the
   client does not show them.
+- **Ambient sound overlay**: the server mixes a looping `sound_effect` item into the queue stream, so all
+  players on the stream hear it. `QueueOverlayRepository` (`data/repository/`) sends `player_queues/overlay`
+  and loads the sounds with `music/sound_effects`. The command goes to the server for every player and is never
+  a `PlayerAction`, so the local player does not intercept it. A null `QueueInfo.overlay` means that the server
+  has no overlay support. Show the feature only if a provider has the `sound_effects` feature. To turn the overlay
+  off, send `enabled=false` only, because the server keeps the last sound and volume.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

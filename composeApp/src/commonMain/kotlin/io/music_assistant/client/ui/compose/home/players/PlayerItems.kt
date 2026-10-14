@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Lyrics
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +47,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -87,6 +89,7 @@ import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.cd_ambient_sound_on
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_lyrics
 import musicassistantclient.composeapp.generated.resources.cd_playing
@@ -299,6 +302,8 @@ fun FullPlayerItem(
     // live outside the pager so a page change cannot tear them down mid-gesture.
     onAudioChainClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
+    // Null hides the ambient sound pill: the feature is unavailable for this queue.
+    onAmbientSoundClick: (() -> Unit)? = null,
     // Server preference gate for the chapter-relative timeline.
     chapterProgressEnabled: Boolean = true,
     navigateToItem: (AppMediaItem) -> Unit = {},
@@ -617,6 +622,8 @@ fun FullPlayerItem(
             val isSpokenContent = currentQueueItem?.track is Audiobook ||
                     currentQueueItem?.track is PodcastEpisode
             val showSpeed = isSpokenContent && playbackSpeed != null && !poweredOff
+            val onAmbientSound = onAmbientSoundClick
+                ?.takeIf { item.queueInfo?.overlay?.enabled == true && !poweredOff }
 
             CenteredThreeSlotRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -630,55 +637,63 @@ fun FullPlayerItem(
                     )
                 },
                 center = {
-                    if (showSpeed) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(colors.controlTint)
-                                .clickable(onClick = onPlaybackSpeedClick)
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = "${formatDecimal(snapSpeed(playbackSpeed), 2)}x",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (colors.controlTint.luminance() > 0.5f) {
-                                    Color.Black
-                                } else {
-                                    Color.White
-                                },
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .alpha(if (tier != null && !poweredOff) 1f else 0f)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (isLq) {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    } else {
-                                        colors.controlTint
-                                    },
-                                )
-                                .clickable(enabled = tier != null, onClick = onAudioChainClick)
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = (tier ?: QualityTier.LQ).name,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isLq) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else {
-                                    if (colors.controlTint.luminance() > 0.5f) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (showSpeed) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(colors.controlTint)
+                                    .clickable(onClick = onPlaybackSpeedClick)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = "${formatDecimal(snapSpeed(playbackSpeed), 2)}x",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (colors.controlTint.luminance() > 0.5f) {
                                         Color.Black
                                     } else {
                                         Color.White
-                                    }
-                                },
-                            )
+                                    },
+                                )
+                            }
+                        } else if ((tier != null && !poweredOff) || onAmbientSound == null) {
+                            // A hidden badge stays as an invisible placeholder that keeps the
+                            // slot height, unless the ambient pill holds the slot by itself.
+                            Box(
+                                modifier = Modifier
+                                    .alpha(if (tier != null && !poweredOff) 1f else 0f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isLq) {
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        } else {
+                                            colors.controlTint
+                                        },
+                                    )
+                                    .clickable(enabled = tier != null, onClick = onAudioChainClick)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = (tier ?: QualityTier.LQ).name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isLq) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        if (colors.controlTint.luminance() > 0.5f) {
+                                            Color.Black
+                                        } else {
+                                            Color.White
+                                        }
+                                    },
+                                )
+                            }
                         }
+                        onAmbientSound?.let { AmbientSoundPill(tint = colors.controlTint, onClick = it) }
                     }
                 },
                 end = {
@@ -818,6 +833,28 @@ private fun FullPlayerItemPoweredOffPreview() {
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             livePositionFlow = null,
+        )
+    }
+}
+
+/** Shows that an ambient sound plays with the queue. Opens the ambient sound dialog. */
+@Composable
+private fun AmbientSoundPill(tint: Color, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(tint)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.Waves,
+            contentDescription = stringResource(Res.string.cd_ambient_sound_on),
+            // As tall as one line of the text badges, at every font scale.
+            modifier = Modifier.size(
+                with(LocalDensity.current) { MaterialTheme.typography.labelSmall.lineHeight.toDp() },
+            ),
+            tint = if (tint.luminance() > 0.5f) Color.Black else Color.White,
         )
     }
 }

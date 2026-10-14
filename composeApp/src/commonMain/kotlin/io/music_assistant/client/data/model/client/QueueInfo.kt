@@ -31,7 +31,26 @@ data class QueueInfo(
     /** Server-derived: the active source is a dynamic/smart playlist (rule-generated). */
     val isDynamicPlaylist: Boolean = false,
     val playbackSpeed: Double? = null,
+    /** Ambient sound overlay, or null when the server does not support the feature. */
+    val overlay: QueueOverlay? = null,
 )
+
+/**
+ * A looping sound effect mixed into the queue stream by the server. [sourceUri] and
+ * [sourceName] keep the last selected sound while [enabled] is false. [volume] is relative
+ * to the music in percent (100 = equally loud).
+ */
+data class QueueOverlay(
+    val enabled: Boolean,
+    val sourceUri: String?,
+    val sourceName: String?,
+    val volume: Int,
+) {
+    companion object {
+        /** The server default: the sound plays as loud as the music. */
+        const val DEFAULT_VOLUME = 100
+    }
+}
 
 /** Strict-older-than on [QueueInfo.elapsedTimeLastUpdated]. Callers match ids first. */
 fun QueueInfo.isBefore(other: QueueInfo): Boolean {

@@ -8,6 +8,7 @@ import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyrics
+import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.ChooseArtistDialog
@@ -15,6 +16,7 @@ import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.announcement.AnnouncementDialog
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
+import org.koin.compose.koinInject
 
 /**
  * Renders the one open player dialog, outside the pager.
@@ -130,6 +132,19 @@ fun PlayerDialogHost(
             player = player,
             onDismissRequest = onDismiss,
         )
+
+        is PlayerDialogRequest.AmbientSound -> player.queueInfo?.let { queueInfo ->
+            queueInfo.overlay?.let { overlay ->
+                val repository = koinInject<QueueOverlayRepository>()
+                AmbientSoundDialog(
+                    overlay = overlay,
+                    playerName = player.player.nameAndSuffix,
+                    loadSounds = repository::soundEffects,
+                    onApply = { uri, volume -> repository.apply(queueInfo.id, uri, volume) },
+                    onDismissRequest = onDismiss,
+                )
+            }
+        }
 
         is PlayerDialogRequest.AddToPlaylist -> playlistActions?.let { actions ->
             AddToPlaylistDialog(

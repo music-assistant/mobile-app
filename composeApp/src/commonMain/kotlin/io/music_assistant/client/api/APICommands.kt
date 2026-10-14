@@ -36,6 +36,7 @@ object APICommands {
     const val PLAYER_QUEUES_DONT_STOP_THE_MUSIC = "player_queues/dont_stop_the_music"
     const val PLAYER_QUEUES_CROSSFADE = "player_queues/crossfade"
     const val PLAYER_QUEUES_SET_PLAYBACK_SPEED = "player_queues/set_playback_speed"
+    const val PLAYER_QUEUES_OVERLAY = "player_queues/overlay"
 
     // Playlist commands
     const val MUSIC_PLAYLISTS_LIBRARY_ITEMS = "music/playlists/library_items"
@@ -92,6 +93,7 @@ object APICommands {
 
     // Browse
     const val MUSIC_BROWSE = "music/browse"
+    const val MUSIC_SOUND_EFFECTS = "music/sound_effects"
 
     // Search and recommendations
     const val MUSIC_SEARCH = "music/search"

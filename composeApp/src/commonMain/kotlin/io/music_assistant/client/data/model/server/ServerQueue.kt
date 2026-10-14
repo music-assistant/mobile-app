@@ -50,6 +50,15 @@ data class ServerQueue(
      * so `null` means "speed control unavailable" and the UI hides the speed button.
      */
     @SerialName("playback_speed") val playbackSpeed: Double? = null,
+    /**
+     * Audio overlay: a looping sound effect the server mixes into the queue stream. Null
+     * [overlayEnabled] means the server has no overlay support, which gates the UI.
+     * [overlaySource] stays set while the overlay is off, so it can be re-enabled as is.
+     * [overlayVolume] is relative to the music in percent (100 = equally loud).
+     */
+    @SerialName("overlay_enabled") val overlayEnabled: Boolean? = null,
+    @SerialName("overlay_source") val overlaySource: ServerMediaItem? = null,
+    @SerialName("overlay_volume") val overlayVolume: Int? = null,
     // @SerialName("state") val state: PlayerState,
     @SerialName("current_item") val currentItem: ServerQueueItem? = null,
     // @SerialName("next_item") val nextItem: QueueItem? = null,

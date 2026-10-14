@@ -20,6 +20,7 @@ import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
 import io.music_assistant.client.imageloader.ArtworkDiskStore
 import io.music_assistant.client.imageloader.ArtworkRepository
@@ -149,6 +150,13 @@ fun sharedModule(
                 httpClient = get(named("webrtcHttpClient")),
                 microphone = get(),
                 errorBus = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
+        single {                            // Queue ambient sound overlay; Apply outlives the dialog
+            QueueOverlayRepository(
+                apiClient = get(),
+                mediaItemFactory = get(),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }

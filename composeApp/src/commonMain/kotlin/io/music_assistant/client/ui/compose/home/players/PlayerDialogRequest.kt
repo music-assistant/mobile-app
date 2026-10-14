@@ -39,6 +39,8 @@ sealed interface PlayerDialogRequest {
 
     data class Announcement(override val playerId: String) : PlayerDialogRequest
 
+    data class AmbientSound(override val playerId: String) : PlayerDialogRequest
+
     /**
      * Carries the item itself: the add-to-playlist target is a snapshot taken at click time
      * (a queue row the user long-pressed), not something to re-derive from the player.
@@ -69,6 +71,8 @@ fun PlayerDialogRequest.hasAnchor(player: PlayerData): Boolean = when (this) {
     is PlayerDialogRequest.PlaybackSpeed ->
         player.queueInfo?.let { it.currentItem?.id == queueItemId && it.playbackSpeed != null }
             ?: false
+
+    is PlayerDialogRequest.AmbientSound -> player.queueInfo?.overlay != null
 
     else -> true
 }

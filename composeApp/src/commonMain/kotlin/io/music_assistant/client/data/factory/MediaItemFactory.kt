@@ -185,6 +185,7 @@ class MediaItemFactory(
                 sortName = sortName,
                 images = resolveImageInfo(image, metadata),
                 duration = duration,
+                uri = uri,
             )
 
             MediaType.AUDIO_SOURCE -> AudioSource(
