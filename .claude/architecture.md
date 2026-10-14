@@ -72,6 +72,11 @@ actual class PlatformFeature {
   it with the `SeriesGrouping` toggle, which is a display setting and not a filter. `music/audiobooks/get_collection`
   loads one series. Home rows from Audiobookshelf can also contain series. Play the series `uri` and the
   server starts the first book that is not fully played. Android Auto and CarPlay show the flat book list.
+- **Input sources**: a live input from a server plugin is `MediaType.AUDIO_SOURCE` (`AudioSource`). The server
+  puts the sources that a client can start at the `music/browse` root, from server 2.9.0. Play the source `uri`
+  with `play_media`. A source never ends, so the long-press menu has "Play now" only. A source has no favorite
+  state. Native player inputs (`source_list`, `players/cmd/select_source`) are a different feature, and the
+  client does not show them.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
@@ -64,6 +65,8 @@ fun PlayerControls(
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
     // Audiobooks / podcast episodes swap shuffle & repeat for skip-back / skip-forward seek.
     val isLongForm = queue?.currentItem?.track.isLongFormSpokenContent
+    // A live input never ends, so shuffle and repeat have nothing to act on.
+    val isLiveInput = queue?.currentItem?.track is AudioSource
     val itemsCount = playerData.queueItems?.size ?: 0
     // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
     // enabled while a chapter starts after the (event-driven, close-enough) position.
@@ -102,7 +105,7 @@ fun PlayerControls(
                         },
                         tint = tint,
                         size = smallButtonSize,
-                        enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
+                        enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist && !isLiveInput,
                     ) {
                         playerAction(
                             playerData,
@@ -181,7 +184,7 @@ fun PlayerControls(
                         },
                         tint = tint,
                         size = smallButtonSize,
-                        enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist,
+                        enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist && !isLiveInput,
                     ) {
                         repeatMode?.let {
                             playerAction(

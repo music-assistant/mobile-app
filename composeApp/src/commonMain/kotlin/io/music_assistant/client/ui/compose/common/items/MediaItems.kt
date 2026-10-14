@@ -64,7 +64,6 @@ import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
-import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
@@ -73,7 +72,6 @@ import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
-import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
@@ -583,20 +581,20 @@ private fun PodcastEpisodeImage(
 }
 
 /**
- * Radio station media item with wavy octagon shape.
+ * Live stream media item (radio station or input source) with wavy octagon shape.
  *
- * @param item The radio station item to display
+ * @param item The live item to display
  * @param onClick Click handler
 
  */
 @Composable
-internal fun RadioGridItem(
+internal fun <T> LiveStreamGridItem(
     modifier: Modifier = Modifier,
-    item: RadioStation,
-    onClick: (RadioStation) -> Unit,
-    onLongClick: (RadioStation) -> Unit,
+    item: T,
+    onClick: (T) -> Unit,
+    onLongClick: (T) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     GridItem(
         modifier = modifier,
         description = contentDescription(item),
@@ -604,7 +602,7 @@ internal fun RadioGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            RadioImage(item)
+            LiveStreamImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -615,7 +613,7 @@ internal fun RadioGridItem(
 }
 
 @Composable
-private fun RadioImage(
+private fun LiveStreamImage(
     item: PlayableItem,
 ) {
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -630,7 +628,7 @@ private fun RadioImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = RadioIcon,
+            icon = item.defaultIcon,
         )
         AsyncImage(
             placeholder = placeholder,
@@ -999,20 +997,20 @@ internal fun PodcastEpisodeRowItem(
 }
 
 @Composable
-internal fun RadioRowItem(
+internal fun <T> LiveStreamRowItem(
     modifier: Modifier = Modifier,
-    item: RadioStation,
-    onClick: (RadioStation) -> Unit,
-    onLongClick: (RadioStation) -> Unit,
+    item: T,
+    onClick: (T) -> Unit,
+    onLongClick: (T) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     RowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
         description = contentDescription(item),
         prefixContent = {
-            RadioImage(item)
+            LiveStreamImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,

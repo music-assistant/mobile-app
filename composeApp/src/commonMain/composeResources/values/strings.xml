@@ -194,6 +194,7 @@
   <string name="item_subtitle_series">Series</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_sound_effect">AI host</string>
+  <string name="item_subtitle_audio_source">Input</string>
   <string name="item_subtitle_unknown">Unknown</string>
   <string name="kind_album">Albums</string>
   <string name="kind_artist">Artists</string>

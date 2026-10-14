@@ -9,6 +9,7 @@ import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
@@ -186,6 +187,18 @@ class MediaItemFactory(
                 duration = duration,
             )
 
+            MediaType.AUDIO_SOURCE -> AudioSource(
+                itemId = itemId,
+                provider = provider,
+                name = name,
+                providerMappings = providerMappings,
+                metadata = createMetadata(metadata),
+                sortName = sortName,
+                uri = uri,
+                images = resolveImageInfo(image, metadata),
+                isPlayable = isPlayable == true,
+            )
+
             MediaType.AUDIOBOOK -> Audiobook(
                 itemId = itemId,
                 provider = provider,
@@ -222,7 +235,6 @@ class MediaItemFactory(
 
             MediaType.FLOW_STREAM,
             MediaType.ANNOUNCEMENT,
-            MediaType.AUDIO_SOURCE,
             MediaType.UNKNOWN,
             null,
                 -> null
