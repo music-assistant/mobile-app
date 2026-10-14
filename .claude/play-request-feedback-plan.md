@@ -96,7 +96,7 @@ Result: a play request continues after the user leaves the screen. All play requ
 
 ## Risks
 
-- **A stale snapshot can keep the ring on.** The flag does not change `elapsed_time_last_updated`. `mergeFullQueueSnapshot` can keep a snapshot that was made while the flag was `true`. The next queue update corrects it. Add a test for this case. Change the merge only if the test shows a real problem.
+- **A stale snapshot can keep the ring on.** The flag does not change `elapsed_time_last_updated`. `mergeFullQueueSnapshot` can keep a snapshot that was made while the flag was `true`. The client gets a full snapshot only when a session starts, so the problem needs a play action that runs at that time. The next queue update corrects it. Decision: keep the merge as it is.
 - **The ring also shows for other clients.** A play action from the car or the web UI also shows the ring. This is correct, because the player is busy. Do not hide it.
 - **The ring also shows for other play actions.** The server sets the flag for each action that holds the play lock, for example `play_index` from the queue screen. This is correct for the same reason.
 - **Coalescing does not stop other clients.** A tap storm from the web UI or from another phone still gets to the server. The server needs its own fix. Write a note about this in the issue.

@@ -4,6 +4,7 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -139,19 +140,30 @@ fun PlayerControls(
                 )
             }
         } else {
-            ActionButton(
-                icon = when (player.isPlaying) {
-                    true -> PauseIcon
-                    false -> PlayIcon
-                },
-                tint = tint,
-                size = mainButtonSize,
-                enabled = playerEnabled && buttonsEnabled,
-                contentDescription = when (player.isPlaying) {
-                    true -> stringResource(Res.string.action_pause)
-                    false -> stringResource(Res.string.action_play)
-                },
-            ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
+            // The ring is a sibling, not part of the button: the button is dimmed while the
+            // queue is empty, which is exactly when a first play request is in flight.
+            Box(contentAlignment = Alignment.Center) {
+                ActionButton(
+                    icon = when (player.isPlaying) {
+                        true -> PauseIcon
+                        false -> PlayIcon
+                    },
+                    tint = tint,
+                    size = mainButtonSize,
+                    enabled = playerEnabled && buttonsEnabled,
+                    contentDescription = when (player.isPlaying) {
+                        true -> stringResource(Res.string.action_pause)
+                        false -> stringResource(Res.string.action_play)
+                    },
+                ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
+                if (playerData.playRequestPending) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(mainButtonSize),
+                        color = tint,
+                        strokeWidth = 2.dp,
+                    )
+                }
+            }
         }
 
         if (showSkip) {

@@ -9,6 +9,8 @@ data class PlayerData(
     val childrenBinds: List<ChildBind>,
     val isLocal: Boolean = false,
     val pendingPlay: Boolean = false,
+    /** A play request for this player's queue is in flight, from this app or from any client. */
+    val playRequestPending: Boolean = false,
 ) {
     val playerId = player.id
     val queueInfo = (queue as? DataState.Data)?.data?.info
@@ -50,6 +52,7 @@ data class PlayerData(
             childrenBinds = other.childrenBinds,
             isLocal = other.isLocal,
             pendingPlay = other.pendingPlay,
+            playRequestPending = other.playRequestPending,
         )
     }
 

@@ -65,4 +65,15 @@ data class ServerQueue(
     @SerialName("radio_source") val radioSource: List<ServerMediaItem>? = null,
     // @SerialName("flow_mode") val flowMode: Boolean,
     // @SerialName("resume_pos") val resumePos: Double?
+    @SerialName("extra_attributes") val extraAttributes: ServerQueueExtraAttributes? = null,
+)
+
+/** The keys of the free-form `extra_attributes` map that the client reads; the rest are ignored. */
+@Serializable
+data class ServerQueueExtraAttributes(
+    /**
+     * True while the server runs a play action on the queue (`play_media`, `play_index`, ...),
+     * from any client. The server pushes a queue update when it turns on and when it turns off.
+     */
+    @SerialName("play_action_in_progress") val playActionInProgress: Boolean = false,
 )

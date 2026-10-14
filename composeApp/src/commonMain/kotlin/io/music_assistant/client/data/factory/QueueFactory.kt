@@ -37,6 +37,7 @@ class QueueFactory(
             radioSource = radioSource?.let { mediaItemFactory.createList(it) } ?: emptyList(),
             isDynamicPlaylist = isDynamic,
             playbackSpeed = playbackSpeed,
+            playActionInProgress = extraAttributes?.playActionInProgress == true,
             overlay = overlayEnabled?.let {
                 QueueOverlay(
                     enabled = it,
