@@ -87,7 +87,10 @@ actual class PlatformFeature {
   from a screen or from a car surface directly. The dispatcher runs each request in an app scope, because the server
   answers only after playback starts, and that can take tens of seconds. It sends one request for each queue at a
   time. It drops a double tap, and a new "play" or "replace" request replaces a waiting one (`coalesce`).
-  `busyQueueIds` gives the queues that have a request in progress or waiting.
+  `busyQueueIds` gives the queues that have a request in progress or waiting. `PlayerData.playRequestPending`
+  joins it with the server flag `extra_attributes.play_action_in_progress` (any client), and `PlayerControls`
+  shows a ring around the main button while it is true. Read the server flag from the server queues, because the
+  local player's queue info comes from `LocalPlayerAdapter`.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

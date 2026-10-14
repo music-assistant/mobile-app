@@ -33,6 +33,8 @@ data class QueueInfo(
     val playbackSpeed: Double? = null,
     /** Ambient sound overlay, or null when the server does not support the feature. */
     val overlay: QueueOverlay? = null,
+    /** The server runs a play action on this queue, started by any client. */
+    val playActionInProgress: Boolean = false,
 )
 
 /**

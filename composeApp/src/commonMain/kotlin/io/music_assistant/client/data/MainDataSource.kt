@@ -45,6 +45,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
+import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
@@ -81,6 +82,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * Marks the players whose queue has a play request in flight: [localBusyQueueIds] from this
+ * app's PlayDispatcher, or the server flag in [serverQueues] for requests from any client.
+ * The flag is read from the server queues, not from PlayerData.queueInfo, because the local
+ * player's queue info comes from LocalPlayerAdapter and does not carry it.
+ */
+internal fun List<PlayerData>.withPlayRequestsPending(
+    localBusyQueueIds: Set<String>,
+    serverQueues: List<QueueInfo>,
+): List<PlayerData> {
+    val busy = localBusyQueueIds + serverQueues.filter { it.playActionInProgress }.map { it.id }
+    return map { it.copy(playRequestPending = it.queueOrPlayerId in busy) }
+}
+
 /** Preserve newer event/optimistic state when a delayed full snapshot arrives. */
 internal fun mergeFullQueueSnapshot(
     retained: List<QueueInfo>,
@@ -115,6 +130,7 @@ class MainDataSource(
     private val mediaItemFactory: MediaItemFactory,
     private val playerFactory: PlayerFactory,
     private val queueFactory: QueueFactory,
+    private val playDispatcher: PlayDispatcher,
 ) : CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
@@ -125,6 +141,7 @@ class MainDataSource(
         val queues: List<QueueInfo>,
         val localData: PlayerData?,
         val favoriteOverrides: Map<String, Boolean>,
+        val busyQueueIds: Set<String>,
     )
 
     /** Local (Sendspin) player lifecycle, state and commands live in the controller. */
@@ -359,9 +376,9 @@ class MainDataSource(
                 settings.playersSorting,
                 _queueInfos,
                 localPlayerController.localPlayerData,
-                _favoriteOverrides,
-            ) { players, sortedIds, queues, localData, favOverrides ->
-                PlayerBuildInputs(players, sortedIds, queues, localData, favOverrides)
+                combine(_favoriteOverrides, playDispatcher.busyQueueIds, ::Pair),
+            ) { players, sortedIds, queues, localData, (favOverrides, busyQueueIds) ->
+                PlayerBuildInputs(players, sortedIds, queues, localData, favOverrides, busyQueueIds)
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { input ->
@@ -378,6 +395,7 @@ class MainDataSource(
                                         input.queues,
                                         input.localData,
                                         input.favoriteOverrides,
+                                        input.busyQueueIds,
                                         oldValues,
                                     ),
                                 )
@@ -714,6 +732,7 @@ class MainDataSource(
         queues: List<QueueInfo>,
         localData: PlayerData?,
         favoriteOverrides: Map<String, Boolean>,
+        busyQueueIds: Set<String>,
         oldValues: DataState<List<PlayerData>>,
     ): List<PlayerData> {
         val localPlayerId = settings.sendspinEffectivePlayerId.value
@@ -785,6 +804,7 @@ class MainDataSource(
         // independent (currentMedia vs queue.currentItem.track.favorite), so order is free.
         return withLocal
             .map { applyNowPlayingArtwork(it) }
+            .withPlayRequestsPending(busyQueueIds, queues)
             .let { list ->
                 if (favoriteOverrides.isEmpty()) {
                     list
