@@ -35,6 +35,7 @@ import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.planLocalPlayerDispatch
+import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationFolders
@@ -81,6 +82,7 @@ class AutoLibrary(
     private val mainDataSource: MainDataSource,
     private val aiRadioRepository: AiRadioRepository,
     private val mediaItemRepository: MediaItemRepository,
+    private val playDispatcher: PlayDispatcher,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
@@ -880,7 +882,7 @@ class AutoLibrary(
         plan.detachFrom?.let { syncedToId ->
             androidAutoLog.i { "dispatch($option): detaching ${plan.playerId} from $syncedToId" }
         }
-        executeLocalPlayerDispatch(apiClient, plan) { label, error ->
+        executeLocalPlayerDispatch(apiClient, playDispatcher, plan) { label, error ->
             androidAutoLog.w(error) { "$label RPC failed: ${error.message}" }
         }
     }

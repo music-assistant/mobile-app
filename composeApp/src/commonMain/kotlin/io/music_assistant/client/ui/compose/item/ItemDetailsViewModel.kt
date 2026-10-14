@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
-import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
@@ -25,6 +24,8 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -34,7 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ItemDetailsViewModel(
-    private val apiClient: ServiceClient,
+    private val playDispatcher: PlayDispatcher,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
@@ -401,45 +402,40 @@ class ItemDetailsViewModel(
             Pair(item, null)
         }
 
-        viewModelScope.launch {
-            val mediaUri = itemToPlay.mediaUri ?: return@launch
-            mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                Logger.withTag("PlayDispatch").i {
-                    "ItemDetailsViewModel.onPlayClick: uri=$mediaUri option=$option " +
-                            "endlessMix=$endlessMix startItem=${startItem?.itemId} queue=$queueId"
-                }
-                apiClient.sendRequest(
-                    Request.Library.play(
-                        media = listOf(mediaUri),
-                        queueOrPlayerId = queueId,
-                        option = option,
-                        endlessMixMode = endlessMix && item !is Genre,
-                        startItem = startItem?.itemId,
-                    ),
-                )
+        val mediaUri = itemToPlay.mediaUri ?: return
+        mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
+            Logger.withTag("PlayDispatch").i {
+                "ItemDetailsViewModel.onPlayClick: uri=$mediaUri option=$option " +
+                        "endlessMix=$endlessMix startItem=${startItem?.itemId} queue=$queueId"
             }
+            playDispatcher.play(
+                PlayRequest(
+                    queueOrPlayerId = queueId,
+                    media = listOf(mediaUri),
+                    option = option,
+                    endlessMixMode = endlessMix && item !is Genre,
+                    startItem = startItem?.itemId,
+                ),
+            )
         }
     }
 
     fun onChapterClick(chapterPosition: Int) {
         (_state.value.itemState as? DataState.Data)?.data?.let { item ->
-            viewModelScope.launch {
-                item.uri?.let { uri ->
-                    mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                        Logger.withTag("PlayDispatch").i {
-                            "ItemDetailsViewModel.onChapterClick: uri=$uri " +
-                                    "chapter=$chapterPosition queue=$queueId"
-                        }
-                        apiClient.sendRequest(
-                            Request.Library.play(
-                                media = listOf(uri),
-                                queueOrPlayerId = queueId,
-                                option = QueueOption.REPLACE,
-                                endlessMixMode = false,
-                                startItem = chapterPosition.toString(),
-                            ),
-                        )
+            item.uri?.let { uri ->
+                mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
+                    Logger.withTag("PlayDispatch").i {
+                        "ItemDetailsViewModel.onChapterClick: uri=$uri " +
+                                "chapter=$chapterPosition queue=$queueId"
                     }
+                    playDispatcher.play(
+                        PlayRequest(
+                            queueOrPlayerId = queueId,
+                            media = listOf(uri),
+                            option = QueueOption.REPLACE,
+                            startItem = chapterPosition.toString(),
+                        ),
+                    )
                 }
             }
         }

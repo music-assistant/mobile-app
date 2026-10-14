@@ -4,6 +4,8 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayRequest
 
 /**
  * Forces playback onto a specific player, mandatorily detaching it from
@@ -44,12 +46,14 @@ fun planLocalPlayerDispatch(
 
 /**
  * Detach must land before play — MA otherwise promotes
- * `play(queueOrPlayerId=childId)` to the group queue. Failures go through
- * [onRpcFailure] rather than try/catch: `sendRequest` is contractually
- * no-throw, and a catch-all would only break structured concurrency.
+ * `play(queueOrPlayerId=childId)` to the group queue — so the play request reaches
+ * [playDispatcher] only after the detach RPC has answered. A detach failure goes through
+ * [onRpcFailure] rather than try/catch: `sendRequest` is contractually no-throw, and a
+ * catch-all would only break structured concurrency. [playDispatcher] logs play failures.
  */
 suspend fun executeLocalPlayerDispatch(
     serviceClient: ServiceClient,
+    playDispatcher: PlayDispatcher,
     plan: LocalPlayerDispatchPlan,
     onRpcFailure: (label: String, error: Throwable) -> Unit = { _, _ -> },
 ) {
@@ -66,13 +70,13 @@ suspend fun executeLocalPlayerDispatch(
         "LocalPlayerDispatch (CarPlay/Siri): uris=${plan.mediaUris} option=${plan.option} " +
             "startItem=${plan.startItem} player=${plan.playerId} detachFrom=${plan.detachFrom}"
     }
-    serviceClient.sendRequest(
-        Request.Library.play(
-            media = plan.mediaUris,
+    playDispatcher.play(
+        PlayRequest(
             queueOrPlayerId = plan.playerId,
+            media = plan.mediaUris,
             option = plan.option,
             endlessMixMode = plan.endlessMixMode,
             startItem = plan.startItem,
         ),
-    ).onFailure { onRpcFailure("play(${plan.option})", it) }
+    )
 }

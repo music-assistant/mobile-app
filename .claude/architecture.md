@@ -83,6 +83,9 @@ actual class PlatformFeature {
   a `PlayerAction`, so the local player does not intercept it. A null `QueueInfo.overlay` means that the server
   has no overlay support. Show the feature only if a provider has the `sound_effects` feature. To turn the overlay
   off, send `enabled=false` only, because the server keeps the last sound and volume.
+- **Play requests**: send every `player_queues/play_media` through `PlayDispatcher` (`data/play/`). Do not send it
+  from a screen or from a car surface directly. The dispatcher runs each request in an app scope, because the server
+  answers only after playback starts, and that can take tens of seconds.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

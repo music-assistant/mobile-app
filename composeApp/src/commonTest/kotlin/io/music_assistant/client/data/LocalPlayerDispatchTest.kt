@@ -7,9 +7,12 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
@@ -22,7 +25,6 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlin.test.fail
 
 class LocalPlayerDispatchTest {
@@ -130,6 +132,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient()
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = listOf("library://album/42"),
@@ -150,6 +153,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient()
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = listOf("library://album/42"),
@@ -167,6 +171,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient()
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = listOf("uri"),
@@ -188,6 +193,7 @@ class LocalPlayerDispatchTest {
             val client = RecordingClient()
             executeLocalPlayerDispatch(
                 client,
+                dispatcherFor(client),
                 LocalPlayerDispatchPlan(
                     playerId = "sendspin-local",
                     mediaUris = listOf("library://album/42"),
@@ -217,6 +223,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient()
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = listOf("library://album/42"),
@@ -235,6 +242,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient()
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = listOf("library://album/42"),
@@ -258,6 +266,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient()
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = uris,
@@ -286,6 +295,7 @@ class LocalPlayerDispatchTest {
         }
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "sendspin-local",
                 mediaUris = listOf("uri"),
@@ -298,7 +308,8 @@ class LocalPlayerDispatchTest {
     }
 
     @Test
-    fun executeReportsRpcFailuresViaCallbackWithLabel() = runBlocking {
+    fun executeReportsOnlyDetachFailureViaCallback() = runBlocking {
+        // A play failure belongs to PlayDispatcher, which logs it; the callback covers detach.
         val failures = mutableListOf<Pair<String, Throwable>>()
         val detachError = IllegalStateException("boom-detach")
         val playError = IllegalStateException("boom-play")
@@ -311,6 +322,7 @@ class LocalPlayerDispatchTest {
         }
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "p",
                 mediaUris = listOf("u"),
@@ -319,15 +331,7 @@ class LocalPlayerDispatchTest {
             ),
             onRpcFailure = { label, error -> failures.add(label to error) },
         )
-        assertEquals(2, failures.size)
-        // Labels must distinguish which RPC failed so logs aren't ambiguous.
-        assertEquals("detach", failures[0].first)
-        assertEquals(detachError, failures[0].second)
-        assertTrue(
-            failures[1].first.startsWith("play("),
-            "play failure label should include the option for log triage; got '${failures[1].first}'",
-        )
-        assertEquals(playError, failures[1].second)
+        assertEquals<List<Pair<String, Throwable>>>(listOf("detach" to detachError), failures)
     }
 
     @Test
@@ -336,6 +340,7 @@ class LocalPlayerDispatchTest {
         val client = RecordingClient { Result.success(emptyAnswer()) }
         executeLocalPlayerDispatch(
             client,
+            dispatcherFor(client),
             LocalPlayerDispatchPlan(
                 playerId = "p",
                 mediaUris = listOf("u"),
@@ -348,6 +353,10 @@ class LocalPlayerDispatchTest {
     }
 
     private companion object {
+        /** Unconfined: the play request reaches [RecordingClient] before `play` returns. */
+        fun dispatcherFor(client: ServiceClient) =
+            PlayDispatcher(client, CoroutineScope(Dispatchers.Unconfined))
+
         const val PLAY_MEDIA = APICommands.PLAYER_QUEUES_PLAY_MEDIA
         const val SET_MEMBERS = APICommands.PLAYERS_CMD_SET_MEMBERS
 

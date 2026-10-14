@@ -15,6 +15,8 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.server.ServerProviderInstance
+import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SeriesGrouping
@@ -42,6 +44,7 @@ class LibraryListViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
+    private val playDispatcher: PlayDispatcher,
 ) : ViewModel() {
     private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -400,21 +403,19 @@ class LibraryListViewModel(
         option: QueueOption,
         radio: Boolean,
     ) {
-        viewModelScope.launch {
-            val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
+        val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return
 
-            item.mediaUri?.let { mediaUri ->
-                Logger.withTag("PlayDispatch")
-                    .i { "ItemListViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
-                apiClient.sendRequest(
-                    Request.Library.play(
-                        media = listOf(mediaUri),
-                        queueOrPlayerId = queueId,
-                        option = option,
-                        endlessMixMode = radio && item !is Genre,
-                    ),
-                )
-            }
+        item.mediaUri?.let { mediaUri ->
+            Logger.withTag("PlayDispatch")
+                .i { "ItemListViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+            playDispatcher.play(
+                PlayRequest(
+                    queueOrPlayerId = queueId,
+                    media = listOf(mediaUri),
+                    option = option,
+                    endlessMixMode = radio && item !is Genre,
+                ),
+            )
         }
     }
 

@@ -18,6 +18,7 @@ import io.music_assistant.client.data.announcement.AnnouncementRepository
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
+import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
@@ -160,6 +161,12 @@ fun sharedModule(
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
+        single {                            // Sole play_media sender; requests outlive the screen
+            PlayDispatcher(
+                apiClient = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
         singleOf(::ServiceClientMediaItemRepository) { bind<MediaItemRepository>() }
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch
@@ -170,7 +177,7 @@ fun sharedModule(
         viewModelOf(::ThemeViewModel)
         factory { BackgroundRestrictionViewModel(get(), get(), get()) }
         factory { SchemaVersionWarningViewModel(get()) }
-        factory { ActionsViewModel(get(), get(), get()) }
+        factory { ActionsViewModel(get(), get(), get(), get()) }
         factory { SettingsViewModel(get(), get(), get(), get(), get()) }
         factory { DefaultClickActionsViewModel(get()) }
         factory { CarActionsViewModel(get(), get()) }
@@ -183,7 +190,7 @@ fun sharedModule(
             )
         }
         factory { LibraryCategoriesViewModel(get(), get()) }
-        factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get()) }
+        factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get(), get()) }
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(
@@ -202,7 +209,7 @@ fun sharedModule(
         factory { ViewModeViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get(), get()) }
         factory { DspSettingsViewModel(get()) }
-        factory { HomeScreenViewModel(get(), get(), get(), get()) }
+        factory { HomeScreenViewModel(get(), get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get()) }
         factory { ProviderViewModel(get()) }
     }

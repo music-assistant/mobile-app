@@ -18,6 +18,8 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
+import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationRowItems
 import io.music_assistant.client.data.repository.fetchRecommendationRows
@@ -77,6 +79,7 @@ class HomeScreenViewModel(
     private val dataSource: MainDataSource,
     private val settings: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
+    private val playDispatcher: PlayDispatcher,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
@@ -332,18 +335,16 @@ class HomeScreenViewModel(
     ) {
         dataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
             item.mediaUri?.let { mediaUri ->
-                viewModelScope.launch {
-                    Logger.withTag("PlayDispatch")
-                        .i { "HomeScreenViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
-                    apiClient.sendRequest(
-                        Request.Library.play(
-                            media = listOf(mediaUri),
-                            queueOrPlayerId = queueId,
-                            option = option,
-                            endlessMixMode = radio && item !is Genre,
-                        ),
-                    )
-                }
+                Logger.withTag("PlayDispatch")
+                    .i { "HomeScreenViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+                playDispatcher.play(
+                    PlayRequest(
+                        queueOrPlayerId = queueId,
+                        media = listOf(mediaUri),
+                        option = option,
+                        endlessMixMode = radio && item !is Genre,
+                    ),
+                )
             }
         }
     }

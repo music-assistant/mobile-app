@@ -32,6 +32,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.model.server.ServerAiRadioStation
 import io.music_assistant.client.data.planLocalPlayerDispatch
+import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationFolders
@@ -85,6 +86,7 @@ object KmpHelper : KoinComponent {
     private val deepLinkBus: DeepLinkBus by inject()
     private val mediaItemRepository: MediaItemRepository by inject()
     private val aiRadioRepository: AiRadioRepository by inject()
+    private val playDispatcher: PlayDispatcher by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val volumeButtonService: VolumeButtonService by inject()
 
@@ -527,7 +529,7 @@ object KmpHelper : KoinComponent {
             log.i { "dispatchLocal($option, endlessMix=$endlessMixMode): detaching ${plan.playerId} from $syncedToId" }
         }
         mainScope.launch {
-            executeLocalPlayerDispatch(serviceClient, plan) { label, error ->
+            executeLocalPlayerDispatch(serviceClient, playDispatcher, plan) { label, error ->
                 log.w(error) { "$label RPC failed: ${error.message}" }
             }
         }
