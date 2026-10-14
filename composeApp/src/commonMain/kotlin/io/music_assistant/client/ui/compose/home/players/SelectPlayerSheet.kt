@@ -66,7 +66,6 @@ import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
-import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -290,136 +289,114 @@ private fun PlayerSelection(
                 key = item.player.id,
                 enabled = !item.isLocal,
             ) {
-                PlayerItem(
-                    plateShape = plateShape,
-                    backgroundColor = backgroundColor,
-                    borderColor = borderColor,
-                    selected = selected,
-                    item = item,
-                    onDismissRequest = onDismissRequest,
-                    onSelectPlayer = onSelectPlayer,
-                    dragEndIndex = dragEndIndex,
-                    onReorder = onReorder,
-                    internalPlayers = internalPlayers,
-                    onGroupRequest = { onGroupRequest(item) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReorderableCollectionItemScope.PlayerItem(
-    plateShape: RoundedCornerShape,
-    backgroundColor: Color,
-    borderColor: Color,
-    selected: Boolean,
-    item: PlayerData,
-    onDismissRequest: () -> Unit,
-    onSelectPlayer: (String) -> Unit,
-    dragEndIndex: Int?,
-    onReorder: (reordered: List<String>, movedId: String) -> Unit,
-    internalPlayers: List<PlayerData>,
-    onGroupRequest: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(plateShape)
-            .background(backgroundColor)
-            .border(1.dp, borderColor, plateShape)
-            .selectable(
-                selected = selected,
-                enabled = item.player.isSelectable,
-                onClick = {
-                    onDismissRequest()
-                    onSelectPlayer(item.player.id)
-                },
-                role = Role.RadioButton,
-            )
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // A dormant player the app can still act on stays selectable: pinning the
-        // selection to it keeps it there when the speaker wakes up. One it cannot
-        // act on is listed but disabled.
-        val dormant = item.player.isPoweredOff
-        Icon(
-            painter = painterResource(item.iconRes()),
-            modifier = Modifier.size(20.dp).alphaOn(!dormant),
-            contentDescription = null,
-        )
-
-        Text(
-            text = item.player.name,
-            modifier = Modifier
-                .padding(start = 8.dp)
-                .weight(1f)
-                .alphaOn(!dormant),
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        if (item.player.isPlaying || item.player.isAnnouncing) {
-            NowPlayingIcon(
-                modifier = Modifier.padding(start = 8.dp),
-                size = 12.dp,
-                color = if (item.player.isAnnouncing) {
-                    Color(0xFFFF9800)
-                } else {
-                    Color(0xFF2196F3)
-                },
-            )
-        }
-
-        IconButton(onClick = onGroupRequest) {
-            BadgedBox(
-                badge = {
-                    val groupMembers = item.player.groupMembers?.size ?: 0
-                    val playerCount = if (groupMembers > 0) {
-                        groupMembers
-                    } else {
-                        1
-                    }
-
-                    Badge {
-                        Text(playerCount.toString())
-                    }
-                },
-            ) {
-                Icon(
-                    vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-                    contentDescription = null,
-                )
-            }
-        }
-
-        if (!item.player.isSelectable) {
-            Text(
-                text = stringResource(Res.string.player_unavailable),
-                modifier = Modifier.padding(start = 8.dp).alpha(0.6f),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-            )
-        }
-
-        if (!item.isLocal) {
-            Icon(
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .draggableHandle(
-                        onDragStopped = {
-                            dragEndIndex?.let {
-                                onReorder(internalPlayers.map { p -> p.player.id }, item.player.id)
-                            }
-                        },
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(shape = plateShape)
+                        .background(color = backgroundColor)
+                        .border(
+                            1.dp,
+                            color = borderColor,
+                            shape = plateShape,
+                        )
+                        .selectable(
+                            selected = selected,
+                            enabled = item.player.isSelectable,
+                            onClick = {
+                                onDismissRequest()
+                                onSelectPlayer(item.player.id)
+                            },
+                            role = Role.RadioButton,
+                        )
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // A dormant player the app can still act on stays selectable: pinning the
+                    // selection to it keeps it there when the speaker wakes up. One it cannot
+                    // act on is listed but disabled.
+                    val dormant = item.player.isPoweredOff
+                    Icon(
+                        painter = painterResource(item.iconRes()),
+                        modifier = Modifier.size(20.dp).alphaOn(!dormant),
+                        contentDescription = null,
                     )
-                    .size(16.dp),
-                imageVector = TablerIcons.GripVertical,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-            )
+
+                    Text(
+                        text = item.player.name,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .weight(1f)
+                            .alphaOn(!dormant),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    if (item.player.isPlaying || item.player.isAnnouncing) {
+                        NowPlayingIcon(
+                            modifier = Modifier.padding(start = 8.dp),
+                            size = 12.dp,
+                            color = if (item.player.isAnnouncing) {
+                                Color(0xFFFF9800)
+                            } else {
+                                Color(0xFF2196F3)
+                            },
+                        )
+                    }
+
+                    IconButton(onClick = { onGroupRequest(item) }) {
+                        BadgedBox(
+                            badge = {
+                                val groupMembers = item.player.groupMembers?.size ?: 0
+                                val playerCount = if (groupMembers > 0) {
+                                    groupMembers
+                                } else {
+                                    1
+                                }
+
+                                Badge {
+                                    Text(playerCount.toString())
+                                }
+                            },
+                        ) {
+                            Icon(
+                                vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+
+                    if (!item.player.isSelectable) {
+                        Text(
+                            text = stringResource(Res.string.player_unavailable),
+                            modifier = Modifier.padding(start = 8.dp).alpha(0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
+                    }
+
+                    if (!item.isLocal) {
+                        Icon(
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .draggableHandle(
+                                    onDragStopped = {
+                                        dragEndIndex?.let {
+                                            onReorder(
+                                                internalPlayers.map { p -> p.player.id },
+                                                item.player.id,
+                                            )
+                                        }
+                                    },
+                                )
+                                .size(16.dp),
+                            imageVector = TablerIcons.GripVertical,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                }
+            }
         }
     }
 }
