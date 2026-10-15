@@ -115,9 +115,10 @@ Two options are always available regardless of content type:
 Use **Enable AI Radio DJ** to add an AI Radio host to the queue. The host speaks between the tracks. The option shows only if these conditions are true:
 
 - The server has the AI Radio plugin.
+- The server has schema version 85 or higher. Older servers do not tell the app about DJ changes.
 - Your user role has the `config.providers.read` scope and the `queues.control` scope.
 
-Select a host to start the DJ or to change the host. Select **Off** to stop the DJ. A check mark shows the current selection.
+Select a host to start the DJ or to change the host. Select **Off** to stop the DJ. A check mark shows the current selection. The menu updates when a different app changes the DJ.
 
 If an AI Radio show plays on the queue, the option is disabled and shows **A show is on air**. Use the Music Assistant web app to create and edit hosts.
 

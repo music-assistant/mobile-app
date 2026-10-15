@@ -46,6 +46,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
+import io.music_assistant.client.data.model.server.supportsAiRadioEvents
 import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
@@ -150,9 +151,10 @@ class MainDataSource(
     val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()
 
     /**
-     * Whether the queue DJ menu may be offered: the `ai_radio` plugin is loaded AND the role
-     * grants every scope in [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable],
-     * which needs the write scope that the DJ commands do not.
+     * Whether the queue DJ menu may be offered: the `ai_radio` plugin is loaded, the server
+     * announces AI Radio changes ([supportsAiRadioEvents]), AND the role grants every scope in
+     * [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable], which needs the write scope
+     * that the DJ commands do not.
      */
     private val _aiRadioQueueDjAvailable = MutableStateFlow(false)
     val aiRadioQueueDjAvailable: StateFlow<Boolean> = _aiRadioQueueDjAvailable.asStateFlow()
@@ -1608,10 +1610,12 @@ class MainDataSource(
             val roleScopes = apiClient.sendRequest(Request(APICommands.AUTH_SCOPES))
                 .resultAs<Map<String, List<String>>>()
                 .orEmpty()
-            val role = (apiClient.sessionState.value as? HasConnectionData)?.user?.role
+            val connection = apiClient.sessionState.value as? HasConnectionData
+            val role = connection?.user?.role
             _aiRadioAvailable.value = grantsScope(roleScopes, role, AI_RADIO_REQUIRED_SCOPE)
             _aiRadioQueueDjAvailable.value =
-                AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
+                supportsAiRadioEvents(connection?.serverInfo?.schemaVersion) &&
+                    AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
         }
     }
 

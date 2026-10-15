@@ -6,7 +6,9 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.server.ServerAiRadioSession
 import io.music_assistant.client.data.model.server.ServerAiRadioStation
+import io.music_assistant.client.data.repository.AiRadioChange
 import io.music_assistant.client.data.repository.AiRadioRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,8 +25,9 @@ import kotlinx.coroutines.launch
  * user through [io.music_assistant.client.api.ErrorMessageBus], so this only tracks what the
  * screen must render differently: loading, a failed load, and which station is on air.
  *
- * The provider emits no events, so the run state is polled: once on entry, then again after
- * each start and stop. That is the only way the Stop control learns it should appear.
+ * The list and the run state load on entry, then follow [AiRadioRepository.changes]. The run
+ * state is also re-read after each start and stop: servers without AI Radio events send no
+ * change, and that re-read is the only way their Stop control learns it should appear.
  */
 class AiRadioViewModel(
     private val repository: AiRadioRepository,
@@ -68,6 +71,26 @@ class AiRadioViewModel(
             dataSource.selectedPlayerIndex.value != null,
         )
 
+    // One in-flight re-read each: a burst of hints (a stop sends two) keeps only the latest.
+    private var stationsRefresh: Job? = null
+    private var runningRefresh: Job? = null
+
+    init {
+        viewModelScope.launch {
+            repository.changes.collect { change ->
+                when (change) {
+                    AiRadioChange.STATIONS -> refreshStations()
+                    AiRadioChange.SESSIONS -> refreshRunning()
+                    AiRadioChange.RESYNC -> {
+                        refreshStations()
+                        refreshRunning()
+                    }
+                    AiRadioChange.HOSTS, AiRadioChange.QUEUE_DJ -> Unit
+                }
+            }
+        }
+    }
+
     fun load() {
         viewModelScope.launch {
             _state.value = State.Loading
@@ -80,6 +103,24 @@ class AiRadioViewModel(
                 State.Ready(stations, runningSessionOrNull())
             }
             stations?.let { loadArtwork(it) }
+        }
+    }
+
+    /**
+     * Re-reads the list in place, without the Loading state. Only a shown list is refreshed:
+     * a failed or pending load is [load]'s to finish. A failed re-read keeps the shown list.
+     */
+    private fun refreshStations() {
+        stationsRefresh?.cancel()
+        stationsRefresh = viewModelScope.launch {
+            val stations = repository.stations()
+                .onFailure { Logger.w(it) { "AI Radio: station list refresh failed" } }
+                .getOrNull() ?: return@launch
+            val current = _state.value as? State.Ready ?: return@launch
+            if (current.stations == stations) return@launch
+            // Old covers stay until the new lookups land, so known rows do not flash placeholders.
+            _state.value = current.copy(stations = stations)
+            loadArtwork(stations)
         }
     }
 
@@ -137,12 +178,10 @@ class AiRadioViewModel(
         }
     }
 
-    /**
-     * Re-reads the run state after a start or stop. The provider emits no events, so this
-     * poll is the only way the screen learns what changed.
-     */
+    /** Re-reads the run state, after a start or stop or on [AiRadioChange.SESSIONS]. */
     private fun refreshRunning() {
-        viewModelScope.launch {
+        runningRefresh?.cancel()
+        runningRefresh = viewModelScope.launch {
             val running = runningSessionOrNull()
             _state.update { current ->
                 (current as? State.Ready)?.copy(running = running) ?: current

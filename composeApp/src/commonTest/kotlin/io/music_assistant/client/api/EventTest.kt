@@ -5,10 +5,12 @@ import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.GenericEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.ProviderEvent
 import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -47,6 +49,21 @@ class EventTest {
         assertNotNull(decoded)
         assertTrue(decoded is PlayerRemovedEvent)
         assertEquals("pl1", decoded.objectId)
+    }
+
+    @Test
+    fun decodesProviderEventKeepingItsPayloadRaw() {
+        val raw = """{
+            "event": "provider_event",
+            "object_id": "ai_radio",
+            "data": {"event": "queue_dj_updated"}
+        }"""
+
+        val decoded = parse(raw).event()
+
+        assertTrue(decoded is ProviderEvent)
+        assertEquals("ai_radio", decoded.objectId)
+        assertEquals(JsonPrimitive("queue_dj_updated"), decoded.data?.get("event"))
     }
 
     @Test

@@ -410,7 +410,6 @@ fun PlayersPager(
                                 chapterProgressEnabled = chapterProgressEnabled,
                                 queueDjMenu = player.queueId?.let { queueDjState?.menuFor(it) },
                                 onQueueDjSelected = queueDjViewModel::select,
-                                onMenuOpen = queueDjViewModel::refresh,
                             )
                         }
                     }
@@ -508,7 +507,6 @@ private fun ExpandedPlayerPage(
     chapterProgressEnabled: Boolean = true,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
-    onMenuOpen: () -> Unit = {},
 ) {
     // The queue sits beside the player whenever the window is wide (see
     // [WindowClass.isWide]); otherwise it collapses underneath it. The two panes
@@ -572,7 +570,6 @@ private fun ExpandedPlayerPage(
                     onAddToPlaylist = onAddToPlaylist,
                     queueDjMenu = queueDjMenu,
                     onQueueDjSelected = onQueueDjSelected,
-                    onMenuOpen = onMenuOpen,
                 )
             },
         )
@@ -886,7 +883,6 @@ private fun PlayerOverflowMenu(
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
-    onMenuOpen: () -> Unit = {},
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
     var queueDjMenuExpanded by remember { mutableStateOf(false) }
@@ -1079,7 +1075,6 @@ private fun PlayerOverflowMenu(
         OverflowMenuButton(
             modifier = Modifier,
             options = menuOptions,
-            onOpen = onMenuOpen,
         ) { onClick ->
             IconButton(onClick = onClick) {
                 Icon(

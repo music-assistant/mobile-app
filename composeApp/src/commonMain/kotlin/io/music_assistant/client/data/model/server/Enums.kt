@@ -87,6 +87,9 @@ enum class EventType {
     @SerialName("providers_updated")
     PROVIDERS_UPDATED,
 
+    @SerialName("provider_event")
+    PROVIDER_EVENT,
+
     @SerialName("player_config_updated")
     PLAYER_CONFIG_UPDATED,
 

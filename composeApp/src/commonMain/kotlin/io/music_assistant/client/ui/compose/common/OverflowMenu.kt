@@ -22,18 +22,13 @@ import androidx.compose.ui.unit.dp
 fun OverflowMenuButton(
     modifier: Modifier = Modifier,
     options: List<OverflowMenuEntry>,
-    // Called each time the menu opens, for callers that refresh what the options show.
-    onOpen: () -> Unit = {},
     buttonContent: @Composable (onClick: () -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(
         modifier = modifier.wrapContentSize(Alignment.TopStart),
     ) {
-        buttonContent {
-            onOpen()
-            expanded = true
-        }
+        buttonContent { expanded = true }
         OverflowMenu(
             expanded = expanded,
             onClose = { expanded = false },

@@ -6,8 +6,9 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.server.ServerAiRadioHost
 import io.music_assistant.client.data.model.server.ServerAiRadioSession
+import io.music_assistant.client.data.repository.AiRadioChange
 import io.music_assistant.client.data.repository.AiRadioRepository
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,18 +44,21 @@ fun QueueDjState.menuFor(queueId: String): QueueDjMenu =
 /**
  * Backs the AI Radio DJ row of the player queue menu.
  *
- * The provider emits no event for a DJ change or for a show starting, so the menu renders the
- * cache and calls [refresh] each time it opens: a change shows on the next open. Server errors
- * already reach the user through [io.music_assistant.client.api.ErrorMessageBus].
+ * Event-driven: the gate opens only on servers that announce AI Radio changes, so the menu renders
+ * the cache and each [AiRadioChange] re-reads just the part it names. Server errors already reach
+ * the user through [io.music_assistant.client.api.ErrorMessageBus].
  */
 class QueueDjViewModel(
     private val repository: AiRadioRepository,
-    dataSource: MainDataSource,
+    /** [MainDataSource.aiRadioQueueDjAvailable]. */
+    private val available: StateFlow<Boolean>,
 ) : ViewModel() {
-    private val available = dataSource.aiRadioQueueDjAvailable
     private val cache = MutableStateFlow(QueueDjState())
 
-    // Bumped by every set, so a refresh that started before it cannot restore the old map.
+    // One in-flight refetch per part: a burst of hints (a stop sends two) keeps only the latest.
+    private val refetches = mutableMapOf<AiRadioChange, Job>()
+
+    // Bumped by every set, so a refetch that started before it cannot restore the old map.
     private var assignmentsVersion = 0
 
     /** Null while the gate is closed, which hides the row. */
@@ -67,29 +71,22 @@ class QueueDjViewModel(
             // The cache belongs to one server and role: drop it when the gate closes, and
             // prefetch when it opens so the first menu does not show an empty host list.
             available.collect { isAvailable ->
-                if (isAvailable) refresh() else cache.value = QueueDjState()
+                if (isAvailable) {
+                    refetchAll()
+                } else {
+                    refetches.values.forEach { it.cancel() }
+                    cache.value = QueueDjState()
+                }
             }
         }
-    }
-
-    fun refresh() {
-        if (!available.value) return
         viewModelScope.launch {
-            val version = assignmentsVersion
-            val hosts = async { repository.hosts() }
-            val assignments = async { repository.queueDjStatus() }
-            val running = async { repository.runningSession() }
-            cache.update { cached ->
-                cached.copy(
-                    hosts = hosts.await().getOrLogged("hosts") ?: cached.hosts,
-                    assignments = assignments.await().getOrLogged("queue DJ status")
-                        ?.takeIf { version == assignmentsVersion }
-                        ?: cached.assignments,
-                    // Null is a real answer here (nothing on air), so only a failure keeps the cache.
-                    running = running.await()
-                        .onFailure { Logger.w(it) { "AI Radio: status refresh failed" } }
-                        .getOrElse { cached.running },
-                )
+            repository.changes.collect { change ->
+                if (!available.value) return@collect
+                when (change) {
+                    AiRadioChange.HOSTS, AiRadioChange.QUEUE_DJ, AiRadioChange.SESSIONS -> refetch(change)
+                    AiRadioChange.RESYNC -> refetchAll()
+                    AiRadioChange.STATIONS -> Unit
+                }
             }
         }
     }
@@ -103,6 +100,34 @@ class QueueDjViewModel(
                     cache.update { it.copy(assignments = assignments) }
                 }
                 .onFailure { Logger.w(it) { "AI Radio: queue DJ change failed for $queueId" } }
+        }
+    }
+
+    private fun refetchAll() {
+        refetch(AiRadioChange.HOSTS)
+        refetch(AiRadioChange.QUEUE_DJ)
+        refetch(AiRadioChange.SESSIONS)
+    }
+
+    /** A failed refetch keeps the cached part, so [menuFor] still resolves against the rest. */
+    private fun refetch(part: AiRadioChange) {
+        refetches[part]?.cancel()
+        refetches[part] = viewModelScope.launch {
+            when (part) {
+                AiRadioChange.HOSTS -> repository.hosts().getOrLogged("hosts")
+                    ?.let { hosts -> cache.update { it.copy(hosts = hosts) } }
+                AiRadioChange.QUEUE_DJ -> {
+                    val version = assignmentsVersion
+                    repository.queueDjStatus().getOrLogged("queue DJ status")
+                        ?.takeIf { version == assignmentsVersion }
+                        ?.let { assignments -> cache.update { it.copy(assignments = assignments) } }
+                }
+                // Null is a real answer here (nothing on air), so only a failure keeps the cache.
+                AiRadioChange.SESSIONS -> repository.runningSession()
+                    .onFailure { Logger.w(it) { "AI Radio: status refresh failed" } }
+                    .onSuccess { running -> cache.update { it.copy(running = running) } }
+                AiRadioChange.STATIONS, AiRadioChange.RESYNC -> Unit
+            }
         }
     }
 

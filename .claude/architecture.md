@@ -74,9 +74,14 @@ actual class PlatformFeature {
   `message`. Voice has no upload endpoint: raw s16le PCM streams live over `/live_announcement`
   (WebSocket) or the `live_announcement` data channel (WebRTC). Closing the link ends the clip, so
   never cancel a session early. The platform microphone is the `MicrophoneCapture` Koin binding.
-- **AI Radio**: The `ai_radio` plugin sends no events. Re-read its state with a request. The queue DJ
-  menu (`QueueDjViewModel`) shows its cache and refreshes each time the player ⋮ menu opens. It has
-  its own gate, `MainDataSource.aiRadioQueueDjAvailable`, separate from the stations gate.
+- **AI Radio**: From server schema 85, the `ai_radio` plugin sends `provider_event` refetch hints
+  (`object_id` `ai_radio`). The hints have no state, so re-read the endpoint that the hint names.
+  `AiRadioRepository.changes` maps the hints to `AiRadioChange`. It also sends `RESYNC` when the
+  command session comes back, because the server does not send again the hints that the client lost.
+  The queue DJ menu (`QueueDjViewModel`) shows its cache and uses only these changes. Its gate,
+  `MainDataSource.aiRadioQueueDjAvailable`, needs schema 85 and is separate from the stations gate.
+  The stations screen also follows the changes. It reads the run state again after each start and
+  stop, because older servers send no hints.
 
 ## HTTP Clients
 

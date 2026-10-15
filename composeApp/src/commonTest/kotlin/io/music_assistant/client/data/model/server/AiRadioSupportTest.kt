@@ -74,4 +74,11 @@ class AiRadioSupportTest {
         assertFalse(grantedQueueDj("guest"))
         assertFalse(grantedQueueDj(null))
     }
+
+    @Test
+    fun eventsAreGuaranteedFromTheFirstSchemaAfterTheEventCommit() {
+        assertFalse(supportsAiRadioEvents(null))
+        assertFalse(supportsAiRadioEvents(84))
+        assertTrue(supportsAiRadioEvents(85))
+    }
 }

@@ -32,3 +32,13 @@ private const val SCOPE_ALL = "*"
  */
 fun grantsScope(roleScopes: Map<String, List<String>>, role: String?, scope: String): Boolean =
     roleScopes[role].orEmpty().let { SCOPE_ALL in it || scope in it }
+
+/**
+ * First server API schema that announces AI Radio state changes as `provider_event` refetch hints.
+ * The commit that added them (server #6713) left `API_SCHEMA_VERSION` at 84, so 85 is the first
+ * version that guarantees them. Stable 2.10.x has the queue DJ endpoints but not the events.
+ */
+const val AI_RADIO_EVENTS_MIN_SCHEMA = 85
+
+fun supportsAiRadioEvents(schemaVersion: Int?): Boolean =
+    schemaVersion != null && schemaVersion >= AI_RADIO_EVENTS_MIN_SCHEMA
