@@ -22,7 +22,7 @@ Production / Play Store builds work out of the box. For debug or self-signed APK
 4. Enable **Unknown sources**.
 5. In the Android Auto launcher customization, enable **Music Assistant** so it appears among your media apps.
 
-Changing the phone's *Customize Tabs* setting takes effect on the next browse refresh — no reconnect required.
+The car tabs come from *Settings → Car → Tabs* on the phone. A change shows the next time the host loads the browse root.
 
 > **Enable the Local Player before you use Android Auto.** Android Auto is scoped to the local on-device player. `onGetRoot` always returns a valid root — a refusal does not hide the app, because the app is declared as a media app, so the car keeps it listed and shows a loading screen forever. With the local player disabled, `AutoLibrary` serves one explanatory row instead of the library, and `SharedMediaSessionManager` deactivates the session. The car then shows the app but offers no content and no now-playing card, so the app cannot seize the media slot on behalf of a remote player. The phone media notification for *remote* players is unaffected. Enable the local player while the car is connected, and the change takes effect on the next Android Auto reconnect.
 
@@ -30,11 +30,13 @@ Changing the phone's *Customize Tabs* setting takes effect on the next browse re
 
 ## 2. Library browsing in the car
 
-The root tabs surfaced in Android Auto are driven by the phone's *Customize Tabs* setting. Supported tabs: **Artists, Albums, Playlists, Podcasts, Radio, Audiobooks**. Tracks and Genres are intentionally omitted (too long to scroll safely while driving).
+The root tabs come from *Settings → Car → Tabs* (`SettingsRepository.carTabsConfig`). Android Auto and CarPlay share this setting. Supported tabs: **Home, Artists, Albums, Playlists, Podcasts, Radio, Audiobooks, AI Radio**. The AI Radio tab shows only while `MainDataSource.aiRadioAvailable` is true. Tracks and Genres are not in the car, because long lists are not safe to scroll while you drive.
 
-Android Auto only displays four root tabs at the top level — tabs beyond the first four are grouped into a "More" menu by the AA host. Not a bug.
+**Home** has one browsable folder for each home row. `visibleHomeFolders` applies the same filter, order and `homeRowsConfig` as the app. Genre items are left out of the rows.
 
-Each collection tab (except Radio) exposes four sub-lists:
+Android Auto shows a maximum of four root tabs. With more than four tabs on, the host shows the first three tabs and a "More" tab that holds the rest. This is host behavior, not a bug.
+
+Each collection tab (Artists, Albums, Playlists, Podcasts, Audiobooks) exposes four sub-lists:
 
 - **Recent** — sorted by last played, descending.
 - **Favorites** — marked-favorite items only.
@@ -42,6 +44,8 @@ Each collection tab (except Radio) exposes four sub-lists:
 - **By name** — alphabetical.
 
 **Radio** is a flat list sorted by last played, with a single "Favorites" header at the top.
+
+An opened artist, album, playlist or podcast starts with its bulk-action rows (default **Play all**, **Add all to queue**). The user sets them in *Settings → Car → Item actions*. A plain tap on a playable item runs the per-kind car tap action (default **Play now**). Both come from `CarActionPrefs.kt`.
 
 Browsing is cached for 5 minutes to keep the head unit responsive; reconnecting to the server invalidates the cache automatically.
 
@@ -244,7 +248,7 @@ Each missing step points the finger:
 
 ## 6. Limitations & known quirks
 
-- **Local player required**: the whole Android Auto surface (browsing, voice, now-playing) is gated on the local on-device player being enabled. With it disabled, MA is deliberately invisible to AA (see Section 1) so it can never take over the car's media slot on behalf of a remote player. There is intentionally no "not enabled" placeholder in the car — MA simply doesn't appear.
+- **Local player required**: the whole Android Auto surface (browsing, voice, now-playing) is gated on the local on-device player being enabled. With it disabled, the car still lists MA, but the root holds one inert "Local player is not enabled" row and the session is inactive (see Section 1). So MA can never take over the car's media slot on behalf of a remote player.
 - **Player target**: voice playback always goes to the **local on-device player** (the phone speakers or whatever the phone's audio output is routed to). Voice control of remote MA players (a Sonos in the kitchen, a Squeezebox in the office) is not supported — voice integration is scoped to the local player only.
 - **Android Auto voice routing when another app is playing**: the AA Assistant frequently ignores the "on Music Assistant" suffix when another media app currently owns the active `MediaSession`. Workaround: focus Music Assistant in the AA media-app picker first, or pause the other app. This is documented Google behavior, not something we can override from the app side.
 - **Gemini does not play from voice on the phone**: Gemini ignores App Actions and routes media only to apps on a Google-side partner list. The app cannot join that list. See Section 4. Android Auto voice and Gemini transport control ("pause", "next") are unaffected.

@@ -17,6 +17,7 @@
 - [The Item Details View](item-details.md)
 - [The Players Pager](players-pager.md)
 - [Managing Playlists](playlists.md)
+- [Android Auto](android-auto.md)
 
 ## 🔗 Quick Links
 

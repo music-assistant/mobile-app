@@ -56,4 +56,6 @@ Once the Local Sendspin Player is enabled, the **Car Settings** section becomes 
 - **Item actions** — Set the default action performed when tapping different item types.
 - **DSP presets** — Configure what happens to the DSP for the Local Player when the phone is connected to or disconnected from the car.
 
+For Android Auto, refer to [Android Auto](android-auto.md#car-settings).
+
 After setting up the Local Player, you can [start using the app](home.md).
