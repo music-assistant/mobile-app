@@ -11,6 +11,7 @@ import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -27,6 +28,7 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.ResolvedChapter
+import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.canBeFavorited
@@ -35,6 +37,9 @@ import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.data.withPresentationChapter
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.home.QueueDisplayRow
+import io.music_assistant.client.ui.compose.home.buildDisplayRows
+import io.music_assistant.client.utils.formatDuration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -54,6 +59,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.time.DurationUnit
 
 /**
  * Transport actions advertised on EVERY PlaybackState this manager publishes.
@@ -102,6 +108,20 @@ internal const val SESSION_BLOCK_DEBOUNCE_MS = 1500L
  * the currently playing track, regardless of position.
  */
 internal fun sessionQueueItemId(queueSlotId: String): Long = queueSlotId.hashCode().toLong()
+
+/**
+ * Session id for a display-only chapter row under the audiobook in [queueSlotId]. Same contract
+ * as [sessionQueueItemId]: the queue writer and [MediaNotificationData.activeQueueItemId] must
+ * both derive it here. Keyed on the chapter's list index, as the in-app queue rows are.
+ */
+internal fun sessionChapterItemId(queueSlotId: String, chapterIndex: Int): Long =
+    "chapter:$queueSlotId:$chapterIndex".hashCode().toLong()
+
+internal val QueueDisplayRow.sessionId: Long
+    get() = when (this) {
+        is QueueDisplayRow.QueueItem -> sessionQueueItemId(item.id)
+        is QueueDisplayRow.ChapterItem -> sessionChapterItemId(parentQueueItemId, chapterIndex)
+    }
 
 /**
  * Single source of truth for the app's MediaSession **and** its sole writer.
@@ -346,20 +366,39 @@ class SharedMediaSessionManager(
         // Queue (separate session property). Dedup on the stable id list: setQueue is an
         // expensive IPC write AA hosts react to, so unrelated emissions (volume, etc.)
         // must not churn it.
+        // Rows mirror the in-app queue: chapter rows follow the current audiobook.
         scope.launch {
             sourcePlayerData()
-                .map { (player, _) -> player.queueItems.orEmpty() }
-                .distinctUntilChanged { old, new -> old.map { it.id } == new.map { it.id } }
-                .collect { items ->
-                    updateQueue(
-                        items.map { queueTrack ->
-                            MediaSessionCompat.QueueItem(
-                                (queueTrack.track as AppMediaItem).toMediaDescription(defaultIconUri),
-                                sessionQueueItemId(queueTrack.id),
-                            )
-                        },
-                    )
+                .map { (player, _) ->
+                    player.queueItems.orEmpty().buildDisplayRows(player.queueInfo?.currentItem?.id)
                 }
+                .distinctUntilChanged { old, new -> old.map { it.key } == new.map { it.key } }
+                .collect { rows -> updateQueue(rows.toSessionQueue()) }
+        }
+    }
+
+    private fun List<QueueDisplayRow>.toSessionQueue(): List<MediaSessionCompat.QueueItem> {
+        var parentDescription: MediaDescriptionCompat? = null
+        return map { row ->
+            when (row) {
+                is QueueDisplayRow.QueueItem -> MediaSessionCompat.QueueItem(
+                    (row.item.track as AppMediaItem).toMediaDescription(defaultIconUri)
+                        .also { parentDescription = it },
+                    row.sessionId,
+                )
+
+                is QueueDisplayRow.ChapterItem -> MediaSessionCompat.QueueItem(
+                    MediaDescriptionCompat.Builder()
+                        .setMediaId(row.key)
+                        .setTitle(row.chapter.name)
+                        .setSubtitle(
+                            row.chapter.end?.let { row.chapter.duration.formatDuration(DurationUnit.SECONDS) },
+                        )
+                        .setIconUri(parentDescription?.iconUri ?: defaultIconUri)
+                        .build(),
+                    row.sessionId,
+                )
+            }
         }
     }
 
@@ -443,14 +482,21 @@ class SharedMediaSessionManager(
 
             override fun onSkipToQueueItem(id: Long) {
                 val playerData = currentPlayer() ?: return
-                val queueItemId = playerData.queueItems
-                    ?.find { sessionQueueItemId(it.id) == id }?.id ?: return
-                dataSource.queueAction(
-                    QueueAction.PlayQueueItem(
-                        playerData.queueInfo?.id ?: playerData.player.id,
-                        queueItemId,
-                    ),
-                )
+                val row = playerData.queueItems.orEmpty()
+                    .buildDisplayRows(playerData.queueInfo?.currentItem?.id)
+                    .find { it.sessionId == id } ?: return
+                when (row) {
+                    is QueueDisplayRow.QueueItem -> dataSource.queueAction(
+                        QueueAction.PlayQueueItem(
+                            playerData.queueInfo?.id ?: playerData.player.id,
+                            row.item.id,
+                        ),
+                    )
+
+                    // Same as the in-app chapter row: seek within the current book.
+                    is QueueDisplayRow.ChapterItem ->
+                        act(PlayerAction.SeekTo(chapterSeekSeconds(row.chapter.start)))
+                }
             }
 
             override fun onCustomAction(action: String, extras: Bundle?) {
@@ -565,7 +611,7 @@ class SharedMediaSessionManager(
                 data.elapsedUpdateTimeMs ?: SystemClock.elapsedRealtime(),
             )
             .setActiveQueueItemId(
-                data.longItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong(),
+                data.activeQueueItemId ?: MediaSessionCompat.QueueItem.UNKNOWN_ID.toLong(),
             )
             .also { builder ->
                 sessionActions(data).forEach { builder.addCustomAction(customAction(it, data)) }
@@ -584,8 +630,7 @@ class SharedMediaSessionManager(
             )
             .putString(
                 MediaMetadataCompat.METADATA_KEY_ALBUM,
-                // Chapter mode uses the chapter name instead of the album/book grouping.
-                data.chapterName ?: data.album,
+                data.album,
             )
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
             .also { builder ->
@@ -600,10 +645,10 @@ class SharedMediaSessionManager(
     private fun titleMetadata(data: MediaNotificationData): String =
         data.name ?: strings?.unknownTrack ?: ""
 
-    // Artist line, with the "(on <player>)" suffix appended for remote players when
-    // multiple players are active (mirrors the pre-localization concatenation).
+    // Artist line (the chapter name in chapter mode), with the "(on <player>)" suffix
+    // appended for remote players when multiple players are active.
     private fun artistMetadata(data: MediaNotificationData, multiPlayer: Boolean): String {
-        val artist = data.artist ?: strings?.unknownArtist ?: ""
+        val artist = data.chapterName ?: data.artist ?: strings?.unknownArtist ?: ""
         val player = data.playerName?.takeIf { multiPlayer } ?: return artist
         return strings?.artistWithPlayer(artist, player) ?: artist
     }

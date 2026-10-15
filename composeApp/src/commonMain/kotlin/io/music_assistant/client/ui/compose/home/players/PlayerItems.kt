@@ -34,6 +34,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -119,11 +120,22 @@ fun CompactPlayerItem(
     onGroupButton: (() -> Unit)? = null,
     showAdditionalControls: Boolean = false,
     sendSpinState: PlayerState?,
-    // Server preference gate for chapter-based Next enablement.
+    // Server preference gate for chapter-based Next enablement and the chapter subtitle.
     chapterProgressEnabled: Boolean = true,
+    livePositionFlow: Flow<Double>? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
+    // Derived so the position tick recomposes this item only at chapter boundaries.
+    val positionState = livePositionFlow
+        ?.collectAsStateWithLifecycle(initialValue = item.queueInfo?.elapsedTime ?: 0.0)
+    val chapterName by remember(item, chapterProgressEnabled, positionState) {
+        derivedStateOf {
+            item.takeIf { chapterProgressEnabled && !it.player.isPoweredOff }
+                ?.presentationChapter(positionState?.value ?: item.queueInfo?.elapsedTime)
+                ?.displayName
+        }
+    }
 
     Row(
         modifier = modifier
@@ -201,7 +213,7 @@ fun CompactPlayerItem(
                 )
                 // Powered off: no subtitle line.
                 if (!poweredOff) {
-                    currentMedia?.subtitle?.let {
+                    (chapterName ?: currentMedia?.subtitle)?.let {
                         Text(
                             modifier = Modifier
                                 .fillMaxWidth()

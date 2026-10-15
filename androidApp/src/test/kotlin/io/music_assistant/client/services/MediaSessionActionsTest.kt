@@ -201,6 +201,7 @@ class MediaSessionActionsTest {
     ) = MediaNotificationData(
         multiplePlayers = multiplePlayers,
         longItemId = null,
+        activeQueueItemId = null,
         name = null,
         artist = null,
         album = null,

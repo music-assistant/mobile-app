@@ -6,6 +6,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.ResolvedChapter
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 
@@ -17,6 +18,8 @@ private const val ELAPSED_TIME_DRIFT_TOLERANCE_MS = 1_000
 data class MediaNotificationData(
     val multiplePlayers: Boolean,
     val longItemId: Long?,
+    // Session queue row to highlight: the active chapter row when chapter mode applies, else the slot.
+    val activeQueueItemId: Long?,
     val name: String?,
     val artist: String?,
     val album: String?,
@@ -33,7 +36,7 @@ data class MediaNotificationData(
     val isFavorite: Boolean,
     val isPlaying: Boolean,
     val imageUrl: String?,
-    // Active audiobook chapter; elapsed/duration are chapter-relative and album carries its name.
+    // Active audiobook chapter; elapsed/duration are chapter-relative and the artist line shows its name.
     val chapterName: String?,
     val elapsedTime: Long?,
     // SystemClock.elapsedRealtime() captured when [elapsedTime] was sampled.
@@ -67,9 +70,15 @@ data class MediaNotificationData(
             isFavoritableStream: Boolean = false,
         ) = run {
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
+            val longItemId = playerData.player.currentMedia?.queueItemId?.let(::sessionQueueItemId)
             MediaNotificationData(
             multiplePlayers = multiplePlayers,
-            longItemId = playerData.player.currentMedia?.queueItemId?.let(::sessionQueueItemId),
+            longItemId = longItemId,
+            activeQueueItemId = playerData.queueInfo?.currentItem?.let { slot ->
+                (slot.track as? Audiobook)?.chapters?.indexOf(currentChapter?.chapter)
+                    ?.takeIf { it >= 0 }
+                    ?.let { sessionChapterItemId(slot.id, it) }
+            } ?: longItemId,
             name = playerData.player.currentMedia?.title,
             artist = playerData.player.currentMedia?.artist,
             album = playerData.player.currentMedia?.album,

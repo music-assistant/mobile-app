@@ -10,7 +10,7 @@ import io.music_assistant.client.data.model.client.items.Audiobook
  *
  * Chapters are never queue items; they carry no reorder/remove semantics.
  */
-internal sealed interface QueueDisplayRow {
+sealed interface QueueDisplayRow {
     val key: String
 
     data class QueueItem(
@@ -39,7 +39,7 @@ internal sealed interface QueueDisplayRow {
  * not encode active state, so the result is stable across playback ticks and
  * safe to `remember` keyed only on the receiver and [currentItemId].
  */
-internal fun List<QueueTrack>.buildDisplayRows(currentItemId: String?): List<QueueDisplayRow> =
+fun List<QueueTrack>.buildDisplayRows(currentItemId: String?): List<QueueDisplayRow> =
     flatMapIndexed { queueIndex, item ->
         buildList {
             add(QueueDisplayRow.QueueItem(queueIndex, item))

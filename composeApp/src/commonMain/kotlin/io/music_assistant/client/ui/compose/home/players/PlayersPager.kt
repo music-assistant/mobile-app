@@ -389,6 +389,7 @@ fun PlayersPager(
                                 onGroupButton = onGroupButton,
                                 playerAction = playerAction1,
                                 chapterProgressEnabled = chapterProgressEnabled,
+                                livePositionFlow = livePositionFlow,
                             )
                         } else {
                             ExpandedPlayerPage(
@@ -639,6 +640,7 @@ private fun ExpandedPlayerPage(
                     showAdditionalControls = isWideScreen,
                     sendSpinState = sendspinState,
                     chapterProgressEnabled = chapterProgressEnabled,
+                    livePositionFlow = livePositionFlow,
                 )
             }
         }
@@ -1141,8 +1143,9 @@ private fun CollapsedPlayerPage(
     onSelectPlayer: () -> Unit,
     onGroupButton: () -> Unit,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    // Server preference gate for chapter-based Next enablement.
+    // Server preference gate for chapter-based Next enablement and the chapter subtitle.
     chapterProgressEnabled: Boolean = true,
+    livePositionFlow: Flow<Double>? = null,
 ) {
     if (!isWideScreen) {
         Row(
@@ -1168,6 +1171,7 @@ private fun CollapsedPlayerPage(
         onGroupButton = if (isWideScreen) onGroupButton else null,
         sendSpinState = sendspinState,
         chapterProgressEnabled = chapterProgressEnabled,
+        livePositionFlow = livePositionFlow,
     )
 }
 

@@ -26,4 +26,15 @@ class SessionQueueItemIdTest {
 
         assertNotEquals(firstSlot, secondSlot)
     }
+
+    @Test
+    fun `chapter rows get ids distinct from their slot and from each other`() {
+        val slot = sessionQueueItemId("slot-1")
+        val first = sessionChapterItemId("slot-1", 0)
+        val second = sessionChapterItemId("slot-1", 1)
+
+        assertNotEquals(slot, first)
+        assertNotEquals(first, second)
+        assertEquals(first, sessionChapterItemId("slot-1", 0))
+    }
 }
