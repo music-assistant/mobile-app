@@ -80,6 +80,7 @@
   <string name="artist_section_all">Discography</string>
   <string name="artist_section_in_library">In library</string>
   <string name="artist_section_top">Top tracks</string>
+  <string name="artist_source_all">All</string>
   <string name="auth_authenticating">Authenticating…</string>
   <string name="auth_authorize_ha">Authorize with Home Assistant</string>
   <string name="auth_hide_password">Hide password</string>

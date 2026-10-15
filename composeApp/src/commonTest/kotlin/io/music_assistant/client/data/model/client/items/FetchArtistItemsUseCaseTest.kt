@@ -6,6 +6,7 @@ import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase
 import io.music_assistant.client.data.model.client.items.support.StubMediaItemRepository
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.ui.compose.item.ItemList
+import io.music_assistant.client.ui.compose.item.artist.providerGroups
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -34,7 +35,7 @@ class FetchArtistItemsUseCaseTest {
         )
 
         val useCase = FetchArtistItemsUseCase(mediaItemRepository)
-        val artistItems = useCase.run(artist) { ItemList.ArtistAlbums(it) }
+        val artistItems = useCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
         assertEquals(
             ArtistItems(
                 items = provider1Albums,
@@ -49,7 +50,7 @@ class FetchArtistItemsUseCaseTest {
     }
 
     @Test
-    fun `returns first non-empty provider's items`() = runTest {
+    fun `drops empty providers from options`() = runTest {
         val provider1 = ProviderMapping("1", "niflheim", "niflheim-1")
         val provider2 = ProviderMapping("1", "muspelheim", "muspelheim-1")
         val artist = AppMediaItemFixtures.artist(providerMappings = listOf(provider1, provider2))
@@ -66,15 +67,12 @@ class FetchArtistItemsUseCaseTest {
         )
 
         val useCase = FetchArtistItemsUseCase(mediaItemRepository)
-        val artistItems = useCase.run(artist) { ItemList.ArtistAlbums(it) }
+        val artistItems = useCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
         assertEquals(
             ArtistItems(
                 items = provider2Albums,
                 itemList = ItemList.ArtistAlbums(provider2),
-                options = listOf(
-                    ItemList.ArtistAlbums(provider1),
-                    ItemList.ArtistAlbums(provider2),
-                ),
+                options = listOf(ItemList.ArtistAlbums(provider2)),
             ),
             artistItems,
         )
@@ -97,7 +95,7 @@ class FetchArtistItemsUseCaseTest {
         )
 
         val useCase = FetchArtistItemsUseCase(mediaItemRepository)
-        val artistItems = useCase.run(artist) { ItemList.ArtistAlbums(it) }
+        val artistItems = useCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
         assertNull(artistItems)
     }
 
@@ -106,7 +104,7 @@ class FetchArtistItemsUseCaseTest {
         val artist = AppMediaItemFixtures.artist(providerMappings = emptyList())
 
         val useCase = FetchArtistItemsUseCase(mediaItemRepository)
-        val artistItems = useCase.run(artist) { ItemList.ArtistAlbums(it) }
+        val artistItems = useCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
         assertEquals(null, artistItems)
     }
 
@@ -130,7 +128,7 @@ class FetchArtistItemsUseCaseTest {
         )
 
         val useCase = FetchArtistItemsUseCase(mediaItemRepository)
-        val artistItems = useCase.run(artist) { ItemList.ArtistAlbums(it) }
+        val artistItems = useCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
 
         val expectedItemList = ItemList.ArtistAlbums(providerMappings = listOf(mapping1, mapping2))
         assertEquals(

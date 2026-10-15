@@ -69,6 +69,7 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.CenteredProgress
 import io.music_assistant.client.ui.compose.common.CenteredText
@@ -113,6 +114,7 @@ import musicassistantclient.composeapp.generated.resources.album_disc_header
 import musicassistantclient.composeapp.generated.resources.artist_section_all
 import musicassistantclient.composeapp.generated.resources.artist_section_in_library
 import musicassistantclient.composeapp.generated.resources.artist_section_top
+import musicassistantclient.composeapp.generated.resources.artist_source_all
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
@@ -1057,7 +1059,10 @@ private fun <T : AppMediaItem> SectionRow(
     providerDetails: (String) -> ProviderDetails?,
 ) {
     val providerNameDisplayString: (String) -> DisplayString = { domain ->
-        (providerDetails(domain)?.name ?: domain).toDisplayString()
+        when (domain) {
+            ServerMediaItem.LIBRARY_PROVIDER -> Res.string.artist_source_all.toDisplayString()
+            else -> (providerDetails(domain)?.name ?: domain).toDisplayString()
+        }
     }
 
     CategoryRow(

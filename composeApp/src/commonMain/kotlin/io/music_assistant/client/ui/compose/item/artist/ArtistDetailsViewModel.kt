@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.item.artist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -10,6 +11,7 @@ import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.itemList
 import io.music_assistant.client.data.model.client.items.set
+import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
@@ -17,6 +19,7 @@ import io.music_assistant.client.ui.compose.common.mapData
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel.Companion.ARTIST_SECTION_LIMIT
 import io.music_assistant.client.ui.compose.item.ItemList
 import io.music_assistant.client.ui.compose.item.toRequests
+import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -27,6 +30,7 @@ import kotlinx.coroutines.launch
 class ArtistDetailsViewModel(
     private val artist: Artist,
     mediaItemRepository: MediaItemRepository,
+    private val serviceClient: ServiceClient,
 ) : ViewModel() {
     private val fetchArtistItemsUseCase = FetchArtistItemsUseCase(mediaItemRepository)
 
@@ -88,7 +92,7 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val artistItems = fetchArtistItemsUseCase.run(artist) { ItemList.ArtistAlbums(it) }
+            val artistItems = fetchArtistItemsUseCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
 
             if (artistItems != null) {
                 val (items, itemList, options) = artistItems
@@ -100,7 +104,14 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val result = fetchArtistItemsUseCase.run(artist) { ItemList.ArtistTopTracks(it) }
+            val providers = if (artist.isInLibrary) {
+                serviceClient.sendRequest(Request.Provider.all())
+                    .resultAs<List<ServerProviderInstance>>()
+                    .orEmpty()
+            } else {
+                emptyList()
+            }
+            val result = fetchArtistItemsUseCase.run(artist.topTracksOptions(providers))
 
             if (result != null) {
                 val (items, itemList, options) = result

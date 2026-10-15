@@ -205,7 +205,7 @@ fun sharedModule(
             )
         }
         factory { params ->
-            ArtistDetailsViewModel(params[0], get())
+            ArtistDetailsViewModel(params[0], get(), get())
         }
         factory { ViewModeViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get(), get()) }

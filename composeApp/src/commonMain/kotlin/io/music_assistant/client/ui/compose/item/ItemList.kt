@@ -31,6 +31,17 @@ sealed interface ItemList {
         override val sortContext: SubItemContext get() = SubItemContext.ARTIST_TOP_TRACKS
     }
 
+    /**
+     * Top tracks of a library artist. The server merges the artist's music providers and the
+     * metadata providers (e.g. Last.fm); [providerFilter] narrows that to one provider instance.
+     */
+    @Serializable
+    data class ArtistLibraryTopTracks(val artistId: String, val providerFilter: String? = null) : ItemList {
+        override val mediaType: MediaType = MediaType.TRACK
+        override val providerDomain: String = providerFilter ?: ServerMediaItem.LIBRARY_PROVIDER
+        override val sortContext: SubItemContext get() = SubItemContext.ARTIST_TOP_TRACKS
+    }
+
     @Serializable
     data class ArtistLibrary(val artistId: String) : ItemList {
         override val mediaType: MediaType = MediaType.ALBUM
@@ -52,6 +63,14 @@ fun ItemList.toRequests(): List<Request> {
                 Request.Artist.getTopTracks(it.itemId, it.providerInstance)
             }
         }
+
+        is ItemList.ArtistLibraryTopTracks -> listOf(
+            Request.Artist.getTopTracks(
+                this.artistId,
+                ServerMediaItem.LIBRARY_PROVIDER,
+                this.providerFilter,
+            ),
+        )
 
         is ItemList.ArtistLibrary -> listOf(
             Request.Artist.getAlbums(

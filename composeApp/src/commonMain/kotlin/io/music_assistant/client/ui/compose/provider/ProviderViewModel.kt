@@ -25,7 +25,7 @@ class ProviderViewModel(private val serviceClient: ServiceClient) : ViewModel() 
     init {
         viewModelScope.launch {
             serviceClient.sendRequest(Request.Provider.all())
-                .resultAs<List<ServerProviderInstance>>()?.filter { it.type == "music" }
+                .resultAs<List<ServerProviderInstance>>()?.filter { it.type in NAMED_PROVIDER_TYPES }
                 ?.let { manifests ->
                     manifests.forEach {
                         val providerDetails = ProviderDetails(it.name)
@@ -72,5 +72,10 @@ class ProviderViewModel(private val serviceClient: ServiceClient) : ViewModel() 
             darkIconResult ?: serviceClient.sendRequest(Request.Provider.icon(domain))
                 .resultAs<String>()
         return iconSvg
+    }
+
+    private companion object {
+        // Metadata and plugin providers (e.g. Last.fm) are artist top-tracks sources.
+        val NAMED_PROVIDER_TYPES = setOf("music", "metadata", "plugin")
     }
 }

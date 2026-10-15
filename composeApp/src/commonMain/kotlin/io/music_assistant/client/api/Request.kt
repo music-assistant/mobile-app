@@ -668,10 +668,12 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         fun getTopTracks(
             itemId: String,
             providerInstanceIdOrDomain: String,
+            providerFilter: String? = null,
         ) = Library.subItems(
             APICommands.MUSIC_ARTISTS_TOP_TRACKS,
             itemId,
             providerInstanceIdOrDomain,
+            providerFilter = providerFilter,
         )
 
         fun getSimilarArtists(
@@ -899,12 +901,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
             limit: Int? = null,
+            providerFilter: String? = null,
         ) = Request(
             command = command,
             args = buildJsonObject {
                 put("item_id", JsonPrimitive(itemId))
                 put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
                 limit?.let { put("limit", JsonPrimitive(it)) }
+                providerFilter?.let { put("provider_filter", JsonPrimitive(it)) }
             },
         )
     }
