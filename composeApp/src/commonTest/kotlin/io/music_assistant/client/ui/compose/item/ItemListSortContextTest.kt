@@ -22,7 +22,10 @@ class ItemListSortContextTest {
     @Test
     fun `library top tracks round-trips and filters only when narrowed`() {
         val narrowed = ItemList.ArtistLibraryTopTracks("1", "lastfm")
-        assertEquals(narrowed, Json.decodeFromString(ItemList.serializer(), Json.encodeToString(ItemList.serializer(), narrowed)))
+        assertEquals(
+            narrowed,
+            Json.decodeFromString(ItemList.serializer(), Json.encodeToString(ItemList.serializer(), narrowed)),
+        )
 
         val (merged) = ItemList.ArtistLibraryTopTracks("1").toRequests()
         assertFalse("provider_filter" in merged.args.orEmpty())

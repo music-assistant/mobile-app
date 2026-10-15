@@ -30,7 +30,7 @@ class ArtistSectionOptionsTest {
         .copy(provider = ServerMediaItem.LIBRARY_PROVIDER)
 
     @Test
-    fun `library artist gets merged listing, capable mapped providers and metadata providers`() {
+    fun `library artist gets merged capable mapped providers and metadata providers`() {
         val providers = listOf(
             provider("lastfm-1", "metadata"),
             provider("tidal-1", "music"),
