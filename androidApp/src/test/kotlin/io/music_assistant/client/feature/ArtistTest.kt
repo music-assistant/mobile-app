@@ -17,6 +17,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.artist_section_all
 import musicassistantclient.composeapp.generated.resources.artist_section_in_library
 import musicassistantclient.composeapp.generated.resources.artist_section_top
+import musicassistantclient.composeapp.generated.resources.artist_source_all
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -150,11 +151,13 @@ class ArtistTest {
             domain = "domain1",
             instance = "instance1",
             name = "Instance 1",
+            supportedFeatures = listOf(ARTIST_TOPTRACKS_FEATURE),
         )
         val provider2 = ServerMediaItemFixtures.provider(
             domain = "domain2",
             instance = "instance2",
             name = "Instance 2",
+            supportedFeatures = listOf(ARTIST_TOPTRACKS_FEATURE),
         )
         serviceClient.addProvider(provider1)
         serviceClient.addProvider(provider2)
@@ -173,10 +176,46 @@ class ArtistTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(artist1, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
             .assertMediaDisplayed(track1, provider = provider1.domain)
-            .assertMediaNotDisplayed(track2, provider = provider2.domain)
-            .switchProvider(Res.string.artist_section_top.get(), provider1.name, provider2.name)
+            .assertMediaDisplayed(track2, provider = provider2.domain)
+            .switchProvider(Res.string.artist_section_top.get(), Res.string.artist_source_all.get(), provider2.name)
             .assertMediaNotDisplayed(track1, provider = provider1.domain)
             .assertMediaDisplayed(track2, provider = provider2.domain)
+    }
+
+    @Test
+    fun `does not offer a provider without top tracks for the artist`() {
+        val provider1 = ServerMediaItemFixtures.provider(
+            domain = "domain1",
+            instance = "instance1",
+            name = "Instance 1",
+            supportedFeatures = listOf(ARTIST_TOPTRACKS_FEATURE),
+        )
+        val provider2 = ServerMediaItemFixtures.provider(
+            domain = "domain2",
+            instance = "instance2",
+            name = "Instance 2",
+            supportedFeatures = listOf(ARTIST_TOPTRACKS_FEATURE),
+        )
+        serviceClient.addProvider(provider1)
+        serviceClient.addProvider(provider2)
+
+        val artist1 = ServerMediaItemFixtures.artist(provider = provider1)
+        val artist2 = ServerMediaItemFixtures.artist(provider = provider2)
+        val track1 = ServerMediaItemFixtures.track(artists = listOf(artist1), provider = provider1)
+
+        serviceClient.addItems(track1, artist2)
+        serviceClient.setTopTracks(artist1, track1)
+        serviceClient.addToLibrary(artist1)
+        serviceClient.matchItem(artist1, artist2)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(artist1, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
+            .assertMediaDisplayed(track1, provider = provider1.domain)
+            .assertProviderNotOffered(
+                Res.string.artist_section_top.get(),
+                Res.string.artist_source_all.get(),
+                provider2.name,
+            )
     }
 
     @Test
@@ -212,3 +251,6 @@ class ArtistTest {
             .assertRowShown(Res.string.artist_section_top.get(), false)
     }
 }
+
+// Server ProviderFeature value of a provider that serves artist top tracks.
+private const val ARTIST_TOPTRACKS_FEATURE = "artist_toptracks"

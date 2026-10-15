@@ -194,12 +194,14 @@ object ServerMediaItemFixtures {
         domain: String = "domain-${uniqueIdGenerator.nextInt()}",
         instance: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Provider $instance",
+        supportedFeatures: List<String> = emptyList(),
     ): ServerProviderInstance {
         return ServerProviderInstance(
             domain = domain,
             instanceId = instance,
             name = name,
             type = "music",
+            supportedFeatures = supportedFeatures,
         )
     }
 

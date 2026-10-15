@@ -501,8 +501,14 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.MUSIC_ARTISTS_TOP_TRACKS -> {
-                val artist = findItem(request)
-                val tracks = mediaItemStore.getTracksByArtist(artist, topOnly = true)
+                val tracks = when (request.getArg("provider_instance_id_or_domain")) {
+                    ServerMediaItem.LIBRARY_PROVIDER -> mediaItemStore.getTopTracksByLibraryArtist(
+                        libraryId = request.getArg("item_id"),
+                        providerFilter = request.getArgOrNull("provider_filter"),
+                    )
+
+                    else -> mediaItemStore.getTracksByArtist(findItem(request), topOnly = true)
+                }
 
                 Result.success(
                     answer(

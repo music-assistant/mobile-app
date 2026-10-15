@@ -117,6 +117,15 @@ class ItemPage(
         return this
     }
 
+    fun assertProviderNotOffered(row: String, current: String, provider: String): ItemPage {
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_provider_filter.get(row, current))
+            .performClick()
+        composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText(current))).assertExists()
+        composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText(provider))).assertDoesNotExist()
+        return this
+    }
+
     fun assertMediaDisplayed(item: ServerMediaItem, provider: String? = null): ItemPage {
         return assertMediaDisplayed(
             item,
