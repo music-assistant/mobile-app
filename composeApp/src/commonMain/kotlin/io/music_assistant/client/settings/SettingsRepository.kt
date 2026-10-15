@@ -421,6 +421,17 @@ class SettingsRepository(
         _localNetworkOnboardingShown.update { true }
     }
 
+    // One-time hint that the player pager swipes between players.
+    private val _playerSwipeHintShown = MutableStateFlow(
+        settings.getBoolean("player_swipe_hint_shown", false),
+    )
+    val playerSwipeHintShown = _playerSwipeHintShown.asStateFlow()
+
+    fun setPlayerSwipeHintShown() {
+        settings.putBoolean("player_swipe_hint_shown", true)
+        _playerSwipeHintShown.update { true }
+    }
+
     // Sendspin settings
     private val _sendspinEnabled = MutableStateFlow(
         settings.getBoolean("sendspin_enabled", false),

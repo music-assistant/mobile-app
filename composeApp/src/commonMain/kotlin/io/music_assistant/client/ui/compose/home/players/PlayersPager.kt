@@ -194,6 +194,8 @@ fun PlayersPager(
             .collectAsStateWithLifecycle()
         val overlayAvailable by koinInject<QueueOverlayRepository>().available
             .collectAsStateWithLifecycle()
+        val swipeHintShown by homeScreenViewModel.playerSwipeHintShown
+            .collectAsStateWithLifecycle()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -253,7 +255,14 @@ fun PlayersPager(
             }
 
             HorizontalPager(
-                modifier = Modifier.ignoreDragsFromBottomGestureZone(),
+                modifier = Modifier
+                    .ignoreDragsFromBottomGestureZone()
+                    .playerSwipeHint(
+                        enabled = expanded && playerDataList.size > 1 && !swipeHintShown,
+                        pagerState = playerPagerState,
+                        toastState = toastState,
+                        onShown = homeScreenViewModel::onPlayerSwipeHintShown,
+                    ),
                 state = playerPagerState,
                 key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page },
             ) { page ->

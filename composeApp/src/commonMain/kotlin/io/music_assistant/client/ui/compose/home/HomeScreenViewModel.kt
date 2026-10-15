@@ -117,6 +117,11 @@ class HomeScreenViewModel(
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization
 
+    /** One-time hint that the expanded player swipes between players. */
+    val playerSwipeHintShown = settings.playerSwipeHintShown
+
+    fun onPlayerSwipeHintShown() = settings.setPlayerSwipeHintShown()
+
     /** Server-side sleep timers exist from schema 35 on; hide the whole feature below that. */
     val sleepTimerSupported: StateFlow<Boolean> =
         apiClient.sessionState
