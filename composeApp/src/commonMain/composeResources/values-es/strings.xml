@@ -30,6 +30,7 @@
   <string name="action_start_endless_mix">Iniciar mezcla continua</string>
   <string name="action_start_radio">Iniciar radio</string>
   <string name="action_unfavorite">Quitar de favoritos</string>
+  <string name="action_view_all">Ver todo</string>
   <string name="ai_radio_empty">Todavía no hay emisoras de IA. Crea una en la aplicación web de Music Assistant.</string>
   <string name="ai_radio_load_failed">No se han podido cargar las emisoras de IA</string>
   <string name="ai_radio_no_player">Selecciona primero un reproductor</string>
@@ -51,6 +52,20 @@
   <string name="all_podcasts">Todos los podcasts</string>
   <string name="all_radio">Todas las emisoras de radio</string>
   <string name="all_tracks">Todas las canciones</string>
+  <string name="announcement_chime">Reproducir primero el timbre</string>
+  <string name="announcement_custom_volume">Volumen personalizado</string>
+  <string name="announcement_failed">La notificación ha fallado</string>
+  <string name="announcement_hold_to_talk">Mantén pulsado para hablar</string>
+  <string name="announcement_message">Mensaje</string>
+  <string name="announcement_mic_denied">Se ha desactivado el acceso al micrófono. Actívalo en los ajustes del sistema.</string>
+  <string name="announcement_mic_stopped">El micrófono se ha detenido</string>
+  <string name="announcement_open_settings">Abrir ajustes</string>
+  <string name="announcement_recording">Suelta para enviar ·%1$s</string>
+  <string name="announcement_send">Anunciar</string>
+  <string name="announcement_tab_speak">Hablar</string>
+  <string name="announcement_tab_type">Tipo</string>
+  <string name="announcement_title">Reproducir anuncio</string>
+  <string name="announcement_volume">Volumen: %1$d</string>
   <string name="artist_section_all">Discografía</string>
   <string name="artist_section_in_library">En la biblioteca</string>
   <string name="artist_section_top">Canciones más populares</string>
@@ -92,7 +107,7 @@
   <string name="cd_delete_crash_logs">Eliminar registros de errores</string>
   <string name="cd_favorite">Favorito</string>
   <string name="cd_filter">Filtros</string>
-  <string name="cd_find_in_list">Buscar en la lisa</string>
+  <string name="cd_find_in_list">Buscar en la lista</string>
   <string name="cd_fully_played">Reproducido por completo</string>
   <string name="cd_genre_filter">Filtros de género</string>
   <string name="cd_in_progress">En curso</string>

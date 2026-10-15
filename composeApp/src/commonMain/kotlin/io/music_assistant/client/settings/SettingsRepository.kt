@@ -182,6 +182,16 @@ class SettingsRepository(
         _playersSorting.update { newValue }
     }
 
+    private val _hideUnavailablePlayers = MutableStateFlow(
+        settings.getBoolean("hide_unavailable_players", false),
+    )
+    val hideUnavailablePlayers = _hideUnavailablePlayers.asStateFlow()
+
+    fun setHideUnavailablePlayers(hide: Boolean) {
+        settings.putBoolean("hide_unavailable_players", hide)
+        _hideUnavailablePlayers.update { hide }
+    }
+
     // Home-screen rows: visibility + user-defined order in a single ordered list.
     // Order = display sort; enabled=false = hidden. JSON-encoded because folder
     // ids are arbitrary server strings (may contain the delimiters a flat string
@@ -409,6 +419,17 @@ class SettingsRepository(
     fun setLocalNetworkOnboardingShown() {
         settings.putBoolean("local_network_onboarding_shown", true)
         _localNetworkOnboardingShown.update { true }
+    }
+
+    // One-time hint that the player pager swipes between players.
+    private val _playerSwipeHintShown = MutableStateFlow(
+        settings.getBoolean("player_swipe_hint_shown", false),
+    )
+    val playerSwipeHintShown = _playerSwipeHintShown.asStateFlow()
+
+    fun setPlayerSwipeHintShown() {
+        settings.putBoolean("player_swipe_hint_shown", true)
+        _playerSwipeHintShown.update { true }
     }
 
     // Sendspin settings
@@ -780,6 +801,16 @@ class SettingsRepository(
 
     private fun librarySortKey(mediaType: MediaType) = "library_sort_${mediaType.name}"
 
+    // Audiobook-library display choice; the library ViewModel is the only writer, like sort.
+    fun getSeriesGrouping(): SeriesGrouping =
+        settings.getStringOrNull(SERIES_GROUPING_KEY)
+            ?.let { runCatching { SeriesGrouping.valueOf(it) }.getOrNull() }
+            ?: SeriesGrouping.FLAT
+
+    fun setSeriesGrouping(grouping: SeriesGrouping) {
+        settings.putString(SERIES_GROUPING_KEY, grouping.name)
+    }
+
     fun getSortOption(context: SubItemContext): SortOption {
         // A fixed-order context has no chip, so a value persisted by an older app version could
         // never be changed back — including a stale descending flag on ORIGINAL. Ignore it outright.
@@ -812,6 +843,7 @@ class SettingsRepository(
         private const val TOKEN_PREFIX = "token_"
         private const val SERVER_ID_PREFIX = "id_"
         private const val CLIENT_CERTIFICATE_ALIAS_KEY = "client_certificate_alias"
+        private const val SERIES_GROUPING_KEY = "library_series_grouping"
         private val SECRET_STRING_KEYS = listOf(
             "host",
             "webrtc_remote_id",

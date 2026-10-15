@@ -14,3 +14,6 @@ The project is in an early stage of development. Any help (especially from desig
 - PRs should be merged to `main`
 - When a release is made, the commit used should be tagged with the release version using the format `android-<version name>` and `ios-<version name>` for Android and iOS releases respectively.
 - If a hotfix needs to be made to a previous stable release, a new branch should be created from the stable release tag and PRs should be merged to that. Once the hotfix is released, these changes will need to be merged to `main`.
+
+## AI Policy
+This project follows the [OHF AI Policy](https://github.com/music-assistant/.github/blob/main/AI_POLICY.md). Please read it before submitting AI-assisted contributions. The TLDR: AI tools are allowed, but a human is responsible and must review and understand every change. Autonomous agents and unreviewed AI output will be rejected.

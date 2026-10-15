@@ -101,6 +101,40 @@ class ConnectionSupervisorTest {
         FakeNoiseServer(crypto, transport, serverStatic, trustStore.identity.keyPair.publicKey)
 
     @Test
+    fun unsupportedEndpointFailsWithoutOpeningTransport() = runTest {
+        val h = harness(endpoint = Endpoint.Unsupported("server too old"))
+        advanceTimeBy(120_000)
+        runCurrent()
+
+        assertEquals(
+            FailureCause.IncompatibleProtocol,
+            assertIs<ConnectionState.Failed>(h.supervisor.state.value).cause,
+        )
+        assertTrue(h.transports.isEmpty())
+        h.job.cancel()
+    }
+
+    @Test
+    fun unsupportedCoreVersionStopsRetrying() = runTest {
+        val h = harness()
+        val transport = h.transports.single()
+        transport.serverSends(
+            """{"type":"server/init","payload":{"version":999,"server_id":"unused"}}""",
+        )
+        runCurrent()
+        advanceTimeBy(120_000)
+        runCurrent()
+
+        assertEquals(
+            FailureCause.IncompatibleProtocol,
+            assertIs<ConnectionState.Failed>(h.supervisor.state.value).cause,
+        )
+        assertEquals(1, h.transports.size)
+        assertTrue(transport.closed)
+        h.job.cancel()
+    }
+
+    @Test
     fun connectFailuresBackOffExponentiallyAndCap() = runTest {
         val h = harness(connect = { error("refused") })
         advanceTimeBy(200_000)

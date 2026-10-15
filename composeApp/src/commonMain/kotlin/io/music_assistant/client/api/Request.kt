@@ -360,6 +360,26 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 queueItemId?.let { put("queue_item_id", JsonPrimitive(it)) }
             },
         )
+
+        /**
+         * Configures the ambient sound overlay. A null argument is left out, and the server
+         * keeps its current value. The server applies source, then volume, then enabled, so
+         * one call can select a sound and turn it on.
+         */
+        fun setOverlay(
+            queueId: String,
+            enabled: Boolean,
+            source: String? = null,
+            volume: Int? = null,
+        ) = Request(
+            command = APICommands.PLAYER_QUEUES_OVERLAY,
+            args = buildJsonObject {
+                put("queue_id", JsonPrimitive(queueId))
+                put("enabled", JsonPrimitive(enabled))
+                source?.let { put("source", JsonPrimitive(it)) }
+                volume?.let { put("volume", JsonPrimitive(it)) }
+            },
+        )
     }
 
     data object Playlist {
@@ -522,6 +542,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             orderBy: String? = null,
             providers: List<String>? = null,
             genres: List<Int>? = null,
+            collapseCollections: Boolean = false,
         ) = Request(
             command = APICommands.MUSIC_AUDIOBOOKS_LIBRARY_ITEMS,
             args = buildJsonObject {
@@ -531,6 +552,15 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("offset", JsonPrimitive(offset))
                 orderBy?.let { put("order_by", JsonPrimitive(it)) }
                 putListFilters(providers, genres)
+                // Groups series into `collection` rows. Servers before 2.10 ignore it.
+                if (collapseCollections) put("collapse_collections", JsonPrimitive(true))
+            },
+        )
+
+        fun getCollection(itemId: String) = Request(
+            command = APICommands.MUSIC_AUDIOBOOKS_GET_COLLECTION,
+            args = buildJsonObject {
+                put("item_id", JsonPrimitive(itemId))
             },
         )
     }
@@ -729,6 +759,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 path?.let { put("path", JsonPrimitive(it)) }
             },
         )
+    }
+
+    data object SoundEffects {
+        fun all() = Request(command = APICommands.MUSIC_SOUND_EFFECTS)
     }
 
     data object Metadata {

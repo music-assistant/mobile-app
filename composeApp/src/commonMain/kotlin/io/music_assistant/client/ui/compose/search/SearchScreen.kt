@@ -81,6 +81,7 @@ import musicassistantclient.composeapp.generated.resources.genre_filter_media_ty
 import musicassistantclient.composeapp.generated.resources.search_error
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import musicassistantclient.composeapp.generated.resources.search_no_results
+import musicassistantclient.composeapp.generated.resources.search_query_label
 import musicassistantclient.composeapp.generated.resources.search_start
 import org.jetbrains.compose.resources.stringResource
 
@@ -166,10 +167,10 @@ private fun SearchTopBar(
     TopAppBar(
         title = {
             SearchInput(
-                mode = SearchInputMode.EXPLICIT_SEARCH,
                 query = searchState.query,
                 onQueryChanged = onQueryChanged,
-                onSearch = onSearch,
+                onSearchAction = onSearch,
+                placeholder = stringResource(Res.string.search_query_label),
             )
         },
         actions = {

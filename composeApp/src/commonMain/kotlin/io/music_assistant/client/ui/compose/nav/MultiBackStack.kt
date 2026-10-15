@@ -40,11 +40,15 @@ class MultiBackStack<T : NavKey>(private val backStacks: List<MutableList<T>>) {
     }
 
     fun removeLastOrNull(): NavKey? {
-        return if (currentBackStack != 0 && backStacks[currentBackStack].size == 1) {
-            currentBackStack = 0
-            backStacks[currentBackStack].lastOrNull()
-        } else {
-            backStacks[currentBackStack].removeLastOrNull()
+        val backStack = backStacks[currentBackStack]
+        return when {
+            backStack.size > 1 -> backStack.removeLastOrNull()
+            currentBackStack != 0 -> {
+                currentBackStack = 0
+                backStacks[0].lastOrNull()
+            }
+            // A stale or repeated back callback must never remove the Home root.
+            else -> null
         }
     }
 

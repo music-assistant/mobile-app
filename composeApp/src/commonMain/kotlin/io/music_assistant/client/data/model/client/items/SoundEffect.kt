@@ -9,16 +9,16 @@ import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
 
 /**
- * A server-rendered audio clip that is not library content — currently the spoken host
- * segments the `ai_radio` plugin splices between tracks. It reaches us only as a queue
- * item, never through a library list or search.
+ * A server-rendered audio clip that is not library content. It reaches us in two ways:
+ * - as a queue item: the spoken host segments the `ai_radio` plugin splices between tracks;
+ * - from `music/sound_effects`: the ambient sounds a queue can mix in as an overlay. The
+ *   overlay selects the sound by its [uri].
  *
  * Without this type [io.music_assistant.client.data.factory.MediaItemFactory] returns null
  * for `sound_effect` and [io.music_assistant.client.data.factory.QueueFactory] drops the
  * item, so the clip plays while staying invisible in the queue.
  *
- * It has no library identity: no [uri] to enqueue or favorite by, and no favorite state on
- * the server, so [withFavorite] is a no-op.
+ * It has no favorite state on the server, so [withFavorite] is a no-op.
  */
 data class SoundEffect(
     override val itemId: String,
@@ -29,11 +29,12 @@ data class SoundEffect(
     override val sortName: String? = null,
     override val images: Map<ImageType, ImageInfo>,
     override val duration: Double?,
+    override val uri: String?,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.SOUND_EFFECT
     override val favorite: Boolean? = null
-    override val uri: String? = null
     override val version: String? = null
+    override val position: Int? = null
     override val parentName: String? = null
     override val defaultIcon = Icons.Default.RecordVoiceOver
     override fun withFavorite(favorite: Boolean?) = this

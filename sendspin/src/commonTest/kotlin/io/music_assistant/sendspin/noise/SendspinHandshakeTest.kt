@@ -234,7 +234,7 @@ class SendspinHandshakeTest {
         )
         val io = PipeIo()
         backgroundScope.launch { runCatching { server.run(io, serverInitVersion = 2) } }
-        assertFailsWith<HandshakeFailedException> { handshake.runInitial(io) }
+        assertFailsWith<UnsupportedCoreVersionException> { handshake.runInitial(io) }
     }
 
     @Test

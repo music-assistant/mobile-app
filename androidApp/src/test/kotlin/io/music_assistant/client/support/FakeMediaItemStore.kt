@@ -103,6 +103,7 @@ internal class FakeMediaItemStore {
             MediaType.PODCAST_EPISODE -> Unit
             MediaType.GENRE -> Unit
             MediaType.FOLDER -> Unit
+            MediaType.COLLECTION -> Unit
             MediaType.FLOW_STREAM -> Unit
             MediaType.ANNOUNCEMENT -> Unit
             MediaType.SOUND_EFFECT -> Unit

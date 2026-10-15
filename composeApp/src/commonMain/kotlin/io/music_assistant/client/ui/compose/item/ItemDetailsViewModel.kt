@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
-import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
@@ -18,12 +17,15 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -33,7 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ItemDetailsViewModel(
-    private val apiClient: ServiceClient,
+    private val playDispatcher: PlayDispatcher,
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
@@ -141,6 +143,7 @@ class ItemDetailsViewModel(
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)
             MediaType.AUDIOBOOK -> Request.Audiobook.get(itemId, providerId)
             MediaType.GENRE -> Request.Genre.get(itemId, providerId)
+            MediaType.COLLECTION -> Request.Audiobook.getCollection(itemId)
             else -> return null
         }
 
@@ -198,6 +201,18 @@ class ItemDetailsViewModel(
                     )
                 }
                 loadGenreOverview(item.itemId, item.provider)
+            }
+
+            // get_collection already carries the books, so there is nothing more to load.
+            is MediaCollection -> {
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = null,
+                    )
+                }
+                setPlayableItems(item.items.filterIsInstance<PlayableItem>(), SubItemContext.COLLECTION_ITEMS)
             }
 
             is Audiobook -> {
@@ -387,45 +402,40 @@ class ItemDetailsViewModel(
             Pair(item, null)
         }
 
-        viewModelScope.launch {
-            val mediaUri = itemToPlay.mediaUri ?: return@launch
-            mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                Logger.withTag("PlayDispatch").i {
-                    "ItemDetailsViewModel.onPlayClick: uri=$mediaUri option=$option " +
-                            "endlessMix=$endlessMix startItem=${startItem?.itemId} queue=$queueId"
-                }
-                apiClient.sendRequest(
-                    Request.Library.play(
-                        media = listOf(mediaUri),
-                        queueOrPlayerId = queueId,
-                        option = option,
-                        endlessMixMode = endlessMix && item !is Genre,
-                        startItem = startItem?.itemId,
-                    ),
-                )
+        val mediaUri = itemToPlay.mediaUri ?: return
+        mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
+            Logger.withTag("PlayDispatch").i {
+                "ItemDetailsViewModel.onPlayClick: uri=$mediaUri option=$option " +
+                        "endlessMix=$endlessMix startItem=${startItem?.itemId} queue=$queueId"
             }
+            playDispatcher.play(
+                PlayRequest(
+                    queueOrPlayerId = queueId,
+                    media = listOf(mediaUri),
+                    option = option,
+                    endlessMixMode = endlessMix && item !is Genre,
+                    startItem = startItem?.itemId,
+                ),
+            )
         }
     }
 
     fun onChapterClick(chapterPosition: Int) {
         (_state.value.itemState as? DataState.Data)?.data?.let { item ->
-            viewModelScope.launch {
-                item.uri?.let { uri ->
-                    mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                        Logger.withTag("PlayDispatch").i {
-                            "ItemDetailsViewModel.onChapterClick: uri=$uri " +
-                                    "chapter=$chapterPosition queue=$queueId"
-                        }
-                        apiClient.sendRequest(
-                            Request.Library.play(
-                                media = listOf(uri),
-                                queueOrPlayerId = queueId,
-                                option = QueueOption.REPLACE,
-                                endlessMixMode = false,
-                                startItem = chapterPosition.toString(),
-                            ),
-                        )
+            item.uri?.let { uri ->
+                mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
+                    Logger.withTag("PlayDispatch").i {
+                        "ItemDetailsViewModel.onChapterClick: uri=$uri " +
+                                "chapter=$chapterPosition queue=$queueId"
                     }
+                    playDispatcher.play(
+                        PlayRequest(
+                            queueOrPlayerId = queueId,
+                            media = listOf(uri),
+                            option = QueueOption.REPLACE,
+                            startItem = chapterPosition.toString(),
+                        ),
+                    )
                 }
             }
         }
@@ -522,11 +532,12 @@ private fun ItemDetailsViewModel.State.itemOrNull(): AppMediaItem? = when (itemS
  */
 private fun ItemDetailsTab.subState(
     state: ItemDetailsViewModel.State,
-): DataState<out List<Any>> = when (this) {
+): DataState<List<Any>> = when (this) {
     ItemDetailsTab.GENRE_ALBUMS -> state.albumsState
     ItemDetailsTab.ALBUM_TRACKS,
     ItemDetailsTab.PLAYLIST_ITEMS,
     ItemDetailsTab.PODCAST_EPISODES,
+    ItemDetailsTab.COLLECTION_ITEMS,
         -> state.playableItemsState
 
     ItemDetailsTab.GENRE_ARTISTS -> state.artistsState
@@ -534,7 +545,7 @@ private fun ItemDetailsTab.subState(
         DataState.Data((state.itemOrNull() as? Audiobook)?.chapters.orEmpty())
 }
 
-private fun DataState<out List<*>>.hasItems(): Boolean = when (this) {
+private fun DataState<List<*>>.hasItems(): Boolean = when (this) {
     is DataState.Data -> data.isNotEmpty()
     is DataState.Stale -> data.isNotEmpty()
     else -> false

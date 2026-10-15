@@ -24,8 +24,10 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -36,10 +38,12 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
+import io.music_assistant.client.ui.compose.common.items.AudioSourceWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.FolderWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.MediaCollectionWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PlaylistWithMenu
@@ -193,12 +197,28 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
+                is MediaCollection -> MediaCollectionWithMenu(
+                    item = item,
+                    viewMode = viewMode,
+                    onNavigateClick = onNavigateClick,
+                    onPlayOption = onPlayClick,
+                    libraryActions = libraryActions,
+                )
+
                 is RecommendationFolder -> FolderWithMenu(
                     item = item,
                     viewMode = viewMode,
                     onNavigateClick = onNavigateClick,
                     onPlayOption = onPlayClick,
                     libraryActions = libraryActions,
+                )
+
+                is AudioSource -> AudioSourceWithMenu(
+                    item = item,
+                    viewMode = viewMode,
+                    onPlayOption = onPlayClick,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = null,
                 )
 
                 // Reaches the client only as a queue item (an AI Radio host clip), never

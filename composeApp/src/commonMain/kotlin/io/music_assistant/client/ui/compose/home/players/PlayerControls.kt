@@ -4,6 +4,7 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
@@ -64,6 +66,8 @@ fun PlayerControls(
     val buttonsEnabled = queue?.currentItem?.isPlayable == true
     // Audiobooks / podcast episodes swap shuffle & repeat for skip-back / skip-forward seek.
     val isLongForm = queue?.currentItem?.track.isLongFormSpokenContent
+    // A live input never ends, so shuffle and repeat have nothing to act on.
+    val isLiveInput = queue?.currentItem?.track is AudioSource
     val itemsCount = playerData.queueItems?.size ?: 0
     // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
     // enabled while a chapter starts after the (event-driven, close-enough) position.
@@ -102,7 +106,7 @@ fun PlayerControls(
                         },
                         tint = tint,
                         size = smallButtonSize,
-                        enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist,
+                        enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist && !isLiveInput,
                     ) {
                         playerAction(
                             playerData,
@@ -136,19 +140,30 @@ fun PlayerControls(
                 )
             }
         } else {
-            ActionButton(
-                icon = when (player.isPlaying) {
-                    true -> PauseIcon
-                    false -> PlayIcon
-                },
-                tint = tint,
-                size = mainButtonSize,
-                enabled = playerEnabled && buttonsEnabled,
-                contentDescription = when (player.isPlaying) {
-                    true -> stringResource(Res.string.action_pause)
-                    false -> stringResource(Res.string.action_play)
-                },
-            ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
+            // The ring is a sibling, not part of the button: the button is dimmed while the
+            // queue is empty, which is exactly when a first play request is in flight.
+            Box(contentAlignment = Alignment.Center) {
+                ActionButton(
+                    icon = when (player.isPlaying) {
+                        true -> PauseIcon
+                        false -> PlayIcon
+                    },
+                    tint = tint,
+                    size = mainButtonSize,
+                    enabled = playerEnabled && buttonsEnabled,
+                    contentDescription = when (player.isPlaying) {
+                        true -> stringResource(Res.string.action_pause)
+                        false -> stringResource(Res.string.action_play)
+                    },
+                ) { playerAction(playerData, PlayerAction.TogglePlayPause) }
+                if (playerData.playRequestPending) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(mainButtonSize),
+                        color = tint,
+                        strokeWidth = 2.dp,
+                    )
+                }
+            }
         }
 
         if (showSkip) {
@@ -181,7 +196,7 @@ fun PlayerControls(
                         },
                         tint = tint,
                         size = smallButtonSize,
-                        enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist,
+                        enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist && !isLiveInput,
                     ) {
                         repeatMode?.let {
                             playerAction(

@@ -524,6 +524,7 @@ fun Queue(
 
                                     // Long-click menu
                                     DropdownMenu(
+                                        modifier = Modifier.queueMenuHeight(),
                                         expanded = menuItemId == item.id,
                                         onDismissRequest = { menuItemId = null },
                                     ) {

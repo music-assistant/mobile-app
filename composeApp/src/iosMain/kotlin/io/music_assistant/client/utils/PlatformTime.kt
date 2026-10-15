@@ -24,6 +24,10 @@ actual fun currentTimeMillis(): Long {
 actual fun monotonicMs(): Long =
     (clock_gettime_nsec_np(CLOCK_MONOTONIC.toUInt()) / 1_000_000u).toLong()
 
+@OptIn(ExperimentalForeignApi::class)
+actual fun monotonicMicros(): Long =
+    (clock_gettime_nsec_np(CLOCK_MONOTONIC.toUInt()) / 1_000u).toLong()
+
 actual fun formatIsoDate(isoDate: String): String {
     val parser = NSISO8601DateFormatter().apply {
         formatOptions = platform.Foundation.NSISO8601DateFormatWithFullDate

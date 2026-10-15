@@ -18,6 +18,7 @@ internal class TransportConnector(
     private val release: () -> Unit = {},
 ) {
     suspend fun connect(endpoint: Endpoint, clientId: String): SendspinTransport = when (endpoint) {
+        is Endpoint.Unsupported -> error(endpoint.reason)
         is Endpoint.WebRtc -> endpoint.openChannel()
         is Endpoint.WebSocket -> openWebSocket(endpoint.url).also { ws ->
             try {

@@ -4,6 +4,7 @@ import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
@@ -28,6 +29,11 @@ fun resolveLongClickActions(
     defaultAction: ItemAction? = null,
     customizationAllowed: Boolean = false,
 ): List<ItemAction> = buildList {
+    // A live input never ends, so nothing queued behind it is reached: starting it is the only action.
+    if (item is AudioSource) {
+        if (item.isPlayable) add(ItemAction.Play(QueueOption.REPLACE))
+        return@buildList
+    }
     if (item.isPlayable) addPlaybackActions(item, clickContext)
     if (customizationAllowed) add(ItemAction.Customize)
     if (librarySupported) {

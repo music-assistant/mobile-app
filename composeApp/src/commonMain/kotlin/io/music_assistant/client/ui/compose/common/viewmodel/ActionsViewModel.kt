@@ -14,6 +14,8 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.server.supportsFavoriteCurrentlyPlaying
+import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
@@ -48,6 +50,7 @@ class ActionsViewModel(
     private val apiClient: ServiceClient,
     private val dataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
+    private val playDispatcher: PlayDispatcher,
 ) : ViewModel(), PlaylistActions, LibraryActions, ProgressActions {
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
@@ -132,9 +135,9 @@ class ActionsViewModel(
     }
 
     /**
-     * [position] is the track's `Track.position` exactly as the server emitted it for this playlist
-     * (providers number from 1 and delete `items[position - 1]`), so the displayed order or an
-     * active filter never affects which track is removed.
+     * [position] is the item's `PlayableItem.position` exactly as the server emitted it for this
+     * playlist (providers number from 1 and delete `items[position - 1]`), so the displayed order
+     * or an active filter never affects which item is removed.
      */
     fun removeFromPlaylist(
         playlistId: String,
@@ -194,20 +197,18 @@ class ActionsViewModel(
         option: QueueOption,
         radio: Boolean,
     ) {
-        viewModelScope.launch {
-            val queueId = dataSource.selectedPlayer?.queueOrPlayerId ?: return@launch
-            item.mediaUri?.let { mediaUri ->
-                Logger.withTag("PlayDispatch")
-                    .i { "ActionsViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
-                apiClient.sendRequest(
-                    Request.Library.play(
-                        media = listOf(mediaUri),
-                        queueOrPlayerId = queueId,
-                        option = option,
-                        endlessMixMode = radio && item !is Genre,
-                    ),
-                )
-            }
+        val queueId = dataSource.selectedPlayer?.queueOrPlayerId ?: return
+        item.mediaUri?.let { mediaUri ->
+            Logger.withTag("PlayDispatch")
+                .i { "ActionsViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+            playDispatcher.play(
+                PlayRequest(
+                    queueOrPlayerId = queueId,
+                    media = listOf(mediaUri),
+                    option = option,
+                    endlessMixMode = radio && item !is Genre,
+                ),
+            )
         }
     }
 

@@ -6,7 +6,7 @@ import kotlin.random.Random
 
 /**
  * The single reconnect policy. Exponential backoff with jitter, unlimited while
- * online. Only repeated goodbye rejections give up: the first rejections are
+ * online unless the protocol is incompatible. Repeated goodbye rejections also give up: the first rejections are
  * expected (a sentinel session is rejected with `pairing_required` while the
  * silent pairing RPC is still in flight, then admitted on a later attempt).
  */
@@ -32,6 +32,9 @@ internal object ReconnectPolicy {
         consecutiveRejections: Int,
         random: Random = Random.Default,
     ): Decision {
+        if (reason is DropReason.IncompatibleProtocol) {
+            return Decision.Fail(FailureCause.IncompatibleProtocol)
+        }
         if (reason is DropReason.Rejected && consecutiveRejections >= MAX_CONSECUTIVE_REJECTIONS) {
             return Decision.Fail(failureCause(reason.goodbye))
         }

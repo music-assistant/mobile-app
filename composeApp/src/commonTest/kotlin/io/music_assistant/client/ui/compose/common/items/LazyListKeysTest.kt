@@ -229,6 +229,7 @@ class LazyListKeysTest {
         override val favorite: Boolean? = null
         override val canStartEndlessMix: Boolean = false
         override val isPlayable: Boolean = true
+        override val position: Int? = null
         override fun withFavorite(favorite: Boolean?): PlayableItem = this
     }
 }

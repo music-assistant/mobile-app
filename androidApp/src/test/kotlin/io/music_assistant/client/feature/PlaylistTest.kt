@@ -9,6 +9,7 @@ import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.ServerPlayerFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.pages.clickItemOption
 import io.music_assistant.client.support.pages.clickLibrary
 import io.music_assistant.client.support.pages.playMedia
@@ -76,5 +77,30 @@ class PlaylistTest {
             .clickItemOption(track2, Res.string.action_play_playlist_from_here.get())
 
         assertThat(serviceClient.getQueueForPlayer(player), equalTo(listOf(track2, track3)))
+    }
+
+    @Test
+    fun `can search and then play items in list`() {
+        val playlist = ServerMediaItemFixtures.playlist()
+        val track1 = ServerMediaItemFixtures.track()
+        val track2 = ServerMediaItemFixtures.track()
+        serviceClient.addItems(playlist, track1, track2)
+        serviceClient.setPlaylist(playlist, track1, track2)
+        serviceClient.addToLibrary(playlist)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickLibrary()
+            .clickPlaylists()
+            .clickOnMedia(playlist)
+            .openSearchInList()
+            .searchInList(track2.name)
+            .assertMediaNotDisplayed(track1)
+            .assertMediaDisplayed(track2)
+            .playMedia(track2)
+
+        assertThat(serviceClient.getQueueForPlayer(player), equalTo(listOf(track2)))
     }
 }

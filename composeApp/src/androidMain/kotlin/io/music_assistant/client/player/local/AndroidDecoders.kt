@@ -113,7 +113,9 @@ internal class FlacDecoder : AudioDecoder {
                 if (attempt < MAX_INPUT_RETRIES) drain(current, out)
             }
             if (!submitted) logger.w { "FLAC input not accepted after ${MAX_INPUT_RETRIES + 1} attempts; frame dropped" }
-            drain(current, out)
+            // The scheduler aligns this PCM to this chunk's timestamp: wait for the frame just queued,
+            // or a late codec hands it to the next call and the timeline shifts by one chunk.
+            drain(current, out, awaitOutput = submitted)
             out.toByteArray()
         } catch (e: IllegalStateException) {
             logger.e(e) { "MediaCodec error during decode" }
@@ -121,9 +123,16 @@ internal class FlacDecoder : AudioDecoder {
         }
     }
 
-    private fun drain(codec: MediaCodec, out: ByteArrayOutputStream) {
+    /**
+     * Collects all ready output. With [awaitOutput], blocks until the first PCM buffer
+     * arrives or [OUTPUT_WAIT_US] passes; otherwise never waits.
+     */
+    private fun drain(codec: MediaCodec, out: ByteArrayOutputStream, awaitOutput: Boolean = false) {
+        var waitedUs = 0L
+        var gotPcm = false
         while (true) {
-            val index = codec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US)
+            val waiting = awaitOutput && !gotPcm && waitedUs < OUTPUT_WAIT_US
+            val index = codec.dequeueOutputBuffer(bufferInfo, if (waiting) TIMEOUT_US else 0L)
             when {
                 index >= 0 -> {
                     codec.getOutputBuffer(index)?.takeIf { bufferInfo.size > 0 }?.let { buffer ->
@@ -131,6 +140,7 @@ internal class FlacDecoder : AudioDecoder {
                         buffer.position(bufferInfo.offset)
                         buffer.get(pcm, 0, bufferInfo.size)
                         out.write(pcm)
+                        gotPcm = true
                     }
                     codec.releaseOutputBuffer(index, false)
                 }
@@ -149,7 +159,13 @@ internal class FlacDecoder : AudioDecoder {
                 @Suppress("DEPRECATION")
                 index == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> Unit
 
-                else -> return // INFO_TRY_AGAIN_LATER: nothing more right now
+                // INFO_TRY_AGAIN_LATER: keep waiting for the awaited frame, else nothing more right now.
+                waiting -> waitedUs += TIMEOUT_US
+
+                else -> {
+                    if (awaitOutput && !gotPcm) logger.w { "FLAC output not ready after ${OUTPUT_WAIT_US / 1000} ms" }
+                    return
+                }
             }
         }
     }
@@ -181,6 +197,9 @@ internal class FlacDecoder : AudioDecoder {
         const val MAX_INPUT_SIZE = 32_768
         const val TIMEOUT_US = 10_000L
         const val MAX_INPUT_RETRIES = 3
+
+        /** Bound on waiting for a queued frame's output; one FLAC block is ~96 ms of audio. */
+        const val OUTPUT_WAIT_US = 100_000L
     }
 }
 

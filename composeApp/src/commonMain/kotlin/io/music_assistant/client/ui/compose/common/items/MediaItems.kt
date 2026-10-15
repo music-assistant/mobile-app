@@ -59,11 +59,11 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
-import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
@@ -72,7 +72,6 @@ import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
 import io.music_assistant.client.ui.compose.common.icons.BookAudioIcon
 import io.music_assistant.client.ui.compose.common.icons.GenreIcon
 import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
-import io.music_assistant.client.ui.compose.common.icons.RadioIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
@@ -582,20 +581,20 @@ private fun PodcastEpisodeImage(
 }
 
 /**
- * Radio station media item with wavy octagon shape.
+ * Live stream media item (radio station or input source) with wavy octagon shape.
  *
- * @param item The radio station item to display
+ * @param item The live item to display
  * @param onClick Click handler
 
  */
 @Composable
-internal fun RadioGridItem(
+internal fun <T> LiveStreamGridItem(
     modifier: Modifier = Modifier,
-    item: RadioStation,
-    onClick: (RadioStation) -> Unit,
-    onLongClick: (RadioStation) -> Unit,
+    item: T,
+    onClick: (T) -> Unit,
+    onLongClick: (T) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     GridItem(
         modifier = modifier,
         description = contentDescription(item),
@@ -603,7 +602,7 @@ internal fun RadioGridItem(
         onLongClick = { onLongClick(item) },
     ) {
         Box {
-            RadioImage(item)
+            LiveStreamImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -614,7 +613,7 @@ internal fun RadioGridItem(
 }
 
 @Composable
-private fun RadioImage(
+private fun LiveStreamImage(
     item: PlayableItem,
 ) {
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -629,7 +628,7 @@ private fun RadioImage(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = primaryContainer,
             iconColor = onPrimaryContainer,
-            icon = RadioIcon,
+            icon = item.defaultIcon,
         )
         AsyncImage(
             placeholder = placeholder,
@@ -685,7 +684,7 @@ internal fun AudiobookGridItem(
 
 @Composable
 private fun AudiobookImage(
-    item: Audiobook,
+    item: AppMediaItem,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
@@ -998,20 +997,20 @@ internal fun PodcastEpisodeRowItem(
 }
 
 @Composable
-internal fun RadioRowItem(
+internal fun <T> LiveStreamRowItem(
     modifier: Modifier = Modifier,
-    item: RadioStation,
-    onClick: (RadioStation) -> Unit,
-    onLongClick: (RadioStation) -> Unit,
+    item: T,
+    onClick: (T) -> Unit,
+    onLongClick: (T) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     RowItem(
         modifier = modifier,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
         description = contentDescription(item),
         prefixContent = {
-            RadioImage(item)
+            LiveStreamImage(item)
             Badges(
                 item = item,
                 providerIconFetcher = providerIconFetcher,
@@ -1197,6 +1196,48 @@ internal fun AudiobookRowItem(
                 resumePositionMs = item.resumePositionMs,
             )
         },
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) },
+    )
+}
+
+/** A series: the audiobook cover of its first book, no badges (it has no provider or progress). */
+@Composable
+internal fun MediaCollectionGridItem(
+    modifier: Modifier = Modifier,
+    item: MediaCollection,
+    onClick: (MediaCollection) -> Unit,
+    onLongClick: (MediaCollection) -> Unit,
+) {
+    GridItem(
+        modifier = modifier,
+        description = contentDescription(item),
+        onClick = { onClick(item) },
+        onLongClick = { onLongClick(item) },
+    ) {
+        AudiobookImage(item)
+        Spacer(Modifier.height(4.dp))
+        MediaItemLabels(
+            title = item.displayName,
+            subtitle = item.localizedSubtitle().orEmpty(),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+internal fun MediaCollectionRowItem(
+    modifier: Modifier = Modifier,
+    item: MediaCollection,
+    onClick: (MediaCollection) -> Unit,
+    onLongClick: (MediaCollection) -> Unit,
+) {
+    RowItem(
+        modifier = modifier,
+        name = item.displayName,
+        subtitle = item.localizedSubtitle(),
+        description = contentDescription(item),
+        prefixContent = { AudiobookImage(item) },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     )

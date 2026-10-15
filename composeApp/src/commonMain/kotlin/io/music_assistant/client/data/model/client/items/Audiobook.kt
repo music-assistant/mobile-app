@@ -27,6 +27,7 @@ data class Audiobook(
     val fullyPlayed: Boolean?,
     val resumePositionMs: Long?,
     override val version: String?,
+    override val position: Int? = null,
     // Synthetic default for previews/tests; the factory always supplies the real DTO.
     override val source: ServerMediaItem = ServerMediaItem(
         itemId = itemId,

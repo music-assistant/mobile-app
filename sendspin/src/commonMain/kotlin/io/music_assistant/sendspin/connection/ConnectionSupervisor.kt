@@ -2,8 +2,10 @@ package io.music_assistant.sendspin.connection
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.sendspin.api.Endpoint
+import io.music_assistant.sendspin.api.FailureCause
 import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.identity.SendspinTrustStore
+import io.music_assistant.sendspin.noise.UnsupportedCoreVersionException
 import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 import io.music_assistant.sendspin.session.Activation
 import io.music_assistant.sendspin.session.NoiseSession
@@ -72,6 +74,11 @@ internal class ConnectionSupervisor(
         var consecutiveRejections = 0
         var lastReason: DropReason = DropReason.ServerClosed
         try {
+            if (endpoint is Endpoint.Unsupported) {
+                logger.e { "Sendspin connection stopped: ${endpoint.reason}" }
+                _state.value = ConnectionState.Failed(FailureCause.IncompatibleProtocol)
+                awaitCancellation()
+            }
             while (true) {
                 if (!online.value) {
                     _state.value = ConnectionState.WaitingForNetwork(attempt, lastReason)
@@ -170,6 +177,9 @@ internal class ConnectionSupervisor(
                 withTimeoutOrNull(GOODBYE_TIMEOUT_MILLIS) { session.goodbye(goodbyeOnCancel()) }
             }
             throw e
+        } catch (e: UnsupportedCoreVersionException) {
+            logger.e(e) { "Sendspin connection stopped: incompatible protocol" }
+            DropReason.IncompatibleProtocol(e)
         } catch (e: SessionRejected) {
             DropReason.Rejected(e.reason)
         } catch (e: TransportLost) {

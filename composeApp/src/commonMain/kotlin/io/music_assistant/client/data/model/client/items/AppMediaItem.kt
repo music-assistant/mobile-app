@@ -27,6 +27,9 @@ interface PlayableItem {
 
     val isPlayable: Boolean
 
+    /** Server `position`. In a playlist listing it is the row key for removal, for every item type. */
+    val position: Int?
+
     /** Returns a copy of this item with its [favorite] flag set to [favorite]. */
     fun withFavorite(favorite: Boolean?): PlayableItem
 }
@@ -124,8 +127,11 @@ sealed class AppMediaItem {
                 ")"
 }
 
-/** A quick favorite toggle is possible only when the add path has a [uri] to send. */
-val AppMediaItem.canBeFavorited: Boolean get() = uri != null
+/**
+ * A quick favorite toggle is possible only when the add path has a [uri] to send. A live
+ * input has a uri, but nothing on the server to favorite.
+ */
+val AppMediaItem.canBeFavorited: Boolean get() = uri != null && this !is AudioSource
 
 fun PlayableItem.image(type: ImageType): ImageInfo? =
     images[type] ?: images[ImageType.MAIN] ?: images.firstNotNullOfOrNull { it.value }

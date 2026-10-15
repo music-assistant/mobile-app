@@ -6,6 +6,7 @@ import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.supportsDspApplyPreset
+import io.music_assistant.client.data.model.server.supportsDspToggleKeepsPreset
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -69,13 +70,30 @@ class DspSettingsViewModel(
 
     fun toggleEnabled(playerId: String) {
         val current = (_state.value as? DspDialogState.Content) ?: return
-        // A manual save clears the active preset server-side, so drop the checkmark too.
-        val newConfig = current.config.copy(enabled = !current.config.enabled, presetId = null)
-        _state.update { current.copy(config = newConfig, appliedPresetKey = null) }
+        // Newer servers keep the active preset across an on/off toggle; older ones clear it on any save.
+        val keepPreset = supportsDspToggleKeepsPreset(schemaVersion())
+        val newConfig = current.config.copy(
+            enabled = !current.config.enabled,
+            presetId = current.config.presetId.takeIf { keepPreset },
+        )
+        _state.update {
+            current.copy(
+                config = newConfig,
+                appliedPresetKey = current.appliedPresetKey.takeIf { keepPreset },
+            )
+        }
         viewModelScope.launch {
             val saved = dataSource.saveDspConfig(playerId, newConfig)
-            if (saved == null) {
-                _state.update { current }
+            _state.update { state ->
+                when {
+                    saved == null -> current
+                    // The server decides whether the preset survives; skip if a newer toggle is pending.
+                    state is DspDialogState.Content && state.config == newConfig -> state.copy(
+                        config = saved,
+                        appliedPresetKey = appliedDspPresetKey(saved, state.presets),
+                    )
+                    else -> state
+                }
             }
         }
     }
@@ -85,7 +103,7 @@ class DspSettingsViewModel(
         val presetId = preset.presetId
         val useApplyPreset = presetId != null && supportsDspApplyPreset(schemaVersion())
         viewModelScope.launch {
-            val saved = if (useApplyPreset && presetId != null) {
+            val saved = if (useApplyPreset) {
                 dataSource.applyDspPreset(playerId, presetId)
             } else {
                 dataSource.saveDspConfig(playerId, preset.config.copy(enabled = true))

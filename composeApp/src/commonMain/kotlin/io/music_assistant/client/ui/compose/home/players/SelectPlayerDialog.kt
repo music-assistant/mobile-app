@@ -19,9 +19,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,9 +52,13 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
+import io.music_assistant.client.ui.compose.common.OverflowMenuButton
+import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
+import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableItem
@@ -63,6 +72,8 @@ fun SelectPlayerDialog(
     onDismissRequest: () -> Unit = {},
     onMoveToPlayer: (String) -> Unit = {},
     onReorder: (List<String>) -> Unit = {},
+    hideUnavailable: Boolean = false,
+    onToggleHideUnavailable: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -71,19 +82,55 @@ fun SelectPlayerDialog(
         ) {
             Box(modifier = Modifier.padding(vertical = 16.dp)) {
                 Column {
-                    Text(
-                        stringResource(Res.string.players_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
+                    Row(
+                        modifier = Modifier.padding(start = 16.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(Res.string.players_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OverflowMenuButton(
+                            options = listOf(
+                                OverflowMenuOption(
+                                    title = stringResource(Res.string.players_hide_unavailable),
+                                    icon = Icons.Default.VisibilityOff,
+                                    trailingIcon = Icons.Default.Check.takeIf { hideUnavailable },
+                                    onClick = onToggleHideUnavailable,
+                                ),
+                            ),
+                        ) { onClick ->
+                            IconButton(onClick = onClick) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = stringResource(Res.string.cd_more),
+                                )
+                            }
+                        }
+                    }
 
-                    Box(modifier = Modifier.padding(top = 16.dp)) {
+                    // The selected player stays listed even when unavailable, so the
+                    // selection never disappears from the list.
+                    val shownPlayers = remember(players, selectedPlayer, hideUnavailable) {
+                        if (hideUnavailable) {
+                            players.filter {
+                                it.player.isSelectable || it.player.id == selectedPlayer.player.id
+                            }
+                        } else {
+                            players
+                        }
+                    }
+
+                    Box(modifier = Modifier.padding(top = 8.dp)) {
                         PlayerSelection(
-                            players,
+                            shownPlayers,
                             selectedPlayer,
                             onDismissRequest,
                             onMoveToPlayer,
-                            onReorder,
+                            onReorder = { reordered, movedId ->
+                                onReorder(mergeReorderedPlayers(players.map { it.player.id }, reordered, movedId))
+                            },
                         )
                     }
                 }
@@ -98,7 +145,7 @@ private fun PlayerSelection(
     selectedPlayer: PlayerData,
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
-    onReorder: (List<String>) -> Unit,
+    onReorder: (reordered: List<String>, movedId: String) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
 
@@ -231,7 +278,7 @@ private fun PlayerSelection(
                                 .draggableHandle(
                                     onDragStopped = {
                                         dragEndIndex?.let {
-                                            onReorder(internalPlayers.map { p -> p.player.id })
+                                            onReorder(internalPlayers.map { p -> p.player.id }, item.player.id)
                                         }
                                     },
                                 )

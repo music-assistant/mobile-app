@@ -7,7 +7,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,46 +24,27 @@ import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_clear
-import musicassistantclient.composeapp.generated.resources.find_in_list_label
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.search_query_label
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * How the field's text is consumed. The two behave differently, so they must look different:
- * a live find narrows the loaded list on every keystroke (the browser "find in page" idea),
- * while a server search only runs when the user submits it. "Filter" is deliberately not used
- * here: the library screen's Filters sheet already owns that word and the filter-list icon.
+ * Flexible search input allowing for both "search on action" and "search as you type"  behavior
+ * based on whether [onSearchAction] is non-null or not.
  */
-enum class SearchInputMode(
-    val icon: ImageVector,
-    val placeholder: StringResource,
-    val imeAction: ImeAction,
-) {
-    /** Narrows an already loaded list as the user types; nothing to submit. */
-    FIND_IN_LIST(Icons.Default.FindInPage, Res.string.find_in_list_label, ImeAction.Done),
-
-    /** Runs a server query on IME Search or the submit button; typing alone does nothing. */
-    EXPLICIT_SEARCH(Icons.Default.Search, Res.string.search_query_label, ImeAction.Search),
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchInput(
-    mode: SearchInputMode,
     query: String,
     modifier: Modifier = Modifier,
     onQueryChanged: (String) -> Unit = {},
-    /** Submit callback; only meaningful for [SearchInputMode.EXPLICIT_SEARCH]. */
-    onSearch: () -> Unit = {},
+    onSearchAction: (() -> Unit)? = null,
     focusManager: FocusManager = LocalFocusManager.current,
+    placeholder: String,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -72,8 +52,15 @@ fun SearchInput(
             focusRequester.requestFocus()
         }
     }
+
+    val imeAction = if (onSearchAction != null) {
+        ImeAction.Search
+    } else {
+        ImeAction.Done
+    }
+
     val submit = {
-        onSearch()
+        onSearchAction?.invoke()
         focusManager.clearFocus()
     }
 
@@ -87,26 +74,23 @@ fun SearchInput(
         value = query,
         onValueChange = onQueryChanged,
         placeholder = {
-            Text(
-                stringResource(mode.placeholder),
-                style = textStyle,
-            )
+            Text(placeholder, style = textStyle)
         },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = mode.imeAction),
+        keyboardOptions = KeyboardOptions(imeAction = imeAction),
         keyboardActions = KeyboardActions(
             onSearch = { submit() },
             onDone = { focusManager.clearFocus() },
         ),
         textStyle = textStyle,
-        leadingIcon = { Icon(mode.icon, contentDescription = null) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {
             {
                 Row {
                     IconButton(
                         onClick = {
                             onQueryChanged("")
-                            onSearch()
+                            onSearchAction?.invoke()
                         },
                     ) {
                         Icon(
@@ -114,7 +98,8 @@ fun SearchInput(
                             contentDescription = stringResource(Res.string.common_clear),
                         )
                     }
-                    if (mode == SearchInputMode.EXPLICIT_SEARCH) {
+
+                    if (onSearchAction != null) {
                         IconButton(onClick = submit) {
                             Icon(
                                 Icons.Default.Search,
@@ -141,26 +126,39 @@ fun SearchInput(
 @Preview
 @Composable
 fun SearchInputPreview() {
-    SearchInput(mode = SearchInputMode.EXPLICIT_SEARCH, query = "A query for something")
+    SearchInput(
+        query = "A query for something",
+        onSearchAction = {},
+        placeholder = "Search...",
+    )
 }
 
 @Preview
 @Composable
 fun SearchInputEmptyPreview() {
-    SearchInput(mode = SearchInputMode.EXPLICIT_SEARCH, query = "")
+    SearchInput(
+        query = "",
+        onSearchAction = {},
+        placeholder = "Search...",
+    )
 }
 
 @Preview
 @Composable
 fun SearchInputFindInListPreview() {
-    SearchInput(mode = SearchInputMode.FIND_IN_LIST, query = "radiohead")
+    SearchInput(
+        query = "radiohead",
+        onSearchAction = null,
+        placeholder = "Search...",
+    )
 }
 
 @Preview
 @Composable
 fun SearchInputLongQueryPreview() {
     SearchInput(
-        mode = SearchInputMode.EXPLICIT_SEARCH,
         query = "a really long query for something that isn't likely to be something anyone would actually ever type",
+        onSearchAction = {},
+        placeholder = "Search...",
     )
 }

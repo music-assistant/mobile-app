@@ -24,8 +24,12 @@ const val SENDSPIN_CORE_VERSION = 1
  * failure-handling rules the caller closes the WebSocket without sending any
  * application-level error message.
  */
-internal class HandshakeFailedException(message: String, cause: Throwable? = null) :
+internal open class HandshakeFailedException(message: String, cause: Throwable? = null) :
     Exception(message, cause)
+
+/** An explicit version mismatch cannot be repaired by reconnecting. */
+internal class UnsupportedCoreVersionException(val serverVersion: Int) :
+    HandshakeFailedException("unsupported Sendspin core version $serverVersion; client supports $SENDSPIN_CORE_VERSION")
 
 /** Frames the handshake driver can receive during the cleartext phase. */
 internal sealed interface HandshakeFrame {
@@ -96,9 +100,7 @@ internal class SendspinHandshake(
             throw HandshakeFailedException("expected server/init, got ${serverInit.type}")
         }
         if (serverInit.payload.version != SENDSPIN_CORE_VERSION) {
-            throw HandshakeFailedException(
-                "unsupported core version ${serverInit.payload.version}",
-            )
+            throw UnsupportedCoreVersionException(serverInit.payload.version)
         }
         val serverId = serverInit.payload.serverId
         val serverStaticPublic = SendspinBase64.decodeOrNull(serverId)

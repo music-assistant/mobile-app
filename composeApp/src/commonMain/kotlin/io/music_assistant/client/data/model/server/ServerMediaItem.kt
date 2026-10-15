@@ -42,6 +42,7 @@ data class ServerMediaItem(
     // @SerialName("owner") val owner: String? = null,
     @SerialName("is_editable") val isEditable: Boolean? = null,
     @SerialName("is_dynamic") val isDynamic: Boolean? = null,
+    @SerialName("supported_mediatypes") val supportedMediatypes: List<String>? = null,
     // Track only
     @SerialName("duration") val duration: Double? = null,
     // @SerialName("isrc") val isrc: String? = null,

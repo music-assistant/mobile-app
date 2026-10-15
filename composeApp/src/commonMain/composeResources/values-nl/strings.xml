@@ -30,6 +30,7 @@
   <string name="action_start_endless_mix">Start Endless Mix</string>
   <string name="action_start_radio">Start Endless Mix</string>
   <string name="action_unfavorite">Verwijder favoriet</string>
+  <string name="action_view_all">Bekijk alle</string>
   <string name="ai_radio_empty">Er zijn nog geen AI-stations. Maak er een aan in de Music Assistant-webapp.</string>
   <string name="ai_radio_load_failed">Kon AI-stations niet laden</string>
   <string name="ai_radio_no_player">Selecteer eerst een speler</string>
@@ -51,6 +52,20 @@
   <string name="all_podcasts">Alle podcasts</string>
   <string name="all_radio">Alle radiostations</string>
   <string name="all_tracks">Alle nummers</string>
+  <string name="announcement_chime">Eerst gong afspelen</string>
+  <string name="announcement_custom_volume">Aangepast volume</string>
+  <string name="announcement_failed">Omroepbericht mislukt</string>
+  <string name="announcement_hold_to_talk">Ingedrukt houden om te praten</string>
+  <string name="announcement_message">Bericht</string>
+  <string name="announcement_mic_denied">Toegang tot de microfoon is uitgeschakeld. Schakel deze in via de systeeminstellingen.</string>
+  <string name="announcement_mic_stopped">De microfoon stopte</string>
+  <string name="announcement_open_settings">Instellingen openen</string>
+  <string name="announcement_recording">Laat los om te verzenden · %1$s</string>
+  <string name="announcement_send">Omroepen</string>
+  <string name="announcement_tab_speak">Praat</string>
+  <string name="announcement_tab_type">Type</string>
+  <string name="announcement_title">Omroepbericht afspelen</string>
+  <string name="announcement_volume">Volume: %1$d</string>
   <string name="artist_section_all">Alle</string>
   <string name="artist_section_in_library">In bibliotheek</string>
   <string name="artist_section_top">Top</string>
@@ -240,6 +255,7 @@
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
+  <string name="players_hide_unavailable">Niet beschikbare verbergen</string>
   <string name="players_loading">Spelers laden…</string>
   <string name="players_none_available">Geen spelers beschikbaar</string>
   <string name="players_nothing">Speelt niets af</string>

@@ -44,6 +44,9 @@ enum class FailureCause {
     Unpaired,
     ServerRejected,
 
+    /** The server explicitly advertised a Sendspin protocol version this client cannot speak. */
+    IncompatibleProtocol,
+
     /**
      * The player could not be built on this device, so it never reached the
      * server. A missing platform primitive or unreadable key storage lands

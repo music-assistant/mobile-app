@@ -178,7 +178,7 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun withoutPositionFeedbackTheLoopIsOpenWaitUntilDueAndDropLate() = pipelineTest { h ->
+    fun withoutPositionFeedbackTheLoopIsOpenWaitUntilDueAndWriteLate() = pipelineTest { h ->
         h.sink.reportPosition = false
         h.sink.latencyMicros = null
         h.pipeline.apply(StreamAction.StartFresh(flac))
@@ -190,9 +190,13 @@ class AudioPipelineTest {
         runCurrent()
         assertEquals(1, h.handle.writes.size)
         assertTrue(h.handle.writes[0].none { it == 0.toByte() }, "no silence inserted in open loop")
-        h.pipeline.onAudio(h.chunk(-100))
+        // The next chunk in sequence arrives 250 ms after it was due (an audio-thread stall).
+        advanceTimeBy(250)
+        h.feed(60)
         runCurrent()
-        assertEquals(1, h.handle.writes.size, "late chunk dropped")
+        // The native queue still plays it in sequence; the local player is never grouped.
+        assertEquals(2, h.handle.writes.size, "late chunk written, not dropped")
+        assertTrue(h.handle.writes[1].none { it == 0.toByte() }, "late chunk written whole")
     }
 
     @Test

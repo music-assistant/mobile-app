@@ -19,7 +19,7 @@ internal sealed interface ConnectionState {
     data class Failed(val cause: FailureCause) : ConnectionState
 }
 
-/** Why an attempt ended. Every variant except [Rejected] is retried without limit. */
+/** Why an attempt ended. Incompatibility is terminal; repeated rejections also stop retries. */
 internal sealed interface DropReason {
     data class ConnectFailed(val cause: Throwable) : DropReason
     data class Lost(val cause: Throwable?) : DropReason
@@ -27,6 +27,7 @@ internal sealed interface DropReason {
     data class Rejected(val goodbye: String) : DropReason
     data object Silent : DropReason
     data class Protocol(val cause: Throwable) : DropReason
+    data class IncompatibleProtocol(val cause: Throwable) : DropReason
 }
 
 /** Thrown inside an attempt when the server stops answering; ends the attempt. */

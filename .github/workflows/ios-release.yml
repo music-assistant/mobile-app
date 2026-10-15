@@ -187,19 +187,15 @@ jobs:
         id: notes
         run: |
           PREV_TAG=$(git tag -l 'ios-v*' --sort=-v:refname | grep -v "^${{ steps.version.outputs.tag }}$" | head -1)
-          if [ -n "$PREV_TAG" ]; then
-            # Only commits that touched iOS-relevant paths since the last iOS tag
-            NOTES=$(git log --first-parent --pretty=format:"- %s" "$PREV_TAG"..HEAD -- iosApp composeApp ':!.github' ':!androidApp' || true)
-          else
-            NOTES="Initial iOS release"
-          fi
-          # Fallback if the path filter produced nothing
-          if [ -z "$NOTES" ]; then
-            NOTES="No iOS-specific changes since $PREV_TAG"
-          fi
-          # Write to a file so multi-line content survives the GITHUB_OUTPUT delimiter
-          printf '%s' "$NOTES" > /tmp/release-notes.md
+          # GitHub's generated notes (PR titles, authors, new contributors; .github/release.yml
+          # filters), pinned to the previous iOS tag so an Android tag never shortens the range
+          gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="${{ steps.version.outputs.tag }}" \
+            ${PREV_TAG:+-f previous_tag_name="$PREV_TAG"} \
+            --jq .body > /tmp/release-notes.md
           echo "file=/tmp/release-notes.md" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

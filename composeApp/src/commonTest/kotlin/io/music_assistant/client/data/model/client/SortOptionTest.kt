@@ -40,9 +40,21 @@ class SortOptionTest {
     }
 
     @Test
+    fun `original orders a mixed playlist by position of every item type`() {
+        val shuffled = listOf(
+            testAudiobook().copy(itemId = "p4", position = 4),
+            testRadio().copy(itemId = "p2", position = 2),
+            testTrack().copy(itemId = "p3", position = 3),
+            testPodcastEpisode().copy(itemId = "p1", position = 1),
+        )
+        val sorted = shuffled.clientSorted(SortOption(SortField.ORIGINAL), SubItemContext.PLAYLIST_ITEMS)
+        assertEquals(listOf("p1", "p2", "p3", "p4"), sorted.map { it.itemId })
+    }
+
+    @Test
     fun `playlist items are not user sortable`() {
         // Playlist order is the playlist's meaning, so no other field is offered. Removal sends
-        // Track.position, so this is a UX choice rather than a correctness constraint.
+        // PlayableItem.position, so this is a UX choice rather than a correctness constraint.
         assertEquals(listOf(SortField.ORIGINAL), SortConfig.fieldsFor(SubItemContext.PLAYLIST_ITEMS))
         assertFalse(SortConfig.isUserSortable(SubItemContext.PLAYLIST_ITEMS))
     }

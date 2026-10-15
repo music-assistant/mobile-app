@@ -5,6 +5,10 @@ name: Check PR (iOS)
 # no archive, no upload.
 
 on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'androidApp/**'
   pull_request:
     # ready_for_review is added so that flipping an auto-opened draft bump PR
     # to "Ready for review" triggers this check (default types don't include it).
@@ -12,6 +16,13 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'androidApp/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-check-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   compile:
@@ -26,7 +37,7 @@ jobs:
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up JDK 21
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
@@ -35,17 +46,19 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Cache Gradle
+      - name: Restore simulator build caches
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
-        uses: actions/cache@v4
+        id: simulator-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.konan
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          key: ios-simulator-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            gradle-${{ runner.os }}-
+            ios-simulator-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}-
+            ios-simulator-v1-${{ runner.os }}-${{ runner.arch }}-
 
       # WebRTC.xcframework is gitignored (~32 MB extracted, dSYMs shipped
       # separately). Cache keyed to the patched-binary release tag so
@@ -54,7 +67,7 @@ jobs:
       - name: Cache WebRTC.xcframework
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         id: cache-webrtc
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: iosApp/Frameworks/WebRTC.xcframework
           key: webrtc-xcframework-m125-cow-bloat-fix.1
@@ -101,3 +114,20 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_IDENTITY='' \
             build
+
+      - name: Save warmed simulator build caches
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: ${{ steps.simulator-cache.outputs.cache-primary-key }}
+
+      - name: Save WebRTC framework cache
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cache-webrtc.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: iosApp/Frameworks/WebRTC.xcframework
+          key: webrtc-xcframework-m125-cow-bloat-fix.1

@@ -4,7 +4,11 @@ package io.music_assistant.sendspin.api
 interface AudioDecoder {
     fun configure(format: AudioFormatSpec, codecHeader: ByteArray?)
 
-    /** Returns PCM for the encoded bytes at [offset]..[offset]+[length], or empty on a decode error. */
+    /**
+     * Returns PCM for the encoded bytes at [offset]..[offset]+[length], or empty on a decode error.
+     * The PCM must be this input's own: the scheduler aligns it to this chunk's timestamp, so a
+     * decoder whose output lags its input is heard as a gap followed by a skip.
+     */
     fun decode(input: ByteArray, offset: Int, length: Int): ByteArray
 
     /** Bit depth of the output after [configure]. */

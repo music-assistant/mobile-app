@@ -46,6 +46,33 @@ class LocalPlayerEndpointsTest {
         direct(ConnectionData(serverInfo = SERVER_INFO, user = null, authProcessState = process))
 
     @Test
+    fun anOldServerIsRejectedAndAnUpgradeRestoresTheEndpoint() = runTest {
+        val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
+        client.sessionState.value = direct(
+            ConnectionData(serverInfo = SERVER_INFO.copy(schemaVersion = 44), user = USER, token = "tok"),
+        )
+        runCurrent()
+        assertIs<Endpoint.Unsupported>(endpoints.endpoint.value)
+
+        client.sessionState.value = direct(
+            ConnectionData(serverInfo = SERVER_INFO.copy(schemaVersion = 45), user = USER, token = "tok"),
+        )
+        runCurrent()
+        assertIs<Endpoint.WebSocket>(endpoints.endpoint.value)
+    }
+
+    @Test
+    fun anOldWebRtcServerIsRejectedBeforeOpeningAChannel() = runTest {
+        val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
+        client.sessionState.value = SessionState.Connected.WebRTC(
+            RemoteId("ABCDEFGHIJKLMNOPQRSTUVWXY2"),
+            ConnectionData(serverInfo = SERVER_INFO.copy(schemaVersion = 44), user = USER, token = "tok"),
+        )
+        runCurrent()
+        assertIs<Endpoint.Unsupported>(endpoints.endpoint.value)
+    }
+
+    @Test
     fun aProvenSessionYieldsTheProxiedWebSocketEndpoint() = runTest {
         val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
         client.sessionState.value = authenticated

@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +65,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -88,6 +91,7 @@ import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyrics
+import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.DataState
@@ -125,6 +129,8 @@ import musicassistantclient.composeapp.generated.resources.action_add_to_playlis
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj_off
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj_on_air
+import musicassistantclient.composeapp.generated.resources.ambient_sound_menu_subtitle
+import musicassistantclient.composeapp.generated.resources.ambient_sound_title
 import musicassistantclient.composeapp.generated.resources.announcement_title
 import musicassistantclient.composeapp.generated.resources.bound_player_joined_to
 import musicassistantclient.composeapp.generated.resources.bound_player_part_of_group
@@ -194,6 +200,10 @@ fun PlayersPager(
             .collectAsStateWithLifecycle()
         // Null while the AI Radio DJ gate is closed, which hides the menu row.
         val queueDjState by queueDjViewModel.state.collectAsStateWithLifecycle()
+        val overlayAvailable by koinInject<QueueOverlayRepository>().available
+            .collectAsStateWithLifecycle()
+        val swipeHintShown by homeScreenViewModel.playerSwipeHintShown
+            .collectAsStateWithLifecycle()
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -253,7 +263,14 @@ fun PlayersPager(
             }
 
             HorizontalPager(
-                modifier = Modifier.ignoreDragsFromBottomGestureZone(),
+                modifier = Modifier
+                    .ignoreDragsFromBottomGestureZone()
+                    .playerSwipeHint(
+                        enabled = expanded && playerDataList.size > 1 && !swipeHintShown,
+                        pagerState = playerPagerState,
+                        toastState = toastState,
+                        onShown = homeScreenViewModel::onPlayerSwipeHintShown,
+                    ),
                 state = playerPagerState,
                 key = { page -> playerDataList.getOrNull(page)?.player?.id ?: page },
             ) { page ->
@@ -290,6 +307,11 @@ fun PlayersPager(
                 val onAnnounceButton: () -> Unit = remember(playerId) {
                     {
                         dialogRequest = PlayerDialogRequest.Announcement(playerId)
+                    }
+                }
+                val onAmbientSoundButton: () -> Unit = remember(playerId) {
+                    {
+                        dialogRequest = PlayerDialogRequest.AmbientSound(playerId)
                     }
                 }
                 val onLyricsClick: () -> Unit = remember(playerId, trackId) {
@@ -379,6 +401,10 @@ fun PlayersPager(
                                 // Voice is never offered for the phone's own player, so it alone can't show the entry.
                                 onAnnounceButton = onAnnounceButton.takeIf {
                                     announcementAvailability.text || (announcementAvailability.voice && !player.isLocal)
+                                },
+                                // Null overlay: the server has no overlay support for this queue.
+                                onAmbientSoundButton = onAmbientSoundButton.takeIf {
+                                    overlayAvailable && player.queueInfo?.overlay != null
                                 },
                                 playerAction = playerAction1,
                                 onAddToPlaylist = onAddToPlaylist,
@@ -481,6 +507,7 @@ private fun ExpandedPlayerPage(
     onDspButton: (() -> Unit)?,
     onSleepTimerButton: (() -> Unit)?,
     onAnnounceButton: (() -> Unit)?,
+    onAmbientSoundButton: (() -> Unit)?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     onFavoriteClick: (AppMediaItem) -> Unit,
@@ -567,6 +594,7 @@ private fun ExpandedPlayerPage(
                     onPlayerSelected = { moveToPlayer(it) },
                     onOpenDsp = onDspButton,
                     onAnnounce = onAnnounceButton,
+                    onAmbientSound = onAmbientSoundButton,
                     onAddToPlaylist = onAddToPlaylist,
                     queueDjMenu = queueDjMenu,
                     onQueueDjSelected = onQueueDjSelected,
@@ -690,6 +718,7 @@ private fun ExpandedPlayerPage(
                             onLyricsClick = onLyricsClick,
                             onAudioChainClick = onAudioChainClick,
                             onPlaybackSpeedClick = onPlaybackSpeedClick,
+                            onAmbientSoundClick = onAmbientSoundButton,
                             livePositionFlow = livePositionFlow,
                             bufferedAheadSecFlow = bufferedAheadSecFlow,
                             chapterProgressEnabled = chapterProgressEnabled,
@@ -802,7 +831,8 @@ private fun ExpandedPlayerPage(
                                             thumbTrackGapSize = 0.dp,
                                             trackInsideCornerSize = 0.dp,
                                             drawStopIndicator = null,
-                                            modifier = Modifier.height(4.dp),
+                                            // Square inside corners leave 0 % and 100 % with a square end.
+                                            modifier = Modifier.height(4.dp).clip(CircleShape),
                                         )
                                     },
                                 )
@@ -880,6 +910,7 @@ private fun PlayerOverflowMenu(
     onPlayerSelected: (String) -> Unit,
     onOpenDsp: (() -> Unit)?,
     onAnnounce: (() -> Unit)?,
+    onAmbientSound: (() -> Unit)?,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
@@ -1027,6 +1058,21 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        onAmbientSound?.let {
+            val overlay = currentPlayer.queueInfo?.overlay
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.ambient_sound_title),
+                    subtitle = overlay?.takeIf { it.enabled }?.let { active ->
+                        active.sourceName?.let {
+                            stringResource(Res.string.ambient_sound_menu_subtitle, it, active.volume)
+                        }
+                    },
+                    icon = Icons.Default.Waves,
+                    onClick = it,
+                ),
+            )
+        }
         if (onOpenDsp != null) {
             add(
                 OverflowMenuOption(
@@ -1145,6 +1191,7 @@ fun ExpandedPlayerPagePreview() {
             onDspButton = null,
             onSleepTimerButton = null,
             onAnnounceButton = null,
+            onAmbientSoundButton = null,
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             onClose = {},
@@ -1183,6 +1230,7 @@ fun ExpandedPlayerPageMediumScreenPreview() {
             onDspButton = null,
             onSleepTimerButton = null,
             onAnnounceButton = null,
+            onAmbientSoundButton = null,
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             onClose = {},
@@ -1221,6 +1269,7 @@ fun ExpandedPlayerPageExpandedScreenPreview() {
             onDspButton = null,
             onSleepTimerButton = null,
             onAnnounceButton = null,
+            onAmbientSoundButton = null,
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             onClose = {},
@@ -1263,6 +1312,7 @@ fun ExpandedPlayerPageExpandedScreenPlusPreview() {
             onDspButton = null,
             onSleepTimerButton = null,
             onAnnounceButton = null,
+            onAmbientSoundButton = null,
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             onClose = {},
@@ -1302,6 +1352,7 @@ fun ExpandedPlayerPagePhoneLandscapePreview() {
             onDspButton = null,
             onSleepTimerButton = null,
             onAnnounceButton = null,
+            onAmbientSoundButton = null,
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             onClose = {},
@@ -1340,6 +1391,7 @@ fun ExpandedPlayerPageLargeScreenPreview() {
             onDspButton = null,
             onSleepTimerButton = null,
             onAnnounceButton = null,
+            onAmbientSoundButton = null,
             playerAction = { _, _ -> },
             onFavoriteClick = {},
             onClose = {},
