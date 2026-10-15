@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.home.players
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.supportsDspApplyPreset
+import io.music_assistant.client.data.model.server.supportsDspToggleKeepsPreset
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -24,6 +25,14 @@ class DspSettingsViewModelTest {
         assertFalse(supportsDspApplyPreset(37))
         assertTrue(supportsDspApplyPreset(38))
         assertTrue(supportsDspApplyPreset(53))
+    }
+
+    @Test
+    fun toggleKeepsPresetSupportStartsAtSchema85() {
+        assertFalse(supportsDspToggleKeepsPreset(null))
+        assertFalse(supportsDspToggleKeepsPreset(84))
+        assertTrue(supportsDspToggleKeepsPreset(85))
+        assertTrue(supportsDspToggleKeepsPreset(91))
     }
 
     @Test

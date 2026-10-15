@@ -10,6 +10,12 @@ const val DSP_APPLY_PRESET_MIN_SCHEMA = 38
 fun supportsDspApplyPreset(schemaVersion: Int?): Boolean =
     schemaVersion != null && schemaVersion >= DSP_APPLY_PRESET_MIN_SCHEMA
 
+/** First server API schema whose `config/players/dsp/save` keeps `preset_id` across an on/off toggle. */
+const val DSP_TOGGLE_KEEPS_PRESET_MIN_SCHEMA = 85
+
+fun supportsDspToggleKeepsPreset(schemaVersion: Int?): Boolean =
+    schemaVersion != null && schemaVersion >= DSP_TOGGLE_KEEPS_PRESET_MIN_SCHEMA
+
 @Serializable
 data class DspConfig(
     @SerialName("enabled") val enabled: Boolean = false,

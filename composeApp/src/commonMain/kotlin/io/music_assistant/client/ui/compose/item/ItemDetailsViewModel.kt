@@ -532,7 +532,7 @@ private fun ItemDetailsViewModel.State.itemOrNull(): AppMediaItem? = when (itemS
  */
 private fun ItemDetailsTab.subState(
     state: ItemDetailsViewModel.State,
-): DataState<out List<Any>> = when (this) {
+): DataState<List<Any>> = when (this) {
     ItemDetailsTab.GENRE_ALBUMS -> state.albumsState
     ItemDetailsTab.ALBUM_TRACKS,
     ItemDetailsTab.PLAYLIST_ITEMS,
@@ -545,7 +545,7 @@ private fun ItemDetailsTab.subState(
         DataState.Data((state.itemOrNull() as? Audiobook)?.chapters.orEmpty())
 }
 
-private fun DataState<out List<*>>.hasItems(): Boolean = when (this) {
+private fun DataState<List<*>>.hasItems(): Boolean = when (this) {
     is DataState.Data -> data.isNotEmpty()
     is DataState.Stale -> data.isNotEmpty()
     else -> false
