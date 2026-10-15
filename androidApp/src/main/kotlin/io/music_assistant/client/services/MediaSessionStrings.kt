@@ -1,10 +1,14 @@
 package io.music_assistant.client.services
 
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_pause
+import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.media_action_forward
+import musicassistantclient.composeapp.generated.resources.media_action_next
 import musicassistantclient.composeapp.generated.resources.media_action_next_player
 import musicassistantclient.composeapp.generated.resources.media_action_open_app
+import musicassistantclient.composeapp.generated.resources.media_action_previous
 import musicassistantclient.composeapp.generated.resources.media_action_repeat
 import musicassistantclient.composeapp.generated.resources.media_action_rewind
 import musicassistantclient.composeapp.generated.resources.media_action_shuffle
@@ -32,6 +36,10 @@ class MediaSessionStrings internal constructor(
     val repeat: String,
     val favorite: String,
     val openApp: String,
+    val play: String,
+    val pause: String,
+    val next: String,
+    val previous: String,
     private val artistOnPlayerTemplate: String,
 ) {
     /** Localized "<artist> (on <player>)" for the multi-player artist suffix. */
@@ -50,6 +58,10 @@ class MediaSessionStrings internal constructor(
             repeat = getString(Res.string.media_action_repeat),
             favorite = getString(Res.string.cd_favorite),
             openApp = getString(Res.string.media_action_open_app),
+            play = getString(Res.string.action_play),
+            pause = getString(Res.string.action_pause),
+            next = getString(Res.string.media_action_next),
+            previous = getString(Res.string.media_action_previous),
             artistOnPlayerTemplate = getString(Res.string.media_artist_on_player),
         )
     }

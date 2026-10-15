@@ -224,8 +224,10 @@
   <string name="loading">Loading…</string>
   <string name="lyrics_screen_wake_on">Screen wake is on</string>
   <string name="media_action_forward">Forward 30s</string>
+  <string name="media_action_next">Next</string>
   <string name="media_action_next_player">Next player</string>
   <string name="media_action_open_app">Open app</string>
+  <string name="media_action_previous">Previous</string>
   <string name="media_action_repeat">Repeat</string>
   <string name="media_action_rewind">Rewind 10s</string>
   <string name="media_action_shuffle">Shuffle</string>

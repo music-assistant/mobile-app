@@ -1,12 +1,10 @@
 package io.music_assistant.client.services
 
-import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
-import android.graphics.Bitmap
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -14,7 +12,9 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.media.MediaBrowserServiceCompat
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.MainDataSource
@@ -39,6 +39,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     private val logger = Logger.withTag("MainMediaPlaybackService")
 
     private lateinit var mediaNotificationManager: MediaNotificationManager
+    private lateinit var transportControls: MediaControllerCompat.TransportControls
     private lateinit var audioManager: AudioManager
     private var wifiLock: WifiManager.WifiLock? = null
     private var fullyInitialized = false
@@ -97,11 +98,13 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         val token = sharedSession.acquire()
         sessionToken = token
         mediaNotificationManager = MediaNotificationManager(this, token)
+        // Notification taps go through the session callback, the same path as every other host.
+        transportControls = MediaControllerCompat(this, token).transportControls
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         try {
             startForeground(
                 MediaNotificationManager.NOTIFICATION_ID,
-                mediaNotificationManager.createNotification(null),
+                mediaNotificationManager.createNotification(null, null),
             )
         } catch (e: IllegalStateException) {
             logger.w(e) { "Cannot start foreground service from background, stopping" }
@@ -122,12 +125,11 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         logger.i { "Registered audio device callback for routing change detection" }
 
         // Repost the notification on every now-playing change. A repost is what refreshes
-        // the visible title/artist (MediaStyle does not re-read them live on all surfaces),
-        // and it also swaps the largeIcon. The flow is keyed by track + bitmap, so it fires
-        // on track changes even when consecutive tracks share artwork. The first (null)
-        // emission re-posts the initial icon.
+        // the visible title, artist, play/pause action and largeIcon. The first (null)
+        // emission re-posts the initial placeholder.
         scope.launch {
-            sharedSession.notificationArt.collect { postNotification(it?.bitmap) }
+            val strings = MediaSessionStrings.load()
+            sharedSession.notificationContent.collect { postNotification(it, strings) }
         }
         scope.launch {
             // Block until everything is stopped, then bail
@@ -151,7 +153,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             }
         }
         dataSource.apiClient.onPlaybackActive()
-        registerNotificationDismissReceiver()
+        registerNotificationReceivers()
         fullyInitialized = true
     }
 
@@ -194,14 +196,37 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    private fun registerNotificationDismissReceiver() {
-        val filter = IntentFilter(ACTION_NOTIFICATION_DISMISSED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(notificationDismissReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(notificationDismissReceiver, filter)
+    private val transportReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ACTION_TRANSPORT_PLAY -> transportControls.play()
+                ACTION_TRANSPORT_PAUSE -> transportControls.pause()
+                ACTION_TRANSPORT_NEXT -> transportControls.skipToNext()
+                ACTION_TRANSPORT_PREVIOUS -> transportControls.skipToPrevious()
+                ACTION_TRANSPORT_CUSTOM -> intent.getStringExtra(EXTRA_CUSTOM_ACTION_ID)
+                    ?.let { transportControls.sendCustomAction(it, null) }
+            }
         }
+    }
+
+    private fun registerNotificationReceivers() {
+        registerNotExported(notificationDismissReceiver, IntentFilter(ACTION_NOTIFICATION_DISMISSED))
+        registerNotExported(
+            transportReceiver,
+            IntentFilter().apply {
+                addAction(ACTION_TRANSPORT_PLAY)
+                addAction(ACTION_TRANSPORT_PAUSE)
+                addAction(ACTION_TRANSPORT_NEXT)
+                addAction(ACTION_TRANSPORT_PREVIOUS)
+                addAction(ACTION_TRANSPORT_CUSTOM)
+            },
+        )
+    }
+
+    // Below API 33 a plain registerReceiver is exported. ContextCompat guards it with a
+    // signature permission there, so other apps cannot fire transport actions.
+    private fun registerNotExported(receiver: BroadcastReceiver, filter: IntentFilter) {
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onGetRoot(p0: String, p1: Int, p2: Bundle?): BrowserRoot? = null
@@ -211,8 +236,11 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         result: Result<MutableList<MediaBrowserCompat.MediaItem>>,
     ) = Unit
 
-    private fun postNotification(bitmap: Bitmap?) {
-        val notification = mediaNotificationManager.createNotification(bitmap)
+    private fun postNotification(
+        content: SharedMediaSessionManager.NotificationContent?,
+        strings: MediaSessionStrings,
+    ) {
+        val notification = mediaNotificationManager.createNotification(content, strings)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 MediaNotificationManager.NOTIFICATION_ID,
@@ -239,6 +267,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         if (fullyInitialized) {
             releaseWifiLock()
             unregisterReceiver(notificationDismissReceiver)
+            unregisterReceiver(transportReceiver)
             audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
             logger.i { "Unregistered audio device callback" }
             dataSource.apiClient.onPlaybackInactive()
@@ -256,5 +285,11 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
     companion object {
         const val ACTION_NOTIFICATION_DISMISSED =
             "io.music_assistant.client.ACTION_NOTIFICATION_DISMISSED"
+        const val ACTION_TRANSPORT_PLAY = "io.music_assistant.client.ACTION_TRANSPORT_PLAY"
+        const val ACTION_TRANSPORT_PAUSE = "io.music_assistant.client.ACTION_TRANSPORT_PAUSE"
+        const val ACTION_TRANSPORT_NEXT = "io.music_assistant.client.ACTION_TRANSPORT_NEXT"
+        const val ACTION_TRANSPORT_PREVIOUS = "io.music_assistant.client.ACTION_TRANSPORT_PREVIOUS"
+        const val ACTION_TRANSPORT_CUSTOM = "io.music_assistant.client.ACTION_TRANSPORT_CUSTOM"
+        const val EXTRA_CUSTOM_ACTION_ID = "custom_action_id"
     }
 }
