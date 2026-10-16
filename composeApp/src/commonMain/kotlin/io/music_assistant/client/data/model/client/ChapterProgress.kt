@@ -42,6 +42,15 @@ fun PlayableItem?.navigationChapters(): List<Chapter>? = when (this) {
 }?.takeIf { it.isNotEmpty() }
 
 /**
+ * Chapter holding the stored resume point, from library data only (no player state).
+ * Null when the book is not started or is fully played.
+ */
+fun Audiobook.resumeChapter(): Chapter? =
+    resumePositionMs
+        ?.takeIf { it > 0 && fullyPlayed != true }
+        ?.let { resolveCurrentChapter(chapters, it / 1000.0, duration)?.chapter }
+
+/**
  * Resolves the finite audiobook chapter containing [elapsedSec], or null.
  * Callers apply the `audiobook_chapter_progress` preference gate.
  */

@@ -92,4 +92,18 @@ class ChapterProgressTest {
         assertEquals(0.0, resolved.relativeSec(30.0))
         assertEquals(120.0, resolved.absoluteSec(999.0))
     }
+
+    @Test
+    fun resumeChapterResolvesStoredResumePosition() {
+        val book = testAudiobook().copy(chapters = chapters, duration = 180.0, resumePositionMs = 75_000)
+        assertEquals(chapters[1], book.resumeChapter())
+    }
+
+    @Test
+    fun resumeChapterIsNullWhenNotStartedOrFullyPlayed() {
+        val book = testAudiobook().copy(chapters = chapters, duration = 180.0)
+        assertNull(book.copy(resumePositionMs = null).resumeChapter())
+        assertNull(book.copy(resumePositionMs = 0).resumeChapter())
+        assertNull(book.copy(resumePositionMs = 75_000, fullyPlayed = true).resumeChapter())
+    }
 }

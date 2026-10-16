@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,7 +23,10 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
@@ -67,6 +71,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.resumeChapter
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -110,6 +115,7 @@ import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_in_progress
 import musicassistantclient.composeapp.generated.resources.album_disc_header
 import musicassistantclient.composeapp.generated.resources.artist_section_all
 import musicassistantclient.composeapp.generated.resources.artist_section_in_library
@@ -660,6 +666,7 @@ private fun TabContent(
 
         ItemDetailsTab.AUDIOBOOK_CHAPTERS -> ChaptersTabContent(
             chapters = (item as? Audiobook)?.chapters.orEmpty(),
+            resumeChapterPosition = (item as? Audiobook)?.resumeChapter()?.position,
             onChapterClick = onChapterClick,
             contentPadding = contentPadding,
             heroSlot = heroSlot,
@@ -1099,6 +1106,7 @@ private fun <T : AppMediaItem> SectionRow(
 @Composable
 private fun ChaptersTabContent(
     chapters: List<Chapter>,
+    resumeChapterPosition: Int?,
     onChapterClick: (Int) -> Unit,
     contentPadding: PaddingValues,
     heroSlot: @Composable () -> Unit,
@@ -1113,6 +1121,7 @@ private fun ChaptersTabContent(
                 fullSpanItem(DETAIL_CHAPTER_KEY_PREFIX + chapter.position) {
                     ChapterRow(
                         chapter = chapter,
+                        isResumePoint = chapter.position == resumeChapterPosition,
                         onClick = { onChapterClick(chapter.position) },
                     )
                 }
@@ -1134,6 +1143,7 @@ private fun InlineProgress() {
 @Composable
 private fun ChapterRow(
     chapter: Chapter,
+    isResumePoint: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
@@ -1144,9 +1154,19 @@ private fun ChapterRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
+        if (isResumePoint) {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = stringResource(Res.string.cd_in_progress),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(end = 8.dp).size(18.dp),
+            )
+        }
         Text(
             text = chapter.name,
             style = MaterialTheme.typography.bodyLarge,
+            color = if (isResumePoint) MaterialTheme.colorScheme.primary else Color.Unspecified,
+            fontWeight = if (isResumePoint) FontWeight.Bold else null,
             modifier = Modifier.weight(1f),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
