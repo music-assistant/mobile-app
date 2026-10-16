@@ -66,6 +66,7 @@ import musicassistantclient.composeapp.generated.resources.sendspin_failed_setup
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_unauthorized
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_unpaired
 import org.jetbrains.compose.resources.getString
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
 
@@ -175,6 +176,15 @@ class LocalPlayerAdapter(
     private var pendingPlayTimeoutJob: Job? = null
     private var pausedByInterruption = false
 
+    /** Mirror of the hold this adapter set on [player]; it masks the server's stale "playing". */
+    @Volatile
+    private var outputHeld = false
+
+    private fun hold(held: Boolean) {
+        outputHeld = held
+        player.hold(held)
+    }
+
     init {
         launch { player.events.collect(::onPlayerEvent) }
         launch {
@@ -249,6 +259,21 @@ class LocalPlayerAdapter(
 
             PlayerEvent.ServerRefreshNeeded -> _needsServerRefresh.emit(Unit)
 
+            // The local pause never reached the server (lost, or the session was reset):
+            // send it again. Built from the event's id, because the player data may be gone.
+            is PlayerEvent.StreamStartedWhileHeld -> {
+                log.i { "Server started a stream while held: pausing ${event.playerId}" }
+                optimisticPause()
+                launch {
+                    // Not a user pause: a Play that waits for this reconnect still wins.
+                    commands.sendOrQueue(
+                        PlayerAction.Pause,
+                        Request.Player.simpleCommand(playerId = event.playerId, command = "pause"),
+                        userIntent = false,
+                    )
+                }
+            }
+
             is PlayerEvent.Warning -> log.w { "Local player warning: ${event.code}" }
         }
     }
@@ -262,12 +287,42 @@ class LocalPlayerAdapter(
      */
     fun handleLocalCommand(data: PlayerData, action: PlayerAction) {
         val resolved = playerRequestFactory.resolve(data, resolveLocalToggle(data, action))
+        if (resolved.movesPlayback) {
+            sendOrDrop(data, resolved)
+            return
+        }
         applyOptimisticUpdate(data, resolved)
         launch {
             val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
             commands.sendOrQueue(resolved, request)
         }
     }
+
+    /**
+     * Play, Next, Previous and seeks go to a reachable server or nowhere. While the session is
+     * not ready, the optimistic update (it lifts the hold) waits for the send, so a dropped
+     * command changes nothing. A Play that lifts a hold pauses first: the server may still play
+     * the timeline that the hold discarded, and a plain play does nothing there. The pause and
+     * play give a fresh stream at once.
+     */
+    private fun sendOrDrop(data: PlayerData, action: PlayerAction) {
+        val request = playerRequestFactory.buildRequest(data, action) ?: return
+        val resync = playerRequestFactory.buildRequest(data, PlayerAction.Pause)
+            .takeIf { action == PlayerAction.Play && outputHeld }
+        val appliedNow = apiClient.isReadyForCommands.value
+        if (appliedNow) applyOptimisticUpdate(data, action)
+        launch {
+            commands.sendOrDrop(listOfNotNull(resync, request)) {
+                if (!appliedNow) applyOptimisticUpdate(data, action)
+            }
+        }
+    }
+
+    /**
+     * A play request from another surface (library, car, Siri, queue item) targets the local
+     * player: lift the hold before the server's stream arrives, or it would be paused again.
+     */
+    fun onPlaybackRequested() = hold(false)
 
     /** Platform remote command (Control Center, lock screen, CarPlay). */
     fun onRemoteCommand(command: String) {
@@ -327,6 +382,7 @@ class LocalPlayerAdapter(
             is PlayerAction.ToggleCrossfade -> updateOptimisticQueueInfo { it.copy(crossfadeEnabled = !action.current) }
 
             is PlayerAction.SeekTo -> {
+                hold(false) // the server may start playback from the new position
                 // Freeze until Sendspin confirms audio, not merely until the server echoes the seek.
                 updateOptimisticQueueInfo { it.copy(elapsedTime = action.position.toDouble()) }
                 data.queueInfo?.id?.let { queueId ->
@@ -339,13 +395,16 @@ class LocalPlayerAdapter(
                 }
             }
 
-            PlayerAction.Next, PlayerAction.Previous -> data.queueInfo?.id?.let { queueId ->
-                positionTracker.setOptimisticTrackChange(
-                    queueId = queueId,
-                    elapsedSec = 0.0,
-                    durationSec = data.queueInfo.currentItem?.track?.duration,
-                    speed = data.queueInfo.playbackSpeed,
-                )
+            PlayerAction.Next, PlayerAction.Previous -> {
+                hold(false) // the server starts the next track
+                data.queueInfo?.id?.let { queueId ->
+                    positionTracker.setOptimisticTrackChange(
+                        queueId = queueId,
+                        elapsedSec = 0.0,
+                        durationSec = data.queueInfo.currentItem?.track?.duration,
+                        speed = data.queueInfo.playbackSpeed,
+                    )
+                }
             }
 
             else -> Unit
@@ -354,7 +413,7 @@ class LocalPlayerAdapter(
 
     /** The spinner is the only feedback an offline Play gives; [armPendingPlayTimeout] bounds it. */
     private fun optimisticPlay() {
-        player.hold(false)
+        hold(false)
         _localPlayerData.update { current -> current?.copy(pendingPlay = true) }
         armPendingPlayTimeout()
     }
@@ -364,7 +423,7 @@ class LocalPlayerAdapter(
      * unreachable or slow, and the buffer can hold minutes of audio.
      */
     private fun optimisticPause() {
-        player.hold(true)
+        hold(true)
         cancelPendingPlayTimeout()
         _localPlayerData.update { current ->
             current?.copy(player = current.player.copy(isPlaying = false), pendingPlay = false)
@@ -378,13 +437,13 @@ class LocalPlayerAdapter(
             cancelPendingPlayTimeout()
         } else {
             // The server caught up with the local pause: its next stream/start is a real play.
-            this.player.hold(false)
+            hold(false)
         }
         _localPlayerData.update { current ->
             if (current == null) {
                 if (!settings.sendspinEnabled.value) return@update null
                 return@update PlayerData(
-                    player = player,
+                    player = player.copy(isPlaying = player.isPlaying && !outputHeld),
                     queue = DataState.NoData(),
                     parentBind = null,
                     childrenBinds = emptyList(),
@@ -399,7 +458,12 @@ class LocalPlayerAdapter(
                 queueId != null &&
                 positionTracker.isFrozenUntilConfirmed(queueId)
             current.copy(
-                player = if (maskHandoffPause) player.copy(isPlaying = true) else player,
+                player = when {
+                    // Until the server sees the local pause, its "playing" is stale.
+                    outputHeld -> player.copy(isPlaying = false)
+                    maskHandoffPause -> player.copy(isPlaying = true)
+                    else -> player
+                },
                 pendingPlay = if (player.isPlaying) false else current.pendingPlay,
             )
         }
@@ -474,9 +538,11 @@ class LocalPlayerAdapter(
         }
     }
 
-    /** Full reset: drop the optimistic UI state and pending offline commands (logout, disable). */
+    /**
+     * Full reset: drop the optimistic UI state and pending offline commands (logout, disable).
+     * The hold stays: a pause lost here is sent again on the next stream/start while held.
+     */
     fun clearState() {
-        player.hold(false)
         _localPlayerData.update { null }
         launch { commands.clear() }
     }

@@ -7,11 +7,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.concurrent.Volatile
 
 /**
  * Local-player commands travel over the MA API, not over Sendspin. While the
@@ -28,6 +33,10 @@ import kotlinx.coroutines.sync.withLock
  *
  * A replay is sent once; a failure during replay is logged and dropped, so
  * a persistently failing command cannot spin the worker.
+ *
+ * A command that starts or moves playback goes through [sendOrDrop] instead
+ * and is never queued: replayed after an outage, it would move playback at a
+ * moment the user no longer expects.
  */
 internal class LocalCommandQueue(
     private val isReady: StateFlow<Boolean>,
@@ -40,6 +49,13 @@ internal class LocalCommandQueue(
     private val queue = mutableListOf<Entry>()
     private val wake = Channel<Unit>(Channel.CONFLATED)
 
+    /** True from the first queued command until the drain has sent it. */
+    private val pending = MutableStateFlow(false)
+
+    /** Bumped by every Pause: a later pause cancels a [sendOrDrop] that still waits. */
+    @Volatile
+    private var pauses = 0
+
     private data class Entry(val action: PlayerAction, val request: Request)
 
     init {
@@ -47,7 +63,13 @@ internal class LocalCommandQueue(
         scope.launch { wake.consumeEach { if (isReady.value) drain() } }
     }
 
-    suspend fun sendOrQueue(action: PlayerAction, request: Request) {
+    /** [userIntent] false marks a pause the app sends on its own: it never drops a waiting [sendOrDrop]. */
+    suspend fun sendOrQueue(action: PlayerAction, request: Request, userIntent: Boolean = true) {
+        if (action.movesPlayback) {
+            sendOrDrop(listOf(request))
+            return
+        }
+        if (action == PlayerAction.Pause && userIntent) pauses++
         if (!isReady.value) {
             // Enqueue first: the drain must see the entry when readiness flips.
             enqueue(action, request)
@@ -60,7 +82,36 @@ internal class LocalCommandQueue(
         }
     }
 
-    suspend fun clear() = mutex.withLock { queue.clear() }
+    /**
+     * Sends [requests] in order, or drops them all. It waits up to [SEND_OR_DROP_WAIT_MS]
+     * for the session (and asks for it back) and for the queued commands to go first, so
+     * an offline pause still lands before it. Then [beforeSend] runs and the requests are
+     * sent; a failure drops the rest. A Pause that arrives while it waits drops it too.
+     * Returns true when every request was sent.
+     */
+    suspend fun sendOrDrop(requests: List<Request>, beforeSend: () -> Unit = {}): Boolean {
+        val pausesBefore = pauses
+        if (!isReady.value) requestRecovery()
+        val clear = withTimeoutOrNull(SEND_OR_DROP_WAIT_MS) {
+            combine(isReady, pending) { ready, queued -> ready && !queued }.first { it }
+        } != null
+        val command = requests.lastOrNull()?.command
+        return when {
+            !clear -> false.also { log.i { "Dropped $command: the server is unreachable" } }
+            pauses != pausesBefore -> false.also { log.i { "Dropped $command: a later pause replaced it" } }
+            else -> {
+                beforeSend()
+                requests.all { request ->
+                    send(request).onFailure { log.w { "Dropped ${request.command}: ${it.message}" } }.isSuccess
+                }
+            }
+        }
+    }
+
+    suspend fun clear() = mutex.withLock {
+        queue.clear()
+        pending.value = false
+    }
 
     private suspend fun drain() {
         val entries = mutex.withLock {
@@ -72,6 +123,7 @@ internal class LocalCommandQueue(
             send(entry.request).onFailure { log.w { "Replay of ${entry.request.command} failed: ${it.message}" } }
             delay(REPLAY_SPACING_MS)
         }
+        mutex.withLock { pending.value = queue.isNotEmpty() }
     }
 
     private suspend fun enqueue(action: PlayerAction, request: Request) {
@@ -84,15 +136,7 @@ internal class LocalCommandQueue(
             when (action) {
                 PlayerAction.TogglePlayPause -> toggle { it is PlayerAction.TogglePlayPause }
                 PlayerAction.Pause -> {
-                    queue.removeAll { it.action is PlayerAction.Play || it.action is PlayerAction.Pause }
-                    queue.add(entry)
-                }
-
-                // A queued Pause survives a later Play: the local hold silenced the output, so
-                // the server must pause and play again to send a fresh stream. A lone Play is a
-                // no-op on a server that never paused.
-                PlayerAction.Play -> {
-                    queue.removeAll { it.action is PlayerAction.Play }
+                    queue.removeAll { it.action is PlayerAction.Pause }
                     queue.add(entry)
                 }
 
@@ -104,17 +148,22 @@ internal class LocalCommandQueue(
 
                 is PlayerAction.ToggleDontStopTheMusic -> toggle { it is PlayerAction.ToggleDontStopTheMusic }
                 is PlayerAction.ToggleCrossfade -> toggle { it is PlayerAction.ToggleCrossfade }
-                is PlayerAction.SeekTo -> {
-                    queue.removeAll { it.action is PlayerAction.SeekTo }
-                    queue.add(entry)
-                }
 
                 else -> queue.add(entry)
             }
+            pending.value = queue.isNotEmpty()
         }
     }
 
     private companion object {
         const val REPLAY_SPACING_MS = 100L
+
+        /** The request gate's own budget: long enough to bring back a session torn down for idleness. */
+        const val SEND_OR_DROP_WAIT_MS = 10_000L
     }
 }
+
+/** Play, Next, Previous and seeks: sent at once or dropped, never queued (see [LocalCommandQueue]). */
+internal val PlayerAction.movesPlayback: Boolean
+    get() = this == PlayerAction.Play || this == PlayerAction.Next || this == PlayerAction.Previous ||
+        this is PlayerAction.SeekTo || this is PlayerAction.SeekBy

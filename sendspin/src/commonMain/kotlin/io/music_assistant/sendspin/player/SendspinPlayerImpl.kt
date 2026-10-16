@@ -227,6 +227,7 @@ internal class SendspinPlayerImpl(
             when (message) {
                 is ServerMessage.Time -> clockSync.onReply(message.payload)
                 is ServerMessage.StreamStart -> message.player?.let { format ->
+                    if (held.value) _events.tryEmit(PlayerEvent.StreamStartedWhileHeld(playerId))
                     pipeline.apply(
                         StreamLifecycle.onStart(pipeline.phase, pipeline.stream.value.format, format, newConnection),
                     )

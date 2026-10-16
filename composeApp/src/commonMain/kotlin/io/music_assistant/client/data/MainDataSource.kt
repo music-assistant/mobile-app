@@ -385,24 +385,26 @@ class MainDataSource(
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { input ->
-                    if (input.players !is DataState.Stale) {
-                        _playersData.update { oldValues ->
-                            when (input.players) {
-                                is DataState.Error -> DataState.Error()
-                                is DataState.Loading -> DataState.Loading()
-                                is DataState.NoData -> DataState.NoData()
-                                is DataState.Data -> DataState.Data(
-                                    buildPlayerDataList(
-                                        input.players.data,
-                                        input.sortedIds,
-                                        input.queues,
-                                        input.localData,
-                                        input.favoriteOverrides,
-                                        input.busyQueueIds,
-                                        oldValues,
-                                    ),
-                                )
-                            }
+                    _playersData.update { oldValues ->
+                        fun build(serverPlayers: List<Player>) = DataState.Data(
+                            buildPlayerDataList(
+                                serverPlayers,
+                                input.sortedIds,
+                                input.queues,
+                                input.localData,
+                                input.favoriteOverrides,
+                                input.busyQueueIds,
+                                oldValues,
+                            ),
+                        )
+                        when (val players = input.players) {
+                            is DataState.Error -> DataState.Error()
+                            is DataState.Loading -> DataState.Loading()
+                            is DataState.NoData -> DataState.NoData()
+                            is DataState.Data -> build(players.data)
+                            // Stale server players stay as they were, but the list keeps tracking the
+                            // local player: it works offline, and its optimistic changes must show.
+                            is DataState.Stale -> build(players.data)
                         }
                     }
                 }
@@ -723,7 +725,18 @@ class MainDataSource(
                 .distinctUntilChanged()
                 .collect { if (it) apiClient.onPlaybackActive() else apiClient.onPlaybackInactive() }
         }
+
+        // Every play_media for the local player (library, car, Siri, AI Radio) wants the next
+        // stream: lift a local hold before that stream arrives.
+        launch {
+            playDispatcher.accepted.collect { if (isLocalQueue(it)) localPlayerController.onPlaybackRequested() }
+        }
     }
+
+    /** The local player is addressed by its player id or by its queue id. */
+    private fun isLocalQueue(queueOrPlayerId: String): Boolean =
+        queueOrPlayerId == settings.sendspinEffectivePlayerId.value ||
+            queueOrPlayerId == localPlayerController.localPlayerData.value?.queueId
 
     /**
      * Build the merged player data list for [_playersData].
@@ -1164,6 +1177,7 @@ class MainDataSource(
         launch {
             when (action) {
                 is QueueAction.PlayQueueItem -> {
+                    if (isLocalQueue(action.queueId)) localPlayerController.onPlaybackRequested()
                     apiClient.sendRequest(
                         Request.Queue.playIndex(
                             queueId = action.queueId,

@@ -12,6 +12,13 @@ sealed interface PlayerEvent {
     /** The interruption behind a [StopCause.FocusLost] stop is over; the app may resume. */
     data object FocusRegained : PlayerEvent
 
+    /**
+     * The server started a stream while the output is held: the server still
+     * plays, because the app's pause has not reached it. The app should pause
+     * [playerId] again, so the server and the hold agree.
+     */
+    data class StreamStartedWhileHeld(val playerId: String) : PlayerEvent
+
     /** The module recovered or degraded on its own; worth a notice, needs no action. */
     data class Warning(val code: WarningCode) : PlayerEvent
 }

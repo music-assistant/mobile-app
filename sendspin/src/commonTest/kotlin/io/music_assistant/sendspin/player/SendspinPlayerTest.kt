@@ -350,13 +350,14 @@ class SendspinPlayerTest {
         assertEquals(0, (h.player.state.value as PlayerState.Reconnecting).audio.bufferedMs)
 
         val server2 = h.connectServer()
-        h.awaitConnected()
+        val connected = h.awaitConnected()
         assertEquals(PlayerEvent.ServerRefreshNeeded, h.nextEvent())
         server2.startStream() // the server has not seen the pause yet
         server2.sendAudio(4, currentTime * 1_000 + 100_000, h.pcm(10))
         advanceTimeBy(5_000)
         runCurrent()
         assertEquals(writes, handle.writes.size, "the hold survives the reconnect")
+        assertEquals(PlayerEvent.StreamStartedWhileHeld(connected.playerId), h.nextEvent(), "the app must pause again")
         assertTrue(h.events.isEmpty, "neither a stop nor a start while held")
 
         h.player.hold(false)

@@ -1,10 +1,12 @@
 package io.music_assistant.client.data
 
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -13,6 +15,8 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LocalCommandQueueTest {
@@ -55,13 +59,13 @@ class LocalCommandQueueTest {
     fun readyCommandsAreSentDirectlyAndFailuresAreQueued() = runTest {
         val queue = queue(backgroundScope)
         failSends = true
-        queue.sendOrQueue(PlayerAction.Next, request("next"))
-        assertEquals(listOf("next"), sent)
+        queue.sendOrQueue(PlayerAction.ToggleShuffle(current = false), request("shuffle"))
+        assertEquals(listOf("shuffle"), sent)
         failSends = false
         ready.value = false
         ready.value = true
         settle()
-        assertEquals(listOf("next", "next"), sent, "the failed send is replayed")
+        assertEquals(listOf("shuffle", "shuffle"), sent, "the failed send is replayed")
     }
 
     @Test
@@ -95,40 +99,91 @@ class LocalCommandQueueTest {
     }
 
     @Test
-    fun offlineDedupKeepsOnlyTheLastOfPlayPauseAndSeek() = runTest {
+    fun offlineDedupKeepsOnlyTheLastPauseAndCancelsToggles() = runTest {
         val queue = queue(backgroundScope)
         ready.value = false
-        queue.sendOrQueue(PlayerAction.Play, request("play"))
-        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
-        queue.sendOrQueue(PlayerAction.SeekTo(10), request("seek10"))
-        queue.sendOrQueue(PlayerAction.SeekTo(20), request("seek20"))
+        queue.sendOrQueue(PlayerAction.Pause, request("pause1"))
+        queue.sendOrQueue(PlayerAction.Pause, request("pause2"))
+        queue.sendOrQueue(PlayerAction.ToggleRepeatMode(RepeatMode.OFF), request("repeat1"))
+        queue.sendOrQueue(PlayerAction.ToggleRepeatMode(RepeatMode.ALL), request("repeat2"))
         queue.sendOrQueue(PlayerAction.TogglePlayPause, request("toggle"))
         queue.sendOrQueue(PlayerAction.TogglePlayPause, request("toggle"))
         ready.value = true
         settle()
-        assertEquals(listOf("pause", "seek20"), sent)
+        assertEquals(listOf("pause2", "repeat2"), sent)
     }
 
     @Test
-    fun aQueuedPauseSurvivesALaterPlaySoTheServerSendsAFreshStream() = runTest {
+    fun playbackCommandsAreSentWithinTheWaitOrDroppedButNeverReplayed() = runTest {
+        val queue = queue(backgroundScope)
+        ready.value = false
+        for (action in listOf(PlayerAction.Play, PlayerAction.Next, PlayerAction.Previous, PlayerAction.SeekTo(5))) {
+            queue.sendOrQueue(action, request("move"))
+        }
+        assertEquals(4, recoveries, "each one asks for the session back")
+        ready.value = true
+        settle()
+        assertEquals(emptyList(), sent, "dropped after the wait: nothing moves playback after an outage")
+
+        failSends = true
+        queue.sendOrQueue(PlayerAction.Next, request("next"))
+        failSends = false
+        ready.value = false
+        settle()
+        ready.value = true
+        settle()
+        assertEquals(listOf("next"), sent, "a failed send is not replayed")
+    }
+
+    @Test
+    fun aPlayDuringARecoveryGoesAfterTheQueuedPause() = runTest {
         val queue = queue(backgroundScope)
         ready.value = false
         queue.sendOrQueue(PlayerAction.Pause, request("pause"))
-        queue.sendOrQueue(PlayerAction.Play, request("play1"))
-        queue.sendOrQueue(PlayerAction.Play, request("play2"))
+        var applied = false
+        val play = async { queue.sendOrDrop(listOf(request("play"))) { applied = true } }
+        runCurrent()
+        assertFalse(applied, "nothing changes before the send")
+        advanceTimeBy(2_000) // the session comes back within the wait
         ready.value = true
         settle()
-        assertEquals(listOf("pause", "play2"), sent)
+        assertTrue(play.await())
+        assertTrue(applied)
+        assertEquals(listOf("pause", "play"), sent, "the offline pause lands first")
+    }
 
-        sent.clear()
+    @Test
+    fun aPauseWhileAPlayWaitsDropsThePlay() = runTest {
+        val queue = queue(backgroundScope)
         ready.value = false
-        settle() // the readiness collector must see the drop, or the StateFlow conflates it away
+        val play = async { queue.sendOrDrop(listOf(request("play"))) }
+        runCurrent()
         queue.sendOrQueue(PlayerAction.Pause, request("pause"))
-        queue.sendOrQueue(PlayerAction.Play, request("play"))
-        queue.sendOrQueue(PlayerAction.Pause, request("pause2"))
         ready.value = true
         settle()
-        assertEquals(listOf("pause2"), sent, "a later Pause still replaces both")
+        assertFalse(play.await())
+        assertEquals(listOf("pause"), sent, "the later pause wins")
+    }
+
+    @Test
+    fun anAppPauseWhileAPlayWaitsKeepsThePlayLast() = runTest {
+        val queue = queue(backgroundScope)
+        ready.value = false
+        val play = async { queue.sendOrDrop(listOf(request("play"))) }
+        runCurrent()
+        queue.sendOrQueue(PlayerAction.Pause, request("resync"), userIntent = false)
+        ready.value = true
+        settle()
+        assertTrue(play.await())
+        assertEquals(listOf("resync", "play"), sent, "the user's play still wins")
+    }
+
+    @Test
+    fun aFailedRequestDropsTheRestOfTheSequence() = runTest {
+        val queue = queue(backgroundScope)
+        failSends = true
+        assertFalse(queue.sendOrDrop(listOf(request("pause"), request("play"))))
+        assertEquals(listOf("pause"), sent, "no play without the pause before it")
     }
 
     @Test
@@ -138,10 +193,10 @@ class LocalCommandQueueTest {
             ready.value = true // the recovery the queue asked for lands
         }
         ready.value = false
-        queue.sendOrQueue(PlayerAction.Play, request("play"))
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
         assertEquals(1, recoveries)
         settle()
-        assertEquals(listOf("play"), sent)
+        assertEquals(listOf("pause"), sent)
     }
 
     @Test
@@ -149,11 +204,11 @@ class LocalCommandQueueTest {
         val queue = queue(backgroundScope)
         ready.value = false
         queue.sendOrQueue(PlayerAction.Pause, request("pause"))
-        queue.sendOrQueue(PlayerAction.Next, request("next"))
+        queue.sendOrQueue(PlayerAction.ToggleShuffle(current = false), request("shuffle"))
         assertEquals(2, recoveries)
         ready.value = true
         settle()
-        assertEquals(listOf("pause", "next"), sent)
+        assertEquals(listOf("pause", "shuffle"), sent)
         assertEquals(2, recoveries, "the drain sends through the gate, it does not re-ask")
     }
 

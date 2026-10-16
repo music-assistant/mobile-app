@@ -4,7 +4,10 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,9 +50,18 @@ class PlayDispatcher(
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
+    private val _accepted = MutableSharedFlow<String>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** The queue of every request [play] accepts, once per request, coalesced or not. */
+    val accepted: SharedFlow<String> = _accepted
+
     /** Enqueues synchronously, so taps keep their order whatever thread the worker runs on. */
     fun play(request: PlayRequest) {
         val queueId = request.queueOrPlayerId
+        _accepted.tryEmit(queueId)
         var startWorker = false
         val lane = lanes.updateAndGet { current ->
             val lane = current[queueId]
