@@ -14,6 +14,6 @@ When adding an item to a playlist, you can select any editable playlist already 
 
 If no editable playlist is available, select the **Add playlist** option to open the dialog for creating a new playlist.
 
-A playlist is always created on the **Music Assistant** built-in provider. This allows the playlist to combine content from multiple music providers — so a single playlist can contain items from, for example, **Spotify**, **Tidal**, and a local library such as an **SMB/CIFS** or **NFS** share.
+A playlist is always created on the **Music Assistant** built-in source. This allows the playlist to combine content from multiple music sources — so a single playlist can contain items from, for example, **Spotify**, **Tidal**, and a local library such as an **SMB/CIFS** or **NFS** share.
 
 ![Create a new playlist](screenshots/managing-playlists/create-new-playlist.jpeg)
