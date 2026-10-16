@@ -38,6 +38,7 @@ open iosApp/iosApp.xcodeproj
 
 - **Settings Screen**: See `.claude/settings-screen.md` for complete documentation on server connection, authentication flows, and local player configuration
 - **CarPlay & Siri**: See `.claude/carplay.md` for CarPlay architecture, template constraints, and the Siri media-domain integration (`INPlayMediaIntent` donation, `INUpdateMediaAffinityIntent`, `INSearchForMediaIntent`)
+- **Feature parity**: See `.claude/feature-parity-report.md` for the listener-feature comparison with the web frontend on server 2.10 and the 2.11 beta, with the adjustments and the missing features
 
 ## Planned Features
 
