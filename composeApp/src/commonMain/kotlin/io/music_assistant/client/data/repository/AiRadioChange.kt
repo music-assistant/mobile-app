@@ -15,9 +15,6 @@ enum class AiRadioChange {
     /** Refetch `ai_radio/queue_dj/status`. */
     QUEUE_DJ,
 
-    /** Refetch `ai_radio/status`. */
-    SESSIONS,
-
     /** The command session came back; events sent while it was down are lost, so refetch all. */
     RESYNC,
     ;
@@ -28,7 +25,6 @@ enum class AiRadioChange {
             "hosts_updated" -> HOSTS
             "stations_updated" -> STATIONS
             "queue_dj_updated" -> QUEUE_DJ
-            "sessions_updated" -> SESSIONS
             else -> null
         }
     }

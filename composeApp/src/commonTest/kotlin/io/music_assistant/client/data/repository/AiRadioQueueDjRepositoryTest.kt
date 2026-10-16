@@ -29,7 +29,11 @@ class AiRadioQueueDjRepositoryTest {
 
     @Test
     fun statusDecodesTheQueueToHostMap() = runTest {
-        val client = FakeAiRadioClient(mutableMapOf(APICommands.AI_RADIO_QUEUE_DJ_STATUS to """{"q1":"h1"}"""))
+        val client = FakeAiRadioClient(
+            mutableMapOf(
+                APICommands.AI_RADIO_QUEUE_DJ_STATUS to """{"q1":{"host_id":"h1","station_id":"late_night"}}""",
+            ),
+        )
 
         assertEquals(mapOf("q1" to "h1"), repository(client).queueDjStatus().getOrThrow())
     }

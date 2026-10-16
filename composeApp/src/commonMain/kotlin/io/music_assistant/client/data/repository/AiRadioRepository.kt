@@ -1,15 +1,13 @@
 package io.music_assistant.client.data.repository
 
-import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
 import io.music_assistant.client.data.model.server.ServerAiRadioHost
-import io.music_assistant.client.data.model.server.ServerAiRadioSession
+import io.music_assistant.client.data.model.server.ServerAiRadioQueueDj
 import io.music_assistant.client.data.model.server.ServerAiRadioStation
-import io.music_assistant.client.data.model.server.ServerAiRadioStatus
 import io.music_assistant.client.data.model.server.events.ProviderEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,17 +28,16 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Read/run access to the optional `ai_radio` plugin provider.
+ * Access to the optional `ai_radio` plugin provider.
  *
- * Listing, running, and the queue DJ only: stations, sections and hosts are authored in the
- * web frontend, whose prompt editor this deliberately does not reproduce.
+ * Listing and the queue DJ only: stations, sections and hosts are authored in the web frontend,
+ * whose prompt editor this deliberately does not reproduce. A station plays as a Radio item
+ * ([ServerAiRadioStation.uri]) through [io.music_assistant.client.data.play.PlayDispatcher], so
+ * there is no run to start or stop here.
  *
- * [changes] says what to re-read: the plugin announces its changes as refetch hints on servers
- * with [io.music_assistant.client.data.model.server.supportsAiRadioEvents], and sends nothing on
- * older ones.
+ * [changes] says what to re-read: the plugin announces its changes as refetch hints.
  *
- * Every call fails on a server without the plugin, and starting or stopping additionally
- * needs a scope that only `admin` holds. Gate the call sites on
+ * Every call fails on a server without the plugin. Gate the call sites on
  * [io.music_assistant.client.data.MainDataSource.aiRadioAvailable], or on
  * [io.music_assistant.client.data.MainDataSource.aiRadioQueueDjAvailable] for the queue DJ calls,
  * rather than calling blind.
@@ -76,58 +73,6 @@ class AiRadioRepository(
                 ?: error("Missing or undecodable AI Radio station list payload")
         }
 
-    /**
-     * Starts [stationId] on [playerId], which must be a player id rather than a queue id.
-     *
-     * Fails when the user lacks the write scope, when a run is already active for this
-     * station, or when the server's single concurrent-run slot is taken. All three arrive as
-     * server-worded messages worth showing to the user — which is why there is no client-side
-     * guard against starting a station that is already on air.
-     */
-    suspend fun start(stationId: String, playerId: String): Result<ServerAiRadioSession> =
-        apiClient.sendRequest(Request.AiRadio.start(stationId, playerId)).mapCatching { answer ->
-            answer.resultAs<ServerAiRadioSession>()
-                ?: error("Missing or undecodable AI Radio session payload")
-        }
-
-    /**
-     * Stops whatever run [stationId] has on air, and clears the queue it was playing on.
-     *
-     * The clear is ours to do: the plugin's own stop only calls `player_queues.stop`, so the
-     * show's tracks and its half-rendered host clips stay queued. Pressing play afterwards then
-     * resumes a show whose session no longer exists, and a clip that never got rendered has
-     * nothing left to render it.
-     *
-     * The queue comes from the stopped session itself, never from the current selection — the
-     * user may have switched players since the run began, and clearing the wrong queue would
-     * throw away something they are listening to.
-     *
-     * A failed clear does not fail the stop: the run did end, and reporting otherwise would
-     * invite a retry that stops nothing.
-     */
-    suspend fun stop(stationId: String): Result<ServerAiRadioSession> =
-        apiClient.sendRequest(Request.AiRadio.stop(stationId)).mapCatching { answer ->
-            answer.resultAs<ServerAiRadioSession>()
-                ?: error("Missing or undecodable AI Radio session payload")
-        }.onSuccess { session ->
-            // The answer describes the run the server actually stopped, so its queue is the
-            // right one to clear even though we never named a session.
-            val queueId = session.queueId ?: run {
-                Logger.d { "AI Radio: station $stationId owned no queue, nothing to clear" }
-                return@onSuccess
-            }
-            apiClient.sendRequest(Request.Queue.clear(queueId))
-                .onFailure { Logger.w(it) { "AI Radio: could not clear queue $queueId" } }
-        }
-
-    /** The currently running session, if any. Re-read on [AiRadioChange.SESSIONS]. */
-    suspend fun runningSession(): Result<ServerAiRadioSession?> =
-        apiClient.sendRequest(Request.AiRadio.status()).mapCatching { answer ->
-            val status = answer.resultAs<ServerAiRadioStatus>()
-                ?: error("Missing or undecodable AI Radio status payload")
-            status.sessions.firstOrNull { it.isRunning }
-        }
-
     /** All hosts, for the queue DJ menu. Sorted by name server-side. */
     suspend fun hosts(): Result<List<ServerAiRadioHost>> =
         apiClient.sendRequest(Request.AiRadio.hosts()).mapCatching { answer ->
@@ -144,8 +89,10 @@ class AiRadioRepository(
         apiClient.sendRequest(Request.AiRadio.setQueueDj(queueId, hostId))
             .mapCatching { it.decodeQueueDj() }
 
+    // The show binding of each entry is dropped: the menu shows the host only.
     private fun Answer.decodeQueueDj(): Map<String, String> =
-        resultAs<Map<String, String>>() ?: error("Missing or undecodable AI Radio queue DJ payload")
+        resultAs<Map<String, ServerAiRadioQueueDj>>()?.mapValues { it.value.hostId }
+            ?: error("Missing or undecodable AI Radio queue DJ payload")
 
     /**
      * Artwork URLs for [stations], keyed by station id.

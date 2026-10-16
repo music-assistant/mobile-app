@@ -14,6 +14,7 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
+import io.music_assistant.client.data.model.client.items.isAiRadioShow
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
@@ -465,7 +466,10 @@ class LibraryListViewModel(
         offset: Int,
         hasMore: Boolean,
     ) {
-        val deduped = items.distinctBy { Triple(it.mediaType, it.provider, it.itemId) }
+        // Callers compute `hasMore` from the raw page, so hiding rows here keeps paging intact.
+        val deduped = items
+            .filterNot { it.isAiRadioShow }
+            .distinctBy { Triple(it.mediaType, it.provider, it.itemId) }
         _state.update {
             it.copy(
                 dataState = DataState.Data(deduped),

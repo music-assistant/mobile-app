@@ -31,9 +31,11 @@ import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.isAiRadioShow
 import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.aiRadioStationUri
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
@@ -207,9 +209,9 @@ class AutoLibrary(
     }
 
     /**
-     * Stations of the optional `ai_radio` plugin, as playable rows. They carry no URI, so
-     * [play] routes them by their id prefix instead of through the normal queue dispatch, and
-     * no artwork, so each row borrows the cover of the playlist its station plays from.
+     * Stations of the optional `ai_radio` plugin, as playable rows. Their media id carries the
+     * station id, so [play] routes them by their id prefix. A station has no artwork of its
+     * own, so each row borrows the cover of the playlist its station plays from.
      */
     private fun handleAiRadioStations(result: MediaBrowserServiceCompat.Result<List<MediaItem>>) {
         if (!mainDataSource.aiRadioAvailable.value) {
@@ -435,7 +437,7 @@ class AutoLibrary(
         return request
             .fetchAllPages { apiClient.sendRequest(it).resultAs<List<ServerMediaItem>>() }
             ?.let { mediaItemFactory.createList(it) }
-            ?.filter { it.isPlayable }
+            ?.filter { it.isPlayable && !it.isAiRadioShow }
             ?.map { it.toAutoMediaItem(true, defaultIconUri) }
     }
 
@@ -838,18 +840,10 @@ class AutoLibrary(
         }
     }
 
-    /**
-     * Starts an AI Radio station on the local Sendspin player. The server resolves the target
-     * through `players.get_player`, so it wants the player id and not a queue id.
-     */
-    private suspend fun startAiRadioOnLocalPlayer(stationId: String) {
-        val playerId = mainDataSource.localPlayer.value?.player?.id ?: run {
-            androidAutoLog.w { "AI Radio: no local player — ignoring station $stationId" }
-            return
-        }
-        androidAutoLog.i { "AI Radio: starting station=$stationId on player=$playerId" }
-        aiRadioRepository.start(stationId, playerId)
-            .onFailure { androidAutoLog.w(it) { "AI Radio: start failed for $stationId" } }
+    /** Plays an AI Radio show on the local Sendspin player. A show is a Radio item. */
+    private suspend fun playAiRadioOnLocalPlayer(stationId: String) {
+        androidAutoLog.i { "AI Radio: playing station=$stationId" }
+        dispatchToLocalPlayer(listOf(aiRadioStationUri(stationId)), QueueOption.REPLACE)
     }
 
     /**
@@ -910,10 +904,10 @@ class AutoLibrary(
             androidAutoLog.w { "Local player disabled — ignoring play($id)." }
             return
         }
-        // AI Radio stations have no URI, so they must be routed before the ParentRef parse
-        // below would drop them on its `uri` lookup.
+        // AI Radio station rows carry the station id, not a URI, so they must be routed before
+        // the ParentRef parse below would drop them on its `uri` lookup.
         MediaIds.aiRadioStationOf(id)?.let { stationId ->
-            scope.launch { startAiRadioOnLocalPlayer(stationId) }
+            scope.launch { playAiRadioOnLocalPlayer(stationId) }
             return
         }
         val parts = id.split("__")

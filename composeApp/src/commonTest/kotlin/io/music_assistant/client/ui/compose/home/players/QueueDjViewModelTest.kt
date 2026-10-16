@@ -23,9 +23,8 @@ class QueueDjViewModelTest {
     private val client = FakeAiRadioClient(
         mutableMapOf(
             APICommands.AI_RADIO_HOSTS_LIST to """[{"id":"h1","name":"Ann"},{"id":"h2","name":"Bob"}]""",
-            APICommands.AI_RADIO_QUEUE_DJ_STATUS to """{"q1":"h1"}""",
-            APICommands.AI_RADIO_STATUS to """{"sessions":[]}""",
-            APICommands.AI_RADIO_QUEUE_DJ_SET to """{"q1":"h2"}""",
+            APICommands.AI_RADIO_QUEUE_DJ_STATUS to """{"q1":{"host_id":"h1","station_id":""}}""",
+            APICommands.AI_RADIO_QUEUE_DJ_SET to """{"q1":{"host_id":"h2","station_id":""}}""",
         ),
     )
     private val available = MutableStateFlow(true)
@@ -49,11 +48,11 @@ class QueueDjViewModelTest {
     fun aHintRefetchesOnlyThePartItNames() = runTest {
         val viewModel = viewModel()
         assertEquals(
-            setOf(APICommands.AI_RADIO_HOSTS_LIST, APICommands.AI_RADIO_QUEUE_DJ_STATUS, APICommands.AI_RADIO_STATUS),
+            setOf(APICommands.AI_RADIO_HOSTS_LIST, APICommands.AI_RADIO_QUEUE_DJ_STATUS),
             commandsSent().toSet(),
         )
         client.sent.clear()
-        client.results[APICommands.AI_RADIO_QUEUE_DJ_STATUS] = """{"q1":"h2"}"""
+        client.results[APICommands.AI_RADIO_QUEUE_DJ_STATUS] = """{"q1":{"host_id":"h2","station_id":""}}"""
 
         client.emitHint("queue_dj_updated")
         runCurrent()

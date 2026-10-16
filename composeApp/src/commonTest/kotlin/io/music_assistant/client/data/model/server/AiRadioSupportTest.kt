@@ -5,9 +5,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Pins the AI Radio gate against the server's builtin role table. The scopes below are the
- * ones `ROLE_SCOPES` actually grants, so a role that cannot start a station must never see
- * the picker.
+ * Pins the AI Radio gates against the server's builtin role table. The scopes below are the
+ * ones `ROLE_SCOPES` actually grants.
  */
 class AiRadioSupportTest {
     private val roleScopes = mapOf(
@@ -22,49 +21,38 @@ class AiRadioSupportTest {
         "guest" to listOf("library.read", "players.control", "queues.control"),
     )
 
-    private fun granted(role: String?) =
-        grantsScope(roleScopes, role, AI_RADIO_REQUIRED_SCOPE)
+    private fun grantedStations(role: String?) =
+        AI_RADIO_STATIONS_SCOPES.all { grantsScope(roleScopes, role, it) }
 
     @Test
-    fun adminIsGrantedThroughTheWildcardScope() {
-        assertTrue(granted("admin"))
+    fun everyBuiltinRoleMayListAndPlayStations() {
+        // A show plays like any radio, so the write scope that start/stop needed is gone.
+        assertTrue(grantedStations("admin"))
+        assertTrue(grantedStations("user"))
+        assertTrue(grantedStations("guest"))
     }
 
     @Test
-    fun userMayReadProviderConfigButStillCannotRunAStation() {
-        // The trap this gate exists for: `user` can list stations, so gating on the plugin
-        // alone would render a picker where every tap fails.
-        assertFalse(granted("user"))
-    }
-
-    @Test
-    fun guestIsDenied() {
-        assertFalse(granted("guest"))
+    fun aRoleWithoutTheQueueScopeCannotPlayAStation() {
+        val readOnly = mapOf("viewer" to listOf("library.read"))
+        assertFalse(AI_RADIO_STATIONS_SCOPES.all { grantsScope(readOnly, "viewer", it) })
     }
 
     @Test
     fun customRoleAbsentFromTheTableGrantsNothing() {
-        assertFalse(granted("kiosk"))
+        assertFalse(grantedStations("kiosk"))
     }
 
     @Test
     fun unknownRoleIsDenied() {
-        assertFalse(granted(null))
-    }
-
-    @Test
-    fun anExplicitScopeGrantIsHonouredWithoutTheWildcard() {
-        // Guards the intent: if the server ever moves start/stop to a scope a plain user
-        // holds, the gate opens with no client change.
-        val widened = mapOf("user" to listOf("config.providers.read", AI_RADIO_REQUIRED_SCOPE))
-        assertTrue(grantsScope(widened, "user", AI_RADIO_REQUIRED_SCOPE))
+        assertFalse(grantedStations(null))
     }
 
     private fun grantedQueueDj(role: String?) =
         AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
 
     @Test
-    fun userMayUseTheQueueDjThatNeedsNoWriteScope() {
+    fun userMayUseTheQueueDj() {
         assertTrue(grantedQueueDj("user"))
         assertTrue(grantedQueueDj("admin"))
     }
@@ -76,9 +64,9 @@ class AiRadioSupportTest {
     }
 
     @Test
-    fun eventsAreGuaranteedFromTheFirstSchemaAfterTheEventCommit() {
-        assertFalse(supportsAiRadioEvents(null))
-        assertFalse(supportsAiRadioEvents(84))
-        assertTrue(supportsAiRadioEvents(85))
+    fun onlyTheRadioItemApiIsSupported() {
+        assertFalse(supportsAiRadio(null))
+        assertFalse(supportsAiRadio(87))
+        assertTrue(supportsAiRadio(88))
     }
 }

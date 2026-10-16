@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.server.ServerAiRadioHost
-import io.music_assistant.client.data.model.server.ServerAiRadioSession
 import io.music_assistant.client.data.repository.AiRadioChange
 import io.music_assistant.client.data.repository.AiRadioRepository
 import kotlinx.coroutines.Job
@@ -24,22 +23,17 @@ import kotlinx.coroutines.launch
 data class QueueDjState(
     val hosts: List<ServerAiRadioHost> = emptyList(),
     val assignments: Map<String, String> = emptyMap(),
-    val running: ServerAiRadioSession? = null,
 )
 
-/** What the queue DJ row of one queue's menu shows. */
-sealed interface QueueDjMenu {
-    /** A show owns the queue, so its DJ cannot be changed. */
-    data object OnAir : QueueDjMenu
-
-    /** Hosts sorted by name; [selectedHostId] is null when the DJ is off. */
-    data class Choices(val hosts: List<ServerAiRadioHost>, val selectedHostId: String?) : QueueDjMenu
-}
+/**
+ * What the queue DJ row of one queue's menu shows: hosts sorted by name, and [selectedHostId]
+ * null when the DJ is off. A show that plays on the queue does not lock the DJ: the server
+ * keeps the show binding through a host switch.
+ */
+data class QueueDjMenu(val hosts: List<ServerAiRadioHost>, val selectedHostId: String?)
 
 fun QueueDjState.menuFor(queueId: String): QueueDjMenu =
-    running?.takeIf { it.isRunning && it.queueId == queueId }
-        ?.let { QueueDjMenu.OnAir }
-        ?: QueueDjMenu.Choices(hosts.sortedBy { it.name.lowercase() }, assignments[queueId])
+    QueueDjMenu(hosts.sortedBy { it.name.lowercase() }, assignments[queueId])
 
 /**
  * Backs the AI Radio DJ row of the player queue menu.
@@ -55,7 +49,7 @@ class QueueDjViewModel(
 ) : ViewModel() {
     private val cache = MutableStateFlow(QueueDjState())
 
-    // One in-flight refetch per part: a burst of hints (a stop sends two) keeps only the latest.
+    // One in-flight refetch per part: a burst of hints keeps only the latest.
     private val refetches = mutableMapOf<AiRadioChange, Job>()
 
     // Bumped by every set, so a refetch that started before it cannot restore the old map.
@@ -83,7 +77,7 @@ class QueueDjViewModel(
             repository.changes.collect { change ->
                 if (!available.value) return@collect
                 when (change) {
-                    AiRadioChange.HOSTS, AiRadioChange.QUEUE_DJ, AiRadioChange.SESSIONS -> refetch(change)
+                    AiRadioChange.HOSTS, AiRadioChange.QUEUE_DJ -> refetch(change)
                     AiRadioChange.RESYNC -> refetchAll()
                     AiRadioChange.STATIONS -> Unit
                 }
@@ -106,7 +100,6 @@ class QueueDjViewModel(
     private fun refetchAll() {
         refetch(AiRadioChange.HOSTS)
         refetch(AiRadioChange.QUEUE_DJ)
-        refetch(AiRadioChange.SESSIONS)
     }
 
     /** A failed refetch keeps the cached part, so [menuFor] still resolves against the rest. */
@@ -122,10 +115,6 @@ class QueueDjViewModel(
                         ?.takeIf { version == assignmentsVersion }
                         ?.let { assignments -> cache.update { it.copy(assignments = assignments) } }
                 }
-                // Null is a real answer here (nothing on air), so only a failure keeps the cache.
-                AiRadioChange.SESSIONS -> repository.runningSession()
-                    .onFailure { Logger.w(it) { "AI Radio: status refresh failed" } }
-                    .onSuccess { running -> cache.update { it.copy(running = running) } }
                 AiRadioChange.STATIONS, AiRadioChange.RESYNC -> Unit
             }
         }

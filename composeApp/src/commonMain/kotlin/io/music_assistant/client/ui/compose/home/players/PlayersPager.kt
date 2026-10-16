@@ -128,7 +128,6 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj
 import musicassistantclient.composeapp.generated.resources.ai_radio_dj_off
-import musicassistantclient.composeapp.generated.resources.ai_radio_dj_on_air
 import musicassistantclient.composeapp.generated.resources.ambient_sound_menu_subtitle
 import musicassistantclient.composeapp.generated.resources.ambient_sound_title
 import musicassistantclient.composeapp.generated.resources.announcement_title
@@ -987,46 +986,34 @@ private fun PlayerOverflowMenu(
 
     // AI Radio DJ: needs a queue but not its items, since a DJ can wait for the queue to fill.
     val queueDjOptions = queueId?.let { id ->
-        when (queueDjMenu) {
-            null -> emptyList()
-            // A running show owns the queue, so the row only says so.
-            QueueDjMenu.OnAir -> listOf(
-                OverflowMenuOption(
-                    title = stringResource(Res.string.ai_radio_dj_on_air),
-                    icon = Icons.Default.AutoAwesome,
-                    enabled = false,
-                    onClick = {},
-                ),
-            )
-            is QueueDjMenu.Choices -> {
-                Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
-                    OverflowMenu(
-                        expanded = queueDjMenuExpanded,
-                        onClose = { queueDjMenuExpanded = false },
-                        options = queueDjMenu.hosts.map { host ->
-                            OverflowMenuOption(
-                                title = host.name,
-                                trailingIcon = Icons.Default.Check
-                                    .takeIf { host.id == queueDjMenu.selectedHostId },
-                                onClick = { onQueueDjSelected(id, host.id) },
-                            )
-                        } + OverflowMenuOption(
-                            title = stringResource(Res.string.ai_radio_dj_off),
+        queueDjMenu?.let { menu ->
+            Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+                OverflowMenu(
+                    expanded = queueDjMenuExpanded,
+                    onClose = { queueDjMenuExpanded = false },
+                    options = menu.hosts.map { host ->
+                        OverflowMenuOption(
+                            title = host.name,
                             trailingIcon = Icons.Default.Check
-                                .takeIf { queueDjMenu.selectedHostId == null },
-                            onClick = { onQueueDjSelected(id, null) },
-                        ),
-                    )
-                }
-                listOf(
-                    OverflowMenuOption(
-                        title = stringResource(Res.string.ai_radio_dj),
-                        icon = Icons.Default.AutoAwesome,
-                        trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
-                        onClick = { queueDjMenuExpanded = true },
+                                .takeIf { host.id == menu.selectedHostId },
+                            onClick = { onQueueDjSelected(id, host.id) },
+                        )
+                    } + OverflowMenuOption(
+                        title = stringResource(Res.string.ai_radio_dj_off),
+                        trailingIcon = Icons.Default.Check
+                            .takeIf { menu.selectedHostId == null },
+                        onClick = { onQueueDjSelected(id, null) },
                     ),
                 )
             }
+            listOf(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.ai_radio_dj),
+                    icon = Icons.Default.AutoAwesome,
+                    trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
+                    onClick = { queueDjMenuExpanded = true },
+                ),
+            )
         }
     }.orEmpty()
 

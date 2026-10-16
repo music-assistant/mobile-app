@@ -4,7 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * A station profile from `ai_radio/stations/list`.
+ * A station profile from `ai_radio/stations/list`. The server also exposes each station as a
+ * Radio item ([uri]); that item is what plays.
  *
  * The server normalizes every station to a flat record (`id`, `name`, `source_playlist_id`,
  * `source_playlist_provider`, `default_player_id`, `max_duration_minutes`,
@@ -22,37 +23,24 @@ data class ServerAiRadioStation(
     @SerialName("name") val name: String,
     @SerialName("source_playlist_id") val sourcePlaylistId: String = "",
     @SerialName("source_playlist_provider") val sourcePlaylistProvider: String = "library",
-)
-
-/**
- * One run of a station. `ai_radio/start`, `stop` and `status` all report this shape.
- *
- * [queueId] is the queue the run actually plays on, resolved server-side through
- * `get_active_queue`, so for a grouped player it is the leader's queue and not the player the
- * station was started on. It is the only trustworthy handle on a run's queue — never substitute
- * the currently selected player, which may have moved on since the run began. Null until the
- * run gets far enough to claim a queue.
- */
-@Serializable
-data class ServerAiRadioSession(
-    @SerialName("session_id") val sessionId: String,
-    @SerialName("station_id") val stationId: String,
-    @SerialName("queue_id") val queueId: String? = null,
-    // "running" | "stopped" | "finished" | "failed"
-    @SerialName("status") val status: String? = null,
-    @SerialName("error") val error: String? = null,
 ) {
-    val isRunning: Boolean get() = status == STATUS_RUNNING
-
-    companion object {
-        const val STATUS_RUNNING = "running"
-    }
+    val uri: String get() = aiRadioStationUri(id)
 }
 
-/** Envelope of `ai_radio/status`, which wraps its sessions rather than returning a bare list. */
+/**
+ * The show [stationId] as a finite Radio item, played with `player_queues/play_media` like any
+ * other radio. The provider is single-instance, so its instance id is the domain.
+ */
+fun aiRadioStationUri(stationId: String): String = "$AI_RADIO_DOMAIN://radio/$stationId"
+
+/**
+ * One entry of `ai_radio/queue_dj/status`, keyed by queue id. [stationId] is empty for a DJ the
+ * user picked by hand, and names the show for a DJ that playing a show armed.
+ */
 @Serializable
-data class ServerAiRadioStatus(
-    @SerialName("sessions") val sessions: List<ServerAiRadioSession> = emptyList(),
+data class ServerAiRadioQueueDj(
+    @SerialName("host_id") val hostId: String,
+    @SerialName("station_id") val stationId: String = "",
 )
 
 /**

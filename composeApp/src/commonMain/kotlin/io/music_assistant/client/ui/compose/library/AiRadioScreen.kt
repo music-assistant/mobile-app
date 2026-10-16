@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import io.music_assistant.client.data.model.server.ServerAiRadioStation
 import io.music_assistant.client.ui.compose.common.items.RowItem
 import io.music_assistant.client.ui.compose.common.items.WavyHexagonShape
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
@@ -38,7 +38,6 @@ import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.ai_radio_empty
 import musicassistantclient.composeapp.generated.resources.ai_radio_load_failed
 import musicassistantclient.composeapp.generated.resources.ai_radio_no_player
-import musicassistantclient.composeapp.generated.resources.ai_radio_stop
 import musicassistantclient.composeapp.generated.resources.ai_radio_title
 import musicassistantclient.composeapp.generated.resources.common_back
 import org.jetbrains.compose.resources.stringResource
@@ -48,9 +47,8 @@ import org.jetbrains.compose.resources.stringResource
  * [io.music_assistant.client.data.MainDataSource.aiRadioAvailable] is true, which is what hides
  * the category when the plugin is absent or the user lacks its scope.
  *
- * Stations are authored in the web frontend; this only lists and runs them. The provider emits
- * no events, so the run state is re-read on entry and after a start or stop. Do NOT add a
- * background poll — it would hit the server forever for a screen the user rarely opens.
+ * Stations are authored in the web frontend; this only lists and plays them. A show is a Radio
+ * item, so it stops through the normal player controls.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,8 +81,7 @@ fun AiRadioScreen(
             state = state,
             hasTargetPlayer = hasTargetPlayer,
             contentPadding = contentPadding,
-            onPlay = viewModel::start,
-            onStop = viewModel::stop,
+            onPlay = viewModel::play,
         )
     }
 }
@@ -94,8 +91,7 @@ private fun AiRadioStationList(
     state: AiRadioViewModel.State,
     hasTargetPlayer: Boolean,
     contentPadding: PaddingValues,
-    onPlay: (String) -> Unit,
-    onStop: (String) -> Unit,
+    onPlay: (ServerAiRadioStation) -> Unit,
 ) {
     when (state) {
         is AiRadioViewModel.State.Loading -> Box(
@@ -123,9 +119,7 @@ private fun AiRadioStationList(
                     StationRow(
                         name = station.name,
                         artworkUrl = state.artwork[station.id],
-                        isOnAir = state.running?.stationId == station.id,
-                        onPlay = { onPlay(station.id) },
-                        onStop = { onStop(station.id) },
+                        onPlay = { onPlay(station) },
                     )
                 }
             }
@@ -136,17 +130,12 @@ private fun AiRadioStationList(
 /**
  * A station row. The action lives in an explicit trailing button, not in the row body: a bare
  * row gives no hint that tapping it puts a whole radio show on air.
- *
- * One button, two states — Play, or Stop while [isOnAir]. The station on air is the one the
- * server reports, which is re-read after every start and stop.
  */
 @Composable
 private fun StationRow(
     name: String,
     artworkUrl: String?,
-    isOnAir: Boolean,
     onPlay: () -> Unit,
-    onStop: () -> Unit,
 ) {
     RowItem(
         modifier = Modifier.padding(horizontal = 8.dp),
@@ -157,12 +146,10 @@ private fun StationRow(
         enabled = false,
         prefixContent = { AiRadioStationImage(url = artworkUrl, name = name) },
         suffixContent = {
-            IconButton(onClick = if (isOnAir) onStop else onPlay) {
+            IconButton(onClick = onPlay) {
                 Icon(
-                    imageVector = if (isOnAir) Icons.Default.Stop else Icons.Default.PlayArrow,
-                    contentDescription = stringResource(
-                        if (isOnAir) Res.string.ai_radio_stop else Res.string.action_play,
-                    ),
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = stringResource(Res.string.action_play),
                 )
             }
         },

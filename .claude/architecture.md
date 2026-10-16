@@ -98,14 +98,17 @@ actual class PlatformFeature {
   `message`. Voice has no upload endpoint: raw s16le PCM streams live over `/live_announcement`
   (WebSocket) or the `live_announcement` data channel (WebRTC). Closing the link ends the clip, so
   never cancel a session early. The platform microphone is the `MicrophoneCapture` Koin binding.
-- **AI Radio**: From server schema 85, the `ai_radio` plugin sends `provider_event` refetch hints
-  (`object_id` `ai_radio`). The hints have no state, so re-read the endpoint that the hint names.
-  `AiRadioRepository.changes` maps the hints to `AiRadioChange`. It also sends `RESYNC` when the
-  command session comes back, because the server does not send again the hints that the client lost.
-  The queue DJ menu (`QueueDjViewModel`) shows its cache and uses only these changes. Its gate,
-  `MainDataSource.aiRadioQueueDjAvailable`, needs schema 85 and is separate from the stations gate.
-  The stations screen also follows the changes. It reads the run state again after each start and
-  stop, because older servers send no hints.
+- **AI Radio**: The client supports server schema 88 and higher only (`supportsAiRadio`). Both gates,
+  `MainDataSource.aiRadioAvailable` and `aiRadioQueueDjAvailable`, need it. A station is a finite
+  Radio item (`ai_radio://radio/<station_id>`, `ServerAiRadioStation.uri`). Play it through
+  `PlayDispatcher` like any radio. There is no start, stop or status command. The server also mirrors
+  each show into the library as a Radio row. The Radio lists hide these rows (`isAiRadioShow`),
+  because the AI Radio section lists them. The `ai_radio` plugin
+  sends `provider_event` refetch hints (`object_id` `ai_radio`). The hints have no state, so re-read
+  the endpoint that the hint names. `AiRadioRepository.changes` maps the hints to `AiRadioChange`.
+  It also sends `RESYNC` when the command session comes back, because the server does not send
+  again the hints that the client lost. The queue DJ menu (`QueueDjViewModel`) and the stations
+  screen show their cache and use only these changes. A show on a queue does not lock the queue DJ.
 
 ## HTTP Clients
 

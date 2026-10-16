@@ -3,8 +3,6 @@ package io.music_assistant.client.data.model.server
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
  * The two source-playlist fields are the only route to artwork on a station row, and they are
@@ -37,37 +35,22 @@ class ServerAiRadioStationTest {
         assertEquals("spotify--abc", station.sourcePlaylistProvider)
     }
 
-    /**
-     * The queue a run owns is the only safe thing to clear when it is stopped. If this binding
-     * silently breaks, the clear becomes a no-op — or worse, tempts a fallback to the currently
-     * selected player, which may be playing something else entirely.
-     */
     @Test
-    fun bindsTheQueueTheRunOwns() {
-        val payload = """
-            {
-              "session_id": "abc123",
-              "station_id": "late_night",
-              "queue_id": "player-leader-1",
-              "status": "running",
-              "error": null
-            }
-        """.trimIndent()
+    fun playsAsTheProvidersRadioItem() {
+        val station = json.decodeFromString<ServerAiRadioStation>("""{"id": "late_night", "name": "x"}""")
 
-        val session = json.decodeFromString<ServerAiRadioSession>(payload)
-
-        assertEquals("player-leader-1", session.queueId)
-        assertTrue(session.isRunning)
+        assertEquals("ai_radio://radio/late_night", station.uri)
     }
 
     @Test
-    fun aRunWithoutAQueueDecodesToNull() {
-        // The plugin claims a queue partway through a run, so an early session has none yet.
-        val session = json.decodeFromString<ServerAiRadioSession>(
-            """{"session_id": "abc123", "station_id": "s1", "status": "running"}""",
+    fun bindsAQueueDjEntry() {
+        // Verbatim shape of ai_radio/queue_dj/status from schema 88.
+        val status = json.decodeFromString<Map<String, ServerAiRadioQueueDj>>(
+            """{"q1": {"host_id": "h1", "station_id": "late_night"}, "q2": {"host_id": "h2", "station_id": ""}}""",
         )
 
-        assertNull(session.queueId)
+        assertEquals(ServerAiRadioQueueDj(hostId = "h1", stationId = "late_night"), status["q1"])
+        assertEquals("", status["q2"]?.stationId)
     }
 
     @Test

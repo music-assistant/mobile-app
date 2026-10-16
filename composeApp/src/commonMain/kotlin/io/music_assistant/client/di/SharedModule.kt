@@ -145,7 +145,7 @@ fun sharedModule(
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
         singleOf(::QueueFactory)            // Stateless DTO → domain mapper (depends on MediaItemFactory)
-        single { AiRadioRepository(get(), get()) } // Optional ai_radio plugin: list and run stations
+        single { AiRadioRepository(get(), get()) } // Optional ai_radio plugin: stations and queue DJ
         single {                            // Typed and spoken announcements; outlives the dialog
             AnnouncementRepository(
                 apiClient = get(),
@@ -183,7 +183,7 @@ fun sharedModule(
         factory { DefaultClickActionsViewModel(get()) }
         factory { CarActionsViewModel(get(), get()) }
         factory { CarDspViewModel(get(), get()) }
-        factory { AiRadioViewModel(get(), get()) }
+        factory { AiRadioViewModel(get(), get(), get()) }
         factory {
             AuthenticationViewModel(
                 auth = get(),

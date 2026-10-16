@@ -26,7 +26,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
 import io.music_assistant.client.data.model.server.AI_RADIO_QUEUE_DJ_SCOPES
-import io.music_assistant.client.data.model.server.AI_RADIO_REQUIRED_SCOPE
+import io.music_assistant.client.data.model.server.AI_RADIO_STATIONS_SCOPES
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.ServerPlayer
@@ -46,7 +46,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
-import io.music_assistant.client.data.model.server.supportsAiRadioEvents
+import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
@@ -159,19 +159,18 @@ class MainDataSource(
     private val _queueInfos = MutableStateFlow<List<QueueInfo>>(emptyList())
 
     /**
-     * Whether the AI Radio UI may be offered: the optional `ai_radio` plugin is loaded AND
-     * the signed-in user's role grants the scope its start/stop commands demand. Both halves
-     * matter — a `user` role can list stations but cannot play any, so gating on the plugin
-     * alone would render a Library section where every tap fails.
+     * Whether the AI Radio stations may be offered: the optional `ai_radio` plugin is loaded,
+     * the server plays shows as Radio items ([supportsAiRadio]), AND the role grants every scope
+     * in [AI_RADIO_STATIONS_SCOPES]. Gating on the plugin alone would render a Library section
+     * where every tap fails.
      */
     private val _aiRadioAvailable = MutableStateFlow(false)
     val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()
 
     /**
      * Whether the queue DJ menu may be offered: the `ai_radio` plugin is loaded, the server
-     * announces AI Radio changes ([supportsAiRadioEvents]), AND the role grants every scope in
-     * [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable], which needs the write scope
-     * that the DJ commands do not.
+     * speaks the current AI Radio API ([supportsAiRadio]), AND the role grants every scope in
+     * [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable], which needs other scopes.
      */
     private val _aiRadioQueueDjAvailable = MutableStateFlow(false)
     val aiRadioQueueDjAvailable: StateFlow<Boolean> = _aiRadioQueueDjAvailable.asStateFlow()
@@ -1632,10 +1631,11 @@ class MainDataSource(
                 .orEmpty()
             val connection = apiClient.sessionState.value as? HasConnectionData
             val role = connection?.user?.role
-            _aiRadioAvailable.value = grantsScope(roleScopes, role, AI_RADIO_REQUIRED_SCOPE)
+            val supported = supportsAiRadio(connection?.serverInfo?.schemaVersion)
+            _aiRadioAvailable.value =
+                supported && AI_RADIO_STATIONS_SCOPES.all { grantsScope(roleScopes, role, it) }
             _aiRadioQueueDjAvailable.value =
-                supportsAiRadioEvents(connection?.serverInfo?.schemaVersion) &&
-                    AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
+                supported && AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
         }
     }
 

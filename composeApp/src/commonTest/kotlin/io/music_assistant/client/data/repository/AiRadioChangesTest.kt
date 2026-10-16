@@ -20,12 +20,10 @@ class AiRadioChangesTest {
             client.emitHint("hosts_updated")
             client.emitHint("stations_updated")
             client.emitHint("queue_dj_updated")
-            client.emitHint("sessions_updated")
 
             assertEquals(AiRadioChange.HOSTS, awaitItem())
             assertEquals(AiRadioChange.STATIONS, awaitItem())
             assertEquals(AiRadioChange.QUEUE_DJ, awaitItem())
-            assertEquals(AiRadioChange.SESSIONS, awaitItem())
         }
     }
 
