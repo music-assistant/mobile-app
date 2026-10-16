@@ -354,11 +354,17 @@ class LocalPlayerAdapter(
 
     /** The spinner is the only feedback an offline Play gives; [armPendingPlayTimeout] bounds it. */
     private fun optimisticPlay() {
+        player.hold(false)
         _localPlayerData.update { current -> current?.copy(pendingPlay = true) }
         armPendingPlayTimeout()
     }
 
+    /**
+     * Silences the output before the request leaves: the server may be
+     * unreachable or slow, and the buffer can hold minutes of audio.
+     */
     private fun optimisticPause() {
+        player.hold(true)
         cancelPendingPlayTimeout()
         _localPlayerData.update { current ->
             current?.copy(player = current.player.copy(isPlaying = false), pendingPlay = false)
@@ -368,7 +374,12 @@ class LocalPlayerAdapter(
     // --- Server event reconciliation ---
 
     fun onServerPlayerUpdate(player: Player) {
-        if (player.isPlaying) cancelPendingPlayTimeout()
+        if (player.isPlaying) {
+            cancelPendingPlayTimeout()
+        } else {
+            // The server caught up with the local pause: its next stream/start is a real play.
+            this.player.hold(false)
+        }
         _localPlayerData.update { current ->
             if (current == null) {
                 if (!settings.sendspinEnabled.value) return@update null
@@ -465,6 +476,7 @@ class LocalPlayerAdapter(
 
     /** Full reset: drop the optimistic UI state and pending offline commands (logout, disable). */
     fun clearState() {
+        player.hold(false)
         _localPlayerData.update { null }
         launch { commands.clear() }
     }

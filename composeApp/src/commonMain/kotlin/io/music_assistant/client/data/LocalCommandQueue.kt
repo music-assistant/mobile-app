@@ -83,8 +83,16 @@ internal class LocalCommandQueue(
             }
             when (action) {
                 PlayerAction.TogglePlayPause -> toggle { it is PlayerAction.TogglePlayPause }
-                PlayerAction.Play, PlayerAction.Pause -> {
+                PlayerAction.Pause -> {
                     queue.removeAll { it.action is PlayerAction.Play || it.action is PlayerAction.Pause }
+                    queue.add(entry)
+                }
+
+                // A queued Pause survives a later Play: the local hold silenced the output, so
+                // the server must pause and play again to send a fresh stream. A lone Play is a
+                // no-op on a server that never paused.
+                PlayerAction.Play -> {
+                    queue.removeAll { it.action is PlayerAction.Play }
                     queue.add(entry)
                 }
 

@@ -86,7 +86,7 @@ internal class Scheduler(
             handle?.let {
                 it.pause()
                 it.flush()
-                if (state.phase == StreamPhase.Playing) it.resume()
+                if (state.phase == StreamPhase.Playing && !state.held) it.resume()
             }
             // Queued codec frames belong to the discarded timeline.
             decoder.reset()
@@ -94,13 +94,13 @@ internal class Scheduler(
             played = false // the next write is a new start: the app must be told again
             corrector?.reset()
         }
-        when (state.phase) {
-            StreamPhase.Idle, StreamPhase.Ended -> {
+        when {
+            state.phase != StreamPhase.Playing || state.held -> {
                 publish(AudioPhase.Idle, starved = false)
                 pipeline.wakeups.receive()
             }
 
-            StreamPhase.Playing -> {
+            else -> {
                 if (state.generation != openGeneration) reopen(state, scope)
                 if (handle == null) {
                     pipeline.wakeups.receive()

@@ -329,6 +329,46 @@ class SendspinPlayerTest {
     }
 
     @Test
+    fun holdSilencesBufferedAudioWhileDownAndOutlivesTheReconnect() = playerTest { h ->
+        val server = h.connectServer()
+        h.awaitConnected()
+        h.nextEvent() // ServerRefreshNeeded
+        server.startStream()
+        server.sendAudio(4, currentTime * 1_000, h.pcm(10))
+        server.sendAudio(4, currentTime * 1_000 + 3_000_000, h.pcm(10))
+        server.sendAudio(4, currentTime * 1_000 + 4_000_000, h.pcm(10))
+        runCurrent()
+        assertIs<PlayerEvent.PlaybackStarted>(h.nextEvent())
+
+        h.dropConnection()
+        h.awaitReconnecting()
+        h.player.hold(true)
+        runCurrent()
+        val handle = h.sink.handles.single()
+        val writes = handle.writes.size
+        assertTrue(handle.paused, "a local pause needs no server")
+        assertEquals(0, (h.player.state.value as PlayerState.Reconnecting).audio.bufferedMs)
+
+        val server2 = h.connectServer()
+        h.awaitConnected()
+        assertEquals(PlayerEvent.ServerRefreshNeeded, h.nextEvent())
+        server2.startStream() // the server has not seen the pause yet
+        server2.sendAudio(4, currentTime * 1_000 + 100_000, h.pcm(10))
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(writes, handle.writes.size, "the hold survives the reconnect")
+        assertTrue(h.events.isEmpty, "neither a stop nor a start while held")
+
+        h.player.hold(false)
+        runCurrent()
+        server2.sendAudio(4, currentTime * 1_000 + 100_000, h.pcm(10))
+        advanceTimeBy(200)
+        runCurrent()
+        assertIs<PlayerEvent.PlaybackStarted>(h.nextEvent())
+        assertTrue(handle.writes.size > writes)
+    }
+
+    @Test
     fun bufferedAudioDrainsAcrossAReconnect() = playerTest { h ->
         val server = h.connectServer()
         h.awaitConnected()

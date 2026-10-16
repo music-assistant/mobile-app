@@ -71,7 +71,7 @@ import kotlinx.coroutines.launch
  * └─ config.enabled collector           collectLatest: "false" cancels everything below
  *    └─ runEnabled()                    trust store, clock sync, pipeline, connector
  *       ├─ pipeline.run()               on deps.audioDispatcher; outlives every connection
- *       ├─ live-config collector        userDelayMicros, capacityBytes
+ *       ├─ live-config collectors       userDelayMicros, capacityBytes, hold
  *       └─ ConnectionSupervisor.run()   restarted when a reconnect-class field changes
  *          └─ one attempt at a time
  *             ├─ session.run()          reader coroutine
@@ -101,6 +101,12 @@ internal class SendspinPlayerImpl(
 
     override val state: StateFlow<PlayerState> = _state
     override val events: Flow<PlayerEvent> = _events
+
+    private val held = MutableStateFlow(false)
+
+    override fun hold(held: Boolean) {
+        this.held.value = held
+    }
 
     private data class ConnectionKey(val endpoint: Endpoint, val deviceName: String, val codecs: List<AudioCodec>)
 
@@ -155,6 +161,7 @@ internal class SendspinPlayerImpl(
                 pipeline.capacityBytes = it.bufferCapacityBytes
             }
         }
+        launch { held.collect(pipeline::hold) }
         launch { session.publishState() }
         launch { session.forwardAudioEvents() }
         launch { session.watchStarvation() }

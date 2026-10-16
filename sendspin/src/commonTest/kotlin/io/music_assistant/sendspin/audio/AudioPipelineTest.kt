@@ -137,6 +137,56 @@ class AudioPipelineTest {
     }
 
     @Test
+    fun holdSilencesAtOnceDiscardsAudioAndReleasePlaysTheNextAudio() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(0, 1_000, 2_000)
+        runCurrent()
+        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull())
+        val writes = h.handle.writes.size
+
+        h.pipeline.hold(true)
+        runCurrent()
+        assertTrue(h.handle.paused, "the sink stops without a server message")
+        assertEquals(1, h.handle.flushes)
+        assertTrue(h.pipeline.buffer.isEmpty, "the stopped timeline is discarded")
+        assertEquals(AudioPhase.Idle, h.pipeline.status.value.phase)
+        h.feed(3_000)
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(writes, h.handle.writes.size, "audio that arrives while held is never played")
+        assertTrue(h.pipeline.buffer.isEmpty)
+
+        h.pipeline.hold(false)
+        runCurrent()
+        assertFalse(h.handle.paused)
+        h.feed(currentTime + 100)
+        advanceTimeBy(200)
+        runCurrent()
+        assertTrue(h.handle.writes.size > writes)
+        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull(), "a release is a new start for the app")
+        assertTrue(h.events.isEmpty, "a hold reports no stop: the app asked for it")
+    }
+
+    @Test
+    fun aStreamStartWhileHeldOpensNothingUntilRelease() = pipelineTest { h ->
+        h.pipeline.hold(true)
+        h.pipeline.apply(StreamAction.StartFresh(flac)) // a reconnect while the local pause is in flight
+        runCurrent()
+        h.feed(0, 10)
+        runCurrent()
+        assertTrue(h.sink.handles.isEmpty(), "no sink while held")
+        assertEquals(StreamPhase.Playing, h.pipeline.phase, "the lifecycle still follows the server")
+
+        h.pipeline.hold(false)
+        runCurrent()
+        assertEquals(1, h.sink.handles.size)
+        h.feed(0)
+        runCurrent()
+        assertEquals(1, h.handle.writes.size)
+    }
+
+    @Test
     fun resumeKeepsBufferSinkAndDecoder() = pipelineTest { h ->
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()

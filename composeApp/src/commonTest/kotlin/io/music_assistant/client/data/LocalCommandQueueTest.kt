@@ -110,6 +110,28 @@ class LocalCommandQueueTest {
     }
 
     @Test
+    fun aQueuedPauseSurvivesALaterPlaySoTheServerSendsAFreshStream() = runTest {
+        val queue = queue(backgroundScope)
+        ready.value = false
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
+        queue.sendOrQueue(PlayerAction.Play, request("play1"))
+        queue.sendOrQueue(PlayerAction.Play, request("play2"))
+        ready.value = true
+        settle()
+        assertEquals(listOf("pause", "play2"), sent)
+
+        sent.clear()
+        ready.value = false
+        settle() // the readiness collector must see the drop, or the StateFlow conflates it away
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
+        queue.sendOrQueue(PlayerAction.Play, request("play"))
+        queue.sendOrQueue(PlayerAction.Pause, request("pause2"))
+        ready.value = true
+        settle()
+        assertEquals(listOf("pause2"), sent, "a later Pause still replaces both")
+    }
+
+    @Test
     fun anOfflineCommandAsksForTheSessionBackAndDrainsWithoutAForegroundEvent() = runTest {
         val queue = LocalCommandQueue(ready, ::record, backgroundScope) {
             recoveries++

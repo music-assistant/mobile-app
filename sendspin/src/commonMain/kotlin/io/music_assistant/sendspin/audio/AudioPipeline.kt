@@ -53,6 +53,8 @@ internal class AudioPipeline(
         val flushGeneration: Int,
         /** Local time of the last discontinuity; the scheduler reports its setup cost against it. */
         val changedAtMicros: Long = 0L,
+        /** The app holds the output: the sink stays paused and audio is discarded. */
+        val held: Boolean = false,
     )
 
     private val logger = Logger.withTag("AudioPipeline")
@@ -83,7 +85,8 @@ internal class AudioPipeline(
     // --- Reader side ---
 
     fun onAudio(chunk: AudioChunk) {
-        if (stream.value.phase != StreamPhase.Playing) return
+        val state = stream.value
+        if (state.phase != StreamPhase.Playing || state.held) return
         if (buffer.offer(chunk) != JitterBuffer.Offer.Stale) wakeups.trySend(Unit)
     }
 
@@ -116,6 +119,20 @@ internal class AudioPipeline(
 
             StreamAction.Ignore -> Unit
         }
+    }
+
+    /**
+     * Silences the output at once, without a server message. Both transitions
+     * flush: on hold the queued audio is the timeline the app stopped, and on
+     * release the decoder state is stale. The lifecycle runs on while held, so a
+     * release plays the next audio the server sends.
+     */
+    fun hold(held: Boolean) {
+        if (stream.value.held == held) return
+        logger.i { "Output ${if (held) "held" else "released"}" }
+        stream.update { it.copy(held = held, flushGeneration = it.flushGeneration + 1) }
+        buffer.clear(resetDedup = false)
+        wakeups.trySend(Unit)
     }
 
     private fun startFresh(format: StreamStartPlayer) {

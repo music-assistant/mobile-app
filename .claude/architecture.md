@@ -191,6 +191,7 @@ The built-in player is the `:sendspin` Gradle module (`io.music_assistant.sendsp
 - `SendspinPlayer(config: StateFlow<LocalPlayerConfig?>, deps, scope)` creates the player. A `null` config disables it. There is no start or stop call.
 - `state: StateFlow<PlayerState>` is `Disabled`, `Connecting`, `Connected`, `Reconnecting`, or `Failed`. `Connected` carries the player id, the server name, the clock quality, and the audio status.
 - `events: Flow<PlayerEvent>` carries `PlaybackStarted`, `PlaybackStopped(cause)`, `ServerRefreshNeeded`, `FocusRegained`, and `Warning(code)`.
+- `hold(held)` is the local pause. While held, the player is silent and discards the audio that it gets, with no server round trip. `LocalPlayerAdapter` holds on every local Pause. It releases on a local Play, or when the server reports that the player is not playing. A queued Pause stays before a later queued Play in `LocalCommandQueue`, so the server sends a new stream after the outage.
 - Ports the app implements: `AudioSink`, `DecoderFactory`, `SendspinKeyStore`, and `Endpoint.WebRtc.openChannel`.
 - The app depends on `sendspin.api` and the root factory only. Every other declaration in the module is `internal`, so the compiler rejects a new leak. The Noise primitives are a private default of the composition root, not an app port.
 

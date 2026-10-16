@@ -12,6 +12,14 @@ interface SendspinPlayer {
 
     /** UI-meaningful occurrences only. Buffered; a slow collector loses the oldest. */
     val events: Flow<PlayerEvent>
+
+    /**
+     * Local pause, with no server round trip: while held the player makes no
+     * sound and discards the audio it gets. Stream messages still apply, so a
+     * release plays the next audio the server sends. The hold outlives
+     * reconnects and enable cycles; only the app releases it.
+     */
+    fun hold(held: Boolean)
 }
 
 /**
