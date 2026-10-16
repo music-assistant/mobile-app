@@ -23,7 +23,9 @@ The (official) Music Assistant Mobile app is a cross-platform client application
   - Lock Screen and Control Center integration (Now Playing info, play/pause/next/prev remote commands);
   - background audio playback with automatic resume after phone call or Siri interruptions;
   - WebRTC data channel transport for low-latency Sendspin streaming;
-  - Apple CarPlay support for built-in player (very early state, a lot of bugs are expected).
+  - Apple CarPlay support for built-in player (very early state, a lot of bugs are expected);
+  - *known issue:* artwork may be missing in certain setups, for example peer-to-peer mesh VPN setups such as Tailscale. We're aware of this and looking into it, but we don't have an ETA on a fix yet.
+    - Why: iOS App Transport Security (ATS) blocks image requests to insecure hosts, with an exception for local networks. On your LAN, artwork loads fine, but over Tailscale and similar VPNs the server appears to the phone as a remote host, so ATS kicks in and blocks the requests.
 
 ### Server compatibility
 
