@@ -345,7 +345,7 @@ private fun ItemText(
                 .fadingEdges()
                 .basicMarquee()
                 .padding(horizontal = 16.dp),
-            text = item.name,
+            text = (item as? Album)?.year?.let { "${item.name} ($it)" } ?: item.name,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
         )

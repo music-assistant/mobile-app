@@ -32,6 +32,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
+import io.music_assistant.client.ui.compose.common.items.AlbumSubtitle
 import io.music_assistant.client.ui.compose.common.items.CreatePlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
@@ -68,6 +69,7 @@ fun ItemListContent(
     onLoadMore: () -> Unit = {},
     onGlobalSearch: (() -> Unit)? = null,
     clickContext: ClickContext,
+    albumSubtitle: AlbumSubtitle = AlbumSubtitle.ARTISTS,
 ) {
     var showCreatePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     if (onCreatePlaylist != null && showCreatePlaylistDialog) {
@@ -132,6 +134,7 @@ fun ItemListContent(
                                         libraryActions = libraryActions,
                                         progressActions = progressActions,
                                         contentPadding = contentPadding,
+                                        albumSubtitle = albumSubtitle,
                                     )
                                 }
                             }

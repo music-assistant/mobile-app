@@ -244,6 +244,8 @@ fun CategoryRow(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
+                    // Inside an artist the artist name repeats on every album, so show the year.
+                    subtitle = if (containerItem is Artist) AlbumSubtitle.YEAR else AlbumSubtitle.ARTISTS,
                 )
 
                 is Playlist -> PlaylistWithMenu(

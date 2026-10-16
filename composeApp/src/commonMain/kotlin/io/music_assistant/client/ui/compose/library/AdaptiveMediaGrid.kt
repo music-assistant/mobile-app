@@ -36,6 +36,7 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
+import io.music_assistant.client.ui.compose.common.items.AlbumSubtitle
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudioSourceWithMenu
@@ -70,6 +71,7 @@ fun AdaptiveMediaGrid(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     contentPadding: PaddingValues,
+    albumSubtitle: AlbumSubtitle = AlbumSubtitle.ARTISTS,
 ) {
     val isRow = viewMode == ViewMode.LIST
     val itemKeys = remember(items) { items.lazyListOccurrenceKeys() }
@@ -128,6 +130,7 @@ fun AdaptiveMediaGrid(
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,
                     providerIconFetcher = null,
+                    subtitle = albumSubtitle,
                 )
 
                 is Playlist -> PlaylistWithMenu(
