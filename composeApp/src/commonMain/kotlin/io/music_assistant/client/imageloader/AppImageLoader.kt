@@ -31,6 +31,7 @@ internal fun buildAppImageLoader(
             add(ArtworkPayloadFetcher.Factory(repository))
             add(SvgDecoder.Factory())
         }
+        .eventListenerFactory { createAtsBlockedImageEventListener() }
         .build()
 
 internal expect fun imageDiskCacheDir(context: PlatformContext): Path
