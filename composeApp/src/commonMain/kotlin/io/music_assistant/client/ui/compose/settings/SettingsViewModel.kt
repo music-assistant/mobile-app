@@ -12,7 +12,6 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
-import io.music_assistant.sendspin.api.AudioCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -174,29 +173,6 @@ class SettingsViewModel(
 
     fun setAllowLandscapeOnAllDevices(enabled: Boolean) =
         settings.setAllowLandscapeOnAllDevices(enabled)
-
-    // Sendspin settings
-    val sendspinEnabled = settings.sendspinEnabled
-    val sendspinDeviceName = settings.sendspinDeviceName
-    val sendspinUseCustomConnection = settings.sendspinUseCustomConnection
-    val sendspinPort = settings.sendspinPort
-    val sendspinPath = settings.sendspinPath
-    val sendspinCodecPreference = settings.sendspinCodecPreference
-    val sendspinBufferCapacityMb = settings.sendspinBufferCapacityMb
-    val sendspinHost = settings.sendspinHost
-    val sendspinUseTls = settings.sendspinUseTls
-
-    fun setSendspinEnabled(enabled: Boolean) = settings.setSendspinEnabled(enabled)
-    fun setSendspinDeviceName(name: String) = settings.setSendspinDeviceName(name)
-    fun setSendspinUseCustomConnection(enabled: Boolean) =
-        settings.setSendspinUseCustomConnection(enabled)
-
-    fun setSendspinPort(port: Int) = settings.setSendspinPort(port)
-    fun setSendspinPath(path: String) = settings.setSendspinPath(path)
-    fun setSendspinCodecPreference(codec: AudioCodec) = settings.setSendspinCodecPreference(codec)
-    fun setSendspinBufferCapacityMb(mb: Int) = settings.setSendspinBufferCapacityMb(mb)
-    fun setSendspinHost(host: String) = settings.setSendspinHost(host)
-    fun setSendspinUseTls(enabled: Boolean) = settings.setSendspinUseTls(enabled)
 
     // Connection method preference
     val preferredConnectionMethod = settings.preferredConnectionMethod

@@ -120,18 +120,16 @@ class LocalPlayerAdapter(
     private val config: StateFlow<LocalPlayerConfig?> = combine(
         settings.sendspinEnabled,
         endpoints.endpoint,
-        settings.sendspinDeviceName,
-        settings.sendspinCodecPreference,
-        settings.sendspinBufferCapacityMb,
+        settings.sendspinPlayerSettings,
         settings.sendspinStaticDelayMs,
-    ) { values ->
+    ) { enabled, endpoint, playerSettings, staticDelayMs ->
         localPlayerConfig(
-            enabled = values[0] as Boolean,
-            endpoint = values[1] as Endpoint?,
-            deviceName = values[2] as String,
-            codec = values[3] as AudioCodec,
-            bufferCapacityMb = values[4] as Int,
-            staticDelayMs = values[5] as Int,
+            enabled = enabled,
+            endpoint = endpoint,
+            deviceName = playerSettings.name,
+            codec = playerSettings.codecPreference,
+            bufferCapacityMb = playerSettings.bufferCapacityMb,
+            staticDelayMs = staticDelayMs,
         )
     }.stateIn(this, SharingStarted.Eagerly, null)
 
@@ -429,7 +427,7 @@ class LocalPlayerAdapter(
                 PlayerData(
                     player = Player(
                         id = settings.sendspinEffectivePlayerId.value,
-                        name = settings.sendspinDeviceName.value,
+                        name = settings.sendspinPlayerSettings.value.name,
                         provider = "builtin",
                         type = PlayerType.PLAYER,
                         isListed = true,

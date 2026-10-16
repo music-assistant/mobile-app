@@ -111,6 +111,7 @@
   <string name="cd_applied">Applied</string>
   <string name="cd_autoplay_off">Autoplay off</string>
   <string name="cd_autoplay_on">Autoplay on</string>
+  <string name="cd_collapse_sendspin_advanced">Hide advanced configuration</string>
   <string name="cd_close">Close</string>
   <string name="cd_connection_history">Connection history</string>
   <string name="cd_crossfade_off">Crossfade off</string>
@@ -118,6 +119,7 @@
   <string name="cd_current_player">Current player: %1$s</string>
   <string name="cd_customize_tabs">Customize categories</string>
   <string name="cd_delete_crash_logs">Delete crash logs</string>
+  <string name="cd_expand_sendspin_advanced">Show advanced configuration</string>
   <string name="cd_favorite">Favorite</string>
   <string name="cd_filter">Filters</string>
   <string name="cd_find_in_list">Search in list</string>
@@ -141,7 +143,6 @@
   <string name="cd_provider_icon">Provider Icon</string>
   <string name="cd_remove_from_group">Remove from group</string>
   <string name="cd_scan_qr_code">Scan QR code</string>
-  <string name="cd_select_codec">Select codec</string>
   <string name="cd_sleep_timer">Sleep timer active</string>
   <string name="cd_sleep_timer_off">Sleep timer off</string>
   <string name="cd_sort_direction">Sort direction</string>
@@ -159,9 +160,9 @@
   <string name="clickctx_library">Library</string>
   <string name="clickctx_playlist">Playlist</string>
   <string name="clickctx_search">Search</string>
-  <string name="codec_flac">FLAC (lossless, medium bandwidth)</string>
-  <string name="codec_opus">Opus (compressed, lowest bandwidth)</string>
-  <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
+  <string name="codec_flac_description">lossless, medium bandwidth</string>
+  <string name="codec_opus_description">compressed, lowest bandwidth</string>
+  <string name="codec_pcm_description">lossless, high bandwidth</string>
   <string name="common_apply">Apply</string>
   <string name="common_back">Back</string>
   <string name="common_cancel">Cancel</string>
@@ -334,6 +335,8 @@
   <string name="settings_app_documentation">App documentation →</string>
   <string name="settings_app_version_info">Version %1$s, Build %2$s</string>
   <string name="settings_buffer_size">Buffer size</string>
+  <string name="settings_buffer_size_hint">Larger values can prevent issues on unreliable connection, but increases app memory usage</string>
+  <string name="settings_buffer_size_value">%1$d MB</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s actions</string>
   <string name="settings_car_dsp">DSP presets</string>
@@ -369,9 +372,7 @@
   <string name="settings_connection_method">Connection Method</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Custom Sendspin connection</string>
-  <string name="settings_disable_local_player">Disable local player</string>
   <string name="settings_disconnect">Disconnect</string>
-  <string name="settings_enable_local_player">Enable local player</string>
   <string name="settings_error_local_network_ios">Could not reach the server. iOS needs permission to access your local network — tap Allow if a prompt appeared, or enable it later in Settings &gt; Privacy &amp; Security &gt; Local Network. Also make sure your device is on the same network as the server, then try again.</string>
   <string name="settings_error_offline_ios">Could not reach the server. Check that the address is correct and your device is online and on the same network as the server, then try again.</string>
   <string name="settings_exit_app">EXIT APP</string>
@@ -380,20 +381,24 @@
   <string name="settings_host">Host</string>
   <string name="settings_local_network_onboarding_body_ios">When you connect to your server for the first time, iOS will ask for permission to access your local network. Tap Allow — without it the app cannot find or reach your server.</string>
   <string name="settings_local_network_onboarding_title_ios">Local network access</string>
-  <string name="settings_local_player_disabled">Local player (Sendspin protocol)</string>
-  <string name="settings_local_player_enabled">Local player enabled</string>
+  <string name="settings_local_player">Sendspin Player</string>
+  <string name="settings_local_player_clear_name">Clear name</string>
   <string name="settings_misc">Misc</string>
   <string name="settings_no_saved_connections">No saved connections yet</string>
   <string name="settings_path">Path</string>
   <string name="settings_player_name">Player name</string>
   <string name="settings_port">Port</string>
-  <string name="settings_port_default">Port (8095 by default)</string>
   <string name="settings_remote_id">Remote ID</string>
   <string name="settings_remote_id_hint">Enter the Remote ID from your Music Assistant server settings</string>
   <string name="settings_remote_id_invalid">Invalid Remote ID format</string>
   <string name="settings_saved_connections">Saved Connections</string>
   <string name="settings_scan_qr">Scan QR code</string>
   <string name="settings_sendspin_require_encryption">Require encrypted connection</string>
+  <string name="settings_sendspin_advanced_title">Advanced Configuration</string>
+  <string name="settings_sendspin_advanced_summary">buffer, custom connection, and more</string>
+  <string name="settings_sendspin_intro">Enable to play music directly through your device.</string>
+  <string name="settings_sendspin_reset_defaults">Reset to defaults</string>
+  <string name="settings_sendspin_save_changes">Save changes</string>
   <string name="settings_server">Server</string>
   <string name="settings_server_base_path">Base path (optional)</string>
   <string name="settings_server_base_path_hint">If you serve the server under a sub-path.</string>
@@ -401,7 +406,6 @@
   <string name="settings_share_crash_logs">Share crash logs</string>
   <string name="settings_share_logs">Share logs</string>
   <string name="settings_use_tls">Use TLS (wss://)</string>
-  <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
   <string name="settings_version_info">Version %1$s, Schema %2$s</string>
   <string name="settings_webrtc_description">Connect from anywhere without port forwarding</string>
   <string name="settings_webrtc_disclaimer">WebRTC connection can be slower and less reliable than direct or proxied connection to your server.</string>
@@ -432,4 +436,7 @@
   <string name="toast_marked_played">Marked as played</string>
   <string name="toast_marked_unplayed">Marked as unplayed</string>
   <string name="toast_no_uri">Media item has no URI</string>
+  <string name="dialog_interrupting_playback">Interrupting Playback</string>
+  <string name="dialog_interrupting_playback_confirm">Continue</string>
+  <string name="dialog_interrupting_playback_message">Saving changes to the player will interrupt the current playback and clear the current queue. Are you sure?</string>
 </resources>

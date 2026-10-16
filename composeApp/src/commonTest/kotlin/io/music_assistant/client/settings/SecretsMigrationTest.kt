@@ -86,7 +86,7 @@ class SecretsMigrationTest {
 
         assertEquals(ConnectionInfo("nas.local", 8095, true), repo.connectionInfo.value)
         assertEquals("secret-token", repo.getTokenForServer(SERVER_ID))
-        assertEquals("192.168.1.9", repo.sendspinHost.value)
+        assertEquals("192.168.1.9", repo.sendspinPlayerSettings.value.connectionOverride.host)
         assertEquals("remote-abc", repo.webrtcRemoteId.value)
     }
 

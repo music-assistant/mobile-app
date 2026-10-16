@@ -4,16 +4,32 @@ You can use the app purely as a remote control for external players, with the lo
 
 ## Enabling the Local Player
 
-In **Settings**, scroll to the **Local player (Sendspin protocol)** section.
+In **Settings**, scroll to the **Sendspin Player** section. Use the switch in the section header to turn the player on or off.
 
-Before enabling, configure the following options:
+You can change these settings when the player is on or off:
 
-- **Player name** — The name that will appear in Music Assistant (default: My phone).
-- **Codec preference** — The audio codec used for streaming. See [Codec Preference](#codec-preference) below.
-- **Buffer size** — Allows you to set the maximum buffer size of a current stream, to smooth over brief network interruptions. It isn't intended for offline playback and won't buffer multiple queue items in advance.
-- **Custom Sendspin connection** — Leave unchecked unless your setup requires a custom connection (see [Custom Sendspin Connection](#custom-sendspin-connection)).
+- **Player name** — The name that shows in Music Assistant (default: My Phone).
+- **Codec preference** — The audio codec for the stream. See [Codec Preference](#codec-preference) below.
+- **Advanced configuration** — Tap this row to show or hide the settings that follow:
+  - **Custom Sendspin connection** — Keep this setting off if your setup does not need a custom connection. See [Custom Sendspin Connection](#custom-sendspin-connection).
+  - **Buffer size** — The maximum buffer size for the current stream. The buffer helps the player continue through short network interruptions. It is not for offline playback, and it does not load the next queue items in advance.
 
-Tap **Enable local player** to activate it. The section header will update to **Local player enabled**, and the button will change to **Disable local player**.
+The advanced configuration opens automatically if one of its settings is not at the default value.
+
+## Saving Changes
+
+When the player is off, the app saves each change immediately.
+
+When the player is on, the app keeps your changes until you tap **Save changes**. The **Save changes** button is available only if your changes are different from the saved settings. A setting that you change and then change back does not count as a change. Host, port and path do not count if **Custom Sendspin connection** is off.
+
+Tap **Reset to defaults** to change all the settings in this section back to the default values. When the player is on, the app applies the defaults immediately.
+
+Save and reset restart the player. If the player plays audio, the app shows the **Interrupting Playback** dialog first:
+
+- Tap **Continue** to apply the settings. Playback stops.
+- Tap **Cancel** to keep the current settings. Your changes stay on the screen, so you can save them later.
+
+If you turn off the player while you have changes that are not saved, the app saves them.
 
 ![Local Player Disabled - Setup](screenshots/local-sendspin-player-settings/local-player-disabled.jpeg)
 ![Local Player Codec Preference](screenshots/local-sendspin-player-settings/local-player-codec.jpeg)
@@ -37,14 +53,14 @@ The codec controls how audio is compressed and streamed from your Music Assistan
 
 ## Custom Sendspin Connection
 
-If your Music Assistant server is not reachable via the default connection, enable **Custom Sendspin connection** to configure it manually.
+If the app cannot reach your Music Assistant server with the default connection, open **Advanced configuration** and turn on **Custom Sendspin connection**. Then set the connection manually.
 
 | Field | Description |
 |---|---|
-| **Host** | The hostname or IP address of your Music Assistant server |
-| **Port** | Port number (default: `8095`) |
+| **Host** | The hostname or IP address of your Music Assistant server. If empty, the app uses the server host. |
+| **Port** | Port number (default: `8095`). If empty, the app uses the default. |
 | **Path** | Sendspin endpoint path (default: `/sendspin`) |
-| **Use secure connection (WSS/TLS)** | Enable if your server uses a secure WebSocket connection |
+| **ws:// or wss://** | Select **wss://** if your server uses a secure WebSocket connection (TLS) |
 
 ![Custom Sendspin Connection](screenshots/local-sendspin-player-settings/custom-sendspin-connection.jpeg)
 
