@@ -30,7 +30,7 @@ import musicassistantclient.composeapp.generated.resources.filter_album_artists_
 import musicassistantclient.composeapp.generated.resources.filter_album_types
 import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.filter_genres
-import musicassistantclient.composeapp.generated.resources.filter_providers
+import musicassistantclient.composeapp.generated.resources.filter_sources
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_default
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_non_empty
@@ -58,8 +58,10 @@ fun LibraryFilterAction(
 ) {
     FilterAction(
         active = filters.hasActive,
-        state = {  mutableStateOf(filters) },
+        state = { mutableStateOf(filters) },
         onApply = { onApply(it.value) },
+        canReset = { it.value.hasActive },
+        onReset = { it.value = LibraryFilters.DEFAULT },
     ) { state ->
         var workingFilters by state
 
@@ -75,7 +77,8 @@ fun LibraryFilterAction(
                 (genreOptions as? DataState.Data)?.data.orEmpty().isNotEmpty()
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            // fill = false keeps the reset button right below the rows instead of at the sheet bottom.
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 vertical = 8.dp,
             ),
@@ -88,7 +91,7 @@ fun LibraryFilterAction(
             }
             if (showProviders) {
                 item {
-                    PickerRow(Res.string.filter_providers, workingFilters.providers.size) {
+                    PickerRow(Res.string.filter_sources, workingFilters.providers.size) {
                         openPicker = FilterPicker.PROVIDERS
                     }
                 }
@@ -105,7 +108,7 @@ fun LibraryFilterAction(
 
         when (openPicker) {
             FilterPicker.PROVIDERS -> MultiSelectDialog(
-                title = Res.string.filter_providers,
+                title = Res.string.filter_sources,
                 optionsState = providerOptions,
                 selected = workingFilters.providers.toSet(),
                 onConfirm = {

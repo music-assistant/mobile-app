@@ -162,6 +162,12 @@ fun FeatureScreen(viewModel: FeatureViewModel = koinViewModel()) {
 - Display errors via Toast or inline error states
 - Log with context: `Logger.withTag("Component").e { "message" }`
 
+## Localization
+
+- Edit only the English file, `composeResources/values/strings.xml`. Lokalise syncs the `values-*` locale files.
+- Do not edit a `values-*` file. If you remove a key from the English file, Lokalise removes it from the locale files.
+- To change the meaning of a string, add a new key and remove the old key. Translators see a new key, but they do not see a changed text.
+
 ## UI Architecture
 
 **IMPORTANT**: The project is transitioning from the old MainScreen/MainViewModel to the new HomeScreen/HomeScreenViewModel architecture.
