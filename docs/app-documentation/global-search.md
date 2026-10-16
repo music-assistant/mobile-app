@@ -1,8 +1,8 @@
 # Global Search
 
-The **Global Search** tab allows you to search beyond your local Music Assistant library. Because Global Search queries all of your configured Music Providers simultaneously, it may take a bit longer than a quick search in you local [library](library.md).
+The **Global Search** tab allows you to search beyond your local Music Assistant library. Because Global Search queries all of your configured music sources simultaneously, it may take a bit longer than a quick search in you local [library](library.md).
 
-The speed of a global search depends heavily on the performance and rate-limiting policies of your active Music Providers. To deliver your results, the Music Assistant server must make live API calls across all connected services at the same time.
+The speed of a global search depends heavily on the performance and rate-limiting policies of your active music sources. To deliver your results, the Music Assistant server must make live API calls across all connected services at the same time.
 
 ![Global Search Overview](screenshots/global-search/overview.jpeg)
 
