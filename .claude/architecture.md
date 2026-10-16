@@ -94,6 +94,13 @@ actual class PlatformFeature {
   joins it with the server flag `extra_attributes.play_action_in_progress` (any client), and `PlayerControls`
   shows a ring around the main button while it is true. Read the server flag from the server queues, because the
   local player's queue info comes from `LocalPlayerAdapter`.
+- **Favorites**: from server 2.11 (`sendsFavoriteUpdates`), a favorite belongs to one user. The server
+  sends null `favorite` in every `media_item_*` event, and sends the state of the user in `favorite_updated`.
+  That event has no item body, so `MediaItemRepository` fetches the item and emits
+  `MediaItemChange.FavoriteUpdated` with the state of the event. An `Added` or `Updated` change with
+  `carriesFavorite` false must not change the heart of a row. Replace a row with
+  `item.withFavorite(change.favoriteAfter(row.favorite))`. `MainDataSource` gets the added and updated
+  tracks from `itemChanges` for the same reason.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

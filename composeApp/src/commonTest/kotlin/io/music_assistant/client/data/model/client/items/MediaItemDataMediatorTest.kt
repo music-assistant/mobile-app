@@ -106,6 +106,29 @@ class MediaItemDataMediatorTest {
     }
 
     @Test
+    fun `updateOn keeps the stored favorite when Updated carries none`() = runTest {
+        val item = AppMediaItemFixtures.album().copy(favorite = true)
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+            .updateOn(unconfinedScope)
+        mediator.set(listOf(item), Request.Album.listLibrary())
+
+        val updatedItem = item.copy(name = "changed!", favorite = null)
+        mediaItemRepository.fireChange(MediaItemChange.Updated(updatedItem, carriesFavorite = false))
+        assertEquals(DataState.Data(listOf(updatedItem.copy(favorite = true))), mediator.asFlow().value)
+    }
+
+    @Test
+    fun `updateOn sets the favorite when FavoriteUpdated happens`() = runTest {
+        val item = AppMediaItemFixtures.album().copy(favorite = true)
+        val mediator = MediaItemDataMediator(initial = DataState.Loading(), mediaItemRepository)
+            .updateOn(unconfinedScope)
+        mediator.set(listOf(item), Request.Album.listLibrary())
+
+        mediaItemRepository.fireChange(MediaItemChange.FavoriteUpdated(item.copy(favorite = null)))
+        assertEquals(DataState.Data(listOf(item.copy(favorite = null))), mediator.asFlow().value)
+    }
+
+    @Test
     fun `updateOn reloads items when Added happens`() = runTest {
         val request = Request.Album.listLibrary()
         val item = AppMediaItemFixtures.album(itemId = "1", name = "Original Album")

@@ -20,6 +20,8 @@ data class MediaCollection(
     override val images: Map<ImageType, ImageInfo>,
     val items: List<AppMediaItem>,
 ) : AppMediaItem() {
+    // No favorite state, so the copy is the item itself.
+    override fun withFavorite(favorite: Boolean?) = this
     override val providerMappings: List<ProviderMapping>? = null
     override val metadata: Metadata? = null
     override val favorite: Boolean? = null

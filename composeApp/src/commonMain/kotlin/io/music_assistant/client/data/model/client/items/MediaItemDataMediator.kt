@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.data.repository.fetchMediaItems
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.StaleReason
@@ -71,14 +72,16 @@ class MediaItemDataMediator(
                 when (change) {
                     is MediaItemChange.Added -> reload()
                     is MediaItemChange.Deleted -> reload()
-                    is MediaItemChange.Updated -> stateFlow.update { dataState ->
+                    is MediaItemChange.Updated,
+                    is MediaItemChange.FavoriteUpdated,
+                        -> stateFlow.update { dataState ->
                         when (dataState) {
                             is DataState.Data -> dataState.copy(
-                                data = dataState.data.replacing(change.item),
+                                data = dataState.data.replacing(change),
                             )
 
                             is DataState.Stale -> dataState.copy(
-                                data = dataState.data.replacing(change.item),
+                                data = dataState.data.replacing(change),
                             )
 
                             else -> dataState
@@ -116,5 +119,5 @@ fun MediaItemDataMediator.set(items: List<AppMediaItem>, request: Request) {
     this.set(items, listOf(request))
 }
 
-private fun <T : AppMediaItem> List<T>.replacing(changed: T): List<T> =
-    map { if (it.hasAnyMappingFrom(changed)) changed else it }
+private fun List<AppMediaItem>.replacing(change: MediaItemChange): List<AppMediaItem> =
+    map { if (it.hasAnyMappingFrom(change.item)) change.item.withFavorite(change.favoriteAfter(it.favorite)) else it }

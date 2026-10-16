@@ -9,10 +9,13 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.events.FavoriteUpdatedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
+import io.music_assistant.client.data.model.server.events.ServerFavoriteUpdate
 import io.music_assistant.client.data.model.server.pagesPlaylistTracksAndEpisodes
+import io.music_assistant.client.data.model.server.sendsFavoriteUpdates
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
@@ -22,14 +25,18 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 interface MediaItemRepository {
     suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>>
@@ -125,22 +132,43 @@ class ServiceClientMediaItemRepository(
      */
     override val itemChanges: SharedFlow<MediaItemChange> = merge(
         localChanges,
-        apiClient.events.mapNotNull { event ->
-            when (event) {
-                is MediaItemAddedEvent ->
-                    factory.create(event.data)?.let(MediaItemChange::Added)
+        apiClient.events
+            // The socket reader suspends on a full event buffer, and the favorite fetch below
+            // waits for that reader. Buffer here so the fetch never blocks the reader.
+            .buffer(Channel.UNLIMITED)
+            .mapNotNull { event ->
+                val carriesFavorite = !sendsFavoriteUpdates(schemaVersion())
+                when (event) {
+                    is MediaItemAddedEvent ->
+                        factory.create(event.data)
+                            ?.let { MediaItemChange.Added(it, carriesFavorite) }
 
-                is MediaItemUpdatedEvent ->
-                    factory.create(event.data)?.let(MediaItemChange::Updated)
+                    is MediaItemUpdatedEvent ->
+                        factory.create(event.data)
+                            ?.let { MediaItemChange.Updated(it, carriesFavorite) }
 
-                is MediaItemDeletedEvent ->
-                    factory.create(event.data.withLibraryStripped())
-                        ?.let(MediaItemChange::Deleted)
+                    is MediaItemDeletedEvent ->
+                        factory.create(event.data.withLibraryStripped())
+                            ?.let(MediaItemChange::Deleted)
 
-                else -> null
-            }
-        },
+                    is FavoriteUpdatedEvent -> favoriteUpdated(event.data)
+
+                    else -> null
+                }
+            },
     ).shareIn(scope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), replay = 0)
+
+    // The event has no item body, so fetch the item to match rows by provider mappings. The
+    // state of the event wins: events come in order, and a fetch can answer after a newer change.
+    // The fetch holds every later change, so it has a time limit.
+    private suspend fun favoriteUpdated(update: ServerFavoriteUpdate): MediaItemChange? =
+        withTimeoutOrNull(FAVORITE_FETCH_TIMEOUT) {
+            fetchMediaItem(Request.Library.itemByUri(update.uri)).getOrNull()
+        }?.let { MediaItemChange.FavoriteUpdated(it.withFavorite(update.favorite)) }
+            ?: run {
+                Logger.withTag("MediaItemRepository").w { "No item for favorite update of ${update.uri}" }
+                null
+            }
 
     // When the server announces the deletion of a library record, the
     // *underlying* provider item still exists. Re-key the DTO to its first
@@ -155,6 +183,10 @@ class ServiceClientMediaItemRepository(
             favorite = null,
             uri = "${fallback.providerInstance}://$mediaType/${fallback.itemId}",
         )
+    }
+
+    private companion object {
+        val FAVORITE_FETCH_TIMEOUT = 10.seconds
     }
 }
 
