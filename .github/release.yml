@@ -1,5 +1,5 @@
 # Configures GitHub's auto-generated release notes (the
-# `generate_release_notes: true` step in the release workflows).
+# `releases/generate-notes` call in the release workflows).
 # PRs labeled 'chore' are housekeeping and stay out of user-facing notes.
 changelog:
   exclude:
