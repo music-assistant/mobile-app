@@ -96,7 +96,7 @@ The car keeps each list for 5 minutes, so that the car screen stays fast. A chan
 
 ## Searching in the Car
 
-Tap the search icon and speak or type your search. The results show in these groups: **Tracks**, **Artists**, **Albums**, **Playlists** and **Radio stations**. Each group shows a maximum of five results. The results include items from your music providers, and not only items from your library.
+Tap the search icon and speak or type your search. The results show in these groups: **Tracks**, **Artists**, **Albums**, **Playlists** and **Radio stations**. Each group shows a maximum of five results. The results include items from your music sources, and not only items from your library.
 
 ![Search results](screenshots/android-auto/car-search-results.png)
 
