@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -121,8 +123,8 @@ class AuthenticationManagerTest {
         val client = StubServiceClient()
         val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
         try {
-            // getOAuthUrl never touches authState, and job.isCancelled is true whether
-            // or not the body swallows the cancellation — so the discriminator is the
+            // getOAuthUrl touches authState only for a failure Result, and job.isCancelled is
+            // true whether or not the body swallows the cancellation — so the discriminator is the
             // return value: a propagated cancellation yields no Result at all, while a
             // swallowed one is absorbed into Result.failure and assigned here.
             var result: Result<String>? = null
@@ -588,6 +590,113 @@ class AuthenticationManagerTest {
                 client.authorizeCalls,
                 "The server accepts a code once, so the retry must spend the token",
             )
+        } finally {
+            manager.close()
+        }
+    }
+
+    // --- Login errors and unusable providers ---
+
+    @Test
+    fun `a refused OAuth start shows the server error`() = runTest {
+        val client = StubServiceClient()
+        client.respond = {
+            Result.success(
+                answer(
+                    buildJsonObject {
+                        put("authorization_url", JsonNull)
+                        put("error", "Provider does not support OAuth or does not exist")
+                    },
+                ),
+            )
+        }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            val result = manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+
+            assertTrue(result.isFailure)
+            assertEquals(
+                AuthState.Error("Provider does not support OAuth or does not exist"),
+                manager.authState.value,
+                "The tap must not end silently: the browser never opens",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `over Remote Access a redirect provider shows only when the browser can come back`() = runTest {
+        val remote210 = remoteAwaitingAuth(schemaVersion = SERVER_2_11_SCHEMA - 1)
+        assertEquals(
+            listOf("builtin"),
+            loadedProviderIds(remote210, supportsRemoteApp = true),
+            "No External URL and no return to the app: the callback is an internal address",
+        )
+        assertEquals(
+            listOf("builtin", "homeassistant"),
+            loadedProviderIds(
+                remote210.copy(
+                    connectionData = remote210.connectionData.copy(
+                        serverInfo = ServerInfo(
+                            serverId = "server-1",
+                            schemaVersion = SERVER_2_11_SCHEMA - 1,
+                            externalUrl = "https://ma.example",
+                        ),
+                    ),
+                ),
+                supportsRemoteApp = false,
+            ),
+            "The server callback goes to the External URL",
+        )
+        assertEquals(
+            listOf("builtin", "homeassistant"),
+            loadedProviderIds(remoteAwaitingAuth(), supportsRemoteApp = true),
+            "The sign-in returns to the app",
+        )
+        assertEquals(
+            listOf("builtin"),
+            loadedProviderIds(remoteAwaitingAuth(), supportsRemoteApp = false),
+        )
+        assertEquals(
+            listOf("builtin", "homeassistant"),
+            loadedProviderIds(awaitingAuth(), supportsRemoteApp = false),
+            "A direct session reaches the server callback itself",
+        )
+    }
+
+    private suspend fun loadedProviderIds(session: SessionState, supportsRemoteApp: Boolean): List<String> {
+        val client = StubServiceClient()
+        client.sessionState.value = session
+        client.respond = {
+            Result.success(
+                Answer(
+                    buildJsonObject {
+                        put(
+                            "result",
+                            JsonArray(
+                                listOf(
+                                    buildJsonObject {
+                                        put("provider_id", "builtin")
+                                        put("provider_type", "builtin")
+                                        put("requires_redirect", false)
+                                    },
+                                    buildJsonObject {
+                                        put("provider_id", "homeassistant")
+                                        put("provider_type", "homeassistant")
+                                        put("requires_redirect", true)
+                                        put("supports_remote_app", supportsRemoteApp)
+                                    },
+                                ),
+                            ),
+                        )
+                    },
+                ),
+            )
+        }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        return try {
+            manager.getProviders().getOrThrow().map { it.id }
         } finally {
             manager.close()
         }

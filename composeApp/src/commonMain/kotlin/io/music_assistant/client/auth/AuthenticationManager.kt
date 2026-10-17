@@ -207,7 +207,7 @@ class AuthenticationManager(
                 return Result.failure(Exception(error))
             }
 
-            response.resultAs<List<AuthProvider>>()?.let { providers ->
+            response.resultAs<List<AuthProvider>>()?.filter(::canSignIn)?.let { providers ->
                 _authState.value = AuthState.ProvidersLoaded(providers)
                 Result.success(providers)
             } ?: run {
@@ -248,7 +248,14 @@ class AuthenticationManager(
         }
     }
 
-    override suspend fun getOAuthUrl(provider: AuthProvider, returnUrl: String): Result<String> {
+    /** A failure shows on the login screen, because the sign-in never reaches the browser. */
+    override suspend fun getOAuthUrl(provider: AuthProvider, returnUrl: String): Result<String> =
+        requestOAuthUrl(provider, returnUrl).onFailure {
+            log.w(it) { "OAuth URL not received" }
+            _authState.value = AuthState.Error(it.message ?: "Failed to get OAuth URL")
+        }
+
+    private suspend fun requestOAuthUrl(provider: AuthProvider, returnUrl: String): Result<String> {
         return try {
             val pkce = if (returnsToApp(provider)) Pkce.create() else null
             val response = serviceClient.sendRequest(
@@ -284,6 +291,19 @@ class AuthenticationManager(
     private fun returnsToApp(provider: AuthProvider): Boolean {
         val session = serviceClient.sessionState.value as? SessionState.Connected.WebRTC ?: return false
         return provider.supportsRemoteApp && supportsAppSignIn(session.serverInfo?.schemaVersion)
+    }
+
+    /**
+     * Over Remote Access, a redirect provider works only when the browser can come back: to the
+     * app, or to the server's External URL. Otherwise the server sends the browser to its internal
+     * address. The web frontend hides the provider in the same case.
+     */
+    private fun canSignIn(provider: AuthProvider): Boolean {
+        val serverInfo = (serviceClient.sessionState.value as? SessionState.Connected.WebRTC)
+            ?.serverInfo ?: return true
+        return !provider.requiresRedirect ||
+            returnsToApp(provider) ||
+            !serverInfo.externalUrl.isNullOrBlank()
     }
 
     override fun startOAuthFlow(oauthUrl: String): Result<Unit> {

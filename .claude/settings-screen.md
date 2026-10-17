@@ -106,6 +106,11 @@ The app uses the second form if all of these conditions are true:
 Otherwise the app uses the first form, as on server 2.10. The second form does not need an External URL
 on the server, because the browser does not open the server. The browser opens Home Assistant only.
 
+Over Remote Access, the app hides a redirect provider if the browser cannot come back. The browser can
+come back if the app uses the second form, or if the server has an External URL. Without one of these,
+the server callback is an internal address. `AuthenticationManager.getProviders` removes the provider,
+as the web frontend does.
+
 Only the app run that started the sign-in has the verifier. A code for an unknown `state` fails.
 The server accepts a code one time, so the token replaces the code after the exchange.
 A retry after a reconnect sends the token again, and does not send the exchange again.
@@ -159,6 +164,7 @@ If the app does not use the result in 20 seconds, it shows "Connection timeout. 
 - Error messages persist until next successful auth or state change
 
 ### OAuth Errors
+- Server refuses to start the sign-in: Error message from `auth/authorization_url`
 - Connection timeout: "Connection timeout. Please try again."
 - Authorization failure: Error message from server
 - Exchange failure: Error message from `auth/exchange`
