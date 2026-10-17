@@ -61,11 +61,17 @@ class TmpLocalPlayerAdapterStress {
         }
     }
 
-    private suspend fun <T : Any> await(read: () -> T?): T = withTimeout(5_000) {
+    private suspend fun <T : Any> await(read: () -> T?): T = withTimeout(fiveSeconds) {
         var v = read()
-        while (v == null) { delay(10); v = read() }
+        while (v == null) {
+            delay(tenMillis)
+        v = read()
+        }
         v
     }
+
+    private val fiveSeconds = 5_000L
+    private val tenMillis = 10L
 
     private suspend fun once(): String? {
         val player = Player()
@@ -75,10 +81,14 @@ class TmpLocalPlayerAdapterStress {
         val tracker = PlayerPositionTracker()
         val prefs = UserPreferences()
         val adapter = LocalPlayerAdapter(
-            settings = settings, apiClient = client,
-            playerRequestFactory = PlayerRequestFactory(tracker, prefs), positionTracker = tracker,
-            userPreferences = prefs, errorBus = ErrorMessageBus(),
-            endpoints = LocalPlayerEndpoints(client, settings, scope), playerFactory = { _, _, _ -> player },
+            settings = settings,
+            apiClient = client,
+            playerRequestFactory = PlayerRequestFactory(tracker, prefs),
+            positionTracker = tracker,
+            userPreferences = prefs,
+            errorBus = ErrorMessageBus(),
+            endpoints = LocalPlayerEndpoints(client, settings, scope),
+            playerFactory = { _, _, _ -> player },
         )
         player.adapter = adapter
         client.adapter = adapter
@@ -93,7 +103,13 @@ class TmpLocalPlayerAdapterStress {
             await { player.held.value.takeIf { it } }
             val playing = adapter.localPlayerData.value?.player?.isPlaying
             val wants = adapter.wantsSession.value
-            return if (playing == true || !wants) "cmd=$cmd playing=$playing wants=$wants :: ${player.log.joinToString(" | ")}" else null
+            return if (playing == true || !wants) {
+                "cmd=$cmd playing=$playing wants=$wants :: ${player.log.joinToString(
+                    " | ",
+                )}"
+            } else {
+                null
+            }
         } finally {
             adapter.cancel()
             scope.cancel()
@@ -105,6 +121,8 @@ class TmpLocalPlayerAdapterStress {
         val failures = ConcurrentLinkedQueue<String>()
         (1..16).map { async(Dispatchers.IO) { repeat(60) { once()?.let { failures += it } } } }.awaitAll()
         println("STRESS failures=${failures.size}")
-        failures.take(6).forEach { println("STRESS $it") }
+        failures.take(six).forEach { println("STRESS $it") }
     }
+
+    private val six = 6
 }
