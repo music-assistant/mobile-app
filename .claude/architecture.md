@@ -101,11 +101,20 @@ actual class PlatformFeature {
   `carriesFavorite` false must not change the heart of a row. Replace a row with
   `item.withFavorite(change.favoriteAfter(row.favorite))`. `MainDataSource` gets the added and updated
   tracks from `itemChanges` for the same reason.
+- **Scopes**: `MainDataSource.grantedScopes` (`GrantedScopes`) holds the scopes of the signed-in user. The
+  app reads `auth/scopes` once for each new session and finds the role of the user in the table. Gate a
+  write action on a scope. Do not gate it on the role name, because server 2.11 has custom roles.
+  The value is `NONE` before the table arrives and after a failed fetch, so the gate fails closed.
+  Compose reads `LocalGrantedScopes`, which `App` provides. `canEditLibrary` (`library.write`) gates
+  favorites, library membership, playlist edits and the played state. `canConfigurePlayers`
+  (`config.players.write`) gates DSP and the car DSP action. Every role has `players.control`, so
+  grouping has no gate.
 - **Library sort**: get the sort choices of a library list from `LibrarySortRepository.menu(mediaType)`, on the
   phone and in Android Auto. From server 2.11 (`sortWireFor`), the menu holds the fields of `music/sort_options`
   and the request sends `sort_field` and `sort_direction`. An older server gets the static `SortConfig` table and
   `order_by`. The `SortConfig` default stays the list default while the server offers its field, so podcasts
-  stay newest first. If the server does not offer it, the first server option is the default. A 2.11 server rejects a field that the list does not offer, so resolve the stored choice with
+  stay newest first. If the server does not offer it, the first server option is the default. A 2.11 server
+  rejects a field that the list does not offer, so resolve the stored choice with
   `LibrarySortMenu.resolve` before the request. Send a sort only as a `ListSort`. The sub-item lists (album
   tracks, playlist tracks, episodes, artist lists) keep `SortConfig` and sort on the client.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded

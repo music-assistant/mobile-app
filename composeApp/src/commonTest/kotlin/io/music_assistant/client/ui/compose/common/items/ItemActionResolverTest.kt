@@ -17,6 +17,7 @@ import kotlin.test.assertTrue
 class ItemActionResolverTest {
     private fun longClick(defaultAction: ItemAction?) = resolveLongClickActions(
         item = testTrack(),
+        canEditLibrary = true,
         librarySupported = false,
         canAddToPlaylist = false,
         canRemoveFromPlaylist = false,
@@ -100,6 +101,7 @@ class ItemActionResolverTest {
         val actions = resolveLongClickActions(
             item = folder,
             clickContext = ClickContext.BROWSE,
+            canEditLibrary = true,
             librarySupported = false,
             canAddToPlaylist = false,
             canRemoveFromPlaylist = false,
@@ -110,5 +112,58 @@ class ItemActionResolverTest {
                 .map { ItemAction.Play(it) },
             actions,
         )
+    }
+
+    private val libraryWrites = setOf(
+        ItemAction.AddToLibrary,
+        ItemAction.RemoveFromLibrary,
+        ItemAction.Favorite,
+        ItemAction.Unfavorite,
+        ItemAction.AddToPlaylist,
+        ItemAction.RemoveFromPlaylist,
+        ItemAction.MarkPlayed,
+        ItemAction.MarkUnplayed,
+    )
+
+    private fun longClickWrites(canEditLibrary: Boolean) = resolveLongClickActions(
+        item = testPodcastEpisode(),
+        canEditLibrary = canEditLibrary,
+        librarySupported = true,
+        canAddToPlaylist = true,
+        canRemoveFromPlaylist = true,
+        progressSupported = true,
+    ).filter { it in libraryWrites }
+
+    @Test
+    fun `long-click menu offers library writes only with library write scope`() {
+        assertTrue(longClickWrites(canEditLibrary = true).isNotEmpty())
+        assertEquals(emptyList(), longClickWrites(canEditLibrary = false))
+    }
+
+    @Test
+    fun `long-click menu keeps playback actions without library write scope`() {
+        val actions = resolveLongClickActions(
+            item = testTrack(),
+            canEditLibrary = false,
+            librarySupported = true,
+            canAddToPlaylist = true,
+            canRemoveFromPlaylist = true,
+            progressSupported = true,
+        )
+        assertTrue(ItemAction.Play(QueueOption.REPLACE) in actions)
+    }
+
+    @Test
+    fun `detail overflow is empty without library write scope`() {
+        val overflow = { canEditLibrary: Boolean ->
+            resolveDetailOverflowActions(
+                item = testTrack(),
+                canEditLibrary = canEditLibrary,
+                librarySupported = true,
+                canAddToPlaylist = true,
+            )
+        }
+        assertTrue(overflow(true).isNotEmpty())
+        assertEquals(emptyList(), overflow(false))
     }
 }

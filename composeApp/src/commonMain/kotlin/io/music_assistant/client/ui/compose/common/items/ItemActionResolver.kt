@@ -18,10 +18,12 @@ val AppMediaItem.supportsAddToPlaylist: Boolean
 /**
  * Long-click menu shows the union: playback block (Play Now / Insert Next & Play / Insert Next /
  * Add to Bottom / Start endless mix) followed by library, favorite, playlist and progress entries.
+ * Each of the latter writes the library, so [canEditLibrary] (`library.write`) gates them all.
  */
 fun resolveLongClickActions(
     item: AppMediaItem,
     clickContext: ClickContext? = null,
+    canEditLibrary: Boolean,
     librarySupported: Boolean,
     canAddToPlaylist: Boolean,
     canRemoveFromPlaylist: Boolean,
@@ -36,6 +38,7 @@ fun resolveLongClickActions(
     }
     if (item.isPlayable) addPlaybackActions(item, clickContext)
     if (customizationAllowed) add(ItemAction.Customize)
+    if (!canEditLibrary) return@buildList
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
         if (item.isInLibrary) {
@@ -90,14 +93,17 @@ private fun MutableList<ItemAction>.addPlaybackActions(
 }
 
 /**
- * Item detail screen three-dot overflow — library/favorite/playlist. Navigation entries
- * (Go to album / artist) are appended separately at the call site via [navigationOptions].
+ * Item detail screen three-dot overflow — library/favorite/playlist, all gated by
+ * [canEditLibrary]. Navigation entries (Go to album / artist) are appended separately at the
+ * call site via [navigationOptions].
  */
 fun resolveDetailOverflowActions(
     item: AppMediaItem,
+    canEditLibrary: Boolean,
     librarySupported: Boolean,
     canAddToPlaylist: Boolean,
 ): List<ItemAction> = buildList {
+    if (!canEditLibrary) return@buildList
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
         if (item.isInLibrary) {

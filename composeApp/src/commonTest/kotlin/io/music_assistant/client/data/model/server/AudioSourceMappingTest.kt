@@ -88,6 +88,7 @@ class AudioSourceMappingTest {
     fun `the long-press menu offers play now only`() {
         val actions = resolveLongClickActions(
             item = source(),
+            canEditLibrary = true,
             librarySupported = true,
             canAddToPlaylist = false,
             canRemoveFromPlaylist = false,

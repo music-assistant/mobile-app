@@ -302,7 +302,8 @@ fun FullPlayerItem(
     item: PlayerData,
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit,
-    onFavoriteClick: (AppMediaItem) -> Unit,
+    // Null hides the heart: the user cannot edit the library.
+    onFavoriteClick: ((AppMediaItem) -> Unit)?,
     onFavoriteStreamClick: (PlayerData) -> Unit = {},
     // See MainDataSource.canFavoriteCurrentlyPlaying: on-air song AND server support.
     canFavoriteStream: Boolean = false,
@@ -760,7 +761,7 @@ fun FullPlayerItem(
                         tint = colors.controlTint,
                     )
                 }
-            } else if (currentTrack?.canBeFavorited == true) {
+            } else if (currentTrack?.canBeFavorited == true && onFavoriteClick != null) {
                 val isFavorite = currentTrack.favorite == true
                 IconButton(
                     modifier = Modifier.size(favoriteSlot),

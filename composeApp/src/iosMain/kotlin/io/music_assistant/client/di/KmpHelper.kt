@@ -608,11 +608,12 @@ object KmpHelper : KoinComponent {
      * URI; removal works by id+mediaType.
      *
      * Returns `true` synchronously when the request was dispatched, `false` when
-     * we couldn't form a valid request (the only known failure mode today: an
-     * add for an item with no URI). Network outcome is fire-and-forget — Swift
+     * the user's role lacks `library.write` or we couldn't form a valid request
+     * (an add for an item with no URI). Network outcome is fire-and-forget — Swift
      * uses the synchronous return to avoid lying to Siri about success.
      */
     fun setFavorite(item: AppMediaItem, favorite: Boolean): Boolean {
+        if (!mainDataSource.grantedScopes.value.canEditLibrary) return false
         if (favorite) {
             // Prefer plain `uri`; fall back to `mediaUri`. The base class uses
             // `uri` directly; subclasses like Genre override `mediaUri` to

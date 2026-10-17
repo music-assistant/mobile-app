@@ -58,11 +58,13 @@ class CarDspApplier(
         val edge = if (active) "connect" else "disconnect"
         // The car edge triggers an (auto-)connect; the DSP save needs a live, authenticated
         // session. Wait for readiness (bounded) rather than firing into a half-open socket.
+        // The save also needs `config.players.write`, and the scope table arrives after readiness.
         val ready = withTimeoutOrNull(READY_TIMEOUT_MS) {
             serviceClient.isReadyForCommands.first { it }
+            dataSource.grantedScopes.first { it.canConfigurePlayers }
         }
         if (ready == null) {
-            logger.i { "$edge: not ready within ${READY_TIMEOUT_MS}ms, skipping DSP apply" }
+            logger.i { "$edge: not ready or not permitted within ${READY_TIMEOUT_MS}ms, skipping DSP apply" }
             return
         }
         val playerId = settings.sendspinEffectivePlayerId.value
