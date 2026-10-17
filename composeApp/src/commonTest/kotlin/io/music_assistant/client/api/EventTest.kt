@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -202,6 +203,22 @@ class EventTest {
         assertEquals(59, decoded.data.schemaVersion)
         assertEquals("https://ma.example.com", decoded.data.externalUrl)
         assertTrue(decoded.data.hasRemoteAccess)
+        // Server 2.10 does not send `unsupported_install`.
+        assertFalse(decoded.data.unsupportedInstall)
+    }
+
+    @Test
+    fun decodesUnsupportedInstallFlag() {
+        val raw = """{
+            "event": "core_state_updated",
+            "object_id": null,
+            "data": {"server_id": "srv1", "schema_version": 96, "unsupported_install": true}
+        }"""
+
+        val decoded = parse(raw).event()
+
+        assertTrue(decoded is CoreStateUpdatedEvent)
+        assertTrue(decoded.data.unsupportedInstall)
     }
 
     @Test

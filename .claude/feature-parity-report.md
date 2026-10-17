@@ -521,8 +521,11 @@ flow for 2.10.
 
 ### 5.9 Other 2.11 changes
 
-- `ServerInfoMessage.unsupported_install` (schema 87). The web shows a banner. The app ignores
-  the field. Add a dismissible banner. The flag is true when the server has no official build
+- `ServerInfoMessage.unsupported_install` (schema 87). The web shows a banner on its settings
+  pages. Status: done (issue #1183). `ServerInfo.unsupportedInstall` reads the flag.
+  `UnsupportedInstallCard` shows on the home screen with a Settings button, because the user can
+  connect to another server there. The user can dismiss the home card for each server. The
+  settings server section shows the card at all times. The flag is true when the server has no official build
   information (dev `music_assistant/mass.py`). It shows the installation method, not the server
   version. Server 2.10 does not send the field, so the app reads false.
 - `providers_updated` payloads are filtered per user. The app ignores the event and never

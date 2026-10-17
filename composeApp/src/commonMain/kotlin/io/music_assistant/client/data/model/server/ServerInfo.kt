@@ -25,6 +25,8 @@ data class ServerInfo(
     @SerialName("internal_url") var internalUrl: String? = null,
     @SerialName("external_url") var externalUrl: String? = null,
     @SerialName("has_remote_access") var hasRemoteAccess: Boolean = false,
+    /** The server does not run from an official release build (schema 87, server 2.11). */
+    @SerialName("unsupported_install") var unsupportedInstall: Boolean = false,
     // @SerialName("homeassistant_addon") var homeassistantAddon: Boolean? = null,
     // @SerialName("onboard_done") var onboardDone: Boolean? = null
 )

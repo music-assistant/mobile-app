@@ -47,6 +47,7 @@ import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.compose.common.UnsupportedInstallCard
 import io.music_assistant.client.ui.compose.common.CenteredProgress
 import io.music_assistant.client.ui.compose.common.CenteredText
 import io.music_assistant.client.ui.compose.common.DataState
@@ -82,8 +83,10 @@ fun HomeScreen(
     providerIconFetcher: ProviderIconFetcher,
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
+    onOpenSettings: () -> Unit,
 ) {
     val homeScreenState by homeScreenViewModel.state.collectAsStateWithLifecycle()
+    val unsupportedInstallServerId by homeScreenViewModel.unsupportedInstallServerId.collectAsStateWithLifecycle()
 
     // Reconciled, enabled-first ordering. Authoritative for normal-mode display.
     val recommendationsState = homeScreenState.recommendations
@@ -166,6 +169,16 @@ fun HomeScreen(
                     state = state.lazyListState,
                     contentPadding = contentPadding,
                 ) {
+                    // Hidden in edit mode: the reorder callback uses list indices of the rows only.
+                    unsupportedInstallServerId?.takeIf { !editMode }?.let { serverId ->
+                        item(key = UNSUPPORTED_INSTALL_KEY) {
+                            UnsupportedInstallCard(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                onOpenSettings = onOpenSettings,
+                                onDismiss = { homeScreenViewModel.dismissUnsupportedInstall(serverId) },
+                            )
+                        }
+                    }
                     items(
                         items = displayedData,
                         key = { it.category.lazyListKey },
@@ -233,6 +246,8 @@ fun HomeScreen(
         }
     }
 }
+
+private const val UNSUPPORTED_INSTALL_KEY = "unsupported_install_card"
 
 /**
  * One reconciled home row: its display/reorder identity ([category], valid before

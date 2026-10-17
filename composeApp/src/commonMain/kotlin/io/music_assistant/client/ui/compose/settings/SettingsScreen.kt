@@ -78,6 +78,7 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.auth.AuthenticationPanel
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
+import io.music_assistant.client.ui.compose.common.UnsupportedInstallCard
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.localizedTitle
 import io.music_assistant.client.ui.compose.common.toDisplayString
@@ -1173,6 +1174,9 @@ private fun ServerInfoSection(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 modifier = Modifier.padding(bottom = 12.dp),
             )
+            if (server.unsupportedInstall) {
+                UnsupportedInstallCard(modifier = Modifier.padding(bottom = 12.dp))
+            }
         }
 
         OutlinedButton(

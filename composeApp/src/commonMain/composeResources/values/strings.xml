@@ -168,6 +168,7 @@
   <string name="common_clear">Clear</string>
   <string name="common_create">Create</string>
   <string name="common_delete">Delete</string>
+  <string name="common_dismiss">Dismiss</string>
   <string name="common_done">Done</string>
   <string name="connection_lost">Disconnected — reconnecting…</string>
   <string name="default_click_dialog_save">Save</string>
@@ -433,4 +434,7 @@
   <string name="toast_marked_played">Marked as played</string>
   <string name="toast_marked_unplayed">Marked as unplayed</string>
   <string name="toast_no_uri">Media item has no URI</string>
+  <string name="unsupported_install_description">This server is not installed through one of the supported installation methods. Some features may not work as expected, and issues reported from it may be closed without support.</string>
+  <string name="unsupported_install_link">Installation methods</string>
+  <string name="unsupported_install_title">Unsupported installation</string>
 </resources>

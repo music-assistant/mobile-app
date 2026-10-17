@@ -139,6 +139,23 @@ class HomeScreenViewModel(
             .map { supportsLeaderLeave((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
+    private val dismissedUnsupportedInstall = MutableStateFlow<String?>(null)
+
+    /**
+     * Id of the connected server while it reports `unsupported_install` and the user has not
+     * dismissed the warning for it. The dismissal lasts as long as this ViewModel.
+     */
+    val unsupportedInstallServerId: StateFlow<String?> =
+        combine(apiClient.sessionState, dismissedUnsupportedInstall) { state, dismissed ->
+            (state as? HasConnectionData)?.serverInfo
+                ?.takeIf { it.unsupportedInstall && it.serverId != dismissed }
+                ?.serverId
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
+    fun dismissUnsupportedInstall(serverId: String) {
+        dismissedUnsupportedInstall.value = serverId
+    }
+
     private val _connectionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
     val connectionState = _connectionState.asStateFlow()
 

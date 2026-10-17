@@ -350,6 +350,7 @@ fun MainNavigationRoot(
                     homeScreenState,
                     libraryScreenState,
                     searchScreenState,
+                    goToSettings,
                 )
                 val tabRootKeys = backStacks.map { entryProvider(it.first()).contentKey }
                 ConditionalBackNavDisplay(
@@ -407,6 +408,7 @@ private fun mainNavEntryProvider(
     homeScreenState: MutableState<HomeScreenState?>,
     libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
+    goToSettings: () -> Unit,
 ): (NavKey) -> NavEntry<NavKey> {
     // Hoisted here (outlives the per-NavEntry SearchViewModel) to carry an empty-quick-search
     // escalation from the library tab to the Search tab. Set by ItemList, consumed by SearchScreen.
@@ -444,6 +446,7 @@ private fun mainNavEntryProvider(
                 providerIconFetcher = providerViewModel.providerIconFetcher(),
                 actionsViewModel = actionsViewModel,
                 state = screenState,
+                onOpenSettings = goToSettings,
             )
         }
 
