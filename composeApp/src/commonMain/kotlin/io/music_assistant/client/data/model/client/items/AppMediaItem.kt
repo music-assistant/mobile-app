@@ -71,6 +71,9 @@ sealed class AppMediaItem {
     abstract val images: Map<ImageType, ImageInfo>
     open val canStartEndlessMix: Boolean get() = false
 
+    /** Returns a copy of this item with its [favorite] flag set to [favorite]. */
+    abstract fun withFavorite(favorite: Boolean?): AppMediaItem
+
     open val isPlayable: Boolean get() = true
 
     open val displayName: String get() = name

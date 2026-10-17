@@ -428,7 +428,8 @@ class KtorServiceClient(
     }
 
     /**
-     * Called when any player starts playing. Prevents background teardown.
+     * Called while the local player plays, or while a local pause is not yet confirmed by the
+     * server (the adapter's `wantsSession`). Prevents background teardown.
      */
     override fun onPlaybackActive() {
         hasActivePlayback = true
@@ -436,7 +437,7 @@ class KtorServiceClient(
     }
 
     /**
-     * Called when all players stop playing.
+     * Called when neither holds any more.
      */
     override fun onPlaybackInactive() {
         hasActivePlayback = false
@@ -622,8 +623,20 @@ class KtorServiceClient(
                         }
 
                         is TransportState.Failed -> {
-                            _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
-                            logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
+                            // In the background nobody sees an error, and Backgrounded reconnects on
+                            // the next foreground without leaving the screen. The error state, and
+                            // the Settings screen it leads to, is for a failure the user can watch.
+                            if (isInBackground) {
+                                backgroundedConnectionInfo = backgroundInfo()
+                                _sessionState.update { SessionState.Disconnected.Backgrounded }
+                                logger.i {
+                                    "Transport→Failed while backgrounded → Disconnected.Backgrounded: " +
+                                        transportState.error.message
+                                }
+                            } else {
+                                _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
+                                logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
+                            }
                             rpcEngine.failAll(
                                 ConnectionLostException("Transport failed: ${transportState.error.message}"),
                             )

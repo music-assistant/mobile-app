@@ -20,7 +20,9 @@ import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.data.repository.fetchRecommendationRowItems
 import io.music_assistant.client.data.repository.fetchRecommendationRows
 import io.music_assistant.client.settings.SettingsRepository
@@ -250,7 +252,7 @@ class HomeScreenViewModel(
         // in the recommendations grid.
         viewModelScope.launch {
             mediaItemRepository.itemChanges.collect { change ->
-                (change.item as? Track)?.let { updateRecommendationsIfNeeded(it) }
+                (change.item as? Track)?.let { updateRecommendationsIfNeeded(it, change) }
             }
         }
     }
@@ -354,7 +356,7 @@ class HomeScreenViewModel(
         }
     }
 
-    private fun updateRecommendationsIfNeeded(changed: Track) {
+    private fun updateRecommendationsIfNeeded(changed: Track, change: MediaItemChange) {
         // Read-and-map inside the update lambda so a concurrent recommendations
         // write can never be clobbered with rows derived from a stale read.
         _state.update { state ->
@@ -363,7 +365,11 @@ class HomeScreenViewModel(
             val updated = rows.map { row ->
                 val items = (row.items as? DataState.Data)?.data ?: return@map row
                 val updatedItems = items.map { item ->
-                    if (item is Track && item.hasAnyMappingFrom(changed)) changed else item
+                    if (item is Track && item.hasAnyMappingFrom(changed)) {
+                        changed.withFavorite(change.favoriteAfter(item.favorite))
+                    } else {
+                        item
+                    }
                 }
                 row.copy(items = DataState.Data(updatedItems))
             }

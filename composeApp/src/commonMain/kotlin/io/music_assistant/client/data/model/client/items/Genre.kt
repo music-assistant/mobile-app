@@ -17,6 +17,7 @@ data class Genre(
     override val uri: String?,
     override val images: Map<ImageType, ImageInfo>,
 ) : AppMediaItem() {
+    override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.GENRE
     override val mediaUri: String
         get() = uri ?: "$provider://genre/$itemId"

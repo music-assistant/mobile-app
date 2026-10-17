@@ -1,0 +1,203 @@
+package io.music_assistant.client.data
+
+import com.russhwolf.settings.MapSettings
+import io.music_assistant.client.api.APICommands
+import io.music_assistant.client.api.Answer
+import io.music_assistant.client.api.ErrorMessageBus
+import io.music_assistant.client.api.Request
+import io.music_assistant.client.data.model.client.Player
+import io.music_assistant.client.data.model.server.StubServiceClient
+import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.utils.SessionState
+import io.music_assistant.sendspin.api.PlayerEvent
+import io.music_assistant.sendspin.api.PlayerState
+import io.music_assistant.sendspin.api.SendspinPlayer
+import io.music_assistant.sendspin.api.StopCause
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.buildJsonObject
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+/**
+ * The adapter against a fake Sendspin player: what a local pause does to the hold,
+ * to the server, and to the session keep-alive ([LocalPlayerAdapter.wantsSession]).
+ * The adapter runs on its own IO scope, so the tests wait on state in real time.
+ */
+class LocalPlayerAdapterTest {
+    private val client = RecordingClient()
+    private val settings = SettingsRepository(MapSettings(), MapSettings()).apply { setSendspinEnabled(true) }
+    private val player = FakePlayer()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val adapter = run {
+        val tracker = PlayerPositionTracker()
+        val preferences = UserPreferences()
+        LocalPlayerAdapter(
+            settings = settings,
+            apiClient = client,
+            playerRequestFactory = PlayerRequestFactory(tracker, preferences),
+            positionTracker = tracker,
+            userPreferences = preferences,
+            errorBus = ErrorMessageBus(),
+            endpoints = LocalPlayerEndpoints(client, settings, scope),
+            playerFactory = { _, _, _ -> player },
+        )
+    }
+
+    @AfterTest
+    fun tearDown() {
+        adapter.cancel()
+        scope.cancel()
+    }
+
+    @Test
+    fun starvationPausesLikeTheUserAndKeepsTheSessionWanted() = runBlocking<Unit> {
+        playing()
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
+
+        assertEquals(PAUSE, client.sent.receive().command)
+        await { player.held.value.takeIf { it } }
+        assertFalse(adapter.localPlayerData.value?.player?.isPlaying == true)
+        assertTrue(adapter.wantsSession.value)
+    }
+
+    @Test
+    fun theServerConfirmingThePauseReleasesTheHoldAndTheSession() = runBlocking<Unit> {
+        val local = playing()
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
+        client.sent.receive()
+
+        adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
+
+        await { player.held.value.takeUnless { it } }
+        await { adapter.wantsSession.value.takeUnless { it } }
+        assertFalse(adapter.wantsSession.value)
+    }
+
+    @Test
+    fun starvationWhileAlreadyPausedChangesNothing() = runBlocking<Unit> {
+        adapter.onInitialPlayersReceived(hasLocalPlayer = false)
+        await { adapter.localPlayerData.value }
+
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
+        delay(SETTLE_MS)
+
+        assertTrue(client.sent.tryReceive().isFailure)
+        assertFalse(player.held.value)
+        assertFalse(adapter.wantsSession.value)
+    }
+
+    @Test
+    fun aStreamStartedWhileHeldIsAnsweredWithAnotherPause() = runBlocking<Unit> {
+        val local = playing()
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
+        client.sent.receive()
+
+        player.emit(PlayerEvent.StreamStartedWhileHeld(local.id))
+
+        assertEquals(PAUSE, client.sent.receive().command)
+        assertTrue(player.held.value)
+    }
+
+    @Test
+    fun anOfflinePauseAsksForRecoveryAndKeepsTheSessionWantedUntilItLands() = runBlocking<Unit> {
+        val local = playing()
+        client.isReadyForCommands.value = false
+
+        adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Pause)
+
+        await { client.recoveries.value.takeIf { it > 0 } }
+        assertTrue(client.sent.tryReceive().isFailure)
+        assertTrue(adapter.wantsSession.value)
+
+        client.isReadyForCommands.value = true
+        assertEquals(PAUSE, client.sent.receive().command)
+        adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
+        await { adapter.wantsSession.value.takeUnless { it } }
+        assertFalse(adapter.wantsSession.value)
+    }
+
+    @Test
+    fun clearingTheStateDropsTheSessionWantButKeepsTheHold() = runBlocking<Unit> {
+        playing()
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
+        client.sent.receive()
+
+        adapter.clearState()
+
+        await { adapter.wantsSession.value.takeUnless { it } }
+        assertTrue(player.held.value)
+    }
+
+    /** Injects the synthetic local player and lets the server report it as playing. */
+    private suspend fun playing(): Player {
+        adapter.onInitialPlayersReceived(hasLocalPlayer = false)
+        val synthetic = await { adapter.localPlayerData.value?.player }
+        adapter.onServerPlayerUpdate(synthetic.copy(isPlaying = true))
+        await { adapter.wantsSession.value.takeIf { it } }
+        return synthetic
+    }
+
+    private suspend fun <T : Any> await(read: () -> T?): T = withTimeout(TIMEOUT_MS) {
+        var value = read()
+        while (value == null) {
+            delay(POLL_MS)
+            value = read()
+        }
+        value
+    }
+
+    private class FakePlayer : SendspinPlayer {
+        override val state = MutableStateFlow<PlayerState>(PlayerState.Disabled)
+        private val _events = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 16)
+        override val events: Flow<PlayerEvent> = _events
+        val held = MutableStateFlow(false)
+
+        override fun hold(held: Boolean) {
+            this.held.value = held
+        }
+
+        /** Waits for the adapter's collector first: the flow has no replay. */
+        suspend fun emit(event: PlayerEvent) {
+            _events.subscriptionCount.first { it > 0 }
+            _events.emit(event)
+        }
+    }
+
+    private class RecordingClient : StubServiceClient() {
+        override val sessionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
+        override val isReadyForCommands = MutableStateFlow(true)
+        val sent = Channel<Request>(Channel.UNLIMITED)
+        val recoveries = MutableStateFlow(0)
+
+        override suspend fun sendRequest(request: Request): Result<Answer> {
+            sent.send(request)
+            return Result.success(Answer(buildJsonObject {}))
+        }
+
+        override fun requestCommandRecovery() {
+            recoveries.value++
+        }
+    }
+
+    private companion object {
+        val PAUSE = APICommands.playersCmd("pause")
+        const val TIMEOUT_MS = 5_000L
+        const val POLL_MS = 10L
+        const val SETTLE_MS = 300L
+    }
+}

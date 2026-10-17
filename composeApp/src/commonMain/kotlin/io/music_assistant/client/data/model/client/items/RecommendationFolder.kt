@@ -19,6 +19,8 @@ data class RecommendationFolder(
     // The server marks a folder it can enqueue (with every playable item beneath it); off by default.
     override val isPlayable: Boolean = false,
 ) : AppMediaItem() {
+    // No favorite state, so the copy is the item itself.
+    override fun withFavorite(favorite: Boolean?) = this
     override val providerMappings: List<ProviderMapping>? = null
     override val metadata: Metadata? = null
     override val favorite: Boolean? = null

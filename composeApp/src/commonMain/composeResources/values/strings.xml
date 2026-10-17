@@ -237,7 +237,6 @@
   <string name="media_error_connection_lost">Connection lost</string>
   <string name="media_error_local_player_off">Local player is not enabled</string>
   <string name="media_error_reconnecting">Reconnecting…</string>
-  <string name="media_playback_stopped_connection_lost">Playback stopped: lost connection to the server</string>
   <string name="media_queue_now_playing">Now playing</string>
   <string name="media_toast_playing_players">You have playing players</string>
   <string name="media_type_albums">Albums</string>
@@ -308,6 +307,8 @@
   <string name="queue_no_other_players">No other players available</string>
   <string name="queue_not_loaded">Not loaded</string>
   <string name="queue_transfer">Transfer queue</string>
+  <string name="reconnect_dialog_message">Connection to server lost, trying to reconnect</string>
+  <string name="reconnect_dialog_stop">Stop trying</string>
   <string name="refresh">Refresh</string>
   <string name="schema_incompatible_dialog_exit">Exit</string>
   <string name="schema_incompatible_dialog_message">This app is too old to connect to this server. Please update the app to continue.</string>

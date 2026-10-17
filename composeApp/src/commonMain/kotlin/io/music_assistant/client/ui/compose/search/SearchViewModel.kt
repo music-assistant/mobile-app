@@ -18,7 +18,9 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.FlowPreview
@@ -102,7 +104,7 @@ class SearchViewModel(
         // Listen to real-time library changes; refresh any tracks already shown.
         viewModelScope.launch {
             mediaItemRepository.itemChanges.collect { change ->
-                (change.item as? Track)?.let { updateSearchResultsIfNeeded(it) }
+                (change.item as? Track)?.let { updateSearchResultsIfNeeded(it, change) }
             }
         }
     }
@@ -171,11 +173,15 @@ class SearchViewModel(
         }
     }
 
-    private fun updateSearchResultsIfNeeded(changed: Track) {
+    private fun updateSearchResultsIfNeeded(changed: Track, change: MediaItemChange) {
         val resultsData = (_state.value.resultsState as? DataState.Data)?.data
         if (resultsData != null) {
             val updatedTracks = resultsData.tracks.map { track ->
-                if (track.hasAnyMappingFrom(changed)) changed else track
+                if (track.hasAnyMappingFrom(changed)) {
+                    changed.withFavorite(change.favoriteAfter(track.favorite))
+                } else {
+                    track
+                }
             }
             _state.update {
                 it.copy(resultsState = DataState.Data(resultsData.copy(tracks = updatedTracks)))

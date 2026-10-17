@@ -26,7 +26,9 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,10 +104,11 @@ class ItemDetailsViewModel(
                 val updated = change.item
                 (_state.value.itemState as? DataState.Data)?.data?.let { current ->
                     if (current.hasAnyMappingFrom(updated)) {
-                        _state.update { it.copy(itemState = DataState.Data(updated)) }
+                        val item = updated.withFavorite(change.favoriteAfter(current.favorite))
+                        _state.update { it.copy(itemState = DataState.Data(item)) }
                     }
                 }
-                updateSubItemIfNeeded(updated)
+                updateSubItemIfNeeded(updated, change)
             }
         }
 
@@ -487,25 +490,37 @@ class ItemDetailsViewModel(
         }
     }
 
-    private fun updateSubItemIfNeeded(changed: AppMediaItem) {
+    private fun updateSubItemIfNeeded(changed: AppMediaItem, change: MediaItemChange) {
         when (changed) {
             is Artist -> {
                 val artistsData = (_state.value.artistsState as? DataState.Data)?.data ?: return
-                val updated = artistsData.map { if (it.itemId == changed.itemId) changed else it }
+                val updated = artistsData.map {
+                    if (it.itemId == changed.itemId) changed.withFavorite(change.favoriteAfter(it.favorite)) else it
+                }
                 _state.update { it.copy(artistsState = DataState.Data(updated)) }
             }
 
             is Album -> {
                 val albumsData = (_state.value.albumsState as? DataState.Data)?.data ?: return
-                val updated = albumsData.map { if (it.itemId == changed.itemId) changed else it }
-                rawAlbums = rawAlbums.map { if (it.itemId == changed.itemId) changed else it }
-                _state.update { it.copy(albumsState = DataState.Data(updated)) }
+                val replace = { album: Album ->
+                    if (album.itemId == changed.itemId) {
+                        changed.withFavorite(change.favoriteAfter(album.favorite))
+                    } else {
+                        album
+                    }
+                }
+                rawAlbums = rawAlbums.map(replace)
+                _state.update { it.copy(albumsState = DataState.Data(albumsData.map(replace))) }
             }
 
             is PlayableItem -> {
                 if (_state.value.playableItemsState !is DataState.Data) return
                 rawPlayableItems = rawPlayableItems.map { existing ->
-                    if (existing.itemId == changed.itemId) changed else existing
+                    if (existing.itemId == changed.itemId) {
+                        changed.withFavorite(change.favoriteAfter(existing.favorite))
+                    } else {
+                        existing
+                    }
                 }
                 publishPlayableItems()
             }

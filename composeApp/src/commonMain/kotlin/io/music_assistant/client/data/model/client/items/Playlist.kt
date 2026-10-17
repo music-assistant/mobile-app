@@ -21,6 +21,7 @@ data class Playlist(
     /** Null when the server does not report it; then no type is excluded. */
     val supportedMediaTypes: Set<MediaType>? = null,
 ) : AppMediaItem() {
+    override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.PLAYLIST
     override val canStartEndlessMix: Boolean get() = !isDynamic
 

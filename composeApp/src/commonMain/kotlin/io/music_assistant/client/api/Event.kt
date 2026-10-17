@@ -7,6 +7,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.data.model.server.events.FavoriteUpdatedEvent
 import io.music_assistant.client.data.model.server.events.GenericEvent
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
@@ -53,6 +54,7 @@ data class Event(
             EventType.MEDIA_ITEM_DELETED -> myJson.decodeFromJsonElement<MediaItemDeletedEvent>(json)
             EventType.MEDIA_ITEM_PLAYED -> myJson.decodeFromJsonElement<MediaItemPlayedEvent>(json)
             EventType.MEDIA_ITEM_UPDATED -> myJson.decodeFromJsonElement<MediaItemUpdatedEvent>(json)
+            EventType.FAVORITE_UPDATED -> myJson.decodeFromJsonElement<FavoriteUpdatedEvent>(json)
             EventType.PLAYER_ADDED -> myJson.decodeFromJsonElement<PlayerAddedEvent>(json)
             EventType.PLAYER_REMOVED -> myJson.decodeFromJsonElement<PlayerRemovedEvent>(json)
             EventType.PLAYER_UPDATED -> myJson.decodeFromJsonElement<PlayerUpdatedEvent>(json)

@@ -20,6 +20,7 @@ import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.settings.SeriesGrouping
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
@@ -99,7 +100,9 @@ class LibraryListViewModel(
             mediaItemRepository.itemChanges.collect { change ->
                 when (change) {
                     // In-place row patch, no refetch.
-                    is MediaItemChange.Updated -> patchFavorite(change.item)
+                    is MediaItemChange.Updated,
+                    is MediaItemChange.FavoriteUpdated,
+                        -> patchItem(change)
                     // Refetch first page so the new row lands in its sorted/filtered
                     // position (matches the "page refresh" semantics for creation).
                     is MediaItemChange.Added ->
@@ -123,17 +126,17 @@ class LibraryListViewModel(
         }
     }
 
-    private fun patchFavorite(updated: AppMediaItem) {
+    private fun patchItem(change: MediaItemChange) {
+        val updated = change.item
         if (updated.mediaType != mediaType) return
         _state.update { st ->
             val data = st.dataState as? DataState.Data ?: return@update st
-            val match = { item: AppMediaItem -> item.matchesIdentityOf(updated) }
-            if (data.data.none(match)) return@update st
-            val patched = if (st.filters.favorite && updated.favorite != true) {
-                // Dropped from the favorites filter; it would be gone on refetch.
-                data.data.filterNot(match)
-            } else {
-                data.data.map { if (match(it)) updated else it }
+            if (data.data.none { it.matchesIdentityOf(updated) }) return@update st
+            val patched = data.data.mapNotNull { item ->
+                if (!item.matchesIdentityOf(updated)) return@mapNotNull item
+                updated.withFavorite(change.favoriteAfter(item.favorite))
+                    // Dropped from the favorites filter; it would be gone on refetch.
+                    .takeUnless { st.filters.favorite && it.favorite != true }
             }
             st.copy(dataState = DataState.Data(patched))
         }

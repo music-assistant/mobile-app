@@ -84,6 +84,9 @@ enum class EventType {
     @SerialName("media_item_played")
     MEDIA_ITEM_PLAYED,
 
+    @SerialName("favorite_updated")
+    FAVORITE_UPDATED,
+
     @SerialName("providers_updated")
     PROVIDERS_UPDATED,
 

@@ -26,7 +26,7 @@ import androidx.savedstate.serialization.SavedStateConfiguration
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.ui.compose.common.AutoLoginSplash
-import io.music_assistant.client.ui.compose.common.ConnectionStatusBanner
+import io.music_assistant.client.ui.compose.common.ConnectionStatusOverlay
 import io.music_assistant.client.ui.compose.home.MainNavigationRoot
 import io.music_assistant.client.ui.compose.nav.exitApp
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
@@ -205,8 +205,8 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             },
         )
 
-        // Connection status banner - overlays at top, doesn't shrink content
-        ConnectionStatusBanner(
+        // Reconnection banner (overlays at top, doesn't shrink content) or modal dialog
+        ConnectionStatusOverlay(
             modifier = Modifier.align(Alignment.TopCenter),
         )
 

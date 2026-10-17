@@ -22,6 +22,7 @@ import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
+import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
@@ -34,10 +35,8 @@ import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.ServerUser
-import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemPlayedEvent
-import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.data.model.server.events.PlayerAddedEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
@@ -48,6 +47,9 @@ import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.grantsScope
 import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.repository.MediaItemChange
+import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
@@ -130,6 +132,7 @@ class MainDataSource(
     /** Server-synced user preferences, refreshed from `auth/me` and shared by all surfaces. */
     val userPreferences: UserPreferences,
     private val mediaItemFactory: MediaItemFactory,
+    private val mediaItemRepository: MediaItemRepository,
     private val playerFactory: PlayerFactory,
     private val queueFactory: QueueFactory,
     private val playDispatcher: PlayDispatcher,
@@ -180,7 +183,7 @@ class MainDataSource(
      * queue payload reports a stale `favorite` for the now-playing track (it
      * lags behind, indefinitely, after a toggle), so it cannot be trusted.
      * This overlay is written optimistically on user toggle and reconciled by
-     * the reliable [MediaItemUpdatedEvent], then re-applied on every rebuild in
+     * the reliable server item changes ([MediaItemChange]), then re-applied on every rebuild in
      * [buildPlayerDataList] so queue updates can't clobber it.
      */
     private val _favoriteOverrides = MutableStateFlow<Map<String, Boolean>>(emptyMap())
@@ -715,14 +718,12 @@ class MainDataSource(
             }
         }
 
-        // Arms `hasActivePlayback` so backgrounding mid-playback doesn't tear down
-        // Sendspin (goodbye=shutdown → audio stops, server cold-resumes. Driven off
-        // logical `isPlaying`, which survives the transient transport blip — unlike
-        // the Sendspin sync state.
+        // Arms `hasActivePlayback` so backgrounding doesn't tear down the session while the
+        // local player plays, or while a local pause still waits for the server to confirm it
+        // (goodbye=shutdown → audio stops, server cold-resumes). Driven off the adapter's logical
+        // state, which survives the transient transport blip — unlike the Sendspin sync state.
         launch {
-            localPlayer
-                .map { it?.player?.isPlaying == true }
-                .distinctUntilChanged()
+            localPlayerController.wantsSession
                 .collect { if (it) apiClient.onPlaybackActive() else apiClient.onPlaybackInactive() }
         }
 
@@ -869,7 +870,7 @@ class MainDataSource(
      * media-session (Android Auto) favorite action. Optimistically flips the override
      * (the server's queue payload reports a stale `favorite`), fires the add/remove
      * request, and rolls the override back if the server rejects it. Reconciled later
-     * by [MediaItemUpdatedEvent].
+     * by the server item changes ([MediaItemChange]).
      */
     fun toggleFavorite(item: AppMediaItem) {
         launch {
@@ -1236,6 +1237,7 @@ class MainDataSource(
 
     private fun watchApiEvents() =
         launch {
+            launch { watchTrackChanges() }
             apiClient.events
                 .collect { event ->
                     when (event) {
@@ -1434,21 +1436,6 @@ class MainDataSource(
                             // anchors flow via `QueueTimeUpdatedEvent` above.
                         }
 
-                        is MediaItemUpdatedEvent -> {
-                            (mediaItemFactory.create(event.data) as? Track)
-                                ?.let {
-                                    // Reliable server truth — reconcile the optimistic
-                                    // overlay so it survives the stale queue payload.
-                                    it.favorite?.let { fav -> setFavoriteOverride(it, fav) }
-                                    updateMediaTrackInfo(it)
-                                }
-                        }
-
-                        is MediaItemAddedEvent -> {
-                            (mediaItemFactory.create(event.data) as? Track)
-                                ?.let { updateMediaTrackInfo(it) }
-                        }
-
                         is MediaItemDeletedEvent -> {
                             (mediaItemFactory.create(event.data) as? Track)
                                 ?.let { deletedTrack ->
@@ -1491,7 +1478,30 @@ class MainDataSource(
                 }
         }
 
-    private fun updateMediaTrackInfo(newTrack: Track) {
+    /**
+     * Added and updated tracks come from [MediaItemRepository.itemChanges], which knows if a change
+     * carries the favorite of the user. [watchApiEvents] handles the deletions, because the raw
+     * event keeps the library identity.
+     */
+    private suspend fun watchTrackChanges() {
+        mediaItemRepository.itemChanges.collect { change ->
+            val track = change.item as? Track ?: return@collect
+            when (change) {
+                // Reliable server truth — reconcile the optimistic overlay so it survives
+                // the stale queue payload. No choice (null) shows as "not a favorite".
+                is MediaItemChange.FavoriteUpdated -> setFavoriteOverride(track, track.favorite == true)
+                is MediaItemChange.Updated ->
+                    track.favorite?.takeIf { change.carriesFavorite }?.let { setFavoriteOverride(track, it) }
+                is MediaItemChange.Added -> Unit
+                is MediaItemChange.Deleted -> return@collect
+            }
+            updateMediaTrackInfo(track, change)
+        }
+    }
+
+    private fun updateMediaTrackInfo(newTrack: Track, change: MediaItemChange) {
+        // The new version of a queue row keeps the favorite of the row if the change has none.
+        val replacing = { current: PlayableItem -> newTrack.withFavorite(change.favoriteAfter(current.favorite)) }
         _playersData.update { currentState ->
             when (currentState) {
                 is DataState.Error,
@@ -1506,7 +1516,7 @@ class MainDataSource(
                             val updatedItems = items.map { queueTrack ->
                                 if ((queueTrack.track as? AppMediaItem)?.hasAnyMappingFrom(newTrack) == true) {
                                     queueTrack.copy(
-                                        track = newTrack,
+                                        track = replacing(queueTrack.track),
                                     )
                                 } else {
                                     queueTrack
@@ -1521,13 +1531,7 @@ class MainDataSource(
                                             ) {
                                                 queueData.data.info.copy(
                                                     currentItem = queueData.data.info.currentItem.copy(
-                                                        track = newTrack
-                                                            .takeIf {
-                                                                it.hasAnyMappingFrom(
-                                                                    queueData.data.info.currentItem.track as AppMediaItem,
-                                                                )
-                                                            }
-                                                            ?: queueData.data.info.currentItem.track,
+                                                        track = replacing(queueData.data.info.currentItem.track),
                                                     ),
                                                 )
                                             } else {
