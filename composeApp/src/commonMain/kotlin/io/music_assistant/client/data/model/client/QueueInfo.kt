@@ -35,7 +35,20 @@ data class QueueInfo(
     val overlay: QueueOverlay? = null,
     /** The server runs a play action on this queue, started by any client. */
     val playActionInProgress: Boolean = false,
+    /** Number of items in the queue, or null when the server did not send it. */
+    val itemCount: Int? = null,
 )
+
+/**
+ * Whether a plain `next` moves the queue. The server ignores it without a current item, and on
+ * the last item unless repeat is ALL (`player_queues/next`). An unknown count counts as a move.
+ */
+val QueueInfo.nextMovesQueue: Boolean
+    get() {
+        val index = currentIndex ?: return false
+        val count = itemCount ?: return true
+        return index < count - 1 || repeatMode == RepeatMode.ALL
+    }
 
 /**
  * A looping sound effect mixed into the queue stream by the server. [sourceUri] and

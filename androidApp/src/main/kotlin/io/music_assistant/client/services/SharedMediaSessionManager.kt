@@ -5,6 +5,7 @@ package io.music_assistant.client.services
 
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.session.PlaybackState
@@ -15,6 +16,8 @@ import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.view.KeyEvent
+import androidx.core.content.IntentCompat
 import androidx.media.utils.MediaConstants
 import co.touchlab.kermit.Logger
 import coil3.ImageLoader
@@ -32,6 +35,7 @@ import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.canBeFavorited
+import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.data.withPresentationChapter
@@ -82,6 +86,8 @@ private val SESSION_TRANSPORT_ACTIONS: Long =
         PlaybackStateCompat.ACTION_SEEK_TO or
         PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
         PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+        PlaybackStateCompat.ACTION_FAST_FORWARD or
+        PlaybackStateCompat.ACTION_REWIND or
         PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM or
         PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
         PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
@@ -464,6 +470,8 @@ class SharedMediaSessionManager(
             override fun onPause() = act(PlayerAction.Pause)
             override fun onSkipToNext() = act(PlayerAction.Next)
             override fun onSkipToPrevious() = act(PlayerAction.Previous)
+            override fun onFastForward() = act(PlayerAction.SeekBy(LongFormSeekDefaults.FORWARD_SECONDS))
+            override fun onRewind() = act(PlayerAction.SeekBy(-LongFormSeekDefaults.BACK_SECONDS))
 
             override fun onSeekTo(pos: Long) {
                 // Host scrubbers return chapter-relative targets; remap them to absolute seconds.
@@ -501,6 +509,17 @@ class SharedMediaSessionManager(
                     is QueueDisplayRow.ChapterItem ->
                         act(PlayerAction.SeekTo(chapterSeekSeconds(row.chapter.start)))
                 }
+            }
+
+            override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
+                val key = IntentCompat.getParcelableExtra(
+                    mediaButtonEvent,
+                    Intent.EXTRA_KEY_EVENT,
+                    KeyEvent::class.java,
+                )
+                val seek = key?.let(::wheelSeek) ?: return super.onMediaButtonEvent(mediaButtonEvent)
+                if (key.action == KeyEvent.ACTION_DOWN && key.repeatCount == 0) act(seek)
+                return true
             }
 
             override fun onCustomAction(action: String, extras: Bundle?) {
@@ -544,6 +563,22 @@ class SharedMediaSessionManager(
 
     private fun act(action: PlayerAction) {
         currentPlayer()?.let { dataSource.playerAction(it, action) }
+    }
+
+    /**
+     * In the car, the steering-wheel skip keys seek within an audiobook or a podcast episode. The
+     * on-screen Next and Previous (car, notification) are transport controls, not keys, so they
+     * still change the item. Null leaves the key to the default handling.
+     */
+    private fun wheelSeek(key: KeyEvent): PlayerAction.SeekBy? {
+        val offset = when (key.keyCode) {
+            KeyEvent.KEYCODE_MEDIA_NEXT -> LongFormSeekDefaults.FORWARD_SECONDS
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> -LongFormSeekDefaults.BACK_SECONDS
+            else -> return null
+        }
+        val longForm = autoHostActive.value &&
+            currentPlayer()?.queueInfo?.currentItem?.track.isLongFormSpokenContent
+        return PlayerAction.SeekBy(offset).takeIf { longForm }
     }
 
     /**

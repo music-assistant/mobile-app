@@ -2,6 +2,7 @@ package io.music_assistant.client.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PlayerPositionTrackerTest {
@@ -146,5 +147,71 @@ class PlayerPositionTrackerTest {
         tracker.confirmPlaying(queueId)
 
         assertTrue(!tracker.isFrozenUntilConfirmed(queueId))
+    }
+
+    @Test
+    fun anUnconfirmedTrackChangeFallsBackToTheServerPosition() {
+        // A next on the last item: the server changes nothing and sends nothing.
+        val tracker = PlayerPositionTracker()
+        val queueId = "queue"
+        tracker.setAnchor(queueId = queueId, elapsedSec = 1800.0, isPlaying = false)
+
+        val freezeId = tracker.setOptimisticTrackChange(queueId = queueId, elapsedSec = 0.0)
+        assertEquals(0.0, tracker.effectiveSec(queueId))
+
+        tracker.releaseUnconfirmed(queueId, freezeId)
+
+        assertFalse(tracker.isFrozenUntilConfirmed(queueId))
+        assertEquals(1800.0, tracker.effectiveSec(queueId))
+    }
+
+    @Test
+    fun anUnconfirmedFreezeFallsBackToTheLatestServerPosition() {
+        val tracker = PlayerPositionTracker()
+        val queueId = "queue"
+        tracker.setAnchor(queueId = queueId, elapsedSec = 65.0, isPlaying = false)
+        val freezeId = tracker.setOptimisticSeek(queueId = queueId, elapsedSec = 149.0)
+
+        // A rejected seek: the server keeps reporting its own position.
+        tracker.setAnchor(queueId = queueId, elapsedSec = 70.0)
+        assertEquals(149.0, tracker.effectiveSec(queueId))
+
+        tracker.releaseUnconfirmed(queueId, freezeId)
+
+        assertEquals(70.0, tracker.effectiveSec(queueId))
+    }
+
+    @Test
+    fun aConfirmedFreezeStillWaitsForAudio() {
+        val tracker = PlayerPositionTracker()
+        val queueId = "queue"
+        tracker.setAnchor(queueId = queueId, elapsedSec = 65.0, isPlaying = true)
+        val freezeId = tracker.setOptimisticSeek(queueId = queueId, elapsedSec = 149.0)
+
+        // The echo of the seek target, then a noisy old position during the handoff.
+        tracker.setAnchor(queueId = queueId, elapsedSec = 149.0)
+        tracker.setAnchor(queueId = queueId, elapsedSec = 66.0)
+        tracker.releaseUnconfirmed(queueId, freezeId)
+
+        assertTrue(tracker.isFrozenUntilConfirmed(queueId))
+        assertEquals(149.0, tracker.effectiveSec(queueId))
+    }
+
+    @Test
+    fun releasingAnOlderFreezeKeepsTheNewerOne() {
+        val tracker = PlayerPositionTracker()
+        val queueId = "queue"
+        tracker.setAnchor(queueId = queueId, elapsedSec = 65.0, isPlaying = false)
+        val older = tracker.setOptimisticSeek(queueId = queueId, elapsedSec = 95.0)
+        tracker.confirmPlaying(queueId)
+        tracker.setPlaying(queueId, isPlaying = false)
+        val newer = tracker.setOptimisticSeek(queueId = queueId, elapsedSec = 125.0)
+
+        tracker.releaseUnconfirmed(queueId, older)
+
+        assertTrue(newer != older)
+
+        assertTrue(tracker.isFrozenUntilConfirmed(queueId))
+        assertEquals(125.0, tracker.effectiveSec(queueId))
     }
 }

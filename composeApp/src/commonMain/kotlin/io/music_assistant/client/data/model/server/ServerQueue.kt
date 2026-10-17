@@ -15,7 +15,7 @@ data class ServerQueue(
     // @SerialName("active") val active: Boolean,
     // @SerialName("display_name") val displayName: String,
     @SerialName("available") val available: Boolean = false,
-    // @SerialName("items") val items: Int,
+    @SerialName("items") val items: Int? = null,
     @SerialName("shuffle_enabled") val shuffleEnabled: Boolean = false,
     @SerialName("repeat_mode") val repeatMode: String? = null,
     /**
