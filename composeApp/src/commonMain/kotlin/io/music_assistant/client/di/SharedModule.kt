@@ -10,9 +10,11 @@ import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.CarDspApplier
 import io.music_assistant.client.data.LocalPlayerAdapter
 import io.music_assistant.client.data.LocalPlayerEndpoints
+import io.music_assistant.client.data.LocalPlayerFactory
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.PlayerPositionTracker
 import io.music_assistant.client.data.PlayerRequestFactory
+import io.music_assistant.client.data.SendspinLocalPlayerFactory
 import io.music_assistant.client.data.UserPreferences
 import io.music_assistant.client.data.announcement.AnnouncementRepository
 import io.music_assistant.client.data.factory.MediaItemFactory
@@ -141,6 +143,7 @@ fun sharedModule(
         single { UserPreferences() }        // Server-synced `auth/me` preferences
         singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
         single { LocalPlayerEndpoints(get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
+        single<LocalPlayerFactory> { SendspinLocalPlayerFactory(get(), get(), get(), get(), get()) }
         singleOf(::LocalPlayerAdapter)      // Local player: app side of the Sendspin module
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper

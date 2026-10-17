@@ -715,14 +715,12 @@ class MainDataSource(
             }
         }
 
-        // Arms `hasActivePlayback` so backgrounding mid-playback doesn't tear down
-        // Sendspin (goodbye=shutdown → audio stops, server cold-resumes. Driven off
-        // logical `isPlaying`, which survives the transient transport blip — unlike
-        // the Sendspin sync state.
+        // Arms `hasActivePlayback` so backgrounding doesn't tear down the session while the
+        // local player plays, or while a local pause still waits for the server to confirm it
+        // (goodbye=shutdown → audio stops, server cold-resumes). Driven off the adapter's logical
+        // state, which survives the transient transport blip — unlike the Sendspin sync state.
         launch {
-            localPlayer
-                .map { it?.player?.isPlaying == true }
-                .distinctUntilChanged()
+            localPlayerController.wantsSession
                 .collect { if (it) apiClient.onPlaybackActive() else apiClient.onPlaybackInactive() }
         }
 

@@ -20,21 +20,12 @@ import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.utils.HttpClientFactory
-import io.music_assistant.client.utils.NetworkMonitor
-import io.music_assistant.client.utils.audioDispatcher
-import io.music_assistant.client.utils.sendspinClock
-import io.music_assistant.sendspin.SendspinPlayer
 import io.music_assistant.sendspin.api.AudioCodec
-import io.music_assistant.sendspin.api.AudioSink
-import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.FailureCause
 import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
-import io.music_assistant.sendspin.api.SendspinDeps
-import io.music_assistant.sendspin.api.SendspinKeyStore
 import io.music_assistant.sendspin.api.StopCause
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,14 +50,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.media_playback_stopped_connection_lost
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_incompatible_protocol
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_server_rejected
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_setup
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_unauthorized
 import musicassistantclient.composeapp.generated.resources.sendspin_failed_unpaired
 import org.jetbrains.compose.resources.getString
-import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
 
@@ -80,9 +69,9 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  * [MainDataSource] depends on this one-way. The control plane stays on the MA
  * REST API: Sendspin is an audio endpoint (player@v1), not a controller.
  *
- * Registered in `SharedModule` with the key store and [LocalPlayerEndpoints];
- * the `AudioSink` and the `DecoderFactory` come from `AndroidModule` and
- * `IosModule`. [approvePairing] is the app's half of silent pairing: the module
+ * Registered in `SharedModule` with [LocalPlayerEndpoints] and the
+ * [LocalPlayerFactory], which holds the platform ports (sink, decoders, key
+ * store). [approvePairing] is the app's half of silent pairing: the module
  * has no MA API client, so it calls back here to spend the pairing token on
  * `sendspin/pair_web_player`, which pairs the player without a person.
  */
@@ -94,11 +83,7 @@ class LocalPlayerAdapter(
     private val userPreferences: UserPreferences,
     private val errorBus: ErrorMessageBus,
     private val endpoints: LocalPlayerEndpoints,
-    sink: AudioSink,
-    decoders: DecoderFactory,
-    keyStore: SendspinKeyStore,
-    networkMonitor: NetworkMonitor,
-    httpClientFactory: HttpClientFactory,
+    playerFactory: LocalPlayerFactory,
 ) : CoroutineScope {
     private val log = Logger.withTag("LocalPlayerAdapter")
     private val supervisorJob = SupervisorJob()
@@ -136,20 +121,7 @@ class LocalPlayerAdapter(
         )
     }.stateIn(this, SharingStarted.Eagerly, null)
 
-    val player: SendspinPlayerApi = SendspinPlayer(
-        config = config,
-        deps = SendspinDeps(
-            sink = sink,
-            decoders = decoders,
-            keyStore = keyStore,
-            httpClient = httpClientFactory.create(),
-            online = networkMonitor.isAvailable,
-            approvePairing = ::approvePairing,
-            audioDispatcher = audioDispatcher,
-            clock = sendspinClock,
-        ),
-        scope = this,
-    )
+    val player: SendspinPlayerApi = playerFactory.create(config, ::approvePairing, this)
 
     /** Connection and audio state for the UI; null while disabled. */
     val playerState: StateFlow<PlayerState?> = player.state
@@ -177,13 +149,23 @@ class LocalPlayerAdapter(
     private var pausedByInterruption = false
 
     /** Mirror of the hold this adapter set on [player]; it masks the server's stale "playing". */
-    @Volatile
-    private var outputHeld = false
+    private val held = MutableStateFlow(false)
+    private val outputHeld: Boolean get() = held.value
 
     private fun hold(held: Boolean) {
-        outputHeld = held
+        this.held.value = held
         player.hold(held)
     }
+
+    /**
+     * True while the local player plays, or while a local pause is not yet confirmed by the
+     * server. The hold is that pause: the server still streams until the queued pause lands,
+     * so the MA session must keep reconnecting instead of being torn down in the background.
+     * A stop forced by an empty buffer during an outage is such a pause, like a user's.
+     */
+    val wantsSession: StateFlow<Boolean> = combine(_localPlayerData, held) { data, held ->
+        data != null && (data.player.isPlaying || held)
+    }.stateIn(this, SharingStarted.Eagerly, false)
 
     init {
         launch { player.events.collect(::onPlayerEvent) }
@@ -237,10 +219,11 @@ class LocalPlayerAdapter(
             }
 
             is PlayerEvent.PlaybackStopped -> when (event.cause) {
+                // A local pause like a user's: held, queued, and answered with a pause if the
+                // server starts a stream first. The player never resumes on its own.
                 StopCause.Starved -> {
                     log.w { "Playback stopped: buffer ran dry while disconnected" }
                     pauseLocalIfPlaying()
-                    errorBus.emit(getString(Res.string.media_playback_stopped_connection_lost))
                 }
 
                 StopCause.FocusLost -> {
