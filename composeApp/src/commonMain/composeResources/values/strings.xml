@@ -307,6 +307,8 @@
   <string name="queue_no_other_players">No other players available</string>
   <string name="queue_not_loaded">Not loaded</string>
   <string name="queue_transfer">Transfer queue</string>
+  <string name="reconnect_dialog_message">Connection to server lost, trying to reconnect</string>
+  <string name="reconnect_dialog_stop">Stop trying</string>
   <string name="refresh">Refresh</string>
   <string name="schema_incompatible_dialog_exit">Exit</string>
   <string name="schema_incompatible_dialog_message">This app is too old to connect to this server. Please update the app to continue.</string>

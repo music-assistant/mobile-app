@@ -78,7 +78,7 @@ class SettingsRepository(
         settings.remove(key)
     }
 
-    private fun moveBoolean(key: String) {
+    private fun moveBoolean(key: String) { 
         settings.getBooleanOrNull(key)
             ?.takeIf { !secrets.hasKey(key) }
             ?.let { secrets.putBoolean(key, it) }

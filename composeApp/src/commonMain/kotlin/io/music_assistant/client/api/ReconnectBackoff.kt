@@ -49,6 +49,9 @@ const val DEFAULT_MAX_RECONNECT_ATTEMPTS = 20
  * timed delays. When the network comes back a short grace period (500 ms) is added
  * to let DNS stabilise through a newly‑established route (e.g. WireGuard tunnel).
  *
+ * [onAttemptStarting] runs before the wait for each attempt, so the caller reports
+ * the outage while the loop waits for the backoff or for the network.
+ *
  * @return true if [tryConnect] succeeded — the caller should resume normal
  *         operation.  false if all [maxAttempts] were exhausted.
  */
@@ -61,6 +64,9 @@ suspend fun runReconnectionLoop(
     val infinite = maxAttempts < 0
     var attempt = 0
     while (infinite || attempt < maxAttempts) {
+        // Before the wait: a loop parked on a lost network must already report the
+        // attempt, or the transport keeps reporting the dead connection as Connected.
+        onAttemptStarting(attempt + 1)
         if (networkAvailable != null && !networkAvailable.value) {
             // Network is down — wait for it without burning attempts or applying backoff
             networkAvailable.first { it }
@@ -76,7 +82,6 @@ suspend fun runReconnectionLoop(
             val capped = if (infinite) attempt.coerceAtMost(9) else attempt
             delay(reconnectBackoffMs(capped))
         }
-        onAttemptStarting(attempt + 1)
         if (tryConnect(attempt + 1)) return true
         attempt++
     }
