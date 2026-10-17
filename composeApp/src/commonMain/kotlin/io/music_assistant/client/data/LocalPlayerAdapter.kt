@@ -20,6 +20,7 @@ import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.utils.mapState
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.FailureCause
@@ -92,9 +93,7 @@ class LocalPlayerAdapter(
     private val _localPlayerData = MutableStateFlow<PlayerData?>(null)
 
     /** The now-playing surfaces read `player.currentMedia`; fall back to the queued track before the first Play. */
-    val localPlayerData: StateFlow<PlayerData?> = _localPlayerData
-        .map { it?.withNowPlayingFallback() }
-        .stateIn(this, SharingStarted.Eagerly, null)
+    val localPlayerData: StateFlow<PlayerData?> = _localPlayerData.mapState { it?.withNowPlayingFallback() }
 
     private val _optimisticQueueChanges = Channel<QueueInfo>(Channel.BUFFERED)
     val optimisticQueueChanges: Flow<QueueInfo> = _optimisticQueueChanges.receiveAsFlow()
@@ -162,9 +161,11 @@ class LocalPlayerAdapter(
      * server. The hold is that pause: the server still streams until the queued pause lands,
      * so the MA session must keep reconnecting instead of being torn down in the background.
      * A stop forced by an empty buffer during an outage is such a pause, like a user's.
+     * Both sources are read live: `combine` can pair a new value of one with a stale value of
+     * the other, and a local pause (hold first, then not playing) would read as a short false.
      */
-    val wantsSession: StateFlow<Boolean> = combine(_localPlayerData, held) { data, held ->
-        data != null && (data.player.isPlaying || held)
+    val wantsSession: StateFlow<Boolean> = combine(_localPlayerData, held) { _, _ ->
+        _localPlayerData.value?.let { it.player.isPlaying || held.value } == true
     }.stateIn(this, SharingStarted.Eagerly, false)
 
     init {
