@@ -10,7 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ReconnectBackoffTest {
-
     @Test
     fun reportsTheAttemptBeforeWaitingForTheNetwork() = runTest {
         val network = MutableStateFlow(false)
@@ -20,7 +19,10 @@ class ReconnectBackoffTest {
             runReconnectionLoop(
                 networkAvailable = network,
                 onAttemptStarting = { started += it },
-                tryConnect = { tried += it; true },
+                tryConnect = {
+                    tried += it
+                true
+                },
             )
         }
         runCurrent()
