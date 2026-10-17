@@ -1,5 +1,9 @@
 package io.music_assistant.client.api
 
+import io.music_assistant.client.data.model.client.SortField
+import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.server.ListSort
+import io.music_assistant.client.data.model.server.SortWire
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
@@ -14,7 +18,8 @@ import kotlin.test.assertNull
 class PagingTest {
     @Test
     fun pagedOverwritesLimitAndOffsetAndKeepsOtherArgs() {
-        val paged = Request.Track.list(favorite = true, orderBy = "name").paged(limit = 7, offset = 14)
+        val sort = ListSort(SortOption(SortField.EXACT_NAME), SortWire.ORDER_BY)
+        val paged = Request.Track.list(favorite = true, sort = sort).paged(limit = 7, offset = 14)
 
         assertEquals(APICommands.MUSIC_TRACKS_LIBRARY_ITEMS, paged.command)
         assertEquals(JsonPrimitive(7), paged.args?.get("limit"))

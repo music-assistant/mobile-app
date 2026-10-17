@@ -33,12 +33,14 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.isAiRadioShow
 import io.music_assistant.client.data.model.client.toItemKind
+import io.music_assistant.client.data.model.server.ListSort
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.aiRadioStationUri
 import io.music_assistant.client.data.planLocalPlayerDispatch
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
+import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationFolders
 import io.music_assistant.client.settings.CarPlatform
@@ -85,6 +87,7 @@ class AutoLibrary(
     private val aiRadioRepository: AiRadioRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val playDispatcher: PlayDispatcher,
+    private val librarySortRepository: LibrarySortRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val searchFlow: MutableStateFlow<Pair<String, MediaBrowserServiceCompat.Result<List<MediaItem>>>?> =
@@ -411,24 +414,24 @@ class AutoLibrary(
         sort: SortOption,
         favoritesOnly: Boolean,
     ): List<MediaItem>? {
-        val orderBy = sort.toServerString()
+        val listSort = listSort(mediaType, sort)
         val favorite = favoritesOnly.takeIf { it }
         val request = when (mediaType) {
-            MediaType.ARTIST -> Request.Artist.listLibrary(orderBy = orderBy, favorite = favorite)
-            MediaType.ALBUM -> Request.Album.listLibrary(orderBy = orderBy, favorite = favorite)
+            MediaType.ARTIST -> Request.Artist.listLibrary(sort = listSort, favorite = favorite)
+            MediaType.ALBUM -> Request.Album.listLibrary(sort = listSort, favorite = favorite)
             MediaType.PLAYLIST -> Request.Playlist.listLibrary(
-                orderBy = orderBy,
+                sort = listSort,
                 favorite = favorite,
             )
 
-            MediaType.PODCAST -> Request.Podcast.listLibrary(orderBy = orderBy, favorite = favorite)
+            MediaType.PODCAST -> Request.Podcast.listLibrary(sort = listSort, favorite = favorite)
             MediaType.RADIO -> Request.RadioStation.listLibrary(
-                orderBy = orderBy,
+                sort = listSort,
                 favorite = favorite,
             )
 
             MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
-                orderBy = orderBy,
+                sort = listSort,
                 favorite = favorite,
             )
 
@@ -440,6 +443,10 @@ class AutoLibrary(
             ?.filter { it.isPlayable && !it.isAiRadioShow }
             ?.map { it.toAutoMediaItem(true, defaultIconUri) }
     }
+
+    /** [sort] in the form of the connected server, or the list default if the server does not offer it. */
+    private suspend fun listSort(mediaType: MediaType, sort: SortOption): ListSort =
+        librarySortRepository.menu(mediaType).let { it.sortFor(it.resolve(sort)) }
 
     private suspend fun loadSubItems(
         context: SubItemContext,
@@ -807,9 +814,10 @@ class AutoLibrary(
         }?.resultAs<List<ServerMediaItem>>()?.mapNotNull { it.uri }.orEmpty()
         androidAutoLog.i { "  → favorite tracks: ${favoriteUris.size}" }
         val pool = favoriteUris.ifEmpty {
-            androidAutoLog.i { "  → favorites empty, falling back to last_played_desc" }
-            sendLogged("Track.list orderBy=last_played_desc limit=$RANDOM_POOL_SIZE") {
-                Request.Track.list(orderBy = "last_played_desc", limit = RANDOM_POOL_SIZE)
+            androidAutoLog.i { "  → favorites empty, falling back to last played" }
+            val lastPlayed = listSort(MediaType.TRACK, SortOption(SortField.LAST_PLAYED, descending = true))
+            sendLogged("Track.list sort=last_played desc limit=$RANDOM_POOL_SIZE") {
+                Request.Track.list(sort = lastPlayed, limit = RANDOM_POOL_SIZE)
             }?.resultAs<List<ServerMediaItem>>()?.mapNotNull { it.uri }.orEmpty()
         }
         if (pool.isEmpty()) {

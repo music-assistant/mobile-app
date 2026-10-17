@@ -787,13 +787,10 @@ class SettingsRepository(
     }
 
     // Per-MediaType library-list sort, persisted like view mode and filters. The
-    // ViewModel is the only writer, so a plain get/set is enough — no flow.
-    fun getSortOption(mediaType: MediaType): SortOption {
-        val stored = settings.getStringOrNull(librarySortKey(mediaType))?.let { parseSortOption(it) }
-        // A field dropped from SortConfig by a later app version must not stick.
-        return stored?.takeIf { it.field in SortConfig.fieldsFor(mediaType) }
-            ?: SortConfig.defaultFor(mediaType)
-    }
+    // ViewModel is the only writer, so a plain get/set is enough — no flow. The fields depend on
+    // the server, so `LibrarySortMenu.resolve` checks the value, not this repository.
+    fun getSortOption(mediaType: MediaType): SortOption? =
+        settings.getStringOrNull(librarySortKey(mediaType))?.let { parseSortOption(it) }
 
     fun setSortOption(mediaType: MediaType, option: SortOption) {
         settings.putString(librarySortKey(mediaType), serializeSortOption(option))

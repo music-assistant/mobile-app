@@ -418,6 +418,17 @@ Required change: on 2.11, read `music/sort_options` once per listing and send `s
 `sort_direction`. Keep the static table as the 2.10 fallback. The `label_key` needs a local
 string, because the app does not vendor server translations.
 
+Status: done for the library lists (issue #1185). `sortWireFor` selects `sort_field` from
+`SERVER_2_11_SCHEMA` and `order_by` below it or for an unknown schema. `LibrarySortRepository`
+loads `music/sort_options` once per library list and server, for the phone and for Android Auto.
+A failed load gives the static table, because every 2.11 library list offers its fields. The app
+default stays the list default while the server offers its field, so podcasts stay newest first.
+The server default is `sort_name` for every library list. The app
+drops `random` and `random_play_count`, because a paged list in a random order repeats items. The
+web frontend drops them for the same reason. The app labels an option by its field, and every
+`label_key` on dev is equal to its field. The sub-item lists keep the static table and sort on
+the client, like the web frontend.
+
 ### 5.5 Scopes and custom roles
 
 What changed: the web frontend replaced the admin flag with `authManager.hasScope()`. Custom

@@ -8,16 +8,14 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class LibrarySortPersistenceTest {
     @Test
-    fun `defaults to the media type default when nothing stored`() {
+    fun `nothing stored reads as no choice`() {
         val repo = SettingsRepository(MapSettings(), MapSettings())
-        assertEquals(SortConfig.defaultFor(MediaType.ALBUM), repo.getSortOption(MediaType.ALBUM))
-        assertEquals(
-            SortOption(SortField.DATE_ADDED, descending = true),
-            repo.getSortOption(MediaType.PODCAST),
-        )
+        assertNull(repo.getSortOption(MediaType.ALBUM))
+        assertNull(repo.getSortOption(MediaType.PODCAST))
     }
 
     @Test
@@ -38,17 +36,17 @@ class LibrarySortPersistenceTest {
     }
 
     @Test
-    fun `a field that the media type no longer offers falls back to the default`() {
-        val settings = MapSettings("library_sort_TRACK" to "YEAR:false")
+    fun `a library sort reads back unchecked because the server decides the fields`() {
+        val settings = MapSettings("library_sort_TRACK" to "DATE_FAVORITED:true")
         val repo = SettingsRepository(settings, MapSettings())
-        assertEquals(SortConfig.defaultFor(MediaType.TRACK), repo.getSortOption(MediaType.TRACK))
+        assertEquals(SortOption(SortField.DATE_FAVORITED, descending = true), repo.getSortOption(MediaType.TRACK))
     }
 
     @Test
-    fun `a corrupt stored value falls back to the default`() {
+    fun `a corrupt stored value reads as no choice`() {
         val settings = MapSettings("library_sort_ALBUM" to "garbage")
         val repo = SettingsRepository(settings, MapSettings())
-        assertEquals(SortConfig.defaultFor(MediaType.ALBUM), repo.getSortOption(MediaType.ALBUM))
+        assertNull(repo.getSortOption(MediaType.ALBUM))
     }
 
     @Test
@@ -117,8 +115,8 @@ class LibrarySortPersistenceTest {
             SortConfig.defaultFor(SubItemContext.ARTIST_ALBUMS),
             repo.getSortOption(SubItemContext.ARTIST_ALBUMS),
         )
-        assertEquals(SortConfig.defaultFor(MediaType.TRACK), repo.getSortOption(MediaType.TRACK))
-        assertEquals(SortConfig.defaultFor(MediaType.ALBUM), repo.getSortOption(MediaType.ALBUM))
+        assertNull(repo.getSortOption(MediaType.TRACK))
+        assertNull(repo.getSortOption(MediaType.ALBUM))
     }
 
     @Test

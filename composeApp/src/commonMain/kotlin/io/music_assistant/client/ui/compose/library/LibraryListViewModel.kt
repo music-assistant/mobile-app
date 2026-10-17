@@ -15,9 +15,12 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.isAiRadioShow
+import io.music_assistant.client.data.model.server.ListSort
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.LibrarySortMenu
+import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.favoriteAfter
@@ -47,16 +50,18 @@ class LibraryListViewModel(
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val playDispatcher: PlayDispatcher,
+    private val librarySortRepository: LibrarySortRepository,
 ) : ViewModel() {
     private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    // This VM is recreated on every tab re-enter, so the persisted sort is what makes the
+    // choice survive leaving the screen. Null is the list default of the server.
+    private var chosenSort: SortOption? = settingsRepository.getSortOption(mediaType)
 
     private val _state = MutableStateFlow(
         State(
             dataState = DataState.Loading(),
             mediaType = mediaType,
-            // This VM is recreated on every tab re-enter, so the persisted sort is
-            // what makes the choice survive leaving the screen.
-            sortOption = settingsRepository.getSortOption(mediaType),
             seriesGrouping = settingsRepository.getSeriesGrouping(),
         ),
     )
@@ -189,9 +194,9 @@ class LibraryListViewModel(
             val result = mediaItemRepository.fetchMediaItems(
                 // media_type scopes to genres that have items of this list's type,
                 // which also drops empty/irrelevant genres server-side.
+                // No sort argument: every server version orders by sort name by default.
                 Request.Genre.listLibrary(
                     limit = GENRE_OPTIONS_LIMIT,
-                    orderBy = "sort_name",
                     mediaType = mediaType.serverValue,
                 ),
             )
@@ -235,6 +240,7 @@ class LibraryListViewModel(
     }
 
     fun onSortChanged(sortOption: SortOption) {
+        chosenSort = sortOption
         settingsRepository.setSortOption(mediaType, sortOption)
         _state.update { it.copy(sortOption = sortOption) }
         searchTrigger.tryEmit(Unit)
@@ -250,7 +256,7 @@ class LibraryListViewModel(
 
         viewModelScope.launch {
             val searchQuery = currentState.serverSearchQuery()
-            val orderBy = currentState.sortOption.toServerString()
+            val sort = currentState.sortMenu?.sortFor(currentState.sortOption)
 
             _state.update {
                 it.copy(isLoadingMore = true)
@@ -259,7 +265,7 @@ class LibraryListViewModel(
             val request = getRequest(
                 this@LibraryListViewModel.mediaType,
                 currentState.offset,
-                orderBy,
+                sort,
                 searchQuery,
                 currentState.filters,
                 currentState.seriesGrouping,
@@ -291,7 +297,7 @@ class LibraryListViewModel(
     private fun getRequest(
         mediaType: MediaType,
         offset: Int,
-        orderBy: String,
+        sort: ListSort?,
         searchQuery: String?,
         filters: LibraryFilters,
         seriesGrouping: SeriesGrouping,
@@ -304,7 +310,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 albumArtistsOnly = filters.albumArtistsOnly,
                 providers = providers,
@@ -315,7 +321,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 albumTypes = filters.albumTypes.map { it.serverValue },
                 providers = providers,
@@ -326,7 +332,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 providers = providers,
                 genres = genres,
@@ -336,7 +342,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 providers = providers,
                 genres = genres,
@@ -346,7 +352,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 providers = providers,
                 genres = genres,
@@ -357,7 +363,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 providers = providers,
                 genres = genres,
@@ -367,7 +373,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 providers = providers,
                 genres = genres,
@@ -377,7 +383,7 @@ class LibraryListViewModel(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
-                orderBy = orderBy,
+                sort = sort,
                 favorite = favorite,
                 providers = providers,
                 hideEmpty = filters.hideEmpty.hideEmpty,
@@ -429,13 +435,16 @@ class LibraryListViewModel(
     private fun loadFirstPage() {
         viewModelScope.launch {
             val searchQuery = state.value.serverSearchQuery()
-            val orderBy = state.value.sortOption.toServerString()
             updateState(DataState.Loading())
+            // Before the request: a 2.11 server rejects a field that the list does not offer.
+            val sortMenu = librarySortRepository.menu(mediaType)
+            val sortOption = sortMenu.resolve(chosenSort)
+            _state.update { it.copy(sortMenu = sortMenu, sortOption = sortOption) }
 
             val request = getRequest(
                 this@LibraryListViewModel.mediaType,
                 0,
-                orderBy,
+                sortMenu.sortFor(sortOption),
                 searchQuery,
                 state.value.filters,
                 state.value.seriesGrouping,
@@ -495,6 +504,8 @@ class LibraryListViewModel(
         val hasMore: Boolean = true,
         val searchQuery: String = "",
         val sortOption: SortOption = SortConfig.defaultFor(mediaType),
+        // Null until the first page load resolves the sort choices of the server.
+        val sortMenu: LibrarySortMenu? = null,
         val offset: Int = 0,
         // Per-type filter set; only the fields applicable to [mediaType] are surfaced.
         val filters: LibraryFilters = LibraryFilters.DEFAULT,

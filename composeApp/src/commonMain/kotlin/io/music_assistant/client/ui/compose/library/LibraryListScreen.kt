@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.SortOffer
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.SeriesGrouping
@@ -96,6 +97,7 @@ fun LibraryListScreen(
                 onSortChanged = { libraryListViewModel.onSortChanged(it) },
                 mediaType = state.mediaType,
                 sortOption = state.sortOption,
+                sortOffers = state.sortMenu?.offers.orEmpty(),
                 filters = state.filters,
                 onFiltersChange = libraryListViewModel::setFilters,
                 providerOptions = providerOptions,
@@ -152,6 +154,7 @@ private fun LibraryListTopBar(
     onSortChanged: (SortOption) -> Unit,
     mediaType: MediaType,
     sortOption: SortOption,
+    sortOffers: List<SortOffer>,
     filters: LibraryFilters,
     onFiltersChange: (LibraryFilters) -> Unit,
     providerOptions: DataState<List<SelectOption<String>>>,
@@ -240,7 +243,7 @@ private fun LibraryListTopBar(
             secondRow = {
                 ItemSortChip(
                     sortOption = sortOption,
-                    mediaType = mediaType,
+                    offers = sortOffers,
                     onSortChanged = { onSortChanged(it) },
                 )
 

@@ -94,6 +94,7 @@ object APICommands {
     // Browse
     const val MUSIC_BROWSE = "music/browse"
     const val MUSIC_SOUND_EFFECTS = "music/sound_effects"
+    const val MUSIC_SORT_OPTIONS = "music/sort_options"
 
     // Search and recommendations
     const val MUSIC_SEARCH = "music/search"

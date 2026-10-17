@@ -414,8 +414,10 @@
   <string name="sleep_timer_stops_in">Stops in %1$s</string>
   <string name="sort_artist">Artist</string>
   <string name="sort_date_added">Date added</string>
+  <string name="sort_date_favorited">Date favorited</string>
   <string name="sort_date_modified">Date modified</string>
   <string name="sort_duration">Duration</string>
+  <string name="sort_exact_name">Exact name</string>
   <string name="sort_last_played">Last played</string>
   <string name="sort_name">Name</string>
   <string name="sort_original">Original</string>
