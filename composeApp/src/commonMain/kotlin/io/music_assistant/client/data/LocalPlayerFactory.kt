@@ -1,5 +1,6 @@
 package io.music_assistant.client.data
 
+import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.audioDispatcher
@@ -34,6 +35,7 @@ class SendspinLocalPlayerFactory(
     private val keyStore: SendspinKeyStore,
     private val networkMonitor: NetworkMonitor,
     private val httpClientFactory: HttpClientFactory,
+    private val appVersion: AppVersion,
 ) : LocalPlayerFactory {
     override fun create(
         config: StateFlow<LocalPlayerConfig?>,
@@ -49,6 +51,7 @@ class SendspinLocalPlayerFactory(
             online = networkMonitor.isAvailable,
             approvePairing = approvePairing,
             audioDispatcher = audioDispatcher,
+            softwareVersion = appVersion.name,
             clock = sendspinClock,
         ),
         scope = scope,

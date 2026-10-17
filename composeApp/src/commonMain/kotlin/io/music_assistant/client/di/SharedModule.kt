@@ -143,7 +143,7 @@ fun sharedModule(
         single { UserPreferences() }        // Server-synced `auth/me` preferences
         singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
         single { LocalPlayerEndpoints(get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
-        single<LocalPlayerFactory> { SendspinLocalPlayerFactory(get(), get(), get(), get(), get()) }
+        single<LocalPlayerFactory> { SendspinLocalPlayerFactory(get(), get(), get(), get(), get(), get()) }
         singleOf(::LocalPlayerAdapter)      // Local player: app side of the Sendspin module
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
