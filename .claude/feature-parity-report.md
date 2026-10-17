@@ -39,6 +39,7 @@ not viable on mobile. Party mode, music quiz and smart playlists are Hard.
 | Input | Version | Notes |
 |---|---|---|
 | Server 2.10 | tag `2.10.6` | `API_SCHEMA_VERSION` 65, `MIN_SCHEMA_VERSION` 28 |
+| Server 2.10 patch | tag `2.10.7` (2026-10-17) | schema and models as in 2.10.6; aiosendspin 10.2.0, see 5.10 |
 | Server 2.11 beta | `dev` at 2026-10-16 (`10a3ad5`) | `API_SCHEMA_VERSION` 96, `MIN_SCHEMA_VERSION` 28 |
 | Frontend 2.10 | tag `2.17.297` | bundled with server 2.10.6 |
 | Frontend 2.11 beta | tag `2.17.343` | pinned by server dev; refuses servers below schema 86 |
@@ -468,8 +469,19 @@ maps to `allow_noncompliant_clients` and `allow_unencrypted` (dev
 `server/providers/sendspin/provider.py`). The server logs the device name and software version
 in a noncompliance warning. If an admin turns the toggle off, a 9.x client cannot connect.
 
+Server 2.10.7 also pins `aiosendspin` 10.2.0, the same version as dev on 2026-10-17. Its schema
+stays at 65, the same as 2.10.6. So the schema cannot tell the two servers apart. The 2.11 betas
+are not the same: 2.11.0b1 to b3 pin 9.1.1, and b4 and b5 pin 10.0.x.
+
+The handshake does not give the server version. Both 9.1.1 and 10.2.0 send `server/init` with
+`version` 1. `server/hello` has no version, and it comes after `client/hello`, which is different
+on each wire. Only the `psk_category` key in Noise message 1 is different. The app does not select
+the wire from the presence of a key.
+
 Status: done (issue #1181). The module speaks both wires (`WireVersion`). `sendspinWireFor` selects
-`SPEC_1_0` from `SERVER_2_11_SCHEMA` and `LEGACY_9` below it or for an unknown schema. The
+`SPEC_1_0` for a schema of `SERVER_2_11_SCHEMA` or higher. It also selects `SPEC_1_0` for a
+`server_version` of 2.10.7 or a later 2.10 release. All other servers get `LEGACY_9`. This
+includes the 2.11 betas below `SERVER_2_11_SCHEMA` and a source build, which reports `0.0.0`. The
 player sends `required_lead_time_ms` 250 and `min_buffer_ms` 1000. The client parses
 `send_ahead` and `pairing.format` but does not use them. The pairing code methods, artwork,
 `server/state` and `stream/end` changes do not apply to a player-only client. See
@@ -510,7 +522,9 @@ flow for 2.10.
 ### 5.9 Other 2.11 changes
 
 - `ServerInfoMessage.unsupported_install` (schema 87). The web shows a banner. The app ignores
-  the field. Add a dismissible banner.
+  the field. Add a dismissible banner. The flag is true when the server has no official build
+  information (dev `music_assistant/mass.py`). It shows the installation method, not the server
+  version. Server 2.10 does not send the field, so the app reads false.
 - `providers_updated` payloads are filtered per user. The app ignores the event and never
   refreshes the "Music sources" filter list after a provider change.
 - Playlist visibility changes send a synthesized `media_item_deleted`. The app handles the event,
@@ -522,8 +536,27 @@ flow for 2.10.
   `AudioMetadata.camelot_key`.
 - The frontend 2.11 refuses servers below schema 86. The app has no minimum of its own. The app
   constant `LOCAL_SCHEMA_VERSION` is 59 (`app/data/model/server/ServerInfo.kt:7`). Server 2.10.6
-  reports 65, so the "server ahead" dialog appears on every connect. Bump the constant after the
-  2.11 changes above land.
+  and 2.10.7 report 65, so the "server ahead" dialog appears on every connect. The nightly
+  `2.11.0.dev2026101703` reports 96. The `dev` branch reports 97 after server PR #7050, which adds
+  counts to the artist lists. Dev now increments the schema for each new command or field that a
+  client can check. Set the constant to the schema of the 2.11.0 release, not to a dev value.
+- A higher `LOCAL_SCHEMA_VERSION` does not make a 2.10 server unsupported. The app shows a
+  warning only if the server schema is above the app constant, or if the app constant is below
+  the server `MIN_SCHEMA_VERSION`. Every server version has a `MIN_SCHEMA_VERSION` of 28.
+
+### 5.10 Server 2.10.7
+
+Server 2.10.7 was released on 2026-10-17. It has 78 commits after 2.10.6. These items apply to
+the app:
+
+- The schema stays at 65 and the models stay at 1.1.205. The paging, favorite and sort
+  behavior is the same as in 2.10.6, so the 2.11 gates stay off. This is correct.
+- The Sendspin provider pins `aiosendspin` 10.2.0 (server PR #6716 and the later bumps). See 5.6
+  for the wire selection.
+- `auth/authorization_url` now checks `return_url` and refuses a URL that is not permitted. The
+  pattern list has `musicassistant://`, so the app OAuth flow continues to work.
+- Server PR #6849 repairs the Home Assistant sign-in from the mobile app through the External URL
+  or Remote Access.
 
 ## 6. Adjustments for partial implementations
 
@@ -611,7 +644,8 @@ Home Assistant panel history, onboarding, expert mode, and the guided tour.
 
 ## 9. Unverified items
 
-- The aiosendspin 10.x wire is known from release notes only. The package was not inspected.
+- The aiosendspin 10.x wire is known from the spec and the package source. The 9.1.1 and 10.2.0
+  wheels were compared for the handshake only. No device test was done on the 1.0 wire.
 - The semantics of a provider-side `favorite=False` sync are not verified.
 - The schema bumps 66 to 96 have no per-version changelog in the server tree. Only
   `unsupported_install` is annotated (schema 87).

@@ -93,6 +93,20 @@ class LocalPlayerEndpointsTest {
     }
 
     @Test
+    fun server2107PicksTheSpecWireAtThe210Schema() = runTest {
+        val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
+        client.sessionState.value = direct(
+            ConnectionData(
+                serverInfo = SERVER_INFO.copy(schemaVersion = 65, serverVersion = "2.10.7"),
+                user = USER,
+                token = "tok",
+            ),
+        )
+        runCurrent()
+        assertEquals(WireVersion.SPEC_1_0, assertIs<Endpoint.WebSocket>(endpoints.endpoint.value).wire)
+    }
+
+    @Test
     fun aWebRtcEndpointIsReusedOnlyOnTheSameWire() = runTest {
         val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
         fun webRtc(schema: Int) = SessionState.Connected.WebRTC(

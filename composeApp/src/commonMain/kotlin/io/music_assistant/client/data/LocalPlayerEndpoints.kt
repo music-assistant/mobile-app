@@ -34,8 +34,8 @@ import kotlinx.coroutines.withTimeout
  * session's transport: a WebRTC session gets the data channel, a direct one the
  * proxied WebSocket (or the custom Sendspin server from settings).
  * A known schema below [ENCRYPTED_SENDSPIN_MIN_SCHEMA] yields [Endpoint.Unsupported];
- * an unknown schema is allowed through so the handshake decides. The schema also
- * picks the wire dialect ([sendspinWireFor]); a wire change restarts the connection.
+ * an unknown schema is allowed through so the handshake decides. The schema and the
+ * server version pick the wire dialect ([sendspinWireFor]); a wire change restarts the connection.
  *
  * Transient session states keep the last endpoint: the Sendspin connection
  * lives with the process and reconnects on its own, so a reconnecting MA
@@ -92,7 +92,7 @@ class LocalPlayerEndpoints(
                 "MA server schema $schema does not support encrypted Sendspin; requires schema $ENCRYPTED_SENDSPIN_MIN_SCHEMA",
             )
         }
-        val wire = sendspinWireFor(schema)
+        val wire = sendspinWireFor(schema, state.serverInfo?.serverVersion)
         return when (state) {
             is SessionState.Connected.WebRTC ->
                 (previous as? Endpoint.WebRtc)?.takeIf { it.wire == wire } ?: Endpoint.WebRtc(wire, ::openFreshChannel)
