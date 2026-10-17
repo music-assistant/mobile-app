@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Highest server schema_version this client is built and tested against. */
-const val LOCAL_SCHEMA_VERSION = 59
+const val LOCAL_SCHEMA_VERSION = 65
 
 /**
  * API schema of server 2.11.0. Every 2.11 behaviour change in the app gates on this one constant,

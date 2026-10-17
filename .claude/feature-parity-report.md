@@ -28,8 +28,8 @@ Five changes in 2.11 need work in the app:
 5. Permissions use scopes and custom roles. The app gates only AI Radio on scopes. Priority:
    medium.
 
-The app constant `LOCAL_SCHEMA_VERSION` is 59. Server 2.10.6 reports schema 65 and dev reports
-96, so every current server triggers the "server ahead" warning on connect.
+The app constant `LOCAL_SCHEMA_VERSION` is 65, the schema of server 2.10.6 and 2.10.7. A 2.10
+server does not trigger the "server ahead" warning. A 2.11 beta (96 or 97) triggers it on connect.
 
 The count of missing listener features is about 35. Most are Easy or Medium. The visualizer is
 not viable on mobile. Party mode, music quiz and smart playlists are Hard.
@@ -535,8 +535,8 @@ flow for 2.10.
   `PodcastEpisode.episode_number` and `season`, `Playlist.access`, `PlayLogEntry.seek_position`,
   `AudioMetadata.camelot_key`.
 - The frontend 2.11 refuses servers below schema 86. The app has no minimum of its own. The app
-  constant `LOCAL_SCHEMA_VERSION` is 59 (`app/data/model/server/ServerInfo.kt:7`). Server 2.10.6
-  and 2.10.7 report 65, so the "server ahead" dialog appears on every connect. The nightly
+  constant `LOCAL_SCHEMA_VERSION` is 65 (`app/data/model/server/ServerInfo.kt:7`), because the app
+  was checked against server 2.10.6 and 2.10.7. Both report 65, so they show no dialog. The nightly
   `2.11.0.dev2026101703` reports 96. The `dev` branch reports 97 after server PR #7050, which adds
   counts to the artist lists. Dev now increments the schema for each new command or field that a
   client can check. Set the constant to the schema of the 2.11.0 release, not to a dev value.
@@ -658,7 +658,7 @@ Home Assistant panel history, onboarding, expert mode, and the guided tour.
    `order_by` argument. Safe on 2.10.
 2. Handle `favorite_updated`. Stop reading `favorite` from `media_item_updated` on 2.11.
 3. Read `auth/scopes` once and gate the write actions.
-4. Bump `LOCAL_SCHEMA_VERSION`. Add the unsupported install banner.
+4. Bump `LOCAL_SCHEMA_VERSION` to the 2.11.0 release schema. Add the unsupported install banner.
 5. Decide the Sendspin wire strategy for 2.11 and schedule the module update.
 6. Quick wins from section 7: track and radio screens, stop, save queue as playlist, queue
    actions, dislike, playlist rename and delete, refresh item, genre search.
