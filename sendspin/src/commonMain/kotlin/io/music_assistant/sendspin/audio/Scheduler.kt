@@ -218,6 +218,7 @@ internal class Scheduler(
             val blockMicros = framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
             if (late >= blockMicros) return true // whole chunk is in the past
             val skip = microsToBytes(late, fmt)
+            corrector?.reset() // the trim is a deliberate gap: no interpolation across it
             return write(out, pcm, skip, pcm.size - skip)
         }
         if (lead > MAX_SILENCE_MICROS) {
@@ -232,15 +233,17 @@ internal class Scheduler(
                     insertedSilenceMicros += lead
                     logCorrection("early", lead, queuedMicros, position)
                 }
+                corrector?.reset() // the silence is a deliberate gap: no interpolation across it
                 write(out, ByteArray(microsToBytes(lead, fmt))) && write(out, pcm)
             }
 
-            abs(lead) > SOFT_TOLERANCE_MICROS -> {
+            else -> {
+                // Inside the tolerance band too: the corrector carries the last frame of the previous
+                // block, so every block of a continuous run goes through it, even with nothing to correct.
+                val drift = if (abs(lead) > SOFT_TOLERANCE_MICROS) -lead else 0L
                 val blockMicros = framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
-                write(out, corrector?.correct(pcm, driftMicros = -lead, blockMicros = blockMicros) ?: pcm)
+                write(out, corrector?.correct(pcm, driftMicros = drift, blockMicros = blockMicros) ?: pcm)
             }
-
-            else -> write(out, pcm)
         }
     }
 

@@ -12,6 +12,10 @@ import kotlin.math.floor
  * block is carried into the next call so the interpolation runs across block
  * boundaries without dropping or repeating a frame: the output lags the input
  * by at most one frame and is otherwise sample-count preserving at step 1.
+ * So once a block was corrected, every later block of the same signal must
+ * pass through [correct] (with zero drift if needed), or [reset] must mark the
+ * gap: a block written past it loses the carried frame, and the next
+ * correction splices that stale frame into the signal (an audible click).
  */
 internal class DriftCorrector(
     private val channels: Int,
