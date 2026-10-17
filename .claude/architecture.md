@@ -101,6 +101,14 @@ actual class PlatformFeature {
   `carriesFavorite` false must not change the heart of a row. Replace a row with
   `item.withFavorite(change.favoriteAfter(row.favorite))`. `MainDataSource` gets the added and updated
   tracks from `itemChanges` for the same reason.
+- **Scopes**: `MainDataSource.grantedScopes` (`GrantedScopes`) holds the scopes of the signed-in user. The
+  app reads `auth/scopes` once for each new session and finds the role of the user in the table. Gate a
+  write action on a scope. Do not gate it on the role name, because server 2.11 has custom roles.
+  The value is `NONE` before the table arrives and after a failed fetch, so the gate fails closed.
+  Compose reads `LocalGrantedScopes`, which `App` provides. `canEditLibrary` (`library.write`) gates
+  favorites, library membership, playlist edits and the played state. `canConfigurePlayers`
+  (`config.players.write`) gates DSP and the car DSP action. Every role has `players.control`, so
+  grouping has no gate.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

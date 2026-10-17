@@ -433,6 +433,13 @@ Impact: a user without `library.write` sees actions that fail with an error toas
 Required change: read `auth/scopes` after login and hide the actions that the user cannot run.
 Gate on scopes, never on the role string.
 
+Status: done (issue #1182). `MainDataSource.grantedScopes` holds the scopes of the user, and the
+gate fails closed. `library.write` gates the library actions in all menus, the player heart, the
+stream favorite, add to playlist, create playlist, the media session and Siri. `config.players.write`
+gates the DSP entry and the car DSP action. Grouping has no gate, because
+`players/cmd/set_members` needs only `players.control`. Every builtin role and every custom role has
+that scope. The app sends no `library.manage` command.
+
 ### 5.6 Sendspin spec 1.0.0-rc1
 
 What changed: the Sendspin provider pins `aiosendspin` 10.1.0 instead of 9.1.1

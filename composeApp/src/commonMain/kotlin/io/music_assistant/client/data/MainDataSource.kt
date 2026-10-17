@@ -30,6 +30,7 @@ import io.music_assistant.client.data.model.server.AI_RADIO_QUEUE_DJ_SCOPES
 import io.music_assistant.client.data.model.server.AI_RADIO_STATIONS_SCOPES
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
+import io.music_assistant.client.data.model.server.GrantedScopes
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
@@ -44,7 +45,6 @@ import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
-import io.music_assistant.client.data.model.server.grantsScope
 import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.MediaItemChange
@@ -167,6 +167,14 @@ class MainDataSource(
      * in [AI_RADIO_STATIONS_SCOPES]. Gating on the plugin alone would render a Library section
      * where every tap fails.
      */
+    /**
+     * What the signed-in user may do, from `auth/scopes` and the user's role. Write actions
+     * that the user cannot run stay hidden. Fails closed: [GrantedScopes.NONE] until the table
+     * arrives, and after a failed fetch.
+     */
+    private val _grantedScopes = MutableStateFlow(GrantedScopes.NONE)
+    val grantedScopes: StateFlow<GrantedScopes> = _grantedScopes.asStateFlow()
+
     private val _aiRadioAvailable = MutableStateFlow(false)
     val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()
 
@@ -459,7 +467,7 @@ class MainDataSource(
                                                 DataState.Data(currentState.data)
                                             }
                                             updateUserPreferences()
-                                            updateAiRadioAvailability()
+                                            updateAccess()
                                             updatePlayersAndQueues()
                                         }
                                     }
@@ -469,7 +477,7 @@ class MainDataSource(
                                     // Already have data (shouldn't happen, but handle gracefully)
                                     log.w { "Connected while already in Data state - refreshing anyway" }
                                     updateUserPreferences()
-                                    updateAiRadioAvailability()
+                                    updateAccess()
                                     updatePlayersAndQueues()
                                     refreshSelectedPlayerQueueItems()
                                     // Safety net: reinit Sendspin if it's not already connected.
@@ -481,7 +489,7 @@ class MainDataSource(
                                     // Fresh connection or error recovery - show loading
                                     _serverPlayers.update { DataState.Loading() }
                                     updateUserPreferences()
-                                    updateAiRadioAvailability()
+                                    updateAccess()
                                     updatePlayersAndQueues()
                                 }
                             }
@@ -956,6 +964,7 @@ class MainDataSource(
         localPlayerController.clearState()
         // Server-scoped: the plugin set and the user's role both belong to the old
         // connection, so another server must not inherit this one's gate.
+        _grantedScopes.value = GrantedScopes.NONE
         _aiRadioAvailable.value = false
         _aiRadioQueueDjAvailable.value = false
         // Note: _providersIcons deliberately NOT cleared (static data)
@@ -1624,11 +1633,19 @@ class MainDataSource(
     }
 
     /**
-     * Resolves the AI Radio gates. Fails closed: any missing piece — plugin absent, role
-     * unknown, either fetch failing — leaves the feature hidden rather than half-offered.
+     * Resolves [grantedScopes], then the AI Radio gates. Fails closed: any missing piece — plugin
+     * absent, role unknown, either fetch failing — leaves the feature hidden rather than
+     * half-offered.
      */
-    private fun updateAiRadioAvailability() {
+    private fun updateAccess() {
         launch {
+            val scopes = GrantedScopes.of(
+                roleScopes = apiClient.sendRequest(Request(APICommands.AUTH_SCOPES))
+                    .resultAs<Map<String, List<String>>>()
+                    .orEmpty(),
+                role = (apiClient.sessionState.value as? HasConnectionData)?.user?.role,
+            )
+            _grantedScopes.value = scopes
             val pluginLoaded = apiClient.sendRequest(Request.Provider.all())
                 .resultAs<List<ServerProviderInstance>>()
                 ?.any { it.domain == AI_RADIO_DOMAIN && it.available } == true
@@ -1637,16 +1654,11 @@ class MainDataSource(
                 _aiRadioQueueDjAvailable.value = false
                 return@launch
             }
-            val roleScopes = apiClient.sendRequest(Request(APICommands.AUTH_SCOPES))
-                .resultAs<Map<String, List<String>>>()
-                .orEmpty()
-            val connection = apiClient.sessionState.value as? HasConnectionData
-            val role = connection?.user?.role
-            val supported = supportsAiRadio(connection?.serverInfo?.schemaVersion)
-            _aiRadioAvailable.value =
-                supported && AI_RADIO_STATIONS_SCOPES.all { grantsScope(roleScopes, role, it) }
-            _aiRadioQueueDjAvailable.value =
-                supported && AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
+            val supported = supportsAiRadio(
+                (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion,
+            )
+            _aiRadioAvailable.value = supported && scopes.hasAll(AI_RADIO_STATIONS_SCOPES)
+            _aiRadioQueueDjAvailable.value = supported && scopes.hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
         }
     }
 
