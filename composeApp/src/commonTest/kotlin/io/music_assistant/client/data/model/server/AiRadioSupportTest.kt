@@ -22,7 +22,7 @@ class AiRadioSupportTest {
     )
 
     private fun grantedStations(role: String?) =
-        AI_RADIO_STATIONS_SCOPES.all { grantsScope(roleScopes, role, it) }
+        GrantedScopes.of(roleScopes, role).hasAll(AI_RADIO_STATIONS_SCOPES)
 
     @Test
     fun everyBuiltinRoleMayListAndPlayStations() {
@@ -35,7 +35,7 @@ class AiRadioSupportTest {
     @Test
     fun aRoleWithoutTheQueueScopeCannotPlayAStation() {
         val readOnly = mapOf("viewer" to listOf("library.read"))
-        assertFalse(AI_RADIO_STATIONS_SCOPES.all { grantsScope(readOnly, "viewer", it) })
+        assertFalse(GrantedScopes.of(readOnly, "viewer").hasAll(AI_RADIO_STATIONS_SCOPES))
     }
 
     @Test
@@ -49,7 +49,7 @@ class AiRadioSupportTest {
     }
 
     private fun grantedQueueDj(role: String?) =
-        AI_RADIO_QUEUE_DJ_SCOPES.all { grantsScope(roleScopes, role, it) }
+        GrantedScopes.of(roleScopes, role).hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
 
     @Test
     fun userMayUseTheQueueDj() {

@@ -432,18 +432,22 @@ class SharedMediaSessionManager(
 
     private fun nowPlayingDataFlow(): Flow<MediaNotificationData> =
         sourcePlayerData()
+            // Upstream of the chapter timer, so a late scope table re-emits with a fresh position.
+            .combine(dataSource.grantedScopes) { source, scopes -> source to scopes.canEditLibrary }
             .withPresentationChapter(
                 preferences = dataSource.userPreferences,
                 positionTracker = dataSource.positionTracker,
-                playerOf = { (player, _) -> player },
+                playerOf = { (source, _) -> source.first },
             )
-            .map { (source, chapter, elapsedSec) ->
+            .map { (sourceAndAccess, chapter, elapsedSec) ->
+                val (source, canEditLibrary) = sourceAndAccess
                 val (player, multiplePlayers) = source
                 MediaNotificationData.from(
                     playerData = player,
                     multiplePlayers = multiplePlayers,
                     effectiveElapsedSec = elapsedSec,
                     currentChapter = chapter,
+                    canEditLibrary = canEditLibrary,
                     isFavoritableStream = dataSource.canFavoriteCurrentlyPlaying(player),
                 )
             }

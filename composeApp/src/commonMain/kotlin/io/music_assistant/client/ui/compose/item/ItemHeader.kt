@@ -62,6 +62,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
+import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
@@ -275,6 +276,7 @@ private fun ItemOverflow(
 
     val canonical = resolveDetailOverflowActions(
         item = item,
+        canEditLibrary = LocalGrantedScopes.current.canEditLibrary,
         librarySupported = libraryActions != null && item !is Genre && item !is MediaCollection,
         canAddToPlaylist = playlistActions != null && item !is MediaCollection,
     ).map { action ->

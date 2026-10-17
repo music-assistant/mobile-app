@@ -29,6 +29,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.settings.SeriesGrouping
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
@@ -110,7 +111,9 @@ fun LibraryListScreen(
             onPlayClick = { item, option, radio, _ ->
                 libraryListViewModel.onPlayClick(item, option, radio)
             },
-            onCreatePlaylist = if (state.mediaType == MediaType.PLAYLIST) libraryListViewModel::createPlaylist else null,
+            onCreatePlaylist = libraryListViewModel::createPlaylist.takeIf {
+                state.mediaType == MediaType.PLAYLIST && LocalGrantedScopes.current.canEditLibrary
+            },
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,

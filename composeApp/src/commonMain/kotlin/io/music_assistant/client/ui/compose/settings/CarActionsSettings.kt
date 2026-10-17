@@ -40,6 +40,7 @@ import io.music_assistant.client.settings.carTapAction
 import io.music_assistant.client.settings.currentCarPlatform
 import io.music_assistant.client.settings.defaultCarBulkActions
 import io.music_assistant.client.settings.isCarSupported
+import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.ReorderableEnabledList
 import io.music_assistant.client.ui.compose.common.items.ActionDropdown
 import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
@@ -87,11 +88,14 @@ fun CarSection() {
             modifier = Modifier.fillMaxWidth(),
             onClick = { showSheet = true },
         ) { Text(stringResource(Res.string.settings_car_item_actions)) }
-        Spacer(Modifier.size(8.dp))
-        OutlinedButton(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { showDsp = true },
-        ) { Text(stringResource(Res.string.settings_car_dsp)) }
+        // The car DSP actions save player settings, which needs `config.players.write`.
+        if (LocalGrantedScopes.current.canConfigurePlayers) {
+            Spacer(Modifier.size(8.dp))
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { showDsp = true },
+            ) { Text(stringResource(Res.string.settings_car_dsp)) }
+        }
     }
 
     // Tap a sheet row → close the sheet, then open its dialog (no stacked overlays).

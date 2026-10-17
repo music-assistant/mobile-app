@@ -65,11 +65,14 @@ data class MediaNotificationData(
             multiplePlayers: Boolean,
             effectiveElapsedSec: Double?,
             currentChapter: ResolvedChapter? = null,
+            // `library.write`: without it neither favorite slot is offered.
+            canEditLibrary: Boolean,
             // Real on-air stream song AND the connected server can resolve it — see
             // MainDataSource.canFavoriteCurrentlyPlaying, the single source for this.
             isFavoritableStream: Boolean = false,
         ) = run {
             val currentTrack = playerData.queueInfo?.currentItem?.track as? AppMediaItem
+            val streamFavorite = canEditLibrary && isFavoritableStream
             val longItemId = playerData.player.currentMedia?.queueItemId?.let(::sessionQueueItemId)
             MediaNotificationData(
             multiplePlayers = multiplePlayers,
@@ -87,13 +90,13 @@ data class MediaNotificationData(
             shuffleEnabled = playerData.queueInfo?.shuffleEnabled
                 ?.takeIf { playerData.queueInfo?.isDynamicPlaylist != true },
             isLongFormContent = playerData.queueInfo?.currentItem?.track.isLongFormSpokenContent,
-            isFavoritableTrack = currentTrack
+            isFavoritableTrack = canEditLibrary && currentTrack
                 ?.let { it.mediaType == MediaType.TRACK && it.canBeFavorited } == true,
-            isFavoritableStream = isFavoritableStream,
+            isFavoritableStream = streamFavorite,
             // The station's own favorite flag would show a filled heart for an already-
             // favorited station even though nothing has been favorited for the on-air song,
             // so the stream case always renders un-filled.
-            isFavorite = currentTrack?.favorite == true && !isFavoritableStream,
+            isFavorite = currentTrack?.favorite == true && !streamFavorite,
             isPlaying = playerData.player.isPlaying,
             imageUrl = playerData.player.currentMedia?.imageUrl,
             chapterName = currentChapter?.displayName,

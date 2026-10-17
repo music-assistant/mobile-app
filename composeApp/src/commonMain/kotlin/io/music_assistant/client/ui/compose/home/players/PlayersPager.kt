@@ -95,6 +95,7 @@ import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.OverflowMenu
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuDivider
@@ -203,6 +204,8 @@ fun PlayersPager(
             .collectAsStateWithLifecycle()
         val swipeHintShown by homeScreenViewModel.playerSwipeHintShown
             .collectAsStateWithLifecycle()
+        // Write actions the user's role cannot run stay hidden.
+        val grantedScopes = LocalGrantedScopes.current
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -396,7 +399,9 @@ fun PlayersPager(
                                 colors = colors,
                                 onSelectPlayer = onSelectPlayer,
                                 onGroupButton = onGroupButton,
-                                onDspButton = onDspButton.takeIf { !player.player.isGroup },
+                                onDspButton = onDspButton.takeIf {
+                                    !player.player.isGroup && grantedScopes.canConfigurePlayers
+                                },
                                 onSleepTimerButton = onSleepTimerButton.takeIf { sleepTimerSupported },
                                 // Voice is never offered for the phone's own player, so it alone can't show the entry.
                                 onAnnounceButton = onAnnounceButton.takeIf {
@@ -407,14 +412,14 @@ fun PlayersPager(
                                     overlayAvailable && player.queueInfo?.overlay != null
                                 },
                                 playerAction = playerAction1,
-                                onAddToPlaylist = onAddToPlaylist,
-                                onFavoriteClick = {
-                                    actionsViewModel.onFavoriteClick(it)
-                                },
+                                onAddToPlaylist = onAddToPlaylist.takeIf { grantedScopes.canEditLibrary },
+                                onFavoriteClick = actionsViewModel::onFavoriteClick
+                                    .takeIf { grantedScopes.canEditLibrary },
                                 onFavoriteStreamClick = {
                                     actionsViewModel.onFavoriteStreamClick(it)
                                 },
-                                canFavoriteStream = streamFavoriteSupported && player.hasFavoritableStreamTrack(),
+                                canFavoriteStream = grantedScopes.canEditLibrary &&
+                                    streamFavoriteSupported && player.hasFavoritableStreamTrack(),
                                 onClose = onClose,
                                 queueAction = { homeScreenViewModel.queueAction(it) },
                                 allPlayers = playerDataList,
@@ -510,7 +515,8 @@ private fun ExpandedPlayerPage(
     onAmbientSoundButton: (() -> Unit)?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
-    onFavoriteClick: (AppMediaItem) -> Unit,
+    // Null hides the heart: the user cannot edit the library.
+    onFavoriteClick: ((AppMediaItem) -> Unit)?,
     onFavoriteStreamClick: (PlayerData) -> Unit = {},
     canFavoriteStream: Boolean = false,
     onClose: () -> Unit,
