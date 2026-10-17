@@ -15,6 +15,7 @@ import io.music_assistant.sendspin.api.SendspinDeps
 import io.music_assistant.sendspin.api.SendspinPlayer
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.api.WarningCode
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.audio.AudioEvent
 import io.music_assistant.sendspin.audio.AudioPipeline
 import io.music_assistant.sendspin.audio.StreamAction
@@ -110,6 +111,14 @@ internal class SendspinPlayerImpl(
 
     private data class ConnectionKey(val endpoint: Endpoint, val deviceName: String, val codecs: List<AudioCodec>)
 
+    /** An unsupported endpoint never reaches a session, so its wire is moot. */
+    private val Endpoint.wire: WireVersion
+        get() = when (this) {
+            is Endpoint.WebSocket -> wire
+            is Endpoint.WebRtc -> wire
+            is Endpoint.Unsupported -> WireVersion.LEGACY_9
+        }
+
     init {
         scope.launch {
             config.map { it != null }.distinctUntilChanged().collectLatest { enabled ->
@@ -203,6 +212,7 @@ internal class SendspinPlayerImpl(
         private var newConnection = false
 
         fun sessionConfig(key: ConnectionKey) = SessionConfig(
+            wire = key.endpoint.wire,
             deviceName = key.deviceName,
             playerSupport = PlayerSupport(
                 supportedFormats = key.codecs.filter(deps.decoders::supports).flatMap { codec ->
@@ -211,7 +221,11 @@ internal class SendspinPlayerImpl(
                 bufferCapacity = config.value?.bufferCapacityBytes ?: 0,
                 supportedCommands = emptyList(),
             ),
-            deviceInfo = EncryptedDeviceInfo(productName = "Mobile Application", manufacturer = "Music Assistant"),
+            deviceInfo = EncryptedDeviceInfo(
+                productName = "Mobile Application",
+                manufacturer = "Music Assistant",
+                softwareVersion = deps.softwareVersion,
+            ),
         )
 
         override fun onReady(info: SessionInfo) {
@@ -242,23 +256,65 @@ internal class SendspinPlayerImpl(
 
         override fun onAudio(chunk: AudioChunk) = pipeline.onAudio(chunk)
 
-        /** Per attempt: clock probes (also liveness) and state reports. */
+        /** Per attempt: clock probes (also liveness), state reports, and the clock-quality watch. */
         suspend fun companion(scope: CoroutineScope, session: NoiseSession) {
             scope.launch { ClockProbe(clockSync, deps.clock) { session.send(it) }.run() }
             scope.launch { reportState(session) }
+            scope.launch { watchClockQuality() }
         }
 
-        private suspend fun reportState(session: NoiseSession) {
+        private suspend fun reportState(session: NoiseSession) = when (session.wire) {
+            WireVersion.LEGACY_9 -> reportLegacyState(session)
+            WireVersion.SPEC_1_0 -> reportSpecState(session)
+        }
+
+        /** 9.x wire: `synchronized` once after activation, then every 2 s while playing. */
+        private suspend fun reportLegacyState(session: NoiseSession) {
             val json = WireCodec.encode(
                 ClientStateMessage(
-                    payload = ClientStatePayload(PlayerStateObject(PlayerStateValue.SYNCHRONIZED), available = true),
+                    payload = ClientStatePayload(
+                        PlayerStateObject.legacy(PlayerStateValue.SYNCHRONIZED),
+                        available = true,
+                    ),
                 ),
             )
-            var degradedSince: Long? = null
             session.send(json) // first send waits for activation
             while (true) {
                 delay(STATE_REPORT_MILLIS)
                 if (pipeline.phase == StreamPhase.Playing) session.send(json)
+            }
+        }
+
+        /**
+         * Spec 1.0.0-rc1: `available` only once the time filter has an estimate (the
+         * server starts no stream before it), then again on every change. The reported
+         * delay is informational for the server's send-ahead; the scheduler still applies
+         * the signed [LocalPlayerConfig.userDelayMs] itself.
+         */
+        private suspend fun reportSpecState(session: NoiseSession) {
+            while (clockSync.snapshot() == null) delay(CLOCK_POLL_MILLIS)
+            config.filterNotNull().map { it.userDelayMs }.distinctUntilChanged().collect { delayMs ->
+                session.send(
+                    WireCodec.encode(
+                        ClientStateMessage(
+                            payload = ClientStatePayload(
+                                player = PlayerStateObject.spec(
+                                    outputDelayMs = delayMs.coerceIn(0, MAX_OUTPUT_DELAY_MS),
+                                    requiredLeadTimeMs = REQUIRED_LEAD_TIME_MS,
+                                    minBufferMs = MIN_BUFFER_MS,
+                                ),
+                                available = true,
+                            ),
+                        ),
+                    ),
+                )
+            }
+        }
+
+        private suspend fun watchClockQuality() {
+            var degradedSince: Long? = null
+            while (true) {
+                delay(STATE_REPORT_MILLIS)
                 val now = deps.clock.nowMicros()
                 if (clockSync.quality(now) == ClockQuality.Degraded) {
                     val since = degradedSince ?: now.also { degradedSince = it }
@@ -322,11 +378,21 @@ internal class SendspinPlayerImpl(
             AudioCodec.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: AudioCodec.PCM
     }
 
-    private companion object {
+    internal companion object {
         // Hardcoding to 48kHz and 16-bit for now
         val SAMPLE_RATES = listOf(48000)
         val BIT_DEPTHS = listOf(16)
         const val STATE_REPORT_MILLIS = 2_000L
         const val CLOCK_UNSTABLE_MICROS = 60_000_000L
+        const val CLOCK_POLL_MILLIS = 100L
+
+        /** Spec range of `output_delay_ms`. */
+        const val MAX_OUTPUT_DELAY_MS = 5_000
+
+        /** Startup lead the server grants a buffered source before the first chunk is due. */
+        const val REQUIRED_LEAD_TIME_MS = 250
+
+        /** Ongoing buffer the server keeps queued; absorbs Wi-Fi and WebRTC jitter. */
+        const val MIN_BUFFER_MS = 1_000
     }
 }

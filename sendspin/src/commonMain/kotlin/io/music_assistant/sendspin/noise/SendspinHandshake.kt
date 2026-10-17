@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.noise
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
 import io.music_assistant.sendspin.wire.ClientInitMessage
@@ -27,9 +28,12 @@ const val SENDSPIN_CORE_VERSION = 1
 internal open class HandshakeFailedException(message: String, cause: Throwable? = null) :
     Exception(message, cause)
 
-/** An explicit version mismatch cannot be repaired by reconnecting. */
-internal class UnsupportedCoreVersionException(val serverVersion: Int) :
-    HandshakeFailedException("unsupported Sendspin core version $serverVersion; client supports $SENDSPIN_CORE_VERSION")
+/** An explicit protocol mismatch cannot be repaired by reconnecting. */
+internal class UnsupportedCoreVersionException(detail: String) :
+    HandshakeFailedException("incompatible Sendspin protocol: $detail")
+
+/** Which handshake [SendspinHandshake.runNoiseExchange] runs; only the initial one may fall back to the Sentinel PSK. */
+internal enum class HandshakePhase { INITIAL, REHANDSHAKE }
 
 /** Frames the handshake driver can receive during the cleartext phase. */
 internal sealed interface HandshakeFrame {
@@ -61,8 +65,12 @@ internal class SendspinHandshake(
     private val crypto: NoiseCrypto,
     private val clientStatic: X25519KeyPair,
     private val pskCandidates: suspend () -> List<PskCandidate>,
+    private val wire: WireVersion,
     private val messageTimeoutMillis: Long = 30_000,
 ) {
+    /** The decrypted inner payload of Noise message 1; `psk_category` exists on spec 1.0.0-rc1 only. */
+    private class Message1(val pskId: String, val categoryCode: String?)
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -91,6 +99,7 @@ internal class SendspinHandshake(
         io.sendText(clientInitText)
 
         val serverInitText = awaitNext("server/init") { receiveText(io) }
+        rejectServerError(serverInitText)
         val serverInit = try {
             json.decodeFromString<ServerInitMessage>(serverInitText)
         } catch (e: Exception) {
@@ -100,7 +109,9 @@ internal class SendspinHandshake(
             throw HandshakeFailedException("expected server/init, got ${serverInit.type}")
         }
         if (serverInit.payload.version != SENDSPIN_CORE_VERSION) {
-            throw UnsupportedCoreVersionException(serverInit.payload.version)
+            throw UnsupportedCoreVersionException(
+                "server core version ${serverInit.payload.version}; client supports $SENDSPIN_CORE_VERSION",
+            )
         }
         val serverId = serverInit.payload.serverId
         val serverStaticPublic = SendspinBase64.decodeOrNull(serverId)
@@ -114,9 +125,25 @@ internal class SendspinHandshake(
             prologue = prologue,
             serverId = serverId,
             serverStaticPublic = serverStaticPublic,
+            phase = HandshakePhase.INITIAL,
             sendMessage = { io.sendText(it) },
             receiveMessage = { receiveText(io) },
         )
+    }
+
+    /**
+     * A spec 1.0.0-rc1 server answers an unacceptable `client/init` with
+     * `server/error` instead of `server/init`. A version or suite rejection is
+     * final; anything else is retried like any malformed reply.
+     */
+    private fun rejectServerError(text: String) {
+        val envelope = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
+        if (envelope["type"]?.jsonPrimitive?.content != "server/error") return
+        val reason = envelope["payload"]?.jsonObject?.get("reason")?.jsonPrimitive?.content
+        throw when (reason) {
+            "unsupported_version", "unsupported_suite" -> UnsupportedCoreVersionException("server/error $reason")
+            else -> HandshakeFailedException("server/error ${reason ?: "without reason"}")
+        }
     }
 
     private suspend fun receiveText(io: HandshakeIo): String =
@@ -132,6 +159,7 @@ internal class SendspinHandshake(
         prologue: ByteArray,
         serverId: String,
         serverStaticPublic: ByteArray,
+        phase: HandshakePhase,
         sendMessage: suspend (String) -> Unit,
         receiveMessage: suspend () -> String,
     ): HandshakeOutcome {
@@ -144,7 +172,7 @@ internal class SendspinHandshake(
         )
 
         // Noise message 1 (server → client). Its payload is decryptable
-        // without the PSK and carries the psk_id selecting one.
+        // without the PSK and carries the psk_id (and category) selecting one.
         val message1Text = awaitNext("noise handshake message 1") { receiveMessage() }
         val message1 = parseHandshakeMessage(message1Text)
         val payload1 = try {
@@ -152,7 +180,7 @@ internal class SendspinHandshake(
         } catch (e: NoiseException) {
             throw HandshakeFailedException("noise message 1 failed", e)
         }
-        val matched = selectCandidate(extractPskId(payload1), serverId)
+        val matched = selectCandidate(parseMessage1(payload1), serverId, phase)
         handshake.providePsk(matched.psk)
 
         // Noise message 2 (client → server); inner payload is the literal
@@ -191,16 +219,33 @@ internal class SendspinHandshake(
             ?: throw HandshakeFailedException("malformed noise/handshake data")
     }
 
-    private fun extractPskId(payload: ByteArray): String = try {
-        val element = Json.parseToJsonElement(payload.decodeToString())
-        element.jsonObject.getValue("psk_id").jsonPrimitive.content
+    private fun parseMessage1(payload: ByteArray): Message1 = try {
+        val element = Json.parseToJsonElement(payload.decodeToString()).jsonObject
+        Message1(
+            pskId = element.getValue("psk_id").jsonPrimitive.content,
+            categoryCode = element["psk_category"]?.jsonPrimitive?.content,
+        )
     } catch (e: Exception) {
         throw HandshakeFailedException("malformed noise message 1 inner payload", e)
     }
 
-    private suspend fun selectCandidate(pskId: String, serverId: String): PskCandidate {
-        val matched = pskCandidates().firstOrNull { SendspinPsk.pskId(crypto, it.psk) == pskId }
-            ?: throw HandshakeFailedException("no PSK candidate for psk_id")
+    /**
+     * The 9.x wire names the PSK by id alone. Spec 1.0.0-rc1 also declares the
+     * category, and a `psk_id` held under another category is a miss; on a miss
+     * in the initial handshake the client answers with the Sentinel PSK, so the
+     * server sees an authenticated credential mismatch and can offer re-pairing.
+     */
+    private suspend fun selectCandidate(message1: Message1, serverId: String, phase: HandshakePhase): PskCandidate {
+        val categoryCode = message1.categoryCode.takeIf { wire == WireVersion.SPEC_1_0 }
+        val matched = pskCandidates().firstOrNull {
+            SendspinPsk.pskId(crypto, it.psk) == message1.pskId &&
+                (categoryCode == null || it.category.wireCode == categoryCode)
+        } ?: when {
+            wire == WireVersion.SPEC_1_0 && phase == HandshakePhase.INITIAL ->
+                PskCandidate(SendspinPsk.SENTINEL_PSK, PskCategory.SENTINEL)
+
+            else -> throw HandshakeFailedException("no PSK candidate for psk_id")
+        }
         if (matched.category == PskCategory.LONG_TERM_STORED && matched.serverId != serverId) {
             // Stored-pubkey model: the matched record must belong to the
             // server that presented itself in server/init.

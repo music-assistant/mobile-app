@@ -43,6 +43,8 @@ class SendspinDeps(
     val approvePairing: suspend (pairingToken: String) -> Unit,
     /** Where the audio loop runs: one thread, high priority where the platform allows. */
     val audioDispatcher: CoroutineDispatcher,
+    /** Reported as `device_info.software_version`, so the server names the app version in its logs. */
+    val softwareVersion: String,
     val clock: MonotonicClock = SystemMonotonicClock,
 )
 

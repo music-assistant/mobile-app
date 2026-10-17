@@ -5,6 +5,7 @@ import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
@@ -16,6 +17,7 @@ import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.WebRTCHttpProxy
 import io.music_assistant.client.webrtc.model.RemoteId
 import io.music_assistant.sendspin.api.Endpoint
+import io.music_assistant.sendspin.api.WireVersion
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +28,9 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 /**
  * The endpoint flow owns the local player's lifetime now that MainDataSource
@@ -70,6 +74,45 @@ class LocalPlayerEndpointsTest {
         )
         runCurrent()
         assertIs<Endpoint.Unsupported>(endpoints.endpoint.value)
+    }
+
+    @Test
+    fun theSchemaPicksTheWire() = runTest {
+        val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
+        listOf(
+            null to WireVersion.LEGACY_9,
+            SERVER_2_11_SCHEMA - 1 to WireVersion.LEGACY_9,
+            SERVER_2_11_SCHEMA to WireVersion.SPEC_1_0,
+        ).forEach { (schema, wire) ->
+            client.sessionState.value = direct(
+                ConnectionData(serverInfo = SERVER_INFO.copy(schemaVersion = schema), user = USER, token = "tok"),
+            )
+            runCurrent()
+            assertEquals(wire, assertIs<Endpoint.WebSocket>(endpoints.endpoint.value).wire, "schema $schema")
+        }
+    }
+
+    @Test
+    fun aWebRtcEndpointIsReusedOnlyOnTheSameWire() = runTest {
+        val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
+        fun webRtc(schema: Int) = SessionState.Connected.WebRTC(
+            RemoteId("ABCDEFGHIJKLMNOPQRSTUVWXY2"),
+            ConnectionData(serverInfo = SERVER_INFO.copy(schemaVersion = schema), user = USER, token = "tok"),
+        )
+        client.sessionState.value = webRtc(SERVER_2_11_SCHEMA - 1)
+        runCurrent()
+        val legacy = assertIs<Endpoint.WebRtc>(endpoints.endpoint.value)
+        assertEquals(WireVersion.LEGACY_9, legacy.wire)
+
+        client.sessionState.value = webRtc(SERVER_2_11_SCHEMA)
+        runCurrent()
+        val spec = assertIs<Endpoint.WebRtc>(endpoints.endpoint.value)
+        assertEquals(WireVersion.SPEC_1_0, spec.wire)
+        assertNotSame(legacy, spec)
+
+        client.sessionState.value = webRtc(SERVER_2_11_SCHEMA)
+        runCurrent()
+        assertSame(spec, endpoints.endpoint.value)
     }
 
     @Test

@@ -1,9 +1,13 @@
 package io.music_assistant.sendspin.wire
 
 import io.music_assistant.sendspin.api.AudioFormatSpec
+import io.music_assistant.sendspin.api.WireVersion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * Wire models of the encrypted Sendspin protocol. Shapes are frozen: the
@@ -70,14 +74,17 @@ internal data class EncryptedClientHelloMessage(
     val payload: EncryptedClientHelloPayload,
 ) : SendspinMessage
 
+/** Fields of both wires; [SendspinJson] omits the nulls, so each wire sees only its own shape. */
 @Serializable
 internal data class EncryptedClientHelloPayload(
     val name: String,
     @SerialName("device_info") val deviceInfo: EncryptedDeviceInfo? = null,
-    @SerialName("trust_level") val trustLevel: String,
+    /** 9.x wire only. */
+    @SerialName("trust_level") val trustLevel: String? = null,
     @SerialName("supported_roles") val supportedRoles: List<VersionedRole>,
     @SerialName("player@v1_support") val playerV1Support: PlayerSupport? = null,
-    @SerialName("supported_pair_methods") val supportedPairMethods: List<PairMethodDescriptor>,
+    /** Built by [pairMethods]: an array of descriptors on 9.x, an object keyed by method on spec 1.0.0-rc1. */
+    @SerialName("supported_pair_methods") val supportedPairMethods: JsonElement,
     @SerialName("unpaired_access") val unpairedAccess: UnpairedAccess,
 )
 
@@ -90,6 +97,15 @@ internal data class EncryptedDeviceInfo(
 
 @Serializable
 internal data class PairMethodDescriptor(val method: String)
+
+/**
+ * The `supported_pair_methods` value for [methods]. One serial name cannot
+ * carry two Kotlin types, so the shape is built here instead of in the model.
+ */
+internal fun pairMethods(wire: WireVersion, methods: List<String>): JsonElement = when (wire) {
+    WireVersion.LEGACY_9 -> JsonArray(methods.map { SendspinJson.encodeToJsonElement(PairMethodDescriptor(it)) })
+    WireVersion.SPEC_1_0 -> JsonObject(methods.associateWith { JsonObject(emptyMap()) })
+}
 
 @Serializable
 internal data class UnpairedAccess(val enabled: Boolean)
@@ -107,7 +123,8 @@ internal enum class PlayerCommand {
 internal data class PlayerSupport(
     @SerialName("supported_formats") val supportedFormats: List<AudioFormatSpec>,
     @SerialName("buffer_capacity") val bufferCapacity: Int,
-    @SerialName("supported_commands") val supportedCommands: List<PlayerCommand>,
+    /** 9.x wire only; spec 1.0.0-rc1 reports commands in `client/state`. */
+    @SerialName("supported_commands") val supportedCommands: List<PlayerCommand>? = null,
 )
 
 @Serializable
@@ -141,6 +158,19 @@ internal data class ActivatePairing(
 )
 
 // MARK: - Pairing PSK flow
+
+/** Spec 1.0.0-rc1 only: opens the attempt that `client/pair-finalize` completes. */
+@Serializable
+internal data class ClientPairInitMessage(
+    override val type: String = "client/pair-init",
+    val payload: ClientPairInitPayload,
+) : SendspinMessage
+
+@Serializable
+internal data class ClientPairInitPayload(
+    /** Pairing `server/activate` messages received since the last Noise handshake. */
+    @SerialName("pairing_index") val pairingIndex: Int,
+)
 
 @Serializable
 internal data class ClientPairFinalizeMessage(
@@ -208,11 +238,31 @@ internal data class ClientStateMessage(
 @Serializable
 internal data class ClientStatePayload(
     val player: PlayerStateObject? = null,
-    val available: Boolean? = null,
+    /** Every state message carries it on both wires. */
+    val available: Boolean,
 )
 
+/** Fields of both wires; build it with [legacy] or [spec] so a message never mixes them. */
 @Serializable
-internal data class PlayerStateObject(val state: PlayerStateValue)
+internal data class PlayerStateObject(
+    val state: PlayerStateValue? = null,
+    @SerialName("output_delay_ms") val outputDelayMs: Int? = null,
+    @SerialName("required_lead_time_ms") val requiredLeadTimeMs: Int? = null,
+    @SerialName("min_buffer_ms") val minBufferMs: Int? = null,
+    @SerialName("supported_commands") val supportedCommands: List<PlayerCommand>? = null,
+) {
+    companion object {
+        fun legacy(state: PlayerStateValue) = PlayerStateObject(state = state)
+
+        /** This client accepts no commands: the control plane stays on the MA API. */
+        fun spec(outputDelayMs: Int, requiredLeadTimeMs: Int, minBufferMs: Int) = PlayerStateObject(
+            outputDelayMs = outputDelayMs,
+            requiredLeadTimeMs = requiredLeadTimeMs,
+            minBufferMs = minBufferMs,
+            supportedCommands = emptyList(),
+        )
+    }
+}
 
 @Serializable
 internal data class ServerStateMessage(

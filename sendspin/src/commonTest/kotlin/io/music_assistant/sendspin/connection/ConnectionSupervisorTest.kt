@@ -3,6 +3,7 @@ package io.music_assistant.sendspin.connection
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.FailureCause
 import io.music_assistant.sendspin.api.MonotonicClock
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.fakes.FakeNoiseServer
 import io.music_assistant.sendspin.fakes.FakeTransport
 import io.music_assistant.sendspin.identity.FakeSendspinKeyStore
@@ -41,7 +42,7 @@ import kotlin.test.assertTrue
 class ConnectionSupervisorTest {
     private val crypto = CryptographyKotlinNoiseCrypto()
     private val online = MutableStateFlow(true)
-    private val sessionConfig = SessionConfig("Device", playerSupport = null, deviceInfo = null)
+    private val sessionConfig = SessionConfig(WireVersion.LEGACY_9, "Device", playerSupport = null, deviceInfo = null)
     private var pairCalls = 0
     private val noopHandler = object : SessionHandler {
         override fun onReady(info: SessionInfo) = Unit
@@ -87,7 +88,7 @@ class ConnectionSupervisorTest {
         val job = launch {
             launch { supervisor.state.collect { states += it to testScheduler.currentTime } }
             supervisor.run(
-                endpoint ?: Endpoint.WebRtc { connect(attempts++).also { transports += it } },
+                endpoint ?: Endpoint.WebRtc(WireVersion.LEGACY_9) { connect(attempts++).also { transports += it } },
                 sessionConfig,
                 noopHandler,
                 companion = companion,
@@ -236,7 +237,7 @@ class ConnectionSupervisorTest {
     @Test
     fun webRtcEndpointOpensAFreshChannelPerAttempt() = runTest {
         var opened = 0
-        val endpoint = Endpoint.WebRtc {
+        val endpoint = Endpoint.WebRtc(WireVersion.LEGACY_9) {
             opened++
         FakeTransport().also { it.serverDrops() }
         }

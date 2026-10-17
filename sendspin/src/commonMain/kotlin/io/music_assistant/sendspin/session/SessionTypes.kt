@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.session
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.PskCategory
 import io.music_assistant.sendspin.wire.AudioChunk
 import io.music_assistant.sendspin.wire.EncryptedDeviceInfo
@@ -23,6 +24,7 @@ internal enum class TrustLevel(val wire: String) {
 }
 
 internal class SessionConfig(
+    val wire: WireVersion,
     val deviceName: String,
     val playerSupport: PlayerSupport?,
     val deviceInfo: EncryptedDeviceInfo?,
@@ -32,12 +34,17 @@ internal class SessionConfig(
     val stepTimeoutMillis: Long = 30_000,
 )
 
-/** Hello exchange complete under the current keys; outbound stays gated until activation. */
+/**
+ * Hello exchange complete under the current keys; outbound stays gated until activation.
+ * Spec 1.0.0-rc1 has no hello after a re-handshake, so a re-keyed session keeps the
+ * category and trust level of its first handshake here; only [SilentPairing] reads them.
+ */
 internal data class SessionInfo(
     val serverId: String,
     val serverName: String,
     val matchedPskCategory: PskCategory,
     val trustLevel: TrustLevel,
+    val wire: WireVersion,
 )
 
 internal data class Activation(val activities: List<String>, val activeRoles: List<String>)

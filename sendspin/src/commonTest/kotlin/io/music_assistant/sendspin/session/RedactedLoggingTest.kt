@@ -3,6 +3,7 @@ package io.music_assistant.sendspin.session
 import co.touchlab.kermit.LogWriter
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.SendspinBase64
 import io.music_assistant.sendspin.wire.SendspinJson
 import kotlinx.serialization.json.jsonObject
@@ -17,7 +18,7 @@ import kotlin.test.assertTrue
  * management requests carrying raw PSKs run under a capturing writer, and the
  * capture is searched for every secret's encoded form.
  */
-internal class RedactedLoggingTest : NoiseSessionTestHarness() {
+internal class RedactedLoggingTest : NoiseSessionTestHarness(WireVersion.LEGACY_9) {
     private class CapturingWriter : LogWriter() {
         val lines = mutableListOf<String>()
 

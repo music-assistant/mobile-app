@@ -5,20 +5,21 @@ import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 /**
  * The three Sendspin PSK categories share one `psk_id` namespace; the client
  * stores each PSK tagged with its category, and on a `psk_id` match the
- * category determines trust handling.
+ * category determines trust handling. [wireCode] is the `psk_category` a
+ * spec 1.0.0-rc1 server declares in Noise message 1.
  */
-internal enum class PskCategory {
+internal enum class PskCategory(val wireCode: String) {
     /** The published sentinel constant — no authentication on its own. */
-    SENTINEL,
+    SENTINEL("sn"),
 
     /** This device's per-device Pairing PSK. */
-    PAIRING,
+    PAIRING("pr"),
 
     /** A per-server long-term PSK persisted with the server's `server_id`. */
-    LONG_TERM_STORED,
+    LONG_TERM_STORED("lt"),
 
     /** A shared long-term PSK persisted without a bound `server_id`. */
-    LONG_TERM_SHARED,
+    LONG_TERM_SHARED("lt"),
 }
 
 /**

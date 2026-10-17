@@ -1,15 +1,17 @@
 package io.music_assistant.sendspin.session
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.HandshakeFailedException
 import io.music_assistant.sendspin.noise.NoiseFraming
 import io.music_assistant.sendspin.noise.PskCategory
-import io.music_assistant.sendspin.noise.SendspinBase64
 import io.music_assistant.sendspin.noise.SendspinPsk
+import io.music_assistant.sendspin.noise.UnsupportedCoreVersionException
 import io.music_assistant.sendspin.wire.SendspinJson
 import io.music_assistant.sendspin.wire.ServerMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -19,17 +21,20 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertIsNot
 import kotlin.test.assertTrue
 
 /**
- * Establishment, hello shape, activation gating and the spec's ordered
- * rejection rules, audio byte-exactness (plain and fragmented), in-band
- * re-handshake, silent handshake failure, and the Pairing PSK flow.
+ * Establishment, activation gating and the spec's ordered rejection rules,
+ * audio byte-exactness (plain and fragmented), in-band re-handshake, and the
+ * Pairing PSK flow, on both wires. Each wire's own shapes and rules follow in
+ * [LegacyNoiseSessionTest] and [SpecNoiseSessionTest].
  */
-internal class NoiseSessionTest : NoiseSessionTestHarness() {
-    private fun goodbyeReason(json: String): String =
+internal abstract class NoiseSessionScenarios(wire: WireVersion) : NoiseSessionTestHarness(wire) {
+    protected fun payloadOf(json: String): JsonObject =
         SendspinJson.parseToJsonElement(json).jsonObject.getValue("payload").jsonObject
-            .getValue("reason").jsonPrimitive.content
+
+    protected fun goodbyeReason(json: String): String = payloadOf(json).getValue("reason").jsonPrimitive.content
 
     @Test
     fun establishesActivatesAndGatesOutboundTraffic() = sessionTest { f ->
@@ -37,20 +42,17 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
         server.establish()
         val clientHello = server.completeHelloExchange()
 
-        val payload = SendspinJson.parseToJsonElement(clientHello).jsonObject.getValue("payload").jsonObject
+        val payload = payloadOf(clientHello)
         assertFalse(payload.containsKey("client_id"))
         assertFalse(payload.containsKey("version"))
-        assertEquals("none", payload.getValue("trust_level").jsonPrimitive.content)
-        assertEquals(
-            "pairing_psk",
-            payload.getValue("supported_pair_methods").jsonArray[0].jsonObject.getValue("method").jsonPrimitive.content,
-        )
+        assertEquals("Enc Device", payload.getValue("name").jsonPrimitive.content)
         assertTrue(payload.getValue("unpaired_access").jsonObject.getValue("enabled").jsonPrimitive.content.toBoolean())
 
         val ready = assertIs<Event.Ready>(f.nextEvent()).info
         assertEquals(f.serverId, ready.serverId)
         assertEquals("Enc Server", ready.serverName)
         assertEquals(TrustLevel.NONE, ready.trustLevel)
+        assertEquals(wire, ready.wire)
 
         // Outbound traffic is gated until the first admissible activation.
         val gatedSend = launch { f.session.send("""{"type":"client/time"}""") }
@@ -100,7 +102,7 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
     }
 
     @Test
-    fun rehandshakeSwapsKeysRepeatsHelloAndResumesAfterActivate() = sessionTest { f ->
+    fun rehandshakeSwapsKeysAndResumesAfterActivate() = sessionTest { f ->
         val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
         server.establish()
         server.completeHelloExchange()
@@ -108,47 +110,25 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
         assertIs<Event.Ready>(f.nextEvent())
         assertIs<Event.Activated>(f.nextEvent())
 
-        server.rehandshake(f.trustStore.pairingPsk)
+        server.rehandshake(f.trustStore.pairingPsk, PAIRING_CATEGORY)
         // A send issued during the exchange must not interleave: it flushes
         // only after the post-re-handshake activation.
         val queuedSend = launch { f.session.send("""{"type":"client/time"}""") }
-
-        val clientHello = server.completeHelloExchange()
-        assertEquals(
-            "none",
-            SendspinJson.parseToJsonElement(clientHello).jsonObject.getValue("payload").jsonObject
-                .getValue("trust_level").jsonPrimitive.content,
-        )
-        assertEquals(PskCategory.PAIRING, assertIs<Event.Ready>(f.nextEvent()).info.matchedPskCategory)
+        helloAfterRehandshake(server, f)
 
         server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"pairing_psk"}""")
         assertIs<Event.Activated>(f.nextEvent())
 
-        // Quiesced through the pairing activity: only client/pair-finalize crosses.
-        val finalize = SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
-        assertEquals("client/pair-finalize", finalize.getValue("type").jsonPrimitive.content)
-        val newPsk = SendspinBase64.decode(
-            finalize.getValue("payload").jsonObject.getValue("long_term_psk").jsonPrimitive.content,
-        )
+        // Quiesced through the pairing activity: only the pairing messages cross.
+        val newPsk = server.receivePairFinalize()
         server.sendJson("""{"type":"server/pair-finalize","payload":{}}""")
 
         server.rehandshake(newPsk)
-        server.completeHelloExchange()
-        assertIs<Event.Ready>(f.nextEvent())
+        helloAfterRehandshake(server, f)
         server.activate()
         assertIs<Event.Activated>(f.nextEvent())
         queuedSend.join()
         assertEquals("""{"type":"client/time"}""", server.receiveJson())
-    }
-
-    @Test
-    fun unknownPskIdFailsSilentlyWithoutApplicationError() = sessionTest { f ->
-        val server = FakeServer(f, ByteArray(32) { 0x55 })
-        launch { runCatching { server.establish() } }
-        assertIs<HandshakeFailedException>(f.awaitFailure())
-        assertTrue(f.transport.closed, "socket closed on handshake failure")
-        // The only outbound frame remains client/init.
-        assertEquals(1, f.transport.sent.size)
     }
 
     @Test
@@ -223,7 +203,7 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
     @Test
     fun rejectedPairingActivationEndsThePriorAttemptSoALateFinalizePersistsNothing() = sessionTest { f ->
         val server = pairingPreamble(f)
-        server.receiveJson() // the first attempt's client/pair-finalize
+        server.receivePairFinalize() // the first attempt
 
         server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"static_pin"}""")
         val abort = SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
@@ -240,11 +220,7 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
     fun pairingPskFlowPersistsRecordOnlyAfterServerFinalizeThenRehandshakesToIt() = sessionTest { f ->
         val server = pairingPreamble(f)
 
-        val finalize = SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
-        assertEquals("client/pair-finalize", finalize.getValue("type").jsonPrimitive.content)
-        val newPsk = SendspinBase64.decode(
-            finalize.getValue("payload").jsonObject.getValue("long_term_psk").jsonPrimitive.content,
-        )
+        val newPsk = server.receivePairFinalize()
         assertEquals(32, newPsk.size)
         assertTrue(f.trustStore.records().none { it.serverId == f.serverId }, "nothing persisted before the ack")
 
@@ -255,29 +231,28 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
         assertContentEquals(newPsk, f.trustStore.records().single { it.serverId == f.serverId }.psk)
 
         server.rehandshake(newPsk)
-        val clientHello = server.completeHelloExchange()
-        assertEquals(
-            "user",
-            SendspinJson.parseToJsonElement(clientHello).jsonObject.getValue("payload").jsonObject
-                .getValue("trust_level").jsonPrimitive.content,
-        )
-        assertEquals(TrustLevel.USER, assertIs<Event.Ready>(f.nextEvent()).info.trustLevel)
+        when (wire) {
+            WireVersion.LEGACY_9 -> {
+                val clientHello = server.completeHelloExchange()
+                assertEquals("user", payloadOf(clientHello).getValue("trust_level").jsonPrimitive.content)
+                assertEquals(TrustLevel.USER, assertIs<Event.Ready>(f.nextEvent()).info.trustLevel)
+            }
+
+            WireVersion.SPEC_1_0 -> {
+                server.activate()
+                assertIs<Event.Activated>(f.nextEvent())
+            }
+        }
     }
 
     @Test
     fun cancellingActivateDiscardsAttemptAndAdmitsANewOne() = sessionTest { f ->
         val server = pairingPreamble(f)
-        val firstPsk = SendspinBase64.decode(
-            SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
-                .getValue("payload").jsonObject.getValue("long_term_psk").jsonPrimitive.content,
-        )
+        val firstPsk = server.receivePairFinalize(expectedPairingIndex = 1)
 
         server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"pairing_psk"}""")
         assertIs<Event.Activated>(f.nextEvent())
-        val secondPsk = SendspinBase64.decode(
-            SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
-                .getValue("payload").jsonObject.getValue("long_term_psk").jsonPrimitive.content,
-        )
+        val secondPsk = server.receivePairFinalize(expectedPairingIndex = 2)
 
         server.sendJson("""{"type":"server/pair-finalize","payload":{}}""")
         withTimeout(AWAIT_MILLIS) {
@@ -291,7 +266,7 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
     @Test
     fun pairAbortDiscardsAttemptPersistingNothing() = sessionTest { f ->
         val server = pairingPreamble(f)
-        server.receiveJson() // client/pair-finalize
+        server.receivePairFinalize()
 
         server.sendJson("""{"type":"pair/abort","payload":{"reason":"user_cancelled"}}""")
         server.sendJson("""{"type":"server/pair-finalize","payload":{}}""")
@@ -303,7 +278,7 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
     @Test
     fun pairingAttemptTimeoutSendsPairAbort() = sessionTest(pairingAttemptTimeoutMillis = 150) { f ->
         val server = pairingPreamble(f)
-        server.receiveJson() // client/pair-finalize
+        server.receivePairFinalize()
 
         val abort = SendspinJson.parseToJsonElement(server.receiveJson()).jsonObject
         assertEquals("pair/abort", abort.getValue("type").jsonPrimitive.content)
@@ -361,5 +336,165 @@ internal class NoiseSessionTest : NoiseSessionTestHarness() {
                 assertEquals(i.toLong(), audio.timestamp)
             }
         }
+    }
+}
+
+/** The 9.x wire: `trust_level`, the pair-method array, hello repeated after a re-handshake. */
+internal class LegacyNoiseSessionTest : NoiseSessionScenarios(WireVersion.LEGACY_9) {
+    @Test
+    fun helloCarriesTrustLevelPairMethodArrayAndSupportedCommands() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        val payload = payloadOf(server.completeHelloExchange())
+
+        assertEquals("none", payload.getValue("trust_level").jsonPrimitive.content)
+        assertEquals(
+            "pairing_psk",
+            payload.getValue("supported_pair_methods").jsonArray[0].jsonObject.getValue("method").jsonPrimitive.content,
+        )
+        assertEquals(0, payload.getValue("player@v1_support").jsonObject.getValue("supported_commands").jsonArray.size)
+    }
+
+    @Test
+    fun rehandshakeRepeatsHelloWithTheNewTrustLevel() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        server.completeHelloExchange()
+        assertIs<Event.Ready>(f.nextEvent())
+
+        server.rehandshake(f.trustStore.pairingPsk, PAIRING_CATEGORY)
+        val payload = payloadOf(server.completeHelloExchange())
+        assertEquals("none", payload.getValue("trust_level").jsonPrimitive.content)
+        assertEquals(PskCategory.PAIRING, assertIs<Event.Ready>(f.nextEvent()).info.matchedPskCategory)
+    }
+
+    @Test
+    fun unknownPskIdFailsSilentlyWithoutApplicationError() = sessionTest { f ->
+        val server = FakeServer(f, ByteArray(32) { 0x55 })
+        launch { runCatching { server.establish() } }
+        assertIs<HandshakeFailedException>(f.awaitFailure())
+        assertTrue(f.transport.closed, "socket closed on handshake failure")
+        // The only outbound frame remains client/init.
+        assertEquals(1, f.transport.sent.size)
+    }
+}
+
+/** Spec 1.0.0-rc1: the new hello and pairing shapes, category matching, and the re-handshake without hello. */
+internal class SpecNoiseSessionTest : NoiseSessionScenarios(WireVersion.SPEC_1_0) {
+    @Test
+    fun helloOmitsTrustLevelAndSupportedCommandsAndKeysPairMethodsByName() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        val clientHello = server.completeHelloExchange()
+        val payload = payloadOf(clientHello)
+
+        assertFalse(payload.containsKey("trust_level"))
+        assertFalse(payload.getValue("player@v1_support").jsonObject.containsKey("supported_commands"))
+        assertEquals(0, payload.getValue("supported_pair_methods").jsonObject.getValue("pairing_psk").jsonObject.size)
+        assertFalse(clientHello.contains("null"), "a null optional field is rejected by the server: $clientHello")
+    }
+
+    @Test
+    fun unknownPskIdInTheInitialHandshakeCompletesWithTheSentinel() = sessionTest { f ->
+        val server = FakeServer(f, ByteArray(32) { 0x55 })
+        server.establish(verifyWith = SendspinPsk.SENTINEL_PSK)
+        server.completeHelloExchange()
+        assertEquals(PskCategory.SENTINEL, assertIs<Event.Ready>(f.nextEvent()).info.matchedPskCategory)
+    }
+
+    @Test
+    fun aPskIdHeldUnderAnotherCategoryIsAMiss() = sessionTest { f ->
+        val server = FakeServer(f, f.trustStore.pairingPsk)
+        server.establish(categoryCode = "lt", verifyWith = SendspinPsk.SENTINEL_PSK)
+        server.completeHelloExchange()
+        assertEquals(PskCategory.SENTINEL, assertIs<Event.Ready>(f.nextEvent()).info.matchedPskCategory)
+    }
+
+    @Test
+    fun unknownPskIdDuringARehandshakeFails() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        server.completeHelloExchange()
+        assertIs<Event.Ready>(f.nextEvent())
+
+        launch { runCatching { server.rehandshake(ByteArray(32) { 0x55 }) } }
+        assertIs<HandshakeFailedException>(f.awaitFailure())
+        assertTrue(f.transport.closed)
+    }
+
+    @Test
+    fun rehandshakeSendsNoHelloAndAnActivateWithoutRolesKeepsThem() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        server.completeHelloExchange()
+        server.activate()
+        assertIs<Event.Ready>(f.nextEvent())
+        assertIs<Event.Activated>(f.nextEvent())
+
+        val longTermPsk = ByteArray(32) { 0x21 }
+        f.trustStore.recordLongTermPsk(longTermPsk, f.serverId)
+        server.rehandshake(longTermPsk)
+        server.activate(activities = """["playback"]""", activeRoles = null)
+        val activated = assertIs<Event.Activated>(f.nextEvent()).activation
+        assertEquals(listOf("player@v1"), activated.activeRoles)
+    }
+
+    @Test
+    fun pairInitPrecedesFinalizeAndItsIndexCountsPerHandshake() = sessionTest { f ->
+        val server = pairingPreamble(f)
+        server.receivePairFinalize(expectedPairingIndex = 1)
+
+        server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"pairing_psk"}""")
+        assertIs<Event.Activated>(f.nextEvent())
+        server.receivePairFinalize(expectedPairingIndex = 2)
+
+        server.rehandshake(f.trustStore.pairingPsk, PAIRING_CATEGORY)
+        server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"pairing_psk"}""")
+        assertIs<Event.Activated>(f.nextEvent())
+        server.receivePairFinalize(expectedPairingIndex = 1)
+    }
+
+    @Test
+    fun aPairingKeyedSessionAdmitsEmptyActivities() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        server.completeHelloExchange()
+        assertIs<Event.Ready>(f.nextEvent())
+
+        server.rehandshake(f.trustStore.pairingPsk, PAIRING_CATEGORY)
+        server.activate(activities = "[]", activeRoles = "[]")
+        assertEquals(emptyList(), assertIs<Event.Activated>(f.nextEvent()).activation.activities)
+        assertFalse(f.transport.closed)
+    }
+
+    @Test
+    fun legacyFragmentTypesAreIgnoredAsUnknownMessages() = sessionTest { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        server.completeHelloExchange()
+        server.activate()
+        assertIs<Event.Ready>(f.nextEvent())
+        assertIs<Event.Activated>(f.nextEvent())
+
+        server.sendRawFrame(NoiseFraming.TYPE_FRAGMENT_MORE, byteArrayOf(0, 1, 2))
+        server.sendRawFrame(NoiseFraming.TYPE_FRAGMENT_END, byteArrayOf(9))
+        server.sendJson("""{"type":"server/state","payload":{}}""")
+        assertIs<ServerMessage.State>(f.nextMessage())
+        assertFalse(f.transport.closed)
+    }
+
+    @Test
+    fun serverErrorForAnUnsupportedVersionIsTerminal() = sessionTest { f ->
+        FakeServer(f, SendspinPsk.SENTINEL_PSK).failInit("unsupported_version")
+        assertIs<UnsupportedCoreVersionException>(f.awaitFailure())
+        assertTrue(f.transport.closed)
+    }
+
+    @Test
+    fun serverErrorMalformedIsARetriableFailure() = sessionTest { f ->
+        FakeServer(f, SendspinPsk.SENTINEL_PSK).failInit("malformed")
+        val failure = f.awaitFailure()
+        assertIs<HandshakeFailedException>(failure)
+        assertIsNot<UnsupportedCoreVersionException>(failure)
     }
 }

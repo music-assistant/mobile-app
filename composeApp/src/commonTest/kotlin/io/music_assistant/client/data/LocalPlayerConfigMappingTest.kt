@@ -4,12 +4,13 @@ import io.music_assistant.client.data.LocalPlayerAdapter.Companion.localPlayerCo
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.Endpoint
+import io.music_assistant.sendspin.api.WireVersion
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class LocalPlayerConfigMappingTest {
-    private val endpoint = Endpoint.WebSocket("wss://ma/sendspin", "token")
+    private val endpoint = Endpoint.WebSocket("wss://ma/sendspin", "token", WireVersion.LEGACY_9)
 
     private fun config(staticDelayMs: Int, enabled: Boolean = true, endpoint: Endpoint? = this.endpoint) =
         localPlayerConfig(enabled, endpoint, "Phone", AudioCodec.FLAC, 15, staticDelayMs)

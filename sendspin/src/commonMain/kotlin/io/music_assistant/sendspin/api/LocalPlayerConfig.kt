@@ -26,13 +26,13 @@ sealed interface Endpoint {
     data class Unsupported(val reason: String) : Endpoint
 
     /** Dedicated WebSocket through the MA proxy. Sends `auth` with [authToken] before `client/init`. */
-    data class WebSocket(val url: String, val authToken: String) : Endpoint
+    data class WebSocket(val url: String, val authToken: String, val wire: WireVersion) : Endpoint
 
     /**
      * WebRTC data channel. Every connection attempt calls [openChannel]; the app
      * renegotiates inside it when needed. A channel is single-use.
      */
-    class WebRtc(val openChannel: suspend () -> SendspinTransport) : Endpoint
+    class WebRtc(val wire: WireVersion, val openChannel: suspend () -> SendspinTransport) : Endpoint
 }
 
 /**

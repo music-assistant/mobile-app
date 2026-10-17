@@ -3,6 +3,7 @@ package io.music_assistant.sendspin.session
 import co.touchlab.kermit.Logger
 import io.music_assistant.sendspin.api.Frame
 import io.music_assistant.sendspin.api.SendspinTransport
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.identity.SendspinTrustStore
 import io.music_assistant.sendspin.management.ManagementHandler
 import io.music_assistant.sendspin.noise.DH_LEN
@@ -10,6 +11,7 @@ import io.music_assistant.sendspin.noise.HandshakeFailedException
 import io.music_assistant.sendspin.noise.HandshakeFrame
 import io.music_assistant.sendspin.noise.HandshakeIo
 import io.music_assistant.sendspin.noise.HandshakeOutcome
+import io.music_assistant.sendspin.noise.HandshakePhase
 import io.music_assistant.sendspin.noise.NoiseException
 import io.music_assistant.sendspin.noise.NoiseFraming
 import io.music_assistant.sendspin.noise.NoiseTransport
@@ -28,12 +30,12 @@ import io.music_assistant.sendspin.wire.GoodbyePayload
 import io.music_assistant.sendspin.wire.GoodbyeReason
 import io.music_assistant.sendspin.wire.PairAbortMessage
 import io.music_assistant.sendspin.wire.PairAbortPayload
-import io.music_assistant.sendspin.wire.PairMethodDescriptor
 import io.music_assistant.sendspin.wire.ServerActivatePayload
 import io.music_assistant.sendspin.wire.ServerMessage
 import io.music_assistant.sendspin.wire.UnpairedAccess
 import io.music_assistant.sendspin.wire.VersionedRole
 import io.music_assistant.sendspin.wire.WireCodec
+import io.music_assistant.sendspin.wire.pairMethods
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -70,9 +72,12 @@ internal class NoiseSession(
         val handshakeHash: ByteArray,
         val serverId: String,
         val matched: PskCandidate,
+        wire: WireVersion,
     ) {
-        val decoder = NoiseFraming.Decoder()
+        val decoder = NoiseFraming.Decoder(wire)
     }
+
+    val wire: WireVersion get() = config.wire
 
     private val gate = MutableStateFlow(Gate.CLOSED)
 
@@ -86,6 +91,9 @@ internal class NoiseSession(
     private var pairingTimeout: Job? = null
     private var activities: Set<String> = emptySet()
     private var persistedRoles: List<String> = emptyList()
+
+    /** Pairing activations since the last Noise handshake; `client/pair-init` reports it. */
+    private var pairingActivations = 0
 
     /**
      * Application send. Suspends until the session is activated; quiesces
@@ -126,6 +134,7 @@ internal class NoiseSession(
                 crypto = crypto,
                 clientStatic = trustStore.identity.keyPair,
                 pskCandidates = { trustStore.pskCandidates() },
+                wire = config.wire,
                 messageTimeoutMillis = config.stepTimeoutMillis,
             )
             handshake = initial
@@ -180,7 +189,7 @@ internal class NoiseSession(
                 route(WireCodec.parse(message.payload.decodeToString()), scope, handler)
 
             NoiseFraming.isPlayerAudioType(message.type) ->
-                when (val parsed = BinaryFrames.parse(message.type, message.payload)) {
+                when (val parsed = BinaryFrames.parse(config.wire, message.type, message.payload)) {
                     is BinaryFrame.Audio -> handler.onAudio(parsed.chunk)
                     is BinaryFrame.Other, BinaryFrame.Malformed -> logger.w { "Ignoring binary frame $parsed" }
                 }
@@ -233,12 +242,19 @@ internal class NoiseSession(
     }
 
     private suspend fun installChannel(outcome: HandshakeOutcome) = sendMutex.withLock {
-        channel = SecureChannel(outcome.transport, outcome.handshakeHash, outcome.serverId, outcome.matched)
-        // Activities, role grants, and any in-flight pairing attempt do not survive a key swap.
+        channel = SecureChannel(outcome.transport, outcome.handshakeHash, outcome.serverId, outcome.matched, config.wire)
+        // Activities and any in-flight pairing attempt do not survive a key swap. Role
+        // grants do on spec 1.0.0-rc1, where the activate after a re-handshake may omit them.
         activities = emptySet()
-        persistedRoles = emptyList()
+        when (config.wire) {
+            WireVersion.LEGACY_9 -> persistedRoles = emptyList()
+            WireVersion.SPEC_1_0 -> Unit
+        }
+        pairingActivations = 0
         pairingTimeout?.cancel()
         pairingHandler.discardAttempt()
+        // Handshake completion is the authentication point on both wires.
+        if (TrustLevel.of(outcome.matched.category) == TrustLevel.USER) trustStore.markRecordUsed(outcome.matched.psk)
     }
 
     /** Next decrypted JSON message during establishment, where nothing else may flow. */
@@ -262,25 +278,30 @@ internal class NoiseSession(
         val hello = awaitEstablishmentJson("server/hello") as? ServerMessage.Hello
             ?: throw HandshakeFailedException("expected server/hello")
         val trustLevel = TrustLevel.of(secure.matched.category)
-        val clientHello = EncryptedClientHelloMessage(
-            payload = EncryptedClientHelloPayload(
-                name = config.deviceName,
-                deviceInfo = config.deviceInfo,
-                trustLevel = trustLevel.wire,
-                supportedRoles = listOf(VersionedRole.PLAYER_V1),
-                playerV1Support = config.playerSupport,
-                supportedPairMethods = if (trustStore.pairingPskEnabled) {
-                    listOf(PairMethodDescriptor(ActivationPolicy.PAIR_METHOD_PSK))
-                } else {
-                    emptyList()
-                },
-                unpairedAccess = UnpairedAccess(enabled = trustStore.unpairedAccessEnabled),
-            ),
+        sendJsonUngated(WireCodec.encode(EncryptedClientHelloMessage(payload = clientHello(trustLevel))))
+        handler.onReady(
+            SessionInfo(secure.serverId, hello.serverName, secure.matched.category, trustLevel, config.wire),
         )
-        sendJsonUngated(WireCodec.encode(clientHello))
-        if (trustLevel == TrustLevel.USER) trustStore.markRecordUsed(secure.matched.psk)
-        handler.onReady(SessionInfo(secure.serverId, hello.serverName, secure.matched.category, trustLevel))
     }
+
+    /** Spec 1.0.0-rc1 dropped `trust_level` and moved `supported_commands` to `client/state`. */
+    private fun clientHello(trustLevel: TrustLevel) = EncryptedClientHelloPayload(
+        name = config.deviceName,
+        deviceInfo = config.deviceInfo,
+        trustLevel = trustLevel.wire.takeIf { config.wire == WireVersion.LEGACY_9 },
+        supportedRoles = listOf(VersionedRole.PLAYER_V1),
+        playerV1Support = config.playerSupport?.let { support ->
+            when (config.wire) {
+                WireVersion.LEGACY_9 -> support
+                WireVersion.SPEC_1_0 -> support.copy(supportedCommands = null)
+            }
+        },
+        supportedPairMethods = pairMethods(
+            config.wire,
+            listOfNotNull(ActivationPolicy.PAIR_METHOD_PSK.takeIf { trustStore.pairingPskEnabled }),
+        ),
+        unpairedAccess = UnpairedAccess(enabled = trustStore.unpairedAccessEnabled),
+    )
 
     private suspend fun rehandshake(message1: String, handler: SessionHandler) {
         val secure = requireChannel()
@@ -294,6 +315,7 @@ internal class NoiseSession(
             serverStaticPublic = SendspinBase64.decodeOrNull(secure.serverId)
                 ?.takeIf { it.size == DH_LEN }
                 ?: throw HandshakeFailedException("malformed server id"),
+            phase = HandshakePhase.REHANDSHAKE,
             // Noise message 2 still travels under the old keys.
             sendMessage = { sendJsonUngated(it) },
             receiveMessage = {
@@ -307,7 +329,11 @@ internal class NoiseSession(
             },
         )
         installChannel(outcome)
-        helloExchange(handler)
+        // Spec 1.0.0-rc1 re-sends neither hello; the server's next message is server/activate.
+        when (config.wire) {
+            WireVersion.LEGACY_9 -> helloExchange(handler)
+            WireVersion.SPEC_1_0 -> Unit
+        }
     }
 
     // --- Activation, pairing, management, unpair ---
@@ -320,8 +346,10 @@ internal class NoiseSession(
         val secure = requireChannel()
         // Any server/activate ends an in-flight pairing attempt, including ones rejected below.
         endPairingAttempt { pairingHandler.discardAttempt() }
+        if (ActivationPolicy.ACTIVITY_PAIRING in payload.activities) pairingActivations++
         val decision = ActivationPolicy.decide(
             ActivationPolicy.Input(
+                wire = config.wire,
                 category = secure.matched.category,
                 activities = payload.activities.toSet(),
                 explicitRoles = payload.activeRoles,
@@ -351,7 +379,7 @@ internal class NoiseSession(
     }
 
     private suspend fun startPairingAttempt(scope: CoroutineScope, serverId: String) {
-        val attempt = pairingHandler.startAttempt(serverId) { sendJsonUngated(it) }
+        val attempt = pairingHandler.startAttempt(serverId, config.wire, pairingActivations) { sendJsonUngated(it) }
         pairingTimeout = scope.launch {
             delay(config.pairingAttemptTimeoutMillis)
             try {
@@ -431,7 +459,7 @@ internal class NoiseSession(
 
     private suspend fun sendFrameLocked(type: Int, payload: ByteArray) {
         val secure = requireChannel()
-        NoiseFraming.encode(type, payload).forEach { frame ->
+        NoiseFraming.encode(config.wire, type, payload).forEach { frame ->
             transport.send(Frame.Binary(secure.noise.encrypt(frame)))
         }
     }

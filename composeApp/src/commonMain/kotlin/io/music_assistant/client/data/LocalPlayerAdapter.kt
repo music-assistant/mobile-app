@@ -20,6 +20,7 @@ import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.audioDispatcher
@@ -99,6 +100,7 @@ class LocalPlayerAdapter(
     keyStore: SendspinKeyStore,
     networkMonitor: NetworkMonitor,
     httpClientFactory: HttpClientFactory,
+    appVersion: AppVersion,
 ) : CoroutineScope {
     private val log = Logger.withTag("LocalPlayerAdapter")
     private val supervisorJob = SupervisorJob()
@@ -146,6 +148,7 @@ class LocalPlayerAdapter(
             online = networkMonitor.isAvailable,
             approvePairing = ::approvePairing,
             audioDispatcher = audioDispatcher,
+            softwareVersion = appVersion.name,
             clock = sendspinClock,
         ),
         scope = this,

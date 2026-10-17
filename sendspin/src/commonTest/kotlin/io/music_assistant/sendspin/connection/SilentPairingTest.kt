@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.connection
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.PskCategory
 import io.music_assistant.sendspin.session.SessionInfo
 import io.music_assistant.sendspin.session.TrustLevel
@@ -35,7 +36,7 @@ class SilentPairingTest {
     }
 
     private fun ready(category: PskCategory = PskCategory.SENTINEL, trust: TrustLevel = TrustLevel.NONE) =
-        SessionInfo("srv", "Server", category, trust)
+        SessionInfo("srv", "Server", category, trust, WireVersion.LEGACY_9)
 
     @Test
     fun sentinelReadyTriggersExactlyOneCallPerResolvedRpc() = runTest {

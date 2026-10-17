@@ -1,11 +1,14 @@
 package io.music_assistant.sendspin.pairing
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.identity.SendspinTrustStore
 import io.music_assistant.sendspin.noise.SendspinBase64
 import io.music_assistant.sendspin.noise.crypto.NoiseCrypto
 import io.music_assistant.sendspin.wire.ClientPairFinalizeMessage
 import io.music_assistant.sendspin.wire.ClientPairFinalizePayload
+import io.music_assistant.sendspin.wire.ClientPairInitMessage
+import io.music_assistant.sendspin.wire.ClientPairInitPayload
 import io.music_assistant.sendspin.wire.PairAbortMessage
 import io.music_assistant.sendspin.wire.PairAbortPayload
 import io.music_assistant.sendspin.wire.SendspinJson
@@ -35,12 +38,26 @@ internal class PairingHandler(
     var pending: PendingAttempt? = null
         private set
 
-    /** Starts an attempt; the attempt timeout is the caller's responsibility. */
-    suspend fun startAttempt(serverId: String, sendJson: suspend (String) -> Unit): PendingAttempt {
+    /**
+     * Starts an attempt; the attempt timeout is the caller's responsibility.
+     * Spec 1.0.0-rc1 opens it with `client/pair-init` carrying [pairingIndex],
+     * the count of pairing activations since the last Noise handshake.
+     */
+    suspend fun startAttempt(
+        serverId: String,
+        wire: WireVersion,
+        pairingIndex: Int,
+        sendJson: suspend (String) -> Unit,
+    ): PendingAttempt {
         val psk = crypto.randomBytes(PSK_SIZE)
         val attempt = PendingAttempt(psk, serverId)
         synchronized(lock) { pending = attempt }
         logger.i { "Starting pairing-PSK attempt" }
+        if (wire == WireVersion.SPEC_1_0) {
+            sendJson(
+                SendspinJson.encodeToString(ClientPairInitMessage(payload = ClientPairInitPayload(pairingIndex))),
+            )
+        }
         sendJson(
             SendspinJson.encodeToString(
                 ClientPairFinalizeMessage(

@@ -2,6 +2,7 @@ package io.music_assistant.sendspin.wire
 
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioFormatSpec
+import io.music_assistant.sendspin.api.WireVersion
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
@@ -116,9 +117,22 @@ class WireCodecTest {
             """{"type":"client/state","payload":{"player":{"state":"synchronized"},"available":true}}""",
             WireCodec.encode(
                 ClientStateMessage(
-                    payload = ClientStatePayload(PlayerStateObject(PlayerStateValue.SYNCHRONIZED), true),
+                    payload = ClientStatePayload(PlayerStateObject.legacy(PlayerStateValue.SYNCHRONIZED), true),
                 ),
             ),
+        )
+        assertEquals(
+            """{"type":"client/state","payload":{"player":{"output_delay_ms":120,"required_lead_time_ms":250,""" +
+                """"min_buffer_ms":1000,"supported_commands":[]},"available":true}}""",
+            WireCodec.encode(
+                ClientStateMessage(
+                    payload = ClientStatePayload(PlayerStateObject.spec(120, 250, 1000), true),
+                ),
+            ),
+        )
+        assertEquals(
+            """{"type":"client/pair-init","payload":{"pairing_index":2}}""",
+            WireCodec.encode(ClientPairInitMessage(payload = ClientPairInitPayload(2))),
         )
         assertEquals(
             """{"type":"client/goodbye","payload":{"reason":"restart"}}""",
@@ -139,7 +153,7 @@ class WireCodecTest {
                     bufferCapacity = 15_000_000,
                     supportedCommands = listOf(PlayerCommand.VOLUME),
                 ),
-                supportedPairMethods = listOf(PairMethodDescriptor("psk")),
+                supportedPairMethods = pairMethods(WireVersion.LEGACY_9, listOf("psk")),
                 unpairedAccess = UnpairedAccess(false),
             ),
         )
@@ -151,6 +165,40 @@ class WireCodecTest {
                 """"buffer_capacity":15000000,"supported_commands":["volume"]},""" +
                 """"supported_pair_methods":[{"method":"psk"}],"unpaired_access":{"enabled":false}}}""",
             WireCodec.encode(hello),
+        )
+    }
+
+    @Test
+    fun specClientHelloWireShapeIsFrozen() {
+        val hello = EncryptedClientHelloMessage(
+            payload = EncryptedClientHelloPayload(
+                name = "Phone",
+                deviceInfo = EncryptedDeviceInfo(productName = "App", manufacturer = "MA", softwareVersion = "1"),
+                supportedRoles = listOf(VersionedRole.PLAYER_V1),
+                playerV1Support = PlayerSupport(
+                    supportedFormats = listOf(AudioFormatSpec(AudioCodec.FLAC, 2, 48000, 16)),
+                    bufferCapacity = 15_000_000,
+                ),
+                supportedPairMethods = pairMethods(WireVersion.SPEC_1_0, listOf("pairing_psk")),
+                unpairedAccess = UnpairedAccess(false),
+            ),
+        )
+        assertEquals(
+            """{"type":"client/hello","payload":{"name":"Phone",""" +
+                """"device_info":{"product_name":"App","manufacturer":"MA","software_version":"1"},""" +
+                """"supported_roles":["player@v1"],""" +
+                """"player@v1_support":{"supported_formats":[{"codec":"flac","channels":2,"sample_rate":48000,"bit_depth":16}],""" +
+                """"buffer_capacity":15000000},""" +
+                """"supported_pair_methods":{"pairing_psk":{}},"unpaired_access":{"enabled":false}}}""",
+            WireCodec.encode(hello),
+        )
+    }
+
+    @Test
+    fun nullOptionalFieldsAreOmittedNotWrittenAsNull() {
+        assertEquals(
+            """{"product_name":"App"}""",
+            SendspinJson.encodeToString(EncryptedDeviceInfo(productName = "App")),
         )
     }
 }

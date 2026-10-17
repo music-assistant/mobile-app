@@ -2,6 +2,7 @@ package io.music_assistant.sendspin.session
 
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioFormatSpec
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.fakes.FakeNoiseServer
 import io.music_assistant.sendspin.fakes.FakeTransport
 import io.music_assistant.sendspin.identity.FakeSendspinKeyStore
@@ -23,11 +24,11 @@ import kotlin.test.assertIs
 import kotlin.test.fail
 
 /**
- * Drives [NoiseSession] end to end over [FakeTransport] with a [FakeNoiseServer].
- * Runs on virtual time: the crypto is synchronous, so the only way a timeout
- * fires is a genuine deadlock, which then fails fast.
+ * Drives [NoiseSession] end to end over [FakeTransport] with a [FakeNoiseServer]
+ * speaking [wire]. Runs on virtual time: the crypto is synchronous, so the only
+ * way a timeout fires is a genuine deadlock, which then fails fast.
  */
-internal abstract class NoiseSessionTestHarness {
+internal abstract class NoiseSessionTestHarness(protected val wire: WireVersion) {
     sealed interface Event {
         data class Ready(val info: SessionInfo) : Event
         data class Activated(val activation: Activation) : Event
@@ -56,7 +57,7 @@ internal abstract class NoiseSessionTestHarness {
     }
 
     protected fun FakeServer(f: Fixture, psk: ByteArray): FakeNoiseServer =
-        FakeNoiseServer(f.crypto, f.transport, f.serverStatic, f.trustStore.identity.keyPair.publicKey, psk)
+        FakeNoiseServer(f.crypto, f.transport, f.serverStatic, f.trustStore.identity.keyPair.publicKey, psk, wire)
 
     private suspend fun TestScope.fixture(unpairedAccess: Boolean, pairingAttemptTimeoutMillis: Long): Fixture {
         val crypto = CryptographyKotlinNoiseCrypto()
@@ -66,6 +67,7 @@ internal abstract class NoiseSessionTestHarness {
         val session = NoiseSession(
             transport = transport,
             config = SessionConfig(
+                wire = wire,
                 deviceName = "Enc Device",
                 playerSupport = PlayerSupport(
                     supportedFormats = listOf(AudioFormatSpec(AudioCodec.OPUS, 2, 48000, 16)),
@@ -115,6 +117,15 @@ internal abstract class NoiseSessionTestHarness {
         }
     }
 
+    /**
+     * What follows a re-handshake: the 9.x wire repeats the hello exchange (returned,
+     * with its `Ready`); spec 1.0.0-rc1 goes straight to `server/activate` (null).
+     */
+    protected suspend fun helloAfterRehandshake(server: FakeNoiseServer, f: Fixture): String? = when (wire) {
+        WireVersion.LEGACY_9 -> server.completeHelloExchange().also { assertIs<Event.Ready>(f.nextEvent()) }
+        WireVersion.SPEC_1_0 -> null
+    }
+
     /** Sentinel session, then re-handshake to the Pairing PSK and a pairing activation. */
     protected suspend fun pairingPreamble(f: Fixture): FakeNoiseServer {
         val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
@@ -122,9 +133,8 @@ internal abstract class NoiseSessionTestHarness {
         server.completeHelloExchange()
         assertIs<Event.Ready>(f.nextEvent())
 
-        server.rehandshake(f.trustStore.pairingPsk)
-        server.completeHelloExchange()
-        assertIs<Event.Ready>(f.nextEvent())
+        server.rehandshake(f.trustStore.pairingPsk, PAIRING_CATEGORY)
+        helloAfterRehandshake(server, f)
         server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"pairing_psk"}""")
         assertIs<Event.Activated>(f.nextEvent())
         return server
@@ -132,5 +142,6 @@ internal abstract class NoiseSessionTestHarness {
 
     protected companion object {
         const val AWAIT_MILLIS = 5_000L
+        const val PAIRING_CATEGORY = "pr"
     }
 }

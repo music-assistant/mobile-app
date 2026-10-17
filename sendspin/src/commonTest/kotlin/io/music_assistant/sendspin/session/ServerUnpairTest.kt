@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.session
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.SendspinPsk
 import io.music_assistant.sendspin.wire.SendspinJson
 import io.music_assistant.sendspin.wire.ServerMessage
@@ -16,7 +17,11 @@ import kotlin.test.assertTrue
  * goodbye and close, a shared PSK record survives goodbye and close, and an
  * unpaired session ignores the message.
  */
-internal class ServerUnpairTest : NoiseSessionTestHarness() {
+internal class LegacyServerUnpairTest : ServerUnpairScenarios(WireVersion.LEGACY_9)
+
+internal class SpecServerUnpairTest : ServerUnpairScenarios(WireVersion.SPEC_1_0)
+
+internal abstract class ServerUnpairScenarios(wire: WireVersion) : NoiseSessionTestHarness(wire) {
     private fun goodbyeReason(json: String): String =
         SendspinJson.parseToJsonElement(json).jsonObject.getValue("payload").jsonObject
             .getValue("reason").jsonPrimitive.content

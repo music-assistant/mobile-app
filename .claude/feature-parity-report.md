@@ -452,22 +452,22 @@ changes that affect a player client:
 - Pairing uses "pairing code" instead of PIN. A pairing code attempt on a paired client always
   re-pairs it.
 
-What the app does: `sendspin/wire/Messages.kt` sends `trust_level` (line 77), a list of
-`PairMethodDescriptor(method)` (lines 80 and 92) and `supported_commands` in `client/hello`
-(line 110). The JSON config has `ignoreUnknownKeys` and `coerceInputValues`
-(`sendspin/wire/SendspinJson.kt:14-15`), so additive server fields do not break decoding.
+Correction: `trust_level` is a `client/hello` field, not a handshake field. Noise message 1
+carries `psk_id` on 9.x and `psk_id` plus `psk_category` on 10.x. The client ignores the extra
+key, so the 9.x wire connects to a 10.x server as a non-compliant client.
 
 Impact: the server accepts the old wire by default. `allow_legacy_clients` defaults to true and
-maps to `allow_noncompliant_clients` (dev `server/providers/sendspin/provider.py:466-474`). The
-server logs the device name and software version in a noncompliance warning. If an admin turns
-the toggle off, the local player cannot connect. The pairing constants also changed to
-`unpaired_with_input` and `unpaired_without_input`.
+maps to `allow_noncompliant_clients` and `allow_unencrypted` (dev
+`server/providers/sendspin/provider.py`). The server logs the device name and software version
+in a noncompliance warning. If an admin turns the toggle off, a 9.x client cannot connect.
 
-Required change: move the `:sendspin` module to spec 1.0.0-rc1 and keep the 9.x wire for
-server 2.10. The module must select the wire before the handshake, because a 1.0.0-rc1 client
-cannot connect to aiosendspin 9.x. Select it from the server schema version: 2.10 pins
-aiosendspin 9.1.1 and 2.11 pins 10.x. This is a large change (issue #1181). This report does not
-check the aiosendspin 10.x package itself, only its release notes.
+Status: done (issue #1181). The module speaks both wires (`WireVersion`). `sendspinWireFor` selects
+`SPEC_1_0` from `SERVER_2_11_SCHEMA` and `LEGACY_9` below it or for an unknown schema. The
+player sends `required_lead_time_ms` 250 and `min_buffer_ms` 1000. The client parses
+`send_ahead` and `pairing.format` but does not use them. The pairing code methods, artwork,
+`server/state` and `stream/end` changes do not apply to a player-only client. See
+`.claude/architecture.md`, Sendspin Integration, for the full list of differences. The 10.x
+details come from the spec and the aiosendspin source.
 
 ### 5.7 AI Radio
 

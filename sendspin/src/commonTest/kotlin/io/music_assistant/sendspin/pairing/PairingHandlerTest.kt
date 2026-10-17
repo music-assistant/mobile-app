@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.pairing
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.identity.FakeSendspinKeyStore
 import io.music_assistant.sendspin.identity.SendspinTrustStore
 import io.music_assistant.sendspin.noise.SendspinBase64
@@ -27,7 +28,7 @@ class PairingHandlerTest {
     fun startAttemptSendsPairFinalizeWithFreshPsk() = runTest {
         val (handler, _) = newFixture()
         val sent = mutableListOf<String>()
-        handler.startAttempt("srv-1") { sent.add(it) }
+        handler.startAttempt("srv-1", WireVersion.LEGACY_9, 1) { sent.add(it) }
 
         assertEquals(1, sent.size)
         val parsed = Json.parseToJsonElement(sent[0]).jsonObject
@@ -39,10 +40,26 @@ class PairingHandlerTest {
     }
 
     @Test
+    fun onSpecWireAPairInitWithThePairingIndexPrecedesFinalize() = runTest {
+        val (handler, _) = newFixture()
+        val sent = mutableListOf<String>()
+        handler.startAttempt("srv-1", WireVersion.SPEC_1_0, 3) { sent.add(it) }
+
+        assertEquals(2, sent.size)
+        val init = Json.parseToJsonElement(sent[0]).jsonObject
+        assertEquals("client/pair-init", init.getValue("type").jsonPrimitive.content)
+        assertEquals("3", init.getValue("payload").jsonObject.getValue("pairing_index").jsonPrimitive.content)
+        assertEquals(
+            "client/pair-finalize",
+            Json.parseToJsonElement(sent[1]).jsonObject.getValue("type").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun recordIsPersistedOnlyAfterServerFinalize() = runTest {
         val (handler, trustStore) = newFixture()
         val sent = mutableListOf<String>()
-        handler.startAttempt("srv-1") { sent.add(it) }
+        handler.startAttempt("srv-1", WireVersion.LEGACY_9, 1) { sent.add(it) }
         assertTrue(trustStore.records().none { it.serverId == "srv-1" }, "nothing persisted yet")
 
         assertTrue(handler.completeAttempt())
@@ -56,7 +73,7 @@ class PairingHandlerTest {
     @Test
     fun cancellingActivateDiscardsAttemptPersistingNothing() = runTest {
         val (handler, trustStore) = newFixture()
-        handler.startAttempt("srv-1") { }
+        handler.startAttempt("srv-1", WireVersion.LEGACY_9, 1) { }
 
         assertTrue(handler.discardAttempt())
         assertFalse(handler.completeAttempt(), "stale finalize after abandonment is ignored")
@@ -66,7 +83,7 @@ class PairingHandlerTest {
     @Test
     fun abortSendsReasonAndPersistsNothing() = runTest {
         val (handler, trustStore) = newFixture()
-        val attempt = handler.startAttempt("srv-1") { }
+        val attempt = handler.startAttempt("srv-1", WireVersion.LEGACY_9, 1) { }
 
         val sent = mutableListOf<String>()
         handler.abortAttempt(attempt, "attempt_timeout") { sent.add(it) }
@@ -83,9 +100,9 @@ class PairingHandlerTest {
     @Test
     fun abortOfASupersededAttemptSendsNothingAndKeepsTheNewAttempt() = runTest {
         val (handler, _) = newFixture()
-        val stale = handler.startAttempt("srv-1") { }
+        val stale = handler.startAttempt("srv-1", WireVersion.LEGACY_9, 1) { }
         handler.discardAttempt()
-        val fresh = handler.startAttempt("srv-2") { }
+        val fresh = handler.startAttempt("srv-2", WireVersion.LEGACY_9, 1) { }
 
         // A stale timeout firing after a newer attempt started must not
         // abort or clear the newer attempt.

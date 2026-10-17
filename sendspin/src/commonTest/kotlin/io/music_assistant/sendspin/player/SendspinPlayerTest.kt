@@ -16,6 +16,7 @@ import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinDeps
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.api.WarningCode
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.fakes.FakeDecoderFactory
 import io.music_assistant.sendspin.fakes.FakeNoiseServer
 import io.music_assistant.sendspin.fakes.FakeSink
@@ -62,8 +63,8 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  * pure auth exchange, and the WebRTC endpoint stands in for the transport.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class SendspinPlayerTest {
-    private inner class Harness(
+internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion) {
+    protected inner class Harness(
         val scope: TestScope,
         private val unpairedAccess: Boolean,
         private val sharedPsk: ByteArray?,
@@ -75,7 +76,7 @@ class SendspinPlayerTest {
         val sink = FakeSink { clock.nowMicros() }
         val transports = Channel<FakeTransport>(Channel.UNLIMITED)
         val handedOut = mutableListOf<FakeTransport>()
-        val endpoint = Endpoint.WebRtc {
+        val endpoint = Endpoint.WebRtc(wire) {
             FakeTransport().also {
                 handedOut += it
                 transports.trySend(it)
@@ -112,6 +113,7 @@ class SendspinPlayerTest {
                 online = online,
                 approvePairing = { pairCalls++ },
                 audioDispatcher = StandardTestDispatcher(scope.testScheduler),
+                softwareVersion = "1.2.3",
                 clock = clock,
             )
             player = create(config, deps, scope.backgroundScope)
@@ -129,7 +131,7 @@ class SendspinPlayerTest {
             serverClockOffsetMicros: Long = 0L,
             silent: Boolean = false,
         ): FakeNoiseServer {
-            val server = FakeNoiseServer(crypto, nextTransport(), serverStatic, psk = psk)
+            val server = FakeNoiseServer(crypto, nextTransport(), serverStatic, psk = psk, wire = wire)
             server.serverClockOffsetMicros = serverClockOffsetMicros
             server.silent = silent
             server.bringUp()
@@ -171,7 +173,7 @@ class SendspinPlayerTest {
         }
     }
 
-    private fun playerTest(
+    protected fun playerTest(
         unpairedAccess: Boolean = true,
         sharedPsk: ByteArray? = null,
         create: Harness.(StateFlow<LocalPlayerConfig?>, SendspinDeps, CoroutineScope) -> SendspinPlayerApi =
@@ -449,7 +451,7 @@ class SendspinPlayerTest {
     @Test
     fun fivePairingRequiredRejectionsEndInFailedUnauthorized() = playerTest(unpairedAccess = false) { h ->
         repeat(5) { i ->
-            val server = FakeNoiseServer(h.crypto, h.nextTransport(), h.serverStatic)
+            val server = FakeNoiseServer(h.crypto, h.nextTransport(), h.serverStatic, wire = wire)
             server.establish()
             server.completeHelloExchange()
             server.activate()
@@ -537,7 +539,7 @@ class SendspinPlayerTest {
         assertEquals(AudioPhase.Idle, (h.player.state.value as PlayerState.Connected).audio.phase)
     }
 
-    private companion object {
+    protected companion object {
         /** Above the reconnect cap, so a wait spans any backoff. */
         const val AWAIT_MILLIS = 40_000L
         val SHARED_PSK = ByteArray(32) { 7 }

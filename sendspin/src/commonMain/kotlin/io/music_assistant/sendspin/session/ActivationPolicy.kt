@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.session
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.PskCategory
 
 /**
@@ -16,6 +17,7 @@ internal object ActivationPolicy {
     }
 
     class Input(
+        val wire: WireVersion,
         val category: PskCategory,
         val activities: Set<String>,
         val explicitRoles: List<String>?,
@@ -37,9 +39,9 @@ internal object ActivationPolicy {
 
     fun decide(input: Input): Decision {
         val trust = TrustLevel.of(input.category)
-        val allowed = allowedActivities(input.category, input.activities, input.unpairedAccessEnabled)
+        val allowed = allowedActivities(input.wire, input.category, input.activities, input.unpairedAccessEnabled)
         val playbackCapable = allowed &&
-            allowedActivities(input.category, input.activities + ACTIVITY_PLAYBACK, input.unpairedAccessEnabled)
+            allowedActivities(input.wire, input.category, input.activities + ACTIVITY_PLAYBACK, input.unpairedAccessEnabled)
         val explicit = input.explicitRoles
         val effectiveRoles = explicit ?: if (playbackCapable) input.persistedRoles else emptyList()
         val rolesOk = !(trust == TrustLevel.NONE && ROLE_SOURCE_V1 in effectiveRoles)
@@ -47,10 +49,15 @@ internal object ActivationPolicy {
         val admissible = allowed && (explicit.isNullOrEmpty() || playbackCapable) && rolesOk
         if (!admissible) {
             val admissibleWithUnpairedAccess =
-                allowedActivities(input.category, input.activities, unpairedAccess = true) &&
+                allowedActivities(input.wire, input.category, input.activities, unpairedAccess = true) &&
                     (
                         explicit.isNullOrEmpty() ||
-                            allowedActivities(input.category, input.activities + ACTIVITY_PLAYBACK, unpairedAccess = true)
+                            allowedActivities(
+                                input.wire,
+                                input.category,
+                                input.activities + ACTIVITY_PLAYBACK,
+                                unpairedAccess = true,
+                            )
                         ) &&
                     rolesOk
             val pairingRequired = input.category == PskCategory.SENTINEL &&
@@ -70,6 +77,7 @@ internal object ActivationPolicy {
     }
 
     private fun allowedActivities(
+        wire: WireVersion,
         category: PskCategory,
         activities: Set<String>,
         unpairedAccess: Boolean,
@@ -77,7 +85,9 @@ internal object ActivationPolicy {
         PskCategory.LONG_TERM_STORED, PskCategory.LONG_TERM_SHARED ->
             activities == setOf(ACTIVITY_PAIRING) || PLAYBACK_MANAGEMENT.containsAll(activities)
 
-        PskCategory.PAIRING -> activities == setOf(ACTIVITY_PAIRING)
+        // Spec 1.0.0-rc1 lets a server hold a pairing-keyed connection idle.
+        PskCategory.PAIRING ->
+            activities == setOf(ACTIVITY_PAIRING) || (wire == WireVersion.SPEC_1_0 && activities.isEmpty())
 
         PskCategory.SENTINEL ->
             activities.isEmpty() ||

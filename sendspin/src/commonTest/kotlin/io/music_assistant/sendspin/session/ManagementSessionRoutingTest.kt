@@ -1,5 +1,6 @@
 package io.music_assistant.sendspin.session
 
+import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.noise.SendspinPsk
 import io.music_assistant.sendspin.wire.SendspinJson
 import kotlinx.serialization.json.jsonObject
@@ -15,7 +16,7 @@ import kotlin.test.assertTrue
  * one `management/result` per request in order, and respond-then-goodbye when
  * the requester removes its own record.
  */
-internal class ManagementSessionRoutingTest : NoiseSessionTestHarness() {
+internal class ManagementSessionRoutingTest : NoiseSessionTestHarness(WireVersion.LEGACY_9) {
     private fun result(json: String) = SendspinJson.parseToJsonElement(json).jsonObject
 
     @Test
