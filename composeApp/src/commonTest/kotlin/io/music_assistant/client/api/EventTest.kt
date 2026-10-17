@@ -5,7 +5,9 @@ import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.GenericEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
 import io.music_assistant.client.data.model.server.events.ProviderEvent
+import io.music_assistant.client.data.model.server.events.ProvidersUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.json.Json
@@ -65,6 +67,35 @@ class EventTest {
         assertTrue(decoded is ProviderEvent)
         assertEquals("ai_radio", decoded.objectId)
         assertEquals(JsonPrimitive("queue_dj_updated"), decoded.data?.get("event"))
+    }
+
+    @Test
+    fun decodesProvidersUpdatedWithoutItsPayload() {
+        val raw = """{
+            "event": "providers_updated",
+            "object_id": null,
+            "data": [{"instance_id": "spotify--1", "name": "Spotify", "domain": "spotify"}]
+        }"""
+
+        assertTrue(parse(raw).event() is ProvidersUpdatedEvent)
+    }
+
+    @Test
+    fun decodesPlaylogUpdatedWithAndWithoutAUser() {
+        fun playlog(userId: String) = """{
+            "event": "playlog_updated",
+            "object_id": "library://track/1",
+            "data": {"uri": "library://track/1", "media_type": "track", "fully_played": true,
+                     "seconds_played": 0, "userid": $userId}
+        }"""
+
+        val own = parse(playlog("\"u1\"")).event()
+        val everyone = parse(playlog("null")).event()
+
+        assertTrue(own is PlaylogUpdatedEvent)
+        assertEquals("u1", own.data.userId)
+        assertTrue(everyone is PlaylogUpdatedEvent)
+        assertNull(everyone.data.userId)
     }
 
     @Test

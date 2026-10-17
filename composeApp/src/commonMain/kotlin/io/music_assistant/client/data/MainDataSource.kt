@@ -32,7 +32,6 @@ import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.GrantedScopes
 import io.music_assistant.client.data.model.server.ServerPlayer
-import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
 import io.music_assistant.client.data.model.server.ServerUser
@@ -49,6 +48,7 @@ import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.player.MediaSessionBridge
 import io.music_assistant.client.settings.SettingsRepository
@@ -69,6 +69,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -136,6 +137,7 @@ class MainDataSource(
     private val playerFactory: PlayerFactory,
     private val queueFactory: QueueFactory,
     private val playDispatcher: PlayDispatcher,
+    providerRepository: ProviderRepository,
 ) : CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
@@ -162,12 +164,6 @@ class MainDataSource(
     private val _queueInfos = MutableStateFlow<List<QueueInfo>>(emptyList())
 
     /**
-     * Whether the AI Radio stations may be offered: the optional `ai_radio` plugin is loaded,
-     * the server plays shows as Radio items ([supportsAiRadio]), AND the role grants every scope
-     * in [AI_RADIO_STATIONS_SCOPES]. Gating on the plugin alone would render a Library section
-     * where every tap fails.
-     */
-    /**
      * What the signed-in user may do, from `auth/scopes` and the user's role. Write actions
      * that the user cannot run stay hidden. Fails closed: [GrantedScopes.NONE] until the table
      * arrives, and after a failed fetch.
@@ -175,16 +171,36 @@ class MainDataSource(
     private val _grantedScopes = MutableStateFlow(GrantedScopes.NONE)
     val grantedScopes: StateFlow<GrantedScopes> = _grantedScopes.asStateFlow()
 
-    private val _aiRadioAvailable = MutableStateFlow(false)
-    val aiRadioAvailable: StateFlow<Boolean> = _aiRadioAvailable.asStateFlow()
+    /**
+     * Whether the optional `ai_radio` plugin is loaded and the server plays shows as Radio items
+     * ([supportsAiRadio]). Follows the provider list, so enabling or removing the plugin shows at
+     * once. Fails closed: false until the list arrives, and after a failed fetch.
+     */
+    private val aiRadioSupported: Flow<Boolean> =
+        combine(providerRepository.providers, apiClient.sessionState) { providers, session ->
+            providers.dataOrNull.orEmpty().any { it.domain == AI_RADIO_DOMAIN && it.available } &&
+                supportsAiRadio((session as? HasConnectionData)?.serverInfo?.schemaVersion)
+        }
 
     /**
-     * Whether the queue DJ menu may be offered: the `ai_radio` plugin is loaded, the server
-     * speaks the current AI Radio API ([supportsAiRadio]), AND the role grants every scope in
-     * [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable], which needs other scopes.
+     * Whether the AI Radio stations may be offered: [aiRadioSupported] AND the role grants every
+     * scope in [AI_RADIO_STATIONS_SCOPES]. Gating on the plugin alone would render a Library
+     * section where every tap fails.
      */
-    private val _aiRadioQueueDjAvailable = MutableStateFlow(false)
-    val aiRadioQueueDjAvailable: StateFlow<Boolean> = _aiRadioQueueDjAvailable.asStateFlow()
+    val aiRadioAvailable: StateFlow<Boolean> =
+        combine(aiRadioSupported, _grantedScopes) { supported, scopes ->
+            supported && scopes.hasAll(AI_RADIO_STATIONS_SCOPES)
+        }.stateIn(this, SharingStarted.Eagerly, false)
+
+    /**
+     * Whether the queue DJ menu may be offered: [aiRadioSupported] AND the role grants every
+     * scope in [AI_RADIO_QUEUE_DJ_SCOPES]. Independent of [aiRadioAvailable], which needs other
+     * scopes.
+     */
+    val aiRadioQueueDjAvailable: StateFlow<Boolean> =
+        combine(aiRadioSupported, _grantedScopes) { supported, scopes ->
+            supported && scopes.hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
+        }.stateIn(this, SharingStarted.Eagerly, false)
 
     /**
      * Authoritative favorite state per track, keyed by [favKey]. The server's
@@ -962,11 +978,9 @@ class MainDataSource(
         // Server-scoped: another server must not inherit this one's preferences.
         userPreferences.clear()
         localPlayerController.clearState()
-        // Server-scoped: the plugin set and the user's role both belong to the old
-        // connection, so another server must not inherit this one's gate.
+        // Server-scoped: the user's role belongs to the old connection, so another server
+        // must not inherit this one's gates. The provider list resets with the session.
         _grantedScopes.value = GrantedScopes.NONE
-        _aiRadioAvailable.value = false
-        _aiRadioQueueDjAvailable.value = false
         // Note: _providersIcons deliberately NOT cleared (static data)
     }
 
@@ -1633,32 +1647,17 @@ class MainDataSource(
     }
 
     /**
-     * Resolves [grantedScopes], then the AI Radio gates. Fails closed: any missing piece — plugin
-     * absent, role unknown, either fetch failing — leaves the feature hidden rather than
-     * half-offered.
+     * Resolves [grantedScopes]. Fails closed: an unknown role or a failed fetch grants nothing,
+     * which also hides the AI Radio gates.
      */
     private fun updateAccess() {
         launch {
-            val scopes = GrantedScopes.of(
+            _grantedScopes.value = GrantedScopes.of(
                 roleScopes = apiClient.sendRequest(Request(APICommands.AUTH_SCOPES))
                     .resultAs<Map<String, List<String>>>()
                     .orEmpty(),
                 role = (apiClient.sessionState.value as? HasConnectionData)?.user?.role,
             )
-            _grantedScopes.value = scopes
-            val pluginLoaded = apiClient.sendRequest(Request.Provider.all())
-                .resultAs<List<ServerProviderInstance>>()
-                ?.any { it.domain == AI_RADIO_DOMAIN && it.available } == true
-            if (!pluginLoaded) {
-                _aiRadioAvailable.value = false
-                _aiRadioQueueDjAvailable.value = false
-                return@launch
-            }
-            val supported = supportsAiRadio(
-                (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion,
-            )
-            _aiRadioAvailable.value = supported && scopes.hasAll(AI_RADIO_STATIONS_SCOPES)
-            _aiRadioQueueDjAvailable.value = supported && scopes.hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
         }
     }
 

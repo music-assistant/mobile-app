@@ -16,26 +16,29 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.isAiRadioShow
 import io.music_assistant.client.data.model.server.ListSort
-import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.LibrarySortMenu
 import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.settings.SeriesGrouping
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.SelectOption
-import io.music_assistant.client.utils.resultAs
+import io.music_assistant.client.ui.compose.common.mapData
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -51,6 +54,7 @@ class LibraryListViewModel(
     private val mediaItemRepository: MediaItemRepository,
     private val playDispatcher: PlayDispatcher,
     private val librarySortRepository: LibrarySortRepository,
+    providerRepository: ProviderRepository,
 ) : ViewModel() {
     private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -70,11 +74,24 @@ class LibraryListViewModel(
     private val _toasts = MutableSharedFlow<String>()
     val toasts = _toasts.asSharedFlow()
 
-    // Options for the provider/genre dynamic filters, loaded lazily the first time
-    // the filter sheet asks for them (see loadFilterOptions).
-    private val _providerOptions =
-        MutableStateFlow<DataState<List<SelectOption<String>>>>(DataState.NoData())
-    val providerOptions = _providerOptions.asStateFlow()
+    // Provider filter options follow the shared provider list, so a provider change shows here
+    // while the screen is open. Only music providers that are available and serve this media
+    // type are offered (so a radio-only provider is not offered on Artists).
+    val providerOptions: StateFlow<DataState<List<SelectOption<String>>>> =
+        providerFeatureFor(mediaType)
+            ?.let { feature ->
+                providerRepository.providers.mapData { providers ->
+                    providers
+                        .filter { it.type == "music" && it.available && feature in it.supportedFeatures }
+                        .map { SelectOption(it.instanceId, it.name) }
+                        .sortedBy { it.label.lowercase() }
+                }
+            }
+            ?.stateIn(viewModelScope, SharingStarted.Eagerly, DataState.NoData())
+            ?: MutableStateFlow(DataState.NoData())
+
+    // Genre filter options, loaded lazily the first time the filter sheet asks for them
+    // (see loadFilterOptions).
     private val _genreOptions =
         MutableStateFlow<DataState<List<SelectOption<Int>>>>(DataState.NoData())
     val genreOptions = _genreOptions.asStateFlow()
@@ -160,32 +177,12 @@ class LibraryListViewModel(
         settingsRepository.setLibraryFilters(mediaType, filters)
     }
 
-    // Idempotent: fetch options once per VM. The genres list has no provider/genre
-    // filters, so skip the calls entirely there.
+    // Idempotent: fetch genre options once per VM. The genres list has no genre filter,
+    // so skip the call entirely there.
     fun loadFilterOptions() {
         if (optionsRequested || mediaType == MediaType.GENRE) return
         optionsRequested = true
-        loadProviderOptions()
         loadGenreOptions()
-    }
-
-    private fun loadProviderOptions() {
-        val feature = providerFeatureFor(mediaType) ?: return
-        viewModelScope.launch {
-            _providerOptions.update { DataState.Loading() }
-            val providers = apiClient.sendRequest(Request.Provider.all())
-                .resultAs<List<ServerProviderInstance>>()
-            _providerOptions.update {
-                providers
-                    // Only music providers that are available and actually serve this
-                    // media type (so e.g. a radio-only provider isn't offered on Artists).
-                    ?.filter { it.type == "music" && it.available && feature in it.supportedFeatures }
-                    ?.map { SelectOption(it.instanceId, it.name ?: it.domain ?: it.instanceId) }
-                    ?.sortedBy { it.label.lowercase() }
-                    ?.let { DataState.Data(it) }
-                    ?: DataState.Error()
-            }
-        }
     }
 
     private fun loadGenreOptions() {

@@ -63,6 +63,8 @@ enum class EventType {
     @SerialName("queue_time_updated")
     QUEUE_TIME_UPDATED,
 
+    // Declared by the models package, but no server version sends it: a change of the
+    // queue settings comes in `QUEUE_UPDATED`.
     @SerialName("queue_settings_updated")
     QUEUE_SETTINGS_UPDATED,
 
@@ -83,6 +85,9 @@ enum class EventType {
 
     @SerialName("media_item_played")
     MEDIA_ITEM_PLAYED,
+
+    @SerialName("playlog_updated")
+    PLAYLOG_UPDATED,
 
     @SerialName("favorite_updated")
     FAVORITE_UPDATED,

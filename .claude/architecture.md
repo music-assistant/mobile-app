@@ -117,6 +117,13 @@ actual class PlatformFeature {
   rejects a field that the list does not offer, so resolve the stored choice with
   `LibrarySortMenu.resolve` before the request. Send a sort only as a `ListSort`. The sub-item lists (album
   tracks, playlist tracks, episodes, artist lists) keep `SortConfig` and sort on the client.
+- **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
+  `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
+  for each session and again on each `providers_updated`. It does not use the event payload,
+  because server 2.10 sends the list without the provider filter of the user.
+- **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
+  `userid` of a different user. A null `userid` applies to all users. The home screen loads its
+  rows again 1.5 s after the last event, like the web app.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

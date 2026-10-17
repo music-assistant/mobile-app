@@ -328,9 +328,9 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 |---|---|---|---|---|---|---|---|
 | Player, queue and media item events | yes | yes | yes | yes | yes | Parity | |
 | `favorite_updated` | no | yes | no | no | no | Adjust-2.11 | See 5.3 |
-| `providers_updated` | yes | yes | no | no | no | Adjust-partial | App never refreshes the provider list |
-| `playlog_updated` | yes | yes | no | no | no | Adjust-partial | Web refreshes in-progress rows |
-| Sleep timer and queue settings events | yes | yes | no | no | no | Adjust-partial | App refetches on the next queue event |
+| `providers_updated` | yes | yes | yes | yes | yes | Parity | `ProviderRepository` loads the list again (#1186) |
+| `playlog_updated` | yes | yes | yes | no | no | Adjust-partial | The phone home rows load again (#1186). The car home tabs do not |
+| Sleep timer and queue settings events | yes | yes | n/a | n/a | n/a | Parity | No server sends `queue_settings_updated`. `player_updated` has the sleep timer |
 | Unsupported install banner | no | yes | no | n/a | n/a | Missing | `server_info.unsupported_install`, schema 87 |
 | Reconnect grace | no | yes | yes | yes | yes | Parity | App transports reconnect with backoff |
 
@@ -546,8 +546,9 @@ URL on the PKCE path. See `.claude/settings-screen.md`.
   settings server section shows the card at all times. The flag is true when the server has no official build
   information (dev `music_assistant/mass.py`). It shows the installation method, not the server
   version. Server 2.10 does not send the field, so the app reads false.
-- `providers_updated` payloads are filtered per user. The app ignores the event and never
-  refreshes the "Music sources" filter list after a provider change.
+- `providers_updated` payloads are filtered per user. Status: done (issue #1186).
+  `ProviderRepository` owns the provider list and loads it again on the event. The app does not
+  use the payload, because server 2.10 sends the list without the provider filter of the user.
 - Playlist visibility changes send a synthesized `media_item_deleted`. The app handles the event,
   so shared playlists disappear correctly.
 - `player_queues/play_media` gained `sort_field` and `sort_direction`. The app sends neither
@@ -590,7 +591,7 @@ the app:
 | Show info | Info sheet for every item type | Tracks and radios have no screen | `app/ui/compose/item/ItemDetailsScreen.kt` | Easy |
 | Players that need setup | Setup warning and setup-only menu | Listed only. Setup is admin work | `app/ui/compose/home/players/` | Decided |
 | Retry after a load failure | Retry button in the list | Check each list error state for a retry action | `app/ui/compose/library/` | Easy |
-| Event coverage | Reacts to `providers_updated`, `playlog_updated`, sleep timer and queue settings events | Ignores them | `app/api/Event.kt`, `app/data/MainDataSource.kt` | Easy |
+| Event coverage | Reacts to `providers_updated`, `playlog_updated`, sleep timer and queue settings events | Done (#1186). No server sends `queue_settings_updated`, and `player_updated` has the sleep timer | `app/api/Event.kt`, `app/data/repository/ProviderRepository.kt` | Done |
 | Localized login errors | Shows the server text | Shows the server text. On 2.11 the text is already localized | `app/auth/AuthenticationManager.kt` | None |
 | Android Auto tabs | n/a | No Tracks tab and no Genres tab | `aa/auto/AutoLibrary.kt` | Easy |
 | CarPlay docs | n/a | `carplay.md` lists 7 categories. The code offers 7 without Tracks and with AI Radio | `.claude/carplay.md` | Easy |

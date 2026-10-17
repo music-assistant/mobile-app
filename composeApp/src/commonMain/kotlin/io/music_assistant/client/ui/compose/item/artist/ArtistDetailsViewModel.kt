@@ -3,7 +3,6 @@ package io.music_assistant.client.ui.compose.item.artist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.Request
-import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -11,18 +10,18 @@ import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.itemList
 import io.music_assistant.client.data.model.client.items.set
-import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
 import io.music_assistant.client.ui.compose.common.mapData
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel.Companion.ARTIST_SECTION_LIMIT
 import io.music_assistant.client.ui.compose.item.ItemList
 import io.music_assistant.client.ui.compose.item.toRequests
-import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,7 +29,7 @@ import kotlinx.coroutines.launch
 class ArtistDetailsViewModel(
     private val artist: Artist,
     mediaItemRepository: MediaItemRepository,
-    private val serviceClient: ServiceClient,
+    private val providerRepository: ProviderRepository,
 ) : ViewModel() {
     private val fetchArtistItemsUseCase = FetchArtistItemsUseCase(mediaItemRepository)
 
@@ -105,9 +104,7 @@ class ArtistDetailsViewModel(
 
         viewModelScope.launch {
             val providers = if (artist.isInLibrary) {
-                serviceClient.sendRequest(Request.Provider.all())
-                    .resultAs<List<ServerProviderInstance>>()
-                    .orEmpty()
+                providerRepository.providers.first { it !is DataState.Loading }.dataOrNull.orEmpty()
             } else {
                 emptyList()
             }

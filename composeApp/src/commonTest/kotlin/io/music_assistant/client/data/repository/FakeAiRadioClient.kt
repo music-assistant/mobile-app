@@ -17,7 +17,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.fail
 
 /**
- * Answers `ai_radio/` commands from [results] (raw JSON, null for a missing result) and lets a
+ * Answers commands from [results] (raw JSON, null for a missing result) and lets a
  * test push server events and flip the command session.
  */
 class FakeAiRadioClient(val results: MutableMap<String, String?>) : StubServiceClient() {

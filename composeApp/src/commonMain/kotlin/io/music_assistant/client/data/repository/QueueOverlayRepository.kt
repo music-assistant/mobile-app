@@ -6,17 +6,11 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.model.server.ServerProviderInstance
-import io.music_assistant.client.utils.DataConnectionState
-import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -32,6 +26,7 @@ import kotlinx.coroutines.launch
  */
 class QueueOverlayRepository(
     private val apiClient: ServiceClient,
+    providerRepository: ProviderRepository,
     private val mediaItemFactory: MediaItemFactory,
     private val scope: CoroutineScope,
 ) {
@@ -42,11 +37,10 @@ class QueueOverlayRepository(
      * `ambient_sounds` provider, so this is false mostly when a user removed or disabled it.
      * Fails closed: a failed provider fetch hides the feature.
      */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val available: StateFlow<Boolean> = apiClient.sessionState
-        .map { it.isAuthenticated() }
-        .distinctUntilChanged()
-        .mapLatest { authenticated -> authenticated && hasSoundEffectProvider() }
+    val available: StateFlow<Boolean> = providerRepository.providers
+        .map { state ->
+            state.dataOrNull.orEmpty().any { it.available && SOUND_EFFECTS_FEATURE in it.supportedFeatures }
+        }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
     /** Every sound effect the user may pick, from all providers that offer them. */
@@ -71,14 +65,6 @@ class QueueOverlayRepository(
                 .onFailure { log.e(it) { "Failed to apply ambient sound on $queueId" } }
         }
     }
-
-    private suspend fun hasSoundEffectProvider(): Boolean =
-        apiClient.sendRequest(Request.Provider.all())
-            .resultAs<List<ServerProviderInstance>>()
-            ?.any { it.available && SOUND_EFFECTS_FEATURE in it.supportedFeatures } == true
-
-    private fun SessionState.isAuthenticated(): Boolean =
-        (this as? SessionState.Connected)?.dataConnectionState is DataConnectionState.Authenticated
 
     private companion object {
         const val SOUND_EFFECTS_FEATURE = "sound_effects"

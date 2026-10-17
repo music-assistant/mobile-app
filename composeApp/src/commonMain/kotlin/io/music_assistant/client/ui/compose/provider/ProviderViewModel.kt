@@ -8,7 +8,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.ProviderDetails
 import io.music_assistant.client.data.model.server.ServerMediaItem
-import io.music_assistant.client.data.model.server.ServerProviderInstance
+import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconModel
 import io.music_assistant.client.utils.getOrPut
@@ -17,22 +17,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class ProviderViewModel(private val serviceClient: ServiceClient) : ViewModel() {
-    private val providerDetailsByDomain = mutableMapOf<String, ProviderDetails>()
-    private val providerDetailsByInstanceId = mutableMapOf<String, ProviderDetails>()
+class ProviderViewModel(
+    private val serviceClient: ServiceClient,
+    providerRepository: ProviderRepository,
+) : ViewModel() {
+    private var providerDetailsByDomain = emptyMap<String, ProviderDetails>()
+    private var providerDetailsByInstanceId = emptyMap<String, ProviderDetails>()
     private val providerIconsCache = LruCache<String, ProviderIconModel>(10)
 
     init {
         viewModelScope.launch {
-            serviceClient.sendRequest(Request.Provider.all())
-                .resultAs<List<ServerProviderInstance>>()?.filter { it.type in NAMED_PROVIDER_TYPES }
-                ?.let { manifests ->
-                    manifests.forEach {
-                        val providerDetails = ProviderDetails(it.name)
-                        providerDetailsByDomain[it.domain] = providerDetails
-                        providerDetailsByInstanceId[it.instanceId] = providerDetails
-                    }
-                }
+            providerRepository.providers.collect { state ->
+                // A failed fetch or a sign-out keeps the names: they only label items.
+                val named = state.dataOrNull?.filter { it.type in NAMED_PROVIDER_TYPES } ?: return@collect
+                providerDetailsByDomain = named.associate { it.domain to ProviderDetails(it.name) }
+                providerDetailsByInstanceId = named.associate { it.instanceId to ProviderDetails(it.name) }
+            }
         }
     }
 

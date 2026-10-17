@@ -16,7 +16,9 @@ import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.data.model.server.events.PlayerAddedEvent
 import io.music_assistant.client.data.model.server.events.PlayerRemovedEvent
 import io.music_assistant.client.data.model.server.events.PlayerUpdatedEvent
+import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
 import io.music_assistant.client.data.model.server.events.ProviderEvent
+import io.music_assistant.client.data.model.server.events.ProvidersUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueAddedEvent
 import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
@@ -58,7 +60,9 @@ data class Event(
             EventType.PLAYER_ADDED -> myJson.decodeFromJsonElement<PlayerAddedEvent>(json)
             EventType.PLAYER_REMOVED -> myJson.decodeFromJsonElement<PlayerRemovedEvent>(json)
             EventType.PLAYER_UPDATED -> myJson.decodeFromJsonElement<PlayerUpdatedEvent>(json)
+            EventType.PLAYLOG_UPDATED -> myJson.decodeFromJsonElement<PlaylogUpdatedEvent>(json)
             EventType.PROVIDER_EVENT -> myJson.decodeFromJsonElement<ProviderEvent>(json)
+            EventType.PROVIDERS_UPDATED -> myJson.decodeFromJsonElement<ProvidersUpdatedEvent>(json)
             EventType.QUEUE_ADDED -> myJson.decodeFromJsonElement<QueueAddedEvent>(json)
             EventType.QUEUE_ITEMS_UPDATED -> myJson.decodeFromJsonElement<QueueItemsUpdatedEvent>(json)
             EventType.QUEUE_TIME_UPDATED -> myJson.decodeFromJsonElement<QueueTimeUpdatedEvent>(json)
@@ -74,7 +78,6 @@ data class Event(
             EventType.PLAYER_OPTIONS_UPDATED,
             EventType.PLAYER_SETTINGS_UPDATED,
             EventType.PLAYER_SLEEP_TIMER_UPDATED,
-            EventType.PROVIDERS_UPDATED,
             EventType.QUEUE_SETTINGS_UPDATED,
             EventType.SHUTDOWN,
             EventType.SYNC_TASKS_UPDATED,
