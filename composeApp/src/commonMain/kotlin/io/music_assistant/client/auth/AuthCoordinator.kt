@@ -15,7 +15,7 @@ interface AuthCoordinator {
         password: String,
     ): Result<Unit>
 
-    suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String>
+    suspend fun getOAuthUrl(provider: AuthProvider, returnUrl: String): Result<String>
 
     fun startOAuthFlow(oauthUrl: String): Result<Unit>
 

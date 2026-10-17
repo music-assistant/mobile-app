@@ -452,8 +452,8 @@ private class FakeAuthCoordinator : AuthCoordinator {
     var oauthUrl: Result<String> = Result.success("https://default.example/")
     val oauthRequests = mutableListOf<Pair<String, String>>()
 
-    override suspend fun getOAuthUrl(providerId: String, returnUrl: String): Result<String> {
-        oauthRequests += providerId to returnUrl
+    override suspend fun getOAuthUrl(provider: AuthProvider, returnUrl: String): Result<String> {
+        oauthRequests += provider.id to returnUrl
         return oauthUrl
     }
 

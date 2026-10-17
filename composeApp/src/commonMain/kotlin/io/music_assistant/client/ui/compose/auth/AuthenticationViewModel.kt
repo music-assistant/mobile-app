@@ -56,7 +56,7 @@ class AuthenticationViewModel(
         viewModelScope.launch {
             when (provider.type) {
                 "builtin" -> auth.loginWithCredentials(provider.id, username.value, password.value)
-                else -> auth.getOAuthUrl(provider.id, OAuthCallback.RETURN_URL)
+                else -> auth.getOAuthUrl(provider, OAuthCallback.RETURN_URL)
                     .onSuccess { url -> auth.startOAuthFlow(url) }
             }
         }

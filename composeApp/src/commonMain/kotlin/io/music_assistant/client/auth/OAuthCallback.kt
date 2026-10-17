@@ -5,8 +5,14 @@ import io.ktor.http.Url
 
 /** Outcome of reading an incoming URL as an OAuth callback. */
 sealed interface OAuthCallbackResult {
-    /** The provider returned an authorization code. */
-    data class Code(val token: String) : OAuthCallbackResult
+    /** The server finished the sign-in and returned an access token as `code`. */
+    data class Token(val token: String) : OAuthCallbackResult
+
+    /**
+     * The sign-in returned to the app (server 2.11, Remote Access). The app sends [code]
+     * with its PKCE verifier to `auth/exchange` for the access token.
+     */
+    data class AuthorizationCode(val code: String, val state: String) : OAuthCallbackResult
 
     /** The callback shape matched but carried a failure, or no code at all. */
     data class Failed(val reason: String) : OAuthCallbackResult
@@ -52,8 +58,13 @@ object OAuthCallback {
             url.encodedPath.trimEnd('/') == PATH
         if (!isCallback) return OAuthCallbackResult.NotOAuth
 
-        url.parameters["code"]?.takeIf { it.isNotEmpty() }
-            ?.let { return OAuthCallbackResult.Code(it) }
+        // Only the app.music-assistant.io callback page adds `state`: the server's own
+        // callback page completes the sign-in and returns the access token alone.
+        url.parameters["code"]?.takeIf { it.isNotEmpty() }?.let { code ->
+            return url.parameters["state"]?.takeIf { it.isNotEmpty() }
+                ?.let { OAuthCallbackResult.AuthorizationCode(code, it) }
+                ?: OAuthCallbackResult.Token(code)
+        }
 
         val error = url.parameters["error_description"]?.takeIf { it.isNotEmpty() }
             ?: url.parameters["error"]?.takeIf { it.isNotEmpty() }

@@ -5,6 +5,8 @@ import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.AuthProvider
+import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
@@ -23,6 +25,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -32,6 +40,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -117,7 +126,7 @@ class AuthenticationManagerTest {
             // return value: a propagated cancellation yields no Result at all, while a
             // swallowed one is absorbed into Result.failure and assigned here.
             var result: Result<String>? = null
-            val job = launch { result = manager.getOAuthUrl("spotify", "musicassistant://auth/callback") }
+            val job = launch { result = manager.getOAuthUrl(HA_PROVIDER, "musicassistant://auth/callback") }
             runCurrent() // suspends inside serviceClient.sendRequest
 
             job.cancel()
@@ -412,12 +421,226 @@ class AuthenticationManagerTest {
         }
     }
 
+    // --- Sign-in that returns to the app (PKCE, server 2.11 over Remote Access, issue #1184) ---
+
+    @Test
+    fun `a remote sign-in returns to the app and exchanges the code with its verifier`() = runTest {
+        val client = StubServiceClient()
+        client.sessionState.value = remoteAwaitingAuth()
+        client.respond = { request ->
+            when (request.command) {
+                "auth/authorization_url" -> authorizationUrlAnswer(state = "n.state-1")
+                "auth/exchange" -> loginAnswer("exchanged-token")
+                else -> null
+            }
+        }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            val url = manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+            assertEquals("https://ha.example/auth/authorize", url.getOrNull())
+            val start = checkNotNull(client.requests.single().args)
+            assertEquals("app", start.string("redirect_target"))
+            assertEquals("S256", start.string("code_challenge_method"))
+
+            manager.handleOAuthCallbackUrl(
+                "musicassistant://auth/callback?code=ha-code&state=n.state-1",
+            )
+            runCurrent()
+
+            val exchange = checkNotNull(client.requests.last().args)
+            assertEquals("n.state-1", exchange.string("state"))
+            assertEquals("ha-code", exchange.string("code"))
+            assertEquals(
+                start.string("code_challenge"),
+                Pkce.challengeOf(checkNotNull(exchange.string("code_verifier"))),
+                "The verifier must be the one whose challenge started the sign-in",
+            )
+            assertEquals(listOf("exchanged-token" to false), client.authorizeCalls)
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a direct session keeps the server callback flow`() = runTest {
+        val client = StubServiceClient()
+        client.sessionState.value = awaitingAuth(
+            serverInfo = ServerInfo(serverId = "server-1", schemaVersion = SERVER_2_11_SCHEMA),
+        )
+        client.respond = { authorizationUrlAnswer(state = "w.state-1") }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+
+            val start = checkNotNull(client.requests.single().args)
+            assertNull(start["code_challenge"], "The server refuses the app return outside Remote Access")
+            assertNull(start["redirect_target"])
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a remote session on server 2_10 keeps the server callback flow`() = runTest {
+        val client = StubServiceClient()
+        client.sessionState.value = remoteAwaitingAuth(schemaVersion = SERVER_2_11_SCHEMA - 1)
+        client.respond = { authorizationUrlAnswer(state = "w.state-1") }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+
+            assertNull(checkNotNull(client.requests.single().args)["code_challenge"])
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a code for a sign-in this app did not start fails without an exchange`() = runTest {
+        val client = StubServiceClient()
+        client.sessionState.value = remoteAwaitingAuth()
+        client.respond = { authorizationUrlAnswer(state = "n.state-1") }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.oauthHandler = FakeOAuthHandler(reportsCancellation = true)
+            manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+            manager.startOAuthFlow("https://ha.example/auth/authorize")
+
+            manager.handleOAuthCallbackUrl(
+                "musicassistant://auth/callback?code=ha-code&state=n.other",
+            )
+            runCurrent()
+
+            assertIs<AuthState.Error>(manager.authState.value)
+            assertTrue(client.requests.none { it.command == "auth/exchange" })
+            assertTrue(client.authorizeCalls.isEmpty())
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a refused exchange shows the server error`() = runTest {
+        val client = StubServiceClient()
+        client.sessionState.value = remoteAwaitingAuth()
+        client.respond = { request ->
+            when (request.command) {
+                "auth/authorization_url" -> authorizationUrlAnswer(state = "n.state-1")
+                else -> Result.success(
+                    answer(
+                        buildJsonObject {
+                            put("success", false)
+                            put("error", "This sign-in is invalid or has expired")
+                        },
+                    ),
+                )
+            }
+        }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+            manager.handleOAuthCallbackUrl(
+                "musicassistant://auth/callback?code=ha-code&state=n.state-1",
+            )
+            runCurrent()
+
+            assertEquals(
+                AuthState.Error("This sign-in is invalid or has expired"),
+                manager.authState.value,
+            )
+            assertTrue(client.authorizeCalls.isEmpty())
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a reconnect after the exchange spends the token and does not repeat the exchange`() = runTest {
+        val client = StubServiceClient()
+        client.sessionState.value = remoteAwaitingAuth()
+        client.respond = { request ->
+            when (request.command) {
+                "auth/authorization_url" -> authorizationUrlAnswer(state = "n.state-1")
+                "auth/exchange" -> loginAnswer("exchanged-token")
+                else -> null
+            }
+        }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.getOAuthUrl(HA_PROVIDER, OAuthCallback.RETURN_URL)
+            manager.handleOAuthCallbackUrl(
+                "musicassistant://auth/callback?code=ha-code&state=n.state-1",
+            )
+            runCurrent()
+
+            // The transport bounces: `auth` resolved to Aborted, nothing settled.
+            client.sessionState.value = SessionState.Reconnecting.WebRTC(
+                attempt = 1,
+                remoteId = REMOTE_ID,
+            )
+            runCurrent()
+            client.sessionState.value = remoteAwaitingAuth()
+            runCurrent()
+
+            assertEquals(1, client.requests.count { it.command == "auth/exchange" })
+            assertEquals(
+                listOf("exchanged-token" to false, "exchanged-token" to false),
+                client.authorizeCalls,
+                "The server accepts a code once, so the retry must spend the token",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `the PKCE challenge matches the RFC 7636 example`() = runTest {
+        assertEquals(
+            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+            Pkce.challengeOf("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
+        )
+        val pkce = Pkce.create()
+        assertEquals(43, pkce.verifier.length, "The server accepts 43 to 128 characters")
+        assertEquals(Pkce.challengeOf(pkce.verifier), pkce.challenge)
+    }
+
+    private fun remoteAwaitingAuth(schemaVersion: Int = SERVER_2_11_SCHEMA) = SessionState.Connected.WebRTC(
+        remoteId = REMOTE_ID,
+        connectionData = ConnectionData(
+            serverInfo = ServerInfo(serverId = "server-1", schemaVersion = schemaVersion),
+        ),
+    )
+
+    private fun JsonObject.string(key: String) = get(key)?.jsonPrimitive?.contentOrNull
+
+    private fun answer(result: JsonObject) = Answer(buildJsonObject { put("result", result) })
+
+    private fun authorizationUrlAnswer(state: String) = Result.success(
+        answer(
+            buildJsonObject {
+                put("authorization_url", "https://ha.example/auth/authorize")
+                put("state", state)
+            },
+        ),
+    )
+
+    private fun loginAnswer(token: String) = Result.success(
+        answer(
+            buildJsonObject {
+                put("success", true)
+                put("access_token", token)
+                put("user", buildJsonObject { put("username", "daveb") })
+            },
+        ),
+    )
+
     private fun awaitingAuth(
         authProcessState: AuthProcessState = AuthProcessState.NotStarted,
+        serverInfo: ServerInfo = SERVER_INFO,
     ) = SessionState.Connected.Direct(
         connectionInfo = CONNECTION,
         connectionData = ConnectionData(
-            serverInfo = SERVER_INFO,
+            serverInfo = serverInfo,
             authProcessState = authProcessState,
         ),
     )
@@ -435,13 +658,20 @@ class AuthenticationManagerTest {
         val CONNECTION = ConnectionInfo(host = "ma.local", port = 8095, isTls = false)
         val SERVER_INFO = ServerInfo(serverId = "server-1")
         val USER = User(username = "daveb")
+        val REMOTE_ID = RemoteId("PGSVXKGZJCFA6MOH4UPBH5Q9HY")
+        val HA_PROVIDER = AuthProvider(
+            id = "homeassistant",
+            type = "homeassistant",
+            requiresRedirect = true,
+            supportsRemoteApp = true,
+        )
     }
 }
 
 /**
  * Minimal [ServiceClient] for manager tests. [sendRequest] parks via
- * [awaitCancellation] so a caller can be cancelled mid-request; the session
- * stays Disconnected so the manager's init monitor does nothing.
+ * [awaitCancellation], unless [respond] answers, so a caller can be cancelled
+ * mid-request; the session stays Disconnected unless a test sets it.
  */
 private class StubServiceClient : ServiceClient {
     override val sessionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
@@ -453,7 +683,15 @@ private class StubServiceClient : ServiceClient {
     val foregroundEventsFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     override val foregroundEvents: Flow<Unit> = foregroundEventsFlow
 
-    override suspend fun sendRequest(request: Request): Result<Answer> = awaitCancellation()
+    val requests = mutableListOf<Request>()
+
+    /** Answers a request, or null to park it until cancelled. */
+    var respond: (Request) -> Result<Answer>? = { null }
+
+    override suspend fun sendRequest(request: Request): Result<Answer> {
+        requests += request
+        return respond(request) ?: awaitCancellation()
+    }
     override suspend fun login(username: String, password: String): Unit = awaitCancellation()
     val authorizeCalls = mutableListOf<Pair<String, Boolean>>()
 

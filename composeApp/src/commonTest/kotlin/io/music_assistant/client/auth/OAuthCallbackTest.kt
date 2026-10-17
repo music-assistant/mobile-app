@@ -21,19 +21,30 @@ class OAuthCallbackTest {
     }
 
     @Test
-    fun `a callback carrying a code yields the code`() {
+    fun `a callback carrying only a code yields the server's token`() {
         val result = OAuthCallback.parse("musicassistant://auth/callback?code=abc123")
 
-        assertTrue(result is OAuthCallbackResult.Code)
+        assertTrue(result is OAuthCallbackResult.Token)
         assertEquals("abc123", result.token)
     }
 
     @Test
     fun `extra query parameters do not hide the code`() {
-        val result = OAuthCallback.parse("musicassistant://auth/callback?state=xyz&code=abc123")
+        val result = OAuthCallback.parse("musicassistant://auth/callback?foo=xyz&code=abc123")
 
-        assertTrue(result is OAuthCallbackResult.Code)
+        assertTrue(result is OAuthCallbackResult.Token)
         assertEquals("abc123", result.token)
+    }
+
+    @Test
+    fun `a callback with a state carries an authorization code to exchange`() {
+        val result = OAuthCallback.parse("musicassistant://auth/callback?code=abc123&state=n.xyz")
+
+        assertEquals(
+            OAuthCallbackResult.AuthorizationCode(code = "abc123", state = "n.xyz"),
+            result,
+            "Only the app.music-assistant.io page adds a state, and its code is not a token",
+        )
     }
 
     @Test

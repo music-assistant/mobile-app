@@ -289,8 +289,8 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
 | Username and password login | yes | yes | yes | n/a | n/a | Parity | |
-| Home Assistant OAuth | yes | yes | yes | n/a | n/a | Parity | iOS lacks `ASWebAuthenticationSession` |
-| PKCE return to the app | no | yes | no | n/a | n/a | Missing | `auth/exchange`. Needs Remote Access on the server |
+| Home Assistant OAuth | yes | yes | yes | n/a | n/a | Parity | iOS uses `ASWebAuthenticationSession` |
+| PKCE return to the app | no | yes | yes | n/a | n/a | Parity | `auth/exchange` (issue #1184). Remote Access only |
 | Saved token auto-login | yes | yes | yes | n/a | n/a | Parity | |
 | Long-lived token login | yes | yes | no | n/a | n/a | Adjust-partial | `project.md` claims it. No UI exists. Decided: add the UI (issue #1202) |
 | Join code login | yes | yes | no | n/a | n/a | Missing | `auth/join_code/exchange` |
@@ -506,6 +506,13 @@ Impact: none for login. PKCE is an opportunity, not a break.
 
 Required change: none for login. Use PKCE on 2.11 to fix the iOS OAuth return. Keep the current
 flow for 2.10.
+
+Status: done (issue #1184). iOS already used `ASWebAuthenticationSession` before this change. Over
+Remote Access on 2.11, with a provider that sets `supports_remote_app`, the app sends a PKCE
+challenge and `redirect_target` "app". The `app.music-assistant.io` callback page opens
+`musicassistant://auth/callback` with `code` and `state`, and the app completes the sign-in with
+`auth/exchange`. All other sessions keep the server callback flow. The server does not need an External
+URL on the PKCE path. See `.claude/settings-screen.md`.
 
 ### 5.9 Other 2.11 changes
 

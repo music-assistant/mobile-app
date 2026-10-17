@@ -32,9 +32,14 @@ data class AuthProvider(
     @SerialName("provider_id") val id: String,
     @SerialName("provider_type") val type: String,
     @SerialName("requires_redirect") val requiresRedirect: Boolean,
+    /** Server 2.11: the browser can return to the app, over Remote Access only. */
+    @SerialName("supports_remote_app") val supportsRemoteApp: Boolean = false,
 )
 
+/** [url] is null, with an [error], when the server refuses the sign-in. */
 @Serializable
 data class OauthUrl(
-    @SerialName("authorization_url") val url: String,
+    @SerialName("authorization_url") val url: String? = null,
+    @SerialName("state") val state: String? = null,
+    @SerialName("error") val error: String? = null,
 )
