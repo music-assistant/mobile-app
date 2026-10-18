@@ -35,6 +35,7 @@ class MediaNotificationDataStationTest {
                 ),
             ),
             multiplePlayers = false,
+            canEditLibrary = false,
             effectiveElapsedSec = null,
         )
 
@@ -62,6 +63,7 @@ class MediaNotificationDataStationTest {
                 ),
             ),
             multiplePlayers = false,
+            canEditLibrary = false,
             effectiveElapsedSec = null,
         )
 
@@ -98,6 +100,7 @@ class MediaNotificationDataStationTest {
                 ),
             ),
             multiplePlayers = false,
+            canEditLibrary = false,
             effectiveElapsedSec = null,
         )
 
@@ -125,6 +128,7 @@ class MediaNotificationDataStationTest {
                 ),
             ),
             multiplePlayers = false,
+            canEditLibrary = false,
             effectiveElapsedSec = null,
         )
 
@@ -149,6 +153,7 @@ class MediaNotificationDataStationTest {
                 ),
             ),
             multiplePlayers = false,
+            canEditLibrary = false,
             effectiveElapsedSec = null,
         )
         val metadata = buildMediaSessionMetadata(
@@ -185,6 +190,7 @@ class MediaNotificationDataStationTest {
                 ),
             ),
             multiplePlayers = false,
+            canEditLibrary = false,
             effectiveElapsedSec = null,
         )
         val metadata = buildMediaSessionMetadata(
@@ -207,6 +213,7 @@ class MediaNotificationDataStationTest {
         val data = MediaNotificationData(
             multiplePlayers = false,
             longItemId = null,
+            activeQueueItemId = null,
             name = "Example Radio",
             artist = "On Air Artist",
             album = null,
@@ -287,6 +294,7 @@ class MediaNotificationDataStationTest {
         val data = MediaNotificationData(
             multiplePlayers = false,
             longItemId = null,
+            activeQueueItemId = null,
             name = "   ",
             artist = "On Air Artist",
             album = null,
@@ -322,6 +330,7 @@ class MediaNotificationDataStationTest {
         MediaNotificationData(
             multiplePlayers = false,
             longItemId = null,
+            activeQueueItemId = null,
             name = name,
             artist = artist,
             album = null,
