@@ -37,6 +37,7 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.resultAs
 import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -53,6 +54,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.sample
@@ -280,11 +282,13 @@ class HomeScreenViewModel(
         }
 
         // A played state change moves an item into or out of the play-history rows. The wait
-        // joins the burst of one finished track: the track, then each of its artists.
+        // joins the burst of one finished track: the track, then each of its artists. The filter
+        // runs off the main thread, so the other server events never wait for it.
         viewModelScope.launch {
             apiClient.events
                 .filterIsInstance<PlaylogUpdatedEvent>()
                 .filter { event -> event.data.userId?.let { it == currentUserId() } ?: true }
+                .flowOn(Dispatchers.Default)
                 .debounce(PLAYLOG_REFRESH_DELAY)
                 .collect { refreshRecommendations() }
         }
