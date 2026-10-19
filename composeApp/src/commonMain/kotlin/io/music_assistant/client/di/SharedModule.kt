@@ -180,7 +180,7 @@ fun sharedModule(
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
-        singleOf(::ServiceClientMediaItemRepository) { bind<MediaItemRepository>() }
+        single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }
         singleOf(::LibrarySortRepository)   // Library sort choices; caches the 2.11 sort_options
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch

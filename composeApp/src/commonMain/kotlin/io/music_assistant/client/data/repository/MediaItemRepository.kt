@@ -19,9 +19,9 @@ import io.music_assistant.client.data.model.server.sendsFavoriteUpdates
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -63,6 +63,8 @@ interface MediaItemRepository {
 class ServiceClientMediaItemRepository(
     private val apiClient: ServiceClient,
     private val factory: MediaItemFactory,
+    // The answer resumes on the caller's dispatcher, usually Main; decode and map off it.
+    private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : MediaItemRepository {
     // Singleton-scoped app-lifetime job; only used to keep [itemChanges]
     // hot. Survives subscriber turnover so quick navigation between screens
@@ -75,10 +77,12 @@ class ServiceClientMediaItemRepository(
      * failed [Result] so callers can still log via `result.exceptionOrNull()`.
      */
     override suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>> =
-        apiClient.sendRequest(request).mapCatching { answer ->
-            answer.resultAs<List<ServerMediaItem>>()
-                ?.let(factory::createList)
-                ?: error("Missing or undecodable media list payload")
+        withContext(workDispatcher) {
+            apiClient.sendRequest(request).mapCatching { answer ->
+                answer.resultAs<List<ServerMediaItem>>()
+                    ?.let(factory::createList)
+                    ?: error("Missing or undecodable media list payload")
+            }
         }
 
     /**
@@ -101,16 +105,20 @@ class ServiceClientMediaItemRepository(
      * "not found" stays distinguishable from a transport failure.
      */
     override suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?> =
-        apiClient.sendRequest(request).map { answer ->
-            answer.resultAs<ServerMediaItem>()?.let(factory::create)
+        withContext(workDispatcher) {
+            apiClient.sendRequest(request).map { answer ->
+                answer.resultAs<ServerMediaItem>()?.let(factory::create)
+            }
         }
 
     /** Issue [request] and decode its payload as a typed [SearchResultData]. */
     override suspend fun search(request: Request): Result<SearchResultData> =
-        apiClient.sendRequest(request).mapCatching { answer ->
-            answer.resultAs<SearchResult>()
-                ?.let(factory::createSearchResult)
-                ?: error("Missing or undecodable search payload")
+        withContext(workDispatcher) {
+            apiClient.sendRequest(request).mapCatching { answer ->
+                answer.resultAs<SearchResult>()
+                    ?.let(factory::createSearchResult)
+                    ?: error("Missing or undecodable search payload")
+            }
         }
 
     // Client-originated changes for mutations the server doesn't echo back as an
@@ -194,25 +202,21 @@ class ServiceClientMediaItemRepository(
  * The home-page recommendation rows as the server returned them
  */
 suspend fun MediaItemRepository.fetchRecommendationRows(): Result<List<RecommendationFolder>> =
-    withContext(Dispatchers.IO) {
-        fetchMediaItems(Request.Library.recommendations())
-            .map { items -> items.filterIsInstance<RecommendationFolder>() }
-    }
+    fetchMediaItems(Request.Library.recommendations())
+        .map { items -> items.filterIsInstance<RecommendationFolder>() }
 
 /** Items of one recommendation row, or null when the fetch failed (logged). */
 suspend fun MediaItemRepository.fetchRecommendationRowItems(
     folder: RecommendationFolder,
-): List<AppMediaItem>? = withContext(Dispatchers.IO) {
-    fetchMediaItems(
-        Request.Library.recommendationItems(folder.provider, folder.itemId),
-    ).getOrElse { error ->
-        if (error is CancellationException) throw error
-        Logger.w(
-            "Failed fetching recommendation items for " +
-                    "${folder.provider}/${folder.itemId}: $error",
-        )
-        null
-    }
+): List<AppMediaItem>? = fetchMediaItems(
+    Request.Library.recommendationItems(folder.provider, folder.itemId),
+).getOrElse { error ->
+    if (error is CancellationException) throw error
+    Logger.w(
+        "Failed fetching recommendation items for " +
+                "${folder.provider}/${folder.itemId}: $error",
+    )
+    null
 }
 
 /**
